@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/premium",
     "version": "0.0.1",
-    "description": "Paid-package framework for Ottabase apps — manifests, offline license verification, entitlements, lifecycle hooks, gated routes and drop-in admin UI",
+    "description": "Paid-package framework for Ottabase apps: manifests, offline license verification, entitlements, lifecycle hooks, gated routes and drop-in admin UI",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.js",

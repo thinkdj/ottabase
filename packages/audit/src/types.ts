@@ -65,7 +65,7 @@ export interface AuditRequestContext {
 }
 
 /**
- * Who performed an audited request. Resolve it from a verified session — never from request headers.
+ * Who performed an audited request. Resolve it from a verified session, never from request headers.
  */
 export interface AuditActor {
     userId?: string;

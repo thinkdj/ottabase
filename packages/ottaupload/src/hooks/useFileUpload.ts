@@ -91,7 +91,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
             return new Promise<UploadFile>((resolve, reject) => {
                 xhr.addEventListener('load', () => {
                     // Wrap in try/catch: throwing inside an XHR async callback won't be caught
-                    // by the Promise — we must call reject() explicitly.
+                    // by the Promise, we must call reject() explicitly.
                     try {
                         if (xhr.status >= 200 && xhr.status < 300) {
                             const response = JSON.parse(xhr.responseText) as UploadResponse;
@@ -118,7 +118,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
                                     message = errBody.error || errBody.message || message;
                                 }
                             } catch {
-                                // response was not JSON — keep default message
+                                // response was not JSON: keep default message
                             }
                             throw new Error(message);
                         }

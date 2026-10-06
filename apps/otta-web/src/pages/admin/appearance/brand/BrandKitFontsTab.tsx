@@ -41,7 +41,7 @@ function FontRoleEditor({ mode, role, config, presetTypo, onUpdate, onFontFamily
     const letterSpacing = config[role]?.letterSpacing || 'normal';
     const weight = config[role]?.fontWeight || 'normal';
 
-    // Compute font dropdown items — memoized so switching between fonts doesn't re-filter GOOGLE_FONTS each render.
+    // Compute font dropdown items: memoized so switching between fonts doesn't re-filter GOOGLE_FONTS each render.
     const fontItems = useMemo(() => {
         const categoryMatch = role === 'handwriting' ? 'handwriting' : ['sans-serif', 'serif', 'display'];
         const base = GOOGLE_FONTS.filter((f) =>

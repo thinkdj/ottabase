@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Tests for the headless fuzzy-selection controller (v2)
+ * @ottabase/ottadate: Tests for the headless fuzzy-selection controller (v2)
  *
  * Locks in the derived-resolution model: the resolution is the deepest level
  * the user filled in, levels clear in cascade, parts are terminal refinements
@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { createFuzzyDateTime } from '../core/fuzzy';
 import { createFuzzySelection } from '../core/fuzzy-selection';
 
-describe('createFuzzySelection — derived resolution', () => {
+describe('createFuzzySelection: derived resolution', () => {
     it('starts empty with no selection and builds null', () => {
         const sel = createFuzzySelection();
         expect(sel.state.hasSelection).toBe(false);
@@ -52,7 +52,7 @@ describe('createFuzzySelection — derived resolution', () => {
     });
 });
 
-describe('createFuzzySelection — toggling and cascade clearing', () => {
+describe('createFuzzySelection: toggling and cascade clearing', () => {
     it('re-selecting the active month clears month and everything finer', () => {
         const sel = createFuzzySelection();
         sel.setYear(2020);
@@ -92,7 +92,7 @@ describe('createFuzzySelection — toggling and cascade clearing', () => {
     });
 });
 
-describe('createFuzzySelection — parts', () => {
+describe('createFuzzySelection: parts', () => {
     it('offers parts for the current derived level', () => {
         const sel = createFuzzySelection();
         expect(sel.partOptions()).toEqual(['early', 'mid', 'late', 'spring', 'summer', 'autumn', 'winter']);
@@ -156,7 +156,7 @@ describe('createFuzzySelection — parts', () => {
     });
 });
 
-describe('createFuzzySelection — approximate', () => {
+describe('createFuzzySelection: approximate', () => {
     it('marks the build as approximate and widens the interval', () => {
         const sel = createFuzzySelection();
         sel.setYear(1996);
@@ -172,7 +172,7 @@ describe('createFuzzySelection — approximate', () => {
     });
 });
 
-describe('createFuzzySelection — decade mode', () => {
+describe('createFuzzySelection: decade mode', () => {
     const opts = { resolutions: ['decade', 'year', 'month'] as const };
 
     it('starts at decade resolution with the year un-named', () => {
@@ -217,14 +217,14 @@ describe('createFuzzySelection — decade mode', () => {
     });
 });
 
-describe('createFuzzySelection — resolution bounds', () => {
+describe('createFuzzySelection: resolution bounds', () => {
     it('treats the coarsest allowed resolution as a required baseline', () => {
         const sel = createFuzzySelection({ resolutions: ['month', 'day'] });
         expect(sel.state.monthSet).toBe(true); // base floor
         sel.setYear(2020);
         expect(sel.resolution()).toBe('month');
 
-        // Month is required — toggling the active month must not clear it
+        // Month is required: toggling the active month must not clear it
         sel.toggleMonth(sel.state.month);
         expect(sel.state.monthSet).toBe(true);
     });
@@ -236,7 +236,7 @@ describe('createFuzzySelection — resolution bounds', () => {
     });
 });
 
-describe('createFuzzySelection — shortcuts and lifecycle', () => {
+describe('createFuzzySelection: shortcuts and lifecycle', () => {
     it('setToday selects today at day resolution without a time or part', () => {
         const sel = createFuzzySelection();
         sel.setPart('summer');

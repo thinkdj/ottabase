@@ -53,11 +53,11 @@ export function ZoomableImage({
 
     // Active pointers (unifies mouse + touch via Pointer Events)
     const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-    // Pinch state — captured when a second pointer goes down
+    // Pinch state: captured when a second pointer goes down
     const pinchRef = useRef<{ startDistance: number; startZoom: number } | null>(null);
     // Last tap timestamp for double-tap detection on touch
     const lastTapRef = useRef<number>(0);
-    // Where the last mouse press landed — used to tell a click apart from a pan drag
+    // Where the last mouse press landed, used to tell a click apart from a pan drag
     const mouseDownRef = useRef({ x: 0, y: 0 });
 
     // Reset zoom / pan / gesture state when the image source changes
@@ -105,7 +105,7 @@ export function ZoomableImage({
     const handleDoubleClick = useCallback(
         (e: React.MouseEvent) => {
             if (zoomStart !== 'double') return;
-            // Mouse-only — touch double-tap is handled in handlePointerDown.
+            // Mouse-only: touch double-tap is handled in handlePointerDown.
             const pointerType = (e.nativeEvent as PointerEvent).pointerType;
             if (pointerType && pointerType !== 'mouse') return;
             e.preventDefault();
@@ -118,7 +118,7 @@ export function ZoomableImage({
     const handleClick = useCallback(
         (e: React.MouseEvent) => {
             if (zoomStart !== 'single') return;
-            // Mouse-only — touch double-tap is handled in handlePointerDown.
+            // Mouse-only: touch double-tap is handled in handlePointerDown.
             const pointerType = (e.nativeEvent as PointerEvent).pointerType;
             if (pointerType && pointerType !== 'mouse') return;
             // Ignore the click that terminates a pan drag.
@@ -179,7 +179,7 @@ export function ZoomableImage({
             if (!pointersRef.current.has(e.pointerId)) return;
             pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-            // Pinch zoom — the gesture is ours, so a parent gallery must not read it as a swipe.
+            // Pinch zoom: the gesture is ours, so a parent gallery must not read it as a swipe.
             if (pointersRef.current.size === 2 && pinchRef.current) {
                 e.preventDefault();
                 e.stopPropagation();

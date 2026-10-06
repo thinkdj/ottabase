@@ -108,7 +108,7 @@ describe('Homepage Config', () => {
     });
 
     it('loadConfig merges partial config with defaults', () => {
-        // Only save one slot — all others should get defaults
+        // Only save one slot: all others should get defaults
         localStorage.setItem(HOMEPAGE_CONFIG_KEY, JSON.stringify({ hero: 'split' }));
         const loaded = loadConfig();
         expect(loaded.hero).toBe('split');

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Menu OttaORM Model
+// Brand Engine, Menu OttaORM Model
 // Menus container (e.g. sidebar, header, footer). Slug identifies usage.
 // ---------------------------------------------------------------------------
 

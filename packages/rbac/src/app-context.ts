@@ -187,7 +187,7 @@ export function hasAllRoles(context: AppContext, roles: string[]): boolean {
 }
 
 /**
- * Check if the context holds an admin capability — PERMISSION-based, never role-NAME based.
+ * Check if the context holds an admin capability, PERMISSION-based, never role-NAME based.
  * True for a platform admin (`platform:admin`) or an org admin (`org:admin`), or the `*:*`
  * superadmin wildcard. A role merely NAMED 'owner'/'admin' with no such permission is NOT one.
  *

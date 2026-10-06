@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Theme Registry
+// BrandEngine, Theme Registry
 //
 // A simple runtime catalogue of BrandThemes. Apps register themes at startup
 // and look them up by name.

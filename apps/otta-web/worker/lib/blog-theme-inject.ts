@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// Blog theme – scoped token CSS injection for blog HTML documents.
+// Blog theme, scoped token CSS injection for blog HTML documents.
 // The active blog theme row may carry sparse CSS-variable overrides (tokens);
 // they apply under [data-brand-scope="blog"] so the blog "room" can diverge
 // from the app shell without fighting it. Injected at the edge so first paint
 // matches the client (zero FOUC), mirroring the brand-injection contract.
-// Runs only on /blog document navigations — one D1 read on those paths, none
+// Runs only on /blog document navigations, one D1 read on those paths, none
 // anywhere else. No tokens (the seeded default) injects nothing.
 // ---------------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ export async function injectBlogThemeCss(response: Response, request: Request, e
         if (!css) return response;
 
         // Defense in depth: serializer output is validated, but tokens are
-        // admin-authored — run the same sanitizer every brand style tag gets.
+        // admin-authored, run the same sanitizer every brand style tag gets.
         const safeCss = sanitizeCssForStyleTag(css);
         if (!safeCss) return response;
 

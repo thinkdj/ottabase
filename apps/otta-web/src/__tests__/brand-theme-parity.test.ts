@@ -5,7 +5,7 @@
 // (persistence side) and embeds the full config; the client re-derives
 // themeLight/themeDark in resolveConfigForPath (brand-engine-react) and
 // REPLACES the same stylesheet via applyBrandTheme. First-load must be a
-// byte-identical no-op — no re-fetch, no base-theme-then-retheme flash
+// byte-identical no-op, no re-fetch, no base-theme-then-retheme flash
 // (commit c365c065's optimization). These tests lock both sides together,
 // including BrandEngine v2 categories and per-route token overrides.
 // ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ const lightTheme = {
     layout: DEFAULT_LAYOUT,
 } as unknown as ResolvedBrandTheme;
 
-/** Dark DELTA (what brandKitToTheme('dark') produces — colors always, splits only) */
+/** Dark DELTA (what brandKitToTheme('dark') produces, colors always, splits only) */
 const darkTheme = {
     colors: { background: '240 9% 7%', foreground: '30 13% 94%', primary: '349 74% 55%' },
     shadows: { xs: 'none', sm: 'none', md: 'dark-md', lg: 'dark-lg', xl: 'dark-xl' },
@@ -137,7 +137,7 @@ describe('edge ↔ client theme parity (zero-FOUC handoff)', () => {
         expect((client.themeLight.palette as Record<string, string>)['route-extra']).toBe('#123456');
     });
 
-    it('produces byte-identical critical CSS — client first-load application is a no-op', () => {
+    it('produces byte-identical critical CSS: client first-load application is a no-op', () => {
         for (const path of ['/', '/blog/post-1']) {
             const client = clientResolve(path, 'light');
             const serverLight = resolveConfigFromFull(fullConfig as never, path, 'light')!;

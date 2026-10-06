@@ -95,7 +95,7 @@ function createStubDriver(rows: Array<Record<string, unknown>>, recorded: Record
  * The built-ins plus ONE keyless, tenant-selectable provider.
  *
  * The keyless case used to be exercised with `workers-ai`, which is now
- * `tenantSelectable: false` — it is billed to the operator, has no tenant key to bring, and
+ * `tenantSelectable: false`: it is billed to the operator, has no tenant key to bring, and
  * is not reachable through the gateway's provider-native shape. Testing the RULE ("a keyless
  * provider may be saved with no secret") against an `extend`-ed provider is the better test
  * anyway: it stops depending on which built-in happens to carry which flags.
@@ -133,7 +133,7 @@ describe('a write path with no keyring must never store plaintext', () => {
     });
 });
 
-describe('create — every scope rung the strategy can score must be producible', () => {
+describe('create: every scope rung the strategy can score must be producible', () => {
     it('produces a USER-scoped row', async () => {
         await AiProviderCredential.create({ ...BASE });
         expect(recorded.inserts[0]).toMatchObject({ userId: 'user-1', organizationId: null, appId: 'app-1' });
@@ -149,14 +149,14 @@ describe('create — every scope rung the strategy can score must be producible'
         expect(recorded.inserts[0]).toMatchObject({ userId: 'user-1', organizationId: 'org-a' });
     });
 
-    it('REFUSES an unscoped row — there is no such thing as a global credential', async () => {
+    it('REFUSES an unscoped row: there is no such thing as a global credential', async () => {
         await expect(
             AiProviderCredential.create({ ...BASE, userId: null, organizationId: null }),
         ).rejects.toMatchObject({ code: AI_ERROR_CODES.VALIDATION });
     });
 });
 
-describe('create — the secret rules', () => {
+describe('create: the secret rules', () => {
     it('stores an ENVELOPE, never the plaintext, and derives the hint from the same trimmed string', async () => {
         await AiProviderCredential.create({ ...BASE, secret: '  sk-abcdefgh12345678\n' });
         const row = recorded.inserts[0]!;
@@ -194,7 +194,7 @@ describe('create — the secret rules', () => {
         expect(plain.expose()).toBe(BASE.secret);
     });
 
-    it('rejects a pre-encrypted value on CREATE — it would skip hint derivation forever', async () => {
+    it('rejects a pre-encrypted value on CREATE, it would skip hint derivation forever', async () => {
         await AiProviderCredential.create({ ...BASE });
         const envelope = String(recorded.inserts[0]!.secretCiphertext);
         rows.length = 0;
@@ -224,7 +224,7 @@ describe('create — the secret rules', () => {
 
     it('REFUSES a registered but platform-only provider', async () => {
         // `workers-ai` is billed to the operator and has no tenant key to bring, so a tenant
-        // row for it can never satisfy a `required` gate — and the gateway transport cannot
+        // row for it can never satisfy a `required` gate, and the gateway transport cannot
         // call it through the provider-native shape either.
         await expect(
             AiProviderCredential.create({ ...BASE, provider: 'workers-ai', secret: '' }),
@@ -262,11 +262,11 @@ describe('create — the secret rules', () => {
         const row = recorded.inserts[0]!;
         expect(row).toMatchObject({ secretKind: 'alias', secretAlias: 'org-shared-key', secretCiphertext: null });
         expect(row).not.toHaveProperty('alias');
-        // An alias reveals nothing — the hint is the bare mask.
+        // An alias reveals nothing: the hint is the bare mask.
         expect(row.keyHint).toBe(KEY_HINT_MASK);
     });
 
-    it('rejects an alias the validator does not recognise — an unvalidated alias is a cross-tenant key-use primitive', async () => {
+    it('rejects an alias the validator does not recognise, an unvalidated alias is a cross-tenant key-use primitive', async () => {
         resetCredentialWrites();
         configureCredentialWrites({
             keyring: createTestKeyring(),
@@ -279,7 +279,7 @@ describe('create — the secret rules', () => {
     });
 });
 
-describe('create — operator-only inputs are refused', () => {
+describe('create: operator-only inputs are refused', () => {
     it('rejects a dynamic/<route> model reference from a tenant write', async () => {
         await expect(AiProviderCredential.create({ ...BASE, model: 'dynamic/premium-route' })).rejects.toMatchObject({
             code: AI_ERROR_CODES.VALIDATION,
@@ -316,7 +316,7 @@ describe('update', () => {
         return created;
     }
 
-    it('BLANK MEANS KEEP — never overwrites a stored key with an empty string', async () => {
+    it('BLANK MEANS KEEP: never overwrites a stored key with an empty string', async () => {
         const created = await seed();
         await AiProviderCredential.update(String(created.id), { label: 'Renamed', secret: '' });
 
@@ -374,7 +374,7 @@ describe('update', () => {
         });
     });
 
-    it('TENANCY IS IMMUTABLE — rejected inside the model, where no RLS contextFields can re-enable it', async () => {
+    it('TENANCY IS IMMUTABLE: rejected inside the model, where no RLS contextFields can re-enable it', async () => {
         const created = await seed();
         await AiProviderCredential.update(String(created.id), {
             label: 'Renamed',
@@ -389,7 +389,7 @@ describe('update', () => {
         expect(patch).not.toHaveProperty('appId');
     });
 
-    it('`isActive` has no direct write path — activation is one dedicated mutation', async () => {
+    it('`isActive` has no direct write path, activation is one dedicated mutation', async () => {
         const created = await seed();
         await AiProviderCredential.update(String(created.id), { label: 'x', isActive: false });
         expect(recorded.updates[0]).not.toHaveProperty('isActive');

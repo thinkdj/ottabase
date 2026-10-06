@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * env:secrets – Fill the target app's .env.local with development-safe secrets.
+ * env:secrets, Fill the target app's .env.local with development-safe secrets.
  *
  * Uses the app's .env.example as the source of truth for which keys exist, then generates
  * values for the allowlisted Ottabase secrets that are still empty. Existing values are

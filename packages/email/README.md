@@ -77,7 +77,7 @@ await sendTemplatedEmail(mailer, {
     content: {
         header: 'Welcome to Acme',
         body: '<p>Hi {{name}}, thanks for joining!</p>',
-        footer: '<p>— The Acme Team</p>',
+        footer: '<p>, The Acme Team</p>',
     },
 });
 ```

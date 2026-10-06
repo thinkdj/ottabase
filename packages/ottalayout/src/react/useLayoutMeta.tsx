@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout/react – Page-level layout hints (useLayoutMeta)
+// @ottabase/ottalayout/react, Page-level layout hints (useLayoutMeta)
 //
 // Allows individual pages to override layout config fields for their route.
 // The layout component reads overrides via useResolvedLayoutMeta() and merges

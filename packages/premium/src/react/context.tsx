@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium/react — provider + the request seam
+// @ottabase/premium/react, provider + the request seam
 // ============================================================
 // TAILWIND SETUP CHECKLIST (this fails with NO ERROR): a consuming app must add
 //     '../../packages/premium/src/**/*.{js,ts,jsx,tsx}'
@@ -44,7 +44,7 @@ export interface PremiumClientConfig {
 
 interface PremiumContextValue {
     basePath: string;
-    /** Paths are resolved against `basePath` — use for the `/api/premium` control plane. */
+    /** Paths are resolved against `basePath`: use for the `/api/premium` control plane. */
     request: PremiumRequest;
     /**
      * The same seam WITHOUT the base-path prefix, for a Premium Package's own namespace

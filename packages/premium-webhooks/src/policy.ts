@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — RLS policies
+// @ottabase/premium-webhooks, RLS policies
 // ============================================================
 // These protect future secure-CRUD or model consumers as defense in depth. The
 // package routes still derive and apply their own verified caller scope because

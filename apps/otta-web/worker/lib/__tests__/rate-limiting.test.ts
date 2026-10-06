@@ -55,7 +55,7 @@ describe('simulateRateLimit (KV counting)', () => {
         expect((await simulateRateLimit(env, 'k'))?.remaining).toBe(8);
     });
 
-    it('keys are independent — spending one key does not throttle another', async () => {
+    it('keys are independent: spending one key does not throttle another', async () => {
         const env = makeEnv();
         for (let i = 0; i < 11; i++) await simulateRateLimit(env, 'ip-a');
         // ip-a is now over the limit; ip-b starts fresh.

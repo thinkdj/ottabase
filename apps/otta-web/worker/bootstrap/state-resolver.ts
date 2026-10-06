@@ -54,7 +54,7 @@ async function readKVState(env: CloudflareEnv): Promise<PlatformState | null> {
  */
 export async function writeKVState(env: CloudflareEnv, state: PlatformState): Promise<void> {
     // Leaving READY (re-init/rollback) must drop this isolate's READY memo
-    // immediately — concurrent non-bootstrap requests would otherwise keep
+    // immediately, concurrent non-bootstrap requests would otherwise keep
     // resolving READY against a mid-wipe/mid-migration database.
     if (state !== 'READY') {
         invalidatePlatformStateCache();
@@ -172,18 +172,18 @@ export async function ensureMetaTable(env: CloudflareEnv): Promise<void> {
 // Once the platform reaches READY it stays READY except during an explicit
 // bootstrap re-init, so normal requests must not pay a KV read + D1 probe for
 // bookkeeping. Two tiers:
-//   1. Isolate memo (zero I/O) — READY result is remembered for a short window.
-//   2. KV fast path (one KV read) — KV=READY skips the D1 probe entirely and
+//   1. Isolate memo (zero I/O): READY result is remembered for a short window.
+//   2. KV fast path (one KV read), KV=READY skips the D1 probe entirely and
 //      re-arms the memo. This is the "KV accelerates" behaviour documented above.
 // Invalidation: writeKVState/writeDBState drop the memo whenever they write a
 // non-READY state (the only mutation points), so the isolate performing a
 // re-init observes it at the moment of transition; the worker entry also drops
 // the memo around every /__bootstrap__ request. Other isolates re-verify via
 // KV: worst case ~READY_MEMO_TTL_MS + KV eventual-consistency propagation
-// (~2 minutes total) of stale READY traffic after a re-init begins — a re-init
+// (~2 minutes total) of stale READY traffic after a re-init begins, a re-init
 // on a live deployment should expect that drain window.
 // Trade-off: with the fast path, a dead D1 no longer flips READY requests into
-// panic/maintenance mode preemptively — failures surface in the actual queries.
+// panic/maintenance mode preemptively, failures surface in the actual queries.
 const READY_MEMO_TTL_MS = 60_000;
 let readyMemoVerifiedAt = 0;
 
@@ -215,7 +215,7 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     }
 
     // -------------------------------------------------------
-    // 1. ENV LOCK — overrides everything
+    // 1. ENV LOCK, overrides everything
     // -------------------------------------------------------
     const envLocked = (env as any)[ENV_LOCK_VAR];
     if (envLocked === 'true' || envLocked === '1' || envLocked === true) {
@@ -242,7 +242,7 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     }
 
     // -------------------------------------------------------
-    // 3a. READY fast path — isolate memo (zero I/O)
+    // 3a. READY fast path, isolate memo (zero I/O)
     // -------------------------------------------------------
     const now = Date.now();
     if (readyMemoVerifiedAt > 0 && now - readyMemoVerifiedAt < READY_MEMO_TTL_MS) {
@@ -256,7 +256,7 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     }
 
     // -------------------------------------------------------
-    // 3b. Read KV cache — READY fast path (skips D1 probe)
+    // 3b. Read KV cache, READY fast path (skips D1 probe)
     // -------------------------------------------------------
     const kvState = await readKVState(env);
     if (kvState === 'READY') {
@@ -271,8 +271,8 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
     }
 
     // -------------------------------------------------------
-    // 4. DB probe — source of truth
-    // (Reaching here implies KV did NOT say READY — the fast path returned above.)
+    // 4. DB probe, source of truth
+    // (Reaching here implies KV did NOT say READY, the fast path returned above.)
     // -------------------------------------------------------
     let dbResult: { state: PlatformState | null; tableExists: boolean };
     try {
@@ -298,7 +298,7 @@ export async function resolvePlatformState(env: CloudflareEnv): Promise<Platform
             state: 'UNINITIALIZED',
             source: 'probe',
             panic: false,
-            reason: 'No _ottabase_meta table found — fresh installation',
+            reason: 'No _ottabase_meta table found: fresh installation',
             bindings,
         };
     }

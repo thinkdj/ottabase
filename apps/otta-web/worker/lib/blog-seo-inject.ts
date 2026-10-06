@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Blog SEO – per-post meta injection for HTML document navigations.
+// Blog SEO, per-post meta injection for HTML document navigations.
 // For /blog/:slug documents, loads the published post and splices real
 // <title>/description/canonical/OG/Twitter/JSON-LD into <head> so crawlers
 // and link unfurlers see the article instead of the SPA shell.
@@ -46,7 +46,7 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         // Changelog posts are hidden from /blog/* (they live at /changelog).
         if (post.get('contentType') === 'changelog') return response;
 
-        // Author name for JSON-LD — best effort, never fails the injection.
+        // Author name for JSON-LD: best effort, never fails the injection.
         let authorName: string | null = null;
         try {
             const author = await post.author(['id', 'name']);

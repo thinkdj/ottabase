@@ -1,12 +1,12 @@
 // ============================================================
-// @ottabase/ottaai/transports — provider wire dialects
+// @ottabase/ottaai/transports, provider wire dialects
 // ============================================================
 // Request body, response shape and stream frames, per dialect. Split out from the
 // gateway adapter because ROUTING AND DIALECT ARE DIFFERENT AXES: Groq shares
 // OpenAI's dialect but not its path; Anthropic and Google differ on both.
 //
 // Every function here is PURE and synchronous, which is what makes the wire
-// contract testable without a network or a fake fetch — see
+// contract testable without a network or a fake fetch, see
 // `__tests__/gateway-wire.test.ts`.
 //
 // SCOPE: chat completion with text and inline-image input, text or JSON output.
@@ -20,7 +20,7 @@ import type { AiCallOptions, AiCallResult, AiStreamEvent } from '../resolver/tra
 import type { GatewayRouteSupport, GatewayWire } from './providers';
 
 /**
- * Fields the transport owns. `extra` may never set them — see `buildBody`.
+ * Fields the transport owns. `extra` may never set them, see `buildBody`.
  *
  * The output-format fields are here because `responseFormat` owns them: an `extra` that set
  * `response_format` would silently override (or contradict) the JSON tier the caller asked
@@ -68,7 +68,7 @@ export interface BuildBodyInput {
     model: string | null;
     options: AiCallOptions;
     stream: boolean;
-    /** What this route accepts — decides HOW a JSON request is spelled. */
+    /** What this route accepts: decides HOW a JSON request is spelled. */
     support: GatewayRouteSupport;
     /** Output-budget field on the OpenAI wire. Default `max_tokens`; OpenAI itself uses `max_completion_tokens`. */
     maxTokensField?: 'max_tokens' | 'max_completion_tokens';
@@ -78,7 +78,7 @@ export interface BuildBodyInput {
  * Build the request body for a dialect.
  *
  * `extra` IS SPREAD FIRST, ON PURPOSE. Spreading it last lets a caller overwrite `messages`,
- * `model` or `stream` — and the URL was already chosen from those same values, so the
+ * `model` or `stream`, and the URL was already chosen from those same values, so the
  * request would be routed for one call and bodied for another. Provider-specific knobs
  * (`top_p`, `stop`, …) still pass through untouched; only the fields the transport is
  * responsible for are protected.
@@ -109,9 +109,9 @@ function sanitizeExtra(extra: Record<string, unknown> | undefined): Record<strin
 /**
  * How one call's JSON request is spelled on one route.
  *
- *  • `enforced` — the provider enforces `schema` (strict tier, route supports it).
- *  • `object`   — the provider's JSON mode: valid JSON, schema not enforced.
- *  • `instructed` — no native support at all; the system instruction is the whole mechanism,
+ *  • `enforced`: the provider enforces `schema` (strict tier, route supports it).
+ *  • `object`: the provider's JSON mode: valid JSON, schema not enforced.
+ *  • `instructed`: no native support at all; the system instruction is the whole mechanism,
  *    and the instrumented client's parse is the only check.
  *
  * The SYSTEM INSTRUCTION IS ADDED IN EVERY MODE. OpenAI, DeepSeek, Groq and Mistral all
@@ -132,7 +132,7 @@ export function planJson(format: AiResponseFormat, support: GatewayRouteSupport)
             : support.jsonObject
               ? 'object'
               : 'instructed';
-    const lines = ['Respond with a single JSON object and nothing else — no prose, no Markdown code fences.'];
+    const lines = ['Respond with a single JSON object and nothing else, no prose, no Markdown code fences.'];
     if (format.schema && mode !== 'enforced') {
         lines.push(`The object must conform to this JSON Schema:\n${JSON.stringify(format.schema)}`);
     }
@@ -154,7 +154,7 @@ function openAiContent(content: AiMessage['content']): unknown {
     return content.map((part: AiContentPart) =>
         part.type === 'text'
             ? { type: 'text', text: part.text }
-            : // Data URL, not a hosted URL — see `AiContentPart`. `detail` is left to the
+            : // Data URL, not a hosted URL, see `AiContentPart`. `detail` is left to the
               // provider default: its accepted values differ across OpenAI, Azure and Groq.
               { type: 'image_url', image_url: { url: `data:${part.mimeType};base64,${part.data}` } },
     );
@@ -195,7 +195,7 @@ function buildOpenAiBody(
                   // UNCONDITIONAL, NOT CALLER-OPT-IN. OpenAI-shaped providers report NO
                   // token usage on streamed responses by default; metering built and tested
                   // against the non-streaming path otherwise reports ZERO tokens for every
-                  // streamed call — and streaming is the user-facing path, so that is most of
+                  // streamed call, and streaming is the user-facing path, so that is most of
                   // the traffic. The dashboards do not error; they confidently report a
                   // fraction of reality.
                   stream_options: { include_usage: true },
@@ -259,7 +259,7 @@ function buildAnthropicBody(
  * Anthropic `system`: the system messages (JSON instruction first), then whatever the caller
  * passed in `extra.system`.
  *
- * A BLOCK ARRAY is kept as blocks — that is how prompt caching is expressed (`cache_control`
+ * A BLOCK ARRAY is kept as blocks, that is how prompt caching is expressed (`cache_control`
  * on a block), and flattening it to a string would silently disable the cache. The messages'
  * text becomes a leading text block. A string is appended. Anything else is dropped.
  */
@@ -288,7 +288,7 @@ function googleParts(content: AiMessage['content']): Array<Record<string, unknow
 /**
  * Gemini's `generateContent` body.
  *
- * The model id is NOT here — it is a path segment (see the `google-ai-studio` adapter), so
+ * The model id is NOT here, it is a path segment (see the `google-ai-studio` adapter), so
  * putting it in the body too is at best ignored and at worst a 400.
  */
 function buildGoogleBody(
@@ -297,7 +297,7 @@ function buildGoogleBody(
     extra: Record<string, unknown>,
     json: JsonPlan | null,
 ): Record<string, unknown> {
-    // `systemInstruction` is "currently text only" on v1 — image parts never reach it, because
+    // `systemInstruction` is "currently text only" on v1, image parts never reach it, because
     // `validateCallContent` refuses images outside user turns.
     const system = messages
         .filter((m) => m.role === 'system')
@@ -432,7 +432,7 @@ export interface WireStreamReader {
  *
  * STATEFUL BY NECESSITY: Anthropic reports input tokens ONCE, in `message_start`, and output
  * tokens later in `message_delta`. A stateless translator that emits usage only from
- * `message_delta` reports zero prompt tokens for every streamed Anthropic call — dashboards
+ * `message_delta` reports zero prompt tokens for every streamed Anthropic call, dashboards
  * do not error, they just under-report.
  */
 export function createStreamReader(wire: GatewayWire): WireStreamReader {

@@ -63,7 +63,7 @@ function ReferenceEntry({
                     </a>
                 )}
                 {item.accessedDate && <span className="cdc-references-accessed"> (accessed {item.accessedDate})</span>}
-                {item.note && <span className="cdc-references-note"> — {item.note}</span>}
+                {item.note && <span className="cdc-references-note">, {item.note}</span>}
             </span>
         </li>
     );

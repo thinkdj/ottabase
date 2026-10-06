@@ -23,7 +23,7 @@ export function PremiumPackagesPage() {
                         Premium packages
                     </h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Paid add-ons installed in this app. Licenses are verified offline — no key ever leaves this
+                        Paid add-ons installed in this app. Licenses are verified offline, no key ever leaves this
                         deployment. A key set through an environment variable takes precedence over one pasted here.
                     </p>
                 </div>

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ConfigurableLayout – Renders layout structure from LayoutConfig
+// ConfigurableLayout, Renders layout structure from LayoutConfig
 // Uses expanded config fields + layout slots from @ottabase/ottalayout
 // ---------------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
         <div className="min-h-screen bg-background font-sans flex flex-col">
             {PACKAGES_ENABLED.referrals && <ReferralTracker />}
 
-            {/* Announcement slot – pages can inject banners here */}
+            {/* Announcement slot: pages can inject banners here */}
             <LayoutSlot name="announcement" />
 
             {header === 'topbar' && (
@@ -72,7 +72,7 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
                 <main
                     className={`flex-1 min-w-0 mx-auto ${cPaddingClass} ${paddingClass} ${hasSidebar ? 'max-w-none w-full' : cwClass}`}
                 >
-                    {/* Toolbar + breadcrumbs slots – pages can inject toolbars here */}
+                    {/* Toolbar + breadcrumbs slots, pages can inject toolbars here */}
                     <LayoutSlot name="breadcrumbs" />
                     <LayoutSlot name="toolbar" />
 
@@ -83,7 +83,7 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
                     )}
                 </main>
 
-                {/* Right sidebar slot – pages can inject panels here */}
+                {/* Right sidebar slot: pages can inject panels here */}
                 <LayoutSlot name="sidebar-right" />
             </div>
 

@@ -1,14 +1,14 @@
 // ====================================================================
-// otta-web — /api/ai/*
+// otta-web, /api/ai/*
 // --------------------------------------------------------------------
 // Two kinds of route:
 //
-//  1. CREDENTIAL MANAGEMENT — delegated wholesale to the package's route
+//  1. CREDENTIAL MANAGEMENT: delegated wholesale to the package's route
 //     factory. Not a branch in the shared CRUD dispatcher: `ai_provider_credentials`
 //     is deliberately absent from GENERIC_CRUD_ALLOWLIST, and the factory is what
 //     carries the tenancy stamping, the authorize hook and the filter/sort deny-list.
 //
-//  2. INFERENCE — the app's own front door. `resolve(context, taskKey)` and the
+//  2. INFERENCE: the app's own front door. `resolve(context, taskKey)` and the
 //     server-side gate; the call site names identity and a task key, nothing else.
 // ====================================================================
 
@@ -30,12 +30,12 @@ import { AI_TASK_POLICIES, AI_TASKS, getAiProvisioning, type AiInstance } from '
 import { createRequestThrottle } from '../lib/ai-rate-limit';
 import type { ApiRouteContext } from './router';
 
-/** 501 when the whole feature is dormant — actionable copy, never a 500 and never a crash. */
+/** 501 when the whole feature is dormant, actionable copy, never a 500 and never a crash. */
 function notConfigured(): Response {
     return errorResponse(
         'AI is not configured on this deployment. Enable the ottaai package, configure a Cloudflare AI Gateway route, and set AI_CREDENTIAL_SECRET only when BYOK is enabled.',
         501,
-        { code: 'NOT_CONFIGURED', hint: 'See packages/ottaai/README.md — Setup.' },
+        { code: 'NOT_CONFIGURED', hint: 'See packages/ottaai/README.md, Setup.' },
     );
 }
 
@@ -50,7 +50,7 @@ async function withInstance(
         // `ApiRouteContext` deliberately drops `ExecutionContext`, so the inference route is
         // registered with the raw ottarouter `Ctx` and threads `c.ctx.waitUntil` through
         // here. Without it, health writes and attribution records are issued after the
-        // response with nothing keeping the request alive — SILENT DATA LOSS, which is
+        // response with nothing keeping the request alive, SILENT DATA LOSS, which is
         // precisely the failure the `defer` seam exists to prevent.
         waitUntil,
     });
@@ -76,12 +76,12 @@ async function withByokInstance(
 /**
  * Every INFERENCE route must gate on an authenticated session.
  *
- * THE CREDENTIAL ROUTES ALREADY DO — the package's route factory 401s when
+ * THE CREDENTIAL ROUTES ALREADY DO, the package's route factory 401s when
  * `contextFromRequest` returns null. The inference route does NOT go through that factory,
  * so the check has to be here, and its absence is not a lesser bug: `getSecurityContext`
  * only membership-verifies an org id when a `userId` is present, so for an ANONYMOUS
  * request the client-supplied `x-org-id` header survives verbatim into the branded context
- * — and the resolver deliberately bypasses RLS. That is the exact confused-deputy failure
+ *, and the resolver deliberately bypasses RLS. That is the exact confused-deputy failure
  * the package documents: set one header, run on another tenant's key and bill.
  */
 function requireSession(security: SecurityContext): Response | null {
@@ -90,7 +90,7 @@ function requireSession(security: SecurityContext): Response | null {
 }
 
 // ---------------------------------------------------------------------------
-// Credential management — one delegation each
+// Credential management, one delegation each
 // ---------------------------------------------------------------------------
 
 export const handleAiCredentialsList = (c: ApiRouteContext) => withByokInstance(c, (ai) => ai.handlers.list(c.request));
@@ -108,17 +108,17 @@ export const handleAiProviders = (c: ApiRouteContext) => withByokInstance(c, (ai
 export const handleAiExplain = (c: ApiRouteContext) => withInstance(c, (ai) => ai.handlers.explain(c.request));
 
 // ---------------------------------------------------------------------------
-// Inference — the app's front door
+// Inference, the app's front door
 // ---------------------------------------------------------------------------
 //
 // TWO CHAT ROUTES, SPLIT BY BODY SIZE, NOT BY FEATURE:
 //
-//   POST /api/ai/complete — text tasks.  512 KB body cap.
-//   POST /api/ai/vision   — image tasks. ~12 MB body cap, plus a per-user throttle that runs
+//   POST /api/ai/complete: text tasks.  512 KB body cap.
+//   POST /api/ai/vision: image tasks. ~12 MB body cap, plus a per-user throttle that runs
 //                           BEFORE the body is read.
 //
 // The task is only known after the body is parsed, so one route accepting images would have
-// to accept a multi-megabyte body for EVERY task — and let any signed-in user make the Worker
+// to accept a multi-megabyte body for EVERY task, and let any signed-in user make the Worker
 // parse one, unthrottled (the inference limiter is the package's quota hook, which runs after
 // resolution). The URL decides the size before a byte is read.
 
@@ -126,7 +126,7 @@ export const handleAiExplain = (c: ApiRouteContext) => withInstance(c, (ai) => a
  * The request body, typed as `unknown` per field ON PURPOSE.
  *
  * `JSON.parse` returns `any`, and declaring `prompt?: string` here is a LIE the compiler then
- * happily enforces downstream — which is how `body.system` ended up used truthily and passed
+ * happily enforces downstream, which is how `body.system` ended up used truthily and passed
  * through to a provider payload without ever being checked for being a string. Typing the
  * fields `unknown` makes the validators below mandatory rather than optional.
  */
@@ -170,7 +170,7 @@ function taskAccepts(taskKey: string, capability: 'vision' | 'json'): boolean {
  * route has no business shipping, and the point is a coarse sanity ceiling rather than an
  * accurate budget. Roughly 4 chars/token, so `assist` ≈ 4k tokens and `extract` ≈ 32k.
  *
- * PER TASK because the tasks genuinely differ — document extraction is expected to carry a
+ * PER TASK because the tasks genuinely differ, document extraction is expected to carry a
  * long body, a chat assist is not, and one global limit would be wrong for both. The OUTPUT
  * budget is not here: it is the task policy's `maxTokens`, applied by the package.
  */
@@ -269,7 +269,7 @@ async function readJsonBody(
  * Validate an untrusted string field from the request body.
  *
  * `typeof` IS LOAD-BEARING, not defensive noise. `body.system` was consumed truthily, so
- * `{"system": {"role": "…"}}` produced a message whose `content` was an OBJECT — which then
+ * `{"system": {"role": "…"}}` produced a message whose `content` was an OBJECT, which then
  * serialised into the provider payload as a nested object. Providers respond to that with a
  * 400 whose message is about their schema, so it debugs as a transport bug rather than as
  * unvalidated input. The same applies to arrays and numbers.
@@ -294,7 +294,7 @@ function validateText(
 }
 
 /**
- * Validate untrusted `images` into content parts — CONSTANT-TIME CHECKS ONLY.
+ * Validate untrusted `images` into content parts, CONSTANT-TIME CHECKS ONLY.
  *
  * Count, type, mime and decoded size are all O(1) per image, so a bad upload is refused before
  * resolution for the price of a few comparisons. The full base64 scan is NOT repeated here:
@@ -412,12 +412,12 @@ function parseChatFields(
 }
 
 /**
- * Resolve, gate and run one chat task — shared by `/complete` and `/vision`.
+ * Resolve, gate and run one chat task, shared by `/complete` and `/vision`.
  *
  * THE SERVER-SIDE GATE AND THE CLIENT, FROM ONE RESOLUTION. The gate is implemented by the
  * SAME resolver as the runtime path, so guard and runtime cannot drift. `requireByok(...)`
- * then `resolve(...)` reads better and does the whole job twice — two candidate fan-outs and
- * two envelope decryptions per inference, on the hot path — and can disagree with itself if
+ * then `resolve(...)` reads better and does the whole job twice, two candidate fan-outs and
+ * two envelope decryptions per inference, on the hot path, and can disagree with itself if
  * a credential changes between the two calls.
  */
 async function runChatTask(ai: AiInstance, taskKey: string, messages: AiMessage[]): Promise<Response> {
@@ -430,7 +430,7 @@ async function runChatTask(ai: AiInstance, taskKey: string, messages: AiMessage[
         });
     }
     if (!resolution.client) {
-        // ABSENCE OF A CLIENT IS THE SIGNAL — the resolver never throws for this.
+        // ABSENCE OF A CLIENT IS THE SIGNAL, the resolver never throws for this.
         const code = resolution.reason === 'CREDENTIAL_UNREADABLE' ? 'CREDENTIAL_UNREADABLE' : 'NOT_CONFIGURED';
         return errorResponse(AI_ERROR_MESSAGES[code], AI_ERROR_HTTP_STATUS[code], {
             code,
@@ -449,10 +449,10 @@ async function runChatTask(ai: AiInstance, taskKey: string, messages: AiMessage[
 
     return jsonResponse({
         text: result.result.text,
-        // Present exactly for tasks declaring `json` — the package guarantees it parsed.
+        // Present exactly for tasks declaring `json`: the package guarantees it parsed.
         ...(json ? { json: result.result.json } : {}),
-        // The REDACTED projection only. The merged transport config — the object that
-        // carries the tenant's provider key — never crosses this boundary.
+        // The REDACTED projection only. The merged transport config, the object that
+        // carries the tenant's provider key, never crosses this boundary.
         source: resolution.source,
         provider: resolution.configSummary.provider,
         model: resolution.configSummary.model,
@@ -461,10 +461,10 @@ async function runChatTask(ai: AiInstance, taskKey: string, messages: AiMessage[
 }
 
 /**
- * POST /api/ai/complete — run a declared TEXT task.
+ * POST /api/ai/complete: run a declared TEXT task.
  *
  * The call site passes IDENTITY (implicit, from the session) and a TASK KEY. It does not
- * choose a provider, a key, or a model — that is the whole promise: an operator flips
+ * choose a provider, a key, or a model, that is the whole promise: an operator flips
  * provisioning behaviour without touching this handler.
  */
 export async function handleAiComplete(
@@ -489,7 +489,7 @@ export async function handleAiComplete(
             const fields = parseChatFields(body, AI_TASKS.assist);
             if (!fields.ok) return fields.response;
             if (taskAccepts(fields.taskKey, 'vision')) {
-                return errorResponse(`The "${fields.taskKey}" task reads images — use POST /api/ai/vision`, 400, {
+                return errorResponse(`The "${fields.taskKey}" task reads images, use POST /api/ai/vision`, 400, {
                     code: 'VALIDATION_ERROR',
                 });
             }
@@ -504,7 +504,7 @@ export async function handleAiComplete(
 }
 
 /**
- * POST /api/ai/vision — run a declared task that reads IMAGES (default `scan`).
+ * POST /api/ai/vision: run a declared task that reads IMAGES (default `scan`).
  *
  * Body: `{ task?, prompt, system?, images: [{ mimeType, data }] }`. The per-user throttle runs
  * before a byte of the (up to ~12 MB) body is read; the image budget is `features.ottaai.images`.
@@ -557,7 +557,7 @@ export async function handleAiVision(
 }
 
 /**
- * POST /api/ai/embed — produce one vector per text value, in input order.
+ * POST /api/ai/embed: produce one vector per text value, in input order.
  *
  * This is intentionally a separate operation from `/complete`: embeddings do not have
  * roles, output tokens or a useful streaming representation. The declared `embed` task

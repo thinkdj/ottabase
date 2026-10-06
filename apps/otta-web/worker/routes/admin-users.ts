@@ -129,7 +129,7 @@ export async function handleAdminUserById(context: ApiRouteContext, userId: stri
     // Fetch the target user's org memberships, but expose only the ones for organizations the
     // CALLER also belongs to. The global user directory is intentional platform-admin capability,
     // but a platform owner must not be able to enumerate which tenants a user belongs to beyond the
-    // orgs they share — that is the same cross-tenant roster data gated in the org-members and
+    // orgs they share, that is the same cross-tenant roster data gated in the org-members and
     // audit routes (reached here via a user id instead of an org id).
     let memberships: any[] = [];
     try {

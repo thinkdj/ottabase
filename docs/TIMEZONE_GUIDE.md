@@ -403,7 +403,7 @@ Get current time in specific timezone.
 
 ## Schema Example (Numeric Timestamps)
 
-Store timestamps as integer UTC milliseconds (`Date.now()`) — Drizzle over Cloudflare D1 (SQLite):
+Store timestamps as integer UTC milliseconds (`Date.now()`), Drizzle over Cloudflare D1 (SQLite):
 
 ```typescript
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
@@ -528,7 +528,7 @@ describe('Timezone Utilities', () => {
 
 5. **Never assume server and client are in same timezone**
     ```typescript
-    // ❌ BAD — getHours() uses the runtime's local zone (UTC on Workers, the user's zone in the browser)
+    // ❌ BAD: getHours() uses the runtime's local zone (UTC on Workers, the user's zone in the browser)
     const hour = new Date().getHours();
     // ✅ Date.now() is always UTC epoch ms; format it for a zone explicitly
     const hourInUserTz = formatInUserTimezone(Date.now(), 'H', user.timezone);

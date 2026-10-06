@@ -11,10 +11,10 @@ const defaultTheme = require('tailwindcss/defaultTheme');
  * `/ <alpha-value>` opacity modifier works everywhere.
  */
 
-/* helper – wraps an HSL variable with alpha support */
+/* helper: wraps an HSL variable with alpha support */
 const hslVar = (name) => `hsl(var(--${name}) / <alpha-value>)`;
 
-/* helper – font-size step backed by theme vars with stock-value fallbacks.
+/* helper: font-size step backed by theme vars with stock-value fallbacks.
  * letterSpacing falls back to `inherit` (= no declaration) so parent tracking
  * utilities keep cascading when a theme doesn't define per-step tracking. */
 const textStep = (step, size, lineHeight) => [
@@ -77,7 +77,7 @@ module.exports = {
             /* Radius scale: themes may set per-size --radius-{size}; the calc
              * chain over the scalar --radius stays as the fallback, so scalar-
              * only themes render exactly as before. `full` becomes themeable
-             * (e.g. Visited sets --radius-full: 2px — no pills anywhere). */
+             * (e.g. Visited sets --radius-full: 2px, no pills anywhere). */
             borderRadius: {
                 DEFAULT: 'var(--radius-sm, calc(var(--radius) - 4px))',
                 sm: 'var(--radius-sm, calc(var(--radius) - 4px))',
@@ -96,7 +96,7 @@ module.exports = {
             },
 
             /* Type scale: every text-{step} utility reads --text-{step} with the
-             * stock Tailwind value as fallback — themes redefine the whole app's
+             * stock Tailwind value as fallback, themes redefine the whole app's
              * type ramp (incl. fluid clamp() values) without touching call sites. */
             fontSize: {
                 xs: textStep('xs', '0.75rem', '1rem'),
@@ -134,7 +134,7 @@ module.exports = {
             /* Prose (article) typography wired to design tokens instead of a
              * static gray palette. Bare `prose` becomes theme-adaptive: it
              * flips with light/dark and inherits brand colours. Consumers use
-             * `prose dark:prose-invert` — the `invert` modifier remaps the same
+             * `prose dark:prose-invert`: the `invert` modifier remaps the same
              * `--tw-prose-*` variables to their `-dark` counterparts below. */
             typography: {
                 DEFAULT: {

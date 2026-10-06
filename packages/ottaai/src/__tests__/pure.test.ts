@@ -47,7 +47,7 @@ describe('org/user conflict table', () => {
             task,
             appScope: 'strict',
         });
-        // It never degrades to "a user-only key" for a different org — silently spending it
+        // It never degrades to "a user-only key" for a different org, silently spending it
         // in another workspace is a consent problem.
         expect(inOrgB.verdict).toBe('NOT_IN_SCOPE');
     });
@@ -73,7 +73,7 @@ describe('app-scope table', () => {
     });
 });
 
-describe('specificity score — all four strategies x all match classes', () => {
+describe('specificity score: all four strategies x all match classes', () => {
     const context = { organizationId: 'org-a', userId: 'user-1' };
     const classes = {
         'user and org': { organizationId: 'org-a', userId: 'user-1' },
@@ -106,14 +106,14 @@ describe('specificity score — all four strategies x all match classes', () => 
         );
     });
 
-    it('a row with neither dimension is permanently unselectable — there is no global credential', () => {
+    it('a row with neither dimension is permanently unselectable, there is no global credential', () => {
         for (const strategy of ['user', 'org', 'user-then-org', 'org-then-user'] as AiStrategy[]) {
             expect(specificityScore(classes.neither, context, strategy)).toBe(0);
         }
     });
 });
 
-describe('determinism — the ranking is a TOTAL order', () => {
+describe('determinism: the ranking is a TOTAL order', () => {
     it('breaks a full tie on id ascending, not on query concatenation order', () => {
         const a = { record: credentialFixture({ id: 'bbb', updatedAt: 1000 }), score: 3 };
         const b = { record: credentialFixture({ id: 'aaa', updatedAt: 1000 }), score: 3 };
@@ -150,7 +150,7 @@ describe('verdicts and selection', () => {
         );
     });
 
-    it('`isActive: false` still RANKS — a tenant whose only saved credential is inactive still has it used', () => {
+    it('`isActive: false` still RANKS, a tenant whose only saved credential is inactive still has it used', () => {
         const result = selectCredential({
             candidates: [credentialFixture({ isActive: false })],
             context,
@@ -286,7 +286,7 @@ describe('verdicts and selection', () => {
     });
 });
 
-describe('merge — the rows a naive implementation gets wrong', () => {
+describe('merge: the rows a naive implementation gets wrong', () => {
     const context = { organizationId: 'org-a', userId: 'user-1', appId: 'app-1' };
     const platform: PlatformAiConfig = {
         accountId: 'acct',
@@ -314,7 +314,7 @@ describe('merge — the rows a naive implementation gets wrong', () => {
         expect(merged.secret).not.toBeNull();
     });
 
-    it('an alias-only credential deletes the inherited PROVIDER KEY — never two auth mechanisms at once', () => {
+    it('an alias-only credential deletes the inherited PROVIDER KEY, never two auth mechanisms at once', () => {
         const merged = mergeConfig({
             platform,
             registry,
@@ -328,7 +328,7 @@ describe('merge — the rows a naive implementation gets wrong', () => {
         expect(merged.secret).toBeNull();
     });
 
-    it('a KEYLESS credential does not inherit the platform key — otherwise byok is funded by the operator', () => {
+    it('a KEYLESS credential does not inherit the platform key, otherwise byok is funded by the operator', () => {
         const merged = mergeConfig({
             platform,
             registry,
@@ -409,7 +409,7 @@ describe('merge — the rows a naive implementation gets wrong', () => {
     });
 });
 
-describe('the keyless-mismatch guard — all three terms', () => {
+describe('the keyless-mismatch guard: all three terms', () => {
     const platformWithKey: PlatformAiConfig = { provider: 'openai', providerKey: 'platform-key' };
     const gatewayBilled: PlatformAiConfig = { provider: 'openai' };
 
@@ -425,7 +425,7 @@ describe('the keyless-mismatch guard — all three terms', () => {
         ).toBe(true);
     });
 
-    it('TERM 2 — an alias COUNTS as a secret', () => {
+    it('TERM 2: an alias COUNTS as a secret', () => {
         expect(
             keylessMismatch({
                 credential: credentialFixture({ provider: 'openai', secret: { kind: 'alias', alias: 'a' } }),
@@ -437,7 +437,7 @@ describe('the keyless-mismatch guard — all three terms', () => {
         ).toBe(false);
     });
 
-    it('TERM 3 — gateway-billed deployments have NO platform key, and a keyless credential is valid BYOK', () => {
+    it('TERM 3: gateway-billed deployments have NO platform key, and a keyless credential is valid BYOK', () => {
         // Deleting term 3 breaks this entire deployment class.
         expect(
             keylessMismatch({
@@ -450,7 +450,7 @@ describe('the keyless-mismatch guard — all three terms', () => {
         ).toBe(false);
     });
 
-    it('TERM 3 — under `byok` the platform key exists but may not be used, so the guard does NOT fire', () => {
+    it('TERM 3: under `byok` the platform key exists but may not be used, so the guard does NOT fire', () => {
         expect(
             keylessMismatch({
                 credential: credentialFixture({ provider: 'openai', secret: { kind: 'none' } }),
@@ -462,7 +462,7 @@ describe('the keyless-mismatch guard — all three terms', () => {
         ).toBe(false);
     });
 
-    it('TERM 1 — a keyless FREE provider does not trip the guard', () => {
+    it('TERM 1: a keyless FREE provider does not trip the guard', () => {
         expect(
             keylessMismatch({
                 credential: credentialFixture({ provider: 'workers-ai', secret: { kind: 'none' } }),
@@ -474,7 +474,7 @@ describe('the keyless-mismatch guard — all three terms', () => {
         ).toBe(false);
     });
 
-    it('TERM 1 — a dynamic model ref counts as requiring a key regardless of provider', () => {
+    it('TERM 1: a dynamic model ref counts as requiring a key regardless of provider', () => {
         expect(
             keylessMismatch({
                 credential: credentialFixture({ provider: 'workers-ai', secret: { kind: 'none' } }),

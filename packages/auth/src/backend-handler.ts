@@ -606,7 +606,7 @@ async function handleMagicLinkSend(
         return jsonResponse({ error: 'A valid email is required' }, 400);
     }
 
-    const sender = resolveMagicLinkSender(env);
+    const sender = resolveMagicLinkSender(env, { appName: options.appName });
     if (!sender) {
         return jsonResponse({ error: 'Magic link sign-in is not configured' }, 500);
     }

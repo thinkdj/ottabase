@@ -303,7 +303,7 @@ export default class MediaGalleryTool implements BlockTool {
         this.expandCollapseBtn = expandCollapseBtn;
         headerActions.appendChild(expandCollapseBtn);
 
-        // Clear all removes every item in one click — placed here so it's clearly scoped to the item list
+        // Clear all removes every item in one click, placed here so it's clearly scoped to the item list
         const clearButton = document.createElement('button');
         clearButton.type = 'button';
         clearButton.classList.add('cdx-media-gallery__clear-button');
@@ -407,7 +407,7 @@ export default class MediaGalleryTool implements BlockTool {
             previewWrap.appendChild(kind);
         }
 
-        // Meta — compact two-row layout with persistent labels so title/alt/caption are always identifiable
+        // Meta: compact two-row layout with persistent labels so title/alt/caption are always identifiable
         const meta = document.createElement('div');
         meta.classList.add('cdx-media-gallery__meta');
 
@@ -474,7 +474,7 @@ export default class MediaGalleryTool implements BlockTool {
         meta.appendChild(row1);
         meta.appendChild(captionField);
 
-        // Controls — small icon buttons
+        // Controls: small icon buttons
         const itemControls = document.createElement('div');
         itemControls.classList.add('cdx-media-gallery__item-controls');
 
@@ -753,7 +753,7 @@ export default class MediaGalleryTool implements BlockTool {
         }
 
         this.data.items.push(nextItem);
-        // Fine-grained append — no full rebuild
+        // Fine-grained append: no full rebuild
         this.appendItemCard(nextItem);
     }
 

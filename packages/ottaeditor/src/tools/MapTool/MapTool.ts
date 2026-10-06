@@ -20,7 +20,7 @@ export interface MapData {
 }
 
 /**
- * MapTool – embed Google Maps or OpenStreetMap inside the editor.
+ * MapTool: embed Google Maps or OpenStreetMap inside the editor.
  *
  * Paste a standard map URL or an embed URL; the tool converts it to an
  * embeddable iframe src automatically.
@@ -329,7 +329,7 @@ export default class MapTool implements BlockTool {
             (h) => host === h || host.endsWith(`.${h}`),
         );
 
-        // Already an embed URL – allow only for known hosts
+        // Already an embed URL: allow only for known hosts
         if (url.includes('/embed') || url.includes('output=embed') || url.includes('export/embed')) {
             if ((provider === 'gmaps' && isGMapsHost) || (provider === 'openstreetmap' && isOsmHost)) {
                 return url;
@@ -342,7 +342,7 @@ export default class MapTool implements BlockTool {
 
             const mapType = theme === 'satellite' ? 'k' : theme === 'terrain' ? 'p' : 'm';
 
-            // https://goo.gl/maps/... short links – wrap in embed
+            // https://goo.gl/maps/... short links, wrap in embed
             if (url.includes('goo.gl/maps/')) {
                 return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed&t=${mapType}`;
             }
@@ -380,7 +380,7 @@ export default class MapTool implements BlockTool {
                 return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=${layer}&marker=${lat}%2C${lng}`;
             }
 
-            // Unknown OSM shape – refuse to embed
+            // Unknown OSM shape: refuse to embed
             return '';
         }
 

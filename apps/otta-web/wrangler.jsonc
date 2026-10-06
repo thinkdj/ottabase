@@ -87,7 +87,7 @@
 
     // D1 Database bindings
     // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
-    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
+    // Preview/Prod: CI substitutes from GitHub Secrets, do not edit placeholder values
     "d1_databases": [
         {
             "binding": "OBCF_D1",
@@ -99,7 +99,7 @@
 
     // KV Namespace bindings
     // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
-    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
+    // Preview/Prod: CI substitutes from GitHub Secrets, do not edit placeholder values
     "kv_namespaces": [
         {
             "binding": "OBCF_KV",
@@ -166,7 +166,7 @@
         ],
     },
 
-    // Workers AI binding — direct access to Cloudflare AI models.
+    // Workers AI binding: direct access to Cloudflare AI models.
     //
     // CURRENTLY UNREAD BY APPLICATION CODE. It was the `@ottabase/cf-ai` demo's binding; that
     // package is gone and @ottabase/ottaai reaches providers through AI Gateway instead.
@@ -179,7 +179,7 @@
         "binding": "OBCF_AI",
     },
 
-    // Browser Rendering API — headless Chromium via @cloudflare/puppeteer.
+    // Browser Rendering API: headless Chromium via @cloudflare/puppeteer.
     // Enable Browser Rendering for the deployed Worker in the Cloudflare dashboard.
     "browser": {
         "binding": "OBCF_BROWSER",
@@ -285,8 +285,8 @@
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
             },
-            // Production D1 – placeholder value = GitHub Secret name; CI substitutes the real UUID at deploy time
-            // Any value works (e.g. "MY_DB_ID") — just add a matching GitHub Secret with the real UUID
+            // Production D1: placeholder value = GitHub Secret name; CI substitutes the real UUID at deploy time
+            // Any value works (e.g. "MY_DB_ID"), just add a matching GitHub Secret with the real UUID
             // Two apps using the same value → same secret → same real ID → shared DB; different values → isolated
             "d1_databases": [
                 {
@@ -295,7 +295,7 @@
                     "database_id": "D1_DATABASE_ID",
                 },
             ],
-            // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            // Production KV: placeholder = GitHub Secret name; CI substitutes at deploy time
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -414,7 +414,7 @@
                 },
             ],
         },
-        // PR preview – placeholders = GitHub Secret names; CI substitutes at deploy time
+        // PR preview: placeholders = GitHub Secret names; CI substitutes at deploy time
         "preview": {
             "vars": {
                 "ENVIRONMENT": "preview",
@@ -452,7 +452,7 @@
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
             },
-            // Preview D1 – placeholder = GitHub Secret name; CI substitutes at deploy time
+            // Preview D1: placeholder = GitHub Secret name; CI substitutes at deploy time
             "d1_databases": [
                 {
                     "binding": "OBCF_D1",
@@ -460,7 +460,7 @@
                     "database_id": "D1_PREVIEW_DATABASE_ID",
                 },
             ],
-            // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            // Preview KV: placeholder = GitHub Secret name; CI substitutes at deploy time
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",

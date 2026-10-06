@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout – Public API (pure logic, no React)
+// @ottabase/ottalayout, Public API (pure logic, no React)
 //
 // This entrypoint exports types, presets, resolver, validators, and utilities.
 // For React-specific features (slots, useLayoutMeta), import from

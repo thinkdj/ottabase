@@ -83,11 +83,11 @@ const fruitsAndVegetables = [
     },
     {
         id: '10',
-        name: 'Pen',
-        category: 'Stationery',
-        color: 'Blue',
-        price: 0.99,
-        emoji: '🖊️',
+        name: 'Avocado',
+        category: 'Fruit',
+        color: 'Green',
+        price: 1.49,
+        emoji: '🥑',
     },
 ];
 
@@ -207,7 +207,7 @@ export function OttaSelectDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="OttaSelect Component"
+                title="OttaSelect"
                 description="A flexible select component with custom rendering, pagination support, and standardized output format."
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
@@ -232,7 +232,7 @@ export function OttaSelectDemoPage() {
             {/* Basic Usage */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">🔘 Basic Usage</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Basic Usage</CardTitle>
                     <CardDescription>
                         Simple single and multi-select without custom rendering. Just pass your data and go!
                     </CardDescription>
@@ -279,7 +279,7 @@ export function OttaSelectDemoPage() {
             {/* Custom Renderer Examples */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">🎨 Custom Item Renderers</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Custom Item Renderers</CardTitle>
                     <CardDescription>
                         Use <code className="rounded bg-background px-1 ring-1 ring-border">renderItem</code> to display
                         custom content like flags, avatars, or badges.
@@ -357,9 +357,7 @@ export function OttaSelectDemoPage() {
             {/* Multi Select with Custom Rendering */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">
-                        ☑️ Multi Select with Custom Rendering
-                    </CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Multi Select with Custom Rendering</CardTitle>
                     <CardDescription>Custom renderers work with multi-select too.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -406,7 +404,7 @@ export function OttaSelectDemoPage() {
             {/* Pagination Handling */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">📄 Pagination Support</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Pagination Support</CardTitle>
                     <CardDescription>
                         Selected items persist even when not in current API page. The{' '}
                         <code className="rounded bg-background px-1 ring-1 ring-border">showSelectedFirst</code> prop
@@ -465,7 +463,7 @@ export function OttaSelectDemoPage() {
             {/* Features */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">✨ Features</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                     <CardDescription>Key capabilities of OttaSelect</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -536,7 +534,7 @@ export function OttaSelectDemoPage() {
             {/* Usage Example */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">📖 Usage</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Usage</CardTitle>
                     <CardDescription>How to use custom renderers</CardDescription>
                 </CardHeader>
                 <CardContent>

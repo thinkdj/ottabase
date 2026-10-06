@@ -1,5 +1,5 @@
 /**
- * @ottabase/analytics — Server Route Handler
+ * @ottabase/analytics: Server Route Handler
  *
  * Drop-in `POST /api/analytics/track` endpoint for Cloudflare Workers.
  * Accepts events from client-side JS and writes them to WAE via `trackCoreEvent`.
@@ -35,7 +35,7 @@ export interface AnalyticsTrackContext {
  * Expects JSON body: `{ event, appId?, metadata?, value? }`
  * Automatically extracts visitor ID, country, UA, and referer from the request.
  *
- * Returns `{ ok: true }` on success. Non-blocking write — always responds quickly.
+ * Returns `{ ok: true }` on success. Non-blocking write, always responds quickly.
  */
 export async function handleAnalyticsTrack(ctx: AnalyticsTrackContext): Promise<Response> {
     const { request, dataset, defaultAppId, userId } = ctx;

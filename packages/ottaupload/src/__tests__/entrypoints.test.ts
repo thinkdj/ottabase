@@ -3,7 +3,7 @@ import * as client from '../client';
 import * as root from '../index';
 
 describe('entrypoints', () => {
-    it('keeps the root headless — rendered components only come from /client', () => {
+    it('keeps the root headless: rendered components only come from /client', () => {
         for (const name of ['FileUploader', 'FileUploadList', 'FileUploadItem']) {
             expect(root).not.toHaveProperty(name);
             expect(client).toHaveProperty(name);

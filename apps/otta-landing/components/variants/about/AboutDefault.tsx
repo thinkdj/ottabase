@@ -8,7 +8,7 @@ import type { AboutData } from './types';
 import { DEFAULT_GITHUB_URL } from './types';
 
 /**
- * Default about page — full-length content with features list, getting-started steps,
+ * Default about page: full-length content with features list, getting-started steps,
  * brand customisation section, deployment info, and CTA buttons.
  */
 export function AboutDefault({ title, description, githubUrl = DEFAULT_GITHUB_URL }: AboutData) {

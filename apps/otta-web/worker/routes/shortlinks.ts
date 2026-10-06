@@ -44,7 +44,7 @@ export async function handleShortlinksList(context: ApiRouteContext): Promise<Re
     }
 
     // requireAdminAccess() above already ran initDbConnection(env), which registers the
-    // 'default' connection — no need to construct another D1Driver and re-register it here.
+    // 'default' connection, no need to construct another D1Driver and re-register it here.
 
     const { page, perPage, orderBy, order, search } = parsePaginationParams(url.searchParams);
     const appId = url.searchParams.get('appId');
@@ -89,7 +89,7 @@ export async function handleShortlinksCreate(context: ApiRouteContext): Promise<
     }
 
     // requireAdminAccess() above already ran initDbConnection(env), which registers the
-    // 'default' connection — no need to construct another D1Driver and re-register it here.
+    // 'default' connection, no need to construct another D1Driver and re-register it here.
 
     const body = await readJson<{
         fullUrl?: string;
@@ -157,7 +157,7 @@ export async function handleShortlinkById(
     }
 
     // requireAdminAccess() above already ran initDbConnection(env), which registers the
-    // 'default' connection — no need to construct another D1Driver and re-register it here.
+    // 'default' connection, no need to construct another D1Driver and re-register it here.
 
     if (method === 'PATCH') {
         const body = await readJson<{

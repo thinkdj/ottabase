@@ -10,7 +10,7 @@
     align-items: flex-end;
 }
 
-/* Alignment toggle — segment pattern */
+/* Alignment toggle: segment pattern */
 .cdx-cta__align-group {
     display: inline-flex;
     gap: 0.125rem;

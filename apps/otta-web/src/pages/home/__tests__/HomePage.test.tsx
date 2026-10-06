@@ -2,7 +2,10 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 
-vi.mock('@/ottabase/config', () => ({ APP_META: { appName: 'Ottabase' } }));
+vi.mock('@/ottabase/config', () => ({
+    APP_META: { appName: 'Ottabase' },
+    APP_DESCRIPTION: 'Production-grade apps on Cloudflare Workers.',
+}));
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ to, ...props }: { to: string } & ComponentProps<'a'>) => <a href={to} {...props} />,
 }));
@@ -28,7 +31,7 @@ describe('HomePage (block content smoke)', () => {
         ).toBeTruthy();
         expect(text).toContain('Cloudflare-native foundation');
         // The eyebrow is the only consumer of the appName prop.
-        expect(text).toContain('Ottabase / EDGE-NATIVE FOUNDATION');
+        expect(screen.getAllByText('Ottabase', { exact: true }).length).toBeGreaterThan(0);
         expect(screen.getByText('Global by default')).toBeTruthy();
         expect(screen.getByText('Tenant-safe')).toBeTruthy();
         expect(screen.getByText('Already wired')).toBeTruthy();

@@ -1,7 +1,7 @@
 // ============================================================
-// @ottabase/ottaai — Verify a key + the shipped rate limiter
+// @ottabase/ottaai, Verify a key + the shipped rate limiter
 // ============================================================
-// MECHANISM: a real but minimal inference call — 1 max token, temperature 0,
+// MECHANISM: a real but minimal inference call: 1 max token, temperature 0,
 // SKIP CACHE, ~15 s timeout (long enough for a cold provider, short enough that a
 // form does not hang), tagged as verification traffic so it is excludable from
 // cost analytics.
@@ -29,7 +29,7 @@ export interface VerifyResult {
     message: string;
     provider: string;
     model: string | null;
-    /** Upstream status when there was one — useful in operator surfaces. */
+    /** Upstream status when there was one, useful in operator surfaces. */
     status?: number;
 }
 
@@ -61,14 +61,14 @@ export type VerifyInput =
  * THE PACKAGE SHIPS THE LIMITER because documentation-only security requirements are
  * inherited as gaps, and this is the case that most needs the rule. TWO ABUSES, NOT ONE:
  *
- *  1. COST — each verification is a real billable provider call; an unmetered Test button
+ *  1. COST: each verification is a real billable provider call; an unmetered Test button
  *     is a free inference proxy for anyone with an account.
- *  2. THE ORACLE, WHICH IS WORSE — mode 1 accepts an ARBITRARY provider and an ARBITRARY
+ *  2. THE ORACLE, WHICH IS WORSE, mode 1 accepts an ARBITRARY provider and an ARBITRARY
  *     unsaved secret and returns a crisp INVALID_KEY / RATE_LIMITED / MODEL_NOT_FOUND
  *     classification: a general-purpose validator for third-party API keys obtained
  *     elsewhere, running from the operator's IP range and, in a gateway deployment,
  *     through the operator's gateway account. The operator becomes credential-stuffing
- *     infrastructure for someone else's key dump — and it is invisible, because no row is
+ *     infrastructure for someone else's key dump, and it is invisible, because no row is
  *     ever written.
  */
 export interface VerifyLimiter {
@@ -110,12 +110,12 @@ export interface VerifyOptions {
 /**
  * Verify a provider credential.
  *
- * PACKAGE CONTRACT — this function GUARANTEES it:
+ * PACKAGE CONTRACT: this function GUARANTEES it:
  *  • never throws;
  *  • always returns a classified result;
  *  • always skips cache (a cached success will happily "validate" a key revoked five
  *    minutes ago);
- *  • always forces the credential's OWN provider — letting the platform default model
+ *  • always forces the credential's OWN provider, letting the platform default model
  *    leak in makes a valid key from one provider look invalid when tested against
  *    another provider's default;
  *  • never echoes the secret back, ON EVERY PATH INCLUDING ERROR AND TELEMETRY PATHS.
@@ -176,7 +176,7 @@ export async function verifyCredential(
                 input.credentialId,
             );
             if (!record) {
-                // Same answer for "not found" and "not yours" — closes the existence oracle.
+                // Same answer for "not found" and "not yours", closes the existence oracle.
                 return {
                     ok: false,
                     code: AI_ERROR_CODES.FORBIDDEN,
@@ -241,8 +241,8 @@ export async function verifyCredential(
     //
     // The limiter is a BUDGET, not an admission control, and this endpoint takes a
     // caller-supplied provider and model verbatim in mode 1. Without this the write path's
-    // rules — registered provider, tenant-selectable provider, no operator-only
-    // `dynamic/<route>` ref — are enforced on `POST /credentials` and silently NOT enforced
+    // rules: registered provider, tenant-selectable provider, no operator-only
+    // `dynamic/<route>` ref, are enforced on `POST /credentials` and silently NOT enforced
     // on `POST /credentials/test`, which reaches the same transport with the same operator
     // gateway token. The write path is not the only door.
     const refused = admitVerifyTarget(instance, provider, model);
@@ -353,7 +353,7 @@ export async function verifyCredential(
 }
 
 /**
- * The fallback budget. MODULE-SCOPED, NOT PER-INSTANCE — and that distinction is the whole
+ * The fallback budget. MODULE-SCOPED, NOT PER-INSTANCE, and that distinction is the whole
  * point of this comment.
  *
  * The provisioning instance is built PER REQUEST in this framework (edge bindings only
@@ -373,7 +373,7 @@ function defaultLimiterFor(_instance: AiProvisioning<unknown>): VerifyLimiter {
     return moduleVerifyLimiter;
 }
 
-/** Storage shape a durable limiter needs — satisfied by a Cloudflare KV namespace. */
+/** Storage shape a durable limiter needs, satisfied by a Cloudflare KV namespace. */
 export interface VerifyLimiterStore {
     get(key: string): Promise<string | null>;
     put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
@@ -386,7 +386,7 @@ export interface VerifyLimiterStore {
  * error: an unmetered verify endpoint is a credential-stuffing oracle running from the
  * operator's IP range, so "KV is down" must not mean "unlimited".
  *
- * KV is eventually consistent, so the count is approximate under concurrency — that is
+ * KV is eventually consistent, so the count is approximate under concurrency, that is
  * acceptable here (the tolerance is roughly the in-flight concurrency count) and is exactly
  * why this is a budget rather than a hard quota.
  */
@@ -426,14 +426,14 @@ function firstRegistryModel(instance: AiProvisioning<unknown>, provider: string)
  * Returns a classified refusal, or null when the target is admissible. It runs for BOTH
  * modes: mode 1 because the values come straight from the request body, and mode 2 because a
  * row can predate a rule, arrive through generic auto-CRUD, or be written directly to the
- * database — and "we already validated it on the way in" is exactly the assumption that
+ * database, and "we already validated it on the way in" is exactly the assumption that
  * makes those rows invisible.
  *
  * WHY EACH ONE MATTERS HERE SPECIFICALLY:
  *
  *  • `dynamic/<route>` is OPERATOR NAMESPACE. A tenant who tests one gets a request pointed
  *    at the operator's gateway route, spending the operator's budget, with a tenant-supplied
- *    key that the route may not even use — the exact bypass the write path already refuses.
+ *    key that the route may not even use, the exact bypass the write path already refuses.
  *  • An unregistered or platform-only provider produces a call that cannot succeed, so a real
  *    outbound attempt only buys a confusing upstream error and a billable request.
  *  • A cross-provider model ref routes to one provider while authenticating for another.

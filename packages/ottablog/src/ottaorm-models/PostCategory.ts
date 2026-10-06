@@ -207,7 +207,7 @@ export class PostCategory extends BaseModel {
 
     /**
      * Get root categories (no parent).
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
+     * appId is required: matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
     static async roots(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
         const query: Record<string, unknown> = { parentId: null, appId: options.appId };
@@ -220,7 +220,7 @@ export class PostCategory extends BaseModel {
 
     /**
      * Get children of a category.
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
+     * appId is required: matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
     static async children(
         parentId: string,

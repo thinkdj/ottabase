@@ -12,5 +12,5 @@
     "healthCheckPath": "/",
     "requiresSecrets": [],
     "requiresPreviewSecrets": [],
-    "$comment": "requiresSecrets/requiresPreviewSecrets are optional — wrangler.jsonc placeholders are auto-detected. Add here only for non-wrangler secrets (e.g. build-time)."
+    "$comment": "requiresSecrets/requiresPreviewSecrets are optional: wrangler.jsonc placeholders are auto-detected. Add here only for non-wrangler secrets (e.g. build-time)."
 }

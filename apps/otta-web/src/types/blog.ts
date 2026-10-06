@@ -24,7 +24,7 @@ export interface BlogPost {
     slug: string;
     excerpt: string | null;
     blurbText: string | null;
-    /** The same post on Instagram, X, Facebook — one entry may be flagged as the original. */
+    /** The same post on Instagram, X, Facebook, one entry may be flagged as the original. */
     crossposts: PostCrosspost[] | null;
     photoNote: string | null;
     photoAlbum: PhotoJournalItem[] | null;
@@ -85,7 +85,7 @@ export interface BlogPostListItem {
     slug: string;
     excerpt: string | null;
     blurbText: string | null;
-    /** The same post on Instagram, X, Facebook — one entry may be flagged as the original. */
+    /** The same post on Instagram, X, Facebook, one entry may be flagged as the original. */
     crossposts: PostCrosspost[] | null;
     photoNote: string | null;
     photoAlbum: PhotoJournalItem[] | null;

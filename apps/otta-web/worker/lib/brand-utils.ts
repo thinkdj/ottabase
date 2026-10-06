@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Shared route helpers for worker (v2: per-app scoping)
+// Brand Engine, Shared route helpers for worker (v2: per-app scoping)
 // ---------------------------------------------------------------------------
 
 import type { BrandApiEnv } from '@ottabase/brand-engine/handlers';

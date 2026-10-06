@@ -1,10 +1,10 @@
 // ====================================================================
-// @ottabase/ottaai/ottaorm — persistence barrel
+// @ottabase/ottaai/ottaorm, persistence barrel
 // --------------------------------------------------------------------
 // PLANE: MANAGEMENT. Model, table, RLS policy factory, ORM store, route
 // factory, rotation job, and the composing factory.
 //
-// Copy-paste registration (order matters — see the comments in factory.ts):
+// Copy-paste registration (order matters: see the comments in factory.ts):
 //
 //     // ottabase/config.migrations.ts
 //     import { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';

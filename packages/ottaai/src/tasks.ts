@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Task declarations, mode intersection, gate strength
+// @ottabase/ottaai: Task declarations, mode intersection, gate strength
 // ============================================================
 // Call sites pass IDENTITY and a TASK KEY only. That split is the promise:
 // an operator flips provisioning behaviour without touching call sites.
@@ -36,13 +36,13 @@ export function bitsToMode(bits: ModeBits): AiMode | null {
  * A layer may only REMOVE a permission, never grant one.
  *
  * Consequences, all intended:
- *  • app `auto` + task `byok`     ⇒ `byok`     — the gate lives in the resolver, not the browser.
- *  • app `auto` + task `platform` ⇒ `platform` — a cheap internal task is kept off tenant keys.
- *  • app `byok` + task `auto`     ⇒ `byok`     — A CALL SITE CAN NEVER RE-ENABLE a platform key
+ *  • app `auto` + task `byok`     ⇒ `byok`: the gate lives in the resolver, not the browser.
+ *  • app `auto` + task `platform` ⇒ `platform`: a cheap internal task is kept off tenant keys.
+ *  • app `byok` + task `auto`     ⇒ `byok`: A CALL SITE CAN NEVER RE-ENABLE a platform key
  *    the operator switched off. A cost and consent boundary set once at app config cannot be
  *    widened by a handler, a copy-paste, or a library.
  *
- * @throws when the intersection is `{✗,✗}` — programmer error. Static combinations are
+ * @throws when the intersection is `{✗,✗}`: programmer error. Static combinations are
  *         validated EAGERLY at composition, so only a per-call override can reach this throw.
  */
 export function intersectModes(...modes: Array<AiMode | undefined>): AiMode {
@@ -58,7 +58,7 @@ export function intersectModes(...modes: Array<AiMode | undefined>): AiMode {
     const result = bitsToMode(bits);
     if (!result) {
         throw new AiProvisioningError(
-            'AI mode composition produced {tenant: false, platform: false} — no key source is permitted. ' +
+            'AI mode composition produced {tenant: false, platform: false}, no key source is permitted. ' +
                 'Check the app mode, the task mode, and any per-call override. To turn BYOK off entirely, ' +
                 'set `byokEnabled: false` on the instance instead of composing modes.',
             AI_ERROR_CODES.CONFIGURATION,
@@ -95,7 +95,7 @@ export interface AiTaskPolicy {
     key: string;
     /** Human label for admin/status surfaces. */
     label?: string;
-    /** NARROWING ONLY — intersected with the app mode. */
+    /** NARROWING ONLY: intersected with the app mode. */
     mode?: AiMode;
     /** `required` blocks without a tenant key; `soft` runs on the platform and upsells. Default `soft`. */
     gate?: GateStrength;
@@ -103,7 +103,7 @@ export interface AiTaskPolicy {
     modelPolicy?: ModelPolicy;
     /**
      * Pinned models per provider, used when `modelPolicy: 'task-pinned'`.
-     * A credential whose provider has no entry is INELIGIBLE for that task — filtered at
+     * A credential whose provider has no entry is INELIGIBLE for that task, filtered at
      * eligibility so it cannot shadow a credential that can serve it.
      */
     pinnedModels?: Record<string, string>;
@@ -111,7 +111,7 @@ export interface AiTaskPolicy {
     defaultModel?: string;
     /**
      * Capabilities the serving model must have. Checked as an ELIGIBILITY FILTER, not
-     * post-selection — and `vision` / `json` are also CALL contracts: a call sending images or
+     * post-selection, and `vision` / `json` are also CALL contracts: a call sending images or
      * `responseFormat` is refused unless its task declares them.
      */
     requiredCapabilities?: AiCapability[];
@@ -119,14 +119,14 @@ export interface AiTaskPolicy {
      * Default output budget for this task's calls; a per-call `maxTokens` still wins.
      *
      * Declare it on every task. Without one, OpenAI-shaped providers default to "until the
-     * context runs out" — an unbounded bill — and a structured reply needs real room: a JSON
+     * context runs out", an unbounded bill, and a structured reply needs real room: a JSON
      * object cut off by its budget does not parse and returns `INVALID_RESPONSE`. Thinking
      * models (Gemini 2.5, OpenAI reasoning models) spend part of this budget on reasoning.
      */
     maxTokens?: number;
     /**
      * What to do with a model the registry has never seen when `requiredCapabilities` is set.
-     * Default `deny` — fail closed, because a free-text model silently admitted to a vision
+     * Default `deny`: fail closed, because a free-text model silently admitted to a vision
      * task produces a confusing upstream failure the tenant cannot diagnose.
      */
     unknownModelPolicy?: 'deny' | 'allow';
@@ -137,7 +137,7 @@ export interface AiTaskPolicy {
     /**
      * Response caching for this task. OFF by default, and always off for BYOK-sourced calls:
      * a completion cache keyed on prompt+model across a multi-tenant deployment serves tenant
-     * A's completion to tenant B — worse under BYOK, because A paid for it.
+     * A's completion to tenant B, worse under BYOK, because A paid for it.
      */
     responseCacheTtlSeconds?: number;
 
@@ -180,12 +180,12 @@ export function resolveEffectiveTaskPolicy(
 }
 
 // ---------------------------------------------------------------------------
-// The gate predicate — ONE function, three call sites
+// The gate predicate, ONE function, three call sites
 // ---------------------------------------------------------------------------
 
 export interface GateAnswer {
     allowed: boolean;
-    /** True when the task would run, but on the platform — i.e. BYOK is the upsell. */
+    /** True when the task would run, but on the platform, i.e. BYOK is the upsell. */
     upsell: boolean;
     gate: GateStrength;
     source: ResolutionSource;
@@ -194,10 +194,10 @@ export interface GateAnswer {
 
 /**
  * The gate's predicate is `source === 'byok'` AND the resolved credential CARRIES A SECRET
- * (inline or a validated alias) — not `hasSecret` alone and not "a credential exists".
+ * (inline or a validated alias), not `hasSecret` alone and not "a credential exists".
  *
  * WHY: a tenant who connects a `requiresKey: false` provider has a credential that resolves
- * with `source: 'byok'` and no secret at all — walking straight past the gate into the exact
+ * with `source: 'byok'` and no secret at all, walking straight past the gate into the exact
  * quality the gate existed to prevent.
  *
  * Three call sites depend on this being ONE function: the status primitive, `requireByok`,

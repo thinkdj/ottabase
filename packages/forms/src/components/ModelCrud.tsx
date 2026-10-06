@@ -309,6 +309,11 @@ export function ModelCrud<T extends Record<string, unknown>>({
                                         Delete {displayName}
                                     </button>
                                 </>
+                            ) : detailQuery.isError ? (
+                                <p className="text-sm text-destructive" role="alert">
+                                    Could not load this {displayName.toLowerCase()}.{' '}
+                                    {detailQuery.error instanceof Error ? detailQuery.error.message : ''}
+                                </p>
                             ) : (
                                 <p className="text-sm text-muted-foreground" aria-busy="true">
                                     Loading…

@@ -1,5 +1,5 @@
 // ============================================================
-// GATEWAY WIRE CONTRACT — the literal URL, headers and body.
+// GATEWAY WIRE CONTRACT, the literal URL, headers and body.
 // ============================================================
 // THIS FILE EXISTS BECAUSE OF WHAT ITS ABSENCE COST.
 //
@@ -13,7 +13,7 @@
 //
 // Every one of those is a claim about a STRING that nothing asserted. Unit tests
 // over scoring, crypto and resolution cannot catch any of them, because none of
-// them is wrong about a decision — they are wrong about a fact.
+// them is wrong about a decision, they are wrong about a fact.
 //
 // So: assert the fact. Each expectation below is transcribed from the Cloudflare
 // provider page linked on its adapter entry, and a doc change should break a test
@@ -112,7 +112,7 @@ describe('Worker global fetch binding', () => {
 });
 
 // ---------------------------------------------------------------------------
-// URLs — one per supported provider, quoted from the Cloudflare docs
+// URLs, one per supported provider, quoted from the Cloudflare docs
 // ---------------------------------------------------------------------------
 
 describe('provider URLs are the documented ones, and they are NOT uniform', () => {
@@ -123,7 +123,7 @@ describe('provider URLs are the documented ones, and they are NOT uniform', () =
         ['groq', 'llama-3.3-70b', '/groq/chat/completions'],
         ['deepseek', 'deepseek-chat', '/deepseek/chat/completions'],
         ['perplexity', 'sonar', '/perplexity-ai/chat/completions'],
-        // WITH `/v1` — the gateway proxies to api.mistral.ai, which is versionless.
+        // WITH `/v1`: the gateway proxies to api.mistral.ai, which is versionless.
         ['mistral', 'mistral-small-latest', '/mistral/v1/chat/completions'],
     ])('%s → %s', async (provider, model, path) => {
         const captured = await callOnce({ provider, model: `${provider}/${model}` });
@@ -132,7 +132,7 @@ describe('provider URLs are the documented ones, and they are NOT uniform', () =
 
     it('never emits the `/v1` that used to be appended to every OpenAI-shaped provider', async () => {
         // The regression, named: `/openai/v1/chat/completions` proxies to
-        // `api.openai.com/v1/v1/chat/completions`, which 404s — and a 404 from this transport
+        // `api.openai.com/v1/v1/chat/completions`, which 404s, and a 404 from this transport
         // is classified MODEL_NOT_FOUND, so it reads to the tenant as a bad model name.
         const captured = await callOnce({ provider: 'openai', model: 'openai/gpt-4o-mini' });
         expect(captured.url).not.toContain('/openai/v1/');
@@ -240,7 +240,7 @@ describe('auth and provider-mandated headers', () => {
 
     it('sends Anthropic the REQUIRED anthropic-version header', async () => {
         // Its absence fails 100% of Anthropic calls, with a message about the header rather
-        // than about the key — so it is debugged as a credential problem.
+        // than about the key, so it is debugged as a credential problem.
         const captured = await callOnce({ provider: 'anthropic', model: 'anthropic/claude-sonnet-4-5' });
         expect(captured.headers['anthropic-version']).toBe('2023-06-01');
         expect(captured.headers['x-api-key']).toBe('sk-tenant-key');
@@ -267,7 +267,7 @@ describe('auth and provider-mandated headers', () => {
     });
 
     it('NEVER puts a key in the URL, for any provider', async () => {
-        // A key in a URL is a key in a log — access logs, proxy logs, referrers, error
+        // A key in a URL is a key in a log: access logs, proxy logs, referrers, error
         // reports. Google is the trap here: it also accepts `?key=`.
         for (const provider of Object.keys(GATEWAY_PROVIDERS)) {
             const captured = await callOnce(
@@ -285,7 +285,7 @@ describe('auth and provider-mandated headers', () => {
 
     it('sends the documented BYOK alias header when the credential is an alias', async () => {
         // Cloudflare documents `cf-aig-byok-alias`. The transport shipped with
-        // `cf-aig-provider-key`, which the gateway ignores — so the request went out with NO
+        // `cf-aig-provider-key`, which the gateway ignores, so the request went out with NO
         // provider authentication at all and fell through to whatever the gateway had.
         const captured = await callOnce({ secret: null, alias: 'production' });
         expect(captured.headers['cf-aig-byok-alias']).toBe('production');
@@ -357,7 +357,7 @@ describe('a provider this operator cannot route to is not offered to tenants', (
 
     it('reports Azure unservable when the operator supplied no resource/deployment/apiVersion', () => {
         // Otherwise the form offers Azure, the tenant pastes a real key, the row saves and
-        // lists — and every call is MERGE_INCOMPLETE, with nothing to point at.
+        // lists, and every call is MERGE_INCOMPLETE, with nothing to point at.
         expect(transport.unservableProviders!({})).toContain('azure');
     });
 
@@ -594,8 +594,8 @@ describe('the transport refuses what it cannot do correctly', () => {
     });
 
     it('refuses a per-call model that names a DIFFERENT provider than the credential', async () => {
-        // Routed to provider B, authenticated for provider A. Either a confusing 401, or —
-        // on a provider pair sharing an auth scheme — a live credential submission to a
+        // Routed to provider B, authenticated for provider A. Either a confusing 401, or,
+        // on a provider pair sharing an auth scheme, a live credential submission to a
         // provider the tenant never chose.
         const client = makeClient({ provider: 'openai', fetch: capturingFetch([]) });
         const result = await client.complete({
@@ -618,7 +618,7 @@ describe('the transport refuses what it cannot do correctly', () => {
         });
         expect(result.ok).toBe(false);
         // `addEventListener('abort')` never fires on an already-aborted signal, so without an
-        // explicit check the request goes out anyway — billed, logged, key held open.
+        // explicit check the request goes out anyway: billed, logged, key held open.
         expect(captured).toHaveLength(0);
     });
 
@@ -729,7 +729,7 @@ describe('SSE framing follows the spec, not one provider habits', () => {
         expect(events.find((e) => e.type === 'usage')).toMatchObject({ tokens: { input: 11, output: 4 } });
     });
 
-    it('surfaces an in-stream error object — the 200-with-a-failure case', async () => {
+    it('surfaces an in-stream error object, the 200-with-a-failure case', async () => {
         const events = await collect(['data: {"error":{"message":"nope","code":"bad_key","status":401}}\n\n']);
         expect(events.find((e) => e.type === 'error')).toMatchObject({
             error: { statusCode: 401, providerCode: 'bad_key' },
@@ -738,11 +738,11 @@ describe('SSE framing follows the spec, not one provider habits', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Images + JSON output — each provider's own spelling
+// Images + JSON output, each provider's own spelling
 // ---------------------------------------------------------------------------
 // Transcribed from each provider's API reference (cited beside its `supports` entry in
 // `transports/providers.ts`). These are the strings a provider reads; a wrong one is not
-// an error on most providers — it is an image the model never saw, or prose where JSON
+// an error on most providers, it is an image the model never saw, or prose where JSON
 // was expected.
 
 /** 1x1 transparent PNG. */
@@ -835,7 +835,7 @@ describe('image parts are spelled in each dialect', () => {
         ]);
     });
 
-    it('keeps a plain string message a string — no needless part array', async () => {
+    it('keeps a plain string message a string, no needless part array', async () => {
         const captured = await callOnce({});
         expect(captured.body.messages).toEqual([{ role: 'user', content: 'hi' }]);
     });
@@ -857,12 +857,12 @@ describe('images are refused where a route does not take them, before any reques
         expect(error!.message).toMatch(/at most 3 images/);
     });
 
-    it('on a dynamic route — Cloudflare documents no image input on the compat endpoint', async () => {
+    it('on a dynamic route: Cloudflare documents no image input on the compat endpoint', async () => {
         const error = await refused({ model: 'dynamic/support' });
         expect(error).toMatchObject({ code: 'UNSUPPORTED_OPERATION' });
     });
 
-    it('on Unified Billing — the REST endpoint documents no image input', async () => {
+    it('on Unified Billing: the REST endpoint documents no image input', async () => {
         const error = await refused({ secret: null, gatewayToken: undefined, apiToken: 't', billing: 'unified' });
         expect(error).toMatchObject({ code: 'UNSUPPORTED_OPERATION' });
     });
@@ -877,7 +877,7 @@ describe('images are refused where a route does not take them, before any reques
 });
 
 describe('JSON output: default tier is JSON MODE, strict tier is PROVIDER-ENFORCED where supported', () => {
-    it('always asks for JSON in the system instruction — OpenAI-shaped JSON mode requires it', async () => {
+    it('always asks for JSON in the system instruction, OpenAI-shaped JSON mode requires it', async () => {
         const captured = await callOnce({}, json());
         const messages = captured.body.messages as Array<{ role: string; content: string }>;
         expect(messages[0]!.role).toBe('system');
@@ -935,13 +935,13 @@ describe('JSON output: default tier is JSON MODE, strict tier is PROVIDER-ENFORC
         expect(systemText(captured.body).includes(JSON.stringify(SCHEMA))).toBe(type === 'json_object');
     });
 
-    it('perplexity default: NO response_format — it has no `json_object` type', async () => {
+    it('perplexity default: NO response_format, it has no `json_object` type', async () => {
         const captured = await callOnce({ provider: 'perplexity', model: 'perplexity/sonar' }, json());
         expect(captured.body.response_format).toBeUndefined();
         expect(systemText(captured.body)).toMatch(/JSON object/);
     });
 
-    it('anthropic default: instructed only — Anthropic has no schema-less JSON mode', async () => {
+    it('anthropic default: instructed only, Anthropic has no schema-less JSON mode', async () => {
         const captured = await callOnce({ provider: 'anthropic', model: 'anthropic/claude-haiku-4-5' }, json());
         expect(captured.body.output_config).toBeUndefined();
         expect(captured.body.tool_choice).toBeUndefined();
@@ -976,7 +976,7 @@ describe('JSON output: default tier is JSON MODE, strict tier is PROVIDER-ENFORC
         ['a dynamic route', { model: 'dynamic/support' }],
         ['Unified Billing', { secret: null, gatewayToken: undefined, apiToken: 't', billing: 'unified' }],
     ] as Array<[string, Partial<MergedTransportConfig>]>)(
-        '%s: instructed only — no documented `response_format`',
+        '%s: instructed only, no documented `response_format`',
         async (_name, config) => {
             const captured = await callOnce(config, json({ schema: SCHEMA, strict: true }));
             expect(captured.body.response_format).toBeUndefined();
@@ -1009,7 +1009,7 @@ describe('JSON output: default tier is JSON MODE, strict tier is PROVIDER-ENFORC
 });
 
 describe('output budget field', () => {
-    it('openai: `max_completion_tokens` — `max_tokens` 400s on reasoning models', async () => {
+    it('openai: `max_completion_tokens`: `max_tokens` 400s on reasoning models', async () => {
         const captured = await callOnce({}, { messages: [{ role: 'user', content: 'hi' }], maxTokens: 512 });
         expect(captured.body.max_completion_tokens).toBe(512);
         expect(captured.body.max_tokens).toBeUndefined();

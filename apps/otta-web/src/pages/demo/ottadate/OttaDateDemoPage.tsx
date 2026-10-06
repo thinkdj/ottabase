@@ -248,7 +248,7 @@ function ProgrammaticApiDemo() {
                             onClick={() => {
                                 // Set to Jan 1 2025 00:00 UTC
                                 pickerRef.current?.setValue(1735689600);
-                                setLog((prev) => [...prev.slice(-4), 'setValue(1735689600) — Jan 1 2025']);
+                                setLog((prev) => [...prev.slice(-4), 'setValue(1735689600): Jan 1 2025']);
                             }}
                         >
                             Set Jan 1, 2025

@@ -16,7 +16,7 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
 - **Versioning** - Full version history tracking with retention policies
 - **Series Support** - Group related posts into ordered series
 - **Multi-App Ready** - Built-in appId support for multi-tenant databases
-- **Original Date** - Fuzzy "originally written" date via OttaDate (e.g. "Late May 2010") — distinct from publish date
+- **Original Date** - Fuzzy "originally written" date via OttaDate (e.g. "Late May 2010"), distinct from publish date
 - **Date Archives** - `/blog/archive/$year` and `/blog/archive/$year/$month` list posts by publish date (the API takes
   `?year=2026&month=8`)
 - **Social Sharing** - One-button share popover (copy link, X, Facebook, LinkedIn, Email, Web Share API)
@@ -32,7 +32,7 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
   and manage independent localized versions with fallback-aware public routing, RSS, and sitemap URLs
 - **Author Archives** - `/blog/author/$authorId` lists an author's published posts; post bylines link to it
 - **Import / Export** - One-file JSON backup of every post, and import from that file or from Markdown with front matter
-  (Jekyll, Hugo, Astro, Eleventy, Ghost exports) — see [Import / Export](#import--export)
+  (Jekyll, Hugo, Astro, Eleventy, Ghost exports), see [Import / Export](#import--export)
 
 ## Installation
 
@@ -49,7 +49,7 @@ pnpm add @ottabase/ui-shadcn lucide-react
 ## Module Entry Points
 
 The package is split so the pure core never pulls in rendered UI or `@ottabase/ottarenderer` (an **optional** peer
-dependency — install it only if you render). Importing the pure root loads zero React components.
+dependency, install it only if you render). Importing the pure root loads zero React components.
 
 | Import                        | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
@@ -126,7 +126,7 @@ export {
 
 ```bash
 # Call your auto-init endpoint to create all tables
-curl -X POST http://localhost:3000/api/ottaorm/init
+curl -X POST http://localhost:3004/api/ottaorm/init
 ```
 
 ## Multilingual publishing
@@ -237,7 +237,7 @@ const post = await Post.create({
         url: 'https://...',
         alt: 'Image alt text',
         caption: 'Image caption',
-        maxHeight: 600, // optional: clamp display height (100–3000 px)
+        maxHeight: 600, // optional: clamp display height (100 to 3000 px)
     },
     seoMeta: {
         title: 'SEO Title',
@@ -277,8 +277,8 @@ post.generateExcerpt(); // Auto-generate from content
 
 ### Blurbs / Thoughts
 
-Blurbs are intentionally small: 1–1,000 characters of plain text, with line breaks and safe HTTP(S) links. They use the
-same `posts` table, publishing states, author/tenant scope, tags, comments, RSS, sitemap, permalink, and archive
+Blurbs are intentionally small: 1 to 1,000 characters of plain text, with line breaks and safe HTTP(S) links. They use
+the same `posts` table, publishing states, author/tenant scope, tags, comments, RSS, sitemap, permalink, and archive
 infrastructure as articles, but do not expose article-only hero, series, rich-body, password, or featured behavior. The
 model owns the generated title, slug, excerpt, and reading stats:
 
@@ -301,7 +301,7 @@ composer plus a dedicated blurb editor for status, scheduling, comments, and tag
 The feature adds the nullable `posts.blurb_text` and `posts.crossposts` columns. Run the normal OttaORM auto-init
 endpoint after upgrading; no destructive or data-rewrite migration is required.
 
-Blurbs, like every other content type, can link their copies on Instagram/X/Facebook — see
+Blurbs, like every other content type, can link their copies on Instagram/X/Facebook, see
 [Crossposts](#crossposts-the-same-post-elsewhere).
 
 ### Photo Journals
@@ -337,10 +337,10 @@ const journal = await Post.createPhotoJournal(
 );
 ```
 
-The ordered `photoAlbum` supports 1–60 photographs. Each frame may carry stable media identity, responsive media URLs,
-alt text, a caption, location, capture date, dimensions, and MIME type. The model derives `heroImage` from the first
-frame for existing featured cards, Open Graph previews, and RSS enclosure support. It also owns the permalink, excerpt,
-reading stats, publication dates, and article-only field resets.
+The ordered `photoAlbum` supports 1 to 60 photographs. Each frame may carry stable media identity, responsive media
+URLs, alt text, a caption, location, capture date, dimensions, and MIME type. The model derives `heroImage` from the
+first frame for existing featured cards, Open Graph previews, and RSS enclosure support. It also owns the permalink,
+excerpt, reading stats, publication dates, and article-only field resets.
 
 Applications should use `POST /api/blog/photo-journals` and `PATCH /api/blog/photo-journals/{postId}`. The endpoints
 derive ownership from the verified server context, enforce create/update and separate publish capabilities, validate the
@@ -353,7 +353,7 @@ permalink. Detail images register with the immersive media lightbox. Custom them
 plugins can filter the ordered album with `post.photoJournal.filter`.
 
 The detail view honors `showTitle` and `showMetadata` like every other content type, so a page that renders its own
-header can pass `showTitle={false}` without getting a second title. Absent means shown — only an explicit `false` hides
+header can pass `showTitle={false}` without getting a second title. Absent means shown, only an explicit `false` hides
 anything. `photoNote` is deliberately outside that contract: it is authored body copy (the excerpt is derived from it),
 so it renders whatever the header flags say.
 
@@ -368,12 +368,12 @@ endpoint after upgrading; existing rows need no rewrite.
 - `excerpt` - Short summary
 - `blurbText` - Plain-text short-form body when `contentType` is `blurb`
 - `crossposts` - Ordered `PostCrosspost[]`: the same post on other platforms, one optionally flagged `origin`. Applies
-  to every content type — see [Crossposts](#crossposts-the-same-post-elsewhere)
+  to every content type, see [Crossposts](#crossposts-the-same-post-elsewhere)
 - `photoNote` - Optional short field note when `contentType` is `photo`
 - `photoAlbum` - Ordered `PhotoJournalItem[]` when `contentType` is `photo`
 - `content` - EditorJS JSON content
 - `contentType` - Type of content (blog, blurb, photo, changelog, docs, news, announcement). This is a plain text
-  column, not an enum, so rows can carry a value a given build does not know about — render it with
+  column, not an enum, so rows can carry a value a given build does not know about, render it with
   `contentTypeLabel(value)`, which falls back to the raw string, rather than indexing `CONTENT_TYPES` directly.
 - `status` - Publication status (draft, published, archived, scheduled)
 - `categoryId` - Legacy single-category reference (prefer junction via PostCategoryLink)
@@ -605,7 +605,7 @@ const slug = await resolveUniqueSlug(PostTag, 'hello-world', {
 
 ## Crossposts (the same post elsewhere)
 
-Any post — article, blurb, photo journal, changelog — can also exist on Instagram, X, or Facebook. `crossposts` is one
+Any post: article, blurb, photo journal, changelog: can also exist on Instagram, X, or Facebook. `crossposts` is one
 ordered list rather than a "source URL", because the two directions people publish in are the same relationship seen
 from opposite ends:
 
@@ -632,7 +632,7 @@ rows dropped, validated by `validateCrossposts` (`CrosspostValidationError` → 
 same validator. On PATCH, an absent list means unchanged; `[]` or `null` clears it.
 
 **Rendering.** `<Crossposts>` joins an existing byline (blurb cards) and `<CrosspostsRow>` stands alone (articles, photo
-journals) — both from `@ottabase/ottablog/renderer`, and both render nothing when a post has no links. The article and
+journals), both from `@ottabase/ottablog/renderer`, and both render nothing when a post has no links. The article and
 journal rows sit OUTSIDE the theme's `renderMetadata`, so a theme written before or after this feature credits an
 external original either way. Links carry the IndieWeb microformats `u-url` (origin) and `u-syndication` (copies), and
 degrade to plain text in the timeline variant, where the card itself is already a link.
@@ -831,7 +831,7 @@ const blogRouter = createBlogRouter<Env>({
             excerpt: 'A sample article for a fresh demo.',
             content: { version: '2.28.2', blocks: [{ type: 'paragraph', data: { text: 'Hello, world.' } }] },
             contentType: 'blog',
-            // Optional. Must be a URL that resolves on a fresh install — a new
+            // Optional. Must be a URL that resolves on a fresh install, a new
             // deployment has no uploaded media to reference.
             heroImage: { url: 'https://example.com/hero.jpg', alt: 'Hero image' },
         },
@@ -842,7 +842,7 @@ apiRouter.mount('/api/blog', blogRouter, { when: (c) => config(c.env).packages.o
 ```
 
 Apps that keep their own handler module as a test/mock seam (like `otta-web`) can instead call
-`buildBlogRouter(handlers, { makeContext })` — the canonical route table over an app-supplied `BlogHandlers` object.
+`buildBlogRouter(handlers, { makeContext })`: the canonical route table over an app-supplied `BlogHandlers` object.
 `createBlogHandlers(config)` builds that handlers object from the same injected config.
 
 ## Data-Driven Theme Tokens (Brand Contract)
@@ -851,11 +851,11 @@ Blog themes can carry data, not just code: each `ottablog_themes` row has a spar
 (`{ light?: Record<cssVar, value>, dark?: ... }`). `blogThemeTokensToCss(tokens)` serializes them into a
 `[data-brand-scope="blog"]` room block, which the consuming app applies around its blog pages (otta-web wraps them in
 `<BrandScope name="blog">` from `@ottabase/ui-shadcn` and injects the CSS at the edge plus client-side via studio
-state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
-no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
-(unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
-Malformed legacy JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored
-content; unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
+state). CSS variables ARE the contract with `@ottabase/brand-engine`: this package never imports it, and a theme with no
+tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization (unsafe
+names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy. Malformed
+legacy JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content;
+unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
 
 ## Edge SEO Meta
 
@@ -883,7 +883,7 @@ category, series, and public author data (`id`, display `name`, and `image`). Ac
 included in public responses.
 
 List reads skip the big body columns (`Post.deferred`) for cost, so `content` and `footnotes` come back as `null` here
-and carry their real values on the detail endpoint. They are always present as keys — a list answers "no body here",
+and carry their real values on the detail endpoint. They are always present as keys, a list answers "no body here",
 never "no such field".
 
 For password-protected posts that have not been unlocked, public serializers blank `content`, `footnotes`, `blurbText`,
@@ -1069,18 +1069,18 @@ cannot bypass the caps or cross-column checks.
 
 What it enforces, per column, when that column is part of the write:
 
-| Column       | Rule                                                                                                                                                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `blurbText`  | Non-empty, ≤ `BLURB_MAX_LENGTH`, line endings normalized                                                                                                                                                                                            |
-| `photoNote`  | ≤ `PHOTO_JOURNAL_NOTE_MAX_LENGTH`, trimmed, blank → null                                                                                                                                                                                            |
-| `photoAlbum` | 1–`PHOTO_JOURNAL_MAX_ITEMS` frames, unique IDs, media IDs, and URLs within their respective namespaces, JavaScript-Date-safe `takenAt`, every URL sanitized and http(s)/relative, each URL ≤ 4096 chars, serialized metadata ≤ 512 KiB, `[]` → null |
-| `content`    | EditorJS envelope with a `blocks` array, ≤ `POST_CONTENT_MAX_BYTES` serialized                                                                                                                                                                      |
-| `crossposts` | ≤ `MAX_CROSSPOSTS` absolute http(s) links, deduplicated, at most one `origin`                                                                                                                                                                       |
+| Column       | Rule                                                                                                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `blurbText`  | Non-empty, ≤ `BLURB_MAX_LENGTH`, line endings normalized                                                                                                                                                                                               |
+| `photoNote`  | ≤ `PHOTO_JOURNAL_NOTE_MAX_LENGTH`, trimmed, blank → null                                                                                                                                                                                               |
+| `photoAlbum` | 1 to `PHOTO_JOURNAL_MAX_ITEMS` frames, unique IDs, media IDs, and URLs within their respective namespaces, JavaScript-Date-safe `takenAt`, every URL sanitized and http(s)/relative, each URL ≤ 4096 chars, serialized metadata ≤ 512 KiB, `[]` → null |
+| `content`    | EditorJS envelope with a `blocks` array, ≤ `POST_CONTENT_MAX_BYTES` serialized                                                                                                                                                                         |
+| `crossposts` | ≤ `MAX_CROSSPOSTS` absolute http(s) links, deduplicated, at most one `origin`                                                                                                                                                                          |
 
 Plus cross-column coherence, evaluated against the effective row on updates:
 
-- `contentType: 'photo'` requires a non-empty `photoAlbum` in that write — the renderer dispatches on `contentType`, so
-  a journal without frames renders as an empty page.
+- `contentType: 'photo'` requires a non-empty `photoAlbum` in that write, the renderer dispatches on `contentType`, so a
+  journal without frames renders as an empty page.
 - `contentType: 'blurb'` requires `blurbText`.
 - Any other `contentType` rejects a non-null `photoAlbum`, `photoNote`, or `blurbText`.
 - `status: 'scheduled'` requires `publishAt`; entering `published` initializes `publishedAt` and `postedAt` in the
@@ -1118,12 +1118,12 @@ The app includes admin pages for managing blog content:
 
 | Page       | Route                                         | Description                                                                        |
 | ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Content    | `/admin/blog`                                 | List/filter mixed content, quick-publish blurbs, and start photo journals          |
-| Editor     | `/admin/blog/new`, `/admin/blog/$postId/edit` | Rich article, focused blurb, or media-library-backed photo editor selected by type |
-| Tags       | `/admin/blog/tags`                            | Table view with right-panel Sheet for create/edit                                  |
-| Categories | `/admin/blog/categories`                      | Tree view with hierarchy, right-panel Sheet for create/edit                        |
-| Series     | `/admin/blog/series`                          | Table view with right-panel Sheet for create/edit                                  |
-| Studio     | `/admin/blog/studio`                          | Theme and plugin management                                                        |
+| Posts      | `/admin/content/blog`                         | List/filter mixed content, quick-publish blurbs, and start photo journals          |
+| Editor     | `/admin/content/blog/new`, `.../$postId/edit` | Rich article, focused blurb, or media-library-backed photo editor selected by type |
+| Tags       | `/admin/content/blog/tags`                    | Table view with right-panel Sheet for create/edit                                  |
+| Categories | `/admin/content/blog/categories`              | Tree view with hierarchy, right-panel Sheet for create/edit                        |
+| Series     | `/admin/content/blog/series`                  | Table view with right-panel Sheet for create/edit                                  |
+| Studio     | `/admin/content/blog/studio`                  | Theme and plugin management                                                        |
 
 All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quick switching between sections.
 
@@ -1131,8 +1131,8 @@ All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quic
 
 The admin content list has **Export** and **Import** buttons.
 
-**Export** (`GET /api/blog/export`, needs `posts:update`) downloads every post the caller can read through RLS — any
-status, body and private notes included — as one JSON file:
+**Export** (`GET /api/blog/export`, needs `posts:update`) downloads every post the caller can read through RLS, any
+status, body and private notes included, as one JSON file:
 
 ```json
 {
@@ -1154,14 +1154,14 @@ code, quotes, rules, images, bold/italic/code/links). Front matter is read for `
 `published: false` / `status`; a Jekyll `2020-01-31-slug.md` filename supplies the date and slug. Raw HTML in Markdown
 is escaped, not imported. Tables and indented code blocks arrive as plain text.
 
-The server takes at most `BLOG_IMPORT_BATCH_SIZE` (10) posts per request — the dialog batches for you — and applies the
+The server takes at most `BLOG_IMPORT_BATCH_SIZE` (10) posts per request, the dialog batches for you, and applies the
 editor's rules:
 
 - Posts are created as the caller, in the caller's app/organization scope, through `Post.create` (full write
   validation). `publishedAt` is kept for published posts, so archives keep their real dates.
 - A slug that already exists is **skipped**, never overwritten, so re-running an import is safe.
 - `published`/`scheduled` posts need `posts:publish`; without it they land as drafts with a note.
-- A password-protected post lands as an unprotected **draft** — passwords never leave the server, so it cannot stay
+- A password-protected post lands as an unprotected **draft**: passwords never leave the server, so it cannot stay
   protected, and it must not go public by accident.
 - Tags, categories, and series are found by slug or created, but only for callers with `org:admin` or `taxonomy:manage`
   (the same rule as generic CRUD); others get the post without taxonomy and a note.
@@ -1197,12 +1197,12 @@ the feed and the archives, so the Minimal theme's dashed rows and zero-padded se
 Themes and plugins are managed in the database and applied at init so `BlogRenderer` uses the correct theme and plugin
 hooks (e.g. Content Injector with DB-backed config).
 
-- **Themes** – Register themes; one is active per app. State in `ottablog_themes`.
-- **Plugins** – Register plugins; enable/disable and store config in `ottablog_plugins`. Content Injector injects HTML
+- **Themes**: Register themes; one is active per app. State in `ottablog_themes`.
+- **Plugins**: Register plugins; enable/disable and store config in `ottablog_plugins`. Content Injector injects HTML
   from its `config.content`.
-- **Client** – Fetch `GET /api/blog/studio/state`, then `setActiveTheme(activeThemeId)` and for each enabled plugin
-  build from `config`, register, and activate. Use an in-flight dedupe so concurrent calls share one request.
-- **Admin** – Blog Studio page: activate theme, enable/disable plugins, configure Content Injector (content, position,
+- **Client**: Fetch `GET /api/blog/studio/state`, then `setActiveTheme(activeThemeId)` and for each enabled plugin build
+  from `config`, register, and activate. Use an in-flight dedupe so concurrent calls share one request.
+- **Admin**: Blog Studio page: activate theme, enable/disable plugins, configure Content Injector (content, position,
   content types, priority).
 
 Full architecture, API, and Content Injector config: **[STUDIO.md](./STUDIO.md)**.
@@ -1210,7 +1210,7 @@ Full architecture, API, and Content Injector config: **[STUDIO.md](./STUDIO.md)*
 ## Styling
 
 The `@ottabase/ottablog/renderer` subpath includes a `BlogRenderer` component for rendering blog posts with theme
-support. (It is not exported from the pure root — see [Module Entry Points](#module-entry-points).)
+support. (It is not exported from the pure root, see [Module Entry Points](#module-entry-points).)
 
 Hook-enabled renderers start each input generation in a pending phase. A same-ID refetch cannot reuse the previous
 generation's filtered data, and plugin actions are serialized as `render.before`, optional `content.before`,

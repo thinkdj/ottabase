@@ -167,7 +167,7 @@ describe('autoMigrate destructive flow', () => {
         expect(up).toHaveBeenCalledTimes(1);
         expect(result.customMigrationsRun).toContain('users_index_migration_v1');
         expect(result.customMigrationsSkipped).not.toContain('users_index_migration_v1');
-        // Already recorded — must not attempt a duplicate INSERT (name is UNIQUE).
+        // Already recorded: must not attempt a duplicate INSERT (name is UNIQUE).
         expect(driver.executed.filter((s) => /INSERT INTO "?_ottabase_migrations"?/i.test(s))).toHaveLength(0);
     });
 

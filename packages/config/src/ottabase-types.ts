@@ -1,5 +1,5 @@
 // ============================================================
-// Ottabase Config Types — Dynamic package & feature configuration
+// Ottabase Config Types, Dynamic package & feature configuration
 // ============================================================
 // Used by defineOttabaseConfig() for single-source-of-truth config
 // that drives: migrations, routes, features, and UI.
@@ -17,7 +17,7 @@ export interface OttabaseMeta {
     /** Robots directive (default: 'index, follow') */
     robots?: string;
     /**
-     * Short line shown beside the app name in the header — an edition or positioning
+     * Short line shown beside the app name in the header, an edition or positioning
      * phrase ('Beta', 'Cloudflare-native'). Empty hides it. Keep it to roughly two
      * words; the header renders it uppercase.
      */
@@ -78,7 +78,7 @@ export interface AuthBehaviorConfig {
 /**
  * Blog tenancy mode.
  * - 'platform' (default): one blog per app, owned by the platform. Today's behavior, unchanged.
- * - 'org': each organization gets its own blog namespace — org-scoped slugs, taxonomy, and theme.
+ * - 'org': each organization gets its own blog namespace: org-scoped slugs, taxonomy, and theme.
  *   Rows with a null organizationId remain platform-owned content.
  */
 export type OttablogMode = 'platform' | 'org';
@@ -100,8 +100,8 @@ export interface OttaaiRateLimitConfig {
      * App-wide ceiling across every user and org.
      *
      * MUST BE POSITIVE WHENEVER PLATFORM-PAID INFERENCE IS REACHABLE. It is the only
-     * AGGREGATE limit — `perUser` and `perOrganization` each bound one actor and say nothing
-     * about the total — so `0` here does not merely disable a dimension, it removes the only
+     * AGGREGATE limit, `perUser` and `perOrganization` each bound one actor and say nothing
+     * about the total, so `0` here does not merely disable a dimension, it removes the only
      * cap on what the operator can spend. A deployment that can bill the operator and sets
      * `perApp <= 0` has its platform calls REFUSED rather than left uncapped; set a large
      * number instead of 0 if you intend a high cap.
@@ -110,7 +110,7 @@ export interface OttaaiRateLimitConfig {
 }
 
 /**
- * The image budget for `POST /api/ai/vision` — a PRODUCT limit, applied before resolution.
+ * The image budget for `POST /api/ai/vision`: a PRODUCT limit, applied before resolution.
  *
  * Each byte limit is clamped at runtime to @ottabase/ottaai's provider floor
  * (`AI_CONTENT_LIMITS`: 5 MB per image, 14 MB per request), so raising one here can never
@@ -133,7 +133,7 @@ export interface OttaaiImageConfig {
 }
 
 /**
- * AI provisioning dials (@ottabase/ottaai). Non-secret only — the master secret, the
+ * AI provisioning dials (@ottabase/ottaai). Non-secret only, the master secret, the
  * gateway token and every platform provider key stay in env vars.
  *
  * FROZEN AT MAJOR and logged once at boot: changing the default strategy or mode in a
@@ -152,7 +152,7 @@ export interface OttaaiFeatureConfig {
     appScope: 'strict' | 'wildcard';
     /**
      * The kill switch. `false` rewrites every task to `platform` and downgrades every
-     * `required` gate to `soft` — deliberately NOT expressed as `mode`, which would make
+     * `required` gate to `soft`: deliberately NOT expressed as `mode`, which would make
      * a gated task a boot error instead of a graceful degradation.
      */
     byokEnabled: boolean;
@@ -163,7 +163,7 @@ export interface OttaaiFeatureConfig {
      *
      * NOT A BILLING QUOTA. It bounds burst and abuse; it does not bound total spend. Real
      * spend accounting needs a strongly consistent counter and a commercial policy (free
-     * tier, reset period, refunds, admin overrides) and is deliberately not attempted here —
+     * tier, reset period, refunds, admin overrides) and is deliberately not attempted here,
      * an approximate KV count is not a billing boundary.
      *
      * THREE DIMENSIONS, because one is never enough: `perUser` stops a single account
@@ -198,7 +198,7 @@ export interface OttabaseFeaturesConfig {
     ottablog?: Partial<OttablogFeatureConfig>;
     /**
      * `rateLimit` is separately partial so an operator can override ONE dimension without
-     * restating the other two — a plain `Partial<OttaaiFeatureConfig>` would demand all three.
+     * restating the other two, a plain `Partial<OttaaiFeatureConfig>` would demand all three.
      */
     ottaai?: Partial<Omit<OttaaiFeatureConfig, 'rateLimit' | 'images'>> & {
         rateLimit?: Partial<OttaaiRateLimitConfig>;
@@ -221,7 +221,7 @@ export interface OttabaseUIConfig {
 
 /**
  * Sentinel value for the x-org-id header / org selection meaning "act in PLATFORM
- * scope" (organizationId NULL — platform-owned rows such as the platform's own
+ * scope" (organizationId NULL, platform-owned rows such as the platform's own
  * blog in org mode). Honored server-side only for platform admins; never a valid
  * organization id. Shared by the API client, the org switcher, and the worker.
  */
@@ -238,7 +238,7 @@ export interface CustomPackageConfig {
     migrations?: unknown[];
 }
 
-/** User input for defineOttabaseConfig — partial, with optional packages. */
+/** User input for defineOttabaseConfig: partial, with optional packages. */
 export interface OttabaseConfigInput {
     appId: string;
     appName: string;
@@ -251,7 +251,7 @@ export interface OttabaseConfigInput {
     ui?: OttabaseUIConfig;
 }
 
-/** Resolved full config — all optional fields have defaults. */
+/** Resolved full config: all optional fields have defaults. */
 export interface OttabaseConfig {
     appId: string;
     appName: string;

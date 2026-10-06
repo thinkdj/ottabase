@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { CTAData } from './types';
 
 /**
- * Default CTA — centred heading + description + action buttons.
+ * Default CTA: centred heading + description + action buttons.
  */
 export function CTADefault({ title, description, actions }: CTAData) {
     return (

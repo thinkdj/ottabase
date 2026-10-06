@@ -24,7 +24,7 @@ export function hasPermission(context: RequestContext, permission: string): bool
 
 /**
  * PLATFORM administrator: the permission must come from a SYSTEM-scoped grant. This is the whole
- * point of the redesign — a role's NAME ('owner'/'admin') and org-scoped grants confer no platform
+ * point of the redesign, a role's NAME ('owner'/'admin') and org-scoped grants confer no platform
  * authority, so an org owner (incl. every fresh signup) can never reach the control plane.
  */
 export function isPlatformAdmin(context: RequestContext): boolean {
@@ -98,8 +98,8 @@ export function assertBrandEditAccess(
     if (!context.isAuthenticated || !context.user) {
         return jsonResponse('Unauthorized', 401, 'UNAUTHORIZED');
     }
-    // Brand / appearance data (kits, layouts, menus) is app-global — scoped by appId only, never
-    // organizationId — so editing it is a PLATFORM capability. Require the permission from a
+    // Brand / appearance data (kits, layouts, menus) is app-global, scoped by appId only, never
+    // organizationId, so editing it is a PLATFORM capability. Require the permission from a
     // SYSTEM-scoped grant; an org owner holding the same permission org-scoped must NOT reach
     // app-wide branding. (If per-org branding ships later, add an org branch keyed on rows that
     // actually carry organizationId.)

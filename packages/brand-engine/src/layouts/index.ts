@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Layout defaults (brand-engine-owned constants only)
+// Brand Engine, Layout defaults (brand-engine-owned constants only)
 // For types, presets, resolver, validators: import from '@ottabase/ottalayout'.
 // ---------------------------------------------------------------------------
 

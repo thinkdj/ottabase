@@ -10,7 +10,7 @@ interface NextThemesWrapperProps {
 /**
  * next-themes wrapper honoring the brand kit's dark-mode configuration:
  * `defaultColorScheme` ('light' | 'dark' | 'system') sets the default room.
- * A returning visitor's stored choice (storageKey) still wins — next-themes
+ * A returning visitor's stored choice (storageKey) still wins, next-themes
  * only uses defaultTheme when no stored value exists.
  */
 const ProviderNextThemes = ({ children }: NextThemesWrapperProps) => {

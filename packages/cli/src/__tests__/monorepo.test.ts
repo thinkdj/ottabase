@@ -71,7 +71,7 @@ describe('validateAppName', () => {
         expect(validateAppName('my-cool-app').valid).toBe(true);
     });
     it('should reject names that already exist as apps', () => {
-        // 'otta-web' is a real app in this monorepo — must be rejected by the existence check.
+        // 'otta-web' is a real app in this monorepo, must be rejected by the existence check.
         const result = validateAppName('otta-web');
         expect(result.valid).toBe(false);
         // Narrow the union so TypeScript knows error is string on the false branch

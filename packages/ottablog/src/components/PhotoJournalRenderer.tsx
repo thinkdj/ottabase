@@ -149,7 +149,7 @@ export function PhotoJournalRenderer({
 
     return (
         // The field note renders through BlurbText, and timeline cards are wrapped in a link by
-        // the caller — see BlurbTextLinksAllowed.
+        // the caller, see BlurbTextLinksAllowed.
         <BlurbTextLinksAllowed.Provider value={variant !== 'timeline'}>
             <article
                 className={`blog-photo-journal blog-photo-journal--${variant} ${theme.config?.classes?.photoJournal ?? ''} ${rest.className ?? ''}`.trim()}

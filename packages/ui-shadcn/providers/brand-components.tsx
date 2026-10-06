@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand component registry + scope helper — the React-level theming escape
+// Brand component registry + scope helper, the React-level theming escape
 // hatches for design systems whose components need genuinely different DOM.
 //
 // Tier 1 (preferred, CSS): every primitive stamps data-slot (+ data-variant /
@@ -7,11 +7,11 @@
 // wins by cascade order. Use this for 90% of "totally different" components.
 //
 // Tier 2 (this file, React): a fork registers replacement implementations for
-// specific slots — <BrandComponentsProvider overrides={{ button: UppButton }}>.
+// specific slots, <BrandComponentsProvider overrides={{ button: UppButton }}>.
 // Primitives that support overriding resolve their implementation from this
 // context, receiving the SAME props (variant, size, asChild, …). Zero cost
 // when unused. Reserve it for components whose DOM must differ (extra shine
-// layers, novel interaction models) — not for restyling.
+// layers, novel interaction models), not for restyling.
 // ---------------------------------------------------------------------------
 
 'use client';
@@ -45,7 +45,7 @@ export function useBrandComponent(slot: string): React.ComponentType<any> | unde
 }
 
 // ---------------------------------------------------------------------------
-// BrandScope — token "room" wrapper
+// BrandScope, token "room" wrapper
 // ---------------------------------------------------------------------------
 
 export interface BrandScopeProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -55,10 +55,10 @@ export interface BrandScopeProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Re-binds brand tokens for a subtree via `data-brand-scope` — the engine
+ * Re-binds brand tokens for a subtree via `data-brand-scope`: the engine
  * emits `[data-brand-scope="name"] { --background: …; }` blocks for every
  * scope the theme defines (an always-dark hero chrome, a CRT "screen" room…).
- * Children need no props or dark: classes — they read the same semantic vars.
+ * Children need no props or dark: classes, they read the same semantic vars.
  */
 export const BrandScope = React.forwardRef<HTMLDivElement, BrandScopeProps>(({ name, children, ...props }, ref) => (
     <div ref={ref} data-brand-scope={name} {...props}>

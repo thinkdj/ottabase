@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { FooterData } from './types';
 
 /**
- * Default footer — copyright + tagline on the left, links on the right.
+ * Default footer: copyright + tagline on the left, links on the right.
  */
 export function FooterDefault({ siteName = 'Ottabase', links = [], tagline }: FooterData) {
     return (

@@ -13,10 +13,10 @@ import {
     themeInfoAtom,
     userAtom,
     zoomAtom,
-    type AppUser,
 } from '@/ottabase/state/appState';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { useAtom, useAtomValue } from 'jotai';
+import { Link } from '@tanstack/react-router';
 import { useTheme as useNextTheme } from 'next-themes';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -27,8 +27,8 @@ export function StateDemoPage() {
     // Individual atoms
     const theme = useAtomValue(themeAtom);
     const themeInfo = useAtomValue(themeInfoAtom);
-    const [user, setUser] = useAtom(userAtom);
-    const [isAuthenticated, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
+    const user = useAtomValue(userAtom);
+    const isAuthenticated = useAtomValue(isAuthenticatedAtom);
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const [scale, setScale] = useAtom(scaleAtom);
     const zoom = useAtomValue(zoomAtom);
@@ -41,23 +41,6 @@ export function StateDemoPage() {
     // BrandEngine theme (admin-configured; users cannot switch)
     const { theme: brandThemeName } = useBrandTheme();
 
-    const simulateLogin = () => {
-        const mockUser: AppUser = {
-            id: 'user-123',
-            name: 'John Doe',
-            email: 'john@example.com',
-            image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
-            role: 'admin',
-        };
-        setUser(mockUser);
-        setIsAuthenticated(true);
-    };
-
-    const simulateLogout = () => {
-        setUser(null);
-        setIsAuthenticated(false);
-    };
-
     const simulateLoading = () => {
         setIsLoading(true);
         setTimeout(() => setIsLoading(false), 2000);
@@ -66,14 +49,14 @@ export function StateDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Global State Management"
+                title="State"
                 description="Simple global state management for Ottabase apps using Jotai. All state changes are reactive and persist across components."
             />
 
             {/* Current State Display */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">📊 Current Global State</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Current Global State</CardTitle>
                     <CardDescription>Full appStateAtom value displayed as JSON</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -86,7 +69,7 @@ export function StateDemoPage() {
             {/* Theme Control */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">🎨 Theme</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Theme</CardTitle>
                     <CardDescription>
                         Uses: <code className="rounded bg-background px-1 ring-1 ring-border">themeAtom</code>
                     </CardDescription>
@@ -104,7 +87,7 @@ export function StateDemoPage() {
             {/* Theme Info */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">🎭 Theme Info</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Theme Info</CardTitle>
                     <CardDescription>
                         Uses: <code className="rounded bg-background px-1 ring-1 ring-border">themeInfoAtom</code>{' '}
                         (theme name), <code className="rounded bg-background px-1 ring-1 ring-border">themeAtom</code>{' '}
@@ -135,7 +118,7 @@ export function StateDemoPage() {
             {/* User Control */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">👤 User & Authentication</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">User & Authentication</CardTitle>
                     <CardDescription>
                         Uses: <code className="rounded bg-background px-1 ring-1 ring-border">userAtom</code>,{' '}
                         <code className="rounded bg-background px-1 ring-1 ring-border">isAuthenticatedAtom</code>
@@ -149,13 +132,11 @@ export function StateDemoPage() {
                                 {isAuthenticated ? 'Yes' : 'No'}
                             </Badge>
                         </span>
-                        {isAuthenticated ? (
-                            <Button variant="destructive" onClick={simulateLogout}>
-                                Logout
-                            </Button>
-                        ) : (
-                            <Button onClick={simulateLogin}>Simulate Login</Button>
-                        )}
+                        <Button asChild variant="outline" size="sm" className="bg-background">
+                            <Link to={isAuthenticated ? '/profile' : '/login'}>
+                                {isAuthenticated ? 'Open profile' : 'Sign in'}
+                            </Link>
+                        </Button>
                     </div>
                     {user && (
                         <div className="rounded-lg bg-background p-4 ring-1 ring-border">
@@ -177,7 +158,7 @@ export function StateDemoPage() {
             {/* Sidebar Control */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">📱 Sidebar State</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Sidebar State</CardTitle>
                     <CardDescription>
                         Uses: <code className="rounded bg-background px-1 ring-1 ring-border">sidebarStateAtom</code> -
                         Persisted to localStorage
@@ -261,7 +242,7 @@ export function StateDemoPage() {
                         <p className="font-semibold text-foreground">Persistence Info</p>
                         <p className="text-muted-foreground">
                             ✅ Sidebar state is persisted to localStorage under key:{' '}
-                            <code className="rounded bg-muted/60 px-1 ring-1 ring-border">ottabase.sidebar.state</code>
+                            <code className="rounded bg-muted/60 px-1 ring-1 ring-border">ottabase.sidebar-state</code>
                         </p>
                         <p className="text-muted-foreground">
                             Single atom with all properties: isOpen, isCollapsed, width. Try changing values and
@@ -277,7 +258,7 @@ export function StateDemoPage() {
             {/* Scale Control */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">🔍 UI Scale</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">UI Scale</CardTitle>
                     <CardDescription>
                         Uses: <code className="rounded bg-background px-1 ring-1 ring-border">scaleAtom</code> - Sets{' '}
                         <code className="rounded bg-background px-1 ring-1 ring-border">
@@ -325,7 +306,7 @@ export function StateDemoPage() {
             {/* Browser Zoom */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">🖥️ Browser Zoom</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Browser Zoom</CardTitle>
                     <CardDescription>
                         Uses: <code className="rounded bg-background px-1 ring-1 ring-border">zoomAtom</code> - Browser
                         zoom level (detected from window.devicePixelRatio)
@@ -373,7 +354,7 @@ export function StateDemoPage() {
             {/* Usage Example */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">📖 Usage</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">Usage</CardTitle>
                     <CardDescription>How to use @ottabase/state in your app</CardDescription>
                 </CardHeader>
                 <CardContent>

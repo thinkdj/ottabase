@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Resolved config types (API response shape, KV cache)
-// v2: Per-app scoping – no organizationId references
+// Brand Engine, Resolved config types (API response shape, KV cache)
+// v2: Per-app scoping, no organizationId references
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
@@ -43,7 +43,7 @@ export interface BrandKitItem {
     id: string;
     appId: string | null;
     isDefault?: boolean;
-    /** Parent Brand Kit ID – child inherits tokens/settings, overrides selectively */
+    /** Parent Brand Kit ID: child inherits tokens/settings, overrides selectively */
     parentBrandKitId?: string | null;
     /** Resolved parent name (populated by list API for display) */
     parentBrandKitName?: string | null;
@@ -68,7 +68,7 @@ export interface BrandKitItem {
     updatedAt?: number;
 }
 
-/** PUT /api/brand/kits/:id – update Brand Kit */
+/** PUT /api/brand/kits/:id, update Brand Kit */
 export interface UpdateBrandKitPayload {
     parentBrandKitId?: string | null;
     name?: string;
@@ -83,7 +83,7 @@ export interface UpdateBrandKitPayload {
     hideOttabaseBranding?: boolean;
 }
 
-/** GET /api/brand/layouts – layout template item */
+/** GET /api/brand/layouts: layout template item */
 export interface LayoutTemplateItem {
     id: string;
     name: string;
@@ -91,7 +91,7 @@ export interface LayoutTemplateItem {
     config?: object;
 }
 
-/** GET /api/brand/mappings – route mapping item */
+/** GET /api/brand/mappings: route mapping item */
 export interface LayoutMappingItem {
     id?: string;
     pathPattern: string;

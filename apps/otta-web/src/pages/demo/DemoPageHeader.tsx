@@ -1,3 +1,5 @@
+import { SEOHead } from '@/components/SEOHead';
+import { APP_META } from '@/ottabase/config';
 import { Button } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
@@ -23,7 +25,7 @@ export interface DemoPageHeaderProps {
  * Shared header for every /demo/* page.
  *
  * Gives all demo pages ONE consistent header: a ghost "← Back to Demos" link, an
- * H1 at a single size, and a muted description — replacing the mix of back-link
+ * H1 at a single size, and a muted description, replacing the mix of back-link
  * styles, heading sizes, and spacing that had drifted across pages.
  *
  * Wrap page content in a `space-y-8` container and place this at the top:
@@ -44,6 +46,7 @@ export function DemoPageHeader({
 }: DemoPageHeaderProps) {
     return (
         <div className="space-y-4">
+            {typeof title === 'string' && <SEOHead title={`${title} · ${APP_META.appName}`} />}
             <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
                 <Link to={backTo}>
                     <ArrowLeft className="h-4 w-4" />

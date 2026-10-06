@@ -17,7 +17,7 @@ export function formatCellValue(
     options: { currency?: string } = {},
 ): React.ReactNode {
     if (value === null || value === undefined) {
-        return React.createElement('span', { className: 'text-muted-foreground' }, '—');
+        return React.createElement('span', { className: 'text-muted-foreground' }, '-');
     }
 
     switch (format) {

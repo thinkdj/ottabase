@@ -110,10 +110,10 @@ describe('UserSection', () => {
 
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByTitle('Log out'));
+        fireEvent.click(screen.getByTitle('Sign out'));
 
         expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: 'Log out?' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Sign out?' })).toBeInTheDocument();
         expect(mockSession.logout).not.toHaveBeenCalled();
         expect(mockNavigate).not.toHaveBeenCalled();
     });
@@ -121,7 +121,7 @@ describe('UserSection', () => {
     it('closes the dialog without logging out when cancelled', () => {
         render(<UserSection />);
 
-        fireEvent.click(screen.getByTitle('Log out'));
+        fireEvent.click(screen.getByTitle('Sign out'));
         fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
         expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -132,8 +132,8 @@ describe('UserSection', () => {
     it('logs out and redirects home after confirmation', () => {
         render(<UserSection />);
 
-        fireEvent.click(screen.getByTitle('Log out'));
-        fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Log out' }));
+        fireEvent.click(screen.getByTitle('Sign out'));
+        fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Sign out' }));
 
         expect(mockSession.logout).toHaveBeenCalledTimes(1);
         expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });

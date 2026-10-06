@@ -5,7 +5,7 @@ import { APP_TEMPLATES, getMonorepoRoot, log, validateAppName, type AppTemplate 
 
 /**
  * Files and directories to skip when copying template (exact name matches).
- * Any file starting with '.env' is also skipped — see shouldSkip().
+ * Any file starting with '.env' is also skipped, see shouldSkip().
  */
 const SKIP_PATTERNS = ['node_modules', '.next', '.wrangler', 'dist', '.turbo', 'coverage', 'pnpm-lock.yaml'];
 
@@ -121,7 +121,7 @@ async function transformFiles(targetDir: string, appName: string, sourceName: st
 
         let content = await fs.readFile(filePath, 'utf8');
 
-        // Replace scoped package name — specific enough that split/join is safe
+        // Replace scoped package name: specific enough that split/join is safe
         const sourcePackageName = `@ottabase/${sourceName}`;
         const targetPackageName = `@ottabase/${appName}`;
         content = content.split(sourcePackageName).join(targetPackageName);

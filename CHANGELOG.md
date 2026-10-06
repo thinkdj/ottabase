@@ -9,9 +9,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
-- **The demo seed builds a whole site.** Seed demo content (Admin > Content > Content Theme, platform owner only) now
+- **Final UI, UX and IA pass over the packages, the demo gallery and the content.** One name per demo: the sidebar, the
+  gallery cards, the page heading and the breadcrumb all read the same label, the Cloudflare overview is built from the
+  same registry, and a demo of a disabled package (OttaAI, Comments) is left out everywhere. Demo pages that could not
+  work are fixed: the OttaORM demo runs on the todos model instead of the always-refused users CRUD, the binding demos
+  (D1, R2, Queues, Realtime) only call their admin-only endpoints for a platform admin and say so, the Comments database
+  tab asks for a sign-in instead of bouncing to the login page, the analytics query offers a group-by the server
+  accepts, the editor's upload provider switch remounts the editor, the Spotlight demo searches the query it was given,
+  the state demo no longer fakes a login into the real atoms, the i18n demo offers only the enabled languages, and the
+  timezone demo puts the app-wide timezone back on unmount. The email demo renders the app's own email catalogue. Code
+  samples on the Cron, Config and UI base pages use the real APIs, and gallery copy claims only what the code does.
+  Admin nav titles are sentence case and equal to their page headings (Content studio, Roles and permissions, Row-level
+  security, Kill switches, Dev mail, Migrations, Database); "What's new", "Demos", "Sign in", "Sign out", "Create
+  account", "Posts" and "thoughts" are used consistently; spelling is US English. Every demo, admin, docs and auth page
+  sets a browser tab title, and the home page a description. The home page claims match the code (fifty packages,
+  policies registered per model, bindings in wrangler.jsonc) and its dead hero copy is gone. Stale docs are corrected:
+  admin routes in both READMEs and the ottablog README, the RBAC guide's removed screens, the blog-only design note,
+  QUICKSTART's "Admin → Migrate", AGENTS.MD's deleted hook, the architecture diagram, and package READMEs that
+  documented props and APIs that do not exist (brand-engine-react `mode`, ottalayout `useLayoutMeta`, ui-base, comments,
+  forms, docs, shortlinks). The phantom `homepage-contract` package, an unused image renderer, a stale enhancement note
+  and the old email template registry are removed. Package UX: the share menu shows "Copied", table cells keep their
+  formatting and entities, data table rows open from the keyboard, the forms side panel shows a failed fetch instead of
+  loading forever, the password toggle and upload controls are named, menu dropdowns announce their state and every nav
+  landmark has a name, OttaSelect accepts `id` and `aria-labelledby`, removing a license key or a webhook endpoint asks
+  first, the magic link email carries the app's name and a readable expiry, and the blog error boundary speaks to
+  readers without a stack trace. Long dashes are gone from copy, comments and docs across the repo, with a hyphen, a
+  comma, a colon or "to" in their place.
+- **The demo seed builds a whole site.** Seed demo content (Admin > Content > Content studio, platform owner only) now
   calls `POST /api/admin/demo-seed`, which creates a team of four people with roles and portraits, a media library of
-  Unsplash photographs, six months of posts across articles, a four-part series, release notes, short notes and photo
+  Unsplash photographs, six months of posts across articles, a four-part series, release notes, short thoughts and photo
   journals with tags, categories and spread dates, comment threads, shortlinks, navigation menus in their slots, and a
   few inbox notifications. Every entity is create-only on a stable key, so running it again after edits changes nothing.
   The blog package's seed contract learned `publishedAt`, `authorEmail`, `tags`, `categories`, `series`, blurbs and
@@ -37,7 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **The Email page shows every email the app sends.** `/admin/infrastructure/email` renders each one as it goes out
   (verify email, password reset, organization invite, added to an organization, the test email), with its subject, when
   it is sent, and a Send test button that delivers that email to the signed-in admin, or any recipients, over the chosen
-  provider; providers show as configured or not, with a link to Dev Mail. The emails themselves moved into one catalogue
+  provider; providers show as configured or not, with a link to Dev mail. The emails themselves moved into one catalogue
   (`src/email/catalog.ts`) that the worker composes from and the page renders, so the preview is the truth.
   `POST /api/email/test` now takes `{ recipients, email, provider }`. Email footers no longer print raw `<p>` tags (the
   template escapes that section; the catalogue keeps it plain text).
@@ -227,13 +253,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - **RBAC: role permission sets.** New namespaces `platform:admin`/`platform:*` and `org:admin`/`org:*`. The org-scoped
   `owner`/`admin` roles now carry
-  `['*:read', '*:create', '*:update', '*:delete', 'org:admin', 'media:*', 'comments:moderate', 'audit:read']` — full
-  CRUD within the org, but **no `*:*`** and **no `brand:*`** (appearance/menus are app-global, hence platform-owned).
+  `['*:read', '*:create', '*:update', '*:delete', 'org:admin', 'media:*', 'comments:moderate', 'audit:read']`: full CRUD
+  within the org, but **no `*:*`** and **no `brand:*`** (appearance/menus are app-global, hence platform-owned).
   `platform_owner` retains `*:*`.
 
 - **RBAC: self-healing system roles.** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role
-  rows to the canonical permission sets, correcting a role seeded under an older definition — e.g. a legacy
-  `owner = ['*:*']` — with no manual re-seed or DB wipe. The reconcile runs on the deliberate `/__bootstrap__/seed` path
+  rows to the canonical permission sets, correcting a role seeded under an older definition, e.g. a legacy
+  `owner = ['*:*']`: with no manual re-seed or DB wipe. The reconcile runs on the deliberate `/__bootstrap__/seed` path
   (which also invalidates caches + refreshes platform-owner sessions); the signup path only creates-if-missing. The
   separate bootstrap `enforceDefaultRolePermissions` step is removed as redundant. Customize by creating NEW roles,
   never by editing system ones (the admin API rejects edits to `isSystem` roles).
@@ -247,15 +273,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   require `org:admin`. `ProtectedRoute` gains `requirePlatformAdmin`; the admin nav filters by capability so an org
   admin sees only their own sections. Every admin-ish helper is now permission-based, not role-name based:
   `isAdminUser`/`isPlatformAdmin`/`isOrgAdmin` (frontend), `isAdmin` (rbac/utils), `isOwnerOrAdmin` (rbac/app-context),
-  and `User.isAdmin(organizationId)` (ottaorm) — the last checks `platform:admin`/`org:admin` scoped to a given org.
+  and `User.isAdmin(organizationId)` (ottaorm), the last checks `platform:admin`/`org:admin` scoped to a given org.
 
 - **Bootstrap: `GET /__bootstrap__/seed` maintenance page.** A focused, one-click "Reconcile roles & permissions" UI
   over the existing `POST /__bootstrap__/api/seed` (secret-gated, non-destructive). Runs `ensureDefaultRoles()` to heal
-  the built-in system-role permission sets after a framework upgrade — e.g. a legacy `owner = ['*:*']` row — without
+  the built-in system-role permission sets after a framework upgrade, e.g. a legacy `owner = ['*:*']` row, without
   clearing the DB or hand-editing SQL. Reuses the wizard's layout; prefill the token via `?secret=`.
 
 - **Bootstrap: `GET /__bootstrap__/promote-owner` page.** A secret-gated UI over
-  `POST /api/admin/platform-owner/promote` to grant an existing account the system-scoped `platform_owner` role — for
+  `POST /api/admin/platform-owner/promote` to grant an existing account the system-scoped `platform_owner` role, for
   ownership transfer or break-glass recovery when no owner can sign in. Previously curl-only.
 
 - **Admin → Infrastructure → Email.** A platform-admin page (`/admin/infrastructure/email`) over `/api/email/providers`
@@ -287,61 +313,61 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (spinner, disabled buttons, inline error on failure); menu, layout, brand kit and membership deletes now use it.
 
 - **Generic CRUD is now DEFAULT-DENY (allowlist).** `/api/ottaorm/*` previously allowed any registered model except an
-  explicit denylist — which repeatedly missed sensitive tables (`user_roles`, then `user_group_members`). It now serves
-  ONLY an allow-list of app-data models (posts/taxonomy/media/comments/organizations/todos); every other model —
+  explicit denylist, which repeatedly missed sensitive tables (`user_roles`, then `user_group_members`). It now serves
+  ONLY an allow-list of app-data models (posts/taxonomy/media/comments/organizations/todos); every other model,
   grant/auth/system tables and app-global control-plane data (e.g. `user_group_members`, `menu_slot_assignments`,
-  `ottablog_themes`, `audit_logs`, `sessions`) — is refused with `CRUD_NOT_ALLOWED`. This closes the
-  `user_group_members` self-grant vector (an authenticated user could `POST` themselves group ownership) and any future
-  same-class model by default. `menu_slot_assignments` also gains `requirePlatformAdmin` in RLS as defense-in-depth.
+  `ottablog_themes`, `audit_logs`, `sessions`), is refused with `CRUD_NOT_ALLOWED`. This closes the `user_group_members`
+  self-grant vector (an authenticated user could `POST` themselves group ownership) and any future same-class model by
+  default. `menu_slot_assignments` also gains `requirePlatformAdmin` in RLS as defense-in-depth.
 
-- **Roster takeover — admin tier closed.** The prior fix stopped a plain member, but an org **admin** could still
+- **Roster takeover: admin tier closed.** The prior fix stopped a plain member, but an org **admin** could still
   `PATCH self {role:'owner'}` (granting owner was unguarded) and then evict the founder. The update/remove/invite
   handlers now enforce a role hierarchy: only an OWNER may grant, modify, or remove owner-level membership.
 
 - **Bootstrap secret brute-force oracle throttled.** Every `/__bootstrap__/*` endpoint (esp. the read-only
-  `GET /api/status`) returned 401-vs-200 on secret correctness with no rate limit — a free oracle that made the promote
+  `GET /api/status`) returned 401-vs-200 on secret correctness with no rate limit, a free oracle that made the promote
   endpoint's own limiter moot. Failed secret attempts are now IP-rate-limited at the shared `isValidSecret` choke point
   (best-effort; only real 429s block, so a missing limiter never breaks bootstrap).
 
 - **Org creation is now all-or-nothing.** With the `ownerId` fallback removed (see stale-ownership fix), a partial
   failure between the `organizations` and `organization_members` inserts would orphan the org (unreachable even by its
-  creator). All **three** org-creation paths — generic CRUD, `provisionDefaultOrganizationForUser`, and the first-user
-  bootstrap `createPersonalOrganizationIfMissing` — now compensating-delete the org if the owner membership can't be
+  creator). All **three** org-creation paths: generic CRUD, `provisionDefaultOrganizationForUser`, and the first-user
+  bootstrap `createPersonalOrganizationIfMissing`: now compensating-delete the org if the owner membership can't be
   written. (The bootstrap path was missed in the first atomicity pass; it does two raw non-atomic D1 inserts.)
 
 - **Cross-tenant bypass is now scope-aware.** `enforceOrgMembership` (the RLS defense-in-depth tenant check) gated its
   super-admin bypass on the `*:*` permission STRING, which an org-scoped/legacy grant can carry without being a platform
-  admin. It now gates on the scope-aware `SecurityContext.platformAdmin` flag — consistent with the `checkAccess`
-  platform gate — so only a genuine platform admin may act across tenants; a stale org-scoped `*:*` cannot.
+  admin. It now gates on the scope-aware `SecurityContext.platformAdmin` flag, consistent with the `checkAccess`
+  platform gate, so only a genuine platform admin may act across tenants; a stale org-scoped `*:*` cannot.
 
 - **Secret-gated throttles share one fail-open policy.** The bootstrap-secret check and the platform-owner promote
   endpoint handled a missing rate-limiter binding inconsistently (one ignored the 500 and proceeded, the other 500'd the
   whole request). Both now use a shared `enforceBruteForceThrottle`: a real 429 blocks, but an unavailable limiter FAILS
-  OPEN behind the secret gate **with a logged warning** — so a misconfigured binding can't brick first-run bootstrap or
+  OPEN behind the secret gate **with a logged warning**, so a misconfigured binding can't brick first-run bootstrap or
   break-glass ownership recovery, and the degraded state is diagnosable. Added coverage for the limiter counting/window
   logic and the org-creation compensating-delete rollback.
 
 - **RBAC Permissions Matrix un-broken.** `useRBAC`'s role hooks now target `/api/admin/roles*` (platform-scoped) instead
-  of the now-blocked generic `/api/ottaorm/roles`, so the permissions matrix — linked from the RBAC Roles page — works.
+  of the now-blocked generic `/api/ottaorm/roles`, so the permissions matrix, linked from the RBAC Roles page, works.
 
-- **CRITICAL — unauthenticated privilege escalation via generic CRUD on RBAC grant tables.** `user_roles`, `roles`, and
+- **CRITICAL: unauthenticated privilege escalation via generic CRUD on RBAC grant tables.** `user_roles`, `roles`, and
   `permissions` were registered OttaORM CRUD models with no permission gate, so `POST /api/ottaorm/user_roles` could
-  mint a `platform_owner` grant and `GET` could dump all grants — no session, secret, or rate limit. Hard-blocked all
+  mint a `platform_owner` grant and `GET` could dump all grants: no session, secret, or rate limit. Hard-blocked all
   three in `ottaorm-crud.ts` and added `requirePlatformAdmin` to their RLS as defense-in-depth. Use `/api/admin/roles`
   and the org-members / promote endpoints (all platform-admin scoped). (`roles`/`permissions` were previously only
-  _accidentally_ fail-closed by an RLS-field/column mismatch — now intentionally gated.)
+  _accidentally_ fail-closed by an RLS-field/column mismatch, now intentionally gated.)
 
-- **CRITICAL — org roster takeover by a rank-and-file member.** `assertRosterAccess` accepted any active membership
+- **CRITICAL: org roster takeover by a rank-and-file member.** `assertRosterAccess` accepted any active membership
   (`isMember`), and `requireAdminAccess({scope:'either'})` resolves admin status against the caller's OWN org (where
   every signup is `org:admin`), so an invited `member` of org O could self-promote to `owner` and evict the founder. The
   roster guard now requires an OWNER/ADMIN membership in the TARGET org (`isOwnerOrAdmin`).
 
-- **HIGH — stale-ownership cross-tenant access.** `Organization.ownerId` is stamped at creation and never cleared, and
-  two paths trusted it: (a) `OrganizationMember.organizationIdsForUser` unioned owned orgs into `memberOrganizationIds`
-  — which `getSecurityContext` uses to decide whether a client-supplied `x-org-id` is honored as the caller's active
-  org, and which `enforceOrgMembership` uses as its defense-in-depth set. So a removed ex-owner (whose co-owner remains)
+- **HIGH: stale-ownership cross-tenant access.** `Organization.ownerId` is stamped at creation and never cleared, and
+  two paths trusted it: (a) `OrganizationMember.organizationIdsForUser` unioned owned orgs into `memberOrganizationIds`,
+  which `getSecurityContext` uses to decide whether a client-supplied `x-org-id` is honored as the caller's active org,
+  and which `enforceOrgMembership` uses as its defense-in-depth set. So a removed ex-owner (whose co-owner remains)
   could set `x-org-id: O` and get O pinned as the tenant scope for `/api/ottaorm/*`, giving live read/write of O's
-  tenant data — e.g. read O's full `audit_logs`, inject `posts`/`media` — not just a metadata leak. (b) The
+  tenant data, e.g. read O's full `audit_logs`, inject `posts`/`media`, not just a metadata leak. (b) The
   `organizations` RLS policy fell back to `{ ownerId }` when membership resolved to an empty set, letting the same
   ex-owner read/write the org record. Fixed both: `organizationIdsForUser` uses ACTIVE MEMBERSHIPS only (owners always
   have an active owner membership), and the `organizations` filter denies on a resolved-empty set (falls back to
@@ -350,7 +376,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **System-role edits + self-heal reconciled.** `PATCH /api/admin/roles/:id` now rejects edits to `isSystem` roles
   (mirrors DELETE), and `Role.ensureDefaultRoles()` gained a `heal` flag: the signup hot path is create-if-missing only
   (no silent revert, no unbounded session churn), and the reconcile runs only on the deliberate `/__bootstrap__/seed`
-  path — which now also invalidates the RBAC cache and refreshes platform-owner sessions so healed permissions take
+  path, which now also invalidates the RBAC cache and refreshes platform-owner sessions so healed permissions take
   effect. **Deploy note:** after deploying, run `/__bootstrap__/seed` once; existing non-platform sessions pick up
   role/permission changes (and the `platformAdmin` flag) on their next sign-in.
 
@@ -365,11 +391,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (404) instead of the real, platform-scoped `/api/admin/roles*`; role definition management now works from the UI.
 
 - **Removed the non-functional Notifications admin page.** It posted to `/api/admin/notifications/{send,system-alert}`,
-  which were never implemented (no notification model/delivery/history — the "history" and stats were hardcoded mocks).
+  which were never implemented (no notification model/delivery/history, the "history" and stats were hardcoded mocks).
   Dropped the page, route, and nav entry rather than ship a fake admin surface. A real notifications subsystem can be
   designed later as a proper feature.
 
-- **Security: closed several `/admin`-adjacent leaks** surfaced during the RBAC audit — app-global blog taxonomy
+- **Security: closed several `/admin`-adjacent leaks** surfaced during the RBAC audit, app-global blog taxonomy
   (`series`/`categories`/`tags`/`post_tags` + link tables) was writable unauthenticated (now requires `org:admin`);
   brand kits/layouts/menus and the blog Studio were reachable by any org owner (now platform-scoped); organization
   `plan`/`status` could be self-upgraded by any member (now stripped from non-platform-admin writes); the migration
@@ -378,24 +404,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
-- **Premium Packages framework — `@ottabase/premium`.** Sell add-ons for an Ottabase app, or install someone else's,
+- **Premium Packages framework: `@ottabase/premium`.** Sell add-ons for an Ottabase app, or install someone else's,
   without either side writing integration code. One `definePremiumPackage()` manifest carries everything a paid package
-  contributes — Drizzle tables, migrations, OttaORM models, API routes, admin nav, entitlements and lifecycle hooks —
-  and installing one starts with the new `apps/*/ottabase/config.premium.ts`. Premium Packages deliberately bypass the
+  contributes: Drizzle tables, migrations, OttaORM models, API routes, admin nav, entitlements and lifecycle hooks, and
+  installing one starts with the new `apps/*/ottabase/config.premium.ts`. Premium Packages deliberately bypass the
   free-package wiring (`config.migrations.ts` PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`,
   `db-utils.ts`): runtime integration is derived from the manifest list. Drizzle's static schema export and any rendered
   admin page remain explicit build-time adapters, verified by the premium-registration test.
     - **Licensing is offline.** A license is a compact signed token (`obp1.<claims>.<sig>`, ECDSA P-256 via Web Crypto)
       verified in microseconds with no network on the request path, so a vendor outage cannot take a customer's feature
       down and customer traffic patterns never reach the vendor. The stated cost: an offline token **cannot be revoked
-      before it expires** — expiry is the revocation mechanism, and subscription vendors mint short-dated tokens.
+      before it expires**, expiry is the revocation mechanism, and subscription vendors mint short-dated tokens.
     - **License sources, in precedence order:** `PREMIUM_LICENSE_<KEY>` → the `PREMIUM_LICENSES` JSON map → a key pasted
       in the admin UI (KV). Env wins deliberately, so the key in your infrastructure config is the key actually in
       force. `PREMIUM_PKG_<KEY>=false` is the kill switch, independent of licensing. A package with no
       `licensePublicKey` is free by construction.
     - **Six states, and a free tier that survives them.** `active` / `grace` (expired inside `graceDays`, still serving)
       / `expired` / `invalid` / `unlicensed` / `disabled`. A non-serving license collapses to the package's
-      `freeFeatures` and `freeLimits` rather than to nothing — a customer whose card expires keeps their data and their
+      `freeFeatures` and `freeLimits` rather than to nothing, a customer whose card expires keeps their data and their
       basic path; only the paid surface closes.
     - **Enforcement on the server, hints in the browser.** `requirePremium` / `requirePremiumFeature` /
       `requirePremiumLimit` answer **402 PAYMENT_REQUIRED** with machine-readable `metadata` (package, reason, limit,
@@ -404,7 +430,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
       and outside the provider.
     - **Two route-gating modes.** `gate: 'license'` (default) closes a whole namespace with one gate;
       `gate: 'entitlements'` keeps it reachable so a free tier exists, at the cost of each paid route guarding itself.
-    - **Lifecycle:** `onInstall`, `onUpgrade` (manifest version change), `onActivate`, `onDeactivate`, `onUninstall` —
+    - **Lifecycle:** `onInstall`, `onUpgrade` (manifest version change), `onActivate`, `onDeactivate`, `onUninstall`:
       best-effort and idempotent by contract, because a paid add-on's bookkeeping must never take the host app down.
       Uninstall clears the install record and **never drops tables**.
     - **Operations:** `/api/premium/*` control plane (status, activate, remove, uninstall, re-check) with authorization
@@ -413,38 +439,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
     - **An app with no Premium Packages is unaffected**: no routes, no middleware, no KV reads, no nav entries, no
       tables. Full guide in `docs/PREMIUM_PACKAGES.md`.
 
-- **`@ottabase/premium-webhooks` — the worked example.** A real paid add-on, not a stub: customer-registered HTTPS
+- **`@ottabase/premium-webhooks`: the worked example.** A real paid add-on, not a stub: customer-registered HTTPS
   endpoints, HMAC-SHA256 deliveries signed over `<timestamp>.<body>` (so a receiver's tolerance window actually rejects
   replays), per-endpoint health, and a delivery log. Free tier is one endpoint with signed delivery and health; the demo
-  "pro" license raises the ceiling to 25 and unlocks retained delivery history — exercising a limit gate, a feature
-  gate, and a free tier that stays reachable when the license lapses. Destinations are validated on write (HTTPS only,
-  no credentials, literal private/loopback/link-local refused) and redirects are never followed; the documented
-  limitation is that a hostname _resolving_ to a private address cannot be caught without a resolver. Its demo keypair
-  is published in the repo on purpose so the whole activation flow can be tried in minutes — with a loud note that a
-  real vendor keeps the private key offline. Available at **Admin → Growth → Webhooks**.
+  "pro" license raises the ceiling to 25 and unlocks retained delivery history, exercising a limit gate, a feature gate,
+  and a free tier that stays reachable when the license lapses. Destinations are validated on write (HTTPS only, no
+  credentials, literal private/loopback/link-local refused) and redirects are never followed; the documented limitation
+  is that a hostname _resolving_ to a private address cannot be caught without a resolver. Its demo keypair is published
+  in the repo on purpose so the whole activation flow can be tried in minutes, with a loud note that a real vendor keeps
+  the private key offline. Available at **Admin → Growth → Webhooks**.
 
-- brand-engine v2 — full design-system fidelity. The token schema grew from "shadcn colors + 3 fonts +
+- brand-engine v2: full design-system fidelity. The token schema grew from "shadcn colors + 3 fonts +
   radius/shadows/motion" to a complete design-system vocabulary so radical design systems port 1:1 as theme JSON:
-  `palette` (verbatim CSS color values incl. `color-mix()` derivation ramps — one brand knob retints the app live), open
+  `palette` (verbatim CSS color values incl. `color-mix()` derivation ramps, one brand knob retints the app live), open
   typography roles (`mono` + arbitrary roles like `label`/`ticker`), `typeScale` (every Tailwind `text-*` step becomes
-  themeable, fluid `clamp()` included), radius scale (incl. `full` — set `2px` to ban pills), open shadow record (`none`
+  themeable, fluid `clamp()` included), radius scale (incl. `full`: set `2px` to ban pills), open shadow record (`none`
   allowed), `border`, open motion vocabulary (named durations/easings, configurable spring, `@keyframes` registry),
   `focus` (unified global focus-visible ring), `interaction` (hover/press physics), `links` (content-anchor contract
   incl. real `:visited`), `selection`, `scrollbar`, `native` (color-scheme/accent-color/caret), `zIndex` ladder,
   `textStyles` (generated `.ts-*` voice classes), `fontFaces` (self-hosted/variable fonts), `effects` (registry
-  utilities + preset-portable raw theme CSS), `scopes` (token "rooms" — `[data-brand-scope]` re-binds semantic vars per
+  utilities + preset-portable raw theme CSS), `scopes` (token "rooms", `[data-brand-scope]` re-binds semantic vars per
   subtree), and `surface` (body backdrop). All sparse: a theme that defines none of them renders pixel-identical to
   before (fallback-chain law).
-- brand-engine: two complete 1:1 design-system ports as fidelity references. `themes/visited.json` — "Visited"
+- brand-engine: two complete 1:1 design-system ports as fidelity references. `themes/visited.json`: "Visited"
   (the90s.page): Netscape triad with pinned `:visited` purple, one-knob `--link` derivation, 7-step type ramp, 2px
   die-cut radius, zero shadows, dotted focus rect, membrane press physics, After Dark room, kicker/dateline/OSD voices.
-  `themes/marquee.json` — "Marquee" (uppcoming): one Fauscia pigment deriving six live `color-mix()` tints (soft/wash
+  `themes/marquee.json`: "Marquee" (uppcoming): one Fauscia pigment deriving six live `color-mix()` tints (soft/wash
   re-derived per room), always-dark `screen` scope, Archivo width-axis voices (`.ts-stretch-wide`), Spline Sans Mono
   ticker role, size-stepped radius ladder, spring hover-lift/press-scale physics, brand-glow shadow slot, and
   ticket-stub notch + perforation effect utilities.
-- ui-shadcn: universal theming hooks — `data-slot` on every primitive (+ `data-variant`/`data-size` on CVA components),
+- ui-shadcn: universal theming hooks, `data-slot` on every primitive (+ `data-variant`/`data-size` on CVA components),
   `[data-decor]` effect-carrier spans on Button/Card, `BrandScope` room wrapper, and a Tier-2 `BrandComponentsProvider`
-  registry for forks whose components need genuinely different DOM (`overrides={{ button: UppButton }}` —
+  registry for forks whose components need genuinely different DOM (`overrides={{ button: UppButton }}`:
   button/badge/card/input resolve overrides).
 - otta-web worker: edge injection now also emits the generated `#brand-effects` stylesheet, the (sanitized) per-kit
   `#brand-custom-css` (killing the 300 ms client-only custom-CSS FOUC), and font `<link>` tags for every typography-role
@@ -453,12 +479,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `:param` > `*`, exact method > `ALL`), prefix-scoped onion middleware, gated sub-router mounts, and null-based
   fall-through for composing with custom routes, shortlinks, and static assets.
 - otta-web: security-context membership lookups (org + group) are now cached behind a 5-minute KV read-through cache
-  (`auth:usr:{id}:member-orgs` / `member-groups:*`, same TTL as the RBAC cache), replacing 2–4 D1 queries per
+  (`auth:usr:{id}:member-orgs` / `member-groups:*`, same TTL as the RBAC cache), replacing 2 to 4 D1 queries per
   authenticated request with KV reads. New `invalidateMembershipCache()` helper (`worker/lib/auth-utils.ts`) invalidates
   eagerly on every in-app mutation path: sign-in invite activation, admin member invite/update/remove, organization
-  creation, and generic CRUD on `user_groups`/`user_group_members`. KV failures fall back to direct D1 — caching never
+  creation, and generic CRUD on `user_groups`/`user_group_members`. KV failures fall back to direct D1, caching never
   weakens membership enforcement. See docs/CACHE_KEYS.md.
-- brand-engine / otta-web: edge→client brand config hydration handoff — the Cloudflare Worker now injects the full
+- brand-engine / otta-web: edge→client brand config hydration handoff, the Cloudflare Worker now injects the full
   resolved brand config as a JSON `<script type="application/json">` tag (`buildInitialConfigScriptTag`) alongside the
   existing critical CSS, and `BrandProvider` hydrates from it instead of re-fetching `/api/brand` on mount. Removes a
   redundant round-trip and, more importantly, guarantees the client can never resolve a config that disagrees with what
@@ -474,14 +500,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `<style id="brand-critical">`/`#brand-effects` elements the edge injects (`applyBrandTheme(light, dark)`), so
   dark-mode/room switching is pure CSS cascade and theme CSS never fights inline-style specificity. `BrandConfig` gains
   `themeLight`/`themeDark`; kit `defaultColorScheme` now drives next-themes' default. The zero-FOUC handoff contract
-  (client derivation must be byte-identical to the edge-painted critical CSS, so first-load application is a no-op — no
+  (client derivation must be byte-identical to the edge-painted critical CSS, so first-load application is a no-op, no
   re-fetch, no base-theme-then-retheme flash) is locked by `apps/otta-web/src/__tests__/brand-theme-parity.test.ts`. The
   edge-injected critical style tag is now sanitized (`sanitizeCssForStyleTag`) like effects/custom CSS, since v2 token
   values (palette, shadows) are admin-authored free-form strings.
 - ui-tailwind preset: `text-*` sizes, `rounded-*` (incl. `rounded-full`), `border` width, bare `shadow`, `font-mono`,
   named z-index steps, and press/spring motion utilities are now token-backed with pixel-identical fallbacks; dead
   `brand.{50,500,700}` hex ramp removed; `caret-blink` keyframes added.
-- ui-shadcn: Tailwind v4-only syntax (emitting no CSS under the workspace's v3.4 — `w-(--var)`, `in-data-*`,
+- ui-shadcn: Tailwind v4-only syntax (emitting no CSS under the workspace's v3.4: `w-(--var)`, `in-data-*`,
   `has-data-*`, trailing `!` importants) codemodded to working v3 equivalents across ~20 components; per-component
   focus-ring recipes replaced by one global token-driven `:focus-visible` rule; interactive components use bare
   `transition` so press/hover physics tokens animate; overlay scrims use the new `--overlay` token; toaster's raw
@@ -491,18 +517,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - otta-web worker routing migrated from the hand-rolled `resolveApiRoute` if/regex chain to declarative
   `@ottabase/ottarouter` registrations (`worker/routes/router.ts`); route handlers, endpoint paths, and the
   `ottabase/config.routes.ts` custom-route contract are unchanged.
-- otta-web bootstrap gate: `resolvePlatformState` now has a READY fast path — per-isolate memo (60s soft TTL) plus a
-  KV=READY early return — eliminating the serialized KV read + D1 probe every request (including asset fetches)
+- otta-web bootstrap gate: `resolvePlatformState` now has a READY fast path, per-isolate memo (60s soft TTL) plus a
+  KV=READY early return, eliminating the serialized KV read + D1 probe every request (including asset fetches)
   previously paid. State writers drop the memo on any transition away from READY; a re-init on a live deployment should
   expect up to ~2 minutes of stale READY traffic from remote isolates (memo TTL + KV propagation). The preemptive
   KV=READY+dead-D1 panic/maintenance mode was removed as part of this: `PlatformStateResult.panic` is currently always
   `false` and D1 failures surface in the actual queries.
 - otta-web worker bundle is now minified with source maps uploaded (`minify` + `upload_source_maps` in wrangler.jsonc):
   upload size 3604→1742 KiB raw, 684→478 KiB gzip.
-- otta-web frontend: removed the `mantine` manual chunk from `vite.config.ts` — it was `modulepreload`ed into every page
+- otta-web frontend: removed the `mantine` manual chunk from `vite.config.ts`: it was `modulepreload`ed into every page
   (~55 KB gzip fetched+executed on first paint) although Mantine is only used by the lazy `/demo/mantine` route.
   First-load JS drops from ~330 to ~297 KB gzip; Mantine now lives entirely inside the demo route chunk.
-- brand-engine: worker HTML injection now resolves the brand config once per request — new `resolveConfigFromFull`
+- brand-engine: worker HTML injection now resolves the brand config once per request, new `resolveConfigFromFull`
   derives path-scoped light/dark themes (route token overrides included) from an already-resolved full config, pure CPU
   with no extra KV/D1 access, replacing a prior two-call pattern that doubled KV reads on every hard navigation.
 - otta-web: brand-config `appId` resolution for edge HTML injection now sources from the worker's own configured app id
@@ -510,7 +536,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   navigation never carries anyway; the injected payload also carries that `appId` so a deployment-time `APP_ID` env
   override can't cause a later `refresh()`/fetch to swap in a different app's brand mid-session.
 - otta-web: HTML responses carrying injected brand config now set `Cache-Control: no-store` and drop
-  `ETag`/`Last-Modified` — previously the injected response reused the static asset's original validators, so a browser
+  `ETag`/`Last-Modified`: previously the injected response reused the static asset's original validators, so a browser
   could 304-revalidate and keep serving a stale embedded theme indefinitely after an admin brand-kit update.
 - brand-engine: deleted the now-unused `resolveBrandConfig` persistence function (superseded by
   `resolveFullBrandConfig` + `resolveConfigFromFull`); `warmBrandCache`'s `skipCache` option renamed to `skipCacheRead`
@@ -524,9 +550,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - otta-web: fixed a document-corruption bug in brand HTML injection where tenant-authored brand text (tagline,
   `customCss`) containing `$'`, `` $` ``, or `$$` could be expanded by `String.replace`'s special replacement-pattern
   handling, splicing arbitrary trailing document content into `<head>`; the injector now uses a replacer function.
-- brand-engine: fixed the `.dark` critical CSS silently falling back to the light palette on KV cache hits — the
-  resolved dark theme was dropped by the cache-hit code path, so dark-mode users on a warm cache first-painted the light
-  palette until client-side hydration corrected it.
+- brand-engine: fixed the `.dark` critical CSS silently falling back to the light palette on KV cache hits, the resolved
+  dark theme was dropped by the cache-hit code path, so dark-mode users on a warm cache first-painted the light palette
+  until client-side hydration corrected it.
 
 ### Security (Unreleased)
 

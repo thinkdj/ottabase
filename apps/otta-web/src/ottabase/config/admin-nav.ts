@@ -1,5 +1,5 @@
 /**
- * Admin Navigation – Single Source of Truth
+ * Admin Navigation: Single Source of Truth
  *
  * One typed array drives BOTH:
  *   - The admin sidebar (apps/otta-web/src/components/admin/AdminLayout.tsx)
@@ -70,7 +70,7 @@ export interface AdminNavItem {
     /**
      * Visible only when this Premium Package is installed (see `ottabase/config.premium.ts`).
      *
-     * Installed, not licensed: an unlicensed page still renders — with its upsell — because
+     * Installed, not licensed: an unlicensed page still renders, with its upsell, because
      * hiding it would leave the operator no route to the screen that fixes it.
      */
     requiresPremiumPackage?: string;
@@ -98,7 +98,7 @@ export interface AdminNavGroup {
 
 /**
  * Master admin nav. Order here = order in sidebar + cards.
- * brandEngine and ottamenu are core (always enabled) — no `requiresPackage`.
+ * brandEngine and ottamenu are core (always enabled), no `requiresPackage`.
  */
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     {
@@ -114,7 +114,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
             },
             {
                 title: 'Brand kits',
-                description: 'Colours, logos, type, motion and cursors, with a live specimen.',
+                description: 'Colors, logos, type, motion and cursors, with a live specimen.',
                 href: '/admin/appearance/brand-kits',
                 icon: Layers,
             },
@@ -148,14 +148,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 requiresPackage: 'ottablog',
             },
             {
-                title: 'Content Theme',
-                description: 'Manage content themes and renderer plugins.',
+                title: 'Content studio',
+                description: 'Content themes, renderer plugins, languages and the demo content seed.',
                 href: '/admin/content/blog/studio',
                 icon: Palette,
                 requiresPackage: 'ottablog',
             },
             {
-                title: 'Media Library',
+                title: 'Media library',
                 description: 'Browse uploads with previews, metadata, and direct links.',
                 href: '/admin/content/media',
                 icon: ImageIcon,
@@ -183,7 +183,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
             },
             {
-                title: 'Roles & Permissions',
+                title: 'Roles and permissions',
                 description: 'Pick a role, tick what it allows, save.',
                 href: '/admin/access/rbac',
                 icon: UserCog,
@@ -203,13 +203,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
             },
             {
-                title: 'Row-Level Security',
+                title: 'Row-level security',
                 description: 'Inspect tenant isolation policies and verify RLS enforcement.',
                 href: '/admin/security/rls',
                 icon: ShieldCheck,
             },
             {
-                title: 'Kill Switches',
+                title: 'Kill switches',
                 description: 'Configure global read-only mode or full lockdown.',
                 href: '/admin/security/kill-switches',
                 icon: Power,
@@ -240,7 +240,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: Clock,
             },
             {
-                title: 'Dev Mail',
+                title: 'Dev mail',
                 description: 'Inspect locally captured emails (magic links, resets, queue sends).',
                 href: '/admin/infrastructure/dev-mail',
                 icon: Inbox,
@@ -260,7 +260,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 requiresPackage: 'ottaai',
             },
             {
-                title: 'System Health',
+                title: 'System health',
                 description: 'View system health metrics and API status.',
                 href: '/api/health',
                 icon: Activity,
@@ -290,7 +290,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
                 requiresPackage: 'ottaai',
             },
-            // Premium Packages' pages — one entry per registration in `config/premium.ts`.
+            // Premium Packages' pages: one entry per registration in `config/premium.ts`.
             ...PREMIUM_ADMIN_PAGES.map(premiumPageNavItem),
             {
                 // Always listed, even with nothing installed: it is the control plane for paid
@@ -305,9 +305,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 ];
 
 export interface AdminNavCapabilities {
-    /** System-scoped platform admin — sees the control plane. */
+    /** System-scoped platform admin: sees the control plane. */
     isPlatformAdmin: boolean;
-    /** Org admin (includes platform owners) — sees own-tenant sections. */
+    /** Org admin (includes platform owners), sees own-tenant sections. */
     isOrgAdmin: boolean;
 }
 

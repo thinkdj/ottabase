@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * help – Print every pnpm script in the monorepo as a grouped, annotated table.
+ * help: Print every pnpm script in the monorepo as a grouped, annotated table.
  *
  * The command list is read from the root package.json at runtime and joined with the
  * descriptions below, so the table can never advertise a script that does not exist.

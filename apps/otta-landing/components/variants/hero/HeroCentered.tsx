@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { HeroData } from './types';
 
 /**
- * Centered hero — large heading, subtitle, and action buttons all center-aligned.
+ * Centered hero: large heading, subtitle, and action buttons all center-aligned.
  * This is the original / default hero layout.
  */
 export function HeroCentered({ title, subtitle, body, actions }: HeroData) {

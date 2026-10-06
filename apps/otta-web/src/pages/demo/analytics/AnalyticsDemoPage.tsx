@@ -26,7 +26,7 @@ interface CoreAnalyticsResponse {
 export function AnalyticsDemoPage() {
     const [eventName, setEventName] = useState('demo_click');
     const [eventPath, setEventPath] = useState('/demo/analytics');
-    const [groupBy, setGroupBy] = useState<'event' | 'path' | 'country'>('event');
+    const [groupBy, setGroupBy] = useState<'event' | 'country' | 'day'>('event');
     const [days, setDays] = useState('7');
     const [trackResult, setTrackResult] = useState<string>('');
     const [queryResult, setQueryResult] = useState<string>('');
@@ -84,8 +84,8 @@ export function AnalyticsDemoPage() {
                 title="Analytics"
                 description={
                     <>
-                        Track and query demo for <code>@ottabase/analytics</code> through app endpoints, usable without
-                        login.
+                        Track and query demo for <code>@ottabase/analytics</code> through app endpoints. Tracking is
+                        open to anyone; the query needs a platform admin.
                     </>
                 }
             />
@@ -134,14 +134,14 @@ export function AnalyticsDemoPage() {
                                 <Label>Group by</Label>
                                 <Select
                                     value={groupBy}
-                                    onValueChange={(value) => setGroupBy(value as 'event' | 'path' | 'country')}
+                                    onValueChange={(value) => setGroupBy(value as 'event' | 'country' | 'day')}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="event">event</SelectItem>
-                                        <SelectItem value="path">path</SelectItem>
+                                        <SelectItem value="day">day</SelectItem>
                                         <SelectItem value="country">country</SelectItem>
                                     </SelectContent>
                                 </Select>

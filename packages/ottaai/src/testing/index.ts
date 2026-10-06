@@ -2,8 +2,8 @@
 // @ottabase/ottaai/testing
 // --------------------------------------------------------------------
 // NOTE: a `./testing` subpath has no precedent in this monorepo. Shipping it is
-// deliberate — it is what makes the resolution tables a test matrix rather than an
-// integration-test problem — but flag it as a NEW CONVENTION when reviewing.
+// deliberate, it is what makes the resolution tables a test matrix rather than an
+// integration-test problem, but flag it as a NEW CONVENTION when reviewing.
 // ====================================================================
 
 import { hasImages } from '../content';
@@ -27,7 +27,7 @@ import type { AiStrategy, CredentialRecord, MergedTransportConfig } from '../typ
 // Deterministic keyring
 // ---------------------------------------------------------------------------
 
-/** 32+ bytes of fixed material — enough entropy to pass the composition check. */
+/** 32+ bytes of fixed material, enough entropy to pass the composition check. */
 export const TEST_MASTER_SECRET = 'dGVzdC1tYXN0ZXItc2VjcmV0LWZvci1vdHRhYWktMzJieXRlcy1taW5pbXVt';
 
 export function createTestKeyring(overrides?: Record<string, string>, currentKeyId = 'test'): Keyring {
@@ -38,7 +38,7 @@ export function createTestKeyring(overrides?: Record<string, string>, currentKey
 }
 
 // ---------------------------------------------------------------------------
-// Fixtures — PLAIN RECORDS, never ORM instances
+// Fixtures, PLAIN RECORDS, never ORM instances
 // ---------------------------------------------------------------------------
 
 let fixtureCounter = 0;
@@ -97,7 +97,7 @@ export function createMemoryStore(initial: CredentialRecord[] = []): MemoryStore
 
         async findCandidates(scope: StoreScope, strategy: AiStrategy) {
             // Mirrors the real store's TWO-QUERY fan-out, including the duplicate a
-            // both-dimension row produces — the resolver's de-dupe must be exercised.
+            // both-dimension row produces, the resolver's de-dupe must be exercised.
             const out: CredentialRecord[] = [];
             if (strategy !== 'org' && scope.userId) {
                 out.push(...rows.filter((row) => row.userId === scope.userId));
@@ -202,7 +202,7 @@ export interface MockTransportScript {
     /** Reject as if the request timed out. */
     timeout?: boolean;
     /**
-     * Capabilities the mock's ROUTE cannot carry — what the gateway reports for Unified Billing
+     * Capabilities the mock's ROUTE cannot carry, what the gateway reports for Unified Billing
      * or a dynamic route. Reported to the resolver through `unsupportedCapabilitiesFor` (so a
      * task needing them resolves `CAPABILITY_UNMET`), and a call that still sends images is
      * refused with `UNSUPPORTED_OPERATION`, exactly as the real transport does.
@@ -223,7 +223,7 @@ export interface MockTransport extends TransportAdapter {
  * A transport that never touches the network.
  *
  * Its scriptable failure modes exist because the conformance suite must cover 401, 403,
- * 404, 429, timeout, a network throw, AND an auth failure arriving inside a 200 stream —
+ * 404, 429, timeout, a network throw, AND an auth failure arriving inside a 200 stream,
  * that last one is the case a status-code-only test suite silently misses.
  */
 export function createMockTransport(initial: MockTransportScript = {}): MockTransport {
@@ -339,7 +339,7 @@ export class StrictModeViolation extends Error {
         super(
             `[ottaai strict mode] Task "${taskKey}" fell through to the platform (reason: ${reason}). ` +
                 'In development the platform fallback is ALWAYS configured, so a broken BYOK-required path ' +
-                'resolves successfully and every test passes — right up until production, where it presents as ' +
+                'resolves successfully and every test passes, right up until production, where it presents as ' +
                 'a billing inversion or a gate that never engages.',
         );
         this.name = 'StrictModeViolation';
@@ -363,11 +363,11 @@ export function strictModeSink(allowPlatformFor: string[] = []) {
 }
 
 /**
- * SECRET-HYGIENE ASSERTIONS — behavioural tests are not enough.
+ * SECRET-HYGIENE ASSERTIONS: behavioural tests are not enough.
  *
  * Given a scripted sentinel, assert it appears in NO url, NO query string, NO log call,
  * NO retry payload, NO emitted event, and in NO thrown error's `message`, `stack` or
- * enumerable properties — INCLUDING on the 401, 429, timeout, network-throw and
+ * enumerable properties: INCLUDING on the 401, 429, timeout, network-throw and
  * in-stream-failure paths.
  */
 export function assertNoSecretLeak(sentinel: string, ...values: unknown[]): void {

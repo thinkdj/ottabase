@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Stylesheet
+ * @ottabase/ottadate: Stylesheet
  *
  * Uses CSS custom properties that integrate with the monorepo theme system.
  * All variables fall back to sensible defaults for standalone usage.
@@ -7,12 +7,12 @@
  */
 
 /* ---------------------------------------------------------------------------
- * CSS Custom Properties — Theme integration
+ * CSS Custom Properties, Theme integration
  * Maps to shadcn/tailwind theme tokens when available, falls back to defaults.
  * --------------------------------------------------------------------------- */
 
 .ottadate {
-    /* Colors — inherit from theme or use defaults.
+    /* Colors: inherit from theme or use defaults.
      * shadcn/tailwind stores CSS variables as raw HSL channels (e.g. "0 0% 100%"),
      * so we wrap them in hsl() here. The fallback hex values are for standalone usage. */
     --od-bg: hsl(var(--popover, var(--background, 0 0% 100%)));
@@ -28,12 +28,12 @@
     --od-destructive: hsl(var(--destructive, 0 84.2% 60.2%));
     --od-input-bg: hsl(var(--input, 240 5.9% 90%));
 
-    /* Tint recipe — soft muted fills for resting/hover surfaces (matches bg-muted/40 & /70).
+    /* Tint recipe: soft muted fills for resting/hover surfaces (matches bg-muted/40 & /70).
      * Selected/active surfaces lift out of the tint onto --od-bg with a hairline --od-border ring. */
     --od-tint: color-mix(in srgb, var(--od-muted) 40%, transparent);
     --od-tint-hover: color-mix(in srgb, var(--od-muted) 70%, transparent);
 
-    /* Sizing & spacing — radii align to the --radius family (outer / inner / chip). */
+    /* Sizing & spacing: radii align to the --radius family (outer / inner / chip). */
     --od-radius: var(--radius, 0.5rem);
     --od-radius-inner: calc(var(--od-radius) - 0.125rem);
     --od-radius-pill: 9999px;
@@ -47,7 +47,7 @@
     --od-font-size-sm: 0.75rem;
     --od-font-size-xs: 0.6875rem;
 
-    /* Transitions — use brandkit motion variables when available (canonical duration-normal). */
+    /* Transitions: use brandkit motion variables when available (canonical duration-normal). */
     --od-transition: var(--duration-normal, 200ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
     --od-transition-enter: var(--duration-normal, 200ms) var(--ease-enter, cubic-bezier(0, 0, 0.2, 1));
     --od-transition-exit: var(--duration-normal, 200ms) var(--ease-exit, cubic-bezier(0.4, 0, 1, 1));
@@ -163,7 +163,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Popover — the floating panel containing the calendar
+ * Popover, the floating panel containing the calendar
  * --------------------------------------------------------------------------- */
 
 .ottadate-popover {
@@ -191,7 +191,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Calendar header — month/year nav
+ * Calendar header, month/year nav
  * --------------------------------------------------------------------------- */
 
 .ottadate-header {
@@ -247,7 +247,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Calendar grid — weekday headers + day cells
+ * Calendar grid, weekday headers + day cells
  * --------------------------------------------------------------------------- */
 
 .ottadate-weekdays {
@@ -342,7 +342,7 @@
     color: var(--od-muted-fg);
 }
 
-/* Range selection styles — endpoints filled primary (selected), span in a soft primary tint. */
+/* Range selection styles: endpoints filled primary (selected), span in a soft primary tint. */
 .ottadate-day--range-start {
     background: var(--od-primary) !important;
     color: var(--od-primary-fg) !important;

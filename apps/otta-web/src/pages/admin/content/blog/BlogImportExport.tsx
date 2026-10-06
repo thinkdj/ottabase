@@ -95,7 +95,7 @@ export function BlogImportExport() {
         } catch (err) {
             // Earlier batches are already saved; say so instead of implying nothing happened.
             setError(
-                `${err instanceof Error ? err.message : 'Import failed'} — ${total.created.length} post(s) were imported before the error.`,
+                `${err instanceof Error ? err.message : 'Import failed'}. ${total.created.length} post(s) were imported before the error.`,
             );
         } finally {
             setResult(total);
@@ -144,7 +144,7 @@ export function BlogImportExport() {
                         <DialogDescription>
                             {result
                                 ? `${result.created.length} created, ${result.skipped.length} skipped.`
-                                : `${plan?.posts.length ?? 0} post(s) ready — ${published} published, ${
+                                : `${plan?.posts.length ?? 0} post(s) ready, ${published} published, ${
                                       (plan?.posts.length ?? 0) - published
                                   } not published. Published posts go live immediately; posts whose slug already exists are skipped.`}
                         </DialogDescription>

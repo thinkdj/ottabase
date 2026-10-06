@@ -1,10 +1,10 @@
 // ============================================================
-// @ottabase/ottaai — Envelope encryption (HKDF-SHA-256 → AES-256-GCM)
+// @ottabase/ottaai, Envelope encryption (HKDF-SHA-256 → AES-256-GCM)
 // ============================================================
-// WEB CRYPTO ONLY — no platform crypto import — so the same code runs on
+// WEB CRYPTO ONLY, no platform crypto import, so the same code runs on
 // Workers, modern Node, Deno and browsers, and the root stays dependency-free.
 //
-// PARAMETERS (frozen-format facts — changing ANY of them makes every stored row
+// PARAMETERS (frozen-format facts: changing ANY of them makes every stored row
 // in every consuming app undecryptable):
 //   16-byte salt · 12-byte IV (96-bit, the GCM standard) · 256-bit derived AES
 //   key · SHA-256 · ONE constant `info` string.
@@ -13,10 +13,10 @@
 // machine-generated, not a human password. There is no offline-guessing threat to
 // slow down, and decryption sits on the hot path of EVERY AI call, so a
 // deliberately slow KDF buys no security and costs latency per request.
-// (The premise is enforced — see MIN_MASTER_SECRET_BYTES in keyring.ts.)
+// (The premise is enforced: see MIN_MASTER_SECRET_BYTES in keyring.ts.)
 //
 // WHY AES-GCM: it AUTHENTICATES. A wrong key or tampered ciphertext FAILS rather
-// than returning plausible garbage — which matters uniquely here, because the
+// than returning plausible garbage, which matters uniquely here, because the
 // garbage would then be transmitted to a third party as an API key.
 // ============================================================
 
@@ -40,7 +40,7 @@ const IV_BYTES = 12;
 const AES_BITS = 256;
 
 /**
- * FROZEN INVARIANT #2 — THE HKDF `info` STRING.
+ * FROZEN INVARIANT #2: THE HKDF `info` STRING.
  *
  * Namespaces derived keys to this package, so a master secret shared with another feature
  * cannot produce a colliding content key. ONE CONSTANT FOR THE PACKAGE, never per app,
@@ -49,12 +49,12 @@ const AES_BITS = 256;
 const HKDF_INFO = 'ottabase/ottaai/credential-secret/v1';
 
 /**
- * FROZEN INVARIANT #3a — THE AAD FIELD SEPARATOR.
+ * FROZEN INVARIANT #3a: THE AAD FIELD SEPARATOR.
  *
  * Written as the ESCAPE `\u0000`, never as a literal control character: a literal NUL is
  * invisible in every editor, diff and code review, and one well-meaning "strip weird
  * characters" pass would silently make EVERY stored ciphertext in EVERY consuming app
- * undecryptable — reporting only "wrong key or corrupt data" and pointing nowhere near
+ * undecryptable, reporting only "wrong key or corrupt data" and pointing nowhere near
  * the cause. The escape IS the documentation. Do not change it. Ever.
  */
 const AAD_SEPARATOR = '\u0000';
@@ -70,7 +70,7 @@ export interface AadTuple {
 }
 
 /**
- * FROZEN INVARIANT #3 — THE AAD ENCODING.
+ * FROZEN INVARIANT #3: THE AAD ENCODING.
  *
  *     AAD = UTF-8 bytes of
  *           [formatVersion, credentialId, organizationId, userId, appId, provider]
@@ -81,13 +81,13 @@ export interface AadTuple {
  * added to the tuple later without a NEW FORMAT VERSION.
  *
  * TRAP PREVENTED: without AAD the blob is portable. A ciphertext lifted from tenant A's
- * row into tenant B's row decrypts perfectly and then authenticates B's inference —
+ * row into tenant B's row decrypts perfectly and then authenticates B's inference,
  * billing A and sending B's prompts under A's provider contract. The realistic vectors are
  * mundane: a buggy admin import, a partial backup restore, a bad merge, or anyone with
  * database write access.
  *
  * Consequences that constrain other decisions:
- *  • Row identity becomes IMMUTABLE — cloning a credential to another scope is
+ *  • Row identity becomes IMMUTABLE, cloning a credential to another scope is
  *    decrypt-then-re-encrypt, never a row copy.
  *  • Ids must be generated APPLICATION-SIDE, because a DB-generated id forces
  *    encrypt-after-insert, i.e. a window where the row exists without its ciphertext.
@@ -157,7 +157,7 @@ async function deriveContentKey(material: Uint8Array, salt: Uint8Array): Promise
  * already in use?" is unbuildable without a separate keyed fingerprint (an HMAC of the
  * plaintext under the master secret).
  *
- * @param plaintext MUST already be trimmed — the same trimmed string that derives the hint.
+ * @param plaintext MUST already be trimmed, the same trimmed string that derives the hint.
  */
 export async function encryptSecret(input: {
     plaintext: string;
@@ -224,7 +224,7 @@ export const decryptV1: import('./keyring').EnvelopeDecryptor = async ({ envelop
         );
         return new TextDecoder().decode(plain);
     } catch {
-        // AES-GCM cannot distinguish a wrong key from tampering — one code covers both.
+        // AES-GCM cannot distinguish a wrong key from tampering, one code covers both.
         throw new AiProvisioningError(
             'Credential decryption failed (wrong master secret, wrong row binding, or tampered data).',
             AI_ERROR_CODES.DECRYPT_FAILED,
@@ -243,7 +243,7 @@ export function createDefaultDecryptorRegistry(): DecryptorRegistry {
  *
  * Throws `BAD_CIPHERTEXT` (shape/version), `NO_ENCRYPTION_KEY` (key id not held) or
  * `DECRYPT_FAILED` (wrong key / tampering / wrong AAD). The RESOLVER, not this function,
- * decides what a failure means for the request — and its default is fail-closed.
+ * decides what a failure means for the request, and its default is fail-closed.
  */
 export async function decryptSecret(input: {
     envelope: string;

@@ -15,7 +15,7 @@ vi.mock('@/ottabase/config/admin-nav', () => ({
     getEnabledAdminNav: () => [],
 }));
 
-vi.mock('@/ottabase/config', () => ({ PACKAGES_ENABLED: {} }));
+vi.mock('@/ottabase/config', () => ({ PACKAGES_ENABLED: {}, APP_META: { appName: 'Ottabase' } }));
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,

@@ -12,7 +12,8 @@ pnpm build:pkg   # build the workspace packages once
 pnpm dev         # Vite frontend + Wrangler backend
 ```
 
-The full five-minute walkthrough (prerequisites, first admin, database init) is in `QUICKSTART.md` at the repo root.
+The full five-minute walkthrough (prerequisites, first admin, database init) is in [QUICKSTART.md](../QUICKSTART.md) at
+the repo root.
 
 ## Try it before you read
 
@@ -38,7 +39,8 @@ The full five-minute walkthrough (prerequisites, first admin, database init) is 
 
 **Content**
 
-- [Blog-Only Public Surface](/docs/guides/blog-public-surface): run Ottabase as a blog or content site.
+- [Blog-Only Public Surface](/docs/guides/blog-public-surface): design notes for running Ottabase as a blog-only site
+  (not built yet).
 
 **Ship and operate on Cloudflare**
 

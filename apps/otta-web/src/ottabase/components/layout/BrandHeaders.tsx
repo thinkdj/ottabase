@@ -77,7 +77,7 @@ export const TopbarHeader = memo(function TopbarHeader({
                     >
                         {APP_META.appName}
                     </Link>
-                    {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
+                    {/* Optional positioning line from ottabase.config meta.tagline, omitted when unset */}
                     {APP_META.tagline && (
                         <span className="hidden whitespace-nowrap text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground md:inline">
                             {APP_META.tagline}
@@ -103,7 +103,7 @@ export const MinimalHeader = memo(function MinimalHeader({
 }: {
     containerClass: string;
     leading?: React.ReactNode;
-    /** When true, render header-nav menu slot (or static nav) — e.g. homepage with navigation: topbar */
+    /** When true, render header-nav menu slot (or static nav), e.g. homepage with navigation: topbar */
     showNav?: boolean;
 }) {
     const { isAuthenticated, user } = useSession();

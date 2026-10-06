@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Brand Kit API handlers (v2: per-app scoping)
+// Brand Engine, Brand Kit API handlers (v2: per-app scoping)
 // GET/POST /api/brand/kits, GET/PUT/DELETE /api/brand/kits/:id
 // POST /api/brand/kits/:id/clone, POST /api/brand/kits/:id/logo
 // All scoped by appId, not organizationId.
@@ -128,7 +128,7 @@ export async function handleGetBrandKits(
     }
     */
     const appKits = (await BrandKit.where({ appId: appId ?? null }, { orderBy: 'name' })) as BrandKit[];
-    // Include system default (appId=null) so it appears in the list — it's the fallback used by all apps
+    // Include system default (appId=null) so it appears in the list, it's the fallback used by all apps
     let kits = appKits;
     if (appId !== null) {
         const systemDefault = (await BrandKit.first({ appId: null })) as BrandKit | null;
@@ -231,7 +231,7 @@ export async function handleUpdateBrandKit(
     if (kApp !== null && appId !== kApp) return errorResponse('Brand Kit not found', 404);
 
     const body = (await request.json()) as Record<string, unknown>;
-    // Handle parentBrandKitId – allow setting to null (detach) or to a valid ID
+    // Handle parentBrandKitId: allow setting to null (detach) or to a valid ID
     if (body.parentBrandKitId !== undefined) {
         const parentId = (body.parentBrandKitId as string) || null;
         if (parentId) {

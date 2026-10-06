@@ -4,7 +4,7 @@
  * React context + hook for the homepage slot configuration.
  *
  * Wraps `loadConfig` / `saveConfig` in React state so every consumer
- * re-renders when a slot variant is changed — enabling live preview on the
+ * re-renders when a slot variant is changed, enabling live preview on the
  * config page and instant updates on the homepage.
  */
 

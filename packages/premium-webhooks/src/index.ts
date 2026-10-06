@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — headless entrypoint
+// @ottabase/premium-webhooks, headless entrypoint
 // ============================================================
 // The worked example for `@ottabase/premium`: a real paid add-on with tables, models,
 // gated routes, signed outbound delivery and a free tier. Rendered React lives behind

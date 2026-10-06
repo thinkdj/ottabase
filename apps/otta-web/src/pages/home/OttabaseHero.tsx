@@ -345,7 +345,7 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                 <div className="max-w-2xl">
                     <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/75 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-primary shadow-sm backdrop-blur">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_hsl(var(--primary))]" />
-                        {appName} / EDGE-NATIVE FOUNDATION
+                        {appName}
                     </div>
                     <h1
                         id="ottabase-hero-heading"

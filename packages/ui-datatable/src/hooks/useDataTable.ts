@@ -22,7 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UseDataTableOptions, UseDataTableReturn } from '../types';
 
 /**
- * Core data table hook — wraps TanStack Table with sensible defaults
+ * Core data table hook: wraps TanStack Table with sensible defaults
  * and bridges server-side vs client-side state management.
  *
  * @example

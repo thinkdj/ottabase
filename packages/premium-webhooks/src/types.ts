@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — public types
+// @ottabase/premium-webhooks, public types
 // ============================================================
 
 import type { PremiumRegistry } from '@ottabase/premium';
@@ -15,7 +15,7 @@ export interface WebhookTenant {
  * The caller, as resolved by the HOST app.
  *
  * This package deliberately has no idea how the host authenticates. It receives an
- * already-verified caller and trusts nothing from the request beyond it — in particular
+ * already-verified caller and trusts nothing from the request beyond it, in particular
  * it never reads `organizationId` from a header, because a header is a request, not an
  * answer.
  */
@@ -54,7 +54,7 @@ export interface WebhooksRouterConfig<Env> {
     /** The premium registry the host built. Used for the entitlement gates. */
     registry: PremiumRegistry<Env>;
     /**
-     * Resolve the caller from the request. Return `null` to refuse with 401 — that is the
+     * Resolve the caller from the request. Return `null` to refuse with 401, that is the
      * host's session check, not this package's.
      */
     resolveCaller: (request: Request, env: Env) => Promise<WebhookCaller | null>;

@@ -10,7 +10,7 @@
 export type HookPriority = number;
 
 /**
- * WHY `...args: never[]` AND NOT `unknown[]` — do not "fix" this.
+ * WHY `...args: never[]` AND NOT `unknown[]`: do not "fix" this.
  *
  * Every hook passes different trailing arguments (`post.title.filter` gets the post,
  * `post.photoJournal.filter` gets the post, actions get whatever fired them), so the registry
@@ -21,7 +21,7 @@ export type HookPriority = number;
  * That assignment compiles under `never[]` (never is assignable to `BlogPostData`) and FAILS under
  * `unknown[]` ("Type 'unknown' is not assignable to type 'BlogPostData'"). Widening these to
  * `unknown[]` would break every typed theme and plugin in the ecosystem. The trade-off is that an
- * un-annotated trailing parameter infers as `never`, so plugin authors annotate — which is the
+ * un-annotated trailing parameter infers as `never`, so plugin authors annotate, which is the
  * documented way to use these.
  */
 export type HookCallback<T = unknown> = (value: T, ...args: never[]) => T | Promise<T>;

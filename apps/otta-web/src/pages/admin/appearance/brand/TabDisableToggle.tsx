@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Kit-level "Disable" switch for a whole editor section (fonts/motion/cursors).
-// Toggles tokensJson root `disabled.{section}` – settings below are kept in
+// Toggles tokensJson root `disabled.{section}`: settings below are kept in
 // the JSON but the engine stops applying them. Children dim while disabled.
 // ---------------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ export function TabDisableToggle({
             else delete p.disabled;
             onTokensChange(JSON.stringify(p, null, 2));
         } catch {
-            // Malformed JSON (mid-edit in Advanced tab) – leave untouched
+            // Malformed JSON (mid-edit in Advanced tab), leave untouched
         }
     };
 

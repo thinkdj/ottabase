@@ -1,5 +1,5 @@
 /**
- * UI Components Demo Page — live examples for exported @ottabase/ui-components.
+ * UI Components Demo Page: live examples for exported @ottabase/ui-components.
  */
 import {
     BlogPagination,
@@ -33,7 +33,7 @@ export function UiComponentsDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="UI Components"
+                title="UI components"
                 description="Shared React components built on shadcn/ui primitives: confirmation dialogs, empty and loading states, logo, pagination, and utilities."
                 actions={
                     <Badge variant="secondary" className="uppercase">
@@ -301,6 +301,16 @@ import { Alert } from '@ottabase/ui-shadcn';
                                 name: 'LoadingState',
                                 desc: 'One status region of pulsing tiles: blocks, text, table or form.',
                                 import: "import { LoadingState } from '@ottabase/ui-components';",
+                            },
+                            {
+                                name: 'Chip',
+                                desc: 'Small status or count pill, neutral by default with semantic tones.',
+                                import: "import { Chip } from '@ottabase/ui-components';",
+                            },
+                            {
+                                name: 'JsonEditor',
+                                desc: 'Textarea for JSON with validation and formatting.',
+                                import: "import { JsonEditor } from '@ottabase/ui-components';",
                             },
                             {
                                 name: 'DarkModeToggle',

@@ -48,7 +48,7 @@ export function withRBAC<T extends (...args: any[]) => Promise<Response>>(
     return (async (...args: any[]) => {
         const request = args[0] as Request;
 
-        // No trusted user resolver means no way to authenticate — never fall back to a header.
+        // No trusted user resolver means no way to authenticate, never fall back to a header.
         if (typeof config.getUserFromRequest !== 'function') {
             return errorResponse('Authentication required', 401, { code: 'UNAUTHORIZED' });
         }

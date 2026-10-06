@@ -1,7 +1,7 @@
 # @ottabase/ui-cropper
 
 Advanced vanilla image cropper: crop, flip, rotate, zoom with smooth transitions. Square/rect/circle viewfinder.
-PNG/JPEG. Zero React. ~3–4 KB gzipped.
+PNG/JPEG. Zero React. under 10 KB gzipped, CSS included.
 
 ## Features
 
@@ -90,7 +90,7 @@ cropper.destroy();
 | `maxZoom`            | 3                      | Maximum zoom level                                             |
 | `transitions`        | true                   | Enable smooth CSS transitions                                  |
 | `transitionDuration` | 300                    | Transition duration in ms                                      |
-| `onImageLoad`        | —                      | Callback fired whenever an image finishes loading              |
+| `onImageLoad`        | -                      | Callback fired whenever an image finishes loading              |
 
 ## Interactions
 
@@ -165,7 +165,7 @@ new Cropper(container, {
 
 ```typescript
 const cropper = new Cropper(container, {
-    // Fires whenever an image loads — from the file picker, loadFromFile(), or loadFromUrl()
+    // Fires whenever an image loads: from the file picker, loadFromFile(), or loadFromUrl()
     onImageLoad: () => {
         console.log('Image ready');
         saveButton.disabled = false;
@@ -264,7 +264,7 @@ element.
 - Zero dependencies - pure vanilla JavaScript
 - Efficient canvas rendering with requestAnimationFrame where appropriate
 - Transitions disabled during drag/resize for responsive feel
-- ~3-4 KB gzipped
+- Under 10 KB gzipped, CSS included
 
 ## Inspiration
 

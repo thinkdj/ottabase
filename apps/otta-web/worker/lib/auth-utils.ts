@@ -46,6 +46,7 @@ export async function createVerificationToken(
 
 export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     const options: CreateAuthConfigOptions = {
+        appName: getOttabaseConfig(env).appName,
         authConfig: {
             pages: {
                 error: '/login',
@@ -84,7 +85,7 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
                 OrganizationMember.activatePendingInvites(userId, email),
                 UserGroupMember.activatePendingInvites(userId, email),
             ]);
-            // Invites may have just granted memberships — drop this user's cached
+            // Invites may have just granted memberships, drop this user's cached
             // security-context lookups so the new org/groups are visible immediately
             // instead of after MEMBERSHIP_CACHE_TTL_SECONDS.
             await invalidateMembershipCache(env.OBCF_KV, userId);
@@ -106,7 +107,7 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
  *
  * 300s matches the RBAC permission cache precedent. The TTL is only the
  * FALLBACK bound (custom code that mutates memberships without calling
- * invalidateMembershipCache): every in-app mutation path invalidates eagerly —
+ * invalidateMembershipCache): every in-app mutation path invalidates eagerly:
  * sign-in invite activation, admin member invite/update/remove, org creation,
  * and generic CRUD on membership models (see ottaorm-crud.ts). Raising this
  * further buys little (an active user refreshes once per TTL anyway) while
@@ -179,7 +180,7 @@ async function cachedMembershipLookup(
  *
  * Call after ANY membership mutation (grant, role/status change, removal) so the
  * change takes effect on the next request instead of after MEMBERSHIP_CACHE_TTL_SECONDS.
- * Best-effort: failures are swallowed — the TTL still bounds staleness, and KV's
+ * Best-effort: failures are swallowed, the TTL still bounds staleness, and KV's
  * eventual consistency means cross-colo propagation can take up to ~60s regardless.
  */
 export async function invalidateMembershipCache(
@@ -193,7 +194,7 @@ export async function invalidateMembershipCache(
             invalidateCacheByPrefix(kv, userKey('auth', userId, 'member-groups')),
         ]);
     } catch {
-        // Best-effort — TTL bounds staleness if KV invalidation fails.
+        // Best-effort: TTL bounds staleness if KV invalidation fails.
     }
 }
 
@@ -224,8 +225,8 @@ export async function bumpProfileVersion(env: CloudflareEnv, userId: string | un
 
 /**
  * After a system-role RECONCILE (the `/__bootstrap__/seed` self-heal): drop RBAC caches and refresh
- * the sessions whose authority could have changed, so a healed permission set — and the derived
- * `platformAdmin` flag — takes effect without waiting out the ~30-day JWT.
+ * the sessions whose authority could have changed, so a healed permission set, and the derived
+ * `platformAdmin` flag, takes effect without waiting out the ~30-day JWT.
  *
  * Bounded on purpose (Cloudflare Workers cap subrequests per invocation): it bumps only the
  * SYSTEM-SCOPED platform_owner holder set, which is tiny (usually one), and which is exactly the
@@ -238,7 +239,7 @@ export async function reconcileSystemRoleSessions(env: CloudflareEnv): Promise<v
     try {
         await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
     } catch {
-        // Non-fatal — TTL bounds staleness.
+        // Non-fatal: TTL bounds staleness.
     }
     try {
         const { PLATFORM_OWNER_ROLE_NAME, Role, UserRole } = await import('@ottabase/ottaorm/models');
@@ -269,9 +270,9 @@ export async function getSecurityContext(
     let organizationId: string | null = null;
 
     // Explicit PLATFORM scope: a platform admin may act on platform-owned rows
-    // (organizationId NULL — e.g. the platform's own blog in org mode) by sending
+    // (organizationId NULL, e.g. the platform's own blog in org mode) by sending
     // x-org-id: platform. This must override every other resolution path,
-    // including the session's active org — that is the point of the switch.
+    // including the session's active org, that is the point of the switch.
     // For anyone else the sentinel is simply ignored (it is never a real org id).
     const orgHeaderRaw = request.headers.get('x-org-id');
     const explicitPlatformScope = session?.user?.platformAdmin === true && orgHeaderRaw === PLATFORM_ORG_SENTINEL;
@@ -310,15 +311,15 @@ export async function getSecurityContext(
     const roles = session?.user?.roles as string[] | undefined;
     const permissions = session?.user?.permissions as string[] | undefined;
     // Scope-aware platform-admin flag (derived server-side from a SYSTEM-scoped grant). RLS
-    // AdminOnly policies gate on this, NOT on role names — see packages/ottaorm rls/types.ts.
+    // AdminOnly policies gate on this, NOT on role names, see packages/ottaorm rls/types.ts.
     const platformAdmin = session?.user?.platformAdmin === true;
 
-    // Collect the organization IDs the user can access — ACTIVE MEMBERSHIPS only (organizationIdsForUser
+    // Collect the organization IDs the user can access, ACTIVE MEMBERSHIPS only (organizationIdsForUser
     // no longer trusts the never-cleared Organization.ownerId; see that method for why).
-    // Always keep the resolved list — INCLUDING when it is empty. An empty array is a positive
+    // Always keep the resolved list, INCLUDING when it is empty. An empty array is a positive
     // "this user belongs to zero organizations", which must fail closed below (and in the RLS
     // engine). Collapsing it to `undefined` would be read as "membership unknown" and skip
-    // enforcement — letting a user with no memberships keep a caller-supplied org id.
+    // enforcement, letting a user with no memberships keep a caller-supplied org id.
     let memberOrganizationIds: string[] | undefined;
     if (userId) {
         try {
@@ -359,7 +360,7 @@ export async function getSecurityContext(
     // membership-scoped RLS for user_groups / user_group_members, resolved against the final
     // organizationId so it is scoped to the active org.
     // Cache key includes the VALIDATED organizationId (it may have been nulled by the
-    // membership check above) — do not parallelize this with the org lookup.
+    // membership check above), do not parallelize this with the org lookup.
     let memberGroupIds: string[] | undefined;
     if (userId) {
         try {

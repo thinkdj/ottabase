@@ -82,14 +82,14 @@ console.log(hello);`}
 | ---------------------- | --------------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
 | `code`                 | `string`                    | required      | The code to display                                                                                |
 | `language`             | `string`                    | `'plaintext'` | Programming language for syntax highlighting                                                       |
-| `filename`             | `string`                    | —             | Optional filename to display in header                                                             |
+| `filename`             | `string`                    | -             | Optional filename to display in header                                                             |
 | `showLineNumbers`      | `boolean`                   | `false`       | Whether to show line numbers                                                                       |
 | `lineNumberStart`      | `number`                    | `1`           | Starting line number (for code snippets). Invalid values (0, NaN, non-numeric) are sanitized to 1. |
-| `maxHeight`            | `string`                    | —             | Max height with scroll (e.g. `'200px'`, `'20rem'`)                                                 |
+| `maxHeight`            | `string`                    | -             | Max height with scroll (e.g. `'200px'`, `'20rem'`)                                                 |
 | `wrapLongLines`        | `boolean`                   | `false`       | Wrap long lines instead of horizontal scroll                                                       |
 | `hideHeader`           | `boolean`                   | `false`       | Hide header (filename/language + copy button)                                                      |
 | `hideCopyButton`       | `boolean`                   | `false`       | Hide only the copy button                                                                          |
-| `highlightLines`       | `string` \| `number[]` \| … | —             | Lines to highlight (e.g. `'3,5-7'` or `[3,5,6,7]`)                                                 |
+| `highlightLines`       | `string` \| `number[]` \| … | -             | Lines to highlight (e.g. `'3,5-7'` or `[3,5,6,7]`)                                                 |
 | `tabSize`              | `number`                    | `4`           | Indentation width (CSS tab-size)                                                                   |
 | `collapsible`          | `boolean`                   | `false`       | Long blocks open on their first lines with a "Show all N lines" button underneath                  |
 | `collapsibleThreshold` | `number`                    | `20`          | Lines shown while collapsed; blocks up to this length never collapse                               |

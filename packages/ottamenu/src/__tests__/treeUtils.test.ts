@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Tree builder tests (pure logic, no React)
+// Ottamenu, Tree builder tests (pure logic, no React)
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from 'vitest';

@@ -6,7 +6,7 @@ export type ReactionsMap = Record<string, string[]>;
 export const commentsTable = sqliteTable(
     'comments',
     {
-        // Primary key — auto-generated UUID
+        // Primary key: auto-generated UUID
         id: text('id')
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
@@ -14,7 +14,7 @@ export const commentsTable = sqliteTable(
         // The comment content; supports plain text or HTML for rich text
         body: text('body').notNull(),
 
-        // Polymorphic target — the entity type being commented on (e.g. 'post', 'page', 'todo')
+        // Polymorphic target: the entity type being commented on (e.g. 'post', 'page', 'todo')
         targetType: text('target_type').notNull(),
 
         // The ID of the entity being commented on
@@ -30,7 +30,7 @@ export const commentsTable = sqliteTable(
         status: text('status').notNull().default('active'),
 
         // Nesting depth: 0 = top-level, 1 = reply, 2 = reply-to-reply, etc. Always recomputed
-        // server-side from the parent's depth — never trust a client-supplied value.
+        // server-side from the parent's depth, never trust a client-supplied value.
         depth: integer('depth').notNull().default(0),
 
         // Multi-app support
@@ -55,7 +55,7 @@ export const commentsTable = sqliteTable(
         index('comments_user_idx').on(table.userId),
         // Covers both the RLS-mandatory filter (organizationId is always present in the read
         // filter) and the application query shape (targetType + targetId [+ status]), plus the
-        // createdAt sort every comment-list query uses — one index satisfies filter + sort.
+        // createdAt sort every comment-list query uses, one index satisfies filter + sort.
         index('comments_org_target_status_created_idx').on(
             table.organizationId,
             table.targetType,

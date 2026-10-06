@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Resolve brand config (path-aware, v2: per-app scoping)
+// Brand Engine, Resolve brand config (path-aware, v2: per-app scoping)
 // Resolution: route mappings → match path → Brand Kit + layout
 // ---------------------------------------------------------------------------
 
@@ -22,18 +22,18 @@ export interface ResolveBrandConfigEnv {
 }
 
 export interface ResolveBrandConfigOptions {
-    /** App ID – primary scope for brand resolution */
+    /** App ID: primary scope for brand resolution */
     appId?: string | null;
     /**
      * Skip the cache READ, forcing a fresh D1 load (e.g. right after an
      * invalidation, where KV's eventual consistency could still serve stale
      * data). The freshly loaded result is always written back to cache
-     * afterward — there is no "resolve but don't cache" mode.
+     * afterward, there is no "resolve but don't cache" mode.
      */
     skipCacheRead?: boolean;
 }
 
-/** Full resolution data – all route mappings + all brand kits (both modes). Client resolves path locally. */
+/** Full resolution data: all route mappings + all brand kits (both modes). Client resolves path locally. */
 export type FullBrandConfig = BrandResolutionCache & { mode?: string; r2PublicUrl?: string };
 
 /**
@@ -109,7 +109,7 @@ async function loadBrandKitsMap(brandKitIds: string[], r2Url: string): Promise<B
 
 /**
  * Resolve full brand data (route mappings, layouts, all brand kits) for an app.
- * Returns both light and dark themes per kit – client picks mode at runtime.
+ * Returns both light and dark themes per kit, client picks mode at runtime.
  * Client uses resolveRouteForPath(path, routeMappings) then brandKitsMap[match.brandKitId].
  */
 export async function resolveFullBrandConfig(
@@ -148,8 +148,8 @@ export async function resolveFullBrandConfig(
         r2PublicUrl: r2Url,
     };
 
-    // Always cache a freshly loaded result — including when skipCacheRead
-    // forced this fresh load — so callers that intentionally bypassed a
+    // Always cache a freshly loaded result, including when skipCacheRead
+    // forced this fresh load, so callers that intentionally bypassed a
     // possibly-stale read (e.g. warmBrandCache after invalidation) actually
     // leave the cache warm instead of a no-op.
     await cache.setResolutionData(appId, 'all', cacheData);
@@ -157,7 +157,7 @@ export async function resolveFullBrandConfig(
 }
 
 /**
- * Derive a path-scoped config from an already-resolved full config — pure CPU,
+ * Derive a path-scoped config from an already-resolved full config, pure CPU,
  * no KV/D1 access. Mirrors the client's resolveConfigForPath (route match →
  * kit lookup with deleted-kit fallback → mode merge → route token overrides),
  * so edge-injected critical CSS and client hydration agree exactly.
@@ -200,7 +200,7 @@ function buildConfigFromCache(
                 theme = deepMerge(theme as unknown as Record<string, unknown>, overrides) as unknown as typeof theme;
             }
         } catch {
-            /* ignore malformed JSON – serve base kit theme */
+            /* ignore malformed JSON: serve base kit theme */
         }
     }
     return {

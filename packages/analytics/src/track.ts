@@ -1,18 +1,18 @@
 /**
- * @ottabase/analytics — Track
+ * @ottabase/analytics: Track
  *
  * Fire-and-forget event writing to Cloudflare Workers Analytics Engine.
  *
  * Two API levels:
- * - `trackEvent()` — low-level, positional blobs/doubles (like raw writeDataPoint)
- * - `trackCoreEvent()` — structured, maps named fields to fixed blob slots
+ * - `trackEvent()`: low-level, positional blobs/doubles (like raw writeDataPoint)
+ * - `trackCoreEvent()`: structured, maps named fields to fixed blob slots
  */
 
 import type { CoreEventOptions, TrackEventOptions } from './types';
 
 /**
  * Low-level: write a data point with positional blobs and doubles.
- * Non-blocking, never throws — failures are logged as warnings.
+ * Non-blocking, never throws, failures are logged as warnings.
  *
  * @example
  * ```ts
@@ -49,7 +49,7 @@ export function trackEvent(options: TrackEventOptions): void {
  * - blob4  = userAgent (truncated to 200 chars)
  * - blob5  = referer
  * - blob6  = visitorId (hashed visitor fingerprint)
- * - blob7–blob11 = metadata[0]–metadata[4]
+ * - blob7 to blob11 = metadata[0] to metadata[4]
  * - double1 = value (default 1)
  *
  * @example
@@ -79,7 +79,7 @@ export function trackCoreEvent(options: CoreEventOptions): void {
         visitorId ?? '',
     ];
 
-    // Append up to 5 metadata strings (blob7–blob11)
+    // Append up to 5 metadata strings (blob7 to blob11)
     if (metadata) {
         for (let i = 0; i < Math.min(metadata.length, 5); i++) {
             blobs.push(metadata[i] ?? '');

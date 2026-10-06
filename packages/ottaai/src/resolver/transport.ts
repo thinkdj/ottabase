@@ -1,12 +1,12 @@
 // ============================================================
-// @ottabase/ottaai — TransportAdapter seam
+// @ottabase/ottaai, TransportAdapter seam
 // ============================================================
 // Resolution ends at a DECISION, not a vendor client. A pluggable adapter turns
 // (merged config, task options) into a caller. That keeps the CREDENTIAL PLANE
 // vendor-neutral and dictates the schema.
 //
 // The adapter interface is NARROW AND NORMALISING, not thin. Stream and error
-// shapes are vendor concerns, so normalising them is the adapter's job — which is
+// shapes are vendor concerns, so normalising them is the adapter's job, which is
 // exactly where the vendor-neutrality claim gets qualified.
 // ============================================================
 
@@ -51,7 +51,7 @@ export interface AiCallError {
     /** Provider-specific code string, when the provider supplies one. Never interpreted by the core. */
     providerCode?: string;
     /**
-     * The package's own classification, for a failure decided WITHOUT an upstream response —
+     * The package's own classification, for a failure decided WITHOUT an upstream response:
      * a route refusing images, a quota refusal, a preflight refusal. Kept apart from
      * `providerCode` so a provider's string can never be mistaken for one of these.
      */
@@ -78,19 +78,19 @@ export type AiStreamEvent =
  *
  * Images and JSON are CAPABILITY-GATED. A call carrying an image part needs `vision`, a call
  * with `responseFormat` needs `json`, and the instrumented client refuses either one unless
- * the TASK declares it in `requiredCapabilities` — that declaration is what filtered the
+ * the TASK declares it in `requiredCapabilities`: that declaration is what filtered the
  * credential and the platform model during resolution, so without it the call could be sent
  * to a model that cannot read the image.
  */
 export interface AiCallOptions {
     messages: AiMessage[];
-    /** Ask for a JSON object. See `AiResponseFormat` — validate the shape yourself. */
+    /** Ask for a JSON object. See `AiResponseFormat`: validate the shape yourself. */
     responseFormat?: AiResponseFormat;
     temperature?: number;
     /** Output budget. Falls back to the task's `maxTokens`. A JSON reply cut off by it is `INVALID_RESPONSE`. */
     maxTokens?: number;
     /**
-     * Per-call model override — beats every other rung of the model chain. The instrumented
+     * Per-call model override: beats every other rung of the model chain. The instrumented
      * client re-checks the task's `requiredCapabilities` against it, because resolution
      * filtered a DIFFERENT model.
      */
@@ -98,7 +98,7 @@ export interface AiCallOptions {
     /**
      * Extra provider-specific body fields.
      *
-     * Cannot set what the transport owns — model, messages, stream, and every output-format
+     * Cannot set what the transport owns: model, messages, stream, and every output-format
      * field (`response_format`, Anthropic `tools`/`tool_choice`, Gemini `responseMimeType` /
      * `responseSchema`). Use `responseFormat` for JSON.
      */
@@ -107,7 +107,7 @@ export interface AiCallOptions {
     timeout?: number;
     signal?: AbortSignal;
     /**
-     * Bypass any response cache. Set by the instrumented client for validation calls —
+     * Bypass any response cache. Set by the instrumented client for validation calls,
      * a cached success will happily "validate" a key that was revoked five minutes ago.
      */
     skipCache?: boolean;
@@ -155,7 +155,7 @@ export interface RawAiClient {
      * TRAP AN ADAPTER MUST CLOSE: OpenAI-shaped providers report NO token usage on
      * streamed responses by default. It must be opted into and arrives in a final chunk.
      * An adapter therefore sets the usage-inclusion option UNCONDITIONALLY whenever
-     * streaming — a caller-opt-in version reproduces "zero tokens metered for most
+     * streaming, a caller-opt-in version reproduces "zero tokens metered for most
      * traffic" in every consuming app.
      *
      * Likewise, an auth failure occurring AFTER streaming headers are sent arrives INSIDE
@@ -205,7 +205,7 @@ export interface TransportAdapter {
      * expressed as `tenantSelectable: false` in the registry). This is the DEPLOYMENT-DEPENDENT
      * case: Azure OpenAI is fully supported, but its URL is built from operator-only
      * `resourceName` / `deploymentName` / `apiVersion`, so on a deployment that never set them
-     * every Azure call is `MERGE_INCOMPLETE` — while the settings form cheerfully offers Azure
+     * every Azure call is `MERGE_INCOMPLETE`, while the settings form cheerfully offers Azure
      * and accepts the tenant's key. The tenant sees a saved, listed, tested-looking credential
      * that silently never runs.
      *

@@ -59,7 +59,7 @@ export class BlogRendererErrorBoundary extends Component<
                 return this.props.fallback;
             }
 
-            // Default fallback UI — quiet tinted notice driven by theme tokens
+            // Default fallback UI: quiet tinted notice driven by theme tokens
             return (
                 <div
                     className="blog-renderer-error"
@@ -72,7 +72,7 @@ export class BlogRendererErrorBoundary extends Component<
                     }}
                 >
                     <h2 style={{ marginTop: 0, marginBottom: '0.375rem', fontSize: '0.9375rem', fontWeight: 600 }}>
-                        Failed to Render Blog Post
+                        This post could not be displayed
                     </h2>
                     <p
                         style={{
@@ -82,8 +82,7 @@ export class BlogRendererErrorBoundary extends Component<
                             color: 'hsl(var(--muted-foreground))',
                         }}
                     >
-                        An error occurred while rendering this blog post. Please try refreshing the page or contact
-                        support if the problem persists.
+                        Something in this post failed to render. Refresh the page, or come back a little later.
                     </p>
                     {this.state.error && (
                         <details style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
@@ -94,7 +93,7 @@ export class BlogRendererErrorBoundary extends Component<
                                     color: 'hsl(var(--muted-foreground))',
                                 }}
                             >
-                                Error Details
+                                Details
                             </summary>
                             <pre
                                 style={{
@@ -108,8 +107,6 @@ export class BlogRendererErrorBoundary extends Component<
                                 }}
                             >
                                 {this.state.error.message}
-                                {'\n\n'}
-                                {this.state.error.stack}
                             </pre>
                         </details>
                     )}

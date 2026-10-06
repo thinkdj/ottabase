@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Preview Theme Tests – Ensures buildPreviewTheme works without theme registry
+// Preview Theme Tests, Ensures buildPreviewTheme works without theme registry
 // Tests the client-side preview functionality used in admin UI
 // ---------------------------------------------------------------------------
 

@@ -352,7 +352,7 @@ describe('executeSecureCrudRequest', () => {
         });
         const handleCrudSpy = vi.spyOn(crud, 'handleCrud');
 
-        // Logged-out / missing userId — must fail closed, NOT emit eq(user_id, undefined) → 500.
+        // Logged-out / missing userId: must fail closed, NOT emit eq(user_id, undefined) → 500.
         const result = await executeSecureCrudRequest(
             { method: 'GET', model: 'posts' },
             { organizationId: 'org-1', appId: 'web' },

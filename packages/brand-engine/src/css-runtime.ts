@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – CSS Variable Runtime
+// BrandEngine, CSS Variable Runtime
 //
 // Converts resolved tokens into CSS custom properties and injects them into
 // the document as a stylesheet.
@@ -12,7 +12,7 @@
 //
 // This module is intentionally side-effect-free in Node (no global DOM access).
 // `applyBrandTheme` (browser) writes/replaces <style id="brand-critical"> and
-// <style id="brand-effects"> — the same elements the edge injects — so the
+// <style id="brand-effects">, the same elements the edge injects, so the
 // `.dark` cascade keeps working (no inline-style specificity wars).
 // ---------------------------------------------------------------------------
 
@@ -62,7 +62,7 @@ export function buildCSSVarMap(theme: ResolvedBrandTheme, mode: ColorScheme = 'l
     const typo: TokenTypographyRoles = theme.typography ?? DEFAULT_TYPOGRAPHY;
     for (const [role, settings] of Object.entries(typo)) {
         if (!settings?.fontFamily) continue;
-        // A comma means the theme authored a full stack — emit verbatim;
+        // A comma means the theme authored a full stack, emit verbatim;
         // otherwise quote the single family and append a generic fallback.
         vars[`--font-${role}`] = settings.fontFamily.includes(',')
             ? settings.fontFamily
@@ -182,7 +182,7 @@ function applyLayoutVars(vars: Record<string, string>, layout: LayoutConfig): vo
     vars['--layout-content-width'] = layout.contentWidth;
     vars['--layout-footer'] = layout.footer ? '1' : '0';
     vars['--layout-density'] = layout.density;
-    // Dimension tokens (sparse — only when the layout defines exact lengths)
+    // Dimension tokens (sparse: only when the layout defines exact lengths)
     if (layout.containerMaxWidth) vars['--layout-container-max'] = layout.containerMaxWidth;
     if (layout.sidebarWidthCss) vars['--layout-sidebar-w'] = layout.sidebarWidthCss;
     if (layout.sidebarIconWidthCss) vars['--layout-sidebar-w-icon'] = layout.sidebarIconWidthCss;
@@ -194,7 +194,7 @@ function applyLayoutVars(vars: Record<string, string>, layout: LayoutConfig): vo
 
 /**
  * Writes all CSS custom properties from `varMap` onto the supplied style target.
- * Retained for tests/embedded targets — the main runtime path now writes a
+ * Retained for tests/embedded targets: the main runtime path now writes a
  * stylesheet (see applyBrandTheme).
  */
 export function injectCSSVars(
@@ -267,7 +267,7 @@ export function buildBrandStylesheet(theme: ResolvedBrandTheme, darkTheme?: Reso
  * so `.dark` re-binding cascades naturally and theme/effects/custom CSS never
  * fight inline-style specificity.
  *
- * Pass both palettes for full dual-mode emission — mode toggling then needs
+ * Pass both palettes for full dual-mode emission, mode toggling then needs
  * no JS re-application at all. With only `theme`, a single :root block is
  * written (current-mode-only, e.g. admin preview iframes).
  */

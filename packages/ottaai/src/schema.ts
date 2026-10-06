@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai/schema — the Drizzle table only
+// @ottabase/ottaai/schema, the Drizzle table only
 // ============================================================
 // A DEPENDENCY-FREE entry point for `config.migrations.ts` and `db/schema.ts`, so
 // registering the table for auto-migrations does NOT pull the model, the ORM store

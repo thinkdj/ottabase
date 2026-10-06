@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Layout API handlers (v2: per-app scoping)
+// Brand Engine, Layout API handlers (v2: per-app scoping)
 // GET/PUT /api/brand/layouts, GET/PUT /api/brand/mappings
 // All scoped by appId only.
 // ---------------------------------------------------------------------------

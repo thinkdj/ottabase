@@ -1,5 +1,5 @@
 /**
- * @ottabase/analytics — Query
+ * @ottabase/analytics: Query
  *
  * Query aggregated analytics from the Cloudflare Workers Analytics Engine SQL API.
  * Supports standard aggregation, topK, quantiles, and multi-step funnel analysis.
@@ -118,7 +118,7 @@ export function buildAnalyticsQuery(filters: AnalyticsQueryFilters): string {
         const col = aggregateColumn ?? '_sample_interval';
         aggExpr = `${aggregate}(${col})`;
     } else {
-        // AVG, MIN, MAX — apply to the specified double column
+        // AVG, MIN, MAX, apply to the specified double column
         const col = aggregateColumn ?? 'double1';
         aggExpr = `${aggregate}(${col})`;
     }
@@ -132,7 +132,7 @@ LIMIT ${safeLimit}`;
 }
 
 /**
- * Build a topK query — find the K most frequent values in a column.
+ * Build a topK query: find the K most frequent values in a column.
  * Uses WAE's built-in `topK` aggregate function.
  */
 export function buildTopKQuery(options: TopKQueryOptions): string {
@@ -150,7 +150,7 @@ LIMIT ${safeK}`;
 }
 
 /**
- * Build a quantile query — compute a percentile of a numeric column.
+ * Build a quantile query: compute a percentile of a numeric column.
  * Uses `quantileWeighted` with `_sample_interval` for sampling compensation.
  */
 export function buildQuantileQuery(options: QuantileQueryOptions): string {

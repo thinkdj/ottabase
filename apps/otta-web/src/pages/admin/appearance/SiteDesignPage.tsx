@@ -126,7 +126,7 @@ export function AdminSiteDesignPage() {
         return () => window.removeEventListener('keydown', onKey);
     }, []);
 
-    // Preview: the draft laid over the live config, for one path, in one colour scheme
+    // Preview: the draft laid over the live config, for one path, in one color scheme
     const kitList = kits.data ?? NO_KITS;
     const layoutOptions = useMemo(() => [...BUILT_IN_PRESETS, ...(templates.data ?? NO_TEMPLATES)], [templates.data]);
     const [path, setPath] = useState('/');
@@ -226,7 +226,7 @@ export function AdminSiteDesignPage() {
                         <CardHeader>
                             <CardTitle className={headingClass}>Brand kits</CardTitle>
                             <CardDescription className="leading-relaxed">
-                                Colours, type, radius, motion and cursors live in a kit. The routes above choose which
+                                Colors, type, radius, motion and cursors live in a kit. The routes above choose which
                                 one applies where.
                             </CardDescription>
                         </CardHeader>
@@ -269,7 +269,7 @@ export function AdminSiteDesignPage() {
                                 ))}
                             </NativeSelect>
                         </div>
-                        <div className="flex rounded-lg bg-muted p-0.5" role="group" aria-label="Preview colour scheme">
+                        <div className="flex rounded-lg bg-muted p-0.5" role="group" aria-label="Preview color scheme">
                             {(['light', 'dark'] as const).map((m) => (
                                 <button
                                     key={m}

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – MenuSlotRenderer: renders a menu in a named layout slot
+// Ottamenu, MenuSlotRenderer: renders a menu in a named layout slot
 // Uses resolved menu slot data from the brand API response.
 // ---------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ export interface MenuSlotRendererProps {
 
 /**
  * Renders the menu(s) assigned to a named layout slot.
- * Reads from resolved brand API data — no additional fetch needed.
+ * Reads from resolved brand API data, no additional fetch needed.
  *
  * ```tsx
  * // In your layout:

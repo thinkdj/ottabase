@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { NavbarData } from './types';
 
 /**
- * Minimal navbar — logo and dark-mode toggle only. No navigation links.
+ * Minimal navbar: logo and dark-mode toggle only. No navigation links.
  */
 export function NavbarMinimal({ title = 'Ottabase' }: NavbarData) {
     return (

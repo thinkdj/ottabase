@@ -4,12 +4,12 @@ Threaded comment system for Ottabase apps with polymorphic targeting, reactions,
 
 ## Features
 
-- **Polymorphic targeting** — attach comments to any entity type (post, page, todo, etc.)
-- **Threaded replies** — self-referencing parent/child with depth tracking
-- **Emoji reactions** — normalized per-user rows in `comment_reactions`, enriched back into an aggregated map
-- **Moderation** — flag, hide, soft-delete, and restore actions
-- **OttaORM fat model** — all logic lives in the `Comment` model class
-- **RLS-aware** — supports `organizationId` and `appId` for multi-tenant isolation
+- **Polymorphic targeting**: attach comments to any entity type (post, page, todo, etc.)
+- **Threaded replies**: self-referencing parent/child with depth tracking
+- **Emoji reactions**: normalized per-user rows in `comment_reactions`, enriched back into an aggregated map
+- **Moderation**: flag, hide, soft-delete, and restore actions
+- **OttaORM fat model**: all logic lives in the `Comment` model class
+- **RLS-aware**: supports `organizationId` and `appId` for multi-tenant isolation
 
 ## Installation
 
@@ -75,7 +75,7 @@ const reply = await Comment.create({
 ### Toggling reactions
 
 ```typescript
-// Toggle — adds if absent, removes if present
+// Toggle: adds if absent, removes if present
 await comment.toggleReaction('👍', 'user-xyz');
 
 // The server returns the aggregated reactions map after a toggle.
@@ -101,7 +101,7 @@ GET /api/ottaorm/comments?where={"parentId":"comment-id-123"}
 
 > **Note:** The route handler in `worker/routes/ottaorm-crud.ts` enforces two security rules:
 >
-> 1. **`userId` / `organizationId`** are always overwritten from the session on POST — clients cannot impersonate other
+> 1. **`userId` / `organizationId`** are always overwritten from the session on POST, clients cannot impersonate other
 >    users or cross tenants.
 > 2. **Reactions** are not directly writable via PATCH. Send `_reaction: "<emoji>"` instead; the server calls
 >    `comment.toggleReaction(emoji, userId)`, scoping the change to the authenticated user only. Sending a raw
@@ -182,8 +182,8 @@ When fetching comments via `GET /api/ottaorm/comments`, the CRUD route handler a
 the author's `name`, `image`, and `createdAt` from the User model. The enriched data is available under the `_user`
 property.
 
-This enables rendering user avatars and "member since" tooltips without extra API calls. The enrichment is a batch
-lookup (`User.whereIn`) — one query regardless of how many unique authors appear in the result set.
+This enables rendering user avatars without extra API calls. The enrichment is a batch lookup (`User.whereIn`), one
+query regardless of how many unique authors appear in the result set.
 
 If the User lookup fails, comments are returned normally with `_user: null`.
 
@@ -191,11 +191,11 @@ If the User lookup fails, comments are returned normally with `_user: null`.
 
 When integrating into an app, modify these files:
 
-1. **`ottabase/config.migrations.ts`** — add both `commentsTable` and `commentReactionsTable` to `PACKAGE_REGISTRY`
-2. **`ottabase/ottabase.config.ts`** — add `'comments'` to `customPackages`
-3. **`ottabase/db/schema.ts`** — statically export both tables so Drizzle Kit sees them, for example:
+1. **`ottabase/config.migrations.ts`**: add both `commentsTable` and `commentReactionsTable` to `PACKAGE_REGISTRY`
+2. **`ottabase/ottabase.config.ts`**: add `'comments'` to `customPackages`
+3. **`ottabase/db/schema.ts`**: statically export both tables so Drizzle Kit sees them, for example:
    `export { commentsTable, commentReactionsTable } from '@ottabase/comments/schema'`
-4. **`worker/lib/db-utils.ts`** — add both `Comment` and `CommentReaction` to the `registerModels` array in
+4. **`worker/lib/db-utils.ts`**: add both `Comment` and `CommentReaction` to the `registerModels` array in
    `initDbConnection`; reaction CRUD remains disabled and reactions are mutated through `Comment.toggleReaction`
 
 Then run migrations:
@@ -208,17 +208,17 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 
 The template app includes a demo at `/demo/comments` with two modes:
 
-- **In-memory** (default) — local state with mock users/comments; works offline, no database required
-- **Database** — reads and writes to the actual D1 database via the CRUD API
+- **In-memory** (default): local state with mock users/comments; works offline, no database required
+- **Database**: reads and writes to the actual D1 database via the CRUD API
 
 Both modes use the same `CommentThread` renderer which supports:
 
-- **User avatars** — rendered from `_user.name`/`_user.image` with initials fallback and "member since" tooltip
-- **Load-more for root comments** — initially shows 5 root comments, click to load more
-- **Load-more for nested replies** — initially shows 3 replies per parent, click to expand
-- **Reaction toggling** — per-user emoji reactions
-- **Inline reply form** — reply to any comment up to depth 3
-- **Moderation actions** — flag, hide, soft-delete
+- **User avatars**: rendered from `_user.name`/`_user.image` with an initials fallback
+- **Load-more for root comments**: initially shows 10 root comments, click to load more
+- **Load-more for nested replies**: initially shows 3 replies per parent, click to expand
+- **Reaction toggling**: per-user emoji reactions
+- **Inline reply form**: reply to any comment up to depth 3
+- **Moderation actions**: flag, hide, soft-delete
 
 ## Types
 
@@ -229,7 +229,7 @@ Both modes use the same `CommentThread` renderer which supports:
 | `CommentReactionRecord`    | Row type inferred from `commentReactionsTable`   |
 | `NewCommentReactionRecord` | Insert type for reaction rows                    |
 | `CommentStatus`            | `'active' \| 'deleted' \| 'flagged' \| 'hidden'` |
-| `ReactionsMap`             | `Record<string, string[]>` — emoji → user IDs    |
+| `ReactionsMap`             | `Record<string, string[]>`: emoji → user IDs     |
 | `DefaultReaction`          | Union of the 6 built-in emoji strings            |
 | `CreateCommentParams`      | Parameters for creating a comment                |
 | `ListCommentsParams`       | Parameters for listing comments on a target      |

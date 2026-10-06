@@ -11,7 +11,7 @@
  *
  * @example
  * ```ts
- * // Write — fire-and-forget
+ * // Write: fire-and-forget
  * import { trackCoreEvent, extractRequestContext } from '@ottabase/analytics';
  * import { resolveVisitorId } from '@ottabase/analytics/identity';
  *
@@ -25,7 +25,7 @@
  *   metadata: ['/pricing', 'cta-signup'],
  * });
  *
- * // Read — query aggregated data
+ * // Read: query aggregated data
  * import { queryEvents, queryFunnel, queryTopK } from '@ottabase/analytics';
  *
  * const result = await queryEvents(config, {

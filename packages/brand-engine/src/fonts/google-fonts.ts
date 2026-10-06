@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Google Fonts metadata and utilities
+// Brand Engine, Google Fonts metadata and utilities
 // Curated list for admin font picker. Same categories as theme typography.
 // ---------------------------------------------------------------------------
 

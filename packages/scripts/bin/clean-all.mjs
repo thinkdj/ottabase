@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * clean:all – Wipe the whole local dev environment for a clean restart.
+ * clean:all, Wipe the whole local dev environment for a clean restart.
  *
  * Deletes:
  *   • .wrangler/          (local D1, KV and R2 state)
@@ -9,7 +9,7 @@
  *   • packages/<pkg>/dist/ (built package output, apps excluded)
  *
  * Does NOT delete node_modules (run `pnpm install` separately if needed).
- * Requires typing "YES" to confirm – this destroys your local D1 data.
+ * Requires typing "YES" to confirm, this destroys your local D1 data.
  */
 import { hasYesFlag, runClean } from './clean-lib.mjs';
 

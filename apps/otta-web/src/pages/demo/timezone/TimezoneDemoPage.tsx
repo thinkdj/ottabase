@@ -53,7 +53,11 @@ export function TimezoneDemoPage() {
             setCurrentTime(new Date());
         }, 1000);
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            // The page changed the app-wide timezone while open; put it back
+            setTimezoneConfig({ userTimezone: detected });
+        };
     }, []);
 
     const exampleDates = {
@@ -65,7 +69,7 @@ export function TimezoneDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Timezone Utilities"
+                title="Timezone"
                 description="Production-ready timezone standardization for SaaS apps: store in UTC, display in the user's timezone."
             />
 
@@ -101,7 +105,7 @@ export function TimezoneDemoPage() {
                             <div className="flex justify-between gap-3">
                                 <span className="font-medium">Currently DST:</span>
                                 <code className="rounded bg-muted/50 px-2 py-1">
-                                    {isDST(currentTime, userTimezone) ? 'Yes (Summer)' : 'No (Winter)'}
+                                    {isDST(currentTime, userTimezone) ? 'Yes' : 'No'}
                                 </code>
                             </div>
                         </div>
@@ -162,7 +166,7 @@ export function TimezoneDemoPage() {
                                 </p>
                                 <p className="text-sm">{formatInUserTimezone(currentTime, 'PPP', selectedTimezone)}</p>
                                 <code className="block rounded-lg bg-muted/50 p-2 text-xs">
-                                    formatInUserTimezone(date, 'PPpp')
+                                    formatInUserTimezone(date, 'HH:mm:ss', tz)
                                 </code>
                             </div>
                         </div>

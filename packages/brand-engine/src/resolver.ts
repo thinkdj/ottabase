@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Theme Resolver
+// BrandEngine, Theme Resolver
 //
 // Implements the merge layer:
 //   finalTheme = baseTheme + tenantOverrides + modeOverrides (dark/light)
 //
 // Per-category resolution lives in resolve-core.ts (shared with the BrandKit
-// persistence pipeline and the admin preview builder — one implementation,
+// persistence pipeline and the admin preview builder, one implementation,
 // three entry points).
 // ---------------------------------------------------------------------------
 
@@ -61,14 +61,14 @@ export function resolveModeValue<T>(
 }
 
 // ---------------------------------------------------------------------------
-// ResolvedBrandTheme – the fully-flattened output of the resolver
+// ResolvedBrandTheme, the fully-flattened output of the resolver
 // ---------------------------------------------------------------------------
 
 /**
  * Resolved theme ready for CSS variable injection. This is the wire shape:
  * it flows through the KV cache, the edge hydration payload and the client.
  * Sparse v2 categories (palette, typeScale, focus, …) are present only when
- * the theme defines them — see ResolvedTokenSet.
+ * the theme defines them, see ResolvedTokenSet.
  */
 export interface ResolvedBrandTheme extends ResolvedTokenSet {
     name: string;

@@ -1,10 +1,10 @@
 /**
- * Signed draft-preview tokens — Web Crypto HMAC, zero dependencies.
+ * Signed draft-preview tokens: Web Crypto HMAC, zero dependencies.
  *
  * A preview token lets an author hand a reviewer a link to an UNPUBLISHED post
  * without any account or session. The token binds the post's slug, appId, org
  * scope, and an expiry; the public by-slug handler accepts it as an alternate
- * access path that bypasses ONLY the `status: 'published'` filter — never RLS,
+ * access path that bypasses ONLY the `status: 'published'` filter, never RLS,
  * never other tenants' content (the org/app scope is inside the signature).
  *
  * Format: base64url(payloadJson) + '.' + base64url(hmacSha256(payloadJson)).

@@ -1,8 +1,8 @@
 ---
 name: ottabase-form
 description:
-    The Ottabase way to build forms — model-driven CRUD forms via @ottabase/forms, or custom forms via the ui-shadcn
-    Form primitives. Use for "build a form", "edit/create screen", "form validation", "field metadata", "a form for this
+    The Ottabase way to build forms, model-driven CRUD forms via @ottabase/forms, or custom forms via the ui-shadcn Form
+    primitives. Use for "build a form", "edit/create screen", "form validation", "field metadata", "a form for this
     model". Steers to the config-driven path and away from per-keystroke controlled state.
 ---
 
@@ -12,15 +12,15 @@ Two paths. Prefer the first for anything backed by a model.
 
 ## Model-backed forms (the 90% case)
 
-Field UI + validation come from the **model's field metadata** (single source of truth — the same metadata drives the
+Field UI + validation come from the **model's field metadata** (single source of truth, the same metadata drives the
 table and detail views). Build the config, drop in the component:
 
 ```tsx
 import { createModelConfig } from '@ottabase/forms'; // headless: config + Zod only
 import { ModelForm, ModelCrud } from '@ottabase/forms/react'; // rendered UI lives behind /react
 const config = createModelConfig(Todo);
-// <ModelForm config={config} onSuccess={...} />   — a single create/edit form
-// <ModelCrud config={config} />                     — full list + detail + create/edit/delete
+// <ModelForm config={config} onSuccess={...} />, a single create/edit form
+// <ModelCrud config={config} />, full list + detail + create/edit/delete
 ```
 
 The root `@ottabase/forms` is **headless** (zero rendered UI, tree-shakeable); rendered components (`FormField`,
@@ -30,7 +30,7 @@ the model, not in the form.
 ## Custom forms (not model-shaped)
 
 Use the `@ottabase/ui-shadcn/form` primitives (react-hook-form backed): `Form`, `FormField`, `FormItem`, `FormLabel`,
-`FormControl`, `FormDescription`, `FormMessage`, and the `useFormField` context hook. These are uncontrolled/ref-based —
+`FormControl`, `FormDescription`, `FormMessage`, and the `useFormField` context hook. These are uncontrolled/ref-based,
 a large admin form does **not** re-render on every keystroke. Native `<form>` submission + `FormData` are supported.
 
 ## Rules
@@ -42,7 +42,7 @@ a large admin form does **not** re-render on every keystroke. Native `<form>` su
 
 ## Gotcha
 
-The auto-generated `ModelForm` currently holds form state in `useState` and re-renders per keystroke — fine for small
+The auto-generated `ModelForm` currently holds form state in `useState` and re-renders per keystroke, fine for small
 forms; for a large administrative form prefer the react-hook-form primitives above. (Making `ModelForm` uncontrolled is
 a known roadmap item.)
 

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// OverrideSection – Toggle wrapper for inherited brand kit sections
+// OverrideSection, Toggle wrapper for inherited brand kit sections
 // Shows "Inherited from parent" when disabled, section content when enabled.
 // Only used when the brand kit has a parent (inherited kit).
 // ---------------------------------------------------------------------------
@@ -14,7 +14,7 @@ interface OverrideSectionProps {
     isOverridden: boolean;
     /** Called when the user toggles the override on/off */
     onToggle: (enabled: boolean) => void;
-    /** The editable section content – only rendered when overridden */
+    /** The editable section content: only rendered when overridden */
     children: React.ReactNode;
 }
 

@@ -117,7 +117,7 @@ a single-worker app like `otta-cache`.
 ```
 
 A resolved port is exported to _every_ process in the session (siblings proxy to each other) and, when the process
-declares `portArg`, also passed as a flag — Wrangler reads neither `portEnv` nor a shared environment. A port already
+declares `portArg`, also passed as a flag, Wrangler reads neither `portEnv` nor a shared environment. A port already
 exported in the shell (`PORT_BE=3101 pnpm dev`) is picked up the same way, so readiness URLs always track the real
 listeners.
 

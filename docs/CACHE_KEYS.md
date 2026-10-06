@@ -15,7 +15,7 @@ namespace:scope:id[:scope:id]:segments
 
 ### Components
 
-- **Namespace**: Identifies the cache domain (e.g., `rbac`, `brand`, `auth`). Extensible — any string is accepted.
+- **Namespace**: Identifies the cache domain (e.g., `rbac`, `brand`, `auth`). Extensible, any string is accepted.
 - **Scope**: Identifies the level (`org`, `usr` (user), `app`)
 - **ID**: The identifier for that scope (e.g., organization ID, user ID)
 - **Segments**: Additional descriptive parts (e.g., `brandkit`, `roles`, `perms`)
@@ -132,7 +132,7 @@ miss it calls the fetcher, stores the result in KV, and returns it.
 import { withCache, invalidateCache, invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
 import { userKey } from '@ottabase/cf/cache-keys';
 
-// Read-through cache — fetcher only called on cache miss
+// Read-through cache: fetcher only called on cache miss
 const settings = await withCache(env.OBCF_KV, userKey('cache', userId, 'settings'), 300, async () => {
     const user = await User.find(userId); // OttaORM model from '@ottabase/ottaorm'
     return user?.toJson() ?? null;
@@ -150,7 +150,7 @@ const deleted = await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
 ### 1. Version-Based Invalidation (RBAC)
 
 RBAC uses per-organization cache versions for O(1) invalidation. When a role or permission changes, the version is
-incremented — all old cache keys become misses instantly without scanning or deleting entries.
+incremented, all old cache keys become misses instantly without scanning or deleting entries.
 
 ```typescript
 // On role change (automatically handled by RBACCache.invalidateOrganization)
@@ -160,7 +160,7 @@ incremented — all old cache keys become misses instantly without scanning or d
 
 ### 2. Eager Rewrite with Surgical Invalidation (Brand Engine)
 
-Brand data is performance-critical — after a mutation, the cache is invalidated **then immediately re-resolved** so the
+Brand data is performance-critical: after a mutation, the cache is invalidated **then immediately re-resolved** so the
 next request is a cache hit. Brand kits use **per-kit caching** for surgical invalidation:
 
 ```typescript
@@ -224,7 +224,7 @@ group memberships) behind a 5-minute KV read-through cache (matching the RBAC ca
 // - auth:usr:{userId}:member-groups:{orgId | none}    → string[] of accessible group IDs (per validated org)
 ```
 
-The TTL is only the **fallback** bound — every in-app mutation path invalidates eagerly via
+The TTL is only the **fallback** bound, every in-app mutation path invalidates eagerly via
 `invalidateMembershipCache(kv, userId)` (exported from `worker/lib/auth-utils.ts`):
 
 - sign-in invite activation (org + group invites)
@@ -233,7 +233,7 @@ The TTL is only the **fallback** bound — every in-app mutation path invalidate
 - organization creation (the creator's pre-creation list is cached earlier in the same request)
 - generic CRUD mutations of `user_groups` / `user_group_members` (acting user + target member)
 
-Any cache-layer failure falls back to the direct D1 query — a KV outage never weakens membership resolution.
+Any cache-layer failure falls back to the direct D1 query, a KV outage never weakens membership resolution.
 
 **Propagation bound:** for mutations made outside these paths (custom code, direct D1 edits), the 300s TTL bounds
 staleness; KV eventual consistency adds up to ~60s cross-colo. Call `invalidateMembershipCache` from any custom route
@@ -419,7 +419,7 @@ const key = orgUserKey('rbac', orgId, userId, 'perms');
 | `system`    | System operations      | `system:maintenance`                 |
 | `temp`      | Temporary data         | `temp:upload-12345`                  |
 
-Custom namespaces are also accepted — any string works.
+Custom namespaces are also accepted, any string works.
 
 ## Testing
 

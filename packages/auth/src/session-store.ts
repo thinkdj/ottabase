@@ -154,7 +154,7 @@ interface UserContext {
     organizationId: string | null;
     roles: string[];
     permissions: string[];
-    /** True when a SYSTEM-scoped grant carries platform:admin/'*:*' — the platform-admin flag. */
+    /** True when a SYSTEM-scoped grant carries platform:admin/'*:*', the platform-admin flag. */
     platformAdmin: boolean;
     createdAt: number | null;
     name: string | null;
@@ -256,7 +256,7 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
 
             const roleNameSet = new Set<string>();
             const permissionSet = new Set<string>();
-            // Permissions from SYSTEM-scoped grants only — the platform-admin flag derives from
+            // Permissions from SYSTEM-scoped grants only, the platform-admin flag derives from
             // these, so an org-scoped grant (or a role merely NAMED 'owner'/'admin') can never
             // confer platform authority.
             const systemPermissionSet = new Set<string>();
@@ -278,7 +278,7 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
 
             // Also load system-scope roles (e.g. platform_owner) so that users
             // who hold a system-level grant see the correct permissions in their
-            // session — mirrors what getRequestContext does on the backend.
+            // session, mirrors what getRequestContext does on the backend.
             if (organizationId !== SYSTEM_ORGANIZATION_ID) {
                 const systemRoleRecords = await user.roles({ organizationId: SYSTEM_ORGANIZATION_ID });
                 collectRoles(systemRoleRecords, true);
@@ -363,7 +363,7 @@ export async function createSessionForUser(
     // Fail closed, end-to-end: getSession refuses to trust any token without KV (revocation
     // cannot be checked), so minting a cookie when KV is unbound would strand the user in a
     // login loop (create "succeeds", every subsequent request is unauthenticated). Refuse here
-    // instead — the failure is explicit at sign-in rather than a silent logout.
+    // instead, the failure is explicit at sign-in rather than a silent logout.
     if (!env.OBCF_KV) {
         throw new Error('Session store (OBCF_KV) is not bound; cannot create a session');
     }

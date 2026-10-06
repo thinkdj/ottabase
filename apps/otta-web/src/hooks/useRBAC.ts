@@ -3,7 +3,7 @@
  * Provides optimistic updates, cache invalidation, and error handling
  *
  * Cache layer: all queries and mutations route through the framework's
- * standard cache — createModelHooks for ottaorm CRUD, useApiQuery for
+ * standard cache, createModelHooks for ottaorm CRUD, useApiQuery for
  * the custom audit-log endpoint, and raw useMutation for the hooks that
  * carry optimistic updates. There is no global invalidation observer;
  * every mutation below explicitly invalidates the query families its
@@ -49,7 +49,7 @@ function useSessionRefreshAfterRbacChange() {
 }
 
 // ============================================================================
-// Organizations — Query Hooks
+// Organizations, Query Hooks
 // ============================================================================
 
 export function useOrganizations() {
@@ -61,7 +61,7 @@ export function useOrganization(id: string) {
 }
 
 // ============================================================================
-// Organizations — Mutation Hooks (with optimistic updates)
+// Organizations, Mutation Hooks (with optimistic updates)
 // ============================================================================
 
 export function useCreateOrganization() {
@@ -187,7 +187,7 @@ export function useDeleteOrganization() {
 }
 
 // ============================================================================
-// Organization Members — Query Hooks
+// Organization Members, Query Hooks
 // ============================================================================
 
 export function useOrganizationMembers(organizationId: string, page = 1, perPage = 25) {
@@ -209,11 +209,11 @@ export function useOrganizationMembers(organizationId: string, page = 1, perPage
 }
 
 // ============================================================================
-// Organization Members — Mutation Hooks
+// Organization Members, Mutation Hooks
 // ============================================================================
 
 /**
- * Invite a new member — no optimistic update needed; invalidates the
+ * Invite a new member: no optimistic update needed; invalidates the
  * member list directly in onSuccess.
  */
 export function useInviteMember() {
@@ -398,7 +398,7 @@ export function useRemoveMember() {
 }
 
 // ============================================================================
-// Roles — Query Hooks
+// Roles, Query Hooks
 // ============================================================================
 
 export function useRoles() {
@@ -406,7 +406,7 @@ export function useRoles() {
 }
 
 // ============================================================================
-// Roles — Mutation Hooks
+// Roles, Mutation Hooks
 // ============================================================================
 
 export function useCreateRole() {
@@ -470,7 +470,7 @@ export function useDeleteRole() {
 }
 
 // ============================================================================
-// Audit Logs — Query Hook (custom endpoint, useApiQuery)
+// Audit Logs, Query Hook (custom endpoint, useApiQuery)
 // ============================================================================
 
 export function useAuditLogs(filters?: Record<string, string>) {

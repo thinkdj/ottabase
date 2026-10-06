@@ -31,7 +31,7 @@ describe('AdminEmailPage', () => {
             'srcdoc',
             expect.stringContaining('Reset password'),
         );
-        expect(await screen.findByRole('link', { name: 'Open Dev Mail' })).toHaveAttribute(
+        expect(await screen.findByRole('link', { name: 'Open Dev mail' })).toHaveAttribute(
             'href',
             '/admin/infrastructure/dev-mail',
         );

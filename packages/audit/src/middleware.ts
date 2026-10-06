@@ -10,7 +10,7 @@ import { extractRequestContext, logAudit, logFailure } from './utils';
  * Automatically logs API requests and responses.
  *
  * The acting user comes ONLY from `options.getActor`, which must resolve it from a verified
- * session. Request headers such as `x-user-id` are client-controlled and are never read —
+ * session. Request headers such as `x-user-id` are client-controlled and are never read,
  * trusting one would let any caller attribute audit entries to another user. Without
  * `getActor` the entry is logged with no user.
  *

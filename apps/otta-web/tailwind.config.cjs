@@ -1,7 +1,7 @@
 const sharedPreset = require('@ottabase/ui-tailwind/tailwind.base.cjs');
 
 /**
- * Vite template app – Tailwind config
+ * Vite template app: Tailwind config
  *
  * Inherits all design-token colours, shadows, motion, and fonts
  * from the shared preset (@ottabase/ui-tailwind).

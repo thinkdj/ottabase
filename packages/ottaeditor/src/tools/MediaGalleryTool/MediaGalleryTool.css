@@ -271,7 +271,7 @@
     align-self: center;
 }
 
-/* Icon-style buttons (↑ ↓ ×) — no text label, square touch target */
+/* Icon-style buttons (↑ ↓ ×), no text label, square touch target */
 .cdx-media-gallery__item-button {
     border: none;
     border-radius: var(--mg-radius-sm);
@@ -333,7 +333,7 @@
     margin-top: var(--mg-space-1);
 }
 
-/* Clear-all — inline text button in the items header */
+/* Clear-all: inline text button in the items header */
 .cdx-media-gallery__clear-button {
     background: none;
     border: none;

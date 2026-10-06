@@ -18,7 +18,7 @@ describe('handle(): unmatched is a value', () => {
         expect(await router.handle(req('/absent'), {})).toBeNull();
     });
 
-    it('composes with ?? — fallback runs on null, is skipped on a match', async () => {
+    it('composes with ??, fallback runs on null, is skipped on a match', async () => {
         const router = new Router();
         router.get('/hit', () => new Response('routed'));
         const fallback = vi.fn(() => new Response('fallback', { status: 200 }));
@@ -221,7 +221,7 @@ describe('onError: error routing', () => {
         expect(res.headers.get('x-outer')).toBeNull();
     });
 
-    it('onError itself throwing propagates — one safety net, not two', async () => {
+    it('onError itself throwing propagates: one safety net, not two', async () => {
         const router = new Router();
         const secondary = new Error('onError boom');
         router.onError(() => {
@@ -236,7 +236,7 @@ describe('onError: error routing', () => {
 });
 
 describe('c.ctx: ExecutionContext plumbing', () => {
-    it('is a no-op stub when handle() is called without an ExecutionContext — waitUntil/passThroughOnException do not throw', async () => {
+    it('is a no-op stub when handle() is called without an ExecutionContext, waitUntil/passThroughOnException do not throw', async () => {
         const router = new Router();
         router.get('/c', (c) => {
             c.ctx.waitUntil(Promise.resolve());
@@ -296,7 +296,7 @@ describe('withHeaders()', () => {
         expect(await out.text()).toBe('payload');
     });
 
-    it('returns a 101 response UNCHANGED — same reference, headers untouched', () => {
+    it('returns a 101 response UNCHANGED, same reference, headers untouched', () => {
         const upgrade = { status: 101, headers: new Headers() } as unknown as Response;
 
         const out = withHeaders(upgrade, { 'x-a': '1' });
@@ -305,7 +305,7 @@ describe('withHeaders()', () => {
         expect(upgrade.headers.get('x-a')).toBeNull();
     });
 
-    it('returns a webSocket response UNCHANGED — same reference, headers untouched', () => {
+    it('returns a webSocket response UNCHANGED, same reference, headers untouched', () => {
         const ws = { webSocket: {}, status: 200, headers: new Headers() } as unknown as Response;
 
         const out = withHeaders(ws, { 'x-a': '1' });

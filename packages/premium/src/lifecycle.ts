@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium — lifecycle transitions
+// @ottabase/premium, lifecycle transitions
 // ============================================================
 // The five moments a paid add-on cares about: first install, version upgrade,
 // license activation, license loss, and removal. Each maps to one optional hook.
@@ -31,7 +31,7 @@ export interface PremiumLogger {
 
 const defaultLogger: PremiumLogger = {
     warn(message, detail) {
-        // Structured, bounded, and never the raw thrown value — the same rule the rest of
+        // Structured, bounded, and never the raw thrown value, the same rule the rest of
         // the framework follows for anything that reaches a log sink.
         console.warn(message, detail === undefined ? '' : { detail: String(detail) });
     },
@@ -107,7 +107,7 @@ export async function applyDisabledLifecycle<Env>(
  * Reconcile the stored install record with the manifest and the current license,
  * running whatever hooks that reconciliation implies.
  *
- * Called from `resolve()`, so it runs at most once per cache window per isolate —
+ * Called from `resolve()`, so it runs at most once per cache window per isolate,
  * not once per request.
  */
 export async function applyLifecycle<Env>(input: ApplyLifecycleInput<Env>): Promise<ApplyLifecycleResult> {

@@ -2,7 +2,7 @@
 // Applies the brand theme to the document. Writes/replaces the SAME
 // <style id="brand-critical"> / <style id="brand-effects"> elements the edge
 // injects (dual light+dark blocks), so:
-//   • mode toggling is pure CSS cascade (html.dark) — no JS re-application
+//   • mode toggling is pure CSS cascade (html.dark), no JS re-application
 //   • theme/effects/custom CSS never fight inline-style specificity
 // Re-runs only when the path-scoped theme pair actually changes (admin edits,
 // route token overrides, SPA navigation across differently-themed routes).

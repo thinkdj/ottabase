@@ -13,7 +13,7 @@ export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Respon
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Link Expired</title>
+    <title>Link expired</title>
     <script>
       (function () {
         try {
@@ -48,7 +48,7 @@ export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Respon
           </svg>
         </div>
         <h1>Link expired</h1>
-        <p>This shortlink is no longer available. Please request a new link from the sender.</p>
+        <p>This link has expired. Ask whoever shared it for a new one.</p>
       </div>
     </div>
   </body>
@@ -59,6 +59,9 @@ export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Respon
         headers: {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',
+            'Content-Security-Policy':
+                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'none'",
+            'X-Content-Type-Options': 'nosniff',
         },
     });
 }

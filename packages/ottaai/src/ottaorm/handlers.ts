@@ -1,10 +1,10 @@
 // ====================================================================
-// @ottabase/ottaai/ottaorm — the route factory
+// @ottabase/ottaai/ottaorm, the route factory
 // --------------------------------------------------------------------
 // A ROUTE FACTORY, NOT A CRUD BRANCH.
 //
 // Credentials could be exposed through generic auto-CRUD, and this framework
-// forbids custom CRUD endpoints without a real non-CRUD need — so an app would
+// forbids custom CRUD endpoints without a real non-CRUD need, so an app would
 // otherwise add a model-specific branch to its shared CRUD handler that
 // force-sets tenancy from the session, plus a post-write branch calling the
 // activation static. Forgetting either is a cross-tenant write or a broken
@@ -33,7 +33,7 @@ export interface CredentialHandlerOptions<HostContext = unknown> {
      * Turns a `Request` into the host security context the instance's `contextFrom` maps.
      *
      * Return `null` for an unauthenticated caller. NAMED `contextFromRequest` and OWNED BY
-     * THE APP — deliberately a different name from the instance's `contextFrom`, because
+     * THE APP, deliberately a different name from the instance's `contextFrom`, because
      * two functions called `contextFrom` is a conflation waiting to happen.
      */
     contextFromRequest: (request: Request) => Promise<HostContext | null> | HostContext | null;
@@ -54,13 +54,13 @@ export interface CredentialHandlers {
     remove(request: Request, id: string): Promise<Response>;
     /** `POST <base>/credentials/:id/activate` */
     activate(request: Request, id: string): Promise<Response>;
-    /** `POST <base>/credentials/test` — ALWAYS HTTP 200 for a classified result. */
+    /** `POST <base>/credentials/test`: ALWAYS HTTP 200 for a classified result. */
     test(request: Request): Promise<Response>;
     /** `GET  <base>/status` */
     status(request: Request): Promise<Response>;
-    /** `GET  <base>/providers` — the registry, for the form. */
+    /** `GET  <base>/providers`: the registry, for the form. */
     providers(request: Request): Promise<Response>;
-    /** `GET  <base>/explain?task=<key>` — support surface. Verdict projection only. */
+    /** `GET  <base>/explain?task=<key>`: support surface. Verdict projection only. */
     explain(request: Request): Promise<Response>;
 }
 
@@ -68,7 +68,7 @@ export interface CredentialHandlers {
  * Strategies under which an org-scoped row can actually be SELECTED.
  *
  * Under `strategy: 'user'` an org-only row scores 0 in every match class and is therefore
- * permanently unselectable — a rung the write path can produce but the resolver can never
+ * permanently unselectable, a rung the write path can produce but the resolver can never
  * choose is dead data that errors nowhere.
  */
 const ORG_MANAGEABLE_STRATEGIES = new Set(['org', 'user-then-org', 'org-then-user']);
@@ -95,7 +95,7 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
  * THE FILTER / SORT DENY-LIST.
  *
  * Marking a column hidden covers SERIALISATION. It does not cover `where` / `orderBy`,
- * which the framework passes straight through to the model — and the `filterable` /
+ * which the framework passes straight through to the model, and the `filterable` /
  * `sortable` field metadata is read by nobody. So a filterable secret column is an
  * equality and ordering ORACLE reachable through an endpoint no one wrote by hand.
  *
@@ -181,7 +181,7 @@ export function createCredentialHandlers<HostContext>(
         );
     }
 
-    /** Same 404 for "not found" and "not yours" — closes the existence oracle. */
+    /** Same 404 for "not found" and "not yours", closes the existence oracle. */
     const notFound = () => errorResponse('Provider connection not found', 404, { code: 'NOT_FOUND' });
 
     return {
@@ -214,7 +214,7 @@ export function createCredentialHandlers<HostContext>(
                 seen.add(record.id);
                 // STRICT ON BOTH SIDES, matching `store.findByIdInScope`. Listing is the
                 // discovery half of the same boundary: a row this app may not load, re-key or
-                // delete must not appear here either — including an unbound (`appId: null`)
+                // delete must not appear here either, including an unbound (`appId: null`)
                 // row, which the previous `record.appId && …` form let through for every app.
                 if ((record.appId ?? null) !== (auth.context.appId ?? null)) continue;
 
@@ -222,7 +222,7 @@ export function createCredentialHandlers<HostContext>(
 
                 // THE HINT IS ADMIN-ONLY ON AN ORG ROW.
                 //
-                // Every member of an org can legitimately SEE that a shared key exists — they
+                // Every member of an org can legitimately SEE that a shared key exists, they
                 // need that to understand why their prompts are billed to the workspace. They
                 // do not need its last four characters. `hasSecret` is enough to render "your
                 // organization has a key configured" without handing key material to every
@@ -262,7 +262,7 @@ export function createCredentialHandlers<HostContext>(
             // TWO INDEPENDENT REASONS ORG SCOPE CAN BE UNAVAILABLE, both enforced here.
             //
             // 1. THE OPERATOR TURNED IT OFF (`allowOrgCredentials: false`). This dial used to
-            //    reach only the settings component's `allowOrgScope` prop — so it hid a radio
+            //    reach only the settings component's `allowOrgScope` prop, so it hid a radio
             //    button and nothing more. A `POST /api/ai/credentials {"scope":"organization"}`
             //    from curl still succeeded for any admin, which is precisely the caller the
             //    dial exists to stop. A gate enforced only in the browser is not a gate.
@@ -407,7 +407,7 @@ export function createCredentialHandlers<HostContext>(
             const result = await verifyCredential(instance, auth.context, input, {
                 limiter: options.verifyLimiter,
             });
-            // ANSWER HTTP 200 FOR A CLASSIFIED RESULT and render from the `code` — a
+            // ANSWER HTTP 200 FOR A CLASSIFIED RESULT and render from the `code`: a
             // validation failure is a RESULT, not a transport error. (Auth, scope and
             // payload-validation failures above are ordinary API errors and use
             // `errorResponse`.)
@@ -425,7 +425,7 @@ export function createCredentialHandlers<HostContext>(
             const auth = await withContext(request);
             if (!auth.ok) return auth.response;
             return json({
-                // TENANT-SELECTABLE ONLY — this endpoint feeds the BYOK form. Listing a
+                // TENANT-SELECTABLE ONLY: this endpoint feeds the BYOK form. Listing a
                 // provider here that `create` then rejects is a form that offers a choice the
                 // server refuses.
                 data: instance.registry.tenantSelectable().map((entry) => ({
@@ -450,7 +450,7 @@ export function createCredentialHandlers<HostContext>(
                 return errorResponse('A task key is required.', 400, { code: 'VALIDATION_ERROR' });
             }
             try {
-                // Returns a VERDICT PROJECTION, never `CredentialRecord`s — a version that
+                // Returns a VERDICT PROJECTION, never `CredentialRecord`s, a version that
                 // returned records would serve every ciphertext in scope over HTTP and into
                 // ticket attachments.
                 const explained = await instance.explainResolution(auth.context, taskKey);

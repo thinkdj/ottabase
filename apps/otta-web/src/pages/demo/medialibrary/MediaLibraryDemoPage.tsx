@@ -88,7 +88,7 @@ export function MediaLibraryDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Media Library"
+                title="Media library"
                 description={
                     <>
                         Viewer and lightbox primitives from <code>@ottabase/medialibrary</code>, running without

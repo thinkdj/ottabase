@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Provider registry (per instance, composable)
+// @ottabase/ottaai, Provider registry (per instance, composable)
 // ============================================================
 // Lives in the DEPENDENCY-FREE ROOT on purpose: the browser form, the model's
 // field metadata (the provider <select> options are generated from it) and the
@@ -8,7 +8,7 @@
 //
 // The registry is seeded from built-ins, then EXTENDED, OVERRIDDEN or SUBSET per
 // instance. Subsetting is the half that gets forgotten and is the more common
-// enterprise requirement — a B2B app restricting tenants to two approved providers
+// enterprise requirement, a B2B app restricting tenants to two approved providers
 // would otherwise have to fork the package.
 // ============================================================
 
@@ -19,7 +19,7 @@ import type { HintSource } from './secret';
  *
  * MODEL-SELECTION METADATA FIRST. These decide which credential (and which platform model) is
  * ELIGIBLE for a task. Two of them are also call contracts: `vision` (image parts in
- * `AiCallOptions.messages`) and `json` (`AiCallOptions.responseFormat`) — and a call using
+ * `AiCallOptions.messages`) and `json` (`AiCallOptions.responseFormat`), and a call using
  * either is refused unless its task declares the capability, so selection and call agree.
  * The rest (`audio`, `image` output, `tools`, `reasoning`) buy an eligibility filter only;
  * the call contract has no way to use them.
@@ -43,7 +43,7 @@ export interface AiProviderEntry {
     /**
      * Whether a provider key is required to call this provider.
      *
-     * NOT a UI hint — load-bearing in four places: form field visibility, the
+     * NOT a UI hint: load-bearing in four places: form field visibility, the
      * keyless-mismatch guard, the provider-change write guard, and operator display.
      * Defaults to TRUE for providers that are not registered (see `requiresKeyFor`).
      */
@@ -55,13 +55,13 @@ export interface AiProviderEntry {
     /** Cheap client + server shape check. A hint, never the security control. */
     keyPattern?: RegExp;
 
-    /** "Where do I get a key" — materially reduces support load. */
+    /** "Where do I get a key", materially reduces support load. */
     docsUrl?: string;
 
     /** How the display hint is derived from the plaintext. */
     hintSource?: HintSource;
 
-    /** Suggested models. A SUGGESTION LIST, never a whitelist — see `allowCustomModel`. */
+    /** Suggested models. A SUGGESTION LIST, never a whitelist, see `allowCustomModel`. */
     models?: AiModelEntry[];
 
     /** Capabilities assumed for a model that is not in `models`. */
@@ -69,7 +69,7 @@ export interface AiProviderEntry {
 
     /**
      * Whether a tenant may type a model id that is not in `models`.
-     * Defaults to true — a whitelist turns every upstream model release into a deploy
+     * Defaults to true: a whitelist turns every upstream model release into a deploy
      * in every consuming app.
      */
     allowCustomModel?: boolean;
@@ -89,7 +89,7 @@ export interface AiProviderEntry {
      *
      * SEPARATE FROM `requiresKey`, and separate from being registered at all. A provider can
      * be legitimately present for the PLATFORM path while being meaningless as a tenant
-     * credential — Cloudflare Workers AI is the case that forced this field: it is billed to
+     * credential, Cloudflare Workers AI is the case that forced this field: it is billed to
      * the operator's account and has no tenant provider key to bring, so offering it in the
      * BYOK form produces a row that can never satisfy a `required` gate and never explains
      * why.
@@ -106,7 +106,7 @@ export interface AiProviderRegistry {
     has(providerId: string): boolean;
     list(): AiProviderEntry[];
     /**
-     * The providers a TENANT may save a credential for — `list()` minus the platform-only and
+     * The providers a TENANT may save a credential for, `list()` minus the platform-only and
      * no-verified-wire entries. This is what the form and every tenant write path read; the
      * unfiltered `list()` remains for operator surfaces and for the platform path.
      */
@@ -126,7 +126,7 @@ export interface AiProviderRegistry {
 /**
  * Providers Cloudflare AI Gateway can route to, seeded with the metadata the BYOK
  * surfaces need. Deliberately WITHOUT pinned current model ids beyond a couple of
- * stable families — model lists date instantly and imply the whitelist this design rejects.
+ * stable families, model lists date instantly and imply the whitelist this design rejects.
  *
  * Registry entries are DATA WITH LIFECYCLE: removing a provider or flipping
  * `requiresKey` invalidates stored credentials in the field, so both are deprecations
@@ -178,7 +178,7 @@ export const BUILT_IN_PROVIDERS: readonly AiProviderEntry[] = Object.freeze([
         // `platform.provider` (and the keyless-mismatch guard depends on that being a valid,
         // keyless provider), but it is not a credential a TENANT can bring: there is no
         // Workers AI key to paste, so such a row can never satisfy a `required` BYOK gate.
-        // It is also not reachable through AI Gateway's provider-native proxy shape — Workers
+        // It is also not reachable through AI Gateway's provider-native proxy shape, Workers
         // AI is called via the REST API or a Worker binding, which is a different transport.
         tenantSelectable: false,
         docsUrl: 'https://developers.cloudflare.com/workers-ai/models/',
@@ -211,7 +211,7 @@ export const BUILT_IN_PROVIDERS: readonly AiProviderEntry[] = Object.freeze([
         displayName: 'Cohere',
         requiresKey: true,
         // NO VERIFIED WIRE CONTRACT in the shipped gateway transport. Cohere speaks its own
-        // `chat_history` / `message` dialect and answers with `.text`, not `choices[]` — so an
+        // `chat_history` / `message` dialect and answers with `.text`, not `choices[]`, so an
         // OpenAI-shaped request returns HTTP 200 with an EMPTY completion rather than an
         // error. Offering it in the form would ship that silent failure to tenants. Flip this
         // to true in the same change that adds a Cohere wire and its contract tests.
@@ -232,7 +232,7 @@ export const BUILT_IN_PROVIDERS: readonly AiProviderEntry[] = Object.freeze([
         requiresKey: true,
         docsUrl: 'https://learn.microsoft.com/azure/ai-services/openai/',
         defaultCapabilities: ['text', 'vision', 'tools', 'json'],
-        // Azure's deployment/resource fields decide the destination host — operator-only.
+        // Azure's deployment/resource fields decide the destination host, operator-only.
         destinationKeys: ['resourceName', 'deploymentName', 'apiVersion', 'baseUrl'],
     },
     {
@@ -328,7 +328,7 @@ export function createProviderRegistry(options: CreateProviderRegistryOptions = 
             if (!providerId) return true;
             const entry = entries.get(providerId);
             // Fail safe: an unregistered provider is assumed to need a key. This default is
-            // live only on the WRITE path and in the form — at resolve time an unregistered
+            // live only on the WRITE path and in the form, at resolve time an unregistered
             // provider is already ineligible (verdict PROVIDER_UNREGISTERED).
             return entry ? entry.requiresKey : true;
         },
@@ -353,7 +353,7 @@ export function createProviderRegistry(options: CreateProviderRegistryOptions = 
  * Used at composition when the transport reports providers it cannot serve under this
  * operator's configuration (see `TransportAdapter.unservableProviders`). It narrows rather
  * than removes on purpose: the provider stays registered, so the platform path, the
- * keyless-mismatch guard and `PROVIDER_UNREGISTERED` verdicts all behave exactly as before —
+ * keyless-mismatch guard and `PROVIDER_UNREGISTERED` verdicts all behave exactly as before:
  * only the tenant-facing surfaces (form, `/providers`, write paths, verify) stop offering it.
  *
  * Returns the same registry unchanged when there is nothing to narrow.
@@ -374,7 +374,7 @@ export function withTenantSelectionRemoved(registry: AiProviderRegistry, ids: re
     };
 }
 
-/** Every operator-only key for a provider — universal set plus the provider's own. */
+/** Every operator-only key for a provider, universal set plus the provider's own. */
 export function destinationKeysFor(registry: AiProviderRegistry, providerId: string): Set<string> {
     const keys = new Set<string>(UNIVERSAL_DESTINATION_KEYS);
     for (const key of registry.get(providerId)?.destinationKeys ?? []) keys.add(key);

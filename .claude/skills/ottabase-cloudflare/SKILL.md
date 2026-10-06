@@ -1,7 +1,7 @@
 ---
 name: ottabase-cloudflare
 description:
-    The Ottabase way to work with Cloudflare Workers infrastructure — bindings, edge-runtime constraints, env access,
+    The Ottabase way to work with Cloudflare Workers infrastructure: bindings, edge-runtime constraints, env access,
     binding parity, and multi-tenant cache keys. Use for "add a binding", "read an env var", "use KV/R2/queue", "cache
     this", "wrangler config", or any edge/Worker-runtime work. Encodes the rules that keep edge code correct and
     tenant-safe.
@@ -9,7 +9,7 @@ description:
 
 # Cloudflare / edge runtime the Ottabase way
 
-This is a Workers project. Code runs at the edge — design for it.
+This is a Workers project. Code runs at the edge, design for it.
 
 ## Edge-runtime rules
 
@@ -21,15 +21,14 @@ This is a Workers project. Code runs at the edge — design for it.
 ## Binding parity
 
 `wrangler.jsonc` is the source of truth; `cloudflare-env.d.ts` is **generated** from it. After adding/changing a binding
-or var, run `pnpm --filter @ottabase/otta-web cf-typegen` and commit both files — never hand-edit the `.d.ts`. CI runs
+or var, run `pnpm --filter @ottabase/otta-web cf-typegen` and commit both files, never hand-edit the `.d.ts`. CI runs
 `cf-typegen:check` and fails on drift.
 
 ## Use the wrappers, not raw bindings
 
 `@ottabase/cf` wraps every binding type-safely: `createKVClient` / `createR2Client` / `createImagesClient` /
 `createRateLimitingClient` (subpaths `@ottabase/cf/kv`, `/r2`, `/images`, `/rate-limiting`). **For the database, use
-`@ottabase/db/drizzle-d1` + `@ottabase/ottaorm`, not the raw D1 client** — the raw client is only for non-OttaORM
-access.
+`@ottabase/db/drizzle-d1` + `@ottabase/ottaorm`, not the raw D1 client**, the raw client is only for non-OttaORM access.
 
 ## Multi-tenant cache keys (never hand-format KV keys)
 

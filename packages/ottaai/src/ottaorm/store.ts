@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — OttaORM-backed CredentialStore
+// @ottabase/ottaai, OttaORM-backed CredentialStore
 // ============================================================
 // The ONLY place the resolver touches the database. Every method returns PLAIN
 // RECORDS, so the pure layers never see an ORM instance.
@@ -27,7 +27,7 @@ export function createOrmCredentialStore(): CredentialStore {
             const wantsOrg = strategy !== 'user';
 
             // Filter ONLY on the tenancy dimensions. NOT on `enabled`, `appId` or
-            // `provider` — every one of those is a VERDICT the resolver must be able to
+            // `provider`: every one of those is a VERDICT the resolver must be able to
             // report, and filtering them in SQL kills the reason code at the database layer.
             if (wantsUser && scope.userId) {
                 queries.push(AiProviderCredential.where({ userId: scope.userId }) as Promise<AiProviderCredential[]>);
@@ -59,16 +59,16 @@ export function createOrmCredentialStore(): CredentialStore {
             if (!found) return null;
 
             const record = found.toRecord();
-            // MANAGEMENT IS ALWAYS STRICT ON THE APP DIMENSION — see `appMatch`, whose
+            // MANAGEMENT IS ALWAYS STRICT ON THE APP DIMENSION, see `appMatch`, whose
             // contract is "`wildcard` WIDENS USE, NEVER MANAGEMENT". So this is deliberately
             // NOT `appMatch(...)`: even under `appScope: 'wildcard'` an unbound row must not
             // become manageable from an app that merely happens to be allowed to USE it.
             //
             // An UNBOUND row (`appId: null`) is therefore not a wildcard here. The check used
             // to be `record.appId && record.appId !== scope.appId`, which let every null-appId
-            // row through for every app. Those rows are reachable — generic auto-CRUD, a
+            // row through for every app. Those rows are reachable, generic auto-CRUD, a
             // direct database write, or any deployment that ran before an `appId` was
-            // configured — so a manager in app B could load, re-key or delete an unbound
+            // configured, so a manager in app B could load, re-key or delete an unbound
             // credential belonging to app A, through the management plane, with no RLS
             // violation to detect. Strict equality on BOTH sides is the boundary.
             if ((scope.appId ?? null) !== (record.appId ?? null)) return null;
@@ -104,15 +104,15 @@ export function createOrmCredentialStore(): CredentialStore {
 
         async deleteById(id: string): Promise<boolean> {
             // HARD delete, including the ciphertext. Soft delete would mean the operator
-            // still holds the tenant's third-party secret — in production and in every
-            // backup — after being explicitly asked to remove it.
+            // still holds the tenant's third-party secret, in production and in every
+            // backup, after being explicitly asked to remove it.
             return AiProviderCredential.delete(id);
         },
 
         async countByEnvelopeKeyId(keyId: string): Promise<number> {
             // SCAN THE ENVELOPE, NOT THE INDEX COLUMN. A partial restore, or a re-wrap that
             // updated one and not the other, makes the index count read zero while old-key
-            // rows remain — retire the secret on that and those credentials become
+            // rows remain, retire the secret on that and those credentials become
             // permanently undecryptable, reported as "decrypt-failed", which means "wrong
             // master secret deployed" and sends incident response in exactly the wrong
             // direction.

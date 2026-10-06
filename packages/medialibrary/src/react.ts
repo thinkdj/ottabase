@@ -1,7 +1,7 @@
 // Rendered React surface for @ottabase/medialibrary.
 // Everything exported here pulls in JSX and @tabler/icons-react, so it is
 // isolated behind the `@ottabase/medialibrary/react` subpath. The pure root
-// (`@ottabase/medialibrary`) imports ZERO rendered UI — see ./index.ts.
+// (`@ottabase/medialibrary`) imports ZERO rendered UI, see ./index.ts.
 export { MediaImmersiveLightbox } from './viewer/MediaImmersiveLightbox';
 export { MediaLightbox } from './viewer/MediaLightbox';
 export {

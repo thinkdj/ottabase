@@ -38,7 +38,7 @@ types.
 
 ### 1. Define Your Model
 
-**Todo.schema.ts** – table and inferred types:
+**Todo.schema.ts**, table and inferred types:
 
 ```typescript
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
@@ -62,7 +62,7 @@ export type TodoType = typeof todosTable.$inferSelect;
 export type NewTodoType = typeof todosTable.$inferInsert;
 ```
 
-**Todo.ts** – model class and re-exports:
+**Todo.ts**, model class and re-exports:
 
 ```typescript
 import { BaseModel } from '@ottabase/ottaorm';
@@ -333,7 +333,7 @@ const error = validateField(field, value); // null if valid
 
 Logic lives in the model class; the table schema lives in `ModelName.schema.ts` and is re-exported from the model file.
 
-**Todo.schema.ts** – table and types:
+**Todo.schema.ts**, table and types:
 
 ```typescript
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
@@ -357,7 +357,7 @@ export type TodoType = typeof todosTable.$inferSelect;
 export type NewTodoType = typeof todosTable.$inferInsert;
 ```
 
-**Todo.ts** – model class (import table from schema, re-export for migrations/schema collection):
+**Todo.ts**, model class (import table from schema, re-export for migrations/schema collection):
 
 ```typescript
 import { BaseModel } from '@ottabase/ottaorm';
@@ -513,7 +513,7 @@ export class Post extends BaseModel {
     static deferred = ['content', 'footnotes']; // big JSON bodies no list renders
 }
 
-// Collection reads skip them — where, whereIn, all, search, searchPaginate, paginate
+// Collection reads skip them: where, whereIn, all, search, searchPaginate, paginate
 const page = await Post.paginate(1, 15); // SELECT without content/footnotes
 
 // Single-record reads never defer, so a detail view always has the full row
@@ -522,7 +522,7 @@ const post = await Post.find('post-id'); // content present
 // Opt back in for the rare collection read that needs them
 const withBodies = await Post.where({ status: 'published' }, { withDeferred: true });
 
-// Or project explicitly — an explicit select wins, and the primary key is always included
+// Or project explicitly: an explicit select wins, and the primary key is always included
 const titles = await Post.where({}, { select: ['title', 'slug'] });
 ```
 
@@ -536,7 +536,7 @@ post.get('content'); // Error: Field "content" was not loaded: a collection read
 
 That is deliberate. Returning `undefined` would make `if (!post.get('content')) return;` a silent no-op, and
 `post.set('content', post.get('content') ?? null)` a silent way to blank the column. `toJson()` and `save()` walk
-attributes directly, so a deferred column is simply absent from both — saving a collection-loaded record leaves the
+attributes directly, so a deferred column is simply absent from both, saving a collection-loaded record leaves the
 column untouched rather than nulling it.
 
 Two rules worth internalizing:
@@ -570,7 +570,7 @@ export class Post extends BaseModel {
     static softDeletes = true; // enables soft deletes
 }
 
-// Soft delete — sets deletedAt, row stays in DB
+// Soft delete: sets deletedAt, row stays in DB
 await Post.delete('post-id');
 
 // Queries automatically exclude soft-deleted records
@@ -598,7 +598,7 @@ await BaseModel.batch([
     "INSERT INTO todos (id, title) VALUES ('1', 'First')",
     "INSERT INTO todos (id, title) VALUES ('2', 'Second')",
 ]);
-// All succeed or all fail — atomic execution
+// All succeed or all fail, atomic execution
 ```
 
 ### Eager Loading
@@ -606,13 +606,13 @@ await BaseModel.batch([
 Load relationships after the initial query:
 
 ```typescript
-// Single instance — loads each relation in parallel
+// Single instance: loads each relation in parallel
 const post = await Post.find('post-id');
 await post.load('author', 'comments');
 console.log(post.get('author')); // { id: '...', name: '...' }
 console.log(post.get('comments')); // [{ id: '...', content: '...' }, ...]
 
-// Collection — loads each instance's relations in parallel (N queries per relation)
+// Collection: loads each instance's relations in parallel (N queries per relation)
 // For truly batched loading, use whereIn directly on the related model
 const posts = await Post.where({});
 await Post.loadAll(posts, 'author', 'tags');
@@ -720,7 +720,7 @@ curl -X POST https://your-app.com/api/ottaorm/init \
 
 **What happens automatically:**
 
-- ✓ Creates tables that don't exist — including **composite primary keys** (`primaryKey({ columns })`) and table-level
+- ✓ Creates tables that don't exist, including **composite primary keys** (`primaryKey({ columns })`) and table-level
   `UNIQUE` constraints
 - ✓ Adds new columns to existing tables
 - ✓ Creates declared **indexes** (`index()` / `uniqueIndex()`, including composite unique indexes). Idempotent
@@ -774,14 +774,14 @@ export const appMigrations: Migration[] = [
 
 SQLite's `ALTER TABLE` can only add columns. So a **non-destructive** run (the default) **cannot**:
 
-- ✗ **Change column types** — requires a table rebuild
-- ✗ **Rename columns** — requires a table rebuild
-- ✗ **Drop columns** — requires a table rebuild
-- ◑ **Add NOT NULL columns** — must have a `DEFAULT` value
+- ✗ **Change column types**: requires a table rebuild
+- ✗ **Rename columns**: requires a table rebuild
+- ✗ **Drop columns**: requires a table rebuild
+- ◑ **Add NOT NULL columns**: must have a `DEFAULT` value
 
 For type changes, renames, and drops, run with `allowDestructive: true` (plus `renameMap` for renames). The generator
 rebuilds the table (create new → copy intersecting columns → drop old → rename), **preserving primary keys, unique
-constraints, and indexes**. Destructive rebuilds are **off by default** — enable them deliberately (ideally gated behind
+constraints, and indexes**. Destructive rebuilds are **off by default**: enable them deliberately (ideally gated behind
 your `MIGRATION_SECRET`). For anything complex, prefer a custom migration.
 
 **Example:**
@@ -876,8 +876,8 @@ enhanced features.
 ### Role grants (`User` RBAC methods, `UserRole`)
 
 Role grants are org-scoped: `user_roles` is keyed by `userId + roleId + organizationId` (platform grants use the
-`'system'` org). Every `User` RBAC method — `assignRole`, `removeRole`, `hasRole`/`hasAnyRole`/`hasAllRoles`, `roles`,
-`getPermissions`, `hasPermission`/`hasAnyPermission`/`hasAllPermissions` — takes a **required** `organizationId` and
+`'system'` org). Every `User` RBAC method: `assignRole`, `removeRole`, `hasRole`/`hasAnyRole`/`hasAllRoles`, `roles`,
+`getPermissions`, `hasPermission`/`hasAnyPermission`/`hasAllPermissions`: takes a **required** `organizationId` and
 throws without one, so a grant in one tenant never applies in another.
 
 `UserRole` instance `destroy()`/`save()` address the full composite key. The static single-key mutators (`update`,
@@ -976,11 +976,11 @@ const removed = await OrganizationMember.removeRosterMembership('user-456', org.
 (system-scoped, `*:*`), `member` (read-only). **Available Statuses:** `active`, `invited`, `suspended`
 
 **Email-first invites.** A member is either a real user (`userId`) or a pending invite by email (`invitedEmail`, with
-`userId` null) — the same membership shape as `user_group_members`. Invites start `invited`; activate them when the
+`userId` null), the same membership shape as `user_group_members`. Invites start `invited`; activate them when the
 person signs up:
 
 ```typescript
-// Invite by email (no account yet) — joinedAt is stamped on activation, not now
+// Invite by email (no account yet), joinedAt is stamped on activation, not now
 await OrganizationMember.addMember({
     organizationId: org.id,
     invitedEmail: 'teammate@example.com',
@@ -1029,7 +1029,7 @@ export const expenseGroupsTable = sqliteTable('expense_groups', {
 });
 ```
 
-**Roles** are free-form (apps choose the vocabulary; defaults to `member` — e.g. `manager`/`member` or
+**Roles** are free-form (apps choose the vocabulary; defaults to `member`: e.g. `manager`/`member` or
 `owner`/`admin`/`member`). **Statuses** match `OrganizationMember`: `invited` → `active` → `suspended`. A member is
 either an existing user (`userId`) **or** an email invite (`invitedEmail`, with `userId` null until they sign up).
 
@@ -1054,7 +1054,7 @@ await UserGroupMember.addMember({
     status: 'active',
 });
 
-// Invite someone by email (no account yet) — joinedAt is stamped on activation, not now
+// Invite someone by email (no account yet), joinedAt is stamped on activation, not now
 await UserGroupMember.addMember({
     groupId: group.id,
     organizationId: org.id,
@@ -1074,7 +1074,7 @@ await UserGroup.forOrganization(org.id, { appId: 'tuskly' });
 ```
 
 **Activate email invites on sign-in.** When an invited user signs up, flip their pending invites to active and link the
-account — call this from your auth flow (the org-level equivalent lives on `OrganizationMember`):
+account, call this from your auth flow (the org-level equivalent lives on `OrganizationMember`):
 
 ```typescript
 // worker/lib/auth-utils.ts (on sign-in / sign-up)
@@ -1097,7 +1097,7 @@ const context: SecurityContext = {
 
 With `memberGroupIds` set, secure CRUD returns only the caller's groups (and only members of those groups). If it is
 absent the policy falls back to groups the user **created**, so a creator never loses access. On writes the policy
-enforces org isolation only — _who_ may add or remove members (group-admin authorization) is the app's call.
+enforces org isolation only, _who_ may add or remove members (group-admin authorization) is the app's call.
 
 ### Multi-Tenant Setup
 
@@ -1163,8 +1163,8 @@ and applied automatically by the secure CRUD handler.
 | `tenant` | Scoped to an organization                | `organizationId` |
 | `user`   | Scoped to the authenticated user         | `userId`         |
 | `app`    | Scoped to an application context         | `appId`          |
-| `public` | No filter applied (read-only by default) | —                |
-| `custom` | Fully custom filter function             | —                |
+| `public` | No filter applied (read-only by default) | -                |
+| `custom` | Fully custom filter function             | -                |
 
 ### Quick Setup
 
@@ -1246,8 +1246,8 @@ interface SecurityContext {
 }
 ```
 
-> **▲ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT** — never
-> from raw client input. `rlsMiddleware` therefore **requires** an explicit `getContext(request, env)` resolver:
+> **▲ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT**: never from
+> raw client input. `rlsMiddleware` therefore **requires** an explicit `getContext(request, env)` resolver:
 >
 > ```typescript
 > return rlsMiddleware(request, env, async (req) => {
@@ -1274,7 +1274,7 @@ Admins with `*:*` or `brand:*` will pass policies requiring `brand:edit`. OttaOR
 all call the same matcher from `@ottabase/utils/permissions`, so these semantics cannot drift between UI and server
 enforcement.
 
-**Limits:** Only 2-segment `resource:action` format is supported. Bare `*` does not grant—use `*:*`. 3+ segments (e.g.
+**Limits:** Only 2-segment `resource:action` format is supported. Bare `*` does not grant, use `*:*`. 3+ segments (e.g.
 `brand:edit:admin`) are not matched by wildcards; only exact match applies.
 
 ### Audit Integration
@@ -1394,8 +1394,8 @@ coerced or capped.
 
 ### Client Hooks
 
-TanStack Query hooks for React components. Mutations include built-in optimistic updates — `useUpdate` patches the
-detail cache immediately and rolls back on error, `useDelete` removes the cached item and restores it on failure.
+TanStack Query hooks for React components. Mutations include built-in optimistic updates, `useUpdate` patches the detail
+cache immediately and rolls back on error, `useDelete` removes the cached item and restores it on failure.
 
 #### Provider and visibility scope
 
@@ -1514,7 +1514,7 @@ operation-specific cache behavior:
 
 This avoids refetching unrelated detail records while keeping every collection representation current.
 
-#### `createModelHooks` — automatic, zero config
+#### `createModelHooks`: automatic, zero config
 
 All model hooks use the mandatory provider client, forward TanStack cancellation signals for reads, URL-encode resource
 IDs, and preserve framework mutation behavior when consumer lifecycle callbacks are supplied.
@@ -1527,7 +1527,7 @@ const deletePost = blogPostHooks.useDelete();
 await deletePost.mutateAsync(id);
 ```
 
-#### `useApiQuery` — custom endpoints, same invalidation
+#### `useApiQuery`: custom endpoints, same invalidation
 
 Use the `entity` option for any custom endpoint query. The key is namespaced as `[entity, ...queryKey]`, so it's busted
 by a custom mutation that declares the entity. `useApiQuery` is GET-only. Use `select` for observer-local projections;
@@ -1544,7 +1544,7 @@ const { data } = useApiQuery<BlogListResponse, BlogPost[]>({
 });
 ```
 
-#### `useEntityQuery` — custom queryFn, same invalidation
+#### `useEntityQuery`: custom queryFn, same invalidation
 
 When you need a fully custom `queryFn`, use `useEntityQuery`. Its non-empty `subKey` is required, and the provided API
 function is automatically bound to the active query cancellation signal.
@@ -1557,7 +1557,7 @@ const { data } = useEntityQuery<BlogPost>('posts', (api) => api(`/api/blog/posts
 });
 ```
 
-#### `useApiMutation` — custom mutations with entity invalidation
+#### `useApiMutation`: custom mutations with entity invalidation
 
 Invalidation runs on success only. Consumer `onSuccess` handlers are composed after framework invalidation and cannot
 replace it.

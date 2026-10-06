@@ -111,7 +111,7 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         name: DEFAULT_PLUGIN_NAMES.PARAGRAPH,
         tool: Paragraph as any,
         config: {
-            placeholder: 'Start writing your text...',
+            placeholder: 'Start writing your text…',
         } as any,
     },
     {
@@ -130,7 +130,7 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         name: DEFAULT_PLUGIN_NAMES.CODE,
         tool: CodeTool as any,
         config: {
-            placeholder: 'Enter your code here...',
+            placeholder: 'Enter your code here…',
         } as any,
     },
     {
@@ -178,7 +178,7 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         name: DEFAULT_PLUGIN_NAMES.RAW,
         tool: RawHtmlTool as any,
         config: {
-            placeholder: 'Enter raw HTML...',
+            placeholder: 'Enter raw HTML…',
         } as any,
     },
     {
@@ -210,14 +210,14 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         name: DEFAULT_PLUGIN_NAMES.SPOILER,
         tool: SpoilerTool as any,
         config: {
-            placeholder: 'Enter spoiler text...',
+            placeholder: 'Enter spoiler text…',
         } as any,
     },
     {
         name: DEFAULT_PLUGIN_NAMES.CTA,
         tool: CTATool as any,
         config: {
-            placeholder: 'Enter button text...',
+            placeholder: 'Enter button text…',
             defaultStyle: 'primary',
         } as any,
     },
@@ -266,8 +266,8 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         name: DEFAULT_PLUGIN_NAMES.FAQ,
         tool: FaqTool as any,
         config: {
-            questionPlaceholder: 'Enter the question...',
-            answerPlaceholder: 'Enter the answer...',
+            questionPlaceholder: 'Enter the question…',
+            answerPlaceholder: 'Enter the answer…',
             defaultStyle: 'accordion',
         } as any,
     },

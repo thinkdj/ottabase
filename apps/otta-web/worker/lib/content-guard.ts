@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Content guard — editorial permission gate WITHOUT an admin requirement.
+// Content guard, editorial permission gate WITHOUT an admin requirement.
 // requireAdminAccess asserts org/platform ADMIN; this guard only asserts an
 // authenticated session whose merged (org-scoped) permissions carry a given
 // permission, so non-admin editorial roles (author, editor) pass. Used for the
@@ -71,7 +71,7 @@ export async function requireContentPermission(
 /**
  * SCOPED Studio guard: platform-blog scope (null org) requires a PLATFORM
  * admin; an org scope requires an ORG ADMIN of that org (org:admin grant
- * evaluated in the TARGET org — grants are org-scoped, so non-members have
+ * evaluated in the TARGET org, grants are org-scoped, so non-members have
  * none there) or a platform admin. This is what lets each tenant run their
  * own blog's Studio in org mode while the platform blog stays platform-only.
  */
@@ -102,7 +102,7 @@ export async function requireStudioAdminForScope(
     // Same split as requireContentPermission: getRequestContext answers "may they?", but the
     // returned securityContext is what callers hand to the ottaorm RLS engine, so it MUST be the
     // canonical membership-validated one. A RequestContext has no userId/platformAdmin, and its
-    // undefined memberOrganizationIds reads as "membership unknown" — which makes the engine SKIP
+    // undefined memberOrganizationIds reads as "membership unknown", which makes the engine SKIP
     // the cross-tenant check rather than fail closed.
     const toAccessResult = async (): Promise<ContentAccessResult> => {
         const session = reqCtx.session ?? null;
@@ -132,7 +132,7 @@ export async function requireStudioAdminForScope(
 /**
  * OBJECT-level check for editorial actions on a specific post: platform admin,
  * or a manage-grade grant (posts:manage / posts:* / org:admin / *:*) evaluated
- * IN THE POST ROW's organization — never a request-supplied org hint. Grants
+ * IN THE POST ROW's organization, never a request-supplied org hint. Grants
  * are org-scoped, so a non-member simply has none there and fails closed.
  */
 export async function canManagePostInOrg(

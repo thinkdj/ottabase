@@ -13,7 +13,7 @@ writes to R2. Never call R2 multipart directly from app code.
 
 ## Client
 
-- Headless/vanilla: `uploadFile(file, options)` (`@ottabase/ottaupload`) — no React needed.
+- Headless/vanilla: `uploadFile(file, options)` (`@ottabase/ottaupload`), no React needed.
 - React: `useFileUpload(options)` → `{ files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload }`,
   plus `useDragAndDrop` and the `<FileUploader>` component (`@ottabase/ottaupload/client`).
 - Common options: `maxFileSize`, `acceptedFileTypes`, `provider` (`'r2' | 'cloudflare-images'`). Callbacks differ by
@@ -36,7 +36,7 @@ writes to R2. Never call R2 multipart directly from app code.
 - **Ownership/tenant columns come from the resolved security context, never from upload metadata or a request header.**
   Deriving the owner/org from client-supplied fields is a tenant leak.
 - Keep `wrangler.jsonc` and `cloudflare-env.d.ts` in sync for the R2 binding.
-- Validate file type/size on the **server** too — client limits are a UX hint, not a trust boundary.
+- Validate file type/size on the **server** too, client limits are a UX hint, not a trust boundary.
 
 ## Authoritative sources
 

@@ -8,7 +8,7 @@ import { organizationsTable } from './Organization.schema';
 import { usersTable } from './User.schema';
 
 /**
- * OrganizationMember junction table — a user's (or a pending email invite's) membership in an
+ * OrganizationMember junction table: a user's (or a pending email invite's) membership in an
  * organization. Shares the membership shape with `user_group_members`: a single `id` primary key,
  * a `status` lifecycle (`active` / `invited` / `suspended`), and email-first invites (`user_id` is
  * null for a pending `invited_email` until the invitee signs up and the invite is activated).

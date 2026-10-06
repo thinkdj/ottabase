@@ -57,7 +57,7 @@ export function AuthDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Auth"
+                title="Auth session"
                 description={
                     <>
                         Session, authorization snapshot, and CSRF helpers from <code>@ottabase/auth</code>. Sessions are
@@ -235,9 +235,6 @@ export function AuthDemoPage() {
                     </Button>
                     <Button asChild variant="outline">
                         <Link to="/register">Open register</Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link to="/reset-password">Open reset password</Link>
                     </Button>
                 </CardContent>
             </Card>

@@ -6,6 +6,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@ottabase/ui-shadcn';
+import { DEMO_GROUPS, DEMO_ITEMS } from '@/pages/demo/demoItems';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Home } from 'lucide-react';
 import { useMemo } from 'react';
@@ -38,33 +39,11 @@ interface BreadcrumbSegment {
  */
 const ROUTE_LABELS: Record<string, string> = {
     '/': 'Home',
-    '/changelog': "What's New",
+    '/changelog': "What's new",
     '/demo': 'Demos',
-    '/demo/shadcn': 'shadcn/ui',
-    '/demo/ottaeditor': 'OttaEditor',
-    '/demo/ottaorm': 'OttaORM',
-    '/demo/ottaforms': 'OttaForms',
-    '/demo/ottaselect': 'OttaSelect',
-    '/demo/ui-cropper': 'Image Cropper',
-    '/demo/timezone': 'Timezone Utils',
-    '/demo/api': 'API Client',
-    '/demo/renderer': 'Content Renderer',
-    '/demo/email': 'Email Templates',
-    '/demo/state': 'State Management',
-    '/demo/logger': 'Logger',
-    '/demo/i18n': 'Internationalization',
-    '/demo/theming': 'Theming',
-    '/demo/notifications': 'Notifications',
-    '/demo/cloudflare': 'Cloudflare Services',
-    '/demo/cloudflare/d1': 'D1 Database',
-    '/demo/cloudflare/kv': 'KV Storage',
-    '/demo/cloudflare/r2': 'R2 Storage',
-    '/demo/cloudflare/file-upload': 'File Upload',
-    '/demo/cloudflare/images': 'Cloudflare Images',
-    '/demo/cloudflare/hyperdrive': 'Hyperdrive',
-    '/demo/cloudflare/queues': 'Queues',
-    '/demo/cloudflare/rate-limiting': 'Rate Limiting',
-    '/demo/cloudflare/realtime': 'Realtime Pub/Sub',
+    // Every demo page and group overview is named once, in the gallery registry
+    ...Object.fromEntries(DEMO_GROUPS.filter((group) => group.overview).map((group) => [group.overview, group.label])),
+    ...Object.fromEntries(DEMO_ITEMS.map((item) => [item.to, item.label])),
 };
 
 /**

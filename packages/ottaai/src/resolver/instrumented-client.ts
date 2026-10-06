@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — The instrumented client
+// @ottabase/ottaai, The instrumented client
 // ============================================================
 // THE LARGEST STRUCTURAL DECISION IN THE DESIGN, and the one most likely to be
 // got wrong by omission. Seven behaviours must intercept every call AFTER the
@@ -12,7 +12,7 @@
 //
 // A CORE DECORATOR, NOT SEVEN COPIES IN EVERY ADAPTER. Putting these in the
 // adapter would make every adapter reimplement degradation, metering, health and
-// dedupe — and the second adapter becomes the bulk of the work.
+// dedupe, and the second adapter becomes the bulk of the work.
 // ============================================================
 
 import { capabilitiesForCall, parseJsonObject, validateCallContent } from '../content';
@@ -33,14 +33,14 @@ import type {
 
 export interface QuotaCheck {
     /**
-     * Called AFTER resolution, BEFORE the outbound call — `source` is what scopes the
+     * Called AFTER resolution, BEFORE the outbound call, `source` is what scopes the
      * quota and `source` is only known after resolution.
      *
      * Return `false` to refuse the call. Actuals are recorded post-call by the host from
      * the `call.completed` event; the package deliberately does NOT build two-phase
      * reservation (that costs a durable per-tenant counter with contention on the
-     * inference path, and the stated tolerance — "a free tier may overrun by roughly the
-     * in-flight concurrency count" — is what makes it unnecessary).
+     * inference path, and the stated tolerance, "a free tier may overrun by roughly the
+     * in-flight concurrency count", is what makes it unnecessary).
      */
     (input: {
         source: ResolutionSource;
@@ -66,7 +66,7 @@ export interface InstrumentedClientDeps {
     taskKey: string;
     /**
      * The task's `requiredCapabilities`. A call needing a capability the task did not declare
-     * (an image without `vision`, `responseFormat` without `json`) is refused — the
+     * (an image without `vision`, `responseFormat` without `json`) is refused, the
      * declaration is what filtered the credential and the platform model during resolution.
      */
     taskCapabilities: readonly AiCapability[];
@@ -129,7 +129,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
      *
      * Nothing forces a completion cache key to include a tenant dimension, so a cache keyed
      * on prompt+model across a multi-tenant deployment serves tenant A's completion to
-     * tenant B — worse under BYOK, because the cached response was generated and PAID FOR
+     * tenant B, worse under BYOK, because the cached response was generated and PAID FOR
      * under A's provider contract. The caller cannot opt back in: a per-call
      * `cacheTtlSeconds` is IGNORED on the byok path, not merely defaulted away.
      */
@@ -167,7 +167,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
         operation?: 'chat' | 'embedding';
     }): void {
         // A DEGRADED call went out on the PLATFORM client, against the platform provider and
-        // platform model — reporting the tenant's provider/model with `source: 'platform'`
+        // platform model, reporting the tenant's provider/model with `source: 'platform'`
         // would bill the operator's spend to a provider and a model that were never called,
         // and any cost report grouped by provider would be silently wrong.
         const degraded = input.source === 'platform' && deps.source === 'byok';
@@ -191,7 +191,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             outputTokens: tokens && 'output' in tokens ? (tokens.output ?? null) : null,
             cachedTokens: tokens && 'cached' in tokens ? (tokens.cached ?? null) : null,
             latencyMs: now() - input.startedAt,
-            // Keyed on the CODE, not on the result: an `INVALID_RESPONSE` call carries both — the
+            // Keyed on the CODE, not on the result: an `INVALID_RESPONSE` call carries both, the
             // provider was paid for the tokens, and the caller still got an error.
             outcome: input.code ? 'error' : 'success',
             ...(input.code ? { errorCode: input.code } : {}),
@@ -239,7 +239,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
                 code: AI_ERROR_CODES.CONFIGURATION,
                 message:
                     `Task "${deps.taskKey}" must declare requiredCapabilities: [${undeclared.map((c) => `'${c}'`).join(', ')}] ` +
-                    'to send this call — the declaration is what makes resolution pick a model that can serve it.',
+                    'to send this call: the declaration is what makes resolution pick a model that can serve it.',
             };
         }
         // A per-call model bypasses the eligibility filter resolution ran on ANOTHER model, so
@@ -290,8 +290,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
         return {
             ok: false,
             code: AI_ERROR_CODES.INVALID_RESPONSE,
-            message:
-                'The provider reply was not a JSON object. It may have been cut off — consider a larger maxTokens.',
+            message: 'The provider reply was not a JSON object. It may have been cut off, consider a larger maxTokens.',
         };
     }
 
@@ -304,20 +303,20 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
         source: Exclude<ResolutionSource, null>,
     ): { ok: true; result: AiCallResult } | { ok: false; code: AiErrorCode; message: string } {
         const settled = withJson(options, result);
-        // Metered either way — the provider billed for the tokens even when the reply is unusable.
+        // Metered either way: the provider billed for the tokens even when the reply is unusable.
         emitCompleted({ correlationId, startedAt, result, source, ...(settled.ok ? {} : { code: settled.code }) });
         return settled;
     }
 
     /**
-     * DEGRADATION — exactly one retry, to the PLATFORM client the decorator already holds.
+     * DEGRADATION: exactly one retry, to the PLATFORM client the decorator already holds.
      * It does NOT re-enter the state machine and does NOT re-select a tenant credential.
      *
      * | constraint  | rule                                                                    |
      * | ----------- | ----------------------------------------------------------------------- |
      * | trigger     | 401/403 ONLY                                                            |
      * | never on    | 429 (converts a tenant's rate limit into your bill), 5xx, timeout/abort |
-     * | mode        | impossible under `byok` — rejected at composition, not checked here     |
+     * | mode        | impossible under `byok`: rejected at composition, not checked here     |
      * | attempts    | exactly one                                                             |
      * | streaming   | reachable only before the first byte                                    |
      */
@@ -370,7 +369,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             try {
                 response = await deps.raw.complete(call);
             } catch (thrown) {
-                // An adapter that throws instead of returning is still handled — the
+                // An adapter that throws instead of returning is still handled, the
                 // conformance suite asserts adapters return, but a bug here must not 500.
                 const code = isAbortError(thrown) ? AI_ERROR_CODES.TIMEOUT : AI_ERROR_CODES.ERROR;
                 const message = redactSecrets(
@@ -383,7 +382,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             }
 
             if (response.ok) {
-                // The KEY worked even when the reply is unusable JSON — health is about the key.
+                // The KEY worked even when the reply is unusable JSON, health is about the key.
                 writeHealth(true);
                 return settleSuccess(options, response.result, correlationId, startedAt, deps.source);
             }
@@ -539,7 +538,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             const correlationId = newCorrelationId();
             const startedAt = now();
 
-            // A stream does NOT get the JSON guarantee — it ends in deltas, not a reply. Collect
+            // A stream does NOT get the JSON guarantee, it ends in deltas, not a reply. Collect
             // the text and run `parseJsonObject` on it.
             const refused = preflight(options);
             if (refused) {
@@ -584,7 +583,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
             let failed: AiErrorCode | undefined;
 
             // TRY/FINALLY, not a bare loop. An async generator that the consumer stops
-            // iterating — a user pressing Stop, a client disconnect, any `break` — is
+            // iterating: a user pressing Stop, a client disconnect, any `break`: is
             // finalized WITHOUT running code that merely follows the loop. Without this
             // block a cancelled stream emits no `call.completed` at all: zero tokens metered
             // for a call the tenant was genuinely billed for, no health write, and any quota
@@ -597,7 +596,7 @@ export function createInstrumentedClient(deps: InstrumentedClientDeps): AiClient
                         tokens = event.tokens;
                     } else if (event.type === 'error') {
                         // An auth failure INSIDE a 200 stream surfaces as a stream error and
-                        // NEVER cascades — degradation is reachable only before the first byte.
+                        // NEVER cascades, degradation is reachable only before the first byte.
                         const classified = classify(event.error);
                         failed = classified.code;
                         yield { type: 'error', error: { ...event.error, message: classified.message } };

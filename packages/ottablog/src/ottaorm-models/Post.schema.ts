@@ -87,7 +87,7 @@ export const postsTable = sqliteTable(
             noFollow?: boolean;
         }>(),
 
-        // When the content was originally written — a fuzzy date with OttaDate resolution.
+        // When the content was originally written, a fuzzy date with OttaDate resolution.
         // Distinct from publishedAt (when it appeared on the blog). Use case: a diary entry
         // from "Late May 2010" published yesterday. Stores an @ottabase/ottadate FuzzyDateTime.
         originalDate: text('original_date', { mode: 'json' }).$type<{

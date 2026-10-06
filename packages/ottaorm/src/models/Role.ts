@@ -11,7 +11,7 @@ export { rolesTable, type NewRoleType, type RoleType } from './Role.schema';
 export const PLATFORM_OWNER_ROLE_NAME = 'platform_owner';
 
 /**
- * Permission that marks the holder as a PLATFORM administrator — the SaaS control plane
+ * Permission that marks the holder as a PLATFORM administrator, the SaaS control plane
  * (all users/orgs, RBAC role definitions, infrastructure, app-global appearance/content).
  * Only ever meaningful when granted at SYSTEM scope; guards read it from the system-scoped
  * grant set, never from an org-scoped one (see packages/rbac assertAdmin / session-store
@@ -29,7 +29,7 @@ export const ORG_ADMIN_PERMISSION = 'org:admin';
  * Permission to manage the ORGANISATION's AI provider credentials (@ottabase/ottaai).
  *
  * A provider key is a SPENDING INSTRUMENT for the org, and RLS isolates tenants, not
- * members — without a named permission, every member of an org could replace the shared
+ * members, without a named permission, every member of an org could replace the shared
  * key with one they control and every colleague's prompts would flow through their
  * provider account. Deliberately NOT covered by the `*:create`/`*:update` wildcards an
  * editor holds: `ai:manage` matches only an explicit grant (or platform_owner's '*:*').
@@ -40,7 +40,7 @@ export const AI_MANAGE_PERMISSION = 'ai:manage';
  * Scoped permission set for the org-level 'owner' / 'admin' roles.
  *
  * Full CRUD on all resources within the org, plus the `org:admin` capability and
- * feature-specific grants. Deliberately excludes '*:*' — the superadmin wildcard — and
+ * feature-specific grants. Deliberately excludes '*:*', the superadmin wildcard, and
  * app-global grants like `brand:*` (appearance/menus are platform-owned, not tenant data),
  * so the permission system itself enforces the boundary between org-scoped admins and the
  * system-scoped platform owner. Authorization keys on THESE permissions at the right scope,
@@ -261,7 +261,7 @@ export class Role extends BaseModel {
     }
 
     /**
-     * Canonical definitions of the built-in system roles — the single source of truth for
+     * Canonical definitions of the built-in system roles, the single source of truth for
      * ensureDefaultRoles() (runtime seeding + heal).
      *
      * IMPORTANT: `admin` and `owner` are ORG-level roles (no '*:*'). Platform authority comes
@@ -280,12 +280,12 @@ export class Role extends BaseModel {
         },
         {
             name: 'owner',
-            description: 'Organization owner — full org-level access (no system-level wildcard)',
+            description: 'Owns the organization: full org-level access, no system-level wildcard',
             permissions: ORG_OWNER_PERMISSIONS,
         },
         {
             name: 'admin',
-            description: 'Organization administrator — full org-level access (no system-level wildcard)',
+            description: 'Administers the organization: the same org-level access, granted by an owner',
             permissions: ORG_OWNER_PERMISSIONS,
         },
         {
@@ -311,16 +311,16 @@ export class Role extends BaseModel {
     ];
 
     /**
-     * Ensure the built-in system roles exist, and — only when `heal` is set — reconcile existing
+     * Ensure the built-in system roles exist, and, only when `heal` is set, reconcile existing
      * ones back to {@link DEFAULT_ROLE_DEFINITIONS}.
      *
      * Two modes, deliberately separated:
-     *  - default (`heal` false): CREATE-IF-MISSING only. Safe for the signup hot path — it never
+     *  - default (`heal` false): CREATE-IF-MISSING only. Safe for the signup hot path, it never
      *    rewrites an existing row, so it can't silently revert state or incur an unbounded
      *    session-refresh obligation on every signup.
      *  - `heal: true`: additionally reconcile each existing `isSystem` row's permissions/description
      *    (e.g. heal a legacy `owner = ['*:*']` from before org/platform scoping). This is the
-     *    DELIBERATE maintenance path — run it from the bootstrap seed step (`/__bootstrap__/seed`),
+     *    DELIBERATE maintenance path, run it from the bootstrap seed step (`/__bootstrap__/seed`),
      *    which follows the reconcile with an RBAC-cache invalidation + session refresh so the healed
      *    permissions take effect (see reconcileSystemRoleSessions). Do NOT heal from the signup path.
      *
@@ -328,7 +328,7 @@ export class Role extends BaseModel {
      * survives until an operator runs it. That delay is NOT a privilege-escalation window: platform
      * access is gated on a SYSTEM-scoped grant (not on merged permissions), grant/system tables are
      * default-denied in generic CRUD, and the cross-tenant bypass is gated on the scope-aware
-     * `platformAdmin` flag (not the `*:*` string) — so a lingering org-scoped `*:*` grants exactly
+     * `platformAdmin` flag (not the `*:*` string), so a lingering org-scoped `*:*` grants exactly
      * what a legitimate org admin has, and nothing platform-wide or cross-tenant.
      *
      * System roles are framework-owned; customize by creating NEW roles, never by editing these
@@ -354,7 +354,7 @@ export class Role extends BaseModel {
                 continue;
             }
 
-            // Reconcile only in heal mode, and only framework-owned rows — never clobber operator roles.
+            // Reconcile only in heal mode, and only framework-owned rows, never clobber operator roles.
             if (!heal || !existing.get('isSystem')) continue;
 
             const permsDiffer = JSON.stringify(existing.getPermissions()) !== JSON.stringify(def.permissions);

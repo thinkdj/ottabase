@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Tests for FuzzyDateTime core logic (v2)
+ * @ottabase/ottadate: Tests for FuzzyDateTime core logic (v2)
  *
  * Covers the derived-phrasing label grammar, part-of-period windows
  * (early/mid/late, seasons, day-parts), the approximate widening table,
@@ -118,7 +118,7 @@ describe('snapToResolution', () => {
     });
 });
 
-describe('buildFuzzyLabel — derived phrasing', () => {
+describe('buildFuzzyLabel: derived phrasing', () => {
     const y1996 = new Date(Date.UTC(1996, 0, 1));
     const may2010 = new Date(Date.UTC(2010, 4, 1));
     const day = new Date(Date.UTC(2010, 4, 21));
@@ -154,7 +154,7 @@ describe('buildFuzzyLabel — derived phrasing', () => {
     });
 });
 
-describe('createFuzzyDateTime — intervals', () => {
+describe('createFuzzyDateTime: intervals', () => {
     it('computes the plain period window (inclusive latest)', () => {
         const fuzzy = createFuzzyDateTime(new Date(Date.UTC(1996, 5, 10)), 'year');
         expect(fuzzy.timestamp).toBe(unix(1996));
@@ -169,7 +169,7 @@ describe('createFuzzyDateTime — intervals', () => {
         expect(early90s.label).toBe('Early 1990s');
         expect(early90s.timestamp).toBe(unix(1990));
         expect(early90s.earliest).toBe(unix(1990));
-        expect(early90s.latest).toBe(unix(1994) - 1); // early = years 0–3
+        expect(early90s.latest).toBe(unix(1994) - 1); // early = years 0 to 3
 
         const late90s = createFuzzyDateTime(new Date(Date.UTC(1994, 0, 1)), 'decade', { part: 'late' });
         expect(late90s.timestamp).toBe(unix(1997)); // sorts after early
@@ -194,7 +194,7 @@ describe('createFuzzyDateTime — intervals', () => {
             part: 'summer',
             hemisphere: 'south',
         });
-        expect(summerS.earliest).toBe(unix(1998, 11, 1)); // southern summer = Dec–Feb
+        expect(summerS.earliest).toBe(unix(1998, 11, 1)); // southern summer = Dec to Feb
         expect(summerS.latest).toBe(unix(1999, 2, 1) - 1);
     });
 

@@ -36,7 +36,7 @@ export default defineConfig({
         alias: {
             // Keep app-local imports and Vitest mocks on the same resolved module ID.
             '@': path.resolve(__dirname, './src'),
-            // Subpaths before the bare package — these ship dist-only exports, so aliasing to
+            // Subpaths before the bare package, these ship dist-only exports, so aliasing to
             // source lets the app's tests run without a prior `pnpm build:pkg`.
             '@ottabase/ottaai/resolver': path.resolve(__dirname, '../../packages/ottaai/src/resolver/index.ts'),
             '@ottabase/ottaai/testing': path.resolve(__dirname, '../../packages/ottaai/src/testing/index.ts'),
@@ -53,7 +53,7 @@ export default defineConfig({
             '@ottabase/ottaorm/models': path.resolve(__dirname, '../../packages/ottaorm/src/models/index.ts'),
             '@ottabase/ottaorm/base': path.resolve(__dirname, '../../packages/ottaorm/src/base/index.ts'),
             '@ottabase/ottaorm': path.resolve(__dirname, '../../packages/ottaorm/src/index.ts'),
-            // Headless-decoupling subpaths (see apps/otta-web/tsconfig.json) — dist-only exports
+            // Headless-decoupling subpaths (see apps/otta-web/tsconfig.json), dist-only exports
             // aliased to source so tests resolve them without a prior `pnpm build:pkg`.
             '@ottabase/auth/config': path.resolve(__dirname, '../../packages/auth/src/components/helpers.ts'),
             '@ottabase/forms/react': path.resolve(__dirname, '../../packages/forms/src/react.ts'),
@@ -81,7 +81,7 @@ export default defineConfig({
             '@ottabase/brand-engine-react': path.resolve(__dirname, '../../packages/brand-engine-react/src/index.tsx'),
             '@ottabase/ui-shadcn': path.resolve(__dirname, '../../packages/ui-shadcn/src/index.ts'),
             '@ottabase/api': path.resolve(__dirname, '../../packages/api/src/index.ts'),
-            // Premium Packages (ottabase/config.premium.ts) — subpaths before the bare specifier.
+            // Premium Packages (ottabase/config.premium.ts), subpaths before the bare specifier.
             '@ottabase/premium/server': path.resolve(__dirname, '../../packages/premium/src/server/index.ts'),
             '@ottabase/premium/react': path.resolve(__dirname, '../../packages/premium/src/react/index.ts'),
             '@ottabase/premium': path.resolve(__dirname, '../../packages/premium/src/index.ts'),

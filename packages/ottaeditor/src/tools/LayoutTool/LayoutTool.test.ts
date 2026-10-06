@@ -5,7 +5,7 @@ import LayoutTool from './LayoutTool';
 // Mock CSS import
 vi.mock('./LayoutTool.css', () => ({}));
 
-// Mock EditorJS – full nested editor init is not needed in unit tests
+// Mock EditorJS: full nested editor init is not needed in unit tests
 vi.mock('@editorjs/editorjs', () => {
     const MockEditorJS = vi.fn().mockImplementation(() => ({
         isReady: Promise.resolve(),

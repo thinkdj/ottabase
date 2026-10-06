@@ -27,11 +27,11 @@ export interface MagicLinkTemplateOptions {
 }
 
 function renderMagicLinkEmail(url: string, expires: Date | undefined, appName: string) {
-    const expiresAt = expires ? expires.toISOString() : '';
+    const minutes = expires ? Math.max(1, Math.round((expires.getTime() - Date.now()) / 60_000)) : 0;
     return {
         header: `Sign in to ${appName}`,
         body: '<p>Hello,</p>' + '<p>Click the link below to sign in:</p>' + `<p><a href="${url}">Sign in</a></p>`,
-        footer: expiresAt ? `<p>This link expires at ${expiresAt}.</p>` : undefined,
+        footer: minutes ? `<p>This link expires in ${minutes} minute${minutes === 1 ? '' : 's'}.</p>` : undefined,
     };
 }
 

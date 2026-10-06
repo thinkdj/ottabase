@@ -31,7 +31,7 @@ export async function createRBACContext(
     const organizationId = options?.organizationId;
     const tenantId = options?.tenantId;
 
-    // Grants are org-scoped. Without an org there is nothing to evaluate — fail closed with no
+    // Grants are org-scoped. Without an org there is nothing to evaluate, fail closed with no
     // roles/permissions rather than merging the user's grants from every tenant.
     if (!organizationId) {
         return { user, roles: [], permissions: [], isAuthenticated: true, organizationId, tenantId };
@@ -87,7 +87,7 @@ export async function createRBACContext(
 
 /**
  * Evaluate a permission check and explain the outcome (`allowed`, `reason`, `missingPermissions`).
- * For a plain yes/no use `hasPermission` — this result object is always truthy.
+ * For a plain yes/no use `hasPermission`: this result object is always truthy.
  */
 export function evaluatePermission(
     context: RBACContext,
@@ -187,7 +187,7 @@ export function hasRole(context: RBACContext, role: string | string[], options: 
 }
 
 /**
- * Check if the context holds any admin capability — PERMISSION-based, never role-NAME-based.
+ * Check if the context holds any admin capability, PERMISSION-based, never role-NAME-based.
  * True when the caller has `platform:admin` or `org:admin` (or the '*:*' superadmin wildcard).
  * A role merely named 'owner'/'admin' with no such permission is NOT an admin.
  *

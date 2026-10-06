@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Resolve menu by slug for app
+// Brand Engine, Resolve menu by slug for app
 // Returns menu with items sorted by sortOrder, or null if none found.
 // ---------------------------------------------------------------------------
 

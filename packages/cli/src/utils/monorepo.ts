@@ -111,7 +111,7 @@ function detectAppType(packageJson: Record<string, unknown>, appPath: string): '
     const deps = (packageJson.dependencies as Record<string, string>) || {};
     const devDeps = (packageJson.devDependencies as Record<string, string>) || {};
 
-    // Check for Next.js (landing page style) — may appear in either deps or devDeps
+    // Check for Next.js (landing page style), may appear in either deps or devDeps
     if (deps['next'] || devDeps['next']) {
         return 'landing';
     }
@@ -302,7 +302,7 @@ export function validateAppName(name: string): { valid: true } | { valid: false;
         return { valid: false, error: 'App name must be 50 characters or less' };
     }
 
-    // Check if app already exists (disk I/O — documented side effect)
+    // Check if app already exists (disk I/O, documented side effect)
     const app = getAppInfo(name);
     if (app) {
         return { valid: false, error: `App "${name}" already exists at ${app.path}` };
@@ -315,7 +315,7 @@ export function validateAppName(name: string): { valid: true } | { valid: false;
  * Runs a command and returns the output.
  *
  * @remarks
- * This is a **programmatic utility** — it is not used by any CLI command
+ * This is a **programmatic utility**: it is not used by any CLI command
  * handler (those use `spawn` for streaming output). Exposed for consumers
  * of `@ottabase/cli` who need synchronous command execution.
  */
@@ -363,7 +363,7 @@ function sanitizeArg(arg: string): string {
  * Runs a pnpm command with the specified filter.
  *
  * @remarks
- * This is a **programmatic utility** — it is not used by any CLI command
+ * This is a **programmatic utility**: it is not used by any CLI command
  * handler (those use `spawn` for streaming output). Exposed for consumers
  * of `@ottabase/cli` who need synchronous pnpm execution.
  */

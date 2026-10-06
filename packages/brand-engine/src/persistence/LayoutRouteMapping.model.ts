@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – LayoutRouteMapping OttaORM Model (v2: per-app scoping)
+// Brand Engine, LayoutRouteMapping OttaORM Model (v2: per-app scoping)
 // ---------------------------------------------------------------------------
 
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';

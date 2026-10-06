@@ -15,7 +15,7 @@ export interface ThemeProviderState {
     layout: LayoutConfig | null;
     /** Admin layout overrides (partial, persisted to localStorage) */
     layoutOverrides: Partial<LayoutConfig>;
-    /** Set admin layout overrides – merged on top of theme layout */
+    /** Set admin layout overrides: merged on top of theme layout */
     setLayoutOverrides: (overrides: Partial<LayoutConfig>) => void;
     /** Reset layout overrides back to theme defaults */
     resetLayoutOverrides: () => void;

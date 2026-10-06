@@ -5,7 +5,6 @@ import { DemoPageHeader } from '../DemoPageHeader';
 import { languageNames, supportedLanguages, Trans, useTranslation } from '@ottabase/i18n/react';
 import {
     Badge,
-    Button,
     Card,
     CardContent,
     CardDescription,
@@ -18,16 +17,16 @@ import {
     TableHeader,
     TableRow,
 } from '@ottabase/ui-shadcn';
-import { useAtom } from 'jotai';
+import { useAtomValue } from 'jotai';
 
 export function I18nDemoPage() {
     const { t, i18n } = useTranslation('common');
-    const [globalLanguage, setGlobalLanguage] = useAtom(languageAtom);
+    const globalLanguage = useAtomValue(languageAtom);
 
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Internationalization (i18n)"
+                title="i18n"
                 description="Demonstrating i18n hybrid model: package defaults + app overrides + global state integration"
             />
 
@@ -38,7 +37,7 @@ export function I18nDemoPage() {
                     <CardDescription>Interactive component to change the application language</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center gap-4">
-                    <LanguageSwitcher />
+                    <LanguageSwitcher languages={i18nConfig.enabledLanguages} />
                     <p className="text-sm text-muted-foreground">Click to switch between available languages</p>
                 </CardContent>
             </Card>
@@ -204,7 +203,7 @@ export function I18nDemoPage() {
                                     <Trans
                                         i18nKey="agreement"
                                         components={{
-                                            1: <a href="#" className="text-primary underline" />,
+                                            1: <a href="/docs" className="text-primary underline" />,
                                         }}
                                     />
                                 </TableCell>
@@ -305,26 +304,14 @@ export const i18nConfig = {
                             </Badge>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setGlobalLanguage('es')}
-                            disabled={globalLanguage === 'es'}
-                        >
-                            Set via State Atom → ES
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => i18n.changeLanguage('fr')}
-                            disabled={i18n.language === 'fr'}
-                        >
-                            Set via i18n → FR
-                        </Button>
-                    </div>
                     <p className="text-xs text-muted-foreground">
-                        ✨ Both values stay in sync automatically via{' '}
+                        The switcher above writes both. This app enables{' '}
+                        {i18nConfig.enabledLanguages.map((code) => languageNames[code] ?? code).join(', ')}; add a
+                        language in <code className="bg-muted px-1 rounded">i18n.config.ts</code> once its strings
+                        exist.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        Both values stay in sync automatically via{' '}
                         <code className="bg-muted px-1 rounded">useLanguageManager</code> hook
                     </p>
                 </CardContent>
@@ -444,7 +431,6 @@ export const i18nConfig = {
                             <li>Hybrid model: shared package translations + app-specific overrides</li>
                             <li>Global state integration via Jotai</li>
                             <li>React hooks and components for easy integration</li>
-                            <li>30+ comprehensive tests with 80%+ coverage</li>
                         </ul>
                     </div>
                     <div>

@@ -106,7 +106,7 @@ describe('ottablog models', () => {
         it('keeps privateNotes readable on a fully loaded record while hiding the password hash', () => {
             // The admin editor loads a post through single-record CRUD, which never defers, and
             // needs privateNotes to populate its notes editor. Privacy on public routes is the
-            // serializer's strip, NOT `hidden` — hiding it here would blank the editor field.
+            // serializer's strip, NOT `hidden`: hiding it here would blank the editor field.
             const post = new Post({
                 entity: 'posts',
                 data: {
@@ -260,7 +260,7 @@ describe('ottablog models', () => {
 
             await post.updatePhotoJournal(photos, { status: 'published' });
 
-            // An omitted note means "unchanged", never "clear it" — and the excerpt stays derived
+            // An omitted note means "unchanged", never "clear it", and the excerpt stays derived
             // from the surviving note rather than falling back to the lead caption.
             expect(stored.photoNote).toBe('A quiet blue hour.');
             expect(stored.excerpt).toBe('A quiet blue hour.');
@@ -676,7 +676,7 @@ describe('ottablog models', () => {
 
     describe('Post write-path integrity', () => {
         // `create`, `update`, and instance `save()` all funnel through prepareForDatabase, so a rule
-        // proven here is one no caller can address its way around — including a host app calling
+        // proven here is one no caller can address its way around, including a host app calling
         // Post.create() directly, which is exactly what the route-level validators cannot cover.
         const prepare = (data: Record<string, unknown>) =>
             (
@@ -904,7 +904,7 @@ describe('ottablog models', () => {
             });
 
         it('still throws on a bare get of a deferred column', () => {
-            // The guard below must not become a silent null for everyone — that is the failure mode
+            // The guard below must not become a silent null for everyone, that is the failure mode
             // the ORM raises this error to prevent.
             expect(() => fromCollectionRead().get('content')).toThrow(/not loaded/);
         });

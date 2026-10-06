@@ -1,20 +1,20 @@
 /**
- * @ottabase/ottadate — FuzzyDateTime core logic
+ * @ottabase/ottadate: FuzzyDateTime core logic
  *
  * Handles dates where the user only remembers part of the date.
  * e.g. "Early 1990s", "Summer 1998", "Sometime in May 2010", "May 21, 2010 at 14:30"
  *
  * Three orthogonal ingredients:
  *
- *   resolution — the finest unit the user actually NAMED (decade → second)
- *   part       — a terminal part-of-period refinement, the coarse human answer
+ *   resolution: the finest unit the user actually NAMED (decade → second)
+ *   part: a terminal part-of-period refinement, the coarse human answer
  *                to "when in X?" ("early", "summer", "night") instead of naming
  *                the next unit
- *   approximate — "~ish": the boundary itself is soft ("Around 1996" → could
+ *   approximate, "~ish": the boundary itself is soft ("Around 1996" → could
  *                 be 1995 or 1997)
  *
  * Every FuzzyDateTime carries a computed inclusive interval [earliest, latest]
- * (UTC unix seconds) — the machine-usable truth that makes fuzzy dates
+ * (UTC unix seconds): the machine-usable truth that makes fuzzy dates
  * sortable, filterable, and renderable as bands on a timeline.
  */
 
@@ -27,7 +27,7 @@ import { getMonthNames, getMonthNamesShort, pad2 } from './utils';
 
 export const RESOLUTION_ORDER: DateResolution[] = ['decade', 'year', 'month', 'day', 'hour', 'minute', 'second'];
 
-/** Default drill-down bounds for pickers — `decade` is opt-in, pass it explicitly. */
+/** Default drill-down bounds for pickers, `decade` is opt-in, pass it explicitly. */
 export const DEFAULT_RESOLUTIONS: DateResolution[] = ['year', 'month', 'day', 'hour', 'minute', 'second'];
 
 /** Get the numeric index of a resolution (lower = coarser) */
@@ -58,7 +58,7 @@ export function resolutionBounds(allowed?: DateResolution[]): { base: DateResolu
 }
 
 // ---------------------------------------------------------------------------
-// Parts — the per-level "coarse sub-region" vocabulary
+// Parts, the per-level "coarse sub-region" vocabulary
 // ---------------------------------------------------------------------------
 
 export const PART_LABELS: Record<DatePart, string> = {
@@ -138,7 +138,7 @@ export function snapToResolution(date: Date, resolution: DateResolution): Date {
 }
 
 // ---------------------------------------------------------------------------
-// Interval math — the [earliest, latest] window
+// Interval math, the [earliest, latest] window
 // ---------------------------------------------------------------------------
 
 /** Half-open UTC window [start, endEx) used internally; latest = endEx − 1s */
@@ -168,11 +168,11 @@ function seasonMonths(part: DatePart, hemisphere: Hemisphere): { from: number; t
  * Compute the core (unwidened) window for a snapped date + resolution + part.
  *
  * Part boundaries (documented conventions):
- *   decade  early = years 0–3, mid = 4–6, late = 7–9
- *   year    early = Jan–Apr, mid = May–Aug, late = Sep–Dec; seasons via hemisphere
- *           (winter belongs to the year it STARTS in: "Winter 1998" = Dec 1998 – Feb 1999)
- *   month   early = 1–10, mid = 11–20, late = 21–end
- *   day     morning 05–11, afternoon 12–16, evening 17–20, night 21–23 (same date)
+ *   decade  early = years 0 to 3, mid = 4 to 6, late = 7 to 9
+ *   year    early = Jan to Apr, mid = May to Aug, late = Sep to Dec; seasons via hemisphere
+ *           (winter belongs to the year it STARTS in: "Winter 1998" = Dec 1998, Feb 1999)
+ *   month   early = 1 to 10, mid = 11 to 20, late = 21 to end
+ *   day     morning 05 to 11, afternoon 12 to 16, evening 17 to 20, night 21 to 23 (same date)
  */
 function coreWindow(
     snapped: Date,
@@ -299,7 +299,7 @@ export interface FuzzyLabelOptions {
 /**
  * Build a human-readable label for a FuzzyDateTime.
  *
- * Phrasing is fully derived — there is no user-chosen "sometime/around" enum.
+ * Phrasing is fully derived: there is no user-chosen "sometime/around" enum.
  * A plain coarse period reads as "Sometime in …" (that's what coarse precision
  * MEANS for a point event); a part reads as its own word ("Early 1996",
  * "Summer 1998", "Night of May 21, 2010"); `approximate` prefixes "Around".
@@ -379,9 +379,9 @@ export function buildFuzzyLabel(date: Date, resolution: DateResolution, options:
 // ---------------------------------------------------------------------------
 
 export interface CreateFuzzyOptions {
-    /** Terminal part-of-period refinement — silently dropped if invalid for the resolution */
+    /** Terminal part-of-period refinement: silently dropped if invalid for the resolution */
     part?: DatePart | null;
-    /** "~ish" — widens the window */
+    /** "~ish": widens the window */
     approximate?: boolean;
     /** Season → month mapping. Default: 'north' */
     hemisphere?: Hemisphere;
@@ -456,7 +456,7 @@ export function refreshFuzzyLabel(
 }
 
 // ---------------------------------------------------------------------------
-// Serialization — compact canonical string encoding (EDTF-inspired)
+// Serialization, compact canonical string encoding (EDTF-inspired)
 // ---------------------------------------------------------------------------
 
 /**
@@ -510,7 +510,7 @@ export function encodeFuzzyDateTime(fuzzy: FuzzyDateTime): string {
 
 /**
  * Decode a compact fuzzy-date string back to a full FuzzyDateTime.
- * Returns null for anything malformed (strict — guarantees round-trip integrity).
+ * Returns null for anything malformed (strict, guarantees round-trip integrity).
  */
 export function decodeFuzzyDateTime(
     input: string,
@@ -528,7 +528,7 @@ export function decodeFuzzyDateTime(
         return createFuzzyDateTime(date, resolution, { ...options, part, approximate });
     };
 
-    // Time forms — parts never apply, ':' is a time separator
+    // Time forms: parts never apply, ':' is a time separator
     if (str.includes('T')) {
         const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})(?::(\d{2})(?::(\d{2}))?)?$/.exec(str);
         if (!m) return null;
@@ -541,7 +541,7 @@ export function decodeFuzzyDateTime(
         return build(date, resolution, null);
     }
 
-    // Date forms — optional ':part' suffix
+    // Date forms: optional ':part' suffix
     let part: DatePart | null = null;
     const partMatch = /^(.+?):([a-z]+)$/.exec(str);
     if (partMatch) {

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Kit detail – Tabbed editor with realtime preview
+// Brand Kit detail, Tabbed editor with realtime preview
 // ---------------------------------------------------------------------------
 
 import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
@@ -82,7 +82,7 @@ function savableSnapshot(src: {
     });
 }
 
-/** Preview panel – reflects current draft (colors, fonts, motion, shadows) in realtime */
+/** Preview panel: reflects current draft (colors, fonts, motion, shadows) in realtime */
 function BrandKitPreviewPanel({
     kitData,
     mode = 'light',
@@ -278,7 +278,7 @@ export function AdminBrandKitDetailPage() {
         queryOptions: { enabled: !!kitId && kitId !== 'new', staleTime: 5000 },
     });
 
-    // Draft state – updates preview in realtime
+    // Draft state: updates preview in realtime
     const [draft, setDraft] = useState({
         name: '',
         brandName: '',
@@ -392,7 +392,7 @@ export function AdminBrandKitDetailPage() {
         }
     };
 
-    // Cmd/Ctrl+S saves – matches the "editor" mental model of this page.
+    // Cmd/Ctrl+S saves: matches the "editor" mental model of this page.
     // Ref indirection keeps the listener mounted once while always calling the latest closure.
     const saveRef = useRef(handleSave);
     saveRef.current = handleSave;
@@ -416,7 +416,7 @@ export function AdminBrandKitDetailPage() {
     /** Returning the promise keeps the dialog open with "Deleting…" until it settles */
     const handleConfirmDelete = () => deleteMutation.mutateAsync();
 
-    /** Download kit as ottabase_<name>_YYYYMMDD.json – complete backup */
+    /** Download kit as ottabase_<name>_YYYYMMDD.json, complete backup */
     const handleDownloadKit = () => {
         const themeName =
             (draft.name || draft.brandName || kitForView.name || 'brand-kit')
@@ -472,7 +472,7 @@ export function AdminBrandKitDetailPage() {
     );
     const handleTokensChange = useCallback((v: string) => setDraft((s) => ({ ...s, tokensJson: v })), []);
     // Uploads persist server-side immediately; merge the new key into the draft
-    // instead of refetching — a refetch would reset the draft and discard
+    // instead of refetching, a refetch would reset the draft and discard
     // unsaved edits in other tabs.
     const handleLogoUploaded = useCallback(
         (logoType: string, key: string | null) => {
@@ -671,7 +671,7 @@ export function AdminBrandKitDetailPage() {
                         <TabDisableToggle
                             section="fonts"
                             label="Disable fonts"
-                            description="Skip all web-font downloads — the app renders with system fonts."
+                            description="Skip all web-font downloads: the app renders with system fonts."
                             tokensJson={draft.tokensJson}
                             onTokensChange={handleTokensChange}
                         >
@@ -698,7 +698,7 @@ export function AdminBrandKitDetailPage() {
                         <TabDisableToggle
                             section="cursors"
                             label="Disable cursors"
-                            description="Ignore custom cursors — the browser's native cursors are used."
+                            description="Ignore custom cursors: the browser's native cursors are used."
                             tokensJson={draft.tokensJson}
                             onTokensChange={handleTokensChange}
                         >
@@ -718,7 +718,7 @@ export function AdminBrandKitDetailPage() {
                     </TabsContent>
                 </Tabs>
 
-                {/* Realtime preview – one panel, light/dark toggle */}
+                {/* Realtime preview: one panel, light/dark toggle */}
                 <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
                     <div className="flex items-center justify-between gap-2">
                         <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
@@ -759,7 +759,7 @@ export function AdminBrandKitDetailPage() {
                         logos={logoUrls}
                     />
                     <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
-                        Edits preview instantly — save to publish them.
+                        Edits preview instantly: save to publish them.
                     </p>
                 </div>
             </div>

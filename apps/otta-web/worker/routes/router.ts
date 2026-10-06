@@ -1,5 +1,5 @@
 // ============================================================
-// API router — built on @ottabase/ottarouter
+// API router, built on @ottabase/ottarouter
 // ============================================================
 //
 // Routes are order-free: precedence lives in the pattern (static > :param > *,
@@ -243,7 +243,7 @@ const TABLE_NAME = /^[a-zA-Z0-9_]+$/;
 export const apiRouter = new Router<CloudflareEnv>();
 
 // -------------------------------------------------------
-// CORS preflight — middleware, not a route, so it wins over
+// CORS preflight: middleware, not a route, so it wins over
 // every /api/* route (including the ALL /api/auth/* catch-all)
 // -------------------------------------------------------
 apiRouter.use('/api', (c, next) => {
@@ -263,7 +263,7 @@ apiRouter.get('/api/health', () =>
         timestamp: Date.now(),
     }),
 );
-// Platform control-plane status — exposes lockdown/read-only flags, so restrict to platform admins.
+// Platform control-plane status: exposes lockdown/read-only flags, so restrict to platform admins.
 apiRouter.get(
     '/api/system/kill-switches',
     h(async (ctx) => {
@@ -273,12 +273,12 @@ apiRouter.get(
     }),
 );
 
-// Brand API (core — always enabled). May return null to decline and keep matching.
+// Brand API (core: always enabled). May return null to decline and keep matching.
 apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand', h(handleBrandApi));
 apiRouter.on(['GET', 'POST', 'DELETE', 'PUT'], '/api/brand/*', h(handleBrandApi));
 
 // -------------------------------------------------------
-// Auth — explicit routes win over the /api/auth/* catch-all by
+// Auth, explicit routes win over the /api/auth/* catch-all by
 // specificity (static > *), for every method
 // -------------------------------------------------------
 apiRouter.get('/api/auth/config', h(handleAuthConfig));
@@ -346,7 +346,7 @@ apiRouter.delete('/api/admin/organizations/:organizationId/members/:memberId', (
 );
 
 // -------------------------------------------------------
-// Admin: cron — the catch-all 404s on unknown tasks instead of
+// Admin: cron, the catch-all 404s on unknown tasks instead of
 // declining, so nothing under /api/admin/cron/* ever falls through
 // -------------------------------------------------------
 apiRouter.get('/api/admin/cron', h(handleAdminCronList));
@@ -437,17 +437,17 @@ apiRouter.get('/api/cloudflare/realtime/stats', h(handleRealtimeStats));
 apiRouter.post('/api/cloudflare/realtime/broadcast', h(handleRealtimeBroadcast));
 apiRouter.all('/api/cloudflare/realtime/ws', h(handleRealtimeWebsocket));
 // NOTE: there are deliberately no `/api/cloudflare/ai/*` routes. The AI demo posts to
-// `/api/ai/complete` — the SAME endpoint product features use — so the demo exercises the real
+// `/api/ai/complete`: the SAME endpoint product features use, so the demo exercises the real
 // resolution chain instead of a parallel client whose provider table can drift from it.
 apiRouter.post('/api/upload', h(handleUpload));
 apiRouter.all('/api/upload/file/*', h(handleUploadFile));
 
 // -------------------------------------------------------
-// OttaORM — generic CRUD catch-all with two excluded exacts;
+// OttaORM, generic CRUD catch-all with two excluded exacts;
 // excluded tails decline so unmatched methods fall through
 // -------------------------------------------------------
 // Model metadata exposes the full schema surface (every table + package), so restrict to
-// platform admins — it backs the admin Database/Migrations pages.
+// platform admins, it backs the admin Database/Migrations pages.
 apiRouter.get(
     '/api/ottaorm/models-metadata',
     h(async (ctx) => {
@@ -462,7 +462,7 @@ apiRouter.all('/api/ottaorm/*', (c) =>
 );
 
 // -------------------------------------------------------
-// Ottablog package (request-time gate) — the route table is canonical in
+// Ottablog package (request-time gate), the route table is canonical in
 // @ottabase/ottablog/router; handlers stay imported from './blog' so that
 // module remains the seam for tests/mocks and app-specific wiring.
 // -------------------------------------------------------
@@ -506,7 +506,7 @@ apiRouter.mount(
 );
 
 // -------------------------------------------------------
-// Shortlinks package (request-time gate) — mounted at '/'
+// Shortlinks package (request-time gate), mounted at '/'
 // because the group spans /api/shortlinks/* and /shortlinks/go
 // -------------------------------------------------------
 const shortlinksRouter = new Router<CloudflareEnv>();
@@ -531,7 +531,7 @@ referralsRouter.put('/username', h(handleReferralUsernameUpdate));
 apiRouter.mount('/api/referrals', referralsRouter, { when: (c) => packages(c).referrals });
 
 // -------------------------------------------------------
-// AI provisioning / BYOK (@ottabase/ottaai) — request-time gate
+// AI provisioning / BYOK (@ottabase/ottaai), request-time gate
 // -------------------------------------------------------
 // Credential CRUD is deliberately NOT exposed through /api/ottaorm: the model is absent
 // from GENERIC_CRUD_ALLOWLIST, and these handlers come from the package's route factory,
@@ -550,7 +550,7 @@ aiRouter.patch('/credentials/:id', (c) => handleAiCredentialsUpdate(ctxOf(c), c.
 aiRouter.delete('/credentials/:id', (c) => handleAiCredentialsDelete(ctxOf(c), c.params.id));
 // Registered with the RAW `Ctx`, not `h(...)`: the inference path needs a real
 // `waitUntil` or the credential-health and attribution writes it defers are cancelled at
-// response — silent data loss, and the one thing the `defer` seam exists to prevent.
+// response, silent data loss, and the one thing the `defer` seam exists to prevent.
 aiRouter.post('/complete', (c) => handleAiComplete(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
 aiRouter.post('/vision', (c) => handleAiVision(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
 aiRouter.post('/embed', (c) => handleAiEmbed(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
@@ -577,7 +577,7 @@ apiRouter.mount(
             return auth instanceof Response ? auth : null;
         },
         // Reads are open to any admin of either scope: the client needs entitlement state
-        // to render gates, and the payload is plan/limits — never a license key.
+        // to render gates, and the payload is plan/limits, never a license key.
         requireViewer: async (c) => {
             const auth = await requireAdminAccess(ctxOf(c), { scope: 'either' });
             return auth instanceof Response ? auth : null;
@@ -586,7 +586,7 @@ apiRouter.mount(
 );
 
 // -------------------------------------------------------
-// Error policy — mirrors the worker's top-level mapping, plus
+// Error policy, mirrors the worker's top-level mapping, plus
 // uniform 400s for malformed percent-encoding in :params
 // -------------------------------------------------------
 apiRouter.onError((err, c) => {

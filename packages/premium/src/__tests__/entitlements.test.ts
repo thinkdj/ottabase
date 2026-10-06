@@ -1,5 +1,5 @@
 // ============================================================
-// Entitlements — what a customer may do once the license verdict is in.
+// Entitlements, what a customer may do once the license verdict is in.
 //
 // The behaviours worth pinning are the DEFAULTS, because they decide what happens
 // to a paying customer whose card expires on a Friday night: the free tier keeps
@@ -68,7 +68,7 @@ describe('checkFeature', () => {
         expect(answer.purchaseUrl).toBe('https://example.com/pricing');
     });
 
-    it('does NOT upsell a feature the package never declared — that is a caller bug', () => {
+    it('does NOT upsell a feature the package never declared, that is a caller bug', () => {
         const answer = checkFeature({ pkg, claims, state: 'active' }, 'teleportation');
         expect(answer.allowed).toBe(false);
         expect(answer.upsell).toBe(false);
@@ -174,7 +174,7 @@ describe('status-based gates (the browser view)', () => {
 
     it('keeps the free tier usable in the browser exactly as the server does', () => {
         // A client gate stricter than the server disables a button for an action the server
-        // would accept — the free tier would be unreachable from the UI only.
+        // would accept, the free tier would be unreachable from the UI only.
         const expired = {
             ...status,
             enabled: false,

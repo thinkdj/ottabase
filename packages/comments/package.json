@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/comments",
     "version": "0.0.1",
-    "description": "Threaded comment system for Ottabase apps — polymorphic, nestable, with reactions and moderation",
+    "description": "Threaded comment system for Ottabase apps: polymorphic, nestable, with reactions and moderation",
     "type": "module",
     "exports": {
         ".": {

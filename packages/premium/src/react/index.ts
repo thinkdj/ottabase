@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium/react — rendered entrypoint
+// @ottabase/premium/react, rendered entrypoint
 // ============================================================
 // Everything here renders or hooks into React. The root entrypoint stays headless so a
 // Worker bundle never pulls a component library in through the back door.

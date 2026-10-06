@@ -27,7 +27,7 @@ function renderIndexWhere(where: SQL | undefined, indexName: string): string | n
     if (!where) return null;
     const { sql, params } = sqliteDialect.sqlToQuery(where);
     if (params.length > 0) {
-        console.warn(`Index "${indexName}" has a parameterized WHERE clause, which DDL cannot bind — dropping it.`);
+        console.warn(`Index "${indexName}" has a parameterized WHERE clause, which DDL cannot bind, dropping it.`);
         return null;
     }
     return sql;
@@ -76,7 +76,7 @@ export interface RuntimeMigrationConfig {
         /**
          * Tables this migration's `up()` creates/modifies indexes or constraints on. When ANY
          * of these was destructively rebuilt this run (see rebuiltTables above), the migration
-         * re-runs even if already recorded — so `up()` MUST be side-effect-free to repeat (pure
+         * re-runs even if already recorded, so `up()` MUST be side-effect-free to repeat (pure
          * idempotent DDL like the ottablog org-mode index swap, never a one-time data mutation).
          */
         affectedTables?: string[];
@@ -103,7 +103,7 @@ export interface RuntimeMigrationConfig {
      * schema declares them. Needed when a tracked custom migration deliberately
      * DROPS a schema-declared index (e.g. ottablog org mode swaps app-scoped
      * unique slug indexes for org-aware partials): the migration runs once, but
-     * the ensure loop runs every init — without suppression it would silently
+     * the ensure loop runs every init, without suppression it would silently
      * restore the dropped index on the next run.
      */
     suppressIndexes?: string[];
@@ -150,17 +150,17 @@ function generateCreateTableSQL(table: SQLiteTable, overrideName?: string): stri
         return def;
     });
 
-    // Composite primary keys — primaryKey({ columns: [...] }) lives in config.primaryKeys,
+    // Composite primary keys: primaryKey({ columns: [...] }) lives in config.primaryKeys,
     // NOT on individual columns (col.primary). Without emitting these, composite-key tables
     // (e.g. organization_members, user_roles, verification_tokens) are created with NO primary
-    // key and therefore NO uniqueness guarantee — silently allowing duplicate rows.
+    // key and therefore NO uniqueness guarantee, silently allowing duplicate rows.
     const tableConstraints: string[] = [];
     for (const pk of (config.primaryKeys ?? []) as Array<{ columns?: Array<{ name: string }> }>) {
         const cols = (pk.columns ?? []).map((c) => quoteIdentifier(c.name));
         if (cols.length > 0) tableConstraints.push(`PRIMARY KEY (${cols.join(', ')})`);
     }
 
-    // Table-level UNIQUE constraints — unique().on(colA, colB)
+    // Table-level UNIQUE constraints: unique().on(colA, colB)
     for (const uc of (config.uniqueConstraints ?? []) as Array<{ columns?: Array<{ name: string }> }>) {
         const cols = (uc.columns ?? []).map((c) => quoteIdentifier(c.name));
         if (cols.length > 0) tableConstraints.push(`UNIQUE (${cols.join(', ')})`);
@@ -174,7 +174,7 @@ function generateCreateTableSQL(table: SQLiteTable, overrideName?: string): stri
 /**
  * Generate CREATE INDEX statements for a table's declared indexes (index()/uniqueIndex()).
  * Uses IF NOT EXISTS so it is idempotent and also backfills indexes onto existing tables.
- * Composite UNIQUE indexes (e.g. posts(organization_id, app_id, slug)) are emitted here —
+ * Composite UNIQUE indexes (e.g. posts(organization_id, app_id, slug)) are emitted here,
  * the in-table generator above only covers PRIMARY KEY and UNIQUE constraints.
  */
 function generateIndexStatements(table: SQLiteTable, tableNameOverride?: string): Array<{ name: string; sql: string }> {
@@ -191,8 +191,8 @@ function generateIndexStatements(table: SQLiteTable, tableNameOverride?: string)
             .filter((n: unknown): n is string => typeof n === 'string');
         if (!name || cols.length === 0) continue;
         const unique = cfg?.unique ? 'UNIQUE ' : '';
-        // Partial index (.where(...)) — e.g. a unique slug index scoped to
-        // `appId IS NULL` — MUST carry its condition into the emitted SQL, or a
+        // Partial index (.where(...)), e.g. a unique slug index scoped to
+        // `appId IS NULL`: MUST carry its condition into the emitted SQL, or a
         // schema-declared partial unique index silently becomes a global one.
         const whereClause = renderIndexWhere(cfg?.where, name);
         statements.push({
@@ -326,7 +326,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
         suppressIndexes = [],
     } = config;
     const suppressedIndexNames = new Set(suppressIndexes);
-    // Tables destructively rebuilt (DROP + RENAME) this run — the rebuild takes any
+    // Tables destructively rebuilt (DROP + RENAME) this run, the rebuild takes any
     // migration-owned indexes on that table with it, and generateIndexStatements only
     // knows schema-declared ones, so a migration marked affectedTables for one of these
     // must re-run below even though _ottabase_migrations already has it recorded.
@@ -573,7 +573,7 @@ export async function autoMigrate(config: RuntimeMigrationConfig): Promise<{
 
                 const alreadyRecorded = Boolean(existingResult.results && existingResult.results.length > 0);
                 // A destructive rebuild of one of this migration's affected tables just wiped
-                // any indexes/constraints that migration created — re-apply its (pure, idempotent
+                // any indexes/constraints that migration created, re-apply its (pure, idempotent
                 // DDL) `up()` even though it is already recorded, instead of leaving them lost.
                 const needsRerunAfterRebuild =
                     alreadyRecorded && (migration.affectedTables ?? []).some((t) => rebuiltTables.has(t));

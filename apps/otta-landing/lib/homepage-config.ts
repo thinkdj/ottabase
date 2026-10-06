@@ -14,7 +14,7 @@ export type SlotName = (typeof SLOT_NAMES)[number];
 
 /** Describes a single selectable variant inside a slot. */
 export type VariantMeta = {
-    /** Machine key – matches the component lookup key */
+    /** Machine key: matches the component lookup key */
     id: string;
     /** Human-readable label shown in the config UI */
     label: string;
@@ -41,7 +41,7 @@ export const SLOT_REGISTRY: SlotRegistry = {
         variants: [
             { id: 'default', label: 'Default', description: 'Logo left, links right, mobile hamburger menu.' },
             { id: 'centered', label: 'Centered', description: 'Logo and links centered with balanced layout.' },
-            { id: 'minimal', label: 'Minimal', description: 'Logo and dark-mode toggle only — no nav links.' },
+            { id: 'minimal', label: 'Minimal', description: 'Logo and dark-mode toggle only, no nav links.' },
         ],
     },
     hero: {

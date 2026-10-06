@@ -23,7 +23,7 @@ const AAD = {
 };
 
 describe('keyring', () => {
-    it('rejects a master secret below the minimum entropy — the premise of choosing HKDF is enforced', () => {
+    it('rejects a master secret below the minimum entropy, the premise of choosing HKDF is enforced', () => {
         expect(() => createKeyring({ keys: { k1: 'my-project-name' }, currentKeyId: 'k1' })).toThrow(
             /at least 32 are required/,
         );
@@ -88,14 +88,14 @@ describe('envelope', () => {
         expect(plain.expose()).toBe('sk-abcdef0123456789');
     });
 
-    it('produces different ciphertext for the same key twice — no equality leak', async () => {
+    it('produces different ciphertext for the same key twice, no equality leak', async () => {
         const keyring = createTestKeyring();
         const a = await encryptSecret({ plaintext: 'sk-same', keyring, aad: AAD });
         const b = await encryptSecret({ plaintext: 'sk-same', keyring, aad: AAD });
         expect(a.envelope).not.toBe(b.envelope);
     });
 
-    it('AAD binds the blob to its row — a ciphertext moved to another tenant FAILS to decrypt', async () => {
+    it('AAD binds the blob to its row, a ciphertext moved to another tenant FAILS to decrypt', async () => {
         const keyring = createTestKeyring();
         const registry = createDefaultDecryptorRegistry();
         const { envelope } = await encryptSecret({ plaintext: 'sk-tenant-a', keyring, aad: AAD });
@@ -164,7 +164,7 @@ describe('envelope', () => {
 
 describe('the ciphertext sniffer is a security control', () => {
     it('classifies real provider keys as PLAINTEXT, including dot-bearing ones', () => {
-        // A false positive here stores a plaintext provider key unencrypted — the worst
+        // A false positive here stores a plaintext provider key unencrypted, the worst
         // failure in the system, with no error anywhere.
         expect(isEnvelope('sk-ant-api03-abcdef')).toBe(false);
         expect(isEnvelope('AIzaSyA-1234567890')).toBe(false);

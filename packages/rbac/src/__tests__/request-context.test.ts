@@ -21,7 +21,7 @@ import { getRequestContext } from '../request-context';
 
 const requestAsSystem = () => new Request('http://localhost/api/x', { headers: { 'x-org-id': 'system' } });
 
-describe('getRequestContext — system scope', () => {
+describe('getRequestContext: system scope', () => {
     beforeEach(() => {
         systemRoles.value = [];
     });

@@ -42,9 +42,9 @@ export type ImagePosition =
 export interface HotspotItem {
     /** Unique id per hotspot (for keying) */
     id: string;
-    /** Horizontal position as 0–100 percentage from left */
+    /** Horizontal position as 0 to 100 percentage from left */
     x: number;
-    /** Vertical position as 0–100 percentage from top */
+    /** Vertical position as 0 to 100 percentage from top */
     y: number;
     /** Short label shown on hover */
     title: string;
@@ -418,7 +418,7 @@ export default class ImageHotspotsTool {
         if (!sizeControls) {
             sizeControls = document.createElement('div');
             sizeControls.className = 'cdx-image-hotspots__size-controls';
-            /* Insert right after the form — always above the canvas */
+            /* Insert right after the form, always above the canvas */
             const form = this.wrapper.querySelector('.ob-form');
             if (form?.nextSibling) {
                 this.wrapper.insertBefore(sizeControls, form.nextSibling);
@@ -599,7 +599,7 @@ export default class ImageHotspotsTool {
         if (this.data.height) {
             canvas.style.height = this.data.height;
         } else if (this.data.imageFit === 'cover') {
-            /* Default height for cover mode — percentage heights don't resolve
+            /* Default height for cover mode, percentage heights don't resolve
                without an explicit parent height, causing the image to collapse */
             canvas.style.height = '300px';
         }

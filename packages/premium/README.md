@@ -1,7 +1,7 @@
 # @ottabase/premium
 
-Premium Packages framework for Ottabase apps. A server manifest declares everything a commercial add-on contributes —
-tables, models, routes, nav, entitlements and lifecycle hooks — and the host app wires it in with a single registration,
+Premium Packages framework for Ottabase apps. A server manifest declares everything a commercial add-on contributes:
+tables, models, routes, nav, entitlements and lifecycle hooks, and the host app wires it in with a single registration,
 while rendered pages use the explicit client adapter described below.
 
 **An app with no premium packages is completely unaffected**: no routes, no KV reads, no nav entries, no tables. The
@@ -11,9 +11,9 @@ framework is inert until something is sold.
 
 | Concern            | What you get                                                                                       |
 | ------------------ | -------------------------------------------------------------------------------------------------- |
-| Distribution       | A `definePremiumPackage()` manifest — the whole integration contract in one object                 |
+| Distribution       | A `definePremiumPackage()` manifest: the whole integration contract in one object                  |
 | Licensing          | Offline-verifiable signed tokens (ECDSA P-256 / Web Crypto). No phone-home, no network on the gate |
-| Lifecycle          | `onInstall`, `onUpgrade`, `onActivate`, `onDeactivate`, `onUninstall` — best-effort, never fatal   |
+| Lifecycle          | `onInstall`, `onUpgrade`, `onActivate`, `onDeactivate`, `onUninstall`: best-effort, never fatal    |
 | Entitlements       | Feature flags and numeric limits, with a free tier that survives an expired license                |
 | Server enforcement | `requirePremium*` guards and gated route mounting that answer **402 Payment Required**             |
 | Client UX          | `<PremiumGate>`, `usePremiumFeature`, and a drop-in `<PremiumPackagesManager>` admin surface       |
@@ -74,7 +74,7 @@ export const PREMIUM_PACKAGES = [reportsPackage];
 // Server-side registration only. See the next section for rendered pages.
 ```
 
-Server contributions — migrations, model registration, RLS policies and gated routes — read from that array.
+Server contributions: migrations, model registration, RLS policies and gated routes, read from that array.
 
 ## 3. Register client pages explicitly
 
@@ -92,7 +92,7 @@ import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premiu
 // Each package's routes, each behind its own license gate (402 when unlicensed).
 mountPremiumPackages(apiRouter, premium);
 
-// The operator API. Authorization is INJECTED — the framework has no idea what an admin is.
+// The operator API. Authorization is INJECTED, the framework has no idea what an admin is.
 apiRouter.mount(
     '/api/premium',
     createPremiumAdminRouter(premium, {
@@ -113,7 +113,7 @@ import { requirePremiumFeature, requirePremiumLimit } from '@ottabase/premium/se
 const denied = await requirePremiumFeature(premium, env, 'reports', 'reports.export');
 if (denied) return denied; // 402 with { code, metadata: { package, reason, purchaseUrl } }
 
-// A plan limit — `current` MUST be measured server-side
+// A plan limit: `current` MUST be measured server-side
 const overLimit = await requirePremiumLimit(premium, env, 'reports', 'reports', await Report.count());
 if (overLimit) return overLimit;
 ```
@@ -144,7 +144,7 @@ const exportGate = usePremiumFeature('reports', 'reports.export');
 <Button disabled={!exportGate.allowed}>Export</Button>;
 ```
 
-Pass the app's API client to `request` — it is required and attaches `X-Org-Id` and `X-App-Id`, which select the tenancy
+Pass the app's API client to `request`: it is required and attaches `X-Org-Id` and `X-App-Id`, which select the tenancy
 scope the server resolves against. There is no bare-fetch fallback.
 
 **Tailwind:** configure a single `../../packages/premium*/src/**/*.{js,ts,jsx,tsx}` content glob in the consuming app,
@@ -160,7 +160,7 @@ UI shares the app's authorization and tenant-selection path.
 A license is a compact signed token: `obp1.<base64url(claims)>.<base64url(signature)>`.
 
 ```typescript
-// Vendor side only — never imported by a consuming app.
+// Vendor side only: never imported by a consuming app.
 import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-tools';
 
 const { publicKey, privateKey } = await generateLicenseKeypair(); // publicKey → the manifest
@@ -193,14 +193,14 @@ Env wins deliberately: the key in your infrastructure config must be the key act
 
 ### License states
 
-| State        | Serving | Meaning                                                 |
-| ------------ | ------- | ------------------------------------------------------- |
-| `active`     | yes     | Verified, in date, correctly bound                      |
-| `grace`      | yes     | Expired but inside `graceDays` — serving, loudly warned |
-| `expired`    | no      | Past expiry + grace. Free tier still applies            |
-| `invalid`    | no      | Bad signature, wrong package, or wrong `appId`          |
-| `unlicensed` | no      | Registered, no key supplied                             |
-| `disabled`   | no      | Switched off by config or env                           |
+| State        | Serving | Meaning                                                |
+| ------------ | ------- | ------------------------------------------------------ |
+| `active`     | yes     | Verified, in date, correctly bound                     |
+| `grace`      | yes     | Expired but inside `graceDays`: serving, loudly warned |
+| `expired`    | no      | Past expiry + grace. Free tier still applies           |
+| `invalid`    | no      | Bad signature, wrong package, or wrong `appId`         |
+| `unlicensed` | no      | Registered, no key supplied                            |
+| `disabled`   | no      | Switched off by config or env                          |
 
 A package with **no** `licensePublicKey` is free by construction: there is nothing to verify, so it resolves `active`
 with no claims. That is the right shape for an in-house add-on distributed inside one organisation.
@@ -208,7 +208,7 @@ with no claims. That is the right shape for an in-house add-on distributed insid
 ### What offline verification cannot do
 
 A signed token **cannot be revoked before it expires**. Revocation is what expiry is for: subscription vendors mint
-short-dated tokens and re-issue on renewal. A vendor needing instant revocation needs an online check — a different
+short-dated tokens and re-issue on renewal. A vendor needing instant revocation needs an online check, a different
 product decision, not a missing feature here.
 
 ### License scope
@@ -232,7 +232,7 @@ entitlement model; do not treat this deployment license as one.
 
 Hooks run at most once per cache window per isolate (not per request), and are **best-effort by contract**: a hook that
 throws is logged and swallowed, because a paid add-on's bookkeeping must never take the host app down. Put anything that
-must succeed in a migration instead. Hooks must also be idempotent — two isolates can resolve the same package
+must succeed in a migration instead. Hooks must also be idempotent, two isolates can resolve the same package
 concurrently, and the framework deliberately takes no distributed lock over a best-effort write.
 
 `onUninstall` is an explicit offboarding hook for a controlled deployment change. It is not available through the
@@ -248,5 +248,5 @@ pnpm --filter @ottabase/premium test
 
 ## See also
 
-- `docs/PREMIUM_PACKAGES.md` — the end-to-end host-integration guide
-- `packages/premium-webhooks` — a complete working Premium Package built on this framework
+- `docs/PREMIUM_PACKAGES.md`: the end-to-end host-integration guide
+- `packages/premium-webhooks`: a complete working Premium Package built on this framework

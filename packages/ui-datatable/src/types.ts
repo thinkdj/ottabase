@@ -98,7 +98,7 @@ export interface DataTableColumnDef<TData> {
     filterable?: boolean;
     /** Custom cell renderer */
     cell?: (props: { row: TData; value: TData[keyof TData] }) => React.ReactNode;
-    /** Cell value formatter (string output — use `cell` for JSX) */
+    /** Cell value formatter (string output, use `cell` for JSX) */
     format?: 'date' | 'datetime' | 'boolean' | 'currency' | 'percentage' | 'image' | 'link' | 'badge';
     /** ISO 4217 currency code for `format: 'currency'` (default `'USD'`) */
     currency?: string;
@@ -201,7 +201,7 @@ export interface DataTableProps<TData> {
     table: Table<TData>;
     /** Row click handler */
     onRowClick?: (row: TData) => void;
-    /** Cell click handler — receives row data, column ID, and cell value */
+    /** Cell click handler: receives row data, column ID, and cell value */
     onCellClick?: (row: TData, columnId: string, value: unknown) => void;
     /** Loading state */
     isLoading?: boolean;
@@ -231,7 +231,7 @@ export interface DataTableProps<TData> {
     pageSizeOptions?: number[];
     /** Show the row count and pager under the table. Page controls appear once there is more than one page's worth. */
     showPagination?: boolean;
-    /** Compact mode – reduced padding */
+    /** Compact mode: reduced padding */
     compact?: boolean;
     /** Striped rows */
     striped?: boolean;

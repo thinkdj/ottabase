@@ -38,7 +38,7 @@ describe('BlogRendererErrorBoundary', () => {
                 </BlogRendererErrorBoundary>,
             );
 
-            expect(screen.getByText(/Failed to Render Blog Post/i)).toBeInTheDocument();
+            expect(screen.getByText(/This post could not be displayed/i)).toBeInTheDocument();
         });
 
         it('should display error message in fallback UI', () => {
@@ -59,7 +59,7 @@ describe('BlogRendererErrorBoundary', () => {
             );
 
             // Error details should be in a details/summary element
-            expect(screen.getByText(/Error Details/i)).toBeInTheDocument();
+            expect(screen.getByText(/Details/i)).toBeInTheDocument();
             expect(screen.getByText(/Test error from child component/i)).toBeInTheDocument();
         });
     });
@@ -75,7 +75,7 @@ describe('BlogRendererErrorBoundary', () => {
             );
 
             expect(screen.getByText('Custom error message')).toBeInTheDocument();
-            expect(screen.queryByText(/Failed to Render Blog Post/i)).not.toBeInTheDocument();
+            expect(screen.queryByText(/This post could not be displayed/i)).not.toBeInTheDocument();
         });
 
         it('should render custom fallback element', () => {
@@ -140,7 +140,7 @@ describe('BlogRendererErrorBoundary', () => {
                 </BlogRendererErrorBoundary>,
             );
 
-            expect(screen.getByText(/Failed to Render Blog Post/i)).toBeInTheDocument();
+            expect(screen.getByText(/This post could not be displayed/i)).toBeInTheDocument();
         });
 
         it('should log error to console', () => {
@@ -185,7 +185,7 @@ describe('BlogRendererErrorBoundary', () => {
             expect(screen.getByText('This should still render')).toBeInTheDocument();
 
             // Error boundary should show fallback
-            expect(screen.getByText(/Failed to Render Blog Post/i)).toBeInTheDocument();
+            expect(screen.getByText(/This post could not be displayed/i)).toBeInTheDocument();
         });
     });
 });

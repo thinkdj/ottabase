@@ -1,5 +1,5 @@
 /**
- * Blog theme tokens — the data half of "decoupled contract, integrated
+ * Blog theme tokens: the data half of "decoupled contract, integrated
  * experience". A blog theme row can carry sparse CSS custom-property
  * overrides; this module serializes them into a `[data-brand-scope="blog"]`
  * room block so they re-bind the app's semantic brand variables for blog
@@ -25,7 +25,7 @@ const TOKEN_NAME = /^--[a-zA-Z0-9_-]+$/;
  * Values are admin-authored free-form CSS. Reject anything that could break
  * out of a declaration or the style tag: braces, semicolons, comment/escape
  * openers, and `<` (style-tag close). Parens, commas, spaces, percents stay
- * allowed — real values like `color-mix(in oklch, red 40%, blue)` need them.
+ * allowed: real values like `color-mix(in oklch, red 40%, blue)` need them.
  */
 const TOKEN_VALUE_FORBIDDEN = /[{};<>\\]|\/\*/;
 
@@ -52,7 +52,7 @@ export interface BlogThemeCssOptions {
  * Serialize sparse blog theme tokens to scoped CSS. Returns '' when nothing
  * valid is defined. Output is safe for a <style> tag by construction (names
  * and values are validated), but callers embedding it into HTML should still
- * run their standard CSS sanitizer — defense in depth, same as brand CSS.
+ * run their standard CSS sanitizer, defense in depth, same as brand CSS.
  */
 export function blogThemeTokensToCss(
     tokens: BlogThemeTokens | null | undefined,

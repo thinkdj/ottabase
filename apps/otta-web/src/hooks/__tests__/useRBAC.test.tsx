@@ -15,7 +15,7 @@ vi.mock('@/lib/auth', () => ({
 
 import { useCreateOrganization, useDeleteOrganization, useUpdateOrganization } from '../useRBAC';
 
-// Same entityName as useRBAC's internal `organizationHooks` — createModelHooks builds
+// Same entityName as useRBAC's internal `organizationHooks`: createModelHooks builds
 // query keys as a pure function of entityName, so this instance's keys are equal to
 // (though not the same reference as) the ones the hooks under test invalidate.
 const organizationQueryKeys = createModelHooks<OrganizationRecord>({ entityName: 'organizations' }).queryKeys;
@@ -43,7 +43,7 @@ function createWrapper() {
  * was removed (see QueryProvider.tsx). Each hook below now owns its own
  * onSuccess invalidation instead of relying on that removed mechanism.
  */
-describe('useRBAC organization mutations — post-success cache reconciliation', () => {
+describe('useRBAC organization mutations: post-success cache reconciliation', () => {
     beforeEach(() => {
         mocks.api.mockReset();
     });

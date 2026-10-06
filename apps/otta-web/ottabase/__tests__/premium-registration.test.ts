@@ -1,8 +1,8 @@
 // ============================================================
 // Premium Package wiring for otta-web.
 //
-// A Premium Package can be registered in `config.premium.ts` and STILL be invisible —
-// its tables missing from auto-init, its nav entry hidden, its routes unmounted — with no
+// A Premium Package can be registered in `config.premium.ts` and STILL be invisible:
+// its tables missing from auto-init, its nav entry hidden, its routes unmounted, with no
 // error anywhere. The symptom is always the same: an empty screen that sends people to
 // debug the wrong layer. These assertions are cheap and they are what stands between
 // "I added the manifest" and "the feature exists".
@@ -25,7 +25,7 @@ const WEBHOOK_TABLE_KEYS = ['webhookEndpointsTable', 'webhookDeliveriesTable'];
 describe('the client mirror tracks the server manifests', () => {
     // `src/ottabase/config/premium.ts` cannot import the manifests (they carry server
     // wiring), so it duplicates the KEYS. This is the assertion that keeps the duplicate
-    // honest — without it, uninstalling a package leaves a nav entry pointing at a route
+    // honest, without it, uninstalling a package leaves a nav entry pointing at a route
     // whose API is gone.
     it('lists exactly the installed package keys', () => {
         expect([...PREMIUM_PACKAGES_INSTALLED].sort()).toEqual(PREMIUM_PACKAGES.map((pkg) => pkg.key).sort());
@@ -43,7 +43,7 @@ describe('premium tables reach auto-init', () => {
         }
     });
 
-    it('appear in getAllSchemas() and getSchemaSummary() — auto-init skips a table missing from either', () => {
+    it('appear in getAllSchemas() and getSchemaSummary(), auto-init skips a table missing from either', () => {
         const schemas = Object.keys(getAllSchemas());
         const summary = getSchemaSummary().packages;
         for (const key of WEBHOOK_TABLE_KEYS) {
@@ -71,7 +71,7 @@ describe('premium tables reach auto-init', () => {
         }
     });
 
-    it('are contributed regardless of license — activating a key must not need a migration run', () => {
+    it('are contributed regardless of license, activating a key must not need a migration run', () => {
         // No license anywhere in this process, yet the tables are still collected.
         expect(Object.keys(getEnabledPackageTables())).toEqual(expect.arrayContaining(WEBHOOK_TABLE_KEYS));
     });
@@ -116,7 +116,7 @@ describe('admin navigation', () => {
     });
 
     // `src/ottabase/config/premium.ts` PREMIUM_ADMIN_PAGES is what actually registers a Premium Package
-    // package's route (router.tsx) and sidebar entry (admin-nav.ts) — the manifest's own `nav`
+    // package's route (router.tsx) and sidebar entry (admin-nav.ts), the manifest's own `nav`
     // field only drives the drop-in `/admin/growth/premium` status page. Two hrefs for the same
     // page, in two files on two sides of the client/server split; nothing else stops them
     // drifting apart the day someone renames one.
@@ -158,7 +158,7 @@ describe('mounted routes', () => {
         const { app } = buildApp({});
         const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), {});
 
-        // `gate: 'entitlements'` — the namespace stays reachable so the free tier works.
+        // `gate: 'entitlements'`: the namespace stays reachable so the free tier works.
         expect(response?.status).toBe(200);
     });
 

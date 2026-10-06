@@ -1,12 +1,12 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium/react — query hooks
+// @ottabase/premium/react, query hooks
 // ============================================================
 // Built on TanStack Query with the framework's `meta: { entity }` convention, so the
 // app's global mutation-cache observer busts the same namespace it already owns.
 //
-// EVERY GATE HERE FAILS CLOSED — while loading, on error, and when rendered outside the
+// EVERY GATE HERE FAILS CLOSED, while loading, on error, and when rendered outside the
 // provider. A convenience default that ALLOWED the action would silently lose the gate
 // for any component mounted outside the tree, which is precisely the bug a paid feature
 // cannot afford. These hooks are a UX affordance; the authoritative check is the

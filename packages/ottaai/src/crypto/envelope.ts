@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Ciphertext envelope: format, parse, sniff
+// @ottabase/ottaai: Ciphertext envelope: format, parse, sniff
 // ============================================================
 // FORMAT (five dot-joined segments):
 //
@@ -10,7 +10,7 @@
 //
 // The DECRYPTOR REGISTRY keys on segment 0 only; the KEYRING lookup keys on
 // segment 1. Keeping them separate is what lets a rotation (new key id) and a
-// format migration (new version) proceed independently — and versions may
+// format migration (new version) proceed independently, and versions may
 // legitimately differ in ARITY, which is why arity is checked per registered
 // version rather than globally.
 // ============================================================
@@ -49,7 +49,7 @@ export function assertValidKeyId(keyId: string): void {
 }
 
 /**
- * THE CIPHERTEXT SNIFFER — a security control, not a convenience.
+ * THE CIPHERTEXT SNIFFER: a security control, not a convenience.
  *
  * A FALSE POSITIVE here stores a plaintext provider key unencrypted: the worst failure in
  * the system, with no error anywhere. So verify the version prefix, the segment count FOR

@@ -71,7 +71,7 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true';
 
     // Org-mode blogs: the index-swap migration runs once (tracked), but autoInit's
-    // ensure step re-creates schema-declared indexes on EVERY run — suppress the
+    // ensure step re-creates schema-declared indexes on EVERY run, suppress the
     // dropped strict slug indexes so a re-init can't silently restore app-wide
     // uniqueness and break per-org slug namespaces. Env-aware (OTTABLOG_MODE).
     const ottabaseConfig = getOttabaseConfig(env);

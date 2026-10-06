@@ -31,7 +31,7 @@ describe('DisclosureTool', () => {
         });
     });
 
-    describe('Initialization – defaults', () => {
+    describe('Initialization: defaults', () => {
         it('should initialize with safe defaults', () => {
             const tool = new DisclosureTool({ data: {}, config: {}, api: mockAPI as any });
             const saved = tool.save();

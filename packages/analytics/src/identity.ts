@@ -1,5 +1,5 @@
 /**
- * @ottabase/analytics — Visitor Identity
+ * @ottabase/analytics: Visitor Identity
  *
  * Pluggable visitor identification for analytics.
  *
@@ -19,7 +19,7 @@
  */
 export type VisitorIdResolver = (request: Request) => string | Promise<string>;
 
-/** The active resolver — defaults to {@link defaultVisitorIdResolver}. */
+/** The active resolver: defaults to {@link defaultVisitorIdResolver}. */
 let activeResolver: VisitorIdResolver = defaultVisitorIdResolver;
 
 /**
@@ -62,7 +62,7 @@ export async function resolveVisitorId(request: Request): Promise<string> {
  *
  * Uses the Web Crypto API (available in Workers) to SHA-256 hash the
  * concatenation of: IP address + User-Agent + week salt.
- * Returns the first 16 hex chars (64-bit uniqueness — sufficient for
+ * Returns the first 16 hex chars (64-bit uniqueness, sufficient for
  * approximate unique counting, not globally unique).
  *
  * The week salt rotates every 7 days (ISO week number + year), so the
@@ -109,7 +109,7 @@ export function fastVisitorHash(request: Request): string {
 
 /**
  * Compute a weekly salt string: `"YYYY-Www"` (ISO week number).
- * Same value for all days within the same Mon–Sun week.
+ * Same value for all days within the same Mon to Sun week.
  *
  * @example weekSalt() // "2026-W08"
  */

@@ -64,13 +64,13 @@ export default {
             if (killed) return killed;
 
             // -------------------------------------------------------
-            // Bootstrap gate – resolve platform state before anything
+            // Bootstrap gate, resolve platform state before anything
             // -------------------------------------------------------
 
             // /__bootstrap__/* routes always drop the isolate READY memo and
             // resolve fresh. The finally-invalidate matters: the pre-handler
             // resolve re-arms the memo (KV may still say READY), and the route
-            // may then mutate platform state — never leave that memo armed
+            // may then mutate platform state, never leave that memo armed
             // across the transition. (State writers also invalidate directly.)
             if (normalizedPathname.startsWith('/__bootstrap__')) {
                 invalidatePlatformStateCache();
@@ -95,14 +95,14 @@ export default {
             }
 
             // -------------------------------------------------------
-            // Normal request flow — platform is READY
+            // Normal request flow, platform is READY
             // -------------------------------------------------------
             const requiresDbConnection = normalizedPathname.startsWith('/api/') || isHtmlRequest(request);
             if (requiresDbConnection) {
                 ensureDbConnection(env);
             }
 
-            // API routes (built-ins, then user-zone custom routes) — null falls through
+            // API routes (built-ins, then user-zone custom routes), null falls through
             const apiResponse = await handleApiRequest(request, env, ctx);
 
             if (apiResponse) {

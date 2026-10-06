@@ -13,6 +13,8 @@
  */
 
 import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
+import { SEOHead } from '@/components/SEOHead';
+import { APP_META } from '@/ottabase/config';
 import { getEnabledAdminNav, type AdminNavGroup } from '@/ottabase/config/admin-nav';
 import { Button, Input, Sheet, SheetContent, SheetHeader, SheetTitle } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
@@ -158,10 +160,12 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
     }, [groups, pathname]);
 
     const activeHref = active?.href ?? null;
+    const tabTitle = `${active ? `${active.title} · ` : ''}Admin · ${APP_META.appName}`;
     const currentTitle = pathname === '/admin' ? 'Overview' : (active?.title ?? 'Admin');
 
     return (
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+            <SEOHead title={tabTitle} />
             {/* Phone: one compact bar; the full nav opens in a sheet */}
             <div className="md:hidden">
                 <Button

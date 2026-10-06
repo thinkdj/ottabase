@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine v2 – token category tests
+// Brand Engine v2, token category tests
 // Covers: sparse category resolution, palette collision guarding, radius
 // scale, open motion vocabulary, dark-delta policy, aliases in the kit path,
 // scope CSS, effects CSS generation, and the critical/effects style tags.
@@ -155,7 +155,7 @@ describe('type scale', () => {
         expect(vars['--text-display-weight']).toBe('700');
     });
 
-    it('is sparse — no --text-* vars without a typeScale', () => {
+    it('is sparse: no --text-* vars without a typeScale', () => {
         const vars = buildCSSVarMap(makeTheme({}));
         expect(Object.keys(vars).some((k) => k.startsWith('--text-'))).toBe(false);
     });

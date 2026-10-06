@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Menu CRUD API handlers (wired under /api/brand/menus)
+// Brand Engine, Menu CRUD API handlers (wired under /api/brand/menus)
 // GET /api/brand/menus (list), GET /api/brand/menus/slug/:slug (by slug with items)
 // POST /api/brand/menus, PUT /api/brand/menus/:id, DELETE /api/brand/menus/:id
 // POST /api/brand/menus/:id/items, PUT /api/brand/menus/:id/items/:itemId, DELETE /api/brand/menus/:id/items/:itemId
@@ -62,7 +62,7 @@ async function menuWithItems(menu: InstanceType<typeof Menu>): Promise<MenuWithI
     };
 }
 
-/** GET /api/brand/menus – List menus for app (batch-loads all items to avoid N+1) */
+/** GET /api/brand/menus: List menus for app (batch-loads all items to avoid N+1) */
 export async function handleGetMenus(_request: Request, _env: BrandApiEnv, appId: string | null): Promise<Response> {
     const menus = (await Menu.where({ appId: appId ?? null }, { orderBy: 'name' })) as InstanceType<typeof Menu>[];
     if (menus.length === 0) return jsonResponse([], 200);
@@ -99,7 +99,7 @@ export async function handleGetMenus(_request: Request, _env: BrandApiEnv, appId
     return jsonResponse(data, 200);
 }
 
-/** GET /api/brand/menus/slug/:slug – Get menu by slug with items */
+/** GET /api/brand/menus/slug/:slug, Get menu by slug with items */
 export async function handleGetMenuBySlug(
     _request: Request,
     _env: BrandApiEnv,
@@ -111,7 +111,7 @@ export async function handleGetMenuBySlug(
     return jsonResponse(menu, 200);
 }
 
-/** GET /api/brand/menus/:id – Get one menu with items */
+/** GET /api/brand/menus/:id, Get one menu with items */
 export async function handleGetMenu(
     _request: Request,
     _env: BrandApiEnv,
@@ -125,7 +125,7 @@ export async function handleGetMenu(
     return jsonResponse(await menuWithItems(menu), 200);
 }
 
-/** POST /api/brand/menus – Create menu */
+/** POST /api/brand/menus: Create menu */
 export async function handleCreateMenu(request: Request, env: BrandApiEnv, appId: string | null): Promise<Response> {
     const body = (await request.json()) as { name?: string; slug?: string; type?: string };
     const name = body.name as string;
@@ -144,7 +144,7 @@ export async function handleCreateMenu(request: Request, env: BrandApiEnv, appId
     return jsonResponse(await menuWithItems(menu), 201);
 }
 
-/** PUT /api/brand/menus/:id – Update menu */
+/** PUT /api/brand/menus/:id, Update menu */
 export async function handleUpdateMenu(
     request: Request,
     env: BrandApiEnv,
@@ -182,7 +182,7 @@ export async function handleDeleteMenu(
     return jsonResponse({ success: true }, 200);
 }
 
-/** POST /api/brand/menus/:id/items – Create menu item */
+/** POST /api/brand/menus/:id/items, Create menu item */
 export async function handleCreateMenuItem(
     request: Request,
     env: BrandApiEnv,
@@ -230,7 +230,7 @@ export async function handleCreateMenuItem(
     return jsonResponse(serializeItem(item), 201);
 }
 
-/** PUT /api/brand/menus/:id/items/:itemId – Update menu item */
+/** PUT /api/brand/menus/:id/items/:itemId, Update menu item */
 export async function handleUpdateMenuItem(
     request: Request,
     env: BrandApiEnv,

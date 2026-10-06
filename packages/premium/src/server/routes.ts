@@ -1,7 +1,7 @@
 // ============================================================
-// @ottabase/premium/server — the control-plane API
+// @ottabase/premium/server, the control-plane API
 // ============================================================
-// `/api/premium/*` — what is installed, what state it is in, and the two writes an
+// `/api/premium/*`: what is installed, what state it is in, and the two writes an
 // operator needs: paste a license, remove a license.
 //
 // AUTHORIZATION IS INJECTED, never assumed. This package has no idea what an admin is
@@ -25,7 +25,7 @@ export interface PremiumAdminRouterOptions<Env> {
      * Gate for the read-only status endpoints. Defaults to `requireAdmin`.
      *
      * Loosen this to "any signed-in user" when the client needs entitlement state to
-     * render gates — the payload is the customer's own plan/limits, never a license key.
+     * render gates, the payload is the customer's own plan/limits, never a license key.
      */
     requireViewer?: PremiumRouteGuard<Env>;
 }
@@ -86,7 +86,7 @@ export function createPremiumAdminRouter<Env>(
         const status = await registry.activate(c.env, c.params.key, license);
         if (!status) return errorResponse('Package not installed', 404);
 
-        // A key that fails verification is NOT a server error — it is the single most
+        // A key that fails verification is NOT a server error, it is the single most
         // common operator mistake (wrong package, wrong app, pasted with a line break).
         // Answering 422 with the machine-readable reason is what lets the UI say which.
         if (!status.enabled) {

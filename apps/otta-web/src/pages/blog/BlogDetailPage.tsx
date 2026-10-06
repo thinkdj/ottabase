@@ -255,7 +255,7 @@ export function BlogDetailPage() {
     });
     const canModerate = user?.platformAdmin === true || hasGrantedPermission(user?.permissions, 'comments:moderate');
 
-    // Loading state — pulse skeleton matching the listing/archive pages
+    // Loading state: pulse skeleton matching the listing/archive pages
     if (isLoadingPost) {
         return (
             <div className="space-y-8" aria-busy="true">
@@ -407,7 +407,7 @@ export function BlogDetailPage() {
                         description={displayPost.excerpt ?? undefined}
                     />
                     {user?.id && displayPost.authorId && user.id === displayPost.authorId && (
-                        // /studio is the editorial surface gated on posts:update — the author of this
+                        // /studio is the editorial surface gated on posts:update, the author of this
                         // post holds it. /admin/content/blog additionally requires org:admin, which an
                         // author does not have, so it would send them to a privilege fallback instead.
                         <Button variant="outline" size="sm" asChild>
@@ -420,7 +420,7 @@ export function BlogDetailPage() {
                 </div>
             </div>
 
-            {/* Original date — when the content was originally written (diary, republished essay, etc.) */}
+            {/* Original date: when the content was originally written (diary, republished essay, etc.) */}
             {displayPost.originalDate && (
                 <p className="mb-4 text-sm text-muted-foreground">
                     Originally written: {displayPost.originalDate.label}

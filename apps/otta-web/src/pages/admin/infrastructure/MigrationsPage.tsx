@@ -185,12 +185,12 @@ export function MigrationStatusPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Database Migration Status</h1>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Migrations</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Running database initialization and migration checks...
+                        Every table the app declares, checked against the live database.
                     </p>
                     <p className="text-sm text-muted-foreground">
-                        This ensures all schemas (core, app, and packages) are migrated properly.
+                        Core, app and package schemas are created or extended in place; nothing is dropped.
                     </p>
                 </div>
 
@@ -206,7 +206,7 @@ export function MigrationStatusPage() {
                             className="h-9"
                         />
                         <Button size="sm" onClick={() => runInit(secretInput || undefined, allowDestructive)}>
-                            Run Migration
+                            Run migration
                         </Button>
                     </div>
                     <div className="flex items-center gap-2">

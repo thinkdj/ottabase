@@ -280,7 +280,7 @@ export const ARTICLES: readonly BlogDemoPostSeed[] = [
                     'It goes to the signed-in admin, or to any list of recipients, through the same path real mail takes.',
                 ],
                 [
-                    'Check the Dev Mail page',
+                    'Check the Dev mail page',
                     'In development the message lands in a local inbox you can read without leaving the app.',
                 ],
             ]),

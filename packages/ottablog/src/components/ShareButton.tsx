@@ -1,5 +1,5 @@
 /**
- * ShareButton — single share icon that opens a dropdown with sharing options.
+ * ShareButton: single share icon that opens a dropdown with sharing options.
  *
  * Renders: Copy link, X/Twitter, Facebook, LinkedIn, Email.
  * When the browser supports Web Share API, a native "Share…" option appears first.
@@ -53,7 +53,7 @@ export function ShareButton({ url, title, description }: ShareButtonProps) {
                     setTimeout(() => setCopied(false), 2000);
                 },
                 () => {
-                    /* clipboard denied — silent, button stays unchanged */
+                    /* clipboard denied: silent, button stays unchanged */
                 },
             );
         } catch {
@@ -63,7 +63,7 @@ export function ShareButton({ url, title, description }: ShareButtonProps) {
 
     const handleNativeShare = useCallback(() => {
         navigator.share({ url, title, text: description || title }).catch(() => {
-            // User cancelled — not an error
+            // User cancelled, not an error
         });
     }, [url, title, description]);
 
@@ -97,7 +97,13 @@ export function ShareButton({ url, title, description }: ShareButtonProps) {
                     </>
                 )}
 
-                <DropdownMenuItem onClick={handleCopy}>
+                <DropdownMenuItem
+                    onSelect={(event) => {
+                        // Keep the menu open so the confirmation is visible
+                        event.preventDefault();
+                        void handleCopy();
+                    }}
+                >
                     {copied ? <Check className="mr-2 h-4 w-4 text-green-600" /> : <Copy className="mr-2 h-4 w-4" />}
                     {copied ? 'Copied!' : 'Copy link'}
                 </DropdownMenuItem>

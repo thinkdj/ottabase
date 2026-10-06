@@ -38,7 +38,7 @@ const sampleEditorJSData = {
             type: 'advancedImage',
             data: {
                 url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=800&q=80',
-                caption: 'Stellar nursery – the cosmic birthplace of stars',
+                caption: 'Stellar nursery: the cosmic birthplace of stars',
                 alt: 'Nebula in deep space',
                 withBorder: true,
                 stretched: false,
@@ -76,7 +76,7 @@ const sampleEditorJSData = {
             type: 'advancedImage',
             data: {
                 url: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&q=80',
-                caption: 'Earth from orbit – pale blue dot in the cosmic ocean',
+                caption: 'Earth from orbit: pale blue dot in the cosmic ocean',
                 alt: 'Earth from space',
                 withBackground: true,
                 featuredImage: true,
@@ -140,14 +140,11 @@ const sampleEditorJSData = {
             type: 'checklist',
             data: {
                 items: [
-                    { text: 'Create ottarenderer package ✨', checked: true },
-                    { text: 'Port EditorJS renderer with all block types', checked: true },
-                    { text: 'Add HTML renderer for basic content', checked: true },
-                    { text: 'Remove Mantine dependencies', checked: true },
-                    { text: 'Use shadcn design tokens', checked: true },
-                    { text: 'Create comprehensive demo', checked: true },
-                    { text: 'Test dark mode compatibility', checked: false },
-                    { text: 'Deploy to production', checked: false },
+                    { text: 'Outline the post', checked: true },
+                    { text: 'Pick a hero image', checked: true },
+                    { text: 'Write the first draft', checked: true },
+                    { text: 'Check every link', checked: false },
+                    { text: 'Publish', checked: false },
                 ],
             },
         },
@@ -177,7 +174,7 @@ const sampleEditorJSData = {
             id: 'quote1',
             type: 'quote',
             data: {
-                text: 'Good design is as little design as possible. Less, but better – because it concentrates on the essential aspects.',
+                text: 'Good design is as little design as possible. Less, but better, because it concentrates on the essential aspects.',
                 caption: 'Dieter Rams - Ten Principles of Good Design',
                 alignment: 'left',
             },
@@ -267,7 +264,7 @@ function MyHtmlContent({ htmlString }) {
             type: 'advancedImage',
             data: {
                 url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1000&q=80',
-                caption: 'Earth at night – the glow of human civilization from orbit',
+                caption: 'Earth at night: the glow of human civilization from orbit',
                 alt: 'Earth at night from space',
                 withBorder: true,
                 aspectRatio: '4:3',
@@ -444,7 +441,7 @@ export function RendererDemoPage() {
                                 <li>• Shadcn design tokens</li>
                                 <li>• Dark mode compatible</li>
                                 <li>• TypeScript support</li>
-                                <li>• Lightweight (no Mantine dependency)</li>
+                                <li>• Lightweight</li>
                                 <li>• Customizable styles</li>
                             </ul>
                         </div>

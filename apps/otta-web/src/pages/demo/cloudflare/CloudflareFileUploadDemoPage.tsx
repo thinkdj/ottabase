@@ -8,7 +8,7 @@ export function CloudflareFileUploadDemoPage() {
     const [uploadMode, setUploadMode] = useState<'dropzone' | 'button'>('dropzone');
 
     const handleUpload = async (files: File[]) => {
-        console.log('Files to upload:', files);
+        toast.success(`${files.length} file${files.length === 1 ? '' : 's'} uploaded`);
     };
 
     // FileUploader uses XHR (not the global api client), so errors don't go through
@@ -24,10 +24,10 @@ export function CloudflareFileUploadDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="File Upload Package"
+                title="File upload"
                 description="Demonstration of the @ottabase/ottaupload package with drag-and-drop, progress tracking, and Cloudflare R2 integration."
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Demos"
+                backLabel="Back to Cloudflare"
             />
 
             {/* Features */}

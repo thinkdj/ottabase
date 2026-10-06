@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Floating config panel — sleek pull-out tab on right edge that opens a
+ * Floating config panel: sleek pull-out tab on right edge that opens a
  * non-blocking slide-out panel with theme presets and slot variant selectors.
  *
  * Visibility is controlled by:
@@ -74,7 +74,7 @@ export function ConfigPanel() {
 
     return (
         <>
-            {/* Slide-out panel — no backdrop, non-blocking */}
+            {/* Slide-out panel: no backdrop, non-blocking */}
             <div
                 className={`fixed right-0 top-0 z-[100] flex h-full w-80 max-w-[85vw] flex-col border-l border-border bg-background/95 backdrop-blur-sm shadow-xl transition-transform duration-300 ease-in-out ${
                     open ? 'translate-x-0' : 'translate-x-full'
@@ -132,7 +132,7 @@ export function ConfigPanel() {
                 </div>
             </div>
 
-            {/* Sleek pull-out tab — right edge, vertically centered, primary colour */}
+            {/* Sleek pull-out tab: right edge, vertically centered, primary colour */}
             <button
                 type="button"
                 onClick={toggle}

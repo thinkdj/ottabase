@@ -7,12 +7,12 @@ import { ORG_ADMIN_PERMISSION, PLATFORM_OWNER_ROLE_NAME, Role } from '../Role';
 // The security-critical behavior: on every run, ensureDefaultRoles reconciles
 // EXISTING framework `isSystem` role rows back to the canonical permission sets
 // (Role.DEFAULT_ROLE_DEFINITIONS). This is what auto-corrects a role seeded under
-// an older definition — e.g. a legacy `owner = ['*:*']` from before org/platform
-// scoping — with no manual re-seed or DB wipe. These tests lock the create /
+// an older definition, e.g. a legacy `owner = ['*:*']` from before org/platform
+// scoping, with no manual re-seed or DB wipe. These tests lock the create /
 // heal / idempotent / don't-clobber-operator-roles branches so a future refactor
 // can't silently revert to "skip if exists" and reintroduce the escalation.
 //
-// The static DB methods are stubbed (no driver needed) — we assert the branch
+// The static DB methods are stubbed (no driver needed), we assert the branch
 // logic, i.e. WHICH rows get updated/created and with WHAT permissions.
 // ---------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ function existingRow(
 }
 
 // Restore the class's own-property state after each test (create/update are inherited
-// from BaseModel, findByName is own on Role — this handles both).
+// from BaseModel, findByName is own on Role, this handles both).
 const savedDescriptors: Record<string, PropertyDescriptor | undefined> = {};
 function stub<M extends 'findByName' | 'create' | 'update'>(method: M, impl: (...args: any[]) => any) {
     if (!(method in savedDescriptors)) {
@@ -66,7 +66,7 @@ describe('Role.hasPermission', () => {
     });
 });
 
-describe('Role.ensureDefaultRoles — heal mode', () => {
+describe('Role.ensureDefaultRoles, heal mode', () => {
     it('heals a stale isSystem `owner = [*:*]` row to the org bundle (org:admin, no *:*) when heal:true', async () => {
         // All roles already match canonical EXCEPT `owner`, which carries the legacy wildcard.
         stub('findByName', async (name: string) =>
@@ -87,7 +87,7 @@ describe('Role.ensureDefaultRoles — heal mode', () => {
         expect(healed).not.toContain('*:*');
     });
 
-    it('DEFAULT mode (no heal) is create-if-missing only — never reconciles a drifted system row', async () => {
+    it('DEFAULT mode (no heal) is create-if-missing only, never reconciles a drifted system row', async () => {
         stub('findByName', async (name: string) =>
             name === 'owner' ? existingRow('owner', { permissions: ['*:*'] }) : existingRow(name),
         );
@@ -96,13 +96,13 @@ describe('Role.ensureDefaultRoles — heal mode', () => {
 
         const changed = await Role.ensureDefaultRoles(); // default heal:false (signup hot path)
 
-        // Stale owner is NOT touched — no silent revert, no unbounded session-refresh obligation.
+        // Stale owner is NOT touched, no silent revert, no unbounded session-refresh obligation.
         expect(update).not.toHaveBeenCalled();
         expect(create).not.toHaveBeenCalled();
         expect(changed).toEqual([]);
     });
 
-    it('is idempotent under heal — no writes when every system role already matches', async () => {
+    it('is idempotent under heal: no writes when every system role already matches', async () => {
         stub('findByName', async (name: string) => existingRow(name));
         const create = stub('create', async (d: any) => d);
         const update = stub('update', async (id: string, d: any) => ({ id, ...d }));

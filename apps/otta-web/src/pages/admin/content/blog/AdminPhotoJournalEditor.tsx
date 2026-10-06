@@ -265,7 +265,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
 
     const addPhotos = (items: MediaSelectionPayload[]) => {
         const incoming = items.map(photoFromMedia);
-        // Seeded from the album, then GROWN as each photograph is accepted — otherwise one selection
+        // Seeded from the album, then GROWN as each photograph is accepted, otherwise one selection
         // containing the same photo twice is filtered here so the model never receives a duplicate.
         // validatePhotoJournalItems rejects them as well, avoiding a mismatch between editor and DB.
         // Keep the three identity namespaces separate, matching validatePhotoJournalItems. An
@@ -337,7 +337,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
         // and let the model's "absent means unchanged" keep whatever is stored.
         //
         // Ready but null: its save threw. There may be unsaved work in there, and writing null would
-        // erase the stored story while carrying on as though the save succeeded — the author would
+        // erase the stored story while carrying on as though the save succeeded, the author would
         // be navigated away having silently lost both. Stop and say so instead.
         //
         // Ready and empty returns `{ blocks: [] }`, which still clears the body as it should.
@@ -376,12 +376,12 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
             /*
              * The journal and its tag links are separate writes, and only the first one is unsafe to
              * repeat. `Promise.all` used to reject the whole save on any tag failure, so a journal
-             * that HAD been created reported "could not save" — and the obvious retry created a
+             * that HAD been created reported "could not save", and the obvious retry created a
              * second journal. allSettled keeps the two failure domains apart: the post is saved, the
              * tags are reconciled best-effort, and the author is told exactly which half missed.
              *
              * ponytail: reporting, not repair. Real atomicity needs a server endpoint that owns the
-             * post and its links in one request — worth building when tag writes actually start
+             * post and its links in one request, worth building when tag writes actually start
              * failing, not before.
              */
             const tagFailures = (
@@ -400,7 +400,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 setAlert({
                     open: true,
                     title: 'Saved, but the tags did not all stick',
-                    message: `The photo journal was saved. ${tagFailures} tag ${tagFailures === 1 ? 'change' : 'changes'} could not be applied — check the tags below and save again.`,
+                    message: `The photo journal was saved. ${tagFailures} tag ${tagFailures === 1 ? 'change' : 'changes'} could not be applied, check the tags below and save again.`,
                 });
                 return;
             }

@@ -6,7 +6,7 @@ aligned.
 
 ## Usage
 
-**1. Tailwind config** — use the preset as the single source for `theme.extend`, `darkMode`, and plugins:
+**1. Tailwind config**: use the preset as the single source for `theme.extend`, `darkMode`, and plugins:
 
 ```js
 // tailwind.config.cjs
@@ -24,13 +24,13 @@ module.exports = {
 };
 ```
 
-**2. Global CSS** — pull in the base `@tailwind` layers (adjust path if your bundler resolves the package differently):
+**2. Global CSS**: pull in the base `@tailwind` layers (adjust path if your bundler resolves the package differently):
 
 ```css
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 ```
 
-**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + `theme.loader` overrides) _before_ or alongside the
+**3. Runtime**: load your app’s theme CSS (e.g. shadcn variables + `theme.loader` overrides) _before_ or alongside the
 above so the preset’s `hsl(var(--…))` references resolve.
 
 ## Peer dependencies

@@ -21,8 +21,8 @@ pnpm --filter @ottabase/<pkg> exec vitest     # watch mode (package `test` scrip
 
 ## Rules that actually bite
 
-- **Every workspace must declare a `test` script.** Turbo silently skips an undeclared task — a package with no `test`
-  is not passing, it is _invisible_ to CI.
+- **Every workspace must declare a `test` script.** Turbo silently skips an undeclared task, a package with no `test` is
+  not passing, it is _invisible_ to CI.
 - **`turbo test` depends on `^build`.** When you change a shared package and test a consumer, **rebuild first**
   (`pnpm turbo run build --filter=<pkg>`) or the consumer tests run against stale `dist/`. Same for `type-check`. This
   is the single most common false pass/fail.
@@ -30,7 +30,7 @@ pnpm --filter @ottabase/<pkg> exec vitest     # watch mode (package `test` scrip
   `OBCF_REALTIME`, `OBCF_ASSETS`) via each app's `vitest.setup.ts`. Override per-test with `vi.fn()` on the global.
 - New package → add its own `vitest.config.ts` + `test` script, or `pnpm test:packages` won't see it.
 - **Coverage is a report, not a gate** (`pnpm test:coverage`; CI never runs it). `@vitest/coverage-v8` is pinned to the
-  exact installed `vitest` version — bump both together. Add `coverage.thresholds` only for a floor the package meets.
+  exact installed `vitest` version, bump both together. Add `coverage.thresholds` only for a floor the package meets.
 
 ## Conventions
 
@@ -38,7 +38,7 @@ pnpm --filter @ottabase/<pkg> exec vitest     # watch mode (package `test` scrip
   `describe.sequential()` only when order truly matters.
 - Keep it lazy: colocate one `*.test.ts`, no bespoke fixtures/frameworks unless the logic (a parser, a money/security
   path, a branch) genuinely needs them. Trivial one-liners don't need a test.
-- `await` your async assertions — an un-awaited `expect(...).rejects.toThrow(...)` fails the test on Vitest 3+ (the repo
+- `await` your async assertions: an un-awaited `expect(...).rejects.toThrow(...)` fails the test on Vitest 3+ (the repo
   is on 4).
 
 ## Authoritative sources

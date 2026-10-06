@@ -10,7 +10,7 @@ const text = (res: Response | null): Promise<string> => {
     return res.text();
 };
 
-describe('mount — prefixing', () => {
+describe('mount: prefixing', () => {
     it('prefixes all sub routes: sub.get("/posts") serves "/api/blog/posts" and nothing else', async () => {
         const sub = new Router();
         sub.get('/posts', () => new Response('posts'));
@@ -71,7 +71,7 @@ describe('mount — prefixing', () => {
     });
 });
 
-describe('mount — global precedence and cross-tree conflicts', () => {
+describe('mount: global precedence and cross-tree conflicts', () => {
     it('parent static beats a sub-mounted :param at the same position (one global table)', async () => {
         const sub = new Router();
         sub.get('/:slug', (c) => new Response(`slug:${c.params.slug}`));
@@ -110,7 +110,7 @@ describe('mount — global precedence and cross-tree conflicts', () => {
     });
 });
 
-describe('gates — evaluated per request', () => {
+describe('gates: evaluated per request', () => {
     it('re-evaluates the gate on every request: invisible -> null, then visible -> Response', async () => {
         let visible = false;
         const gate = vi.fn(() => visible);
@@ -136,7 +136,7 @@ describe('gates — evaluated per request', () => {
 
         // Gate off: the more specific mounted static is invisible; the wildcard serves.
         expect(await text(await root.handle(req('/api/blog/posts'), {}))).toBe('parent-wild');
-        // Gate on: global precedence resumes — mounted static beats the parent wildcard.
+        // Gate on: global precedence resumes, mounted static beats the parent wildcard.
         on = true;
         expect(await text(await root.handle(req('/api/blog/posts'), {}))).toBe('sub-static');
     });
@@ -149,7 +149,7 @@ describe('gates — evaluated per request', () => {
             mwSpy();
             return next();
         });
-        sub.get('/x/y', () => null); // matches, declines — the next gated route is consulted
+        sub.get('/x/y', () => null); // matches, declines, the next gated route is consulted
         sub.get('/x/:p', (c) => new Response(`p:${c.params.p}`));
         const root = new Router();
         root.mount('/m', sub, { when: gate });

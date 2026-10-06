@@ -36,7 +36,7 @@ const orgOwner = {
     systemPermissions: [],
 };
 
-describe('assertAdmin — permission + scope (never role names)', () => {
+describe('assertAdmin: permission + scope (never role names)', () => {
     it('allows the bootstrapped platform_owner at system scope', () => {
         const result = assertAdmin(makeContext(platformOwner), { scope: 'system' });
         expect(result).not.toBeInstanceOf(Response);

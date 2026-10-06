@@ -114,7 +114,7 @@ describe('Navbar', () => {
         const toggle = screen.getByLabelText('Toggle menu');
         // Menu should not be visible initially (mobile links are in a separate div)
         fireEvent.click(toggle);
-        // After click, mobile menu appears — links are duplicated for mobile
+        // After click, mobile menu appears, links are duplicated for mobile
         const aboutLinks = screen.getAllByText('About');
         expect(aboutLinks.length).toBeGreaterThanOrEqual(2);
     });

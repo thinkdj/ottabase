@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Validators
+// Brand Engine, Validators
 // Type guards and validation helpers for brand configuration data.
 // Layout-specific validators delegate to @ottabase/ottalayout.
 // ---------------------------------------------------------------------------

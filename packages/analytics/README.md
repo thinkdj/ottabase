@@ -1,6 +1,6 @@
 # @ottabase/analytics
 
-Cloudflare Workers Analytics Engine (WAE) wrapper — track events, query aggregated data, and analyze user behavior.
+Cloudflare Workers Analytics Engine (WAE) wrapper: track events, query aggregated data, and analyze user behavior.
 
 ## Installation
 
@@ -33,13 +33,13 @@ back events. Two environment values are required:
 # Store as a Worker secret (production)
 pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 
-# Local dev — add to apps/<your-app>/.env.local
+# Local dev: add to apps/<your-app>/.env.local
 CLOUDFLARE_ACCOUNT_ID=your-32-char-account-id
 CLOUDFLARE_ANALYTICS_API_TOKEN=your-token-here
 # PS: Cloudflare Analytics will NOT work for localhost
 ```
 
-`CLOUDFLARE_ACCOUNT_ID` goes in `wrangler.jsonc` under `vars`. The token must **never** be committed — use
+`CLOUDFLARE_ACCOUNT_ID` goes in `wrangler.jsonc` under `vars`. The token must **never** be committed. Use
 `wrangler secret put` for production and `.env.local` (gitignored) for local dev.
 
 ## Write Events
@@ -79,17 +79,17 @@ trackCoreEvent({
 
 **Core event slot mapping:**
 
-| Slot     | Field             |
-| -------- | ----------------- |
-| index1   | event             |
-| blob1    | appId             |
-| blob2    | userId            |
-| blob3    | country           |
-| blob4    | userAgent         |
-| blob5    | referer           |
-| blob6    | visitorId         |
-| blob7–11 | metadata[]        |
-| double1  | value (default 1) |
+| Slot        | Field             |
+| ----------- | ----------------- |
+| index1      | event             |
+| blob1       | appId             |
+| blob2       | userId            |
+| blob3       | country           |
+| blob4       | userAgent         |
+| blob5       | referer           |
+| blob6       | visitorId         |
+| blob7 to 11 | metadata[]        |
+| double1     | value (default 1) |
 
 ## Visitor Identity
 
@@ -113,9 +113,9 @@ setVisitorIdResolver(async (request) => {
 
 1. Reads `cf-connecting-ip` (falls back to `x-forwarded-for`, then `"unknown"`)
 2. Reads `user-agent` header
-3. Appends an ISO week salt (`"2026-W08"`) — same value Mon–Sun
+3. Appends an ISO week salt (`"2026-W08"`), same value Mon to Sun
 4. Hashes the concatenation with SHA-256 (Web Crypto API, available in Workers)
-5. Returns first 16 hex chars (64-bit — sufficient for approximate unique counting)
+5. Returns first 16 hex chars (64-bit, sufficient for approximate unique counting)
 
 **Trade-offs of the default (IP+UA hash):**
 
@@ -125,7 +125,7 @@ setVisitorIdResolver(async (request) => {
 | Same person, different browser/device = different visitor | Overcounts multi-device users                                          |
 | 7-day salt rotation (ISO week)                            | Same visitor is trackable within a week; cannot correlate across weeks |
 | `COUNT(DISTINCT blob6)`                                   | Approximate due to WAE sampling (`_sample_interval` compensation)      |
-| Incognito / private browsing                              | Still works — no cookies or localStorage needed                        |
+| Incognito / private browsing                              | Still works: no cookies or localStorage needed                         |
 
 **When to swap the resolver:**
 

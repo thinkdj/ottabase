@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Persistence layer exports
+// Brand Engine, Persistence layer exports
 // ---------------------------------------------------------------------------
 
 export { createBrandAssets } from './assets';

@@ -38,7 +38,7 @@ const coreMigrations: Migration[] = [
 // These run AFTER automatic table creation from Models.
 //
 // Use cases:
-// - Data seeding (prefer ORM in init/seed handlers — see ensureAppBrandDefaults)
+// - Data seeding (prefer ORM in init/seed handlers, see ensureAppBrandDefaults)
 // - Custom indexes
 // - Database views
 // - Triggers
@@ -58,7 +58,7 @@ const coreMigrations: Migration[] = [
 const appSpecificMigrations: Migration[] = [
     // Add your custom app-specific migrations here
     // Default brand kit + route mappings seeded via ensureAppBrandDefaults (ORM)
-    // in bootstrap handleSeed and api/ottaorm init — uses BrandKit.getOrCreateDefault
+    // in bootstrap handleSeed and api/ottaorm init, uses BrandKit.getOrCreateDefault
     // and DEFAULT_ROUTE_MAPPINGS from @ottabase/brand-engine
 ];
 

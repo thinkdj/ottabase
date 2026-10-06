@@ -1,6 +1,6 @@
 // ============================================================
 // A table can be registered in three places and STILL be skipped by auto-init,
-// with no error anywhere — the symptom is an empty result that sends people to
+// with no error anywhere: the symptom is an empty result that sends people to
 // debug the wrong layer.
 //
 // These assertions are cheap and they are the only thing standing between
@@ -25,7 +25,7 @@ describe('ai_provider_credentials reaches auto-init', () => {
         expect(AI_TABLE_KEY.endsWith('Table')).toBe(true);
     });
 
-    it('appears in getSchemaSummary() too — auto-init silently skips a table missing from either', () => {
+    it('appears in getSchemaSummary() too: auto-init silently skips a table missing from either', () => {
         expect(getSchemaSummary().packages).toContain(AI_TABLE_KEY);
     });
 

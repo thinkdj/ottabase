@@ -192,7 +192,7 @@ export function AdminBlurbEditor({ initialData }: { initialData?: BlurbEditorPos
                 setAlert({
                     open: true,
                     title: 'Saved, but the tags did not all stick',
-                    message: `The blurb was saved. ${tagFailures} tag ${tagFailures === 1 ? 'change' : 'changes'} could not be applied — check the tags below and save again.`,
+                    message: `The blurb was saved. ${tagFailures} tag ${tagFailures === 1 ? 'change' : 'changes'} could not be applied, check the tags below and save again.`,
                 });
                 return;
             }

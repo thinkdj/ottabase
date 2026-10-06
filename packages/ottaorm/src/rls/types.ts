@@ -14,7 +14,7 @@ export interface SecurityContext {
     permissions?: string[];
     /**
      * True when the caller is a PLATFORM administrator (a system-scoped `platform:admin`/'*:*'
-     * grant). Populated upstream from the session snapshot — NEVER derived from a role name or an
+     * grant). Populated upstream from the session snapshot, NEVER derived from a role name or an
      * org-scoped grant. Gates `requirePlatformAdmin` policies (e.g. app-global control-plane tables).
      */
     platformAdmin?: boolean;
@@ -69,7 +69,7 @@ export interface RLSPolicy {
     /**
      * Required roles to access this model.
      *
-     * DANGER: role-NAME matching is scope-blind — a role named 'owner'/'admin' granted in ANY
+     * DANGER: role-NAME matching is scope-blind, a role named 'owner'/'admin' granted in ANY
      * org (every self-registered user gets one in their personal org) satisfies it. Do NOT use
      * this to express platform-admin gating; use `requirePlatformAdmin` instead.
      */
@@ -77,7 +77,7 @@ export interface RLSPolicy {
 
     /**
      * Require the caller to be a PLATFORM administrator (system-scoped `platform:admin`/'*:*').
-     * Checked against `SecurityContext.platformAdmin`, which is scope-aware — unlike role names.
+     * Checked against `SecurityContext.platformAdmin`, which is scope-aware, unlike role names.
      * Use for app-global / control-plane tables that have no tenant column.
      */
     requirePlatformAdmin?: boolean;
@@ -103,7 +103,7 @@ export interface ModelRLSConfig {
     /**
      * Explicit data-field → SecurityContext-key mappings enforced on writes.
      * Injected on create when missing, and validated (must equal the context value) always.
-     * Use for custom policies whose read filter field differs from the data field —
+     * Use for custom policies whose read filter field differs from the data field,
      * e.g. organizations are filtered by ownerId, so `{ ownerId: 'userId' }` pins the owner
      * on create and blocks a client from forging someone else's ownership.
      */
@@ -196,7 +196,7 @@ export const RLSPolicies = {
     /**
      * Hierarchical: Tenant + User scoped.
      * Fails closed (denies) when the user is missing, or when the tenant is missing and
-     * `allowNullTenant` is false — rather than emitting an `undefined` filter value.
+     * `allowNullTenant` is false, rather than emitting an `undefined` filter value.
      */
     Hierarchical: (allowNullTenant = false): RLSPolicy => ({
         level: 'custom',

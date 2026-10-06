@@ -1,8 +1,8 @@
 /**
- * @ottabase/ottadate/core — Core utilities sub-path export
+ * @ottabase/ottadate/core: Core utilities sub-path export
  *
  * Date conversion, formatting, and calendar grid helpers.
- * No DOM or picker dependencies — safe for server-side or headless usage.
+ * No DOM or picker dependencies, safe for server-side or headless usage.
  */
 
 export type {

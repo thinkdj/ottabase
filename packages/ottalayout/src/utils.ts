@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout – CSS Utility Helpers
+// @ottabase/ottalayout, CSS Utility Helpers
 //
 // Pure functions that map LayoutConfig values to Tailwind CSS class strings.
 // Used by layout components to translate config into styles.

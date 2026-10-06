@@ -1,5 +1,5 @@
 // ============================================================
-// defineOttabaseConfig — Validates and normalizes user config
+// defineOttabaseConfig, Validates and normalizes user config
 // ============================================================
 // Single source of truth for: packages, features, migrations, routes.
 // ============================================================
@@ -61,7 +61,7 @@ export function normalizeOttablogMode(value: unknown): OttablogMode {
 }
 
 /**
- * AI provisioning defaults. FROZEN AT MAJOR — changing `mode` or `strategy` in a minor
+ * AI provisioning defaults. FROZEN AT MAJOR, changing `mode` or `strategy` in a minor
  * silently re-points which key a tenant's calls use, with no error and no diff a consumer
  * would notice. The effective set is logged once at boot (see `worker/lib/ai.ts`).
  */
@@ -91,7 +91,7 @@ const DEFAULT_OTTAAI: OttaaiFeatureConfig = {
  * EXPORTED so the ENV-OVERRIDE path applies the identical rule. It did not, once: config
  * clamped negatives here while `resolveConfigWithEnv` passed `parseInt` output straight
  * through, so `OTTAAI_RATE_LIMIT_PER_APP=-1` produced a negative limit that then read as
- * "dimension disabled" — silently removing the only aggregate ceiling on operator spend.
+ * "dimension disabled", silently removing the only aggregate ceiling on operator spend.
  * Two code paths, one rule.
  */
 export function normalizeRateLimit(value: unknown, fallback: number): number {
@@ -159,7 +159,7 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
     const inputKeys = Object.keys(input);
     for (const key of inputKeys) {
         if (!KNOWN_KEYS.has(key)) {
-            console.warn(`[ottabase.config] Unrecognised key "${key}" — did you mean something else?`);
+            console.warn(`[ottabase.config] Unrecognised key "${key}", did you mean something else?`);
         }
     }
 

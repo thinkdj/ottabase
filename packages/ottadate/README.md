@@ -1,7 +1,7 @@
 # @ottabase/ottadate
 
 Framework-agnostic date picker library with range, datetime, and fuzzy date support. Works with any framework or vanilla
-JS — no React, Vue, or Angular required.
+JS: no React, Vue, or Angular required.
 
 ## Features
 
@@ -19,14 +19,14 @@ JS — no React, Vue, or Angular required.
   jan", a preset by name) and memories ("summer 98", "early 90s", "last night"); nothing is ever guessed
 - **Keyboard-driven** - one tab stop per grid, arrows move through it, Home and End jump, PageUp and PageDown turn the
   month, Escape closes
-- **UTC-first** — Getter/setter uses UTC unix timestamps (seconds) by default; configurable to ISO strings or Date
+- **UTC-first**: Getter/setter uses UTC unix timestamps (seconds) by default; configurable to ISO strings or Date
   objects
-- **Auto timezone** — Displays dates in user's detected timezone automatically
-- **Inline or popover** — Both modes supported for all picker variants
+- **Auto timezone**: Displays dates in user's detected timezone automatically
+- **Inline or popover**: Both modes supported for all picker variants
 - **Popover not clipped in scroll panes** - every popover uses `position: fixed` with viewport clamping, so narrow
   sidebars (`overflow: auto`) do not cut it off
-- **Theme-aware** — CSS custom properties integrate with shadcn/tailwind design tokens; dark mode supported
-- **Tree-shakeable** — Import only what you need via sub-path exports
+- **Theme-aware**: CSS custom properties integrate with shadcn/tailwind design tokens; dark mode supported
+- **Tree-shakeable**: Import only what you need via sub-path exports
 
 ## Installation
 
@@ -263,11 +263,11 @@ const compact = OttaDate.createFuzzyDateTimeCompact(container, {
 
 ```typescript
 interface FuzzyDateTime {
-    timestamp: number; // UTC unix seconds — start of the (part-narrowed) core window; stable sort anchor
+    timestamp: number; // UTC unix seconds, start of the (part-narrowed) core window; stable sort anchor
     resolution: 'decade' | 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
     part?: DatePart; // terminal refinement: early/mid/late, seasons, day-parts
-    approximate?: boolean; // "~ish" — soft boundary
-    earliest: number; // inclusive interval bounds (UTC unix seconds) —
+    approximate?: boolean; // "~ish", soft boundary
+    earliest: number; // inclusive interval bounds (UTC unix seconds),
     latest: number; //   the machine-usable truth: range queries, timeline bands
     label: string; // "Early 1990s", "Summer 1998", "Sometime in May 2010"
 }
@@ -278,22 +278,23 @@ interface FuzzyDateTime {
 render precise entries as points and fuzzy ones as bands. `formatFuzzyRange(fuzzy)` turns the interval into text ("1990
 to 1993", "Jun 1 to Aug 31, 1998", "May 21, 2010, 21:00 to 23:59") for lists and tooltips.
 
-| Selection        | Label                          | Interval                        |
-| ---------------- | ------------------------------ | ------------------------------- |
-| decade           | "Sometime in the 1990s"        | 1990-01-01 → 1999-12-31         |
-| decade + `early` | "Early 1990s"                  | 1990 → 1993 (mid 4–6, late 7–9) |
-| year             | "Sometime in 1996"             | the calendar year               |
-| year + `summer`  | "Summer 1998"                  | Jun–Aug (north; south Dec–Feb)  |
-| year + `~`       | "Around 1996"                  | 1995 → 1997 (±1 year)           |
-| month + `late`   | "Late May 2010"                | May 21 → May 31                 |
-| day + `night`    | "Night of May 21, 2010"        | 21:00 → 23:59                   |
-| minute           | "May 21, 2010 at 14:30"        | that minute                     |
-| minute + `~`     | "Around 14:30 on May 21, 2010" | ±15 minutes                     |
+| Selection        | Label                          | Interval                              |
+| ---------------- | ------------------------------ | ------------------------------------- |
+| decade           | "Sometime in the 1990s"        | 1990-01-01 → 1999-12-31               |
+| decade + `early` | "Early 1990s"                  | 1990 → 1993 (mid 4 to 6, late 7 to 9) |
+| year             | "Sometime in 1996"             | the calendar year                     |
+| year + `summer`  | "Summer 1998"                  | Jun to Aug (north; south Dec to Feb)  |
+| year + `~`       | "Around 1996"                  | 1995 → 1997 (±1 year)                 |
+| month + `late`   | "Late May 2010"                | May 21 → May 31                       |
+| day + `night`    | "Night of May 21, 2010"        | 21:00 → 23:59                         |
+| minute           | "May 21, 2010 at 14:30"        | that minute                           |
+| minute + `~`     | "Around 14:30 on May 21, 2010" | ±15 minutes                           |
 
-Part conventions: decade thirds are 0–3 / 4–6 / 7–9; year thirds are Jan–Apr / May–Aug / Sep–Dec; month thirds are 1–10
-/ 11–20 / 21–end; day-parts are morning 05–11, afternoon 12–16, evening 17–20, night 21–23 (same date). "Winter 1998"
-belongs to the year it starts in (Dec 1998 – Feb 1999). The `approximate` widening table: decade ±3y (±1y with a part),
-year ±1y (±1mo), month ±1mo (±3d), day ±1d (±2h), hour ±1h, minute/second ±15.
+Part conventions: decade thirds are 0 to 3 / 4 to 6 / 7 to 9; year thirds are Jan to Apr / May to Aug / Sep to Dec;
+month thirds are 1 to 10 / 11 to 20 / 21 to end; day-parts are morning 05 to 11, afternoon 12 to 16, evening 17 to 20,
+night 21 to 23 (same date). "Winter 1998" belongs to the year it starts in (Dec 1998, Feb 1999). The `approximate`
+widening table: decade ±3y (±1y with a part), year ±1y (±1mo), month ±1mo (±3d), day ±1d (±2h), hour ±1h, minute/second
+±15.
 
 ### Serialization
 
@@ -324,7 +325,7 @@ parseFuzzyInput('late may 2010'); // "Late May 2010"
 parseFuzzyInput('21 july 2026 9pm'); // "July 21, 2026 at 21:00"
 parseFuzzyInput('1996ish'); // "Around 1996" (approximate)
 parseFuzzyInput('last night'); // "Night of <yesterday>"
-parseFuzzyInput('banana'); // null — strict: unknown tokens never guess
+parseFuzzyInput('banana'); // null, strict: unknown tokens never guess
 ```
 
 Conventions: English-only for now; "may 10" reads as May 10 of the current year (a day, not 2010); 2-digit years and
@@ -391,7 +392,7 @@ interface PickerInstance {
 // Full library (pickers + core + fuzzy)
 import { OttaDate } from '@ottabase/ottadate';
 
-// Core utilities only (no DOM — safe for SSR/server)
+// Core utilities only (no DOM, safe for SSR/server)
 import { toDate, fromDate, formatDate, detectTimezone, resolveTimezone } from '@ottabase/ottadate/core';
 
 // FuzzyDateTime logic only (no DOM)

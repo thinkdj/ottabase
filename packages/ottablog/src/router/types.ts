@@ -1,5 +1,5 @@
 /**
- * Blog HTTP surface — shared types.
+ * Blog HTTP surface: shared types.
  *
  * The router/handlers in this directory are framework-agnostic Cloudflare Worker
  * code: everything app-specific (DB driver wiring, auth guards, cron secrets,
@@ -121,13 +121,13 @@ export interface BlogRouterConfig<Env = unknown> {
     /**
      * Verify DB availability and register the OttaORM connection for this request.
      * Return an error `Response` to abort (e.g. missing D1 binding), or null to proceed.
-     * Called at the top of every handler that touches the database — must be idempotent.
+     * Called at the top of every handler that touches the database, must be idempotent.
      */
     connect: (env: Env) => Response | null;
 
     /**
      * Blog tenancy mode (features.ottablog.mode). Defaults to 'platform': one blog per
-     * app, no org dimension — today's behavior, unchanged. In 'org' mode every public
+     * app, no org dimension, today's behavior, unchanged. In 'org' mode every public
      * read is scoped to the organization resolved by {@link resolveOrganizationId};
      * an unresolved tenant (null) scopes to platform-owned content (organizationId IS NULL).
      * Pass a function to resolve per request from env (e.g. an OTTABLOG_MODE env override).
@@ -135,7 +135,7 @@ export interface BlogRouterConfig<Env = unknown> {
     mode?: 'platform' | 'org' | ((env: Env) => 'platform' | 'org');
 
     /**
-     * org mode only: resolve the tenant for a request (subdomain, path prefix, header —
+     * org mode only: resolve the tenant for a request (subdomain, path prefix, header,
      * the app decides). Return the organizationId, or null for "no tenant" (platform
      * content). Never called in platform mode.
      */
@@ -157,7 +157,7 @@ export interface BlogRouterConfig<Env = unknown> {
      * SCOPED Studio guard: may this caller administer the studio of the given
      * blog scope? The target org is the RESOLVED tenant (never a request hint
      * trusted on its own): null = the platform blog (platform admin required),
-     * an id = that organization's blog (its org admin — or a platform admin).
+     * an id = that organization's blog (its org admin, or a platform admin).
      * Enables org admins to run their own blog's Studio in org mode. Falls back
      * to {@link requireAdmin} (platform-only) when not provided.
      */
@@ -183,7 +183,7 @@ export interface BlogRouterConfig<Env = unknown> {
      * {@link requireAdmin}. Guards the preview-token mint and the blurb/photo-journal updates.
      *
      * The preview mint falls back to `requireAdmin` when this is absent; the editorial WRITE routes
-     * do not — they need a `securityContext` for row scope, and `requireAdmin` has none to give.
+     * do not, they need a `securityContext` for row scope, and `requireAdmin` has none to give.
      * An app that omits this simply does not serve /blurbs or /photo-journals.
      */
     requireContentEditor?: (ctx: BlogRequestContext<Env>) => Promise<BlogEditorialWriteResult | Response>;
@@ -195,7 +195,7 @@ export interface BlogRouterConfig<Env = unknown> {
      * OBJECT-level authorization for the preview-token mint: may this caller
      * manage THIS post (e.g. an editor/org-admin grant IN THE POST'S org, or a
      * platform admin)? Consulted only when the caller is not the post's author.
-     * When absent, minting is restricted to the caller's own posts — the safe
+     * When absent, minting is restricted to the caller's own posts, the safe
      * default. Never trust request-supplied org hints here; authorize against
      * the post row's own organizationId.
      */
@@ -205,7 +205,7 @@ export interface BlogRouterConfig<Env = unknown> {
     ) => Promise<boolean>;
 
     /**
-     * Static trusted content for the platform-owner demo seed — sample articles,
+     * Static trusted content for the platform-owner demo seed, sample articles,
      * release notes, and the block kitchensink. When omitted, POST /seed-demo
      * responds 404: apps opt into seeding by supplying content. The handler
      * creates only missing rows, so running it again never overwrites edits.

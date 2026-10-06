@@ -1,5 +1,5 @@
 /* ==========================================================================
-   @ottabase/docs — Minimal documentation layout styles
+   @ottabase/docs, Minimal documentation layout styles
    Layout themes: compact, standard, spacious. Colors from Brand Kit.
    ========================================================================== */
 
@@ -30,7 +30,7 @@
     --otta-docs-color-code-border: hsl(var(--border, 214.3 31.8% 91.4%));
     --otta-docs-color-blockquote-border: hsl(var(--primary, 222.2 47.4% 11.2%));
     --otta-docs-color-blockquote-bg: hsl(var(--primary, 222.2 47.4% 11.2%) / 0.04);
-    /* Header offset — adjust if app header height changes */
+    /* Header offset: adjust if app header height changes */
     --otta-docs-header-height: 3.5rem;
     /* Container queries: breakpoints respond to this element's width, not viewport */
     container-type: inline-size;

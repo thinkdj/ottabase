@@ -25,7 +25,7 @@ export function crosspostsKey(items: PostCrosspost[] | null | undefined): string
 export interface CrosspostsFieldProps {
     value: PostCrosspost[];
     onChange: (next: PostCrosspost[]) => void;
-    /** What this post is, for the description copy — "thought", "article", "journal". */
+    /** What this post is, for the description copy: "thought", "article", "journal". */
     noun?: string;
 }
 
@@ -34,7 +34,7 @@ export interface CrosspostsFieldProps {
  *
  * One field for every content type, because the answer is the same shape whether the post is a
  * thought, an article, or a photo journal: a short list of permalinks, at most one of which is
- * where it actually started. The "Original" column is a native radio GROUP — the browser enforces
+ * where it actually started. The "Original" column is a native radio GROUP, the browser enforces
  * "at most one" for free, and the extra "This post is the original" radio is what makes the
  * unflagged state selectable rather than a thing you can only reach by never clicking.
  */
@@ -51,7 +51,7 @@ export function CrosspostsField({ value, onChange, noun = 'post' }: CrosspostsFi
                     Also posted at
                 </CardTitle>
                 <CardDescription>
-                    Link the same {noun} on Instagram, X, Facebook. Mark one as the original if it started there —
+                    Link the same {noun} on Instagram, X, Facebook. Mark one as the original if it started there,
                     otherwise this {noun} is the original and the rest are copies.
                 </CardDescription>
             </CardHeader>

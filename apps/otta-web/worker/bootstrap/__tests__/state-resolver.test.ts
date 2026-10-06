@@ -1,5 +1,5 @@
 /**
- * Tests for the platform state resolver — especially the READY fast path
+ * Tests for the platform state resolver, especially the READY fast path
  * (isolate memo + KV early return) and its invalidation on state transitions.
  *
  * The memo is module-scope state, so every test resets it via
@@ -63,7 +63,7 @@ beforeEach(() => {
     invalidatePlatformStateCache();
 });
 
-describe('resolvePlatformState — precedence', () => {
+describe('resolvePlatformState: precedence', () => {
     it('skips all I/O in test environments', async () => {
         const { env, kvGet, d1Prepare } = makeEnv({ ENVIRONMENT: 'test' });
         const result = await resolvePlatformState(env);
@@ -92,7 +92,7 @@ describe('resolvePlatformState — precedence', () => {
     });
 });
 
-describe('resolvePlatformState — READY fast path', () => {
+describe('resolvePlatformState: READY fast path', () => {
     it('KV=READY returns without probing D1 and arms the memo', async () => {
         const { env, kvGet, d1Prepare, kvStore } = makeEnv();
         kvStore.set(KV_PLATFORM_STATE_KEY, 'READY');
@@ -102,7 +102,7 @@ describe('resolvePlatformState — READY fast path', () => {
         expect(first.source).toBe('kv');
         expect(d1Prepare).not.toHaveBeenCalled();
 
-        // Second resolve within TTL: memo — zero additional I/O.
+        // Second resolve within TTL: memo, zero additional I/O.
         const second = await resolvePlatformState(env);
         expect(second.source).toBe('memo');
         expect(kvGet).toHaveBeenCalledTimes(1);
@@ -157,7 +157,7 @@ describe('READY memo invalidation on state transitions', () => {
         await resolvePlatformState(env); // memo armed
         const kvReadsAfterArm = kvGet.mock.calls.length;
 
-        // Invalidation happens before the write — even a missing binding drops the memo.
+        // Invalidation happens before the write, even a missing binding drops the memo.
         await writeDBState({ ...env, OBCF_D1: undefined }, 'UNINITIALIZED');
 
         const result = await resolvePlatformState(env);

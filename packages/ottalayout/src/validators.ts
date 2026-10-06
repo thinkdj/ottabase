@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout – Layout Config Validators
+// @ottabase/ottalayout, Layout Config Validators
 //
 // Type guards and merge helpers for LayoutConfig.
 // Optional fields receive sensible defaults via mergeLayoutConfig().

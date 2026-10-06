@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Build tree from flat menu items (pure function, no ORM)
+// Ottamenu, Build tree from flat menu items (pure function, no ORM)
 // ---------------------------------------------------------------------------
 
 import type { MenuItemDto } from './types';

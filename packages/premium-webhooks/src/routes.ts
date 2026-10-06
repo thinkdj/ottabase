@@ -1,13 +1,13 @@
 // ============================================================
-// @ottabase/premium-webhooks — API routes
+// @ottabase/premium-webhooks, API routes
 // ============================================================
 // Mounted by the framework at `/api/webhooks` with `gate: 'entitlements'`, which means
-// the license does NOT gate the whole namespace — this module owns its own gates so the
+// the license does NOT gate the whole namespace, this module owns its own gates so the
 // free tier (one endpoint, no delivery history) is actually reachable.
 //
 // THE COST OF THAT CHOICE IS EXPLICIT: every paid path below must call a guard itself.
 // A missed call is an unguarded paid route, which is why the paid surface here is
-// exactly two things — the endpoint LIMIT and the delivery LOG — and both are guarded in
+// exactly two things, the endpoint LIMIT and the delivery LOG, and both are guarded in
 // one place each.
 // ============================================================
 
@@ -42,14 +42,14 @@ async function readJsonBody<T>(request: Request): Promise<T> {
 /**
  * Tenant filter for every query.
  *
- * Built from the RESOLVED caller, never from request input — this is the only thing
+ * Built from the RESOLVED caller, never from request input, this is the only thing
  * standing between two customers' endpoint lists, so it does not take a parameter a
  * client could set.
  */
 function tenantFilter(caller: WebhookCaller): Record<string, unknown> {
     const filter: Record<string, unknown> = { appId: caller.appId };
     // A null organizationId is a real, distinct scope (personal endpoints), so it is
-    // matched exactly rather than dropped from the filter — dropping it would widen the
+    // matched exactly rather than dropped from the filter, dropping it would widen the
     // query to every organization.
     filter.organizationId = caller.organizationId;
     if (caller.organizationId === null) filter.userId = caller.userId;
@@ -124,7 +124,7 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
         if (scopeError) return scopeError;
         if (!who.canManage) return errorResponse('Forbidden', 403);
 
-        // THE PAID GATE. `current` is counted server-side from the tenant's own rows —
+        // THE PAID GATE. `current` is counted server-side from the tenant's own rows,
         // trusting a client-supplied count would let the client raise its own ceiling.
         const create = async () => {
             const existing = (await WebhookEndpoint.where(tenantFilter(who))) as WebhookEndpoint[];
@@ -264,7 +264,7 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
         return jsonResponse({ data: { deleted: true, id: c.params.id } });
     });
 
-    /** Send a signed test delivery. Free — an endpoint you cannot test is an endpoint you cannot set up. */
+    /** Send a signed test delivery. Free, an endpoint you cannot test is an endpoint you cannot set up. */
     router.post('/:id/test', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;
@@ -288,7 +288,7 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
         return jsonResponse({ data: outcome });
     });
 
-    // ── Delivery history — the paid surface ──────────────────────
+    // ── Delivery history: the paid surface ──────────────────────
     router.get('/deliveries', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;

@@ -1,8 +1,8 @@
 // ============================================================
-// @ottabase/ottaai — ai_provider_credentials table
+// @ottabase/ottaai, ai_provider_credentials table
 // ============================================================
 // ONE TABLE, not credential-metadata-plus-external-vault. The alternative is real
-// (a metadata row referencing a KMS/vault secret) — and the ALIAS secret kind
+// (a metadata row referencing a KMS/vault secret), and the ALIAS secret kind
 // below makes it available as DATA rather than as a fork. One table is chosen for
 // edge latency (no extra network hop on the hot path) and zero infrastructure
 // requirement.
@@ -25,7 +25,7 @@ export const aiProviderCredentialsTable = sqliteTable(
     {
         /**
          * APPLICATION-GENERATED, always. A DB-generated id would force encrypt-after-insert
-         * — a window in which the row exists WITHOUT its ciphertext — because the id is part
+         *, a window in which the row exists WITHOUT its ciphertext, because the id is part
          * of the AAD tuple and must be known before the wrap.
          */
         id: text('id')
@@ -38,7 +38,7 @@ export const aiProviderCredentialsTable = sqliteTable(
         /** Registry key; also the head of a qualified model ref. IN THE AAD TUPLE. */
         provider: text('provider').notNull(),
 
-        /** Bare id, qualified ref, or `dynamic/<route>` — one column holds all three. */
+        /** Bare id, qualified ref, or `dynamic/<route>`: one column holds all three. */
         model: text('model'),
 
         /**
@@ -68,7 +68,7 @@ export const aiProviderCredentialsTable = sqliteTable(
         /** Tenant pause switch. HARD FILTER at resolve time. */
         enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 
-        /** Tenant preference among siblings. RANK ONLY — never excludes. */
+        /** Tenant preference among siblings. RANK ONLY, never excludes. */
         isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 
         // ── Tenancy: BOTH dimensions from the FIRST migration ─────────────────────
@@ -82,7 +82,7 @@ export const aiProviderCredentialsTable = sqliteTable(
         /** Non-secret per-provider bag, validated on write against the registry entry. */
         transportConfig: text('transport_config', { mode: 'json' }).$type<Record<string, unknown> | null>(),
 
-        // ── Keyring index — INDEX ONLY. The envelope stays authoritative. ──────────
+        // ── Keyring index: INDEX ONLY. The envelope stays authoritative. ──────────
         keyId: text('key_id'),
         formatVersion: text('format_version'),
 
@@ -90,7 +90,7 @@ export const aiProviderCredentialsTable = sqliteTable(
         // "AI stopped working for this customer" is the most common BYOK support contact
         // and the schema otherwise answers nothing; every consuming app hits the identical
         // call and adds the identical columns.
-        // NOTE: `lastUsedAt` is a COARSE timestamp, not a per-call log — per-call records
+        // NOTE: `lastUsedAt` is a COARSE timestamp, not a per-call log, per-call records
         // belong in metering, or the row becomes a write hotspot on the inference path.
         lastUsedAt: integer('last_used_at'),
         lastSuccessAt: integer('last_success_at'),
@@ -116,7 +116,7 @@ export const aiProviderCredentialsTable = sqliteTable(
         // NOTE: there is deliberately NO unique index on (tenancy, provider, label).
         //
         // SQLite treats NULLs as DISTINCT in a unique index, and every row this system
-        // writes has at least one NULL in that tuple — a user-scoped row has
+        // writes has at least one NULL in that tuple, a user-scoped row has
         // organizationId NULL, an org-scoped row has userId NULL. Such an index would
         // therefore never fire for any real row: it would read like a guarantee, enforce
         // nothing, and mislead the next person who assumes labels are unique.
@@ -126,7 +126,7 @@ export const aiProviderCredentialsTable = sqliteTable(
         // the id, so duplicates are harmless. If uniqueness is ever wanted, it needs
         // partial indexes per tenancy shape, not one index over nullable columns.
         // NOTE: `secret_ciphertext` carries NO unique constraint and NO index, and never can.
-        // Salt and IV are fresh per write, so identical keys produce different ciphertext —
+        // Salt and IV are fresh per write, so identical keys produce different ciphertext,
         // "is this key already in use?" is unbuildable without a separate keyed fingerprint
         // (an HMAC of the plaintext under the master secret). Decided up front, on purpose.
     ],

@@ -1,5 +1,5 @@
 /**
- * Public changelog listing — minimal timeline layout using theme tokens.
+ * Public changelog listing: minimal timeline layout using theme tokens.
  *
  * Uses the unified ottablog Post model with contentType='changelog'.
  */
@@ -63,7 +63,7 @@ export function ChangelogListPage() {
     return (
         <div className="min-h-screen bg-background dark:bg-background">
             <SEOHead
-                title="What's New"
+                title="What's new"
                 description="Product updates and improvements."
                 ogType="website"
                 twitterCard="summary_large_image"
@@ -74,7 +74,7 @@ export function ChangelogListPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-foreground sm:text-4xl">
-                                What&apos;s New
+                                What&apos;s new
                             </h1>
                             <p className="mt-2 text-muted-foreground dark:text-muted-foreground">
                                 Updates, fixes, and improvements to the product.
@@ -108,7 +108,7 @@ export function ChangelogListPage() {
                         const isHighlighted = entry.isFeatured === true;
                         return (
                             <li key={entry.id} className="relative">
-                                {/* Timeline dot — golden star for highlighted, green dot otherwise */}
+                                {/* Timeline dot: golden star for highlighted, green dot otherwise */}
                                 {isHighlighted ? (
                                     <span
                                         className="absolute -left-[11px] top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-yellow-400 bg-yellow-50 ring-4 ring-background dark:border-yellow-500 dark:bg-yellow-900/40 dark:ring-background"
@@ -123,7 +123,7 @@ export function ChangelogListPage() {
                                     />
                                 )}
 
-                                {/* Date + Read more — vertically centered with the dot */}
+                                {/* Date + Read more, vertically centered with the dot */}
                                 <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
                                     <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">
                                         /
@@ -168,7 +168,7 @@ export function ChangelogListPage() {
                                     </p>
                                 )}
 
-                                {/* Hero image — placed after title and excerpt for easier click-through */}
+                                {/* Hero image: placed after title and excerpt for easier click-through */}
                                 <Link
                                     to="/changelog/$slug"
                                     params={{ slug: entry.slug }}

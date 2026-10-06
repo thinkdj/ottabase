@@ -29,7 +29,7 @@
              * ottaorm subpaths MUST be mapped explicitly.
              *
              * The `@ottabase/*` catch-all below expands `@ottabase/ottaorm/models` to
-             * `packages/ottaorm/models/src`, which does not exist — so TypeScript silently
+             * `packages/ottaorm/models/src`, which does not exist, so TypeScript silently
              * falls back to node resolution and picks up `dist`, while a bare
              * `@ottabase/ottaorm` import resolves to `src`. That gives the program TWO
              * DISTINCT `BaseModel` classes, and every `registerModels([...])` call fails

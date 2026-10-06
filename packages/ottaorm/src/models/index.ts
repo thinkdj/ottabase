@@ -49,7 +49,7 @@ export {
 } from './Role';
 export { UserRole, userRolesTable, type NewUserRoleType, type UserRoleType } from './UserRole';
 
-// User groups (generic membership primitive — tenant + app scoped, membership-scoped RLS)
+// User groups (generic membership primitive, tenant + app scoped, membership-scoped RLS)
 export {
     UserGroup,
     UserGroupMember,
@@ -64,5 +64,5 @@ export {
 // Audit logging (with tenant + app scoping)
 export { AuditLog, auditLogsTable, type AuditLogType, type NewAuditLogType } from './AuditLog';
 
-// Media (core — tracks all uploaded files)
+// Media (core: tracks all uploaded files)
 export { Media, mediaTable, type MediaType, type NewMediaType } from './Media';

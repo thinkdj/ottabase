@@ -22,7 +22,7 @@ import { entityNames, humanize } from '../utils/names';
 export type { ModelTableProps } from '../types';
 
 /**
- * ModelTable — auto-generated table/list view for model records.
+ * ModelTable: auto-generated table/list view for model records.
  *
  * Now powered by `@ottabase/ui-datatable` under the hood. Converts OttaORM
  * model field metadata into DataTable column definitions, providing sorting,

@@ -12,7 +12,7 @@ export interface DisclosureData {
     aiEnabled: boolean;
     /** Preset level for AI usage, or 'custom' for a percentage */
     aiLevel: AIDisclosureLevel;
-    /** Custom percentage value (1–100), used when aiLevel === 'custom' */
+    /** Custom percentage value (1 to 100), used when aiLevel === 'custom' */
     aiPercent?: number;
     /** Whether the sponsored disclosure section is enabled */
     sponsoredEnabled: boolean;
@@ -222,7 +222,7 @@ export default class DisclosureTool implements BlockTool {
         percentInput.max = '100';
         percentInput.classList.add(DisclosureTool.CSS.input, 'ob-input');
         percentInput.value = String(this.data.aiPercent ?? 50);
-        percentInput.placeholder = '1–100';
+        percentInput.placeholder = '1 to 100';
         percentInput.addEventListener('input', () => {
             const val = parseInt(percentInput.value);
             if (Number.isFinite(val) && val >= 1 && val <= 100) {

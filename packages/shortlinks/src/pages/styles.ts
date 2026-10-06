@@ -1,7 +1,7 @@
 /**
  * Self-contained CSS for the standalone shortlink pages (interstitial + expired).
  *
- * Intentionally decoupled from the app's design system — this is a lightweight
+ * Intentionally decoupled from the app's design system, this is a lightweight
  * redirect page, so it carries its own small neutral palette rather than pulling
  * in the ShadCN/Mantine tokens. Dark mode uses an explicit `data-theme` on <html>
  * (set by the inline theme script) with a `prefers-color-scheme` fallback.

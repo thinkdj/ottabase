@@ -4,14 +4,14 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 
 ## Features
 
-- **TanStack Router** - Type-safe routing with file-based structure
+- **TanStack Router** - Type-safe routes defined in code (`src/router.tsx`)
 - **Admin Access Routing** - Organization members page is keyed by the typed `$organizationId` route param with a direct
   back path to `/admin/access/organizations`
 - **TanStack Query** - Powerful async state management
 - **OttaORM** - Fat models with automated migrations
 - **Owner Safety Guardrail** - Admin member APIs prevent demoting, deactivating, or removing the last active
   organization owner
-- **Ottablog CMS** - Rich articles, short thoughts/blurbs, and photo-first travel journals in one chronological timeline
+- **Ottablog CMS** - Rich articles, short thoughts, and photo-first travel journals in one chronological timeline
 - **Custom Auth** - OAuth, Magic Link, and Credentials authentication via a lightweight, dependency-free implementation
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects
@@ -63,17 +63,17 @@ await api('/api/email/test', {
 
 ### Config Files
 
-| File                                     | Why                                                                                                                                     | When to Edit                                                |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| **`ottabase/ottabase.config.ts`**        | Main config (SSOT): app identity, packages (ottablog, shortlinks, referrals), features, meta, UI. brandEngine is core — always enabled. | Always — primary config surface                             |
-| **`.env.local`** (from `.env.example`)   | Secrets and env-specific values: auth, OAuth, email, migration secret. Not committed.                                                   | Local dev and per-environment deployment                    |
-| **`wrangler.jsonc`**                     | Cloudflare bindings: D1, KV, R2, Queues, Rate Limiter, Durable Objects, Analytics Engine.                                               | Deploying to Cloudflare; adding bindings                    |
-| **`ottabase/config.routes.ts`**          | Custom or premium API route handlers. Extends built-in routing.                                                                         | Adding custom API routes                                    |
-| **`ottabase/config.migrations.ts`**      | Package registry (tables, migrations). Built-in packages preconfigured.                                                                 | Adding **custom** packages (not ottablog, shortlinks, etc.) |
-| **`src/ottabase/config/i18n.config.ts`** | i18n: default language, enabled languages, fallback.                                                                                    | Changing languages                                          |
-| **`ottabase/models/*.ts`**               | App-specific OttaORM models.                                                                                                            | Adding or changing app models                               |
+| File                                     | Why                                                                                                                                    | When to Edit                                                |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **`ottabase/ottabase.config.ts`**        | Main config (SSOT): app identity, packages (ottablog, shortlinks, referrals), features, meta, UI. brandEngine is core, always enabled. | Always: primary config surface                              |
+| **`.env.local`** (from `.env.example`)   | Secrets and env-specific values: auth, OAuth, email, migration secret. Not committed.                                                  | Local dev and per-environment deployment                    |
+| **`wrangler.jsonc`**                     | Cloudflare bindings: D1, KV, R2, Queues, Rate Limiter, Durable Objects, Analytics Engine.                                              | Deploying to Cloudflare; adding bindings                    |
+| **`ottabase/config.routes.ts`**          | Custom or premium API route handlers. Extends built-in routing.                                                                        | Adding custom API routes                                    |
+| **`ottabase/config.migrations.ts`**      | Package registry (tables, migrations). Built-in packages preconfigured.                                                                | Adding **custom** packages (not ottablog, shortlinks, etc.) |
+| **`src/ottabase/config/i18n.config.ts`** | i18n: default language, enabled languages, fallback.                                                                                   | Changing languages                                          |
+| **`ottabase/models/*.ts`**               | App-specific OttaORM models.                                                                                                           | Adding or changing app models                               |
 
-**Do not edit:** `ottabase/config.loader.ts` — derived from ottabase.config.ts.
+**Do not edit:** `ottabase/config.loader.ts`: derived from ottabase.config.ts.
 
 ### Quick Setup Flow
 
@@ -195,7 +195,7 @@ Chat is split across two routes **by body size**, because the task is only known
 | `POST /api/ai/vision`   | tasks declaring `vision` | image budget × 4/3 + 512 KB (≈ 11 MB) | session check + per-user throttle (10/min) |
 
 The `scan` task reads an image into a JSON object (receipts, invoices, forms). `/api/ai/vision` takes
-`{ task?, prompt, system?, images: [{ mimeType, data }] }` — base64 with no `data:` prefix, JPEG/PNG/GIF/WebP — and
+`{ task?, prompt, system?, images: [{ mimeType, data }] }`: base64 with no `data:` prefix, JPEG/PNG/GIF/WebP, and
 answers with a parsed `json` object for tasks declaring `json`. What a task accepts, returns and spends (`maxTokens`) is
 read from its declaration in `worker/lib/ai.ts`, never from the request. The image budget is `features.ottaai.images`
 (`maxCount` 4, `maxBytes` 4 MB, `maxTotalBytes` 8 MB, `perUserPerMinute` 10), clamped to the package's provider floor.
@@ -220,7 +220,7 @@ transport contract.
 
 When `packages.ottaai` is enabled, platform admins get a read-only snapshot at `/admin/infrastructure/ai` (API:
 `GET /api/admin/ai/config`). It shows the live Cloudflare AI Gateway identity, frozen dials, task policies, provider
-wire coverage, and whether secrets are **present** — never their values. Org admins still manage workspace keys at
+wire coverage, and whether secrets are **present**: never their values. Org admins still manage workspace keys at
 `/admin/growth/ai-providers`. Editing config remains `ottabase.config.ts` + env; the dashboard exists so you do not have
 to grep either. Open the [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) dashboard from that page
 to inspect cache, logging, and rate limits on the gateway itself.
@@ -228,12 +228,13 @@ to inspect cache, logging, and rate limits on the gateway itself.
 ### Local dev email trap
 
 - Set `DEV_EMAIL_TRAP_ENABLED=true` in local worker env to capture emails in KV instead of sending them.
-- Open `/admin/dev-mail` to inspect magic links, verification emails, password reset emails, and queue-driven emails.
+- Open `/admin/infrastructure/dev-mail` to inspect magic links, verification emails, password reset emails, and
+  queue-driven emails.
 - The trap uses the existing `OBCF_KV` binding, so no extra service is required.
 
 ### First-user + admin guard
 
-- The first successful sign-in atomically claims the system-scoped `platform_owner` grant (`organizationId: system`) —
+- The first successful sign-in atomically claims the system-scoped `platform_owner` grant (`organizationId: system`),
   the bootstrapped app owner, distinct from the org-scoped `owner` role.
 - If `MULTI_TENANT_ENABLED` is true (default), session issuance also requires a personal organization, active owner
   membership, and matching org-scoped `owner` grant. Those tenant records are transactional; failed setup is surfaced
@@ -291,7 +292,8 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 
 ### Features
 
-- **Theme Presets** - 8 built-in presets (Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant)
+- **Theme Presets** - 10 built-in presets (Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant, Visited,
+  Marquee)
 - **Color Customization** - Override individual colors on top of presets
 - **Light + Dark Modes** - Separate color palettes for each mode
 - **Cursors** - Custom SVG or native cursors, persisted across preset changes
@@ -302,7 +304,7 @@ See [ottabase/migrations/README.md](./ottabase/migrations/README.md) for details
 
 ### Admin UI
 
-Access brand customization at `/admin/brand-engine/kits/[id]`:
+Access brand customization at `/admin/appearance/brand-kits/$kitId`:
 
 1. **Theme Tab** - Select preset, generate palette, override colors
 2. **Brand Tab** - Name, tagline, parent kit
@@ -430,13 +432,13 @@ apps/otta-web/
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
 - `/dashboard` - Protected route
-- `/admin/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and drag-and-drop
-  image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
+- `/admin/content/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and
+  drag-and-drop image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
 - `/admin/appearance/brand-kits` - Brand Kit gallery (admin only). Each card is a live specimen rendered in the kit's
   own theme: real colors, fonts, radius, and shadows.
 - `/admin/appearance/brand-kits/:kitId` - Brand Kit editor (Brand, Logo, Theme, Fonts, Motion, Cursors, Advanced tabs)
   with a light/dark toggleable live preview, unsaved-change detection, and Ctrl+S to save.
-- `/admin/appearance/layouts` - Layout templates & route mappings (map path patterns to layouts + Brand Kits)
+- `/admin/appearance` - Site design: which kit and layout each route gets, menus in their slots
 - `/demo/shadcn` - shadcn/ui components demo
 - `/demo/ottaeditor` - Rich text editor demo
 - `/demo/ottaorm` - OttaORM (User/Post CRUD) demo
@@ -455,9 +457,9 @@ apps/otta-web/
 - `/demo/cloudflare/queues` - Queues demo
 - `/demo/cloudflare/rate-limiting` - Rate limiting demo
 - `/demo/cloudflare/realtime` - Durable Objects realtime demo
-- `/admin/infrastructure/cron` - DB-driven scheduled-task management (platform admin)
+- `/admin/infrastructure/jobs` - Background jobs: scheduled tasks and queue jobs (platform admin)
 - `/shortlinks` - Shortlink management
-- `/analytics` - Unified analytics (Core + Shortlinks + Referrals tabs, WAE) — platform admins only
+- `/analytics` - Unified analytics (Core + Shortlinks + Referrals tabs, WAE), platform admins only
 
 ### API Endpoints
 
@@ -549,7 +551,7 @@ Use the automated setup script (recommended):
 
 ```bash
 pnpm cf:login   # authenticate
-pnpm cf:setup   # creates D1, KV, R2, Queue — prints IDs for GitHub Secrets
+pnpm cf:setup   # creates D1, KV, R2, Queue, prints IDs for GitHub Secrets
 pnpm cf:validate
 ```
 
@@ -567,10 +569,10 @@ pnpm wrangler queues create ottabase-queue
 
 `wrangler.jsonc` uses a **two-tier placeholder system**:
 
-| Tier                             | Pattern               | Example               | Substituted by CI?                                                                         |
-| -------------------------------- | --------------------- | --------------------- | ------------------------------------------------------------------------------------------ |
-| Top-level                        | `YOUR_*`              | `YOUR_D1_DATABASE_ID` | **No** — local dev only; Wrangler ignores the value and uses local simulators              |
-| `env.production` / `env.preview` | `ALL_CAPS_SNAKE_CASE` | `D1_DATABASE_ID`      | **Yes** — the value is the GitHub Secret name; CI substitutes the real UUID at deploy time |
+| Tier                             | Pattern               | Example               | Substituted by CI?                                                                        |
+| -------------------------------- | --------------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| Top-level                        | `YOUR_*`              | `YOUR_D1_DATABASE_ID` | **No**: local dev only; Wrangler ignores the value and uses local simulators              |
+| `env.production` / `env.preview` | `ALL_CAPS_SNAKE_CASE` | `D1_DATABASE_ID`      | **Yes**: the value is the GitHub Secret name; CI substitutes the real UUID at deploy time |
 
 Set these in your repository → Settings → Secrets → Actions:
 
@@ -588,9 +590,9 @@ See [CLOUDFLARE_DEPLOY.md](../../docs/CLOUDFLARE_DEPLOY.md) for the full setup g
 Shortlink and referral click tracking uses **Cloudflare Analytics Engine** (WAE). Clicks are written automatically; the
 unified analytics page at `/analytics` requires:
 
-1. **CLOUDFLARE_ACCOUNT_ID** – Set in `wrangler.jsonc` vars (32-char account ID from Cloudflare dashboard).
+1. **CLOUDFLARE_ACCOUNT_ID**: Set in `wrangler.jsonc` vars (32-char account ID from Cloudflare dashboard).
 
-2. **CLOUDFLARE_ANALYTICS_API_TOKEN** – Create a token with **Account | Account Analytics | Read**:
+2. **CLOUDFLARE_ANALYTICS_API_TOKEN**: Create a token with **Account | Account Analytics | Read**:
 
     ```bash
     pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
@@ -611,7 +613,7 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 
 ## Demo Content
 
-A fresh install is empty. Admin > Content > Content Theme has a **Seed demo content** button (platform owner only) that
+A fresh install is empty. Admin > Content > Content studio has a **Seed demo content** button (platform owner only) that
 calls `POST /api/admin/demo-seed` and fills the site with a believable demo, written as real content rather than
 placeholders:
 
@@ -619,7 +621,7 @@ placeholders:
   organization with editor and author roles, with Unsplash portraits
 - A media library of public Unsplash photographs, each with a title, alt text and caption
 - Six months of posts: a four-part engineering series, six standalone articles, four monthly release notes, five short
-  notes and three photo journals, with tags, categories, a series, hero images and spread publish dates, plus the
+  thoughts and three photo journals, with tags, categories, a series, hero images and spread publish dates, plus the
   kitchensink post that renders every block the editor supports
 - Comment threads on four articles, six shortlinks, a main navigation and a footer menu assigned to their slots, and a
   few inbox notifications for you

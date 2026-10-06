@@ -1,7 +1,7 @@
 /**
- * OttaAI playground — real app routes, not a parallel demo client.
+ * OttaAI playground: real app routes, not a parallel demo client.
  *
- * Chat calls `/api/ai/complete` (the `scan` task attaches an image and returns JSON); vectors
+ * Chat calls `/api/ai/complete`, a scan posts its image to `/api/ai/vision`, and vectors
  * call `/api/ai/embed`. Both resolve the signed-in
  * tenant's selected credential before the platform fallback, enforce their task policy on
  * the server, and expose only redacted provenance back to this page.
@@ -104,7 +104,7 @@ const MAX_IMAGE_BYTES = OTTAAI_CONFIG.images.maxBytes;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 /**
  * Longest edge sent to the model. Vision models downscale large images anyway (to roughly
- * 1.5–2k px), so sending a 12 MP phone photo only spends upload time, Worker memory and input
+ * 1.5 to 2k px), so sending a 12 MP phone photo only spends upload time, Worker memory and input
  * tokens on pixels the model never sees.
  */
 const MAX_IMAGE_EDGE = 2048;
@@ -114,7 +114,7 @@ const PASSTHROUGH_BYTES = 1.5 * 1024 * 1024;
 interface AttachedImage {
     name: string;
     mimeType: string;
-    /** Base64 without the `data:` prefix — the shape the route expects. */
+    /** Base64 without the `data:` prefix, the shape the route expects. */
     data: string;
     previewUrl: string;
 }
@@ -133,7 +133,7 @@ function readAsDataUrl(blob: Blob): Promise<string> {
  *
  * GIFs are sent as-is (re-encoding drops animation, and they are rarely large). Anything else
  * over {@link MAX_IMAGE_EDGE} or {@link PASSTHROUGH_BYTES} becomes a JPEG at that edge, which
- * typically turns a 4–8 MB phone photo into a few hundred KB.
+ * typically turns a 4 to 8 MB phone photo into a few hundred KB.
  */
 async function prepareImage(file: File): Promise<{ blob: Blob; mimeType: string }> {
     if (file.type === 'image/gif' || typeof createImageBitmap !== 'function') {
@@ -207,7 +207,7 @@ export function CloudflareAIDemoPage() {
 
     const changeTask = useCallback((next: string) => {
         setTask(next);
-        // Swap only the untouched sample prompt — never overwrite what the user typed.
+        // Swap only the untouched sample prompt, never overwrite what the user typed.
         setPrompt((current) =>
             next === 'scan' && current === CHAT_PROMPT
                 ? SCAN_PROMPT
@@ -304,10 +304,10 @@ export function CloudflareAIDemoPage() {
     return (
         <div className="space-y-8 pb-8">
             <DemoPageHeader
-                title="OttaAI Playground"
+                title="OttaAI"
                 description="A small, honest surface for the real OttaAI runtime: tenant-aware chat and embeddings through Cloudflare AI Gateway. No browser-held keys, no parallel demo client."
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Features"
+                backLabel="Back to Cloudflare"
                 actions={
                     <Badge variant="outline" className="gap-1.5 px-2.5 py-1 text-xs font-medium">
                         <Sparkles className="h-3.5 w-3.5" /> Real product route
@@ -589,7 +589,7 @@ export function CloudflareAIDemoPage() {
                                 <div>
                                     <CardTitle className="text-base">Turn text into vectors</CardTitle>
                                     <CardDescription className="mt-1">
-                                        Use vectors for semantic search, similarity and recommendations — not a
+                                        Use vectors for semantic search, similarity and recommendations, not a
                                         human-facing answer.
                                     </CardDescription>
                                 </div>
@@ -627,7 +627,7 @@ export function CloudflareAIDemoPage() {
                                     onChange={(event) => setDimensions(event.target.value.replace(/[^0-9]/g, ''))}
                                     placeholder="Provider default (1536)"
                                 />
-                                <p className="text-xs text-muted-foreground">1–1536 for the pinned model.</p>
+                                <p className="text-xs text-muted-foreground">1 to 1536 for the pinned model.</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
                                 <Button
@@ -680,8 +680,7 @@ export function CloudflareAIDemoPage() {
                                         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                                         <span>
                                             The full vector is returned by the API. This demo only previews its first
-                                            values so the useful facts — order, count and dimensionality — stay
-                                            readable.
+                                            values so the useful facts, order, count and dimensionality, stay readable.
                                         </span>
                                     </div>
                                     {embedding.usage ? (

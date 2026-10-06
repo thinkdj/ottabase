@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * gen-llms – Generate `/llms.txt` and `/llms-full.txt` from the repo's Markdown docs.
+ * gen-llms: Generate `/llms.txt` and `/llms-full.txt` from the repo's Markdown docs.
  *
  * Implements Ottabase design principle #25 ("Ottabase must be AI-native"): a curated,
  * machine-optimized index of the framework's documentation, regenerated from the SAME
@@ -10,7 +10,7 @@
  *   - `llms-full.txt`  every indexed doc concatenated (full context for agents)
  *
  * Output is written to the repo root (these describe the framework, and otta-web is a
- * template whose public/ would carry them into every scaffolded app — copy into the
+ * template whose public/ would carry them into every scaffolded app, copy into the
  * homepage/docs site's public/ to serve). Pure builders (extractTitle/extractSummary/
  * buildLlmsTxt/buildLlmsFull) are exported and unit-tested; `main()` is the only part
  * that touches the filesystem.
@@ -39,7 +39,7 @@ export interface DocSection {
 const PROJECT_SUMMARY =
     'Ottabase is a Cloudflare-native foundation for shipping production SaaS, apps, and content sites: ' +
     'in-house auth, RBAC, an ORM over D1, forms, uploads, a blog/CMS, queues, realtime, RLS, and a runtime ' +
-    'theming engine (Brand Engine), across 60+ packages that already know about each other.';
+    'theming engine (Brand Engine), across 50+ packages that already know about each other.';
 
 /** Curated, ordered top-level docs. Anything in docs/ not listed here lands under "Guides". */
 const START_HERE = ['README.md', 'QUICKSTART.md', 'ARCHITECTURE.md', 'AGENTS.MD', 'docs/SOLO_FOUNDER_SAAS_GUIDE.md'];
@@ -65,7 +65,7 @@ export function extractTitle(md: string, fallback: string): string {
 
 /** First meaningful paragraph, collapsed to a single ≤200-char line. Skips headings,
  *  badge/image lines, code fences, and HTML. Accumulates a paragraph (or blockquote) across
- *  wrapped physical lines — prettier's `proseWrap: always` hard-wraps prose, so a paragraph
+ *  wrapped physical lines, prettier's `proseWrap: always` hard-wraps prose, so a paragraph
  *  is usually several lines and reading only the first would truncate the summary mid-sentence. */
 export function extractSummary(md: string): string {
     const lines = stripNonProse(md).split('\n');
@@ -145,7 +145,7 @@ export function buildLlmsTxt(opts: { title: string; summary: string; sections: D
 
 /** Render the full-context file: every indexed doc, concatenated with path headers. */
 export function buildLlmsFull(opts: { title: string; summary: string; sections: DocSection[] }): string {
-    const parts: string[] = [`# ${opts.title} — Full Documentation`, '', `> ${opts.summary}`, ''];
+    const parts: string[] = [`# ${opts.title}: Full Documentation`, '', `> ${opts.summary}`, ''];
     for (const section of opts.sections) {
         for (const e of section.entries) {
             parts.push('', '---', '', `# ${e.rel}`, '', e.body.trim(), '');
@@ -236,7 +236,7 @@ export async function main(): Promise<void> {
     const opts = { title: 'Ottabase', summary: PROJECT_SUMMARY, sections };
 
     // Repo root, not an app's public/ dir: these describe the framework/monorepo, and otta-web
-    // is a template — files under its public/ would ship into every scaffolded app's dist. The
+    // is a template, files under its public/ would ship into every scaffolded app's dist. The
     // llmstxt.org convention also expects /llms.txt at the project root for discoverability.
     await fs.writeFile(path.join(repoRoot, 'llms.txt'), buildLlmsTxt(opts), 'utf8');
     await fs.writeFile(path.join(repoRoot, 'llms-full.txt'), buildLlmsFull(opts), 'utf8');

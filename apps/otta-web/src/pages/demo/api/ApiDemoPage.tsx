@@ -43,7 +43,7 @@ export function ApiDemoPage() {
 
     return (
         <div className="space-y-8">
-            <DemoPageHeader title="API Client" description="@ottabase/api fetch wrapper" />
+            <DemoPageHeader title="API client" description="@ottabase/api fetch wrapper" />
 
             <Card>
                 <CardHeader>

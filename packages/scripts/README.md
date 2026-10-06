@@ -1,24 +1,24 @@
 # @ottabase/scripts
 
-CLI tools for Ottabase monorepo — Cloudflare resource setup, local env secrets, and cleanup.
+CLI tools for Ottabase monorepo: Cloudflare resource setup, local env secrets, and cleanup.
 
 ## Overview
 
 This package provides the `pnpm cf:*`, `pnpm env:*` and `pnpm clean:*` scripts used across the monorepo. The prefix
 tells you what a command touches:
 
-| Prefix   | Touches                                                                     |
-| -------- | --------------------------------------------------------------------------- |
-| `cf:`    | Your **remote** Cloudflare account — creates or verifies real resources     |
-| `env:`   | The target app's local `.env.local`                                         |
-| `clean:` | **Local only** — Wrangler state on disk and build caches, never the account |
+| Prefix   | Touches                                                                    |
+| -------- | -------------------------------------------------------------------------- |
+| `cf:`    | Your **remote** Cloudflare account: creates or verifies real resources     |
+| `env:`   | The target app's local `.env.local`                                        |
+| `clean:` | **Local only**: Wrangler state on disk and build caches, never the account |
 
 ## Help CLI
 
 ### `pnpm commands`
 
-Prints every root `package.json` script as a grouped, annotated table — the fastest way back into the repo after a
-break, and the first thing to show a new contributor.
+Prints every root `package.json` script as a grouped, annotated table, the fastest way back into the repo after a break,
+and the first thing to show a new contributor.
 
 ```bash
 pnpm commands              # Everything, grouped
@@ -41,7 +41,7 @@ database wipe, and a billable Cloudflare API call are not the same kind of risk:
 
 | Marker | Meaning                                                               |
 | ------ | --------------------------------------------------------------------- |
-| `!`    | Deletes real local data (D1/KV/R2) — prompts for a typed YES          |
+| `!`    | Deletes real local data (D1/KV/R2), prompts for a typed YES           |
 | `$`    | Creates billable resources in your Cloudflare account                 |
 | `~`    | Prompts for a typed YES but only clears a trivially-rebuildable cache |
 
@@ -79,10 +79,10 @@ pnpm cf:setup -- --app=<name>     # Target a specific app (see "Targeting an app
 
 **Output includes IDs for** (the GitHub Secret names are read from `wrangler.jsonc` `env.production` / `env.preview`):
 
-- `D1_DATABASE_ID` — Production D1 database
-- `D1_PREVIEW_DATABASE_ID` — Preview D1 database
-- `KV_NAMESPACE_ID` — Production KV namespace
-- `KV_PREVIEW_NAMESPACE_ID` — Preview KV namespace
+- `D1_DATABASE_ID`: Production D1 database
+- `D1_PREVIEW_DATABASE_ID`: Preview D1 database
+- `KV_NAMESPACE_ID`: Production KV namespace
+- `KV_PREVIEW_NAMESPACE_ID`: Preview KV namespace
 
 ### `pnpm cf:validate`
 
@@ -131,19 +131,19 @@ can differ.
 
 ## Cleanup CLI
 
-Every `clean:*` command is **local only** — it deletes files under your working copy and never touches your Cloudflare
+Every `clean:*` command is **local only**: it deletes files under your working copy and never touches your Cloudflare
 account. Use `cf:*` for anything remote.
 
 They all sweep the repo root plus every `apps/*` and `packages/*` workspace, so they are not app-scoped the way `cf:*`
 is.
 
-| Command       | Deletes                                                              |
-| ------------- | -------------------------------------------------------------------- |
-| `clean:cache` | Turborepo caches (`.turbo`, `node_modules/.cache/turbo`)             |
-| `clean:d1`    | Local D1 state (`.wrangler/state/*/d1`)                              |
-| `clean:kv`    | Local KV state (`.wrangler/state/*/kv`)                              |
-| `clean:state` | All local Wrangler state — D1 + KV + R2 (`.wrangler/state/*`)        |
-| `clean:all`   | `.wrangler/`, build caches, and `packages/*/dist` — everything above |
+| Command       | Deletes                                                             |
+| ------------- | ------------------------------------------------------------------- |
+| `clean:cache` | Turborepo caches (`.turbo`, `node_modules/.cache/turbo`)            |
+| `clean:d1`    | Local D1 state (`.wrangler/state/*/d1`)                             |
+| `clean:kv`    | Local KV state (`.wrangler/state/*/kv`)                             |
+| `clean:state` | All local Wrangler state: D1 + KV + R2 (`.wrangler/state/*`)        |
+| `clean:all`   | `.wrangler/`, build caches, and `packages/*/dist`: everything above |
 
 ### Confirmation
 
@@ -158,18 +158,18 @@ pnpm clean:state -- -y      # Non-interactive
 
 ### `pnpm clean:state` vs `pnpm clean:all`
 
-`clean:state` wipes the data your app persists locally (D1, KV, R2) and leaves your build output alone — use it when you
+`clean:state` wipes the data your app persists locally (D1, KV, R2) and leaves your build output alone, use it when you
 want to re-run bootstrap against an empty database. `clean:all` additionally removes build caches and `packages/*/dist`,
 so it needs a `pnpm build:pkg` afterwards.
 
-Neither one deletes `node_modules` — run `pnpm install` separately if you need that.
+Neither one deletes `node_modules`: run `pnpm install` separately if you need that.
 
 After `clean:d1`, `clean:state`, or `clean:all`, re-initialize the platform via `/__bootstrap__` (see the root
 `QUICKSTART.md`).
 
 ### If a path can't be removed
 
-A directory still open elsewhere — a running `pnpm dev` / `wrangler dev`, an editor, or antivirus scanning it — doesn't
+A directory still open elsewhere: a running `pnpm dev` / `wrangler dev`, an editor, or antivirus scanning it, doesn't
 abort the run. Everything else still gets deleted; the locked path is listed by name at the end with the reason (e.g.
 `EBUSY`), and the command exits non-zero so a script chaining on it can tell a partial clean from a complete one. Stop
 whatever has the path open and re-run the command.
@@ -197,12 +197,12 @@ exits non-zero and lists the known apps.
 
 ### `pnpm docs:llms`
 
-Regenerates the AI-native documentation index from the repo's Markdown — the machine-optimized counterpart to the human
+Regenerates the AI-native documentation index from the repo's Markdown, the machine-optimized counterpart to the human
 docs (Ottabase design principle #25). Writes two files to the **repo root**:
 
-- `llms.txt` — the [llmstxt.org](https://llmstxt.org) index: an H1, a one-line project summary, then **Start here**,
+- `llms.txt`: the [llmstxt.org](https://llmstxt.org) index: an H1, a one-line project summary, then **Start here**,
   **Guides**, and **Packages** sections of links with a one-line description each (short context for an agent).
-- `llms-full.txt` — every indexed doc concatenated under its path header (full context).
+- `llms-full.txt`: every indexed doc concatenated under its path header (full context).
 
 ```bash
 pnpm docs:llms              # regenerate both files
@@ -213,8 +213,8 @@ Sources are `README.md` / `QUICKSTART.md` / `ARCHITECTURE.md` / `AGENTS.MD`, eve
 never drift from the docs it points at. **Run it on every release** (and after adding or renaming a package README) and
 commit the regenerated files.
 
-They live at the repo root — not in an app's `public/` — because they describe the framework/monorepo, and `otta-web` is
-a template whose `public/` ships into every scaffolded app's dist. To serve them publicly, copy `llms.txt` /
+They live at the repo root, not in an app's `public/`, because they describe the framework/monorepo, and `otta-web` is a
+template whose `public/` ships into every scaffolded app's dist. To serve them publicly, copy `llms.txt` /
 `llms-full.txt` into the docs/homepage site's `public/`. The builders are pure and unit-tested in
 `src/__tests__/gen-llms.test.ts`.
 

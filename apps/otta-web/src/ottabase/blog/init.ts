@@ -26,7 +26,7 @@ import { initOttablog } from '@ottabase/ottablog/renderer';
 /**
  * Style-element id shared with the edge injector (worker/lib/blog-theme-inject.ts).
  * The client REPLACES the element's content instead of adding a second tag, so the
- * edge-painted state and the client-applied state can never disagree — the same
+ * edge-painted state and the client-applied state can never disagree, the same
  * contract the brand engine uses for #brand-critical.
  */
 const BLOG_THEME_STYLE_ID = 'ottablog-theme-scope';
@@ -121,7 +121,7 @@ async function applyState(state: StudioState) {
         const theme = getTheme(t.themeId);
         if (!theme) continue;
 
-        // Re-register with merged config — DB classes override built-in defaults
+        // Re-register with merged config: DB classes override built-in defaults
         registerTheme({
             ...theme,
             config: {

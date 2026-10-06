@@ -44,7 +44,7 @@ const appResources = {
  * Reads the brand config the edge Worker already resolved and embedded in the
  * HTML (see worker/lib/brand-html-inject.ts), so BrandProvider can hydrate
  * synchronously instead of re-fetching /api/brand on mount. Read once at
- * module load — this is a one-shot handoff, not a live data source.
+ * module load, this is a one-shot handoff, not a live data source.
  * Exported for tests.
  */
 export function readInjectedBrandConfig(): FullBrandConfig | undefined {

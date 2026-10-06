@@ -1,8 +1,8 @@
 /**
- * @ottabase/ottadate/fuzzy — FuzzyDateTime sub-path export
+ * @ottabase/ottadate/fuzzy: FuzzyDateTime sub-path export
  *
  * Standalone FuzzyDateTime logic: creation, parsing, label generation, snapping.
- * No DOM dependencies — safe for server-side usage.
+ * No DOM dependencies: safe for server-side usage.
  */
 
 export type { DatePart, DateResolution, FuzzyDateTime, FuzzyLabelFormatter, Hemisphere } from './core/types';
@@ -27,7 +27,7 @@ export {
     snapToResolution,
 } from './core/fuzzy';
 
-// Headless selection-state controller (what the fuzzy pickers render from) —
+// Headless selection-state controller (what the fuzzy pickers render from),
 // use it to build custom fuzzy-date UIs with the same derived-resolution model.
 export { createFuzzySelection } from './core/fuzzy-selection';
 export type { FuzzySelectAt, FuzzySelection, FuzzySelectionOptions, FuzzySelectionState } from './core/fuzzy-selection';

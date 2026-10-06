@@ -108,7 +108,7 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
     return (
         <div className="grid grid-cols-2 gap-2">
             {BUILTIN_THEME_NAMES.map((name) => {
-                // Use PRESET_MAP (static JSON) for swatch colors — always available without registry
+                // Use PRESET_MAP (static JSON) for swatch colors, always available without registry
                 const presetColors = PRESET_MAP[name]?.colors?.light as Record<string, string> | undefined;
                 const isActive = activePreset === name;
 
@@ -124,7 +124,7 @@ export function ThemePresetSwitcher({ onSwitch }: ThemePresetSwitcherProps = {})
                                 : 'border-border bg-card hover:border-primary/40 hover:shadow-sm'
                         }`}
                     >
-                        {/* Color swatches — stacked circles */}
+                        {/* Color swatches: stacked circles */}
                         <div className="flex gap-1">
                             {['primary', 'secondary', 'accent'].map((token) => {
                                 const hsl = presetColors?.[token];

@@ -1,5 +1,5 @@
 // ============================================================
-// OPT-IN SMOKE TEST — a REAL call to a REAL Cloudflare AI Gateway.
+// OPT-IN SMOKE TEST, a REAL call to a REAL Cloudflare AI Gateway.
 // ============================================================
 // SKIPPED BY DEFAULT. It needs credentials, it costs a fraction of a cent, and it
 // touches the network, so it never runs in CI unless someone opts in.
@@ -9,8 +9,8 @@
 // it ACCEPTS. Two known-moving surfaces make that a live risk rather than a
 // hypothetical one:
 //
-//   • the OpenAI-compatible endpoint (`compat/chat/completions`) — which is how a
-//     `dynamic/<route>` model ref is invoked — is documented as DEPRECATED in
+//   • the OpenAI-compatible endpoint (`compat/chat/completions`), which is how a
+//     `dynamic/<route>` model ref is invoked, is documented as DEPRECATED in
 //     favour of the AI Gateway REST API;
 //   • Dynamic Routing itself is Beta.
 //
@@ -99,7 +99,7 @@ describe.skipIf(!CONFIGURED)('REAL Cloudflare AI Gateway', () => {
 
         // The assertion is deliberately about ACCEPTANCE, not about content: a model is free
         // to answer anything, but a wrong path 404s, a wrong auth header 401s, and a wrong
-        // body 400s — and the message names which.
+        // body 400s, and the message names which.
         if (!result.ok) {
             throw new Error(`Gateway rejected the provider-native request: ${result.error.message}`);
         }
@@ -127,7 +127,7 @@ describe.skipIf(!CONFIGURED)('REAL Cloudflare AI Gateway', () => {
     it.skipIf(!MULTIMODAL)('accepts an inline image AND an enforced JSON schema in one call', async () => {
         // The image part and the structured-output field are the two shapes most likely to be
         // spelled differently per provider (`inline_data` vs `image`, `responseJsonSchema` vs
-        // `output_config`) — and a provider that ignores either still answers 200, so this
+        // `output_config`), and a provider that ignores either still answers 200, so this
         // asserts the reply PARSED, not just that it arrived.
         const result = await transport.createClient(config()).complete({
             messages: [
@@ -160,7 +160,7 @@ describe.skipIf(!CONFIGURED)('REAL Cloudflare AI Gateway', () => {
     it.skipIf(!DYNAMIC_ROUTE)('invokes a dynamic route through the compat endpoint', async () => {
         // THE SURFACE MOST LIKELY TO MOVE. Cloudflare documents `compat/chat/completions` as
         // deprecated in favour of the REST API while Dynamic Routing still requires it. When
-        // that resolves, this test fails first — which is the entire point of running it.
+        // that resolves, this test fails first, which is the entire point of running it.
         const result = await transport
             .createClient(config({ model: `dynamic/${DYNAMIC_ROUTE}` }))
             .complete({ ...PING, maxTokens: 4 });
@@ -177,7 +177,7 @@ describe.skipIf(!CONFIGURED)('REAL Cloudflare AI Gateway', () => {
 });
 
 describe.skipIf(CONFIGURED)('REAL Cloudflare AI Gateway (skipped)', () => {
-    it('is opt-in — set OTTAAI_SMOKE_* to run it', () => {
+    it('is opt-in: set OTTAAI_SMOKE_* to run it', () => {
         // A visible skipped test beats a silently absent one: without this, "we have a smoke
         // test" and "the smoke test has run this year" look identical from the terminal.
         expect(CONFIGURED).toBe(false);

@@ -2,7 +2,7 @@
  * Config Demo Page
  * Demonstrates @ottabase/config: app configuration, ottabase.config.ts, and environment resolution.
  */
-import { createAppConfig } from '@ottabase/config';
+import { BUILT_IN_PACKAGES, createAppConfig } from '@ottabase/config';
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Key, Layers, Package, Settings } from 'lucide-react';
 import { useMemo } from 'react';
@@ -67,13 +67,13 @@ export function ConfigDemoPage() {
                     <div className="text-sm text-muted-foreground space-y-2">
                         <ol className="list-inside list-decimal space-y-2">
                             <li>
-                                <strong>createAppConfig()</strong> — Runtime app config (meta, ui, theme,{' '}
+                                <strong>createAppConfig()</strong>: Runtime app config (meta, ui, theme,{' '}
                                 <code className="rounded bg-muted px-1 py-0.5 text-xs">features.auth</code>,{' '}
                                 <code className="rounded bg-muted px-1 py-0.5 text-xs">features.pagination</code>,
                                 etc.). Used by components and hooks.
                             </li>
                             <li>
-                                <strong>defineOttabaseConfig()</strong> — Package and feature gating via{' '}
+                                <strong>defineOttabaseConfig()</strong>: Package and feature gating via{' '}
                                 <code className="rounded bg-muted px-1 py-0.5 text-xs">ottabase.config.ts</code>.
                                 Controls which packages/features are enabled for the app.
                             </li>
@@ -90,8 +90,8 @@ export function ConfigDemoPage() {
                         Resolved AppConfig (createAppConfig)
                     </CardTitle>
                     <CardDescription>
-                        Current resolved configuration from <code>createAppConfig()</code>. These are the default values
-                        — your app overrides them.
+                        Current resolved configuration from <code>createAppConfig()</code>. These are the default
+                        values, your app overrides them.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -141,36 +141,27 @@ export function ConfigDemoPage() {
 import { defineOttabaseConfig } from '@ottabase/config';
 
 export default defineOttabaseConfig({
-    meta: {
-        appId: 'my-saas-app',
-        appName: 'My SaaS',
-    },
+    appId: 'my-saas-app',
+    appName: 'My SaaS',
 
     // Built-in packages (toggle on/off)
     packages: {
         ottablog: true,
+        comments: true,
         shortlinks: true,
         referrals: false,
-        ottamenu: true,
-        comments: true,
-        audit: true,
-        analytics: true,
-        medialibrary: true,
+        ottaai: false,
     },
 
-    // Custom packages with route handlers
+    // Your own packages: their tables join auto-init
     customPackages: {
-        invoices: {
-            enabled: true,
-            tables: ['invoices', 'invoice_items'],
-            routes: '/api/invoices',
-        },
+        invoices: { tables: ['invoices', 'invoice_items'] },
     },
 
     // Feature flags
     features: {
         spotlight: { enabled: true },
-        pagination: { defaultPerPage: 25 },
+        pagination: { defaultPageSize: 25 },
     },
 });`}</code>
                     </pre>
@@ -180,18 +171,7 @@ export default defineOttabaseConfig({
                             Built-in Packages
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
-                            {[
-                                'ottablog',
-                                'shortlinks',
-                                'referrals',
-                                'ottamenu',
-                                'comments',
-                                'audit',
-                                'analytics',
-                                'medialibrary',
-                                'notifications',
-                                'i18n',
-                            ].map((pkg) => (
+                            {BUILT_IN_PACKAGES.map((pkg) => (
                                 <Badge
                                     key={pkg}
                                     variant="outline"
@@ -202,7 +182,7 @@ export default defineOttabaseConfig({
                             ))}
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                            <strong>brandEngine</strong> is core — always enabled, not listed in packages.
+                            <strong>brandEngine</strong> is core: always enabled, not listed in packages.
                         </p>
                     </div>
                 </CardContent>
@@ -281,7 +261,7 @@ if (isCustomPackageEnabled(config, 'invoices')) {
                                 desc: 'Check if a custom package is enabled in the config.',
                             },
                             {
-                                name: 'createStorageKey(prefix, key)',
+                                name: 'createStorageKey(config, key)',
                                 desc: 'Generate namespaced localStorage/KV keys for the app.',
                             },
                             {

@@ -2,7 +2,7 @@
 
 ## Core Maintainer
 
-- @thinkdj — architecture, releases, and final review
+- @thinkdj: architecture, releases, and final review
 
 ## Ownership Model
 

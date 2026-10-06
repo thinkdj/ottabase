@@ -8,7 +8,7 @@ export function BreadcrumbsDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Smart Breadcrumbs"
+                title="Breadcrumbs"
                 description="Automatic breadcrumb navigation that intelligently uses route metadata and generates human-readable labels from URLs. Fully integrated with TanStack Router."
                 actions={
                     <Badge

@@ -380,7 +380,7 @@ export class Post extends BaseModel {
      *
      * `photoAlbum` is deliberately NOT here: the timeline collage genuinely renders it.
      *
-     * `privateNotes` is here for the read cost ONLY — it is not what keeps notes private. That is
+     * `privateNotes` is here for the read cost ONLY, it is not what keeps notes private. That is
      * the strip in ottablog's public serializers, which runs on detail reads too. Deleting that
      * strip on the strength of this line would leak notes on every post page.
      */
@@ -572,7 +572,7 @@ export class Post extends BaseModel {
             editable: true,
             uiConfig: {
                 label: 'Also posted at',
-                description: 'The same post on Instagram, X, Facebook — flag one as the original if it started there',
+                description: 'The same post on Instagram, X or Facebook. Flag one as the original if it started there.',
             },
             formConfig: {
                 visible: false,
@@ -759,7 +759,7 @@ export class Post extends BaseModel {
             editable: true,
             uiConfig: {
                 label: 'Originally Written',
-                description: 'When the content was originally created — supports fuzzy dates like "Late May 2010"',
+                description: 'When the content was originally created, supports fuzzy dates like "Late May 2010"',
             },
             formConfig: {
                 visible: true,
@@ -1066,7 +1066,7 @@ export class Post extends BaseModel {
      * Content integrity for EVERY write path, per the Fat Models rule in AGENTS.MD.
      *
      * `create`, `update`, and instance `save()` all funnel through `prepareForDatabase`, so this one
-     * override is what makes the caps and shape rules unskippable — the convenience methods
+     * override is what makes the caps and shape rules unskippable, the convenience methods
      * (createBlurb, createPhotoJournal, updatePhotoJournal) and the routes that re-apply the same
      * validators are now defence in depth, not the only guard. A host app calling `Post.create()`
      * directly inherits identical rules.
@@ -1075,7 +1075,7 @@ export class Post extends BaseModel {
      * against a schema, and these are cross-field (a `contentType` decides which columns may carry
      * a value) with normalization attached (URLs come back sanitized, blank albums come back null).
      *
-     * Partial payloads are the norm — `Post.update(id, { viewCount })` sends one column — so
+     * Partial payloads are the norm, `Post.update(id, { viewCount })` sends one column, so
      * `validatePostWrite` judges only what is present. See its own comment for the PATCH contract.
      */
     protected static prepareForDatabase(data: Record<string, any>): Record<string, any> {
@@ -1526,7 +1526,7 @@ export class Post extends BaseModel {
         if (!this.isPhotoJournal()) throw new PhotoJournalValidationError('Post is not a photo journal');
 
         const items = validatePhotoJournalItems(albumValue);
-        // An ABSENT field means "unchanged" on a partial update — fall back to the stored value,
+        // An ABSENT field means "unchanged" on a partial update, fall back to the stored value,
         // exactly as the title does below. Passing `options.note` straight through would validate
         // `undefined` to null and erase the field note (and the excerpt derived from it) on any
         // PATCH that omits it. An explicit `null` still clears it.
@@ -1565,7 +1565,7 @@ export class Post extends BaseModel {
         this.set('footnotes', null);
         // Album words always recount, because the note and captions in THIS write changed them.
         // The body's share is recovered by subtracting the album's PREVIOUS words from the stored
-        // total, so a note-only edit keeps the body's contribution without reading `content` — which
+        // total, so a note-only edit keeps the body's contribution without reading `content`, which
         // is deferred and may not be loaded. Only when the body is part of the write is its own
         // count authoritative, and only then does reading time change.
         const albumWords = photoJournalWordCount(note, items);
@@ -1629,7 +1629,7 @@ export class Post extends BaseModel {
     /**
      * The body, or null when this record came from a collection read that deferred it.
      *
-     * `get('content')` THROWS on such a record — deliberately, so a lazy read cannot be mistaken for
+     * `get('content')` THROWS on such a record, deliberately, so a lazy read cannot be mistaken for
      * an empty one (see AbstractBaseModel.get). The derive-from-body helpers below want the other
      * answer: with no body in hand there is nothing to derive, so they leave the stored value alone
      * rather than failing a save that never concerned the body.
@@ -1772,7 +1772,7 @@ export class Post extends BaseModel {
         // 1. Same categories via junction table (best signal)
         const catIds = options?.categoryIds?.length ? options.categoryIds : [];
         if (catIds.length > 0) {
-            // Find other posts sharing any of the same categories — single
+            // Find other posts sharing any of the same categories, single
             // array-where query (inArray) instead of one query per category.
             const allCatLinks = await PostCategoryLink.where({ categoryId: catIds });
             const candidateIds = [

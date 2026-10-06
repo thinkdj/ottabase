@@ -24,7 +24,7 @@ export function LoggerDemoPage() {
     // Log once on mount so the browser console shows something immediately (helps users find the Console tab)
     useEffect(() => {
         console.log(
-            '%c[@ottabase/logger] Demo page loaded — logs from this page will appear here (Console transport). Use the buttons on the page to emit more logs.',
+            '%c[@ottabase/logger] Demo page loaded: logs from this page will appear here (Console transport). Use the buttons on the page to emit more logs.',
             'color: #0ea5e9; font-weight: bold;',
         );
     }, []);
@@ -34,7 +34,7 @@ export function LoggerDemoPage() {
             createLogger({
                 level,
                 name: 'demo-page',
-                // Use simpleFormatter in browser — prettyFormatter uses ANSI codes that show as garbled text in DevTools
+                // Use simpleFormatter in browser: prettyFormatter uses ANSI codes that show as garbled text in DevTools
                 transports: [new ConsoleTransport({ formatter: simpleFormatter }), memoryTransport],
                 context: { page: 'logger-demo' },
             }),
@@ -113,7 +113,7 @@ export function LoggerDemoPage() {
                 }
             />
 
-            {/* How to use — client-side console visualization */}
+            {/* How to use: client-side console visualization */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">How to use this demo</CardTitle>
@@ -205,9 +205,9 @@ export function LoggerDemoPage() {
                             </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            <strong>Log error</strong> — logs one ERROR. <strong>Child logger demo</strong> — two INFO
-                            lines with extra context. <strong>Formatters</strong> — JSON + simple lines in Console.{' '}
-                            <strong>Refresh log list</strong> — updates the in-page list. <strong>Clear logs</strong> —
+                            <strong>Log error</strong>: logs one ERROR. <strong>Child logger demo</strong>: two INFO
+                            lines with extra context. <strong>Formatters</strong>: JSON + simple lines in Console.{' '}
+                            <strong>Refresh log list</strong>: updates the in-page list. <strong>Clear logs</strong>:
                             empties the in-memory list.
                         </p>
                     </CardContent>

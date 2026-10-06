@@ -168,6 +168,7 @@ const FEATURES = [
 
 export function CommentsDemoPage() {
     const [mode, setMode] = useState<'memory' | 'database'>('memory');
+    const { user } = useSession();
     const tab = (active: boolean) =>
         `inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium transition-colors ${
             active ? 'bg-background text-foreground ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'
@@ -201,7 +202,17 @@ export function CommentsDemoPage() {
                 </span>
             </div>
 
-            <section>{mode === 'memory' ? <InMemoryDemo /> : <DatabaseDemo />}</section>
+            <section>
+                {mode === 'memory' ? (
+                    <InMemoryDemo />
+                ) : user ? (
+                    <DatabaseDemo />
+                ) : (
+                    <p className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                        Sign in to read and write the real comments table.
+                    </p>
+                )}
+            </section>
 
             <section className="flex flex-col gap-4">
                 <h2 className="text-[0.9375rem] font-semibold">Use it</h2>

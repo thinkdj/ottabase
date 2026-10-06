@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Merge rules
+// @ottabase/ottaai, Merge rules
 // ============================================================
 // The credential layers OVER the platform config; unset fields fall through.
 // A BYOK credential normally supplies only a secret and a model, and rides the
@@ -11,7 +11,7 @@
 //   2. Model and provider combine into a QUALIFIED reference, kept verbatim if
 //      already qualified or dynamic.
 //   3. Everything else INHERITS. That is what lets a tenant bring only a key and a
-//      model — and what makes an injected `fetch` survive into tenant clients, so
+//      model, and what makes an injected `fetch` survive into tenant clients, so
 //      resolver tests need no network.
 // ============================================================
 
@@ -34,14 +34,14 @@ export interface MergeInput {
 }
 
 /**
- * TRAP — THE MERGE IS SUBTRACTIVE ON SECRETS, AND A NAIVE SPREAD BREAKS THE STRICTEST MODE.
+ * TRAP: THE MERGE IS SUBTRACTIVE ON SECRETS, AND A NAIVE SPREAD BREAKS THE STRICTEST MODE.
  *
  * Spreading the whole platform fallback and overlaying credential fields inherits the
  * platform provider key on paths where it must not be inherited. Two live holes:
  *
  *  • A KEYLESS credential for a `requiresKey: false` provider passes the keyless-mismatch
  *    guard (which fires only when a key IS required), merges, and inherits the platform
- *    key — so `mode: 'byok'` produced a client with ZERO tenant secret, funded entirely by
+ *    key, so `mode: 'byok'` produced a client with ZERO tenant secret, funded entirely by
  *    the operator.
  *  • An ALIAS-ONLY credential keeps the platform key alongside the alias, so two auth
  *    mechanisms go out together and the gateway silently arbitrates.
@@ -61,7 +61,7 @@ export function mergeConfig(input: MergeInput): MergedTransportConfig {
     const source: Exclude<ResolutionSource, null> = credential ? 'byok' : 'platform';
     const provider = credential?.provider ?? platform.provider ?? '';
 
-    // Start from the operator's transport bag — the tenant NEVER contributes a
+    // Start from the operator's transport bag, the tenant NEVER contributes a
     // destination-bearing key (validated on write, filtered again here as defence in depth).
     const transportConfig: Record<string, unknown> = { ...(platform.transportConfig ?? {}) };
     if (credential?.transportConfig) {
@@ -82,7 +82,7 @@ export function mergeConfig(input: MergeInput): MergedTransportConfig {
         } else if (credential.secret.kind === 'alias') {
             alias = credential.secret.alias;
         }
-        // `secretKind === 'none'` leaves BOTH null — the platform key is deliberately NOT
+        // `secretKind === 'none'` leaves BOTH null, the platform key is deliberately NOT
         // inherited. Without this deletion a keyless credential quietly spends the platform
         // key under a `byok` label.
     } else {
@@ -108,7 +108,7 @@ export function mergeConfig(input: MergeInput): MergedTransportConfig {
         transportConfig,
         // Provenance is injected into the CLIENT'S CONFIG DEFAULTS, not per call, so every
         // call from that client carries the tag automatically. Per-call-site tagging is the
-        // version that drifts — and partial metering is worse than none, because the numbers
+        // version that drifts, and partial metering is worse than none, because the numbers
         // look plausible and get used.
         provenance: {
             source,
@@ -125,10 +125,10 @@ export function mergeConfig(input: MergeInput): MergedTransportConfig {
  * THE KEYLESS-MISMATCH GUARD.
  *
  * Skip a selected credential when ALL THREE hold:
- *   1. `registry.requiresKeyFor(provider)`  — a dynamic model ref counts as requiring a key
+ *   1. `registry.requiresKeyFor(provider)`: a dynamic model ref counts as requiring a key
  *      regardless of the credential's provider, because the route's provider is unknown here
  *      and fail-safe is the only defensible default;
- *   2. the credential's `secretKind === 'none'` — an ALIAS COUNTS AS A SECRET;
+ *   2. the credential's `secretKind === 'none'`: an ALIAS COUNTS AS A SECRET;
  *   3. the platform fallback carries a provider key THAT THE EFFECTIVE MODE PERMITS USING.
  *
  * TERM 3 IS THE ONE THAT GETS "SIMPLIFIED AWAY". Without it, gateway-billed deployments
@@ -139,7 +139,7 @@ export function mergeConfig(input: MergeInput): MergedTransportConfig {
  * >>> through to a platform config that also has no key. Do not delete term 3.
  *
  * The "mode permits" clause matters: under `byok` the platform key exists but may not be
- * used, so the guard does NOT fire and the row proceeds to the `NO_TENANT_SECRET` exit —
+ * used, so the guard does NOT fire and the row proceeds to the `NO_TENANT_SECRET` exit,
  * one reason, not two defensible ones.
  *
  * THE FAILURE PREVENTED: merging such a row pairs the TENANT'S MODEL with the PLATFORM'S

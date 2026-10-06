@@ -1,10 +1,10 @@
 // ============================================================
-// @ottabase/premium — manifest definition
+// @ottabase/premium, manifest definition
 // ============================================================
 
 import type { PremiumPackage } from './types';
 
-/** Package keys are used in env var names, API paths and license claims — keep them boring. */
+/** Package keys are used in env var names, API paths and license claims, keep them boring. */
 const PACKAGE_KEY_RE = /^[a-z][a-z0-9-]{1,48}$/;
 
 /**

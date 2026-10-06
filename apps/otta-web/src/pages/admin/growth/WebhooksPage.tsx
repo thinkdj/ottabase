@@ -1,5 +1,5 @@
 /**
- * Webhooks (admin) — the Premium Package example, end to end.
+ * Webhooks (admin): the Premium Package example, end to end.
  *
  * Two things worth noticing about how this page is built:
  *
@@ -28,7 +28,7 @@ export function WebhooksPage() {
                     </h1>
                     <p className="max-w-3xl text-muted-foreground">
                         Send signed events to your own systems. Every delivery carries an HMAC signature over its
-                        timestamp and body — verify it before you trust the payload.
+                        timestamp and body, verify it before you trust the payload.
                     </p>
                 </div>
 

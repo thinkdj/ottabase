@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine React – BrandProvider
+// Brand Engine React, BrandProvider
 // Single fetch GET /api/brand returns full config. Client resolves path locally.
 // Features:
 //   • Retry logic with exponential backoff
@@ -205,7 +205,7 @@ function applyRouteTokenOverrides(
 }
 
 /**
- * Full config from GET /api/brand – route mappings, layouts, all brand kits.
+ * Full config from GET /api/brand: route mappings, layouts, all brand kits.
  * API returns both light and dark themes per kit. Client picks at runtime.
  * API may return compact form (kit + routes) when single brand kit.
  */
@@ -243,7 +243,7 @@ export interface FullBrandConfig {
             hideOttabaseBranding: boolean;
         }
     >;
-    /** @deprecated No longer sent by API — client determines mode locally */
+    /** @deprecated No longer sent by API, client determines mode locally */
     mode?: 'light' | 'dark';
 }
 
@@ -317,7 +317,7 @@ type RouteMatcherFn = (pathname: string) => RouteMatchResult | null;
 /**
  * Exported for parity testing ONLY: the app test-suite asserts that the
  * themeLight/themeDark this derives are deep-equal to what the server-side
- * resolveConfigFromFull injects at the edge — the zero-FOUC handoff contract
+ * resolveConfigFromFull injects at the edge, the zero-FOUC handoff contract
  * (edge-painted critical CSS must be byte-identical to what the client would
  * re-derive, so the client's stylesheet replacement is a no-op on first load).
  */
@@ -437,7 +437,7 @@ export function BrandProvider({
                     setIsLoading(true);
                     setError(null);
                 }
-                // No mode param — API returns both light+dark themes per kit
+                // No mode param: API returns both light+dark themes per kit
                 const params = new URLSearchParams();
                 if (appId) params.set('appId', appId);
                 const url = params.toString() ? `${apiEndpoint}?${params}` : apiEndpoint;

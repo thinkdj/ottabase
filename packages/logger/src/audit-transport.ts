@@ -103,7 +103,7 @@ export class AuditDbTransport implements Transport {
             // Check global connection registry (stored on globalThis by ottaorm)
             const globalConnections = (globalThis as any).__OTTAORM_CONNECTIONS__ as Map<string, any> | undefined;
             if (!globalConnections || !globalConnections.has('default')) {
-                // No DB configured (common in tests) — skip writing without noisy errors
+                // No DB configured (common in tests), skip writing without noisy errors
                 this.flushing = false;
                 return;
             }

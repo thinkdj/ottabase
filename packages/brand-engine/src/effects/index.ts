@@ -1,17 +1,17 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Generated CSS builders
+// Brand Engine, Generated CSS builders
 //
 // Two builders for the OPEN-ENDED parts of a theme that cannot be expressed
 // as :root variables consumed by static rules:
 //
-//   • buildScopesCSS   – token "rooms": [data-brand-scope=name] var re-binding
+//   • buildScopesCSS: token "rooms": [data-brand-scope=name] var re-binding
 //                        blocks (appended to the critical stylesheet)
-//   • buildEffectsCSS  – the #brand-effects stylesheet: @font-face, @keyframes,
+//   • buildEffectsCSS: the #brand-effects stylesheet: @font-face, @keyframes,
 //                        .ts-{name} text-style voices, the link contract, and
 //                        registry-backed effect utilities
 //
 // Fixed-shape rules (focus ring, ::selection, scrollbar, press physics, body
-// backdrop) are NOT generated — they live statically in ui-shadcn's shadcn.css
+// backdrop) are NOT generated, they live statically in ui-shadcn's shadcn.css
 // reading vars with pixel-identical fallbacks.
 //
 // Specificity discipline: every generated selector is wrapped in :where() so
@@ -108,7 +108,7 @@ function scopeHasDarkSplit(scope: ScopeTokens): boolean {
  * Emit `[data-brand-scope="name"] { --var: … }` blocks for every scope room.
  * A flat (non-split) scope emits one block that applies in both modes; scopes
  * with a dark split additionally emit a `.dark [data-brand-scope=…]` block.
- * Components inside the scope "dress themselves" — they already read the
+ * Components inside the scope "dress themselves", they already read the
  * semantic vars, so no props/flags are needed.
  */
 export function buildScopesCSS(scopes: TokenScopes): string {
@@ -195,9 +195,9 @@ function buildTextStylesCSS(theme: ResolvedBrandTheme): string {
 }
 
 /**
- * Link contract rules — generated ONLY when the theme defines links tokens.
+ * Link contract rules: generated ONLY when the theme defines links tokens.
  * Targets unclassed anchors (content links) plus `.brand-link` opt-in.
- * Specificity is deliberate: `a:where(:not([class]))` is 0-0-1 — it BEATS
+ * Specificity is deliberate: `a:where(:not([class]))` is 0-0-1, it BEATS
  * Tailwind preflight's `a { color: inherit; text-decoration: inherit }` by
  * cascade order (this sheet loads later) while still losing to any utility
  * class (0-1-0) on chrome anchors. `.brand-link` (0-1-0) is the opt-in that
@@ -230,7 +230,7 @@ function buildLinksCSS(theme: ResolvedBrandTheme): string {
 }
 
 /**
- * Interaction press extras — only the pieces that CANNOT live as static rules
+ * Interaction press extras: only the pieces that CANNOT live as static rules
  * in shadcn.css because they lack a safe identity fallback (box-shadow: none
  * would kill a component's own shadow while pressed; transition overrides
  * would fight per-component duration utilities). The hover/press transforms
@@ -288,7 +288,7 @@ function buildEffectUtilitiesCSS(theme: ResolvedBrandTheme): string {
 /**
  * Build the #brand-effects stylesheet: every generated (non-var) rule the
  * theme needs. Returns '' when the theme uses none of the generative
- * categories — zero-config themes ship zero extra bytes.
+ * categories, zero-config themes ship zero extra bytes.
  */
 export function buildEffectsCSS(theme: ResolvedBrandTheme): string {
     return [

@@ -24,7 +24,7 @@ type NavbarProps = {
     title?: string;
     /** Navigation links (defaults to Home, About, Themes) */
     links?: NavLink[];
-    /** GitHub repo URL — shows a GitHub button when set */
+    /** GitHub repo URL: shows a GitHub button when set */
     githubUrl?: string;
 };
 

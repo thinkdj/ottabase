@@ -9,8 +9,8 @@ in under 5 minutes.
 - **Multi-tenant SaaS** (organizations, RBAC, RLS built-in)
 - **Fat models** (business logic lives in OttaORM models, not controllers)
 - **47 integrated packages** (auth, blog, realtime, queues, UI, and more)
-- **Type-safe** — TypeScript everywhere, no JavaScript escapes
-- **Two-part dev setup** — Vite frontend (port 3003) + Wrangler backend (port 3004)
+- **Type-safe**: TypeScript everywhere, no JavaScript escapes
+- **Two-part dev setup**: Vite frontend (port 3003) + Wrangler backend (port 3004)
 
 > **▲ Important:** You own this code. Ottabase is a monorepo you clone and customize, not an npm package. See
 > [README.md](./README.md) for full ownership details.
@@ -42,7 +42,7 @@ pnpm --version    # Should be >= 10.27.0
 git clone https://github.com/thinkdj/ottabase.git
 cd ottabase
 
-# Install dependencies (one-time, ~2–3 minutes)
+# Install dependencies (one-time, ~2 to 3 minutes)
 pnpm install
 
 # Build shared packages (required before first dev run)
@@ -104,7 +104,8 @@ wrangler secret put BOOTSTRAP_OWNER_SECRET
 👉 Or use the **Cloudflare dashboard** to add them as the Worker's secrets.
 
 - `BOOTSTRAP_OWNER_SECRET` protects the bootstrap wizard and bootstrap API endpoints.
-- `MIGRATION_SECRET` is required for migration endpoints such as Admin → Migrate (`/api/ottaorm/init`).
+- `MIGRATION_SECRET` is required for migration endpoints such as Admin → Infrastructure → Migrations
+  (`/api/ottaorm/init`).
 
 ### Cloudflare API Token: when you need a real one
 
@@ -162,11 +163,11 @@ pnpm dev:full
 
 # Option B: Manually in two terminals if Option A doesn't work
 
-# Terminal 1 — Vite frontend (port 3003)
+# Terminal 1: Vite frontend (port 3003)
 cd apps/otta-web
 npx vite --port 3003
 
-# Terminal 2 — Wrangler backend (port 3004)
+# Terminal 2: Wrangler backend (port 3004)
 cd apps/otta-web
 export CLOUDFLARE_API_TOKEN=dummy-local-dev  # Windows: set CLOUDFLARE_API_TOKEN=dummy-local-dev
 npx wrangler dev --port 3004 --local
@@ -175,15 +176,15 @@ npx wrangler dev --port 3004 --local
 First time build might take a few minutes as it compiles all packages and starts both servers. Subsequent runs should be
 much faster, thanks to Turborepo's caching and incremental builds.
 
-Wait 10–15 seconds for both servers to start. You'll see:
+Wait 10 to 15 seconds for both servers to start. You'll see:
 
 - Frontend: `Local: http://localhost:3003`
 - Backend: `Worker ready on http://localhost:3004`
 
 Command summary:
 
-- `pnpm dev` — normal local development
-- `pnpm dev:full` — install + build + test + dev in one command
+- `pnpm dev`: normal local development
+- `pnpm dev:full`: install + build + test + dev in one command
 
 ---
 
@@ -239,13 +240,13 @@ Or copy the secret manually from `.env.local` and use it directly in the curl co
 Production note:
 
 - The bootstrap wizard/API requires a valid `BOOTSTRAP_OWNER_SECRET`.
-- Admin → Migrate requires a valid `MIGRATION_SECRET`.
+- Admin → Infrastructure → Migrations requires a valid `MIGRATION_SECRET`.
 
 After bootstrap is complete and you can log in, you can also run migrations from inside the app:
 
 - Login
 - Open Admin
-- Click Migrate
+- Click Run migration
 
 That is useful for later schema changes or when you want to re-run migrations from the UI instead of calling the API
 manually. It does not replace the initial bootstrap sequence for a brand new setup.
@@ -271,7 +272,8 @@ You're now inside a fully functional multi-tenant SaaS app with:
 - Audit logging
 - Database connected (Cloudflare D1)
 
-From here, you can also use the admin UI to manage migrations through Admin → Migrate for any future schema changes.
+From here, you can also use the admin UI to manage migrations through Admin → Infrastructure → Migrations for any future
+schema changes.
 
 ---
 
@@ -308,11 +310,11 @@ Avoid Node.js APIs like `fs`, `child_process`, `os`. Use Cloudflare bindings ins
 
 ### 3. **`wrangler.jsonc` Two-Tier Placeholder System**
 
-When you open `wrangler.jsonc` you'll see two kinds of placeholder values — they mean different things:
+When you open `wrangler.jsonc` you'll see two kinds of placeholder values, they mean different things:
 
 | Pattern                                                         | Example                            | What it means                                                                                        |
 | --------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `YOUR_*` (top-level)                                            | `YOUR_D1_DATABASE_ID`              | Local dev only — Wrangler ignores it and uses local simulators. **Never substituted by CI.**         |
+| `YOUR_*` (top-level)                                            | `YOUR_D1_DATABASE_ID`              | Local dev only: Wrangler ignores it and uses local simulators. **Never substituted by CI.**          |
 | `ALL_CAPS_SNAKE_CASE` (inside `env.production` / `env.preview`) | `D1_DATABASE_ID`,`KV_NAMESPACE_ID` | **This is the GitHub Secret name.** CI auto-detects it and substitutes the real UUID at deploy time. |
 
 For local dev, leave the `YOUR_*` values as-is. For deployment, the `ALL_CAPS` values must have matching GitHub Secrets
@@ -320,14 +322,14 @@ set.
 
 ### 4. **Monorepo Structure**
 
-- **`apps/`** — Full-stack applications
-    - `otta-web/` — Main TanStack Router + Vite + Wrangler app
-    - `otta-landing/` — Marketing site (Next.js)
-- **`packages/`** — 47 shared packages
-    - `@ottabase/ottaorm` — Fat model ORM (core)
-    - `@ottabase/auth` — Lightweight custom auth
-    - `@ottabase/rbac` — Role-based access control
-    - `@ottabase/ui-shadcn` — UI component library
+- **`apps/`**: Full-stack applications
+    - `otta-web/`: Main TanStack Router + Vite + Wrangler app
+    - `otta-landing/`: Marketing site (Next.js)
+- **`packages/`**: 47 shared packages
+    - `@ottabase/ottaorm`: Fat model ORM (core)
+    - `@ottabase/auth`: Lightweight custom auth
+    - `@ottabase/rbac`: Role-based access control
+    - `@ottabase/ui-shadcn`: UI component library
     - (and 43 more...)
 
 ### 5. **Workspace Protocol**
@@ -347,7 +349,7 @@ The `__bootstrap__/api/*` routes are only active on first setup. Once the platfo
 reset:
 
 ```bash
-# Local state only — D1 + KV + R2 (keeps build output)
+# Local state only: D1 + KV + R2 (keeps build output)
 pnpm clean:state
 
 # Everything: local state + build caches + packages/*/dist
@@ -357,23 +359,23 @@ pnpm clean:all
 ```
 
 Use `pnpm clean:state` when you want to wipe local Cloudflare-emulated persistence without doing a broader repo reset.
-Both commands are local only — your Cloudflare account is never touched — and both prompt for a typed `YES` (add
+Both commands are local only, your Cloudflare account is never touched, and both prompt for a typed `YES` (add
 `-- --yes` to skip).
 
-Use bootstrap for the first-time platform bring-up. Use Admin → Migrate later when the app is already running and you
-need to apply schema updates from the UI.
+Use bootstrap for the first-time platform bring-up. Use Admin → Infrastructure → Migrations later when the app is
+already running and you need to apply schema updates from the UI.
 
 ### 7. **Two Ports, Same App**
 
-- **Port 3003** (Vite) — Frontend (SPA)
-- **Port 3004** (Wrangler) — Backend API + static files
+- **Port 3003** (Vite): Frontend (SPA)
+- **Port 3004** (Wrangler), Backend API + static files
 
 On production, Cloudflare Workers serves both. Locally, both must be running.
 
 ### 8. **Multi-Tenancy Is Built-In**
 
 Every request automatically includes tenant context (`organizationId`, `userId`, `appId`). Row-Level Security (RLS)
-enforces data isolation. Never bypass RLS—always provide adequate context.
+enforces data isolation. Never bypass RLS, always provide adequate context.
 
 ### 9. **TypeScript Everything**
 
@@ -383,13 +385,13 @@ No JavaScript in source. All packages must have `tsconfig.json` and export `.d.t
 
 ## Next Steps
 
-- **Read [AGENTS.MD](./AGENTS.MD)** — Deep architecture reference and AI guidelines
-- **Read [ARCHITECTURE.md](./ARCHITECTURE.md)** — Monorepo topology, package layers, OttaORM model system
-- **Read [CONTRIBUTING.md](./.github/CONTRIBUTING.md)** — Code standards, PR process, dependency management
-- **Try the [Solo Founder's SaaS Guide](./docs/SOLO_FOUNDER_SAAS_GUIDE.md)** — Multi-tenancy, RBAC, audit logging
+- **Read [AGENTS.MD](./AGENTS.MD)**: Deep architecture reference and AI guidelines
+- **Read [ARCHITECTURE.md](./ARCHITECTURE.md)**: Monorepo topology, package layers, OttaORM model system
+- **Read [CONTRIBUTING.md](./.github/CONTRIBUTING.md)**: Code standards, PR process, dependency management
+- **Try the [Solo Founder's SaaS Guide](./docs/SOLO_FOUNDER_SAAS_GUIDE.md)**: Multi-tenancy, RBAC, audit logging
   patterns
-- **Explore [API_PAGINATION.md](./docs/API_PAGINATION.md)** — Server-side pagination on CRUD endpoints
-- **Check [TESTING.md](./docs/TESTING.md)** — Testing patterns (Vitest, integration tests)
+- **Explore [API_PAGINATION.md](./docs/API_PAGINATION.md)**: Server-side pagination on CRUD endpoints
+- **Check [TESTING.md](./docs/TESTING.md)**: Testing patterns (Vitest, integration tests)
 
 ---
 
@@ -453,7 +455,7 @@ pnpm lint                   # ESLint all packages
 pnpm type-check             # TypeScript check all packages
 pnpm test --filter=pkg      # Vitest filter
 
-# Database (all local only — never touches your Cloudflare account)
+# Database (all local only: never touches your Cloudflare account)
 curl -X POST http://localhost:3004/api/ottaorm/init  # Create/update tables
 pnpm clean:d1               # Clear local D1
 pnpm clean:kv               # Clear local KV

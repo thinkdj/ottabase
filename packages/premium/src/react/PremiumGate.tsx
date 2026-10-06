@@ -1,10 +1,10 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium/react — the UI gate
+// @ottabase/premium/react, the UI gate
 // ============================================================
 // Wrap any paid surface. Closed gates render an upsell instead of the children, and
-// never render a half-working version of the feature — a disabled button that 402s on
+// never render a half-working version of the feature, a disabled button that 402s on
 // click is a worse experience than an honest "this needs a license".
 // ============================================================
 
@@ -84,7 +84,7 @@ export function PremiumGate({
     title,
     description,
 }: PremiumGateProps) {
-    // Both hooks run unconditionally — `feature` picks which ANSWER is used, never which
+    // Both hooks run unconditionally: `feature` picks which ANSWER is used, never which
     // hook is called, so the hook order stays stable across renders.
     const packageAnswer = usePremiumEnabled(packageKey);
     const featureAnswer = usePremiumFeature(packageKey, feature ?? '');

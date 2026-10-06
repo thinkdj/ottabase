@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine React – LayoutResolver
+// Brand Engine React, LayoutResolver
 // Resolves layout preset for the current path, renders the provided
 // layout component with the preset's config. Merges page-level overrides
 // from useLayoutMeta and wraps children in the slot + meta providers.

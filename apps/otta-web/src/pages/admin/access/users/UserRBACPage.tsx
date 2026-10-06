@@ -64,7 +64,7 @@ interface UserOrganization {
 
 /**
  * Membership timestamps come from BaseModel.toJson(), which serializes Date fields to epoch-ms
- * NUMBERS — so `joinedAt` arrives as a number (or, from some callers, a numeric string).
+ * NUMBERS, so `joinedAt` arrives as a number (or, from some callers, a numeric string).
  * `new Date('1780639598433')` parses a digit-string as a *date string* → "Invalid Date", so
  * coerce all-digit values to a number before constructing the Date.
  */
@@ -118,7 +118,7 @@ export function UserRBACPage() {
             organizationId: m.organizationId,
             organizationName: org?.name || m.organizationId,
             role: m.role,
-            // Keep the raw value (toJson() gives epoch-ms numbers) — do NOT stringify it, or
+            // Keep the raw value (toJson() gives epoch-ms numbers), do NOT stringify it, or
             // `new Date('<digits>')` below would yield "Invalid Date".
             joinedAt: m.joinedAt ?? null,
         };
@@ -223,7 +223,7 @@ export function UserRBACPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">User Access Control</h1>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">User access</h1>
                     <p className="max-w-3xl text-muted-foreground">
                         Manage organization memberships and roles for this user
                     </p>
@@ -252,7 +252,7 @@ export function UserRBACPage() {
                         </Avatar>
                         <div>
                             <h2 className="text-[0.9375rem] font-semibold">{displayUser.name || 'No name'}</h2>
-                            <p className="text-sm text-muted-foreground">{displayUser.email || '—'}</p>
+                            <p className="text-sm text-muted-foreground">{displayUser.email || 'No email'}</p>
                             <code className="mt-1 inline-block rounded bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground ring-1 ring-border">
                                 {displayUser.id}
                             </code>

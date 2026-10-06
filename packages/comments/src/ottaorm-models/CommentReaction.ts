@@ -13,12 +13,12 @@ export {
 /**
  * Normalized per-user emoji reactions on a comment (comment_id, emoji, user_id).
  *
- * Replaces a JSON blob column on `comments` — that design required reading the whole
+ * Replaces a JSON blob column on `comments`: that design required reading the whole
  * reactions map into memory, mutating it, and writing the entire row back on every single
  * toggle, which both raced under concurrent reactors (lost-update: two users reacting at
  * the same time could clobber each other's write) and rewrote an ever-growing blob on every
  * toggle. A dedicated row per (comment, emoji, user) makes toggling an atomic single-row
- * DELETE-or-INSERT — concurrent reactors from different users touch different rows, so there
+ * DELETE-or-INSERT, concurrent reactors from different users touch different rows, so there
  * is nothing to race on.
  */
 export class CommentReaction extends BaseModel {
@@ -31,7 +31,7 @@ export class CommentReaction extends BaseModel {
     static displayName = 'Comment Reaction';
     static displayNamePlural = 'Comment Reactions';
 
-    // Not exposed via the generic CRUD route — reactions are only ever mutated via
+    // Not exposed via the generic CRUD route, reactions are only ever mutated via
     // Comment's `toggleReaction` server-side helper (see ottaorm-crud.ts comments handling).
     static writable = {
         create: [],
@@ -47,7 +47,7 @@ export class CommentReaction extends BaseModel {
     };
 
     /**
-     * Toggle a user's reaction on a comment — atomically removes the row if present, else
+     * Toggle a user's reaction on a comment, atomically removes the row if present, else
      * inserts it. Each (commentId, emoji, userId) triple is an independent row, so concurrent
      * toggles from different users never contend on the same data.
      */
@@ -68,7 +68,7 @@ export class CommentReaction extends BaseModel {
             await db.insert(table).values({ commentId, emoji, userId });
         } catch {
             // A concurrent toggle from the same user already inserted this exact row (unique
-            // constraint on commentId+emoji+userId) — the desired end state (reacted) already
+            // constraint on commentId+emoji+userId), the desired end state (reacted) already
             // holds, so this is a benign no-op rather than an error.
         }
         return { added: true };
@@ -82,7 +82,7 @@ export class CommentReaction extends BaseModel {
 
     /**
      * Batched reactions lookup for a set of comment IDs, returned in the same
-     * `{ emoji: [userId, ...] }` shape the old JSON column used — so consumers (frontend) don't
+     * `{ emoji: [userId, ...] }` shape the old JSON column used, so consumers (frontend) don't
      * need to change how they read `comment.reactions`.
      */
     static async reactionsFor(commentIds: string[]): Promise<Map<string, ReactionsMap>> {

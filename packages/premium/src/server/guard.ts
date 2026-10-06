@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium/server — request-path gates
+// @ottabase/premium/server, request-path gates
 // ============================================================
 // The authoritative half of every gate. The React helpers in `@ottabase/premium/react`
 // hide buttons; THESE refuse requests. A gate enforced only in the browser stops nobody
@@ -13,7 +13,7 @@ import type { PremiumRegistry } from '../registry';
 /**
  * HTTP status for a closed gate.
  *
- * 402 PAYMENT REQUIRED for anything a purchase would fix — that is precisely what the
+ * 402 PAYMENT REQUIRED for anything a purchase would fix, that is precisely what the
  * status means, and it lets a client distinguish "buy this" from "you are not allowed"
  * without string-matching an error message. 403 for the two cases money does not fix:
  * an operator-disabled package, and a gate call naming a package that is not installed.
@@ -25,7 +25,7 @@ export function premiumDeniedStatus(state: PremiumState, reason: PremiumReason):
 
 const REASON_MESSAGES: Record<PremiumReason, string> = {
     OK: 'Allowed',
-    IN_GRACE: 'License expired — running inside the grace period',
+    IN_GRACE: 'License expired: running inside the grace period',
     LICENSE_EXPIRED: 'This feature requires an active license',
     LICENSE_MISSING: 'This feature requires a license',
     LICENSE_MALFORMED: 'The installed license key could not be read',
@@ -43,8 +43,8 @@ const REASON_MESSAGES: Record<PremiumReason, string> = {
 /**
  * Turn a closed gate into a response.
  *
- * The body carries `metadata` the client can act on — which package, which reason,
- * which limit, where to buy — because "402" alone gives a UI nothing to render. None
+ * The body carries `metadata` the client can act on, which package, which reason,
+ * which limit, where to buy, because "402" alone gives a UI nothing to render. None
  * of it is sensitive: it is the customer's own entitlement state.
  */
 export function premiumDeniedResponse(packageKey: string, answer: PremiumGateAnswer): Response {
@@ -64,7 +64,7 @@ export function premiumDeniedResponse(packageKey: string, answer: PremiumGateAns
 }
 
 /**
- * Require a package to be serving. Resolves null when it is — so a handler reads:
+ * Require a package to be serving. Resolves null when it is, so a handler reads:
  *
  * ```typescript
  * const denied = await requirePremium(registry, env, 'webhooks');
@@ -110,7 +110,7 @@ export async function requirePremiumFeature<Env>(
 /**
  * Require room under a numeric limit.
  *
- * `current` is the caller's OWN count and must be measured server-side — passing a
+ * `current` is the caller's OWN count and must be measured server-side, passing a
  * client-supplied number here would let the client raise its own ceiling.
  */
 export async function requirePremiumLimit<Env>(

@@ -1,6 +1,23 @@
 import type { DocsConfig, DocsSource } from '@ottabase/docs';
 import { extractTitle, fileNameToSlug, slugToTitle } from '@ottabase/docs';
 
+/** File names that do not read well as titles when simply capitalised */
+const GUIDE_TITLES: Record<string, string> = {
+    'api-pagination': 'API pagination',
+    'blog-public-surface': 'Blog-only surface',
+    'cache-keys': 'Cache keys',
+    'cloudflare-configuration-guide': 'Cloudflare configuration',
+    'cloudflare-deploy': 'Deploy to Cloudflare',
+    'cloudflare-features': 'Cloudflare features',
+    'package-creation-guide': 'Creating a package',
+    'premium-packages': 'Premium packages',
+    'rbac-multi-tenant-guide': 'Multi-tenant RBAC',
+    'recommended-supported-possible': 'Recommended, supported, possible',
+    'referral-system': 'Referral system',
+    'solo-founder-saas-guide': 'Solo founder SaaS guide',
+    'timezone-guide': 'Timezones',
+};
+
 /**
  * Load markdown files from Vite's import.meta.glob result into a DocsSource.
  * Usage: createDocsSource('Guides', import.meta.glob('/docs/*.md', { eager: true, query: '?raw', import: 'default' }))
@@ -14,8 +31,9 @@ export function createDocsSource(
         .map(([filePath, content]) => {
             const fileName = filePath.split('/').pop() || '';
             const slug = fileNameToSlug(fileName);
-            // index.md is the guides' landing page ("Start here"), listed first
-            let title = slug === 'index' ? 'Start here' : slugToTitle(slug);
+            // index.md is the guides' landing page ("Start here"), listed first. Pages load lazily, so the
+            // sidebar names them from the file name, with a few spelled out by hand.
+            let title = slug === 'index' ? 'Start here' : (GUIDE_TITLES[slug] ?? slugToTitle(slug));
             if (typeof content === 'string') {
                 const extracted = extractTitle(content);
                 if (extracted !== 'Untitled') title = extracted;

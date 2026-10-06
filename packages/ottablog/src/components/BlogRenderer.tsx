@@ -85,7 +85,7 @@ export function BlurbRenderer({
 
     return (
         // Timeline cards get wrapped in a link by the caller, so auto-linked URLs in the text would
-        // nest anchors — see BlurbTextLinksAllowed.
+        // nest anchors, see BlurbTextLinksAllowed.
         <BlurbTextLinksAllowed.Provider value={variant !== 'timeline'}>
             <article
                 className={`blog-blurb blog-blurb--${variant} ${theme.config?.classes?.blurb ?? ''} ${rest.className ?? ''}`.trim()}
@@ -246,7 +246,7 @@ function ArticleBlogRenderer({
             };
         };
 
-        // Safe wrapper for optional renderers (no fallback — returns null if not defined)
+        // Safe wrapper for optional renderers (no fallback, returns null if not defined)
         const safeOptionalRenderer = <T extends unknown[]>(
             renderer: ((...args: T) => React.ReactNode) | undefined,
             name: string,
@@ -489,7 +489,7 @@ export function BlogExcerptCard({
                         {post.author?.name && <span className="blog-card__author">{post.author.name}</span>}
                         {post.publishedAt && <time className="blog-card__date">{formatDate(post.publishedAt)}</time>}
                         {post.readingTimeMinutes && (
-                            <span className="blog-card__reading-time">{post.readingTimeMinutes} min</span>
+                            <span className="blog-card__reading-time">{post.readingTimeMinutes} min read</span>
                         )}
                     </div>
                 )}

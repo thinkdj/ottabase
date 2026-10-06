@@ -2,6 +2,7 @@ import { api, isApiError } from '@/lib/api';
 import { EmptyState, ConfirmDialog } from '@ottabase/ui-components';
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { useEffect, useState } from 'react';
+import { DemoAdminNotice, useDemoAdmin } from '../DemoAdminOnly';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 interface Todo {
@@ -13,6 +14,7 @@ interface Todo {
 }
 
 export function CloudflareD1DemoPage() {
+    const canUse = useDemoAdmin();
     const [todos, setTodos] = useState<Todo[]>([]);
     const [newTodo, setNewTodo] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,9 +23,10 @@ export function CloudflareD1DemoPage() {
     const [deleteDialog, setDeleteDialog] = useState<Todo | null>(null);
 
     useEffect(() => {
+        if (!canUse) return;
         void initializeDb();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [canUse]);
 
     const initializeDb = async () => {
         try {
@@ -110,11 +113,13 @@ export function CloudflareD1DemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="D1 Database"
+                title="D1"
                 description="Full CRUD operations with Cloudflare D1 SQLite database"
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare"
             />
+
+            {!canUse && <DemoAdminNotice />}
 
             {error ? <Alert variant="destructive">{error}</Alert> : null}
 

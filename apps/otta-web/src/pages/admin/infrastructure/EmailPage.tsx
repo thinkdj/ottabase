@@ -30,7 +30,7 @@ type Providers = Partial<Record<ProviderKey, ProviderInfo>>;
 type SendProvider = 'auto' | 'dev-trap' | 'resend' | 'ses' | 'nodemailer';
 
 const PROVIDERS: Array<{ key: ProviderKey; send: SendProvider; label: string; note: string }> = [
-    { key: 'devTrap', send: 'dev-trap', label: 'Dev Trap', note: 'A local inbox in KV; read it on the Dev Mail page.' },
+    { key: 'devTrap', send: 'dev-trap', label: 'Dev Trap', note: 'A local inbox in KV; read it on the Dev mail page.' },
     { key: 'resend', send: 'resend', label: 'Resend', note: 'HTTP API, runs on the edge.' },
     { key: 'ses', send: 'ses', label: 'AWS SES', note: 'HTTP API, runs on the edge.' },
     {
@@ -159,7 +159,7 @@ export function AdminEmailPage() {
                             <Button asChild variant="ghost" size="sm" className="ml-auto text-muted-foreground">
                                 <Link to="/admin/infrastructure/dev-mail">
                                     <Inbox className="mr-1.5 h-4 w-4" />
-                                    Open Dev Mail
+                                    Open Dev mail
                                 </Link>
                             </Button>
                         )}

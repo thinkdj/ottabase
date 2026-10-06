@@ -1,5 +1,5 @@
 // ====================================================================
-// @ottabase/spotlight — Root (100% PURE, no rendered UI)
+// @ottabase/spotlight, Root (100% PURE, no rendered UI)
 // --------------------------------------------------------------------
 // DEPENDENCY-FREE of any UI package by contract: the context, hooks and
 // API helpers exported here import no @ottabase/ui-shadcn, no Radix and

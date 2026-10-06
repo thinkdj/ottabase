@@ -1,5 +1,5 @@
 // ============================================================
-// /api/ai/complete — APP-LEVEL INTEGRATION, real OttaAI composition.
+// /api/ai/complete, APP-LEVEL INTEGRATION, real OttaAI composition.
 // ============================================================
 // The package has 236 unit tests and none of them prove that THIS APP wires the
 // package correctly. Everything below runs the real thing: the real
@@ -92,7 +92,7 @@ function stubFetch(response: unknown = { choices: [{ message: { content: 'hello'
     });
 }
 
-/** 32+ bytes of decoded material — `createKeyring` rejects anything weaker. */
+/** 32+ bytes of decoded material, `createKeyring` rejects anything weaker. */
 const MASTER_SECRET = 'dGVzdC1tYXN0ZXItc2VjcmV0LWZvci1vdHRhYWktMzJieXRlcy1taW5pbXVt';
 
 /**
@@ -176,7 +176,7 @@ describe('authentication', () => {
         // Not a lesser bug than a missing UI check: `getSecurityContext` only
         // membership-verifies an org id when a user id is present, so an anonymous request
         // can otherwise carry a client-supplied `x-org-id` straight into the RLS-BYPASSING
-        // resolver — set one header, run on another tenant's key and bill.
+        // resolver, set one header, run on another tenant's key and bill.
         security = { userId: null, organizationId: 'org-someone-else' };
 
         const res = await handleAiComplete(post({ prompt: 'hi' }));
@@ -193,7 +193,7 @@ describe('authentication', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Input validation — the budget, and the untrusted-JSON shapes
+// Input validation, the budget, and the untrusted-JSON shapes
 // ---------------------------------------------------------------------------
 
 describe('request payload validation', () => {
@@ -214,7 +214,7 @@ describe('request payload validation', () => {
 
     it('rejects a NON-STRING prompt or system instead of forwarding an object to the provider', async () => {
         // `body.system` was previously consumed truthily, so an object became a message whose
-        // `content` was an object — which serialises into the provider payload and comes back
+        // `content` was an object, which serialises into the provider payload and comes back
         // as a 400 about THEIR schema, debugged as a transport bug.
         expect((await handleAiComplete(post({ prompt: { a: 1 } }))).status).toBe(400);
         expect((await handleAiComplete(post({ prompt: 'hi', system: { role: 'x' } }))).status).toBe(400);
@@ -251,7 +251,7 @@ describe('request payload validation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The wire — real composition, real transport
+// The wire, real composition, real transport
 // ---------------------------------------------------------------------------
 
 describe('the app composes the package into a correctly addressed gateway call', () => {
@@ -282,7 +282,7 @@ describe('the app composes the package into a correctly addressed gateway call',
         expect(metadata).toMatchObject({ source: 'platform', task: 'assist', app: 'otta-web' });
     });
 
-    it('returns the REDACTED projection — never the merged config that carries a key', async () => {
+    it('returns the REDACTED projection: never the merged config that carries a key', async () => {
         const res = await handleAiComplete(post({ prompt: 'hi' }));
         const body = (await res.json()) as Record<string, unknown>;
 
@@ -293,7 +293,7 @@ describe('the app composes the package into a correctly addressed gateway call',
 });
 
 // ---------------------------------------------------------------------------
-// Embeddings — the same resolver, a deliberately separate operation
+// Embeddings, the same resolver, a deliberately separate operation
 // ---------------------------------------------------------------------------
 
 describe('/api/ai/embed', () => {
@@ -363,8 +363,8 @@ describe('/api/ai/embed', () => {
 
 describe('the BYOK gate is enforced by the server, not the browser', () => {
     it('402s a `gate: required` task for a tenant with no key of their own', async () => {
-        // `extract` declares `mode: 'byok'` + `gate: 'required'`, so the platform floor —
-        // which is fully configured in this env — must NOT satisfy it.
+        // `extract` declares `mode: 'byok'` + `gate: 'required'`, so the platform floor,
+        // which is fully configured in this env, must NOT satisfy it.
         const res = await handleAiComplete(post({ task: 'extract', prompt: 'a document' }));
 
         expect(res.status).toBe(402);
@@ -432,7 +432,7 @@ describe('inference is rate limited, and platform spend fails CLOSED without a l
 
     it('does NOT refuse when there is no platform key to spend', async () => {
         // A BYOK-only deployment has nothing for an abuser to burn, so a missing limiter is
-        // not held to the same standard — it reports NOT_CONFIGURED, the honest answer.
+        // not held to the same standard, it reports NOT_CONFIGURED, the honest answer.
         const res = await handleAiComplete(
             post(
                 { prompt: 'hi' },
@@ -477,7 +477,7 @@ describe('an incomplete platform config degrades honestly', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Images in, JSON out — POST /api/ai/vision
+// Images in, JSON out, POST /api/ai/vision
 // ---------------------------------------------------------------------------
 
 /** 1x1 transparent PNG. */
@@ -495,7 +495,7 @@ function visionPost(body: unknown, envOverrides: Record<string, unknown> = {}) {
     } as never;
 }
 
-/** A body with NO Content-Length — the case a header check alone never sees. */
+/** A body with NO Content-Length, the case a header check alone never sees. */
 function chunkedRequest(url: string, bytes: number) {
     const chunk = new TextEncoder().encode('x'.repeat(64 * 1024));
     let sent = 0;
@@ -509,7 +509,7 @@ function chunkedRequest(url: string, bytes: number) {
                 controller.enqueue(chunk);
             },
         }),
-        // @ts-expect-error — required by undici for a streamed request body
+        // @ts-expect-error: required by undici for a streamed request body
         duplex: 'half',
     });
 }
@@ -572,7 +572,7 @@ describe('POST /api/ai/vision: images in, a JSON object out', () => {
         expect(outbound).toHaveLength(0);
     });
 
-    it('leaves the full base64 scan to the package — malformed data is VALIDATION, still before any request', async () => {
+    it('leaves the full base64 scan to the package, malformed data is VALIDATION, still before any request', async () => {
         const res = await handleAiVision(
             visionPost({ prompt: 'Read the total', images: [{ mimeType: 'image/png', data: 'not base64!!' }] }),
         );
@@ -626,7 +626,7 @@ describe('POST /api/ai/complete stays a small, text-only body', () => {
         expect(res.status).toBe(400);
     });
 
-    it('caps the body at 512 KB again — by bytes read, not only by Content-Length', async () => {
+    it('caps the body at 512 KB again, by bytes read, not only by Content-Length', async () => {
         const declared = new Request('http://localhost/api/ai/complete', {
             method: 'POST',
             headers: { 'content-type': 'application/json', 'content-length': String(600 * 1024) },

@@ -72,7 +72,7 @@ describe('ScaleManager', () => {
     });
 
     it('removes localStorage key when scale is 1.0 (default)', () => {
-        // Don't pre-set a stored value — the hydration effect would override 1.0
+        // Don't pre-set a stored value, the hydration effect would override 1.0
         renderWithStore(1.0);
         expect(localStorage.getItem(SCALE_STORAGE_KEY)).toBeNull();
     });

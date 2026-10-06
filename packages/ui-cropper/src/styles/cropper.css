@@ -1,5 +1,5 @@
 /**
- * @ottabase/ui-cropper — Stylesheet
+ * @ottabase/ui-cropper: Stylesheet
  *
  * Mirrors the theme-integration convention used by @ottabase/ottadate:
  * CSS custom properties map to shadcn/tailwind design tokens (raw HSL channels,
@@ -7,7 +7,7 @@
  */
 
 .ottacropper {
-    /* Colors — inherit from theme or use defaults (same fallbacks as @ottabase/ottadate). */
+    /* Colors: inherit from theme or use defaults (same fallbacks as @ottabase/ottadate). */
     --cr-bg: hsl(var(--background, 0 0% 100%));
     --cr-fg: hsl(var(--foreground, 222.2 84% 4.9%));
     --cr-muted: hsl(var(--muted, 210 40% 96.1%));
@@ -29,7 +29,7 @@
     --cr-font-size: 0.875rem;
     --cr-font-size-sm: 0.8125rem;
 
-    /* Transitions — use brandkit motion variables when available */
+    /* Transitions: use brandkit motion variables when available */
     --cr-transition: var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 
     position: relative;
@@ -79,7 +79,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Empty state — the drop zone is the control
+ * Empty state, the drop zone is the control
  * --------------------------------------------------------------------------- */
 
 .ottacropper-empty-state {
@@ -153,7 +153,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Viewport — canvas wrapper (crop stage)
+ * Viewport, canvas wrapper (crop stage)
  * --------------------------------------------------------------------------- */
 
 .ottacropper-viewport {
@@ -258,7 +258,7 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Toolbar — presets, zoom, transforms
+ * Toolbar: presets, zoom, transforms
  * --------------------------------------------------------------------------- */
 
 .ottacropper-toolbar {

@@ -8,7 +8,7 @@ export function CloudflareHyperdriveDemoPage() {
                 title="Hyperdrive"
                 description="Accelerate access to your existing databases from Cloudflare Workers"
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Features"
+                backLabel="Back to Cloudflare"
             />
 
             <Card>

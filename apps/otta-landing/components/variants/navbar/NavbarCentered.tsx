@@ -15,7 +15,7 @@ const DEFAULT_NAV_LINKS: NavLink[] = [
 ];
 
 /**
- * Centered navbar — logo + links centered horizontally, balanced layout.
+ * Centered navbar: logo + links centered horizontally, balanced layout.
  */
 export function NavbarCentered({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUrl }: NavbarData) {
     const pathname = usePathname();

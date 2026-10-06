@@ -25,7 +25,7 @@ import { DemoPageHeader } from '../DemoPageHeader';
 const stringifyTokenValue = (value: unknown): string => {
     if (typeof value === 'string') return value;
     if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-    if (value === null || value === undefined) return '—';
+    if (value === null || value === undefined) return 'not set';
     try {
         return JSON.stringify(value);
     } catch {
@@ -106,7 +106,7 @@ export function ThemingDemoPage() {
     return (
         <div className="space-y-theme-section animate-in fade-in slide-in-from-bottom-4 duration-500">
             <DemoPageHeader
-                title="Theming Configurator"
+                title="Theming"
                 description="Theme can be set per app (or per route!) by the admin in Brand Engine. Use the control stack to tune the local preview."
             />
 
@@ -243,27 +243,27 @@ export function ThemingDemoPage() {
                                 <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground w-16">Heading:</span>
                                     <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                        {previewResolved?.typography?.heading?.fontFamily ?? '—'}
+                                        {previewResolved?.typography?.heading?.fontFamily ?? 'not set'}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground w-16">Body:</span>
                                     <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                        {previewResolved?.typography?.body?.fontFamily ?? '—'}
+                                        {previewResolved?.typography?.body?.fontFamily ?? 'not set'}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground w-16">Cursive:</span>
                                     <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                        {previewResolved?.typography?.handwriting?.fontFamily ?? '—'}
+                                        {previewResolved?.typography?.handwriting?.fontFamily ?? 'not set'}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground w-16">Vars:</span>
                                     <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                        H:{previewResolved?.typography?.heading?.fontFamily ?? '—'} / B:
-                                        {previewResolved?.typography?.body?.fontFamily ?? '—'} / C:
-                                        {previewResolved?.typography?.handwriting?.fontFamily ?? '—'}
+                                        H:{previewResolved?.typography?.heading?.fontFamily ?? 'not set'} / B:
+                                        {previewResolved?.typography?.body?.fontFamily ?? 'not set'} / C:
+                                        {previewResolved?.typography?.handwriting?.fontFamily ?? 'not set'}
                                     </span>
                                 </div>
                             </div>
@@ -271,7 +271,7 @@ export function ThemingDemoPage() {
                                 <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground w-16">Radius:</span>
                                     <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
-                                        {previewResolved?.radius ?? '—'}
+                                        {previewResolved?.radius ?? 'not set'}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">

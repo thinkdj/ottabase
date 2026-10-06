@@ -14,7 +14,7 @@ class RecordingDriver {
     }
 }
 
-describe('runtime generator — schema constraints', () => {
+describe('runtime generator: schema constraints', () => {
     test('emits composite PRIMARY KEY for primaryKey({ columns })', async () => {
         const members = sqliteTable(
             'members',
@@ -75,7 +75,7 @@ describe('runtime generator — schema constraints', () => {
             },
             (t) => ({
                 // Mirrors Post.schema.ts's posts_slug_unique_no_app_idx: unique on slug
-                // ONLY among platform-owned rows (appId IS NULL) — a global unique index
+                // ONLY among platform-owned rows (appId IS NULL), a global unique index
                 // would defeat per-org slug namespaces if the WHERE were ever dropped.
                 slugNoAppUx: uniqueIndex('posts3_slug_unique_no_app_ux')
                     .on(t.slug)

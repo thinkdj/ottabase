@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — AiProviderCredential model (write path lives HERE)
+// @ottabase/ottaai, AiProviderCredential model (write path lives HERE)
 // ============================================================
 // OttaORM's shared `prepareUpdateMutation` hook is the update pre-persist point.
 // Keeping normalization there makes direct updates and RLS-constrained generic
@@ -31,7 +31,7 @@ export type { AiProviderCredentialType, NewAiProviderCredentialType } from './Ai
 /**
  * Everything the write path needs that the ORM cannot inject.
  *
- * REGISTRATION IS NECESSARILY IMPERATIVE AND PER-REQUEST in this framework — edge
+ * REGISTRATION IS NECESSARILY IMPERATIVE AND PER-REQUEST in this framework, edge
  * bindings only exist per request, which is why `registerConnection` works the same way.
  * `configureWrites` therefore holds isolate-scoped state, and it REFUSES a conflicting
  * reconfiguration rather than silently letting request A wrap with request B's keyring.
@@ -47,7 +47,7 @@ export interface CredentialWriteContext {
      * Validates a submitted gateway/vault alias against a TENANT-SCOPED allowlist.
      *
      * AN ALIAS IS A CREDENTIAL, NOT A LABEL. It is a name resolved inside the operator's
-     * gateway account; it is tenant-writable; it is not ciphertext so no AAD binds it —
+     * gateway account; it is tenant-writable; it is not ciphertext so no AAD binds it,
      * and UNVALIDATED it is a cross-tenant key-use primitive requiring no crypto break and
      * no RLS bypass: tenant A writes tenant B's alias, the merge deletes the platform key,
      * and A's requests run under B's gateway-held key while metering blames A and B's
@@ -71,7 +71,7 @@ let writeContext: CredentialWriteContext | null = null;
  * Comparing ids alone makes the guard useless in exactly the deployment it exists for: two
  * apps in one worker that both name their key `k1` but hold DIFFERENT secrets would pass
  * the check, and one request would then wrap a tenant's key under the other app's master
- * secret — surfacing later as a generic decrypt failure indistinguishable from a botched
+ * secret, surfacing later as a generic decrypt failure indistinguishable from a botched
  * rotation.
  */
 function sameKeyring(a: Keyring, b: Keyring): boolean {
@@ -105,7 +105,7 @@ export function configureCredentialWrites(next: CredentialWriteContext): void {
     }
     writeContext = next;
     // Field metadata is registry-derived (the provider <select> options come from it), so
-    // it is installed here rather than declared statically — one object drives the form,
+    // it is installed here rather than declared statically, one object drives the form,
     // the server validation and the guards.
     AiProviderCredential.applyFieldMetadata(next.registry);
 }
@@ -119,7 +119,7 @@ function requireWriteContext(): CredentialWriteContext {
     if (!writeContext) {
         throw new AiProvisioningError(
             'AiProviderCredential write attempted before configureCredentialWrites(). Call ' +
-                'createAiProvisioningWithStorage(...) during request setup — a write path with no keyring must ' +
+                'createAiProvisioningWithStorage(...) during request setup, a write path with no keyring must ' +
                 'never fall back to storing a provider key in cleartext.',
             AI_ERROR_CODES.NO_ENCRYPTION_KEY,
         );
@@ -171,7 +171,7 @@ export class AiProviderCredential extends BaseModel {
 
     /**
      * `toJson()` masks these (camelCase AND their snake_case siblings). Defence in depth
-     * only — the real gate is that operator surfaces read a projection that never selects
+     * only, the real gate is that operator surfaces read a projection that never selects
      * a secret-union column at all, and that the route factory carries a filter/sort
      * deny-list.
      */
@@ -185,7 +185,7 @@ export class AiProviderCredential extends BaseModel {
      * • Server-set tenancy fields MUST appear in the CREATE list even though they are
      *   non-editable, or they silently fail to persist and every credential is created
      *   unscoped.
-     * • Tenancy is ABSENT from the update list — and the model's own update hook
+     * • Tenancy is ABSENT from the update list, and the model's own update hook
      *   rejects it too, because a policy declaring `contextFields` adds those fields to
      *   the writable set on BOTH create and update, overriding this list.
      * • `isActive` is ABSENT from BOTH. Activation has exactly one mutation
@@ -206,8 +206,8 @@ export class AiProviderCredential extends BaseModel {
             'appId',
         ],
         // `alias` and `clearSecret` are SYNTHETIC inputs the statics consume and delete
-        // before persisting. They are listed so the generic auto-CRUD path — the very path
-        // these statics exist to protect — can express "use a gateway key" and "clear the
+        // before persisting. They are listed so the generic auto-CRUD path, the very path
+        // these statics exist to protect, can express "use a gateway key" and "clear the
         // key" at all, instead of having them rejected as non-writable before the model runs.
         update: ['label', 'provider', 'model', 'secret', 'alias', 'clearSecret', 'enabled', 'transportConfig'],
     };
@@ -253,7 +253,7 @@ export class AiProviderCredential extends BaseModel {
             model: (this.get('model') as string | null) ?? null,
             secret,
             keyHint: String(this.get('keyHint') ?? ''),
-            // ABSENT FLAGS ARE PERMISSIVE — only an explicit `false` disables or
+            // ABSENT FLAGS ARE PERMISSIVE: only an explicit `false` disables or
             // deactivates, so migrated/seeded/imported rows are not silently dead.
             enabled: this.get('enabled') !== false,
             isActive: this.get('isActive') !== false,
@@ -298,7 +298,7 @@ export class AiProviderCredential extends BaseModel {
 
         // THERE IS NO SUCH THING AS A GLOBAL CREDENTIAL: a row with neither tenancy
         // dimension is eligible under the conflict rules but scores 0 under every strategy
-        // — permanently unselectable. Reject it here so unreachable data never accumulates.
+        //, permanently unselectable. Reject it here so unreachable data never accumulates.
         if (!data.organizationId && !data.userId) {
             throw new AiProvisioningError(
                 'A credential must be scoped to a user, an organization, or both.',
@@ -308,7 +308,7 @@ export class AiProviderCredential extends BaseModel {
 
         // Dynamic routes are OPERATOR NAMESPACE, never tenant input: a tenant who writes
         // `model: 'dynamic/<an-operator-route>'` with no secret gets a client pointed at the
-        // operator's key and budget while the resolution reports `source: 'byok'` — a
+        // operator's key and budget while the resolution reports `source: 'byok'`: a
         // silent, unmetered bypass of mode, quota and the cost model, reached through the
         // `model` column rather than through a named destination field.
         if (isDynamicModelRef(data.model)) {
@@ -320,7 +320,7 @@ export class AiProviderCredential extends BaseModel {
 
         data.transportConfig = Self.sanitizeTransportConfig(ctx, provider, data.transportConfig);
 
-        // The id MUST exist before the wrap — it is part of the AAD tuple.
+        // The id MUST exist before the wrap, it is part of the AAD tuple.
         const id = typeof data.id === 'string' && data.id ? data.id : crypto.randomUUID();
         data.id = id;
 
@@ -337,7 +337,7 @@ export class AiProviderCredential extends BaseModel {
 
         const created = (await super.create.call(this, data, driver)) as InstanceType<T>;
         // A new credential is ACTIVE FOR ITS SCOPE. Enforced inside the write path, not as
-        // a post-write side effect in a CRUD dispatcher — auto-CRUD calls the statics, so a
+        // a post-write side effect in a CRUD dispatcher, auto-CRUD calls the statics, so a
         // dispatcher-side implementation is missing for every other write path.
         await Self.deactivateSiblings(id, {
             organizationId: data.organizationId ?? null,
@@ -392,7 +392,7 @@ export class AiProviderCredential extends BaseModel {
             if (nextProvider !== current.provider && !secretProvided && current.secret.kind !== 'none') {
                 throw new AiProvisioningError(
                     `Changing the provider from "${current.provider}" to "${nextProvider}" requires re-entering the ` +
-                        'API key — the stored key belongs to the old provider.',
+                        'API key: the stored key belongs to the old provider.',
                     AI_ERROR_CODES.VALIDATION,
                     { details: { field: 'secret' } },
                 );
@@ -449,7 +449,7 @@ export class AiProviderCredential extends BaseModel {
 
     /**
      * THE TENANT CONTROLS WHICH PROVIDER KEY IS USED; THE OPERATOR CONTROLS WHERE THE
-     * REQUEST GOES — and that is a property of the WHOLE merged config, not of two named
+     * REQUEST GOES, and that is a property of the WHOLE merged config, not of two named
      * fields. "Opaque" is precisely the word that makes an implementer spread the bag into
      * an SDK config without inspection, at which point a tenant setting a base URL
      * exfiltrates whatever key the merge produced.
@@ -475,7 +475,7 @@ export class AiProviderCredential extends BaseModel {
         }
         if (rejected.length > 0) {
             throw new AiProvisioningError(
-                `Provider options may not set ${rejected.join(', ')} — those decide where the request goes, ` +
+                `Provider options may not set ${rejected.join(', ')}, those decide where the request goes, ` +
                     'and are operator-only.',
                 AI_ERROR_CODES.VALIDATION,
                 { details: { rejected } },
@@ -489,15 +489,15 @@ export class AiProviderCredential extends BaseModel {
      *
      * 1. BLANK/ABSENT ON UPDATE ⇒ DELETE THE FIELD FROM THE PAYLOAD. Never overwrite a
      *    stored key with an empty string. This is what makes "leave blank to keep the
-     *    existing key" work — and it is why the verify endpoint needs two modes.
+     *    existing key" work, and it is why the verify endpoint needs two modes.
      * 2. ALREADY-CIPHERTEXT ⇒ PASS THROUGH BYTE-IDENTICAL. Without this, any internal
      *    re-save wraps ciphertext in ciphertext and the next decrypt returns the inner
-     *    envelope string as the "API key" — which is then shipped to a provider. Legal
+     *    envelope string as the "API key", which is then shipped to a provider. Legal
      *    ONLY on update of the same row id; on create it is rejected, because it skips
      *    hint derivation and produces a permanently undecryptable row.
      * 3. CLEARING IS AN EXPLICIT TRANSITION to `secretKind: 'none'`, which nulls the
      *    secret columns AND the `keyHint`, atomically. Rule 1 makes blank mean "keep", so
-     *    this is the only way to clear — and a cleared credential with a stale hint reads
+     *    this is the only way to clear, and a cleared credential with a stale hint reads
      *    as keyed to both the keyless-mismatch guard and the gate.
      * 4. OTHERWISE ⇒ TRIM THE PLAINTEXT ONCE, then derive the hint and encrypt FROM THAT
      *    SAME TRIMMED STRING.
@@ -520,7 +520,7 @@ export class AiProviderCredential extends BaseModel {
         delete data.alias;
         delete data.secretAliasInput;
 
-        // Rule 3 — explicit clear.
+        // Rule 3: explicit clear.
         if (data.clearSecret === true) {
             delete data.clearSecret;
             delete data.secret;
@@ -550,7 +550,7 @@ export class AiProviderCredential extends BaseModel {
             });
             if (!ok) {
                 throw new AiProvisioningError(
-                    'That gateway key name is not available to this workspace.',
+                    'That gateway key name is not available to this organization.',
                     AI_ERROR_CODES.VALIDATION,
                 );
             }
@@ -567,7 +567,7 @@ export class AiProviderCredential extends BaseModel {
         const raw = data.secret;
         delete data.secret;
 
-        // Rule 1 — blank/absent on update means KEEP.
+        // Rule 1: blank/absent on update means KEEP.
         if (raw === undefined || raw === null || (typeof raw === 'string' && raw.trim().length === 0)) {
             if (row.isCreate) {
                 const requiresKey = ctx.registry.requiresKeyFor(row.provider);
@@ -586,15 +586,15 @@ export class AiProviderCredential extends BaseModel {
 
         const trimmed = normalizeSubmittedSecret(raw);
 
-        // Rule 2 — already-ciphertext passes through BYTE-IDENTICAL, and only for THIS
+        // Rule 2: already-ciphertext passes through BYTE-IDENTICAL, and only for THIS
         // ROW'S OWN CURRENT ENVELOPE.
         //
         // The rule exists so an internal re-save cannot wrap ciphertext in ciphertext (the
         // next decrypt would then return the inner envelope string as the "API key" and ship
         // it to a provider). It is NOT a channel for a tenant to post arbitrary
         // envelope-shaped text: accepting any such string would let a caller overwrite their
-        // stored key with an unusable blob whose hint still reads as keyed, AND — because
-        // the provider-change guard tests only "was a secret supplied" — would slip a
+        // stored key with an unusable blob whose hint still reads as keyed, AND, because
+        // the provider-change guard tests only "was a secret supplied", would slip a
         // provider swap past the guard that exists to stop the old provider's key sitting
         // under a new provider.
         if (isEnvelope(trimmed)) {
@@ -611,7 +611,7 @@ export class AiProviderCredential extends BaseModel {
             return;
         }
 
-        // Rule 4 — one trim, then hint + ciphertext from THAT SAME STRING.
+        // Rule 4: one trim, then hint + ciphertext from THAT SAME STRING.
         const hintSource = ctx.registry.get(row.provider)?.hintSource ?? 'tail';
         const { envelope, keyId, formatVersion } = await encryptSecret({
             plaintext: trimmed,
@@ -652,13 +652,13 @@ export class AiProviderCredential extends BaseModel {
      *
      * VALIDATED HERE, NOT ONLY IN THE FORM. The route factory and generic auto-CRUD both
      * reach this static, and a direct API caller sees neither the `<select>` nor its options
-     * — so without this, `POST /api/ai/credentials {"provider":"totally-made-up"}` writes a
+     *, so without this, `POST /api/ai/credentials {"provider":"totally-made-up"}` writes a
      * row that lists, tests and edits perfectly well, and then resolves to
      * `PROVIDER_UNREGISTERED` for the rest of its life with nothing to point at.
      *
      * The same check rejects a provider that is registered but PLATFORM-ONLY (Workers AI has
      * no tenant key to bring) or that the shipped transport has no verified wire contract for
-     * — see `AiProviderEntry.tenantSelectable`.
+     *, see `AiProviderEntry.tenantSelectable`.
      */
     private static assertTenantProvider(ctx: CredentialWriteContext, provider: string): void {
         if (ctx.registry.isTenantSelectable(provider)) return;
@@ -682,13 +682,13 @@ export class AiProviderCredential extends BaseModel {
     // -----------------------------------------------------------------------
 
     /**
-     * "Several saved, one active" — the ONLY activation mutation. There is deliberately no
+     * "Several saved, one active", the ONLY activation mutation. There is deliberately no
      * bare deactivate; pausing is `enabled: false`.
      *
      * TRAP: building the sibling filter from "whichever dimension is non-null" is WRONG.
      * For an org-scoped credential (org set, user null) that filter is `{ organizationId }`
      * alone, which matches every row in the org INCLUDING rows bound to individual members
-     * — so one member adding an org key would silently deactivate every colleague's
+     *, so one member adding an org key would silently deactivate every colleague's
      * personal credential. The filter is the FULL TENANCY TUPLE, treating null as a value
      * to match, and it includes `appId` (which matters identically under `wildcard`, where
      * omitting it would deactivate siblings across every app in the suite).
@@ -697,7 +697,7 @@ export class AiProviderCredential extends BaseModel {
      * writer wins; the scope may transiently hold zero or two active rows); a partial
      * failure mid-loop leaves the invariant violated with no transaction; nothing defines
      * "active" when the only active row is deleted or disabled. ALL THREE ARE TOLERABLE
-     * PRECISELY BECAUSE `isActive` IS RANK-ONLY AND RESOLUTION IS TOTAL — promoting
+     * PRECISELY BECAUSE `isActive` IS RANK-ONLY AND RESOLUTION IS TOTAL, promoting
      * `isActive` to a hard filter would couple the correctness of every AI call to the
      * atomicity of a multi-row update the framework cannot give you.
      */
@@ -742,7 +742,7 @@ export class AiProviderCredential extends BaseModel {
     /**
      * Replace a row's ciphertext with an equivalent wrap under a new master key.
      *
-     * Deliberately bypasses the tenant write hook via `persistPreparedUpdate` — this is a RE-WRAP
+     * Deliberately bypasses the tenant write hook via `persistPreparedUpdate`: this is a RE-WRAP
      * of an existing ciphertext, not a tenant edit: plaintext, hint and AAD tuple are all
      * unchanged. The key id and inline-secret state are predicates on the UPDATE itself,
      * so a concurrent tenant edit is never clobbered.
@@ -788,7 +788,7 @@ export class AiProviderCredential extends BaseModel {
      * NEVER AUTO-DISABLE ON REPEATED FAILURE. It looks like a reasonable feature and is an
      * outage amplifier: a provider-wide outage fails every tenant's credential
      * simultaneously, and auto-disable converts a two-hour upstream incident into a
-     * permanent state change across every tenant in every consuming app — recovery then
+     * permanent state change across every tenant in every consuming app, recovery then
      * requires thousands of individual humans to obtain and paste new keys. The upstream
      * incident self-heals; the auto-disable does not. Increment the counter, surface the
      * state, let a human act.
@@ -800,7 +800,7 @@ export class AiProviderCredential extends BaseModel {
         // ONE STATEMENT, AND THE COUNTER IS COMPUTED BY THE DATABASE.
         //
         // The obvious version reads the row, adds one in JS, and writes it back. On the
-        // INFERENCE PATH — which is concurrent by definition — two failures that overlap both
+        // INFERENCE PATH, which is concurrent by definition, two failures that overlap both
         // read N and both write N+1, so the counter under-counts exactly when it matters:
         // during the provider outage that is producing the concurrent failures. It also costs
         // a second D1 round trip per call. `consecutive_failures + 1` in SQL is atomic per

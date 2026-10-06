@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — request signing
+// @ottabase/premium-webhooks, request signing
 // ============================================================
 // HMAC-SHA256 over `<timestamp>.<body>`, in a Stripe-shaped header:
 //
@@ -54,7 +54,7 @@ export async function buildSignatureHeader(secret: string, body: string, timesta
 }
 
 /**
- * Verify a signature header — the RECEIVER's half, shipped so customers do not have to
+ * Verify a signature header: the RECEIVER's half, shipped so customers do not have to
  * re-implement it (and get the timestamp binding subtly wrong).
  *
  * Compares in constant time and enforces a tolerance window; a verifier without both is

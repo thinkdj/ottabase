@@ -10,7 +10,7 @@ import {
 // Themes are registered in main.tsx via registerBuiltInThemes() before app render
 
 // ---------------------------------------------------------------------------
-// Public API – delegates to BrandEngine
+// Public API, delegates to BrandEngine
 // ---------------------------------------------------------------------------
 
 /** Returns list of all registered theme identifiers */
@@ -20,7 +20,7 @@ export const getAvailableThemes = (): string[] => getRegisteredThemeNames();
 export const getTheme = (themeName: string): BrandTheme => getThemeOrDefault(themeName);
 
 // ---------------------------------------------------------------------------
-// Main apply function – now powered by BrandEngine
+// Main apply function, now powered by BrandEngine
 // ---------------------------------------------------------------------------
 
 /**

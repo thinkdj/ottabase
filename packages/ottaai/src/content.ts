@@ -1,12 +1,12 @@
 // ============================================================
-// @ottabase/ottaai — Call content: images + JSON output
+// @ottabase/ottaai, Call content: images + JSON output
 // ============================================================
 // The provider-NEUTRAL half of multimodal input and structured output. Lives in
 // the dependency-free root so a browser upload form, a worker route and every
 // transport read the SAME mime list, the SAME size limits and the SAME parser.
 //
-// The provider-SPECIFIC half — how an image part or a JSON request is spelled
-// on each wire — lives in `transports/wire.ts`, next to the dialect it belongs to.
+// The provider-SPECIFIC half: how an image part or a JSON request is spelled
+// on each wire, lives in `transports/wire.ts`, next to the dialect it belongs to.
 // ============================================================
 
 import type { AiCapability } from './registry';
@@ -25,7 +25,7 @@ export type AiImageMimeType = (typeof AI_IMAGE_MIME_TYPES)[number];
 /**
  * One part of a multi-part message.
  *
- * IMAGES ARE INLINE BASE64 ONLY — no URLs. A URL makes the PROVIDER fetch from wherever the
+ * IMAGES ARE INLINE BASE64 ONLY, no URLs. A URL makes the PROVIDER fetch from wherever the
  * caller pointed it (Gemini cannot fetch arbitrary URLs at all), and the bytes the model saw
  * are then no longer the bytes the app validated and sized.
  */
@@ -54,10 +54,10 @@ export interface AiMessage {
  *
  * TWO TIERS, because "JSON" means different things on different wires:
  *
- *  • default — the provider's JSON MODE where it has one (valid JSON, no schema enforcement),
+ *  • default: the provider's JSON MODE where it has one (valid JSON, no schema enforcement),
  *    with `schema` written into the system instruction. Accepts ANY JSON Schema on EVERY
  *    provider, so a schema that works with one tenant's key works with all of them.
- *  • `strict: true` — the provider ENFORCES `schema` where its wire supports that (OpenAI,
+ *  • `strict: true`: the provider ENFORCES `schema` where its wire supports that (OpenAI,
  *    Mistral, Perplexity, Anthropic, Gemini), and falls back to the default tier where it
  *    does not (DeepSeek, Groq, Azure, dynamic routes, Unified Billing). The schema must then
  *    fit the strict subset those providers share: every property listed in `required`,
@@ -235,7 +235,7 @@ export function validateCallContent(input: {
  *
  * Tolerates exactly one thing: a single Markdown code fence around the payload, which models
  * add when JSON is instructed rather than enforced. It does NOT hunt for the first `{` in
- * surrounding prose — a reply that needs that is not the JSON that was asked for, and
+ * surrounding prose, a reply that needs that is not the JSON that was asked for, and
  * "repairing" it hides a model that is ignoring the instruction.
  */
 export function parseJsonObject(text: string): Record<string, unknown> | undefined {

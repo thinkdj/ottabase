@@ -24,7 +24,7 @@ import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
-// Sample rules for the simulator only — the app's real rules live in Admin → Appearance → Layouts.
+// Sample rules for the simulator only, the app's real rules live in Admin → Appearance → Site design.
 const DEMO_ROUTE_MAPPINGS: RouteMapping[] = [
     { pathPattern: '/login', layoutTemplateId: 'auth', priority: 100 },
     { pathPattern: '/admin/**', layoutTemplateId: 'dashboard', priority: 90 },
@@ -43,7 +43,7 @@ export function LayoutDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Dynamic Layout Engine"
+                title="Layout engine"
                 description={
                     <>
                         Preset and route-resolution playground for <code>@ottabase/ottalayout</code>.
@@ -62,7 +62,7 @@ export function LayoutDemoPage() {
                         between them swaps the whole app shell. The rest of the app keeps its layout. Per-route rules
                         for real pages live in{' '}
                         <Link to="/admin/appearance" className="underline underline-offset-4">
-                            Admin → Appearance → Layouts
+                            Admin → Appearance → Site design
                         </Link>
                         .
                     </CardDescription>

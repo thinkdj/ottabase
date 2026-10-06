@@ -286,8 +286,8 @@ describe('ottablog helpers', () => {
             expect(formatted).toMatch(/January 15, 2024/);
         });
 
-        it('returns em dash for null date', () => {
-            expect(formatDate(null)).toBe('—');
+        it('returns an empty string for null date', () => {
+            expect(formatDate(null)).toBe('');
         });
 
         it('accepts custom format options', () => {
@@ -400,8 +400,8 @@ describe('ottablog helpers', () => {
             expect(formatted).toMatch(/Jan 15, 2024/);
         });
 
-        it('returns em dash for null date', () => {
-            expect(formatShortDate(null)).toBe('—');
+        it('returns an empty string for null date', () => {
+            expect(formatShortDate(null)).toBe('');
         });
 
         it('formats a date string with short month', () => {

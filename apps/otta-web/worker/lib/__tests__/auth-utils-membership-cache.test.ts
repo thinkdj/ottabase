@@ -75,7 +75,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('getSecurityContext — membership caching', () => {
+describe('getSecurityContext: membership caching', () => {
     it('caches org + group lookups in KV (fetcher called once across requests)', async () => {
         const kv = makeKv();
         const env = { OBCF_KV: kv } as any;
@@ -89,7 +89,7 @@ describe('getSecurityContext — membership caching', () => {
 
         const second = await getSecurityContext(makeRequest('org-a'), session, env);
         expect(second.memberOrganizationIds).toEqual(['org-a']);
-        expect(organizationIdsForUser).toHaveBeenCalledTimes(1); // cache hit — no second D1 fetch
+        expect(organizationIdsForUser).toHaveBeenCalledTimes(1); // cache hit, no second D1 fetch
         expect(groupIdsForUser).toHaveBeenCalledTimes(1);
     });
 

@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/cf-pdf",
     "version": "1.0.0",
-    "description": "PDF generation toolkit for Cloudflare Workers — Puppeteer rendering, DOM capture, binary metadata injection, and download helpers.",
+    "description": "PDF generation toolkit for Cloudflare Workers: Puppeteer rendering, DOM capture, binary metadata injection, and download helpers.",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.js",

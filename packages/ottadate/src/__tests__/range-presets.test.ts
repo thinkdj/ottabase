@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Tests for range presets
+ * @ottabase/ottadate: Tests for range presets
  */
 
 import { describe, expect, it } from 'vitest';

@@ -2,7 +2,7 @@
  * Route-dispatch PARITY test for the worker API router.
  *
  * Written BEFORE the router refactor so it can prove route-for-route parity
- * after. It deliberately depends on ZERO router internals — only on:
+ * after. It deliberately depends on ZERO router internals, only on:
  *   - which HANDLER gets called for a given (method, path),
  *   - the extra args that handler receives (slugs / ids / actions),
  *   - the returned Response (body/status) or null.
@@ -352,7 +352,7 @@ import {
 
 /**
  * The ONLY place in this file that knows how routing is invoked.
- * After the router refactor, ONLY this helper should need to change —
+ * After the router refactor, ONLY this helper should need to change,
  * every test below asserts observable dispatch behavior (which handler,
  * which extra args, which response), never router internals.
  */
@@ -372,7 +372,7 @@ async function dispatch(method: string, path: string) {
     return { response: await handleApiRequest(request, context.env), context };
 }
 
-/** Every mocked route handler — used to assert "nothing was called". */
+/** Every mocked route handler: used to assert "nothing was called". */
 const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleAdminAiConfig,
     handleAdminCronCreate,
@@ -635,7 +635,7 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleOttaormInit');
         });
 
-        it('PATCH /api/ottaorm/init matches nothing — the crud catch-all excludes init', async () => {
+        it('PATCH /api/ottaorm/init matches nothing: the crud catch-all excludes init', async () => {
             const { response } = await dispatch('PATCH', '/api/ottaorm/init');
             expect(response).toBeNull();
             expect(handleOttaormInit).not.toHaveBeenCalled();
@@ -910,7 +910,7 @@ describe('router dispatch parity', () => {
             expect(handleAdminDbRowDelete).not.toHaveBeenCalled();
         });
 
-        it('GET /api/admin/db/tables/us%65rs (percent-encoded, decodes to alnum) still matches nothing — charset is checked on the raw segment', async () => {
+        it('GET /api/admin/db/tables/us%65rs (percent-encoded, decodes to alnum) still matches nothing, charset is checked on the raw segment', async () => {
             const { response } = await dispatch('GET', '/api/admin/db/tables/us%65rs');
             expect(response).toBeNull();
             expect(handleAdminDbTableData).not.toHaveBeenCalled();

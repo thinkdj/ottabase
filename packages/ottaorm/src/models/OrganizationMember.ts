@@ -332,7 +332,7 @@ export class OrganizationMember extends BaseModel {
     /**
      * Activate a user's pending email invites: when a user signs up / signs in, flip their
      * `invited` org rows (matched by email and not yet linked to a user) to `active`, link the
-     * userId, and stamp `joinedAt`. Returns the number activated. Call from your auth flow — the
+     * userId, and stamp `joinedAt`. Returns the number activated. Call from your auth flow, the
      * group-level equivalent lives on `UserGroupMember`.
      */
     static async activatePendingInvites(userId: string, email: string): Promise<number> {
@@ -873,12 +873,12 @@ export class OrganizationMember extends BaseModel {
 
     /**
      * All organization IDs a user can access, from ACTIVE MEMBERSHIPS only. This is the
-     * authoritative "accessible orgs" set — use it to validate a user's active org and to populate
+     * authoritative "accessible orgs" set, use it to validate a user's active org and to populate
      * `SecurityContext.memberOrganizationIds` (the tenant-isolation boundary).
      *
      * Deliberately does NOT union `Organization.ownerId`: that field is stamped once at creation and
      * never cleared on removal/demotion (there is no ownership-transfer code), so unioning it would
-     * let a user who was removed from an org they created retain access to it — a stale-ownership
+     * let a user who was removed from an org they created retain access to it, a stale-ownership
      * cross-tenant leak. The org creator is always also given an ACTIVE owner membership row (see
      * user-provisioning / bootstrap), so active membership already covers every legitimate owner.
      */

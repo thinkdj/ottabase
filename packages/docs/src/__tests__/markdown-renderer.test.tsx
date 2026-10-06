@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
-describe('MarkdownRenderer — blockquote code block reindexing', () => {
+describe('MarkdownRenderer: blockquote code block reindexing', () => {
     it('renders correct code in blockquotes when outer code blocks exist (simple mode)', () => {
         const md = ['```js', 'const outer = 1;', '```', '', '> ```py', '> inner_val = 2', '> ```'].join('\n');
 
@@ -52,7 +52,7 @@ describe('MarkdownRenderer — blockquote code block reindexing', () => {
     });
 });
 
-describe('MarkdownRenderer — inline code protects markdown syntax', () => {
+describe('MarkdownRenderer: inline code protects markdown syntax', () => {
     it('does not italicize underscores inside inline code', () => {
         const md = 'Bindings: `OBCF_ANALYTICS_CORE`, `OBCF_ANALYTICS_SHORTLINKS`.';
 

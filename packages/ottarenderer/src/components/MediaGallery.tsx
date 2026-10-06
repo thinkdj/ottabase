@@ -84,7 +84,7 @@ function getLayoutItemClass(layout: MediaGalleryLayoutPreset, index: number): st
         return 'aspect-video snap-start';
     }
 
-    // masonry: no aspect ratio — natural image height determines item height
+    // masonry: no aspect ratio, natural image height determines item height
     if (layout === 'masonry') {
         return '';
     }
@@ -95,7 +95,7 @@ function getLayoutItemClass(layout: MediaGalleryLayoutPreset, index: number): st
         // Item 1: companion tile beside the wide one. At md+ it stretches to
         // match the wide tile's row height; at mobile it reverts to landscape.
         if (index % 5 === 1) return 'aspect-[4/3] md:aspect-auto';
-        // Items 2-4: body row — all the same aspect for consistent row height.
+        // Items 2-4: body row, all the same aspect for consistent row height.
         return 'aspect-[4/3]';
     }
 

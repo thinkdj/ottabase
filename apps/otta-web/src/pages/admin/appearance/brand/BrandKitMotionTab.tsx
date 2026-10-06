@@ -39,7 +39,7 @@ const MOTION_KEYFRAMES = `
 
 /**
  * A play-head travelling a timeline hairline. Deliberately not a dot on a filled
- * pill — that reads as a range slider the user can drag, which this is not.
+ * pill, that reads as a range slider the user can drag, which this is not.
  */
 function TravelTrack({
     duration,
@@ -141,7 +141,7 @@ interface MotionPreviewProps {
 }
 
 /**
- * Motion preview: three things the tokens actually control, shown together —
+ * Motion preview: three things the tokens actually control, shown together:
  * how the durations compare, what each easing curve does, and how they read on
  * real UI. Everything replays in sync, and re-runs whenever a token changes.
  */
@@ -169,7 +169,7 @@ function MotionPreview({ durations, easing, easingEnter, easingExit, disabled }:
                     <p className="text-sm font-medium">Preview</p>
                     <p className="text-xs text-muted-foreground">
                         {disabled
-                            ? 'Animations are disabled — everything snaps to its end state.'
+                            ? 'Animations are disabled: everything snaps to its end state.'
                             : 'All three tracks start together, so the gaps are the durations.'}
                     </p>
                 </div>
@@ -241,7 +241,7 @@ function MotionPreview({ durations, easing, easingEnter, easingExit, disabled }:
                 </div>
             </div>
 
-            {/* 4. Hover target — transitions, not keyframes, are what most UI actually uses */}
+            {/* 4. Hover target: transitions, not keyframes, are what most UI actually uses */}
             <div className="group flex items-center justify-between gap-3 rounded-md bg-muted/40 p-3">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     Hover me · fast + default easing
@@ -350,7 +350,7 @@ export function BrandKitMotionTab({ tokensJson, onTokensChange }: BrandKitMotion
                     </div>
                 </div>
 
-                {/* Disabling animations makes every duration 0 — dim and lock the tokens they'd control */}
+                {/* Disabling animations makes every duration 0, dim and lock the tokens they'd control */}
                 <fieldset
                     disabled={disableAnimations}
                     className={`space-y-4 border-0 p-0 ${disableAnimations ? 'pointer-events-none opacity-50' : ''}`}
@@ -470,7 +470,7 @@ export function BrandKitMotionTab({ tokensJson, onTokensChange }: BrandKitMotion
                 {!isSplitMode ? (
                     renderControls('shared', activeLight)
                 ) : (
-                    // Stacked, not side by side — each preview needs the full width to read
+                    // Stacked, not side by side, each preview needs the full width to read
                     <div className="grid grid-cols-1 gap-4">
                         {renderControls('light', activeLight)}
                         {renderControls('dark', activeDark)}

@@ -100,7 +100,7 @@ export function Counter() {
   "name": "ottabase",
   "version": "1.0.0",
   "dependencies": {
-    "react": "^18.3.1",
+    "react": "^19.0.0",
     "@tanstack/react-router": "^1.101.1",
     "@ottabase/ui-code-highlight": "^1.0.0"
   },
@@ -281,7 +281,7 @@ print(f"Fibonacci sequence: {result}")`,
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="CodeBlock Component"
+                title="Code highlighting"
                 description="@ottabase/ui-code-highlight - Syntax highlighting with highlight.js"
             />
 
@@ -293,7 +293,7 @@ print(f"Fibonacci sequence: {result}")`,
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                            <h3 className="font-semibold">✨ Highlights</h3>
+                            <h3 className="font-semibold">Highlights</h3>
                             <ul className="text-sm text-muted-foreground space-y-1">
                                 <li>• GitHub-style syntax highlighting</li>
                                 <li>• Light/dark mode support</li>
@@ -303,11 +303,14 @@ print(f"Fibonacci sequence: {result}")`,
                             </ul>
                         </div>
                         <div className="space-y-2">
-                            <h3 className="font-semibold">📦 Technical Details</h3>
+                            <h3 className="font-semibold">Technical Details</h3>
                             <ul className="text-sm text-muted-foreground space-y-1">
                                 <li>• Powered by highlight.js (76KB core)</li>
-                                <li>• 190+ languages supported</li>
-                                <li>• Zero runtime dependencies</li>
+                                <li>
+                                    • Bundled grammars: JavaScript, TypeScript, JSX and TSX, JSON, CSS and SCSS, HTML
+                                    and XML, Markdown, Bash, Python, SQL, TOML, INI
+                                </li>
+                                <li>• One runtime dependency: highlight.js</li>
                                 <li>• No provider wrapper needed</li>
                                 <li>• Automatic theme detection</li>
                             </ul>
@@ -411,26 +414,88 @@ function MyComponent() {
                                 <tr className="border-b">
                                     <td className="p-2 font-mono">code</td>
                                     <td className="p-2">string</td>
-                                    <td className="p-2">-</td>
-                                    <td className="p-2">The code to highlight (required)</td>
+                                    <td className="p-2">required</td>
+                                    <td className="p-2">The code to highlight</td>
                                 </tr>
                                 <tr className="border-b">
                                     <td className="p-2 font-mono">language</td>
                                     <td className="p-2">string</td>
-                                    <td className="p-2">-</td>
-                                    <td className="p-2">Language for syntax highlighting (required)</td>
+                                    <td className="p-2">'plaintext'</td>
+                                    <td className="p-2">
+                                        Grammar to highlight with; unknown names fall back to plain text
+                                    </td>
                                 </tr>
                                 <tr className="border-b">
                                     <td className="p-2 font-mono">filename</td>
                                     <td className="p-2">string</td>
                                     <td className="p-2">undefined</td>
-                                    <td className="p-2">Optional filename to display in header</td>
+                                    <td className="p-2">Shown in the header</td>
                                 </tr>
                                 <tr className="border-b">
                                     <td className="p-2 font-mono">showLineNumbers</td>
                                     <td className="p-2">boolean</td>
                                     <td className="p-2">false</td>
-                                    <td className="p-2">Show line numbers on the left</td>
+                                    <td className="p-2">Line numbers on the left</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">lineNumberStart</td>
+                                    <td className="p-2">number</td>
+                                    <td className="p-2">1</td>
+                                    <td className="p-2">First line number</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">maxHeight</td>
+                                    <td className="p-2">string</td>
+                                    <td className="p-2">undefined</td>
+                                    <td className="p-2">Scrolls past this height, e.g. 20rem</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">wrapLongLines</td>
+                                    <td className="p-2">boolean</td>
+                                    <td className="p-2">false</td>
+                                    <td className="p-2">Wrap instead of scrolling horizontally</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">hideHeader</td>
+                                    <td className="p-2">boolean</td>
+                                    <td className="p-2">false</td>
+                                    <td className="p-2">No filename or language header</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">hideCopyButton</td>
+                                    <td className="p-2">boolean</td>
+                                    <td className="p-2">false</td>
+                                    <td className="p-2">No copy button</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">highlightLines</td>
+                                    <td className="p-2">string | number[] | ranges</td>
+                                    <td className="p-2">undefined</td>
+                                    <td className="p-2">Lines to emphasise, e.g. '3,5-7' or [3, 5, 6, 7]</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">tabSize</td>
+                                    <td className="p-2">number</td>
+                                    <td className="p-2">4</td>
+                                    <td className="p-2">Tab width</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">collapsible</td>
+                                    <td className="p-2">boolean</td>
+                                    <td className="p-2">false</td>
+                                    <td className="p-2">Collapse long blocks behind a toggle</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">collapsibleThreshold</td>
+                                    <td className="p-2">number</td>
+                                    <td className="p-2">undefined</td>
+                                    <td className="p-2">Lines before a block collapses</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="p-2 font-mono">className</td>
+                                    <td className="p-2">string</td>
+                                    <td className="p-2">undefined</td>
+                                    <td className="p-2">Extra classes on the wrapper</td>
                                 </tr>
                             </tbody>
                         </table>

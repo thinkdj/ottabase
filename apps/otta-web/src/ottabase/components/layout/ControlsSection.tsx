@@ -22,12 +22,12 @@ function useOrganizationSelection() {
     const setOrganization = (orgId: string) => {
         // Apply locally for instant UI feedback... (the sentinel makes the api
         // client send x-org-id: platform, which the worker honors for platform
-        // admins as explicit NULL-org scope — the platform's own blog etc.)
+        // admins as explicit NULL-org scope, the platform's own blog etc.)
         setCurrentOrgId(orgId);
         setOrganizationId(orgId);
         // ...and persist server-side (membership-validated) so a REAL org choice survives
-        // across sessions and devices. Platform scope maps to CLEARING the active org — the
-        // sentinel is not an organization and would fail membership validation — which also
+        // across sessions and devices. Platform scope maps to CLEARING the active org, the
+        // sentinel is not an organization and would fail membership validation, which also
         // means it has no cross-device persistence; useSession's sync effect (lib/auth.ts,
         // resolveEffectiveOrgId) keeps it sticky client-side instead, using the localStorage
         // value set above, so the session's post-clear fallback org (the earliest membership)

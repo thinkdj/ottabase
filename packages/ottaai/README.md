@@ -3,10 +3,10 @@
 Tenant **BYOK** for AI: a user's key → an org's key → the platform default → no client. Encrypted at rest, resolved
 deterministically, gated server-side, and shipped with the settings UI.
 
-The tenant's key pays for the tenant's inference — which is what lets you offer strong AI on a free plan, removes the
+The tenant's key pays for the tenant's inference, which is what lets you offer strong AI on a free plan, removes the
 per-tenant cost ceiling, and answers "can we use your data" with the tenant's own provider contract.
 
-> **Scope: chat with text and image input, text or JSON output — plus embeddings.** Chat uses `AiCallOptions`: message
+> **Scope: chat with text and image input, text or JSON output, plus embeddings.** Chat uses `AiCallOptions`: message
 > `content` is a string or an array of `text` / inline base64 `image` parts, and `responseFormat` asks for a JSON object
 > (see [Images and JSON output](#images-and-json-output)). Embeddings use the separate `AiEmbedOptions` /
 > `client.embed()` contract, returning ordered numeric vectors and input-token accounting. Audio, tool calls and image
@@ -32,7 +32,7 @@ When no custom `fetch` implementation is supplied, the gateway transport invokes
 
 ## Provider support
 
-The gateway transport calls only providers it has a **verified wire contract** for — a transcribed URL, auth scheme,
+The gateway transport calls only providers it has a **verified wire contract** for: a transcribed URL, auth scheme,
 request body and response parser, each asserted literally in `__tests__/gateway-wire.test.ts`.
 
 | Provider           | Gateway path                                             | Auth                              | Tenant BYOK               |
@@ -45,12 +45,12 @@ request body and response parser, each asserted literally in `__tests__/gateway-
 | `deepseek`         | `/deepseek/chat/completions`                             | `Authorization: Bearer`           | ✓                         |
 | `perplexity`       | `/perplexity-ai/chat/completions`                        | `Authorization: Bearer`           | ✓                         |
 | `azure`            | `/azure-openai/{resource}/{deployment}/chat/completions` | `api-key`                         | ✓ (needs operator config) |
-| `workers-ai`       | —                                                        | —                                 | ✗ platform only           |
-| `cohere`           | —                                                        | —                                 | ✗ no verified wire        |
-| `hugging-face`     | —                                                        | —                                 | ✗ no verified wire        |
+| `workers-ai`       | -                                                        | -                                 | ✗ platform only           |
+| `cohere`           | -                                                        | -                                 | ✗ no verified wire        |
+| `hugging-face`     | -                                                        | -                                 | ✗ no verified wire        |
 
 **Note the `/v1` is not uniform.** AI Gateway proxies to each provider's own base URL, and those bases already differ in
-whether they carry a version segment — so `/openai/v1/chat/completions` resolves upstream to `/v1/v1/…` and 404s, while
+whether they carry a version segment, so `/openai/v1/chat/completions` resolves upstream to `/v1/v1/…` and 404s, while
 `/mistral/chat/completions` 404s for the opposite reason. There is no default that is correct for both; the table in
 `src/transports/providers.ts` is the source of truth and carries a doc link per entry.
 
@@ -61,7 +61,7 @@ dialect and answers an OpenAI-shaped request with **HTTP 200 and an empty comple
 
 **Azure is conditional, not unconditional.** Its gateway path carries operator-only `resourceName`, `deploymentName` and
 `apiVersion`, supplied through `platform.transportConfig`. On a deployment that never set them, the transport reports
-Azure via `unservableProviders()` and composition removes it from tenant selection — so the form does not offer a
+Azure via `unservableProviders()` and composition removes it from tenant selection, so the form does not offer a
 provider whose every call would resolve `MERGE_INCOMPLETE`. The boot summary names it (`unservableUnderThisConfig`) so
 "why is Azure missing?" is answerable from the log. In otta-web, set `CFAI_AZURE_RESOURCE_NAME`,
 `CFAI_AZURE_DEPLOYMENT_NAME` and `CFAI_AZURE_API_VERSION` (all three, or none).
@@ -73,7 +73,7 @@ cannot route under _this_ operator's configuration.
 
 Each route's support is a verified fact on its `supports` entry in `src/transports/providers.ts`, with the provider's
 API reference cited beside it. Where a route documents nothing, the transport refuses images and falls back to an
-instructed JSON reply — it never sends an OpenAI-shaped guess.
+instructed JSON reply, it never sends an OpenAI-shaped guess.
 
 | Route              | Image part                               | Max images | JSON (default tier)                | JSON (`strict: true`)                |
 | ------------------ | ---------------------------------------- | ---------- | ---------------------------------- | ------------------------------------ |
@@ -85,8 +85,8 @@ instructed JSON reply — it never sends an OpenAI-shaped guess.
 | `deepseek`         | `image_url` data URL                     | 20         | `json_object`                      | `json_object` + instructed schema    |
 | `perplexity`       | `image_url` data URL                     | 20         | instructed (no `json_object` type) | `json_schema`                        |
 | `azure`            | `image_url` data URL                     | 10         | `json_object`                      | `json_object` + instructed schema    |
-| dynamic route      | refused (not documented on `compat`)     | —          | instructed                         | instructed                           |
-| Unified Billing    | refused (not documented on the REST API) | —          | instructed                         | instructed                           |
+| dynamic route      | refused (not documented on `compat`)     | -          | instructed                         | instructed                           |
+| Unified Billing    | refused (not documented on the REST API) | -          | instructed                         | instructed                           |
 
 **Anthropic is not forced tool use.** `tool_choice: { type: 'tool' }` returns 400 on the newest Claude models and
 assistant prefill is gone from 4.6 onwards; native structured outputs (`output_config`, GA, no beta header) are the
@@ -96,7 +96,7 @@ and Azure strict falls back on purpose:** Groq documents `json_schema` as model-
 streaming; Azure's depends on the operator's `api-version` and the deployed model, neither of which a tenant controls.
 
 **The route is checked at RESOLUTION, not just at call time.** The transport reports what each route cannot carry
-(`unsupportedCapabilitiesFor`), and a task requiring it resolves `CAPABILITY_UNMET` on that path — tenant, platform
+(`unsupportedCapabilitiesFor`), and a task requiring it resolves `CAPABILITY_UNMET` on that path, tenant, platform
 fall-through or degraded retry. So `status()` and the gate never offer a vision task its route would refuse (for example
 `scan` on a Unified Billing platform floor).
 
@@ -108,7 +108,7 @@ createGatewayTransport({ routeSupport: { azure: { jsonSchema: true } } }); // ap
 ```
 
 **Output budget field.** OpenAI gets `max_completion_tokens` (its reasoning models reject `max_tokens` with a 400);
-OpenAI-compatible providers, dynamic routes and Unified Billing keep `max_tokens`. Neither can be set through `extra` —
+OpenAI-compatible providers, dynamic routes and Unified Billing keep `max_tokens`. Neither can be set through `extra`:
 use `maxTokens`, or the task's `maxTokens`. On Anthropic, `extra.system` is MERGED after the system messages, and a
 block array (e.g. with `cache_control` for prompt caching) stays a block array.
 
@@ -147,8 +147,8 @@ without touching the ORM.
 | **Call**       | trusted server code, at call time | resolve → decrypt → merge → client | the caller passing an **already-authenticated** context |
 
 The call plane **bypasses RLS on purpose**. RLS stops tenant A editing tenant B's row; it does not police the server's
-own lookup. That is safe only because the context is branded, has no public constructor, and is membership-verified —
-see `src/types.ts` and `src/ottaorm/policy.ts`.
+own lookup. That is safe only because the context is branded, has no public constructor, and is membership-verified, see
+`src/types.ts` and `src/ottaorm/policy.ts`.
 
 **Two dials.** `mode` says _where a key may come from_; `strategy` says _whose key outranks whose_.
 
@@ -159,11 +159,11 @@ see `src/types.ts` and `src/ottaorm/policy.ts`.
 | `byok`             | ✓                  | ✗                    |
 
 Layers **intersect**: `effective = packageDefault ∧ appConfig ∧ taskPolicy ∧ perCallOverride`. A layer may only remove a
-permission, never grant one — so a call site can never re-enable a platform key the operator switched off. Turning BYOK
+permission, never grant one, so a call site can never re-enable a platform key the operator switched off. Turning BYOK
 off entirely is `byokEnabled: false`, a rewrite rather than an intersection.
 
 `strategy` is `user` · `org` · `user-then-org` _(default, B2C)_ · `org-then-user` _(B2B)_. **A task may narrow `mode`
-but may never override `strategy`** — strategy is one half of a decision whose other half is the RLS filter dimension.
+but may never override `strategy`**, strategy is one half of a decision whose other half is the RLS filter dimension.
 
 ## Setup
 
@@ -223,7 +223,7 @@ import { AiProviderCredential, createCredentialPolicy } from '@ottabase/ottaai/o
 
 registerModels([...coreModels, AiProviderCredential]);
 initRLS();
-// AFTER initRLS() — the RLS registry is last-write-wins.
+// AFTER initRLS(): the RLS registry is last-write-wins.
 registerPolicy(createCredentialPolicy({ strategy: 'user-then-org' }));
 ```
 
@@ -271,7 +271,7 @@ const ai = createAiProvisioningWithStorage({
     handlers: {
         contextFromRequest: () => (security.userId ? { authenticated: true } : null),
         // A DURABLE verification budget. The in-memory fallback is module-scoped, which
-        // survives a request but not isolate churn — an attacker rotating connections gets a
+        // survives a request but not isolate churn, an attacker rotating connections gets a
         // fresh budget on each. Back it with KV in production.
         verifyLimiter: createKvVerifyLimiter(env.OBCF_KV),
     },
@@ -285,12 +285,12 @@ API token that has Workers AI Read permission. Provider-native Gateway billing i
 `verifyMembership` and `authorize` are **required** whenever the strategy has an org dimension; composition throws
 without them.
 
-- **`verifyMembership` is CALLED on every resolution**, before any query runs — not merely required at boot. The brand
-  on `AiContext` enforces provenance, not verification, so if the host hands over an org id it did not verify, the
-  resolver drops the org dimension rather than reading that org's credential.
+- **`verifyMembership` is CALLED on every resolution**, before any query runs, not merely required at boot. The brand on
+  `AiContext` enforces provenance, not verification, so if the host hands over an org id it did not verify, the resolver
+  drops the org dimension rather than reading that org's credential.
 - **`authorize` gates org-scoped mutations _and_ privileged reads.** RLS isolates tenants, not members: without it any
   org member could replace the shared key with one they control and harvest colleagues' prompts. `testSavedCredential`
-  counts as privileged — it decrypts the org key and sends it outbound on a member's command.
+  counts as privileged, it decrypts the org key and sends it outbound on a member's command.
 
 **Your inference route must gate on an authenticated session itself.** The credential routes 401 through the factory; an
 inference route you write does not. That matters because a host's security context typically only membership-verifies an
@@ -333,25 +333,25 @@ completely unstyled with no error:
 ```
 
 otta-web also ships a **platform-admin** snapshot at `/admin/infrastructure/ai` (`GET /api/admin/ai/config`). That page
-is the operator answer to "what is this deployment actually running against Cloudflare AI Gateway?" — dials, task
+is the operator answer to "what is this deployment actually running against Cloudflare AI Gateway?", dials, task
 policies, secret presence, unservable providers. It is not a settings form; config still lives in `ottabase.config.ts`
 and env.
 
 `allowOrgScope` is ANDed with server truth (`status.orgScopeManageable`), which carries **both** the operator's
 `allowOrgCredentials` dial and the strategy. Under `strategy: 'user'` an org-scoped row scores 0 and is permanently
-unselectable, so the option is hidden and the create handler refuses it — offering it there would produce a credential
+unselectable, so the option is hidden and the create handler refuses it, offering it there would produce a credential
 that is written, listed, and never used, with nothing erroring. Pass `allowOrgScope` and let the server decide; do not
 re-read the app config in the page to compute the same answer twice.
 
 ### 7. Call it
 
-An inference route wants **the gate and the client together** — `resolveWithGate` does both from one resolution:
+An inference route wants **the gate and the client together**: `resolveWithGate` does both from one resolution:
 
 ```ts
 const { gate, resolution } = await ai.resolveWithGate(ai.contextFrom(hostAuth), 'extract');
 if (!gate.allowed) return errorResponse('Connect your own key to use this', 402, { code: gate.code });
 if (!resolution.client) {
-    // Absence of a client IS the signal — resolution never throws for this.
+    // Absence of a client IS the signal, resolution never throws for this.
     return errorResponse('AI unavailable', 501, { code: resolution.reason });
 }
 const result = await resolution.client.complete({ messages: [{ role: 'user', content: prompt }] });
@@ -359,7 +359,7 @@ const result = await resolution.client.complete({ messages: [{ role: 'user', con
 
 ### Images and JSON output
 
-Declare what a task sends and expects — the declaration is what makes resolution pick a credential **and** a platform
+Declare what a task sends and expects, the declaration is what makes resolution pick a credential **and** a platform
 model that can serve it, so a call using an image or `responseFormat` on a task that did not declare `vision` / `json`
 is refused with `CONFIGURATION` before anything is sent:
 
@@ -387,19 +387,19 @@ if (!result.ok) return errorResponse(result.message, AI_ERROR_HTTP_STATUS[result
 const receipt = ReceiptSchema.parse(result.result.json); // validate the shape yourself
 ```
 
-- **Images** are inline base64 only (JPEG, PNG, GIF, WebP — the set every image-capable route accepts), in `user`
+- **Images** are inline base64 only (JPEG, PNG, GIF, WebP, the set every image-capable route accepts), in `user`
   messages only. `validateCallContent` enforces `AI_CONTENT_LIMITS` before any request: 5 MB per image, 14 MB per
-  request (Gemini caps the _whole_ inline request at 20 MB), 20 images — narrower per provider where documented (table
+  request (Gemini caps the _whole_ inline request at 20 MB), 20 images, narrower per provider where documented (table
   above). Set a tighter product budget in your route (otta-web: `features.ottaai.images`, 4 images of 4 MB), and give
-  images their own route with its own body cap — see otta-web's `/api/ai/vision`.
+  images their own route with its own body cap, see otta-web's `/api/ai/vision`.
 - **A per-call `model` is re-checked.** Resolution filtered a different model, so the instrumented client checks the
   task's `requiredCapabilities` against a per-call `model` (honouring `unknownModelPolicy`) before sending.
-- **JSON** has two tiers. The default uses the provider's JSON mode and writes `schema` into the system instruction —
-  any JSON Schema works on every provider. `strict: true` asks the provider to **enforce** `schema` where its route
-  supports that; the schema must then fit the shared strict subset (every property `required`,
-  `additionalProperties: false` on every object). The root is always an object.
+- **JSON** has two tiers. The default uses the provider's JSON mode and writes `schema` into the system instruction, any
+  JSON Schema works on every provider. `strict: true` asks the provider to **enforce** `schema` where its route supports
+  that; the schema must then fit the shared strict subset (every property `required`, `additionalProperties: false` on
+  every object). The root is always an object.
 - **The JSON guarantee.** On `complete()`, a `responseFormat` call returns `result.json` as a parsed object, or
-  `INVALID_RESPONSE` (502) — never `ok` with prose. The tokens of an unusable reply are still metered (the provider
+  `INVALID_RESPONSE` (502), never `ok` with prose. The tokens of an unusable reply are still metered (the provider
   billed for them) and the key's health is untouched. The most common cause is a reply cut off by `maxTokens`. A
   `stream()` call gets deltas only: join them and run `parseJsonObject`.
 - **The package does not validate against your schema.** It checks that the reply parses to an object. Validate the
@@ -442,12 +442,12 @@ Model selection is server-owned in the application route: declare the model on t
 options). The shipped `/api/ai/complete` endpoint rejects a request-body `model`, so a browser cannot switch providers,
 escape a task capability gate, or select an unbudgeted model.
 
-Do **not** write `requireByok(...)` then `resolve(...)`. It reads better and does the whole job twice — two candidate
+Do **not** write `requireByok(...)` then `resolve(...)`. It reads better and does the whole job twice, two candidate
 fan-outs (two D1 queries each under a mixed strategy) and two envelope decryptions, per inference, on the hot path. The
 two runs can also legitimately disagree if a credential changes between them, which surfaces as an allowed gate followed
 by `NOT_CONFIGURED`.
 
-`requireByok` remains for callers that want **only** the verdict — a middleware, a feature flag — and builds no client:
+`requireByok` remains for callers that want **only** the verdict, a middleware, a feature flag, and builds no client:
 
 ```ts
 const gate = await ai.requireByok(context, 'extract');
@@ -458,19 +458,19 @@ Both are the **same resolver** as the runtime path, so the guard and the call ca
 ### Spend controls (required before enabling a platform floor)
 
 **A usable platform route with no `quota` hook is unbounded operator spend.** Authentication is not a spend control: any
-signed-in user can loop the inference route on the operator's account. The package refuses to be quiet about it —
+signed-in user can loop the inference route on the operator's account. The package refuses to be quiet about it,
 composition logs `platformSpendUnbounded: true` in the boot summary and emits a `console.warn`.
 
 **"Usable" is asked of the TRANSPORT, not inferred from `platform.providerKey`**, and the distinction is load-bearing.
 Gateway-billed inference has no provider key: a gateway holding the credential (a BYOK alias, unified billing) still
 yields a complete platform config, so a key-based predicate reports "nothing to protect" on a deployment that can very
-much spend the operator's money — staying silent on exactly the shape that needed the warning. Composition therefore
+much spend the operator's money, staying silent on exactly the shape that needed the warning. Composition therefore
 builds the platform path's own merged config once and asks `transport.isComplete()`, exposing the answer as
 `platformRouteUsable` both on the instance and in the boot summary. **Host-side spend warnings should key on that.**
 
 It warns rather than throws on purpose. A missing `authorize` hook is a **security** hole (any org member can take the
-shared key) and hard-fails at composition; this is a **cost** hole — recoverable, visible on an invoice, and
-hard-failing it would brick every deployment that already has a platform route.
+shared key) and hard-fails at composition; this is a **cost** hole: recoverable, visible on an invoice, and hard-failing
+it would brick every deployment that already has a platform route.
 
 `quota` is called after resolution and **before** the outbound call, and it receives `source`:
 
@@ -478,7 +478,7 @@ hard-failing it would brick every deployment that already has a platform route.
 quota: async ({ source, taskKey, organizationId, userId }) => {
     // `source` is why this belongs here and not in route middleware: only after resolution
     // do you know whether this call spends the OPERATOR'S money or the TENANT'S.
-    if (source !== 'platform') return true; // BYOK — their key, their provider's limits
+    if (source !== 'platform') return true; // BYOK, their key, their provider's limits
     return underLimit(organizationId, userId);
 },
 ```
@@ -488,30 +488,30 @@ and observable rather than a bare 429 thrown from a route. It covers `stream()` 
 endpoint.
 
 otta-web ships a reference implementation in `worker/lib/ai-rate-limit.ts`: a KV fixed-window limiter over **three
-dimensions** — per user, per organization, and an app-wide ceiling — with limits in `features.ottaai.rateLimit`,
+dimensions**: per user, per organization, and an app-wide ceiling, with limits in `features.ottaai.rateLimit`,
 env-overridable so a live deployment can be tightened without a redeploy. Three rules in it are worth copying into any
 other implementation.
 
-**Fail closed for platform spend, open for BYOK** — when the store is missing or erroring. The operator's money must not
+**Fail closed for platform spend, open for BYOK**, when the store is missing or erroring. The operator's money must not
 become unlimited because a binding was forgotten; the tenant's own paid feature must not be bricked for the same reason.
 
 **Check every dimension before charging any.** Charging each bucket as it passes turns a narrow rejection into a wide
 denial of service: with `perUser: 20` and `perApp: 600`, a single user's 21st call increments the app bucket and only
-then fails on the user bucket — so 580 further rejected calls, free to that user and spending no provider tokens, drain
+then fails on the user bucket, so 580 further rejected calls, free to that user and spending no provider tokens, drain
 the app-wide budget and deny AI to every other account for the rest of the window. Reordering the checks does not fix it
 (a caller under their own limit but over their org's poisons the aggregate the same way); only preflighting does.
 
 **The aggregate ceiling is mandatory; the per-actor ones are not.** `perUser` and `perOrganization` each bound one actor
 and say nothing about the total, so `perApp` is the only limit on what an operator can spend. A deployment that can bill
-the operator and sets `perApp <= 0` has its platform calls refused rather than left uncapped — same asymmetry as a
+the operator and sets `perApp <= 0` has its platform calls refused rather than left uncapped, same asymmetry as a
 missing store, and the same escape hatch: use a large number, not zero. Env overrides are normalised through the same
 rule as the config path, so an invalid value falls back instead of silently uncapping.
 
 It is a **best-effort burst control, not a billing quota**. The counters are eventually consistent, so the effective
-ceiling is roughly the configured limit plus the in-flight concurrency count — a hard global budget needs a strongly
+ceiling is roughly the configured limit plus the in-flight concurrency count, a hard global budget needs a strongly
 consistent coordinator such as a Durable Object. (Cloudflare's own rate-limit binding is likewise location-local and
-eventually consistent.) Token accounting against a commercial policy — free tier, reset period, retries, refunds,
-per-model pricing, admin overrides — is deliberately out of scope here.
+eventually consistent.) Token accounting against a commercial policy: free tier, reset period, retries, refunds,
+per-model pricing, admin overrides, is deliberately out of scope here.
 
 ### Organization-scoped keys
 
@@ -540,12 +540,12 @@ Every resolution returns **both** `reason` and `tenantReason`. Without the secon
 into `PLATFORM_FALLBACK` and "why am I not on my own key?" becomes unanswerable.
 
 **Selection, not cascade.** The resolver makes one pass and returns one credential. If the selected key is revoked or
-rate-limited, the call **fails** — it does not silently fall back to the platform, because spending your credits on a
+rate-limited, the call **fails**: it does not silently fall back to the platform, because spending your credits on a
 tenant's expired key hides the problem from the person who must fix it. The optional
 `degradation: 'platform-on-auth-error'` policy allows exactly one retry, on 401/403 only, never on 429.
 
 **Decrypt failure fails closed, in every mode.** A wrong master secret in a deploy would otherwise move every tenant's
-spend onto the operator's bill while traffic looked completely normal — an incident discovered by invoice.
+spend onto the operator's bill while traffic looked completely normal, an incident discovered by invoice.
 
 ## Rotation
 
@@ -567,7 +567,7 @@ import { createMemoryStore, createMockTransport, createTestKeyring, strictModeSi
 ```
 
 **Strict mode** fails a test when resolution falls through to the platform unexpectedly. In development the platform
-fallback is always configured, so a broken BYOK-required path resolves successfully and every test passes — right up
+fallback is always configured, so a broken BYOK-required path resolves successfully and every test passes, right up
 until production, where it presents as a billing inversion or a gate that never engages.
 
 ```bash
@@ -583,21 +583,21 @@ The suite runs in `node` (Web Crypto fidelity for the envelope tests) with one f
 | `pure.test.ts`               | every cell of the score matrix, the conflict/app-scope tables, the merge rows, all three guard terms |
 | `resolver.test.ts`           | every stage and reason of the state machine, fail-closed decrypt, dry-run vs force-platform          |
 | `model-write-path.test.ts`   | the four secret rules through direct and RLS-constrained model writes, plus every scope rung         |
-| `review-regressions.test.ts` | defects found by adversarial review — wrong cost attribution, inert dials, lost metering             |
-| `gateway-wire.test.ts`       | the literal URL, headers, body and SSE framing per provider — incl. image parts and JSON fields      |
+| `review-regressions.test.ts` | defects found by adversarial review: wrong cost attribution, inert dials, lost metering              |
+| `gateway-wire.test.ts`       | the literal URL, headers, body and SSE framing per provider, incl. image parts and JSON fields       |
 | `content.test.ts`            | image/JSON validation, the capability-declaration rule, the JSON guarantee, metering a bad reply     |
 | `gateway-smoke.test.ts`      | **opt-in**: a real call to a real gateway. Skipped unless `OTTAAI_SMOKE_*` is set                    |
 | `react/…`                    | "leave blank keeps the key", the fail-closed gate, org-scope following server truth                  |
 
 `gateway-wire.test.ts` exists because of what its absence cost. The **old implementation** shipped with a green suite
-and four separate wire faults — `/openai/v1/chat/completions`, a missing `anthropic-version`, dynamic routes built as a
+and four separate wire faults: `/openai/v1/chat/completions`, a missing `anthropic-version`, dynamic routes built as a
 URL segment, and the BYOK alias sent as `cf-aig-provider-key` instead of `cf-aig-byok-alias`. Every one is a claim about
 a **string**, and no amount of scoring, crypto or resolution testing can catch a fact that nothing asserts. When you add
 a provider, add its row there first.
 
 `gateway-smoke.test.ts` covers what the wire tests structurally cannot: the wire tests prove we send what Cloudflare's
 docs **say**; only a real call proves Cloudflare still **accepts** it. Two surfaces make that a live risk rather than a
-hypothetical one — the OpenAI-compatible endpoint that dynamic routing depends on is documented as deprecated in favour
+hypothetical one, the OpenAI-compatible endpoint that dynamic routing depends on is documented as deprecated in favour
 of the AI Gateway REST API, and Dynamic Routing itself is Beta. Run it before a release and after any AI Gateway
 announcement:
 
@@ -611,5 +611,5 @@ There is **no reveal-key affordance**. Not for support, not for the tenant, not 
 path converts one compromised admin session into full credential exfiltration across every tenant. A tenant who lost
 their key obtains a new one from their provider.
 
-`buildCustodyDisclosure()` ships the exact factual paragraph to place next to the connect form and in your DPA — a
+`buildCustodyDisclosure()` ships the exact factual paragraph to place next to the connect form and in your DPA, a
 gateway processes tenant prompts and must be disclosed as a sub-processor.

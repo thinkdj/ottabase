@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     apiClient: vi.fn(),
-    putMappings: vi.fn(async () => ({})),
+    putMappings: vi.fn(async (_body: unknown) => ({})),
     putSlots: vi.fn(async () => ({ success: true })),
     refresh: vi.fn(),
 }));

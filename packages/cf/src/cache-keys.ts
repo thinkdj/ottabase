@@ -18,7 +18,7 @@
 export type CacheScope = 'org' | 'user' | 'app' | 'global';
 
 /**
- * Suggested cache namespaces. Accepts any string for extensibility —
+ * Suggested cache namespaces. Accepts any string for extensibility,
  * packages can use their own namespaces (e.g., 'auth', 'order').
  */
 export type CacheNamespace =
@@ -32,7 +32,7 @@ export type CacheNamespace =
     | 'auth'
     | 'system'
     | 'temp'
-    | (string & {}); // extensible — any string is accepted
+    | (string & {}); // extensible, any string is accepted
 
 // ── Internal helpers ────────────────────────────────────────
 
@@ -229,7 +229,7 @@ const SCOPE_MARKERS = new Set(['org', 'usr', 'app']);
 
 /**
  * Parse a cache key to extract its components.
- * Useful for debugging and monitoring — not for production hot paths.
+ * Useful for debugging and monitoring, not for production hot paths.
  */
 export function parseKey(key: string): {
     namespace?: string;

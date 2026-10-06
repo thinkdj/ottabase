@@ -175,7 +175,6 @@ h1 {
         </div>
         <p class="timer">Opens in <span id="countdown">${seconds}</span>s.</p>
         <a class="btn" href="${targetUrlAttribute}" rel="noopener noreferrer">Open now</a>
-        <p class="meta hidden">Powered by Ottabase</p>
       </div>
     </div>
     <script>

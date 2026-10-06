@@ -247,7 +247,7 @@ Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
 3. Generate `wrangler.production.jsonc` (placeholders → GitHub Secrets)
 4. Deploy to Cloudflare Workers and health-check
 
-Migrations are not part of CI — see Step 4.
+Migrations are not part of CI, see Step 4.
 
 ### Turborepo Remote Cache
 

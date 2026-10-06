@@ -296,8 +296,8 @@ interface JobContext<E> {
 ```
 
 **Auto-ack behavior:** Jobs are automatically acknowledged (acked) when the handler completes successfully. If you call
-`ctx.ack()` or `ctx.retry()` explicitly, the auto-ack is disabled—so it's safe to call these methods and return normally
-without double-acking.
+`ctx.ack()` or `ctx.retry()` explicitly, the auto-ack is disabled, so it's safe to call these methods and return
+normally without double-acking.
 
 ## License
 

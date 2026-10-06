@@ -4,6 +4,7 @@
  */
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Moon, Paintbrush, Palette, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 /** Groups of CSS variable tokens the preset maps to Tailwind utilities. */
@@ -36,9 +37,17 @@ const TOKEN_GROUPS = [
         tokens: [
             { name: '--sidebar-background', tw: 'bg-sidebar', desc: 'Sidebar bg' },
             { name: '--sidebar-foreground', tw: 'text-sidebar-foreground', desc: 'Sidebar text' },
-            { name: '--sidebar-primary', tw: 'bg-sidebar-primary', desc: 'Sidebar active item' },
             { name: '--sidebar-accent', tw: 'bg-sidebar-accent', desc: 'Sidebar hover' },
             { name: '--sidebar-border', tw: 'border-sidebar-border', desc: 'Sidebar border' },
+        ],
+    },
+    {
+        label: 'Status',
+        tokens: [
+            { name: '--success', tw: 'bg-success', desc: 'Success' },
+            { name: '--warning', tw: 'bg-warning', desc: 'Warning' },
+            { name: '--info', tw: 'bg-info', desc: 'Info' },
+            { name: '--overlay', tw: 'bg-overlay', desc: 'Dialog scrim' },
         ],
     },
     {
@@ -82,10 +91,12 @@ function TokenSwatch({ name, tw, desc }: { name: string; tw: string; desc: strin
 }
 
 export function UiTailwindDemoPage() {
+    // Swatches read the live CSS variables once per mount; the theme is part of the key so they re-read on a flip
+    const { resolvedTheme } = useTheme();
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Tailwind Preset"
+                title="Tailwind preset"
                 description="Shared Tailwind CSS preset that maps HSL CSS variables (shadcn-style tokens) to Tailwind utilities. All colors, radii, fonts, chart tokens, and sidebar tokens are defined centrally."
                 actions={
                     <Badge variant="secondary" className="uppercase">
@@ -147,7 +158,7 @@ module.exports = {
 
             {/* Live token swatches */}
             {TOKEN_GROUPS.map((group) => (
-                <Card key={group.label}>
+                <Card key={`${group.label}-${resolvedTheme}`}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Palette className="h-4 w-4" />

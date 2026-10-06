@@ -1,7 +1,7 @@
 import type { FeaturesData } from './types';
 
 /**
- * List features — vertical stacked rows with alternating background.
+ * List features: vertical stacked rows with alternating background.
  */
 export function FeaturesList({ title, features }: FeaturesData) {
     return (

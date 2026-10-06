@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Pure menu types and tree utilities (headless, framework-agnostic)
-// No persistence or ORM – models/schema/handlers live in @ottabase/brand-engine
-// No rendered UI – all React renderers live behind the ./render subpath so this
+// Ottamenu, Pure menu types and tree utilities (headless, framework-agnostic)
+// No persistence or ORM: models/schema/handlers live in @ottabase/brand-engine
+// No rendered UI, all React renderers live behind the ./render subpath so this
 // barrel stays pure and import-safe in non-React (edge/worker) contexts.
 // ---------------------------------------------------------------------------
 

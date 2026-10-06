@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Single menu item link (internal, used by renderers)
+// Ottamenu, Single menu item link (internal, used by renderers)
 // ---------------------------------------------------------------------------
 
 import { Link } from '@tanstack/react-router';

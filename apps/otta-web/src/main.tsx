@@ -11,7 +11,7 @@ import './styles/globals.css';
 registerBuiltInThemes();
 
 // ---------------------------------------------------------------------------
-// Embed routes (/embed/*) run in a separate, minimal React tree — no brand,
+// Embed routes (/embed/*) run in a separate, minimal React tree, no brand,
 // session, blog state, or org fetches. Only QueryClient + next-themes.
 // ---------------------------------------------------------------------------
 const isEmbedRoute = window.location.pathname.startsWith('/embed');

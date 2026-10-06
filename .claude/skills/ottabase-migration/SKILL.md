@@ -1,14 +1,14 @@
 ---
 name: ottabase-migration
 description:
-    The Ottabase way to evolve the database schema — auto-migrations from Models plus custom migrations for what auto
+    The Ottabase way to evolve the database schema, auto-migrations from Models plus custom migrations for what auto
     can't do. Use for "add a column", "migrate the DB", "schema change", "seed data", "add an index/view/trigger",
     "rename a column". Encodes what auto-migration can and cannot do, and where custom migrations live.
 ---
 
 # Migrations the Ottabase way
 
-Tables come from your **Models** — you rarely hand-write DDL. `POST /api/ottaorm/init` runs `autoInit` (engine in
+Tables come from your **Models**: you rarely hand-write DDL. `POST /api/ottaorm/init` runs `autoInit` (engine in
 `@ottabase/ottaorm`), which collects every schema via `getAllSchemas()` and applies it to D1. In prod it requires
 `MIGRATION_SECRET` (`checkMigrationAuth`); it's also callable from Admin › Migrations and on tenant bootstrap.
 
@@ -21,12 +21,12 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 - **Can**: create missing tables, add new columns, ensure declared indexes, run tracked custom migrations. History lives
   in `_ottabase_migrations`; results report `tablesCreated` / `columnsAdded` / `indexesEnsured` / `customMigrationsRun`.
 - **A new NOT NULL column needs a DEFAULT** (otherwise it can't backfill existing rows).
-- **Cannot** rename or drop by default — that needs `allowDestructive: true` (`MIGRATION_ALLOW_DESTRUCTIVE` or request
-  body) and/or a `renameMap`. **No automatic rollback** — reversing a schema change is manual.
+- **Cannot** rename or drop by default, that needs `allowDestructive: true` (`MIGRATION_ALLOW_DESTRUCTIVE` or request
+  body) and/or a `renameMap`. **No automatic rollback**: reversing a schema change is manual.
 
 ## Custom migrations (for what Models can't express)
 
-Reserve these for **seeding, indexes, views, triggers, data backfills** — not for creating tables (Models do that). They
+Reserve these for **seeding, indexes, views, triggers, data backfills**, not for creating tables (Models do that). They
 live in the app registry `apps/*/ottabase/migrations/` (combined by `buildAppMigrations(env)`), each an object:
 
 ```ts
@@ -40,16 +40,16 @@ live in the app registry `apps/*/ottabase/migrations/` (combined by `buildAppMig
 ```
 
 Names are ordered; each runs once and is recorded. In this greenfield/pre-launch repo you can also just **edit the
-Model/schema directly and re-run init** rather than writing a migration — there is no production data to preserve yet.
+Model/schema directly and re-run init** rather than writing a migration, there is no production data to preserve yet.
 
 ## Gotchas
 
 - The engine source is `packages/ottaorm/src/migrations` (`autoInit` / runtime generator); import `autoInit`,
-  `runMigrations` and the `Migration` type from the `@ottabase/ottaorm` root — there is no `/migrations` subpath. There
-  is **no `@ottabase/migrate` package** — don't import from it.
+  `runMigrations` and the `Migration` type from the `@ottabase/ottaorm` root, there is no `/migrations` subpath. There
+  is **no `@ottabase/migrate` package**: don't import from it.
 - `up`/`down` receive the `DbDriver` from both `autoInit` and `runMigrations`: use `db.executeRaw(sql)`.
 - After `clean:d1` / `clean:state`, re-run bootstrap + init to rebuild the schema.
-- A new NOT NULL column without a DEFAULT will fail the migration — add one.
+- A new NOT NULL column without a DEFAULT will fail the migration, add one.
 
 ## Authoritative sources
 

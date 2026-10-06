@@ -24,7 +24,7 @@ export default defineConfig({
             },
             // Resolve ui-shadcn to source so its components are covered here without a
             // rebuild. Its subpaths do NOT all live under src/ (components/ui/*.tsx
-            // self-import these two), so map them explicitly rather than by wildcard —
+            // self-import these two), so map them explicitly rather than by wildcard,
             // a `src/$1` rewrite points at files that do not exist. Mirrors
             // packages/ui-shadcn/vitest.config.ts; keep the two in sync.
             {

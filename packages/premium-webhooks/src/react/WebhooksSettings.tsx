@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium-webhooks/react — the drop-in settings surface
+// @ottabase/premium-webhooks/react, the drop-in settings surface
 // ============================================================
 // TAILWIND SETUP CHECKLIST (this fails with NO ERROR): a consuming app must add
 //     '../../packages/premium-webhooks/src/**/*.{js,ts,jsx,tsx}'
@@ -10,7 +10,25 @@
 // ============================================================
 
 import { PremiumGate, usePremiumLimit } from '@ottabase/premium/react';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { CheckCircle2, Plus, Send, Trash2, TriangleAlert, Webhook } from 'lucide-react';
 import { useState } from 'react';
 import { WEBHOOKS_FEATURE_DELIVERY_LOG, WEBHOOKS_LIMIT_ENDPOINTS, WEBHOOKS_PACKAGE_KEY } from '../constants';
@@ -45,7 +63,7 @@ function EndpointRow({
                     <span className="truncate font-mono text-xs">{endpoint.url}</span>
                     {!endpoint.enabled ? (
                         <Badge variant="outline" className="rounded-full text-[0.6875rem]">
-                            paused
+                            Paused
                         </Badge>
                     ) : null}
                 </div>
@@ -71,9 +89,25 @@ function EndpointRow({
                     <Send className="mr-1.5 h-3.5 w-3.5" />
                     Test
                 </Button>
-                <Button size="sm" variant="ghost" onClick={onDelete} disabled={busy} aria-label="Delete endpoint">
-                    <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="ghost" disabled={busy} aria-label="Delete endpoint">
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this endpoint?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Deliveries to {endpoint.url} stop at once and its signing secret is gone for good.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Keep it</AlertDialogCancel>
+                            <AlertDialogAction onClick={onDelete}>Delete endpoint</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
     );
@@ -120,7 +154,7 @@ export interface WebhooksSettingsProps {
  * Endpoint management, plus the paid delivery log behind its own gate.
  *
  * The create form is disabled by the SAME limit the server enforces, read from the
- * server-resolved status — so the button and the 402 can never disagree about what the
+ * server-resolved status, so the button and the 402 can never disagree about what the
  * plan allows.
  */
 export function WebhooksSettings({ events }: WebhooksSettingsProps) {
@@ -248,7 +282,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
 
                     {secret ? (
                         <div className="space-y-1 rounded-lg bg-background p-3 ring-1 ring-border">
-                            <p className={MICRO_LABEL}>Signing secret — shown once</p>
+                            <p className={MICRO_LABEL}>Signing secret: shown once</p>
                             <code className="block break-all font-mono text-xs">{secret}</code>
                             <p className="text-xs text-muted-foreground">
                                 Store it now. It is not retrievable later; delete and recreate the endpoint if you lose
@@ -268,7 +302,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                     <PremiumGate
                         packageKey={WEBHOOKS_PACKAGE_KEY}
                         feature={WEBHOOKS_FEATURE_DELIVERY_LOG}
-                        title="Delivery history"
+                        title="Delivery log"
                         description="Retained delivery history is part of the paid plan. Endpoint health above stays available on every plan."
                     >
                         <DeliveryLog />

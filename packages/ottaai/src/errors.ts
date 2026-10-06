@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Error class + shared error taxonomy
+// @ottabase/ottaai, Error class + shared error taxonomy
 // ============================================================
 // ONE taxonomy, used on BOTH paths: verify-a-key (pre-save) and runtime
 // inference classification. Confining classification to pre-save validation
@@ -10,7 +10,7 @@
 /**
  * Stable, machine-readable failure codes.
  *
- * These are PUBLIC API — a UI branches on the code, never on the message.
+ * These are PUBLIC API: a UI branches on the code, never on the message.
  * Renaming one is a breaking change.
  */
 export const AI_ERROR_CODES = {
@@ -26,7 +26,7 @@ export const AI_ERROR_CODES = {
     NOT_CONFIGURED: 'NOT_CONFIGURED',
     /** The selected transport intentionally has no verified implementation for this operation. */
     UNSUPPORTED_OPERATION: 'UNSUPPORTED_OPERATION',
-    /** A credential row EXISTS but could not be decrypted/used — re-enter it. */
+    /** A credential row EXISTS but could not be decrypted/used, re-enter it. */
     CREDENTIAL_UNREADABLE: 'CREDENTIAL_UNREADABLE',
     /** This task requires the tenant's own key (`gate: 'required'`). */
     BYOK_REQUIRED: 'BYOK_REQUIRED',
@@ -43,19 +43,19 @@ export const AI_ERROR_CODES = {
     CONFIGURATION: 'CONFIGURATION',
     /** Crypto: envelope shape or version is unreadable BEFORE any crypto runs. */
     BAD_CIPHERTEXT: 'BAD_CIPHERTEXT',
-    /** Crypto: wrong key OR tampering — AES-GCM cannot distinguish the two. */
+    /** Crypto: wrong key OR tampering, AES-GCM cannot distinguish the two. */
     DECRYPT_FAILED: 'DECRYPT_FAILED',
     /** Crypto: no keyring / no primary secret registered. */
     NO_ENCRYPTION_KEY: 'NO_ENCRYPTION_KEY',
     /** Crypto: the runtime exposes no Web Crypto subtle implementation. */
     NO_WEB_CRYPTO: 'NO_WEB_CRYPTO',
     /**
-     * The provider answered, but not with what the call asked for — a `responseFormat` call
+     * The provider answered, but not with what the call asked for, a `responseFormat` call
      * whose reply does not parse to a JSON object (often a reply cut off by `maxTokens`).
      * The key is healthy and the tokens were spent; a larger `maxTokens` may help.
      */
     INVALID_RESPONSE: 'INVALID_RESPONSE',
-    /** Anything else — message is REDACTED passthrough. */
+    /** Anything else: message is REDACTED passthrough. */
     ERROR: 'ERROR',
 } as const;
 
@@ -65,8 +65,8 @@ export type AiErrorCode = (typeof AI_ERROR_CODES)[keyof typeof AI_ERROR_CODES];
  * The package's single error type. Exported as a VALUE so consumers can `instanceof` it.
  *
  * Thrown only at the two tiers where throwing is correct (see §2.7 of the design record):
- *  - boot/composition — misconfiguration a developer must fix
- *  - write path — crypto and validation, because a `Result` can be ignored and the write
+ *  - boot/composition: misconfiguration a developer must fix
+ *  - write path, crypto and validation, because a `Result` can be ignored and the write
  *    would then proceed with plaintext
  *
  * Everywhere else (`resolve`, `verify`, transport) returns values; absence of a client is the signal.
@@ -125,7 +125,7 @@ export const AI_ERROR_HTTP_STATUS: Record<AiErrorCode, number> = {
  */
 export const AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
     INVALID_KEY: 'The provider rejected this API key.',
-    MODEL_NOT_FOUND: 'The provider could not find that model — check the model name.',
+    MODEL_NOT_FOUND: 'The provider could not find that model. Check the model name.',
     RATE_LIMITED: 'Your key works, but the provider is rate-limiting right now. Try again shortly.',
     TIMEOUT: 'The request to the provider timed out.',
     NOT_CONFIGURED: 'AI is not configured. Connect a provider to enable this feature.',

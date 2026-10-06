@@ -42,7 +42,7 @@ const themeStorageAtom = atomWithStorage<'light' | 'dark'>('ottabase-theme', ini
 
 ```typescript
 import { useAtom } from "jotai";
-import { themeAtom } from "@/ottabase/state/appGlobalState";
+import { themeAtom } from "@/ottabase/state/appState";
 
 function MyComponent() {
   const [theme, setTheme] = useAtom(themeAtom);
@@ -101,7 +101,7 @@ The template app does not ship Mantine. When an app opts into the `@ottabase/ui-
 ```tsx
 // Example usage in an app layout
 import { useAtomValue } from 'jotai';
-import { themeAtom } from '@/ottabase/state/appGlobalState';
+import { themeAtom } from '@/ottabase/state/appState';
 import { ProviderUIMantine } from '@ottabase/ui-mantine';
 
 export default function MantineLayout({ children }) {
@@ -184,7 +184,7 @@ If you have existing theme code:
 ### themeAtom
 
 ```typescript
-import { themeAtom } from '@/ottabase/state/appGlobalState';
+import { themeAtom } from '@/ottabase/state/appState';
 
 // Read theme
 const [theme] = useAtom(themeAtom);
@@ -246,7 +246,7 @@ type Theme = 'light' | 'dark';
 
 ```typescript
 import { useAtom } from "jotai";
-import { themeAtom } from "@/ottabase/state/appGlobalState";
+import { themeAtom } from "@/ottabase/state/appState";
 
 export function ThemeToggle() {
   const [theme, setTheme] = useAtom(themeAtom);
@@ -263,7 +263,7 @@ export function ThemeToggle() {
 
 ```typescript
 import { useAtomValue } from "jotai";
-import { themeAtom } from "@/ottabase/state/appGlobalState";
+import { themeAtom } from "@/ottabase/state/appState";
 
 export function ThemedCard() {
   const theme = useAtomValue(themeAtom);
@@ -280,7 +280,7 @@ export function ThemedCard() {
 
 ```typescript
 import { useSetAtom } from 'jotai';
-import { themeAtom } from '@/ottabase/state/appGlobalState';
+import { themeAtom } from '@/ottabase/state/appState';
 
 export function useAutoTheme() {
     const setTheme = useSetAtom(themeAtom);

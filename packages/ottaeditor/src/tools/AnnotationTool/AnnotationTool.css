@@ -11,7 +11,7 @@
     background-color: hsl(var(--warning) / 0.3);
 }
 
-/* Annotation popup — floating UI, keeps elevation */
+/* Annotation popup: floating UI, keeps elevation */
 .cdx-annotation-popup {
     position: fixed;
     z-index: 9999;

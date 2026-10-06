@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Tests for core date utilities
+ * @ottabase/ottadate: Tests for core date utilities
  */
 
 import { describe, expect, it } from 'vitest';
@@ -252,7 +252,7 @@ describe('getSecondsList', () => {
 
 describe('buildCalendarGrid edge cases', () => {
     it('handles February in a leap year (2024)', () => {
-        const grid = buildCalendarGrid(2024, 1); // Feb 2024 (leap year — 29 days)
+        const grid = buildCalendarGrid(2024, 1); // Feb 2024 (leap year, 29 days)
         expect(grid).toHaveLength(42);
         // Feb 29 must be present somewhere in the grid
         const hasFeb29 = grid.some((d) => d.getMonth() === 1 && d.getDate() === 29);
@@ -278,7 +278,7 @@ describe('buildCalendarGrid edge cases', () => {
 
 describe('toDate edge cases', () => {
     it('treats numeric input as seconds (not milliseconds)', () => {
-        // toDate always multiplies by 1000 — callers must pass seconds
+        // toDate always multiplies by 1000, callers must pass seconds
         const secTs = 1704067200; // Jan 1 2024 UTC in seconds
         const d = toDate(secTs);
         expect(d).toBeInstanceOf(Date);

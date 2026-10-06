@@ -25,7 +25,7 @@ export class Comment extends BaseModel {
 
     // User-supplied fields plus server-injected context fields (userId, organizationId, depth).
     // The route handler MUST overwrite userId and organizationId from the session to prevent
-    // client impersonation — they are listed here only so the writable check (which rejects
+    // client impersonation, they are listed here only so the writable check (which rejects
     // unlisted keys) accepts them after server-side injection. `depth` is accepted but never
     // trusted: Comment.create() always recomputes it from parentId.
     static writable = {
@@ -195,7 +195,7 @@ export class Comment extends BaseModel {
     }
 
     /**
-     * Toggle a user's reaction on this comment — adds if absent, removes if present.
+     * Toggle a user's reaction on this comment, adds if absent, removes if present.
      * Delegates to CommentReaction.toggle, which is a single atomic row DELETE-or-INSERT
      * against the normalized comment_reactions table (no read-modify-write race).
      */
@@ -218,7 +218,7 @@ export class Comment extends BaseModel {
 
     /**
      * Create a comment. `depth` is always recomputed from `parentId` (parent depth + 1, or 0),
-     * ignoring any supplied value, so no write path — generic CRUD or app code — can forge nesting.
+     * ignoring any supplied value, so no write path, generic CRUD or app code, can forge nesting.
      */
     static override async create<T extends typeof BaseModel>(
         this: T,
@@ -247,7 +247,7 @@ export class Comment extends BaseModel {
      * Validate a reply's parentId against the target it is being posted to, and compute its
      * server-side depth in the same lookup. A parentId is only valid when the parent comment
      * exists AND belongs to the exact same targetType/targetId/organizationId as the new reply
-     * — otherwise a caller could attach a reply to an unrelated (or cross-organization) comment,
+     *, otherwise a caller could attach a reply to an unrelated (or cross-organization) comment,
      * producing a nonsensical or tenant-crossing thread.
      *
      * Route handlers should call this instead of computeDepthForParent whenever parentId is

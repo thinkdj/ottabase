@@ -1,6 +1,6 @@
 /**
  * Vanilla image cropper: crop, flip, rotate, zoom with smooth transitions.
- * Zero dependencies. ~3–4 KB gzipped.
+ * Zero dependencies. ~3 to 4 KB gzipped.
  */
 import type { CropperOptions } from './types';
 import { DEFAULT_ASPECT_PRESETS } from './types';
@@ -8,7 +8,7 @@ import { DEFAULT_ASPECT_PRESETS } from './types';
 const ACCEPT = 'image/png,image/jpeg';
 const MIN_SIZE = 16;
 
-// Inline SVG icons (24x24) – no deps
+// Inline SVG icons (24x24): no deps
 const SVG_FLIP_H =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/></svg>';
 const SVG_FLIP_V =
@@ -535,7 +535,7 @@ export class Cropper {
         ctx.strokeStyle = 'rgba(0,0,0,0.25)';
         ctx.lineWidth = 1;
 
-        // Corner handles — small circular grips
+        // Corner handles: small circular grips
         const cornerRadius = 4.5;
         const corners = [
             { x, y }, // nw
@@ -550,7 +550,7 @@ export class Cropper {
             ctx.stroke();
         }
 
-        // Edge handles — short rounded bars, skipped when the crop box is too small to fit them cleanly
+        // Edge handles: short rounded bars, skipped when the crop box is too small to fit them cleanly
         const barLength = 18;
         const barThickness = 4;
         const cornerRoundness = barThickness / 2;

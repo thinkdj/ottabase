@@ -1,5 +1,5 @@
 // ============================================================
-// Images + JSON output — the provider-NEUTRAL half.
+// Images + JSON output, the provider-NEUTRAL half.
 //
 // The wire half (how each provider spells an image or a JSON request) is asserted
 // literally in `gateway-wire.test.ts`. This file covers what every transport
@@ -101,7 +101,7 @@ describe('validateCallContent', () => {
         expect(validateCallContent({ messages: tooMany }).ok).toBe(false);
     });
 
-    it('requires a schema for the strict tier — there is nothing to enforce otherwise', () => {
+    it('requires a schema for the strict tier, there is nothing to enforce otherwise', () => {
         const messages = [{ role: 'user', content: 'hi' }];
         expect(validateCallContent({ messages, responseFormat: { type: 'json', strict: true } }).ok).toBe(false);
         expect(validateCallContent({ messages, responseFormat: { type: 'json', strict: 'yes' } }).ok).toBe(false);
@@ -290,7 +290,7 @@ describe('the JSON guarantee', () => {
         expect(result).toMatchObject({ ok: false, code: 'INVALID_RESPONSE' });
     });
 
-    it('still METERS the tokens of an unusable reply — the provider billed for them', async () => {
+    it('still METERS the tokens of an unusable reply, the provider billed for them', async () => {
         const h = harness();
         const client = await clientFor(h, 'scan');
         h.transport.script({ text: 'Sorry, I cannot read that.', tokens: { input: 900, output: 12 } });
@@ -390,7 +390,7 @@ describe('a route refusal is not a key failure', () => {
 });
 
 describe('a route that cannot carry a capability resolves CAPABILITY_UNMET, not a doomed client', () => {
-    it('on the platform path — status and the gate must not offer what every call refuses', async () => {
+    it('on the platform path: status and the gate must not offer what every call refuses', async () => {
         const h = harness();
         // e.g. Cloudflare Unified Billing: the model reads images, the REST endpoint does not.
         h.transport.script({ unsupported: ['vision'] });
@@ -403,7 +403,7 @@ describe('a route that cannot carry a capability resolves CAPABILITY_UNMET, not 
         expect(chat.client).not.toBeNull();
     });
 
-    it('on the tenant path — the credential is skipped with a readable verdict', async () => {
+    it('on the tenant path: the credential is skipped with a readable verdict', async () => {
         const h = harness();
         h.store.seed([await encryptedCredential({ provider: 'openai', model: 'gpt-4o-mini' })]);
         h.transport.script({ unsupported: ['vision'] });
@@ -452,7 +452,7 @@ describe('a per-call model is re-checked against the task', () => {
     it('refuses a per-call model that lacks a capability the task requires', async () => {
         const h = harness();
         const client = await clientFor(h, 'scan');
-        // Registered for OpenAI, but an embedding model — no vision, no json.
+        // Registered for OpenAI, but an embedding model, no vision, no json.
         const result = await client.complete({
             messages: [imageMessage()],
             responseFormat: { type: 'json' },

@@ -20,7 +20,7 @@
     margin-right: 0.5rem;
 }
 
-/* Preset buttons — segment pattern on the toolbar tint */
+/* Preset buttons: segment pattern on the toolbar tint */
 .cdx-layout__preset-btn {
     display: inline-flex;
     align-items: center;

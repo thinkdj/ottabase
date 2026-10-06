@@ -153,7 +153,7 @@ export function DataTableDemoPage() {
         <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-8">
             <DemoPageHeader
                 title="DataTable"
-                description="Advanced data table built on TanStack Table v8. Supports sorting, pagination, column visibility, row selection, bulk actions, and server-side integration with OttaORM."
+                description="Data table built on TanStack Table v8: sorting, pagination, column visibility, row selection and bulk actions, driven here by an in-memory list. The same props take a server-backed list from useListState."
             />
 
             {/* Demo Tabs */}
@@ -173,7 +173,7 @@ export function DataTableDemoPage() {
                 ))}
             </div>
 
-            {/* Info bar — shows messages from table interactions */}
+            {/* Info bar: shows messages from table interactions */}
             <TableMessageContext.Provider value={{ message, showMessage, clearMessage }}>
                 <TableInfoBar />
 
@@ -266,7 +266,7 @@ return (
                         />
                         <FeatureItem
                             title="Column Visibility"
-                            description="Toggle columns on/off via dropdown — state persists across renders"
+                            description="Toggle columns on/off via dropdown, state persists across renders"
                         />
                         <FeatureItem
                             title="Row Selection"
@@ -278,7 +278,7 @@ return (
                         />
                         <FeatureItem
                             title="Theme-Aware"
-                            description="Uses CSS variables from @ottabase/ui-shadcn — light/dark mode ready"
+                            description="Uses CSS variables from @ottabase/ui-shadcn, light/dark mode ready"
                         />
                     </div>
                 </CardContent>
@@ -323,7 +323,7 @@ function BasicDemo() {
                 <DataTable
                     table={table}
                     onCellClick={(row, columnId, value) =>
-                        showMessage(`Row: ${row.title} → Column: ${columnId} → Value: ${String(value ?? '—')}`)
+                        showMessage(`Row: ${row.title} → Column: ${columnId} → Value: ${String(value ?? 'empty')}`)
                     }
                     showColumnVisibility
                     showPagination

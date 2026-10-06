@@ -22,22 +22,25 @@ const DEMO_COMMANDS: SpotlightResult[] = [
     },
 ];
 
+/** The commands whose label, description or keywords contain the query; all of them for an empty query */
+function matchCommands(query: string) {
+    const q = query.trim().toLowerCase();
+    if (!q) return DEMO_COMMANDS;
+    return DEMO_COMMANDS.filter(
+        (item) =>
+            item.label.toLowerCase().includes(q) ||
+            item.description?.toLowerCase().includes(q) ||
+            item.keywords?.some((k) => k.toLowerCase().includes(q)),
+    );
+}
+
 export function SpotlightDemoPage() {
     const globalSpotlight = useSpotlight();
     const [openLocal, setOpenLocal] = useState(false);
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<string>('Nothing selected yet');
 
-    const sampleResults = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return DEMO_COMMANDS;
-        return DEMO_COMMANDS.filter(
-            (item) =>
-                item.label.toLowerCase().includes(q) ||
-                item.description?.toLowerCase().includes(q) ||
-                item.keywords?.some((k) => k.toLowerCase().includes(q)),
-        );
-    }, [query]);
+    const sampleResults = useMemo(() => matchCommands(query), [query]);
 
     return (
         <div className="space-y-8">
@@ -88,8 +91,9 @@ export function SpotlightDemoPage() {
                             App Spotlight Provider
                         </CardTitle>
                         <CardDescription>
-                            The app already mounts <code>SpotlightProvider</code>. Default shortcut is <code>/</code> on
-                            non-input areas.
+                            The app already mounts <code>SpotlightProvider</code>. The shortcuts are <code>⌘K</code> and{' '}
+                            <code>/</code>
+                            outside inputs.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -111,7 +115,7 @@ export function SpotlightDemoPage() {
                 defaultResults={sampleResults}
                 onSearch={(q) => {
                     setQuery(q);
-                    return sampleResults;
+                    return matchCommands(q);
                 }}
                 onResultSelect={(result) => {
                     setSelected(result.label);

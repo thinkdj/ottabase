@@ -404,7 +404,7 @@ describe('BUILT_IN_MENU_SLOTS', () => {
     });
 
     it('all slot names are valid BuiltInMenuSlotName type', () => {
-        // Compile-time check – if it compiles, all values are valid
+        // Compile-time check, if it compiles, all values are valid
         const slots: BuiltInMenuSlotName[] = BUILT_IN_MENU_SLOTS;
         expect(slots.every((s) => typeof s === 'string')).toBe(true);
     });

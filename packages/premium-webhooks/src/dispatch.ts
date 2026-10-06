@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — outbound delivery
+// @ottabase/premium-webhooks, outbound delivery
 // ============================================================
 // One call from anywhere in the host app:
 //
@@ -32,8 +32,8 @@ export interface DeliveryOutcome {
 /**
  * Reduce any failure to a short, bounded string.
  *
- * Never the raw thrown value: a fetch error can carry the full request — including the
- * signed body and the customer's URL with whatever is in its query string — straight
+ * Never the raw thrown value: a fetch error can carry the full request, including the
+ * signed body and the customer's URL with whatever is in its query string, straight
  * into a log sink and a database column.
  */
 export function summarizeDeliveryError(error: unknown): string {
@@ -42,7 +42,7 @@ export function summarizeDeliveryError(error: unknown): string {
     return 'request failed';
 }
 
-/** POST one signed payload to one endpoint. Never throws — failures come back as an outcome. */
+/** POST one signed payload to one endpoint. Never throws, failures come back as an outcome. */
 export async function deliverToEndpoint(
     endpoint: WebhookEndpoint,
     event: string,
@@ -104,7 +104,7 @@ export interface DispatchWebhookInput<Env> {
  * Deliver an event to every subscribed, enabled endpoint of one tenant.
  *
  * Returns one outcome per endpoint. An unlicensed or disabled package delivers nothing
- * and returns an empty array — the caller does not have to know whether the package is
+ * and returns an empty array, the caller does not have to know whether the package is
  * licensed, which is what makes `dispatchWebhookEvent` safe to call unconditionally from
  * host code.
  */
@@ -129,7 +129,7 @@ export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>
     const subscribed = endpoints.filter((endpoint) => endpoint.subscribesTo(event));
     if (subscribed.length === 0) return [];
 
-    // Logging is the paid half — checked ONCE per dispatch rather than per endpoint.
+    // Logging is the paid half, checked ONCE per dispatch rather than per endpoint.
     const logGate = await registry.feature(env, WEBHOOKS_PACKAGE_KEY, WEBHOOKS_FEATURE_DELIVERY_LOG);
 
     const outcomes: DeliveryOutcome[] = [];
@@ -140,7 +140,7 @@ export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>
         const outcome = await deliverToEndpoint(endpoint, event, body, deliveryId);
         outcomes.push(outcome);
 
-        // Health on the endpoint is FREE — it is the whole observability story of the free
+        // Health on the endpoint is FREE, it is the whole observability story of the free
         // tier, and hiding it behind the licence would make an unlicensed install silently
         // undebuggable rather than merely limited.
         await endpoint.recordDelivery(outcome);

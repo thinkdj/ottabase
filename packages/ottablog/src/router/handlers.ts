@@ -1,5 +1,5 @@
 /**
- * Blog route handlers — the package-owned HTTP surface.
+ * Blog route handlers: the package-owned HTTP surface.
  *
  * Bodies were moved verbatim from apps/otta-web/worker/routes/blog.ts; the only
  * changes are the injected seams in {@link BlogRouterConfig} (DB connect, admin
@@ -85,7 +85,7 @@ function resolveOrgId(request: Request, fallback: string | null = null): string 
 
 /**
  * Public blog lookup by slug: always discriminates by appId.
- * Never queries by slug alone — the same slug can exist across apps (see Post schema indexes).
+ * Never queries by slug alone, the same slug can exist across apps (see Post schema indexes).
  * In org mode the lookup also discriminates by organizationId (null = platform-owned rows),
  * since org mode allows the same slug across orgs within one app.
  */
@@ -110,7 +110,7 @@ const PUBLIC_AUTHOR_FIELDS = ['id', 'name', 'image'] as const;
 /**
  * Chunk size for id-list queries that also carry the list handler's other bound
  * conditions (status, contentType, appId, organizationId, seriesId, pagination,
- * search LIKE terms) in the SAME statement — D1's bound-parameter ceiling covers
+ * search LIKE terms) in the SAME statement, D1's bound-parameter ceiling covers
  * the whole statement, not just the id list, so this leaves headroom for them.
  */
 const D1_FILTERED_ID_CHUNK = 80;
@@ -136,7 +136,7 @@ async function chunkedFetch<M>(
 
 /**
  * Post columns an import may set, with their JSON type. Doubles as the export column list.
- * Everything else — ids, scope, authorship, password hash, counters, timestamps the model owns —
+ * Everything else: ids, scope, authorship, password hash, counters, timestamps the model owns,
  * is derived server-side. Each value still passes the model's write validation.
  */
 const IMPORT_FIELD_TYPES = {
@@ -218,7 +218,7 @@ function importSlug(slug: unknown, title: unknown): string {
 /**
  * Blank every column that carries the post BODY, for a password-protected post whose reader has
  * not unlocked it. One list, both public projections: the lock screen is worthless if the payload
- * behind it still ships the text. Titles/excerpts stay — they are the teaser the lock screen shows.
+ * behind it still ships the text. Titles/excerpts stay, they are the teaser the lock screen shows.
  */
 function stripProtectedBody(post: Record<string, unknown>): void {
     post.content = null;
@@ -234,7 +234,7 @@ function stripProtectedBody(post: Record<string, unknown>): void {
 }
 
 /**
- * Batch enrichment for a page of posts — flat queries instead of ~5 per post.
+ * Batch enrichment for a page of posts, flat queries instead of ~5 per post.
  * Output per post is shape-identical to publicPostJson's enriched object
  * (privateNotes stripped, protected content stripped, tags[], categories[],
  * legacy categoryName/categorySlug, seriesTitle, author{}). Query count is
@@ -408,10 +408,10 @@ async function enrichPostsJsonBatch(
         rest.seriesTitle = rest.seriesId ? (seriesTitleById.get(rest.seriesId as string) ?? null) : null;
 
         // A collection read never SELECTs Post.deferred, and `toJson()` walks loaded attributes, so
-        // those columns would be absent from a list payload while a detail payload carries them —
+        // those columns would be absent from a list payload while a detail payload carries them,
         // the same endpoint family answering with two different shapes, and `post.content === null`
         // quietly false on one of them. Normalize to null: a list says "no body here", not "no such
-        // field". privateNotes is excluded on purpose — it is destructured off above and must stay
+        // field". privateNotes is excluded on purpose, it is destructured off above and must stay
         // off, not come back as an always-null key advertising that the column exists.
         for (const column of Post.deferred) {
             if (column !== 'privateNotes' && !(column in rest)) rest[column] = null;
@@ -590,7 +590,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
     /**
      * Resolve the tenant dimension for this request.
-     * Platform mode: undefined (queries carry no org filter — column is ignored).
+     * Platform mode: undefined (queries carry no org filter, column is ignored).
      * Org mode: the app-resolved organizationId, or null for platform-owned content.
      */
     async function resolveTenant(context: Ctx): Promise<string | null | undefined> {
@@ -751,7 +751,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
      * Guard a Studio operation against its RESOLVED blog scope: null/undefined
      * target = the platform blog (platform admin), an org id = that org's blog
      * (its org admin, or a platform admin) via requireScopedStudioAdmin. Without
-     * the seam, falls back to requireAdmin — the platform-only behavior.
+     * the seam, falls back to requireAdmin, the platform-only behavior.
      */
     async function requireStudioAdmin(
         context: Ctx,
@@ -768,7 +768,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
      * one visitors render) and enabled plugins with config, plus bare
      * {pluginId, enabled:false} skeletons for disabled rows so the client can
      * deactivate statically-registered defaults. Inactive themes' rows (and
-     * their tokens/config) and disabled plugins' configs stay admin-only —
+     * their tokens/config) and disabled plugins' configs stay admin-only,
      * in org mode this endpoint is reachable for ANY org via request-supplied
      * scope, so the full payload must not be an anonymous enumeration surface.
      */
@@ -795,7 +795,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const organizationId = await resolveTenant(context);
         const orgScope = organizationId !== undefined ? { organizationId } : {};
 
-        // The guard resolves the full session context — memoize so seeding
+        // The guard resolves the full session context, memoize so seeding
         // and the ?full=1 payload decision cost at most one resolution. Scoped:
         // an org admin administers THEIR org's studio; the platform blog
         // (null/undefined tenant) requires a platform admin.
@@ -812,7 +812,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         const needsSeeding = state.themes.length === 0 || state.plugins.length === 0;
         if (needsSeeding && (await callerIsAdmin())) {
-            // Only seed default theme/plugin rows if the caller is an admin — avoids any unauthenticated
+            // Only seed default theme/plugin rows if the caller is an admin, avoids any unauthenticated
             // visitor triggering DB writes. Non-admins get the current (possibly empty) state; the client
             // falls back to in-memory defaults registered by registerBlogThemesAndPlugins().
             // Unique-violation tolerant: two concurrent admin loads may race the same
@@ -866,7 +866,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         }
 
         // Full state (inactive themes, disabled-plugin configs) is the admin
-        // Studio's payload — explicit opt-in via ?full=1 plus the admin gate.
+        // Studio's payload, explicit opt-in via ?full=1 plus the admin gate.
         // Everyone else gets the public rendering shape.
         if (context.url.searchParams.get('full') === '1' && (await callerIsAdmin())) {
             return jsonResponse(state);
@@ -1206,7 +1206,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     /**
-     * POST /studio/theme/tokens — set a theme row's sparse brand-token overrides
+     * POST /studio/theme/tokens: set a theme row's sparse brand-token overrides
      * (the data-driven half of blog theming). Admin-gated like other Studio
      * mutations. Tokens are validated at render time (theme-tokens.ts); here we
      * only require a JSON object shape so bad values can be corrected in place.
@@ -1358,7 +1358,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const body = await readJson<BlurbBody>(context.request);
         const options = readEditorialOptions(body);
         if (options instanceof Response) return options;
-        // Draft, matching photo journals and Post.createBlurb — a body of just `{text}` must not
+        // Draft, matching photo journals and Post.createBlurb, a body of just `{text}` must not
         // publish itself to the public timeline and RSS. Both editors always send an explicit status.
         const requestedStatus = options.status ?? 'draft';
         if (
@@ -1437,7 +1437,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         try {
             globalRLS.validateWrite(Post.entity, securityContext, post.toJson(), 'update');
             // PATCH: an ABSENT field means "unchanged". A status-only body (publish/schedule a
-            // draft) must not read as "blurb text is required" — fall back to the stored text.
+            // draft) must not read as "blurb text is required", fall back to the stored text.
             const text = body.text === undefined ? (post.get('blurbText') as string) : body.text;
             const updated = await post.updateBlurb(text as string, {
                 ...options,
@@ -1641,7 +1641,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             const links = await PostTagLink.where({ tagId });
             tagFilterPostIds = links.map((l) => l.get('postId') as string);
             if (tagFilterPostIds.length === 0) {
-                // No posts have this tag — return empty
+                // No posts have this tag, return empty
                 return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
             }
         }
@@ -1752,8 +1752,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 : await Post.paginate(page, perPage, idWhere, { orderBy, orderDirection });
         } else if (junctionIds !== null) {
             // Very large tag/category (> the filtered-id chunk): fetch the
-            // tagged rows chunk-wise by id — bounded by the tag's size, never the
-            // whole published corpus — then order/paginate in memory. The search
+            // tagged rows chunk-wise by id, bounded by the tag's size, never the
+            // whole published corpus, then order/paginate in memory. The search
             // term is applied as the JS equivalent of the LIKE %term% condition.
             // Each chunk carries the same `where` conditions as the id list, so
             // it uses the filtered (not plain) chunk size too.
@@ -1796,7 +1796,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             result = await Post.paginate(page, perPage, where, { orderBy, orderDirection });
         }
 
-        // Enrich the page with tags, categories, series, and author — batched
+        // Enrich the page with tags, categories, series, and author, batched
         // flat queries (see enrichPostsJsonBatch) instead of ~5 queries per post.
         const data = await enrichPostsJsonBatch(result.data as Post[], {
             language,
@@ -1868,7 +1868,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         // Call POST /api/blog/posts/:slug/track-view explicitly when needed.
 
         const data = await publicPostJson(record, {
-            // A preview link is the review artifact — the token grants content access
+            // A preview link is the review artifact, the token grants content access
             // (password-protection stripping still applies to normal public reads).
             includeContent: !!preview,
             enrichTags: true,
@@ -2056,7 +2056,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             limit,
         });
 
-        // Batched enrichment (adds categories/seriesTitle alongside tags/author —
+        // Batched enrichment (adds categories/seriesTitle alongside tags/author,
         // additive fields, same per-post shape as the list endpoint).
         const languageConfig = await languageConfigFor(context, appId, organizationId);
         const data = await enrichPostsJsonBatch(related, {
@@ -2482,7 +2482,7 @@ ${urls}
     }
 
     /**
-     * Seed the app's public demo content — sample articles, release notes, and
+     * Seed the app's public demo content: sample articles, release notes, and
      * the block kitchensink that exercises every renderer. This is the single
      * seeding entry point; `requireAdmin` is wired to a system-scoped platform
      * admin gate, so only the platform owner can run it.
@@ -2528,7 +2528,7 @@ ${urls}
     }
 
     /**
-     * POST /posts/preview-token — mint a signed draft-preview link.
+     * POST /posts/preview-token: mint a signed draft-preview link.
      * Gated by the editorial guard (requireContentEditor, falling back to
      * requireAdmin). 404 when no preview secret is configured.
      */
@@ -2554,7 +2554,7 @@ ${urls}
         const appId = resolveAppId(context);
         const organizationId = await resolveTenant(context);
 
-        // The post must exist in the caller's scope (any status — that is the point).
+        // The post must exist in the caller's scope (any status, that is the point).
         const where: Record<string, unknown> = { slug, appId };
         if (organizationId !== undefined) where.organizationId = organizationId;
         const post = await Post.first(where);
@@ -2567,7 +2567,7 @@ ${urls}
         // (another author's draft, another tenant's post via a request-supplied
         // org hint, a password-protected post's content). Authors always pass
         // for their OWN posts; anything else requires the app's canManagePost
-        // check against the POST ROW's org — never the request's org hint.
+        // check against the POST ROW's org, never the request's org hint.
         // Denial answers 404, identical to a missing post, so minting cannot be
         // used as a cross-scope slug-existence oracle.
         const callerId = auth.session?.user?.id ?? null;

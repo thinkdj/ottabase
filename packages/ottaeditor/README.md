@@ -114,7 +114,7 @@ interface CTAData {
 interface DisclosureData {
     aiEnabled: boolean;
     aiLevel: 'none' | 'slight' | 'mid' | 'high' | 'custom';
-    aiPercent?: number; // 1–100 when custom
+    aiPercent?: number; // 1 to 100 when custom
     sponsoredEnabled: boolean;
     sponsoredType: 'preset' | 'custom';
     sponsoredText?: string;
@@ -175,7 +175,7 @@ interface BeforeAfterData {
     beforeLabel: string;
     afterLabel: string;
     orientation: 'horizontal' | 'vertical';
-    sliderPosition: number; // 0–100
+    sliderPosition: number; // 0 to 100
     height?: string;
     imageFit?: 'contain' | 'cover';
     beforePosition?: ImagePosition; // Focus point when cover mode
@@ -245,7 +245,7 @@ interface TestimonialData {
     authorCompany?: string;
     authorAvatar?: string;
     companyLogo?: string;
-    rating?: number; // 0–5
+    rating?: number; // 0 to 5
     variant: 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
     sourceUrl?: string;
     verified?: boolean;

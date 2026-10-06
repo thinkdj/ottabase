@@ -1,20 +1,20 @@
 ---
 name: ottabase-theme
 description:
-    The Ottabase way to theme an app — Brand Engine design tokens → CSS variables, brand kits, per-route overrides, dark
+    The Ottabase way to theme an app: Brand Engine design tokens → CSS variables, brand kits, per-route overrides, dark
     mode. Use for "change the theme", "brand colors", "design tokens", "white-label", "tenant branding", "dark mode",
     "customize a component's look". Encodes the token contract and where a running app's brand actually lives.
 ---
 
 # Theming the Ottabase way (Brand Engine)
 
-`@ottabase/brand-engine` is **core — always enabled** (not a toggleable package). Theming is token-driven: a
+`@ottabase/brand-engine` is **core: always enabled** (not a toggleable package). Theming is token-driven: a
 `DesignTokens` object becomes CSS custom properties written into a single `<style>` block; dark mode is a pure CSS
 `.dark` class swap (`:root` = light).
 
 ## Tokens are the contract
 
-`DesignTokens` (`brand-engine/src/tokens.ts`) — `color` is the only required category; the other 22 are optional
+`DesignTokens` (`brand-engine/src/tokens.ts`), `color` is the only required category; the other 22 are optional
 (`typography`, `spacing`, `radius`, `shadow`, `motion`, `focus`, `interaction`, `links`, `zIndex`, `scopes`, `surface`,
 …). Read with a typed dot-path:
 
@@ -25,8 +25,8 @@ getToken(tokens, 'color.light.primary'); // typed path, undefined if missing
 
 Tokens emit as CSS vars: `--primary`, `--radius` / `--radius-{size}`, `--shadow-{level}`, `--text-{step}`,
 `--focus-ring-*`, `--hover-*` / `--press-*`, `--z-{name}`, etc. **Note: unprefixed** (shadcn/Tailwind convention), not
-`--otta-*`. Prefer these vars over hardcoded colors/sizes — that's what makes white-label, dark mode, and tenant
-branding work.
+`--otta-*`. Prefer these vars over hardcoded colors/sizes: that's what makes white-label, dark mode, and tenant branding
+work.
 
 ## Where a brand lives
 
@@ -50,7 +50,7 @@ branding work.
 ## Gotchas
 
 - SSR is designed here: the edge injects the resolved config + critical CSS and the client reuses it (`initialConfig`)
-  to avoid a flash — keep the edge/client resolution in parity, it's a tested contract. Don't `window.location.reload()`
+  to avoid a flash, keep the edge/client resolution in parity, it's a tested contract. Don't `window.location.reload()`
   to apply a theme.
 - Cursors live at the `tokensJson` root, not inside `DesignTokens`.
 

@@ -43,7 +43,7 @@ describe('RLS Registry', () => {
             expect(filter(ctx)).toEqual({ ownerId: 'u1' });
         });
 
-        it('DENIES (null) when membership is resolved to empty — no stale-ownerId fallback', () => {
+        it('DENIES (null) when membership is resolved to empty, no stale-ownerId fallback', () => {
             // A removed ex-owner resolves to zero active memberships; the never-cleared
             // Organization.ownerId must NOT grant them access to the org they created.
             const ctx: SecurityContext = { userId: 'u1', memberOrganizationIds: [] };
@@ -51,7 +51,7 @@ describe('RLS Registry', () => {
         });
 
         it('returns an UNSCOPED filter for a platform admin (control plane administers every tenant)', () => {
-            // Platform admins must be able to read/mutate an org they are not a member of —
+            // Platform admins must be able to read/mutate an org they are not a member of,
             // otherwise a route that authorizes them still 404s on the read-before-write.
             const ctx: SecurityContext = { userId: 'u1', platformAdmin: true, memberOrganizationIds: [] };
             expect(filter(ctx)).toEqual({});
@@ -171,7 +171,7 @@ describe('RLS Registry', () => {
     describe('post_versions policy filter (editor history)', () => {
         const filter = MODEL_POLICIES.find((p) => p.model === 'post_versions')!.policy.filter!;
 
-        it('denies an anonymous caller — never the platform NULL-org partition', () => {
+        it('denies an anonymous caller: never the platform NULL-org partition', () => {
             expect(filter({ appId: 'web' })).toBeNull();
             expect(filter({ appId: 'web', organizationId: null })).toBeNull();
         });

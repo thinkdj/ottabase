@@ -1,5 +1,5 @@
 // ====================================================================
-// GET /api/admin/ai/config — platform-admin OttaAI / AI Gateway snapshot
+// GET /api/admin/ai/config, platform-admin OttaAI / AI Gateway snapshot
 // --------------------------------------------------------------------
 // Read-only. Secrets are present/absent only. Org admins use
 // /admin/growth/ai-providers (BYOK); this is the control-plane view.

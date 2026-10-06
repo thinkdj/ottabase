@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// @ottabase/ottaai/react — query hooks
+// @ottabase/ottaai/react, query hooks
 // ============================================================
 // Built on TanStack Query with the framework's `meta: { entity }` convention, so
 // the app's global mutation-cache observer busts the same namespace it already
@@ -67,7 +67,7 @@ export function useAiProviders(queryOptions?: Partial<UseQueryOptions<ProviderOp
  * TWO FAIL-CLOSED RULES:
  *  • "not loaded yet" is treated as NOT configured (the cost-safe direction);
  *  • a SHORT stale time plus refetch-on-focus, because mutation-driven invalidation
- *    cannot catch the cross-tab or out-of-band case — a user creates a key in the
+ *    cannot catch the cross-tab or out-of-band case, a user creates a key in the
  *    provider console or a second tab, comes back, and the gate would stay closed.
  */
 export function useAiStatus(queryOptions?: Partial<UseQueryOptions<AiStatus, Error>>) {
@@ -153,7 +153,7 @@ export function useAiCredentials() {
 /**
  * The client-side gate.
  *
- * A UX AFFORDANCE LAYERED ON SERVER TRUTH — the authoritative check is `requireByok` on
+ * A UX AFFORDANCE LAYERED ON SERVER TRUTH, the authoritative check is `requireByok` on
  * the route, implemented by the SAME resolver, so guard and runtime cannot drift. A gate
  * enforced only in the browser stops nobody with a fetch call.
  *

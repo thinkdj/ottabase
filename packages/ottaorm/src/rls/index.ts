@@ -2,7 +2,7 @@
  * Row-Level Security (RLS) System
  *
  * Automatic tenant isolation at the database level. Supports permission wildcards
- * (*:*, brand:*, *:edit) for requiredPermissions—same semantics as @ottabase/rbac.
+ * (*:*, brand:*, *:edit) for requiredPermissions, same semantics as @ottabase/rbac.
  *
  * @example
  * ```typescript

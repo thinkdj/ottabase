@@ -1,11 +1,11 @@
 /**
- * Premium Packages installed in this app — CLIENT-side mirror.
+ * Premium Packages installed in this app, CLIENT-side mirror.
  *
  * The authoritative list is `ottabase/config.premium.ts`, which cannot be imported here:
  * a manifest carries server-side wiring (session resolution, route factories) that has no
  * place in a browser bundle.
  *
- * So this is a deliberate, MINIMAL duplicate — keys only, no behaviour — used to decide
+ * So this is a deliberate, MINIMAL duplicate, keys only, no behaviour, used to decide
  * which admin nav entries exist. `__tests__/premium-registration.test.ts` fails if the two
  * lists drift, which is what keeps the duplication honest.
  *
@@ -29,9 +29,9 @@ export function isPremiumPackageInstalled(key: string): boolean {
  * A Premium Package's admin page, registered once here.
  *
  * `router.tsx` derives its route (`makeAdminRoute(path, load, exportName, { scope })`) from
- * this list, and `admin-nav.ts` derives the matching sidebar/card entry from it — so wiring a
+ * this list, and `admin-nav.ts` derives the matching sidebar/card entry from it, so wiring a
  * new Premium Package's UI touches THIS FILE ONLY, not router.tsx and admin-nav.ts by hand.
- * (Server-side wiring — tables, migrations, worker routes — still goes through
+ * (Server-side wiring: tables, migrations, worker routes, still goes through
  * `ottabase/config.premium.ts`; this is the client-side counterpart, same split as
  * `PREMIUM_PACKAGES_INSTALLED` above.)
  */

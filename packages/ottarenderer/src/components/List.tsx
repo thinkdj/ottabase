@@ -30,7 +30,7 @@ const List: RenderFn<{ items?: unknown[]; style?: string }> = ({ data, className
                     <li key={i} className={`cdc-content-list cdc-content-list-l${level} text-foreground text-base/7`}>
                         {/* EditorJS list items often include inline HTML (e.g. <strong>) */}
                         <span dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(item.content ?? '') }} />
-                        {/* Nested levels inherit the parent style — EditorJS stores it once per block */}
+                        {/* Nested levels inherit the parent style, EditorJS stores it once per block */}
                         {children.length > 0 && (
                             <List data={{ items: children, style: data?.style }} level={level + 1} />
                         )}

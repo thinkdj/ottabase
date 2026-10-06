@@ -10,7 +10,7 @@ import { DrawerNav } from './layout/DrawerNav';
 import { SidebarNav } from './layout/SidebarNav';
 
 // ---------------------------------------------------------------------------
-// BrandLayout – the root layout component driven by BrandEngine config
+// BrandLayout, the root layout component driven by BrandEngine config
 // ---------------------------------------------------------------------------
 
 export function BrandLayout() {

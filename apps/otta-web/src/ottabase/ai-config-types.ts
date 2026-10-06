@@ -51,7 +51,7 @@ export interface AiConfigSnapshot {
         pinnedModels: Record<string, string> | null;
         /** The task's default output budget, or null when it declares none. */
         maxTokens: number | null;
-        /** Required capabilities the PLATFORM route cannot carry — the task then runs on tenant keys only. */
+        /** Required capabilities the PLATFORM route cannot carry, the task then runs on tenant keys only. */
         platformRouteGaps: string[];
     }>;
     providers: Array<{

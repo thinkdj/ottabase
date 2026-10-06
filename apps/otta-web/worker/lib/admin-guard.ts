@@ -32,7 +32,7 @@ export async function requireAdminAccess(
     // For system-scope routes (e.g. Database Manager), pin the ACTING organization to system so
     // downstream handlers that branch on auth.organizationId === 'system' behave correctly. This
     // is no longer the authorization mechanism: assertAdmin now gates system scope on a SYSTEM-
-    // scoped platform:admin grant (reqCtx.systemPermissions), independent of the request's org —
+    // scoped platform:admin grant (reqCtx.systemPermissions), independent of the request's org,
     // an org owner browsing with an org in session still fails a scope:'system' route.
     const reqCtx = await getRequestContext(request, env as any, {
         getAuthOptions,

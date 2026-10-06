@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Embed Router — Lightweight React tree for /embed/* routes.
+// Embed Router, Lightweight React tree for /embed/* routes.
 //
 // Runs outside the main app provider stack (no BrandProvider, no session,
 // no blog state, no org fetches). Only provides:
@@ -26,12 +26,12 @@ import {
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
 // ---------------------------------------------------------------------------
-// Minimal query client — no retries on 403, longer stale time for static content
+// Minimal query client, no retries on 403, longer stale time for static content
 // ---------------------------------------------------------------------------
 const embedQueryClient = new QueryClient({
     defaultOptions: {
         queries: {
-            staleTime: 5 * 60 * 1000, // 5 min — embed content is mostly static
+            staleTime: 5 * 60 * 1000, // 5 min, embed content is mostly static
             gcTime: 10 * 60 * 1000,
             retry: 1,
             refetchOnWindowFocus: false, // Critical: prevent refetches when iframe loses focus
@@ -42,10 +42,10 @@ const embedQueryClient = new QueryClient({
 });
 
 // ---------------------------------------------------------------------------
-// Embed Root Layout — applies theme from ?theme= query param, no shell chrome
+// Embed Root Layout, applies theme from ?theme= query param, no shell chrome
 // ---------------------------------------------------------------------------
 function EmbedRootLayout() {
-    // No focus manager override needed — refetchOnWindowFocus is already
+    // No focus manager override needed, refetchOnWindowFocus is already
     // disabled on the embed QueryClient configuration above.
     return (
         <div className="min-h-screen bg-background font-sans">
@@ -92,7 +92,7 @@ const embedRouter = new Router({
 });
 
 // ---------------------------------------------------------------------------
-// EmbedApp — The top-level component mounted by main.tsx for /embed/* paths
+// EmbedApp, The top-level component mounted by main.tsx for /embed/* paths
 // ---------------------------------------------------------------------------
 export function EmbedApp() {
     return (

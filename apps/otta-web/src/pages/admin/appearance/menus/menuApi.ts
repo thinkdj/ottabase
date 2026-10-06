@@ -1,5 +1,5 @@
 /**
- * Menu API helpers – uses /api/brand/menus (cache-invalidating CRUD).
+ * Menu API helpers: uses /api/brand/menus (cache-invalidating CRUD).
  */
 
 import { api } from '@/lib/api';

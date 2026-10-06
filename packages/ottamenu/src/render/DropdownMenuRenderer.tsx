@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Dropdown menu renderer
+// Ottamenu, Dropdown menu renderer
 // Simple single-column dropdown list. Good for context menus, action menus,
 // or compact navigation dropdowns.
 // ---------------------------------------------------------------------------

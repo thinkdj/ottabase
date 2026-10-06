@@ -4,7 +4,7 @@ import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { Layout, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEMO_ITEMS, groupDemos, searchDemos } from './demoItems';
+import { DEMO_GROUPS, DEMO_ITEMS, groupDemos, searchDemos } from './demoItems';
 import './demo.css';
 
 export function DemoLayout() {
@@ -29,7 +29,10 @@ export function DemoLayout() {
                 ? 'bg-muted font-medium text-foreground hover:bg-muted'
                 : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
         );
-    const current = DEMO_ITEMS.find((item) => location.pathname === item.to)?.to ?? '/demo';
+    const current =
+        DEMO_ITEMS.find((item) => location.pathname === item.to)?.to ??
+        DEMO_GROUPS.find((group) => group.overview === location.pathname)?.overview ??
+        '/demo';
 
     return (
         <div className="otta-demo flex min-h-[calc(100vh-3.5rem)]">
@@ -81,6 +84,19 @@ export function DemoLayout() {
                                 <h3 className="px-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
                                     {group.label}
                                 </h3>
+                                {group.overview && !search && (
+                                    <Button
+                                        asChild
+                                        variant="ghost"
+                                        size="sm"
+                                        className={linkClass(location.pathname === group.overview)}
+                                    >
+                                        <Link to={group.overview}>
+                                            <Layout className="h-4 w-4 shrink-0 opacity-80" />
+                                            Overview
+                                        </Link>
+                                    </Button>
+                                )}
                                 {items.map((item) => (
                                     <Button
                                         key={item.to}
@@ -120,6 +136,7 @@ export function DemoLayout() {
                                 <option value="/demo">All demos</option>
                                 {groupDemos().map(({ group, items }) => (
                                     <optgroup key={group.id} label={group.label}>
+                                        {group.overview && <option value={group.overview}>Overview</option>}
                                         {items.map((item) => (
                                             <option key={item.to} value={item.to}>
                                                 {item.label}

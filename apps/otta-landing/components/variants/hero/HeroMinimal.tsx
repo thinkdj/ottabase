@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { HeroData } from './types';
 
 /**
- * Minimal hero — compact, understated headline with a thin divider and
+ * Minimal hero: compact, understated headline with a thin divider and
  * small action links. Ideal for documentation sites or text-heavy pages.
  */
 export function HeroMinimal({ title, subtitle, actions }: HeroData) {

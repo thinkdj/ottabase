@@ -119,7 +119,7 @@ function SamplePage({ brandName, tagline }: { brandName: string; tagline?: strin
                                 {title}
                             </h2>
                             <p className="text-sm leading-relaxed text-muted-foreground">
-                                Cards take the radius, border and shadow of the kit, and links take its primary colour.
+                                Cards take the radius, border and shadow of the kit, and links take its primary color.
                             </p>
                             <a href="#" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
                                 Learn more

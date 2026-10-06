@@ -81,11 +81,11 @@ export function CronDemoPage() {
                         <p className="font-medium text-foreground">Two scheduling modes:</p>
                         <ol className="list-inside list-decimal space-y-1">
                             <li>
-                                <strong>Static CronHandler</strong> — define cron jobs in code with{' '}
+                                <strong>Static CronHandler</strong>: define cron jobs in code with{' '}
                                 <code className="rounded bg-muted px-1 py-0.5 text-xs">createCronHandler()</code>.
                             </li>
                             <li>
-                                <strong>DB Scheduler</strong> — Laravel-style scheduler with tasks stored in D1 via{' '}
+                                <strong>DB Scheduler</strong>: Laravel-style scheduler with tasks stored in D1 via{' '}
                                 <code className="rounded bg-muted px-1 py-0.5 text-xs">createScheduler()</code>.
                             </li>
                         </ol>
@@ -276,20 +276,16 @@ export function CronDemoPage() {
                         <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
                             <code>{`import { createCronHandler } from '@ottabase/cron';
 
-const handler = createCronHandler({
-    jobs: [
-        {
-            name: 'cleanup-sessions',
-            schedule: '0 */6 * * *', // Every 6 hours
-            handler: async (ctx) => {
-                // Clean up expired sessions
-            },
-        },
-    ],
-});
+const cron = createCronHandler<Env>().on(
+    '0 */6 * * *', // every 6 hours
+    async ({ env }) => {
+        // clean up expired sessions
+    },
+    'cleanup-sessions',
+);
 
 // In your Cloudflare Worker:
-export default { scheduled: handler };`}</code>
+export default { scheduled: cron.handler };`}</code>
                         </pre>
                     </div>
 

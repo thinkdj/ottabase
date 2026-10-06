@@ -1,8 +1,8 @@
 /**
- * Studio Shell — the writing-first editorial surface at /studio.
+ * Studio Shell: the writing-first editorial surface at /studio.
  *
  * Deliberately NOT a second admin: same session, same ProtectedRoute machinery,
- * same blog pages — just a focused chrome for people whose job is content.
+ * same blog pages: just a focused chrome for people whose job is content.
  * Gated by content permissions (posts:*), never by org:admin or platform admin,
  * so authors and editors get a workspace without seeing the control plane.
  */

@@ -4,13 +4,11 @@ Next.js 16 homepage template deployed to Cloudflare Workers via OpenNext. Uses B
 built-in presets and live switching, plus an **extensible slot framework** for hot-swappable homepage sections.
 
 > **Monorepo note:** The main Vite app (`otta-web`) drives its brand config from a D1 database, editable via the admin
-> UI at `/admin/brand-engine`. This homepage is intentionally **config-first** — no DB, no API call; the preset is set
-> in `config/brand.config.ts` and resolved at request time. Both apps use the same underlying `@ottabase/brand-engine`
+> UI at `/admin/brand-engine`. This homepage is intentionally **config-first**: no DB, no API call; the preset is set in
+> `config/brand.config.ts` and resolved at request time. Both apps use the same underlying `@ottabase/brand-engine`
 > presets, so to keep them visually in sync just match `themePreset` here to whatever preset is active in the Vite app.
 >
-> `@ottabase/homepage-contract` is a separate package for homepage/page payload schemas. It is _not_ the theming layer
-> for this app. Theme resolution here is handled directly by `@ottabase/brand-engine` and
-> `@ottabase/brand-engine-react`.
+> Theme resolution here is handled directly by `@ottabase/brand-engine` and `@ottabase/brand-engine-react`.
 
 ## Quick Start
 
@@ -83,7 +81,7 @@ __tests__/                      # Vitest test suite (77 tests)
 
 The homepage is built around an extensible **slot framework** that separates data from rendering. Each section of the
 page (hero, features, CTA, navbar, footer) is a **slot** with multiple **variant** components. All variants for a slot
-accept the same data props — you write your content data once and switch the visual presentation via config.
+accept the same data props, you write your content data once and switch the visual presentation via config.
 
 ### Architecture
 
@@ -110,7 +108,7 @@ accept the same data props — you write your content data once and switch the v
 ### How to use
 
 ```tsx
-// In page.tsx — data is defined once, rendering driven by config
+// In page.tsx, data is defined once, rendering driven by config
 const HERO_DATA = {
     title: 'Welcome',
     subtitle: 'Build fast.',
@@ -124,7 +122,7 @@ export default function HomePage() {
 
 ### Config page
 
-Visit `/homepage-config` to switch variant for each slot. Changes are saved to `localStorage` and applied instantly — no
+Visit `/homepage-config` to switch variant for each slot. Changes are saved to `localStorage` and applied instantly, no
 page reload needed. A "Reset to defaults" button restores the original configuration.
 
 ### Data Type Safety
@@ -144,7 +142,7 @@ incorrect data to a slot will fail at type-check:
 
 `SlotRenderer` has two modes to balance live config switching with SSR performance:
 
-#### 1. `SlotRenderer` (default) – Live switching, client component
+#### 1. `SlotRenderer` (default): Live switching, client component
 
 Uses React context to fetch the user's variant selection from `localStorage` in real time. Enables the config page
 (`/homepage-config`) to instantly switch variants without page reload.
@@ -161,7 +159,7 @@ export default function HomePage() {
 }
 ```
 
-#### 2. `SlotRendererStatic` – SSR-safe, no context needed
+#### 2. `SlotRendererStatic`: SSR-safe, no context needed
 
 Accepts an explicit `variantId` prop instead of reading from context. Allows pages to remain Server Components and be
 fully SSR'd.
@@ -223,9 +221,6 @@ The new variant immediately appears in the config page and can be selected.
 
 This app is fully wired to `@ottabase/brand-engine` for SSR-safe theming without a database or API call.
 
-`@ottabase/homepage-contract` is adjacent to this architecture, not part of the theme runtime. Use it for validating
-homepage or page payloads; use brand-engine for tokens, CSS variables, and `BrandProvider`-driven theme behavior.
-
 ### How it works (end-to-end)
 
 ```
@@ -255,14 +250,14 @@ import type { BrandTheme } from '@ottabase/brand-engine';
 // Pick one of the built-in presets (BUILTIN_THEME_NAMES from @ottabase/brand-engine)
 export const themePreset = 'crisp'; // default | neo | crisp | funky | artisan | midnight | rose | verdant
 
-// Optionally override individual tokens — merged on top of the preset
+// Optionally override individual tokens: merged on top of the preset
 export const brandConfig: Partial<BrandTheme> = {
     name: 'my-brand',
     // primaryColor, fontHeading, spacing, etc.
 };
 ```
 
-Changes take effect on the next server render — no migration or API call needed.
+Changes take effect on the next server render, no migration or API call needed.
 
 ### Live preset switching
 
@@ -308,7 +303,7 @@ not fully Windows-compatible and requires symlink creation, so use WSL/Linux for
 pnpm deploy
 ```
 
-CI/CD is handled by the shared `.github/workflows/deploy.yml` — deploys on push to `main` with smart change detection
+CI/CD is handled by the shared `.github/workflows/deploy.yml`: deploys on push to `main` with smart change detection
 (only re-deploys when this app or shared packages change).
 
 **Config-driven - no yml editing needed when renaming the app:**
@@ -318,4 +313,4 @@ CI/CD is handled by the shared `.github/workflows/deploy.yml` — deploys on pus
 3. Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` GitHub secrets.
 
 The workflow reads `cloudflare-config.json` from each app folder to determine app type (`nextjs`), build commands,
-output paths and wrangler config — no hardcoded names in yml.
+output paths and wrangler config, no hardcoded names in yml.

@@ -188,7 +188,7 @@
         @apply border-border;
     }
 
-    /* Global default border-style — themes may set e.g. `dashed`/`ridge`.
+    /* Global default border-style: themes may set e.g. `dashed`/`ridge`.
        Utilities (border-dashed, …) still win: they live in the utilities layer. */
     *,
     ::before,
@@ -206,7 +206,7 @@
 
     :root {
         /* Native form-control tinting + scrollbars; `auto` = browser default.
-           scrollbar-color needs BOTH colors — define thumb AND track or neither. */
+           scrollbar-color needs BOTH colors: define thumb AND track or neither. */
         accent-color: var(--accent-color, auto);
         scrollbar-width: var(--scrollbar-width, auto);
         scrollbar-color: var(--scrollbar-thumb, auto) var(--scrollbar-track, auto);
@@ -219,7 +219,7 @@
         caret-color: var(--caret-color, auto);
     }
 
-    /* Text selection — system Highlight colors when the theme doesn't opt in */
+    /* Text selection: system Highlight colors when the theme doesn't opt in */
     ::selection {
         background-color: var(--selection-bg, Highlight);
         color: var(--selection-fg, HighlightText);
@@ -229,7 +229,7 @@
 /* ── Unified focus ring ─────────────────────────────────────────────────────
    One global focus-visible treatment driven by --focus-ring-* tokens. Zero
    specificity (:where) so any component utility (focus-visible:ring-*,
-   focus-visible:outline-none) still wins — components migrating off their
+   focus-visible:outline-none) still wins, components migrating off their
    per-component ring recipes simply drop those classes. */
 :where(
     a,

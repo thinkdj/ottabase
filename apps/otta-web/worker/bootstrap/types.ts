@@ -75,8 +75,8 @@ export const BOOTSTRAP_PATH = '/__bootstrap__';
 
 /**
  * Environments where bootstrap may run without a configured secret, and where
- * the wizard may report full diagnostics. Anything else — including an UNSET
- * `ENVIRONMENT` — is treated as production and denied. Keep every environment
+ * the wizard may report full diagnostics. Anything else, including an UNSET
+ * `ENVIRONMENT`: is treated as production and denied. Keep every environment
  * check spelled against this list; comparing to the single string 'production'
  * lets `prod`, `staging`, `preview` and unset all fall through.
  */

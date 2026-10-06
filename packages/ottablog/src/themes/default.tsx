@@ -77,7 +77,7 @@ export const defaultTheme: Theme = {
         /**
          * Article masthead, built like the photo journal's: a structural eyebrow, a serif display
          * title, and a centred block that hands off to left-aligned body copy. The eyebrow carries
-         * real information — what this is and how long it takes — rather than decorating the page.
+         * real information, what this is and how long it takes, rather than decorating the page.
          */
         renderTitle: (post, props) => {
             if (!props.showTitle) return null;
@@ -135,7 +135,7 @@ export const defaultTheme: Theme = {
                             {formatDate(post.publishedAt)}
                         </time>
                     )}
-                    {/* Reading time lives in the masthead eyebrow now — repeating it here read as
+                    {/* Reading time lives in the masthead eyebrow now, repeating it here read as
                         two different facts rather than one. */}
                     {post.isFeatured && (
                         <span className="rounded-full bg-background px-2.5 py-0.5 text-muted-foreground ring-1 ring-border">
@@ -155,7 +155,7 @@ export const defaultTheme: Theme = {
             return (
                 <div className={`${props.contentClassName || ''} ${defaultTheme.config?.classes?.content || ''}`}>
                     <Blocks
-                        // Ensure version and time are always present — editorjs-blocks-react-renderer
+                        // Ensure version and time are always present, editorjs-blocks-react-renderer
                         // calls data.version.includes() unconditionally and will throw if absent.
                         data={{ version: '2.30.0', time: Date.now(), ...(post.content as EditorJSData) }}
                         renderers={customRenderers}

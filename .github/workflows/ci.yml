@@ -76,4 +76,4 @@ jobs:
 
             - name: Warn on Cloudflare validation failure
               if: steps.cf-validate.outcome == 'failure'
-              run: echo "::warning::Cloudflare config validation failed — run 'pnpm cf:validate' locally to investigate"
+              run: echo "::warning::Cloudflare config validation failed, run 'pnpm cf:validate' locally to investigate"

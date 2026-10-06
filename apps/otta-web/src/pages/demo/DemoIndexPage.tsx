@@ -1,9 +1,11 @@
+import { SEOHead } from '@/components/SEOHead';
 import { APP_META } from '@/ottabase/config';
-import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Button, Input } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import { useState } from 'react';
-import { DEMO_ITEMS, groupDemos, searchDemos, type DemoItem } from './demoItems';
+import { DemoCard } from './DemoCard';
+import { DEMO_ITEMS, groupDemos, searchDemos } from './demoItems';
 
 export function DemoIndexPage() {
     const [query, setQuery] = useState('');
@@ -11,6 +13,7 @@ export function DemoIndexPage() {
 
     return (
         <div className="space-y-10">
+            <SEOHead title={`Demos · ${APP_META.appName}`} />
             <div className="space-y-4">
                 <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
                     <Link to="/">
@@ -23,8 +26,8 @@ export function DemoIndexPage() {
                     <div className="space-y-1.5">
                         <h1 className="text-3xl font-bold tracking-tight">{APP_META.appName} demos</h1>
                         <p className="max-w-3xl text-muted-foreground">
-                            {DEMO_ITEMS.length} hands-on pages, one per package or service, grouped by what you are
-                            building.
+                            {DEMO_ITEMS.length} hands-on pages across the packages and Cloudflare services, grouped by
+                            what you are building.
                         </p>
                     </div>
                     <div className="relative md:w-72">
@@ -87,43 +90,10 @@ export function DemoIndexPage() {
             <div className="rounded-xl bg-muted/40 p-6">
                 <h2 className="mb-1.5 text-sm font-semibold">About this template</h2>
                 <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                    This template uses <strong className="font-medium text-foreground">UI Base</strong> as the
-                    foundation, with optional UI libraries layered on top. The main app providers only include UI Base,
-                    fonts, state management, and shadcn/ui.
+                    Every demo runs inside the real app shell: the same providers, brand kit, layout engine and data
+                    layer that serve the rest of the site. What you see here is what a page in your app gets.
                 </p>
             </div>
         </div>
-    );
-}
-
-function DemoCard({ item }: { item: DemoItem }) {
-    return (
-        <Link
-            to={item.to}
-            className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-            <Card className="h-full transition-colors duration-normal group-hover:bg-muted/70">
-                <CardHeader className="gap-2">
-                    <div className="flex items-center justify-between">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border transition-colors group-hover:text-foreground">
-                            <item.icon className="h-[1.125rem] w-[1.125rem]" />
-                        </span>
-                        {item.buttonVariant === 'default' && (
-                            <Badge
-                                variant="secondary"
-                                className="bg-background/60 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground"
-                            >
-                                Featured
-                            </Badge>
-                        )}
-                    </div>
-                    <CardTitle className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
-                        {item.title}
-                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-normal group-hover:translate-x-0.5 group-hover:text-foreground" />
-                    </CardTitle>
-                    <CardDescription className="line-clamp-2 leading-relaxed">{item.description}</CardDescription>
-                </CardHeader>
-            </Card>
-        </Link>
     );
 }

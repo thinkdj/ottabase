@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react';
-import { Alert, AlertDescription, Button, Input, Label, Spinner } from '@ottabase/ui-shadcn';
+import { Alert, AlertDescription, Button, Checkbox, Input, Label, Spinner } from '@ottabase/ui-shadcn';
 import { CheckCircle2 } from 'lucide-react';
 import { isStrongPassword } from '../password';
 import { PasswordChecklist, PasswordInput } from './PasswordFields';
@@ -197,16 +197,15 @@ export function RegisterForm({
             {showTermsCheckbox && (
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             id={`${id}-terms`}
                             checked={acceptedTerms}
-                            onChange={(e) => {
-                                setAcceptedTerms(e.target.checked);
-                                if (e.target.checked) clearError('terms');
+                            onCheckedChange={(checked) => {
+                                const accepted = checked === true;
+                                setAcceptedTerms(accepted);
+                                if (accepted) clearError('terms');
                             }}
                             disabled={isLoading}
-                            className="h-4 w-4 shrink-0 accent-primary"
                             {...describe('terms')}
                         />
                         <Label htmlFor={`${id}-terms`} className="cursor-pointer text-sm font-normal leading-snug">

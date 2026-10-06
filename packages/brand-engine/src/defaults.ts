@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Default token values
+// BrandEngine, Default token values
 // ---------------------------------------------------------------------------
 
 import type { BrandTheme } from './theme';
@@ -96,7 +96,7 @@ export const DEFAULT_SHADOWS: Record<string, string> = {
     xl: '0 18px 32px -5px rgb(20 60 30 / 0.12)',
 };
 
-/** Default shadow elevation scale (dark surfaces) – must match shadcn.css .dark */
+/** Default shadow elevation scale (dark surfaces), must match shadcn.css .dark */
 export const DEFAULT_SHADOWS_DARK: Record<string, string> = {
     xs: '0 1px 2px 0 rgb(0 0 0 / 0.35)',
     sm: '0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.45)',

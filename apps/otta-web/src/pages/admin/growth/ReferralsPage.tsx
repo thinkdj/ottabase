@@ -16,7 +16,7 @@ export function AdminReferralsPage() {
                     </p>
                 </div>
                 <Button asChild>
-                    <Link to="/login">Login</Link>
+                    <Link to="/login">Sign in</Link>
                 </Button>
             </div>
         );

@@ -10,8 +10,8 @@ const URL_PATTERN = /(https?:\/\/[^\s<]+)/g;
 const TRAILING_PUNCTUATION = /[),.!?;:]+$/;
 
 /**
- * Whether BlurbText may emit anchors. Timeline cards are made clickable by their CALLER — the
- * app wraps them in a router `<Link>`, and BlogExcerptCard in `LinkComponent` — so an auto-linked
+ * Whether BlurbText may emit anchors. Timeline cards are made clickable by their CALLER, the
+ * app wraps them in a router `<Link>`, and BlogExcerptCard in `LinkComponent`, so an auto-linked
  * URL inside one would be an `<a>` nested in an `<a>`: invalid DOM for assistive tech, and a click
  * that both opens the URL and navigates the card. `BlurbRenderer`/`PhotoJournalRenderer` publish
  * their variant here so the text degrades to plain, and no theme (present or future) has to

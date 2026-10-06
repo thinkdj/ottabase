@@ -1,13 +1,13 @@
 // ============================================================
-// @ottabase/premium — the registry
+// @ottabase/premium, the registry
 // ============================================================
 // One object the host app builds once and hands to everything else: the router mounts
 // through it, the migrations read tables from it, the admin API reads status from it,
-// and every gate asks it. Registering a package is the ONLY integration step — nothing
+// and every gate asks it. Registering a package is the ONLY integration step, nothing
 // else in the app has to learn the package exists.
 //
 // An app with zero registered packages pays: one empty array, no KV reads, no routes,
-// no nav entries. That is the point — the framework is inert until something is sold.
+// no nav entries. That is the point, the framework is inert until something is sold.
 // ============================================================
 
 import {
@@ -64,7 +64,7 @@ export interface PremiumRegistryOptions<Env> {
      *
      * Accepts a FUNCTION so it can be read from the request env. A host whose app id is
      * env-overridable would otherwise verify `appId`-bound licenses against the value
-     * compiled into the config file — silently rejecting a correct key, or accepting one
+     * compiled into the config file, silently rejecting a correct key, or accepting one
      * minted for a different environment.
      */
     appId?: string | ((env: Env) => string | undefined);
@@ -127,7 +127,7 @@ export interface PremiumRegistry<Env = unknown> {
      * status without replacing the currently stored key.
      */
     activate(env: Env, key: string, token: string): Promise<PremiumPackageStatus | null>;
-    /** Remove a stored license. An env-supplied license is unaffected — and says so. */
+    /** Remove a stored license. An env-supplied license is unaffected, and says so. */
     deactivate(env: Env, key: string): Promise<PremiumPackageStatus | null>;
     /**
      * Run the explicit offboarding hook before removing this package from deployment
@@ -157,7 +157,7 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
     if (byKey.size !== packages.length) {
         const seen = new Set<string>();
         const duplicate = packages.find((pkg) => (seen.has(pkg.key) ? true : (seen.add(pkg.key), false)));
-        throw new Error(`[premium] Duplicate package key "${duplicate?.key}" — each package may be registered once.`);
+        throw new Error(`[premium] Duplicate package key "${duplicate?.key}", each package may be registered once.`);
     }
 
     // One shared memory store, so a KV-less deployment still gets consistent lifecycle

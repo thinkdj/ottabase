@@ -417,7 +417,7 @@ describe('createBlogHandlers', () => {
             expect('privateNotes' in post).toBe(false);
         });
 
-        it('exposes only id, name, and image for an author — never the account email', async () => {
+        it('exposes only id, name, and image for an author, never the account email', async () => {
             const { User } = await import('@ottabase/ottaorm');
             const author = {
                 get: (field: string) =>
@@ -1241,7 +1241,7 @@ describe('createBlogHandlers', () => {
     });
 
     it('reports an unconfigured editorial guard as a host config error, never as a 401', async () => {
-        // baseConfig wires requireAdmin only — which carries no securityContext. Falling back to it
+        // baseConfig wires requireAdmin only, which carries no securityContext. Falling back to it
         // would fail later with "Authentication required", blaming the user for a deployment gap.
         const handlers = createBlogHandlers<Env>({ ...baseConfig });
 

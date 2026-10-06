@@ -15,7 +15,7 @@ const DEFAULT_NAV_LINKS: NavLink[] = [
 ];
 
 /**
- * Default navbar — logo left, nav links + dark-mode toggle right, mobile hamburger.
+ * Default navbar: logo left, nav links + dark-mode toggle right, mobile hamburger.
  */
 export function NavbarDefault({ title = 'Ottabase', links = DEFAULT_NAV_LINKS, githubUrl }: NavbarData) {
     const pathname = usePathname();

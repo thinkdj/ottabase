@@ -10,7 +10,7 @@ const text = (res: Response | null): Promise<string> => {
     return res.text();
 };
 
-describe('pattern grammar — registration validation', () => {
+describe('pattern grammar: registration validation', () => {
     it('throws when the pattern does not start with "/"', () => {
         expect(() => new Router().get('users', ok)).toThrow('must start with "/"');
     });
@@ -131,7 +131,7 @@ describe('"*" wildcard', () => {
         expect(await text(res)).toBe('a/b/c');
     });
 
-    it('is captured raw — percent-encodings (including %2F) are NOT decoded', async () => {
+    it('is captured raw: percent-encodings (including %2F) are NOT decoded', async () => {
         const router = new Router().all('/api/auth/*', (c) => new Response(c.params['*']));
         const res = await router.handle(req('/api/auth/x%2Fy/%40z'), {});
         expect(await text(res)).toBe('x%2Fy/%40z');
@@ -193,7 +193,7 @@ describe('method handling', () => {
 
     it('uppercases non-standard methods on both registration and request sides', async () => {
         // The fetch spec only normalizes the six standard methods, so 'purge' survives on the
-        // Request — the router itself must uppercase both sides for them to meet.
+        // Request, the router itself must uppercase both sides for them to meet.
         const router = new Router().on('purge', '/cache', (c) => new Response(c.method));
         const res = await router.handle(req('/cache', 'purge'), {});
         expect(await text(res)).toBe('PURGE');

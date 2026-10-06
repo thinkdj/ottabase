@@ -75,7 +75,7 @@ function isOnVideoControls(target: EventTarget | null, clientY: number): boolean
 
 /**
  * Immersive lightbox for end-user / public-facing content.
- * Designed to feel like a native gallery — minimal chrome, cinematic backdrop,
+ * Designed to feel like a native gallery: minimal chrome, cinematic backdrop,
  * auto-hiding controls, and smooth caption overlays.
  *
  * SLIDE MODEL. Three DOM slots sit at three physical positions (previous / active / next).
@@ -84,7 +84,7 @@ function isOnVideoControls(target: EventTarget | null, clientY: number): boolean
  * render, so a change of `items`, `loop` or `activeIndex` can never leave a stale neighbour.
  *
  *  • Buttons, keyboard, thumbnails, URL changes: `visualIndex` follows `activeIndex` IN PLACE.
- *    No slot moves, so nothing animates — content swaps where it stands.
+ *    No slot moves, so nothing animates, content swaps where it stands.
  *  • A committed drag: the slides finish travelling, then `rotation` turns by one so the slot
  *    that was dragged into view BECOMES the active one (its DOM node, image and decode are
  *    kept) and the offset returns to zero in the SAME commit, with transitions suppressed
@@ -114,7 +114,7 @@ export function MediaImmersiveLightbox({
     const viewportRef = useRef<HTMLDivElement>(null);
 
     const dragRef = useRef<DragState | null>(null);
-    /** Every pointer currently down on the media area — a second one means pinch, not swipe. */
+    /** Every pointer currently down on the media area, a second one means pinch, not swipe. */
     const pointersRef = useRef(new Set<number>());
     const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     /** The index a committed drag has already shown, until the parent's `activeIndex` catches up. */
@@ -130,7 +130,7 @@ export function MediaImmersiveLightbox({
     const isBusy = phase !== 'idle';
 
     // Read once per open: reduced motion makes slides, springs and the counter pulse instant
-    // (the drag itself still follows the pointer — that's direct manipulation, not animation).
+    // (the drag itself still follows the pointer, that's direct manipulation, not animation).
     const reducedMotion = useMemo(() => isOpen && prefersReducedMotion(), [isOpen]);
     const slideDuration = reducedMotion ? 0 : NAVIGATION_SLIDE_DURATION;
 
@@ -194,7 +194,7 @@ export function MediaImmersiveLightbox({
             try {
                 video.pause();
             } catch {
-                // ignore — browser may block for detached elements
+                // ignore: browser may block for detached elements
             }
         });
     }, [visualIndex, isOpen]);
@@ -355,7 +355,7 @@ export function MediaImmersiveLightbox({
             const now = performance.now();
             const elapsed = Math.max(now - drag.sampleT, 1);
             const velocity = (event.clientX - drag.sampleX) / elapsed;
-            // The SLIDE's width — slides sit at ±100% of the viewport, not of the padded container.
+            // The SLIDE's width: slides sit at ±100% of the viewport, not of the padded container.
             const slideWidth = viewportRef.current?.clientWidth || window.innerWidth;
             const commitDistance = Math.min(DRAG_COMMIT_DISTANCE, slideWidth * 0.2);
             const flung = Math.abs(dx) >= DRAG_FLING_DISTANCE && Math.abs(velocity) >= DRAG_FLING_VELOCITY;
@@ -505,7 +505,7 @@ export function MediaImmersiveLightbox({
                             handleClose();
                         }}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                        aria-label="Close gallery"
+                        aria-label="Close"
                     >
                         <IconX className="h-5 w-5" />
                     </button>
@@ -589,7 +589,7 @@ export function MediaImmersiveLightbox({
                 </div>
             </div>
 
-            {/* ── Caption overlay — quiet backdrop panel, tokenized text ──── */}
+            {/* ── Caption overlay: quiet backdrop panel, tokenized text ──── */}
             {caption && (
                 <div
                     className={`pointer-events-none absolute inset-x-0 z-20 flex justify-center px-6 transition-opacity duration-normal md:px-10 ${controlsClass}`}
@@ -629,7 +629,7 @@ export function MediaImmersiveLightbox({
                                             : 'opacity-50 ring-1 ring-white/30 hover:opacity-80'
                                     }`}
                                     style={{ borderRadius: 'var(--lb-thumb-radius, 0.5rem)' }}
-                                    aria-label={`View image ${index + 1}`}
+                                    aria-label={`View item ${index + 1}`}
                                     aria-current={isActive ? 'true' : undefined}
                                 >
                                     <MediaPreview item={item} mode="thumb" />

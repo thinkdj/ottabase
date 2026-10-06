@@ -1,7 +1,7 @@
 // ====================================================================
-// @ottabase/ottaai/ottaorm — the composing factory
+// @ottabase/ottaai/ottaorm, the composing factory
 // --------------------------------------------------------------------
-// ONE REGISTRATION BUNDLE — the strategy stated EXACTLY ONCE.
+// ONE REGISTRATION BUNDLE, the strategy stated EXACTLY ONCE.
 //
 // A consuming app would otherwise register across five touchpoints (model,
 // policy, schema collection, migration re-export, master secret next to the
@@ -26,7 +26,7 @@ export interface CreateAiProvisioningWithStorageOptions<HostContext> extends Omi
     CreateAiProvisioningOptions<HostContext>,
     'store'
 > {
-    /** Optional override — defaults to the ORM-backed store. */
+    /** Optional override: defaults to the ORM-backed store. */
     store?: CreateAiProvisioningOptions<HostContext>['store'];
     /** Extra permissions that authorise ORG-scoped credential management. */
     orgManagePermissions?: CredentialPolicyOptions['orgManagePermissions'];
@@ -43,7 +43,7 @@ export interface AiProvisioningWithStorage<HostContext> extends AiProvisioning<H
     readonly tables: { aiProviderCredentialsTable: typeof aiProviderCredentialsTable };
     /** Register with `registerModels([...])`. */
     readonly models: readonly [typeof AiProviderCredential];
-    /** Register with `registerPolicy(...)` — AFTER `initRLS()`. */
+    /** Register with `registerPolicy(...)`: AFTER `initRLS()`. */
     readonly policies: readonly ModelRLSConfig[];
     /** Mount at one path. */
     readonly handlers: CredentialHandlers;
@@ -62,7 +62,7 @@ export interface AiProvisioningWithStorage<HostContext> extends AiProvisioning<H
  *  • the auto-init migrator adds tables and columns but cannot rename, drop or backfill,
  *    and a new non-nullable column needs a default;
  *  • the model must declare `packageName` / `packageType` or it is mislabelled in the
- *    admin registry (it does — see the model).
+ *    admin registry (it does, see the model).
  */
 export function createAiProvisioningWithStorage<HostContext = unknown>(
     options: CreateAiProvisioningWithStorageOptions<HostContext>,

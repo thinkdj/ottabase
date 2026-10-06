@@ -1,9 +1,11 @@
+import { SEOHead } from '@/components/SEOHead';
+import { APP_META } from '@/ottabase/config';
 import { DocsLayout } from '@ottabase/docs/react';
 import { buildPageSlug } from '@ottabase/docs';
 import '@ottabase/docs/styles.css';
 import { useLayoutMeta } from '@ottabase/ottalayout/react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { docsConfig } from './docs.config';
 
 const BASE_PATH = '/docs';
@@ -37,5 +39,18 @@ export function DocsPage() {
         [navigate],
     );
 
-    return <DocsLayout config={docsConfig} activeSlug={activeSlug} onNavigate={handleNavigate} />;
+    const activeTitle = useMemo(() => {
+        for (const source of docsConfig.sources) {
+            const page = source.pages.find((candidate) => buildPageSlug(source, candidate) === activeSlug);
+            if (page) return page.title;
+        }
+        return 'Docs';
+    }, [activeSlug]);
+
+    return (
+        <>
+            <SEOHead title={`${activeTitle} · ${APP_META.appName}`} />
+            <DocsLayout config={docsConfig} activeSlug={activeSlug} onNavigate={handleNavigate} />
+        </>
+    );
 }

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout/react – Layout Slot System
+// @ottabase/ottalayout/react, Layout Slot System
 //
 // Allows pages to inject content into named zones defined by the layout.
 //
@@ -152,6 +152,6 @@ export function SlotContent({ name, children }: SlotContentProps) {
         setSlot(name, children);
     }, [name, children, setSlot]);
 
-    // SlotContent doesn't render anything itself – content appears at the LayoutSlot
+    // SlotContent doesn't render anything itself, content appears at the LayoutSlot
     return null;
 }

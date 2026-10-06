@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/medialibrary — Schema re-exports
+// @ottabase/medialibrary, Schema re-exports
 //
 // The canonical media table lives in @ottabase/ottaorm as a core
 // table (`mediaTable`); re-exported here for convenience.

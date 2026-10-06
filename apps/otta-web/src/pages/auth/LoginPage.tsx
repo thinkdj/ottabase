@@ -1,3 +1,4 @@
+import { SEOHead } from '@/components/SEOHead';
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
 import { resolveAuthRedirect } from '@/lib/auth-redirect';
@@ -160,11 +161,12 @@ export function LoginPage() {
                 <>
                     New here?{' '}
                     <Link to="/register" className="font-medium text-foreground hover:underline">
-                        Create an account
+                        Create account
                     </Link>
                 </>
             }
         >
+            <SEOHead title={`Sign in · ${APP_META.appName}`} />
             <LoginForm
                 title=""
                 description=""

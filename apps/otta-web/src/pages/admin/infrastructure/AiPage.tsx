@@ -4,7 +4,7 @@
  * Platform-admin, read-only view of the OttaAI deployment: Cloudflare AI Gateway
  * identity, frozen dials, task policies, provider wire coverage, and whether the
  * secrets that actually make it run are present. Editing happens in
- * `ottabase.config.ts` / env — this page exists so you do not have to grep either.
+ * `ottabase.config.ts` / env, this page exists so you do not have to grep either.
  *
  * Tenant BYOK (paste a key) lives at /admin/growth/ai-providers.
  */
@@ -38,7 +38,7 @@ function Kv({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div className="space-y-1">
             <div className={MICRO_LABEL}>{label}</div>
-            <div className="break-all font-mono text-sm">{value ?? '—'}</div>
+            <div className="break-all font-mono text-sm">{value ?? 'Not set'}</div>
         </div>
     );
 }
@@ -160,7 +160,7 @@ export function AdminAiPage() {
                                 Cloudflare AI Gateway
                             </CardTitle>
                             <CardDescription>
-                                Every inference call is proxied here — unified logging, cache, retries, and cost
+                                Every inference call is proxied here: unified logging, cache, retries, and cost
                                 analytics. Inline tenant keys travel as request headers; aliases select credentials
                                 already stored in AI Gateway.
                             </CardDescription>
@@ -242,8 +242,8 @@ export function AdminAiPage() {
                                 Platform floor
                             </CardTitle>
                             <CardDescription>
-                                Optional operator-paid fallback. Leave provider unset to ship BYOK-only — every task
-                                then upsells instead of falling back.
+                                Optional operator-paid fallback. Leave provider unset to ship BYOK-only, every task then
+                                upsells instead of falling back.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -256,7 +256,7 @@ export function AdminAiPage() {
                             />
                             <Kv
                                 label="Route usable"
-                                value={data.platform.routeUsable ? 'yes — transport can place a call' : 'no'}
+                                value={data.platform.routeUsable ? 'yes: transport can place a call' : 'no'}
                             />
                             <Kv label="OBCF_KV" value={data.spend.kvBound ? 'bound' : 'missing'} />
                             <Kv label="Workers AI binding" value={data.bindings.workersAi ? 'bound' : 'unbound'} />
@@ -265,7 +265,7 @@ export function AdminAiPage() {
                                 value={
                                     data.platform.azure.configured
                                         ? 'configured (resource + deployment + api version)'
-                                        : 'not configured — Azure hidden from BYOK form'
+                                        : 'not configured: Azure hidden from BYOK form'
                                 }
                             />
                             <Kv
@@ -310,7 +310,7 @@ export function AdminAiPage() {
                                     </p>
                                     {task.platformRouteGaps.length ? (
                                         <p className="mt-1 text-xs text-warning">
-                                            The platform route cannot carry {task.platformRouteGaps.join(', ')} — this
+                                            The platform route cannot carry {task.platformRouteGaps.join(', ')}, this
                                             task runs on tenant keys only.
                                         </p>
                                     ) : null}
@@ -376,7 +376,7 @@ export function AdminAiPage() {
                                 Secrets & env
                             </CardTitle>
                             <CardDescription>
-                                Presence only — values never leave the worker. A missing required secret is why the
+                                Presence only: values never leave the worker. A missing required secret is why the
                                 feature looks dormant.
                             </CardDescription>
                         </CardHeader>

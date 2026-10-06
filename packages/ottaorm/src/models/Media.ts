@@ -8,7 +8,7 @@ import { mediaTable } from './Media.schema';
 export { mediaTable, type MediaType, type NewMediaType } from './Media.schema';
 
 /**
- * Media model — Fat Model Pattern
+ * Media model: Fat Model Pattern
  *
  * Core model for tracking all uploaded files (images, videos, audio, documents).
  *

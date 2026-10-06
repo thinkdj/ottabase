@@ -1,5 +1,6 @@
 {
     "name": "@ottabase/referrals",
+    "description": "Referral system: schema, model, validation and attribution tracking",
     "version": "0.0.1",
     "private": true,
     "type": "module",

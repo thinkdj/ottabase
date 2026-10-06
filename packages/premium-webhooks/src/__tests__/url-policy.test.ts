@@ -1,5 +1,5 @@
 // ============================================================
-// Destination URL policy — the SSRF boundary.
+// Destination URL policy, the SSRF boundary.
 //
 // A webhook endpoint is a customer-controlled URL that the SERVER fetches. These pin the
 // trivial attacks shut; see url-policy.ts for what this deliberately cannot cover.

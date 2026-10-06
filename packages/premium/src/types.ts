@@ -1,9 +1,9 @@
 // ============================================================
-// @ottabase/premium — the Premium Package contract
+// @ottabase/premium, the Premium Package contract
 // ============================================================
 // One manifest describes everything a paid add-on contributes: tables, models,
 // routes, nav, entitlements, and lifecycle hooks. The host app never learns the
-// package's internals — it registers the manifest and the framework does the rest.
+// package's internals, it registers the manifest and the framework does the rest.
 // ============================================================
 
 import type { Router } from '@ottabase/ottarouter';
@@ -14,7 +14,7 @@ import type { PremiumRegistry } from './registry';
 
 /**
  * Runtime state of a registered Premium Package. Resolved on every request from the
- * license (env or activation store) — never cached across deployments.
+ * license (env or activation store), never cached across deployments.
  *
  * Only `active` and `grace` may serve traffic. Everything else is a closed gate, and
  * every closed gate still leaves the host app fully functional: a Premium Package that
@@ -84,7 +84,7 @@ export interface PremiumLicenseClaims {
      * mint three keys. When present it is enforced exactly.
      */
     appId?: string;
-    /** Informational seat count. NOT enforced here — the app has no way to count a vendor's seats. */
+    /** Informational seat count. NOT enforced here, the app has no way to count a vendor's seats. */
     seats?: number;
 }
 
@@ -154,7 +154,7 @@ export interface PremiumRouteContribution<Env = unknown> {
     /** Mount prefix in the host app, e.g. `/api/webhooks`. Must start with `/`. */
     basePath: string;
     /**
-     * Build the sub-router. Called ONCE at mount time, never per request — an ottarouter
+     * Build the sub-router. Called ONCE at mount time, never per request, an ottarouter
      * Router freezes when mounted, so this must return a fresh instance.
      *
      * Receives the registry the package was registered in, which is what lets a package's
@@ -166,10 +166,10 @@ export interface PremiumRouteContribution<Env = unknown> {
      * How the mounted namespace is gated.
      *
      * - `'license'` (default): the WHOLE namespace requires a serving license. Right for a
-     *   package with no free tier — one gate, no way to forget one.
+     *   package with no free tier, one gate, no way to forget one.
      * - `'entitlements'`: routes mount whenever the package is not disabled, and the package
      *   enforces its own feature/limit gates. This is what makes a FREE TIER REACHABLE
-     *   ("1 endpoint free, 25 on Pro") — under `'license'` an unlicensed caller gets 402 for
+     *   ("1 endpoint free, 25 on Pro"), under `'license'` an unlicensed caller gets 402 for
      *   the whole namespace and never reaches the free path. The cost is real: every paid
      *   route inside must call a guard itself, and a missed call is an unguarded paid route.
      */
@@ -209,7 +209,7 @@ export interface PremiumPackage<Env = unknown> {
 
     /** Feature ids this package understands. Documentation + admin UI; not a gate by itself. */
     features?: readonly string[];
-    /** Features available WITHOUT a license — the free tier of a Premium Package. */
+    /** Features available WITHOUT a license, the free tier of a Premium Package. */
     freeFeatures?: readonly string[];
     /** Numeric ceilings that apply without a license. A license may raise them. */
     freeLimits?: Record<string, number>;
@@ -231,7 +231,7 @@ export interface PremiumPackage<Env = unknown> {
     lifecycle?: PremiumLifecycleHooks<Env>;
 }
 
-/** Persisted per-package state. Small on purpose — it is read on the request path. */
+/** Persisted per-package state. Small on purpose, it is read on the request path. */
 export interface PremiumInstallRecord {
     /** Manifest version at the last completed install/upgrade. */
     version: string;
@@ -266,7 +266,7 @@ export interface PremiumPackageStatus {
     purchaseUrl?: string;
     state: PremiumState;
     reason: PremiumReason;
-    /** True for `active` and `grace` — the only two states that serve traffic. */
+    /** True for `active` and `grace`: the only two states that serve traffic. */
     enabled: boolean;
     /** Whether this package requires a license at all (false when it ships no public key). */
     requiresLicense: boolean;

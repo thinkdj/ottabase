@@ -155,7 +155,7 @@ See [docs/CACHE_KEYS.md](../../docs/CACHE_KEYS.md) for full documentation.
 
 ### KV Read-Through Cache
 
-`withCache` wraps an async fetcher with KV-backed caching — returns cached data on hit, calls the fetcher on miss:
+`withCache` wraps an async fetcher with KV-backed caching, returns cached data on hit, calls the fetcher on miss:
 
 ```typescript
 import { withCache, invalidateCache, invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';

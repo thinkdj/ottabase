@@ -49,7 +49,7 @@ export async function withCache<T>(
         return JSON.parse(cached) as T;
     }
 
-    // Cache miss — call fetcher, store result
+    // Cache miss: call fetcher, store result
     const value = await fetcher();
     await kv.put(key, JSON.stringify(value), { expirationTtl: ttl });
     return value;
@@ -57,7 +57,7 @@ export async function withCache<T>(
 
 /**
  * Invalidate a cached entry.
- * Convenience wrapper — equivalent to `kv.delete(key)`.
+ * Convenience wrapper: equivalent to `kv.delete(key)`.
  */
 export async function invalidateCache(kv: KVCacheBinding, key: string): Promise<void> {
     await kv.delete(key);
@@ -67,7 +67,7 @@ export async function invalidateCache(kv: KVCacheBinding, key: string): Promise<
  * Invalidate all keys matching a prefix.
  * Lists keys by prefix and deletes them in parallel.
  *
- * Note: KV list is eventually consistent — recently written keys
+ * Note: KV list is eventually consistent, recently written keys
  * may not appear immediately.
  */
 export async function invalidateCacheByPrefix(kv: KVCacheBinding, prefix: string): Promise<number> {

@@ -31,14 +31,14 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
     if (!isAuthenticated) {
         return (
             <div className={`flex items-center gap-2 ${compact ? '' : 'ml-2'}`}>
-                {/* Login carries mobile — the login page links to registration, so Sign up can yield */}
+                {/* Login carries mobile: the login page links to registration, so Sign up can yield */}
                 <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
                     <Link to="/register">Sign up</Link>
                 </Button>
                 <Button asChild variant="default" size="sm">
                     <Link to="/login" className="flex items-center gap-2">
                         <LogIn className="h-4 w-4" />
-                        Login
+                        Sign in
                     </Link>
                 </Button>
             </div>
@@ -64,8 +64,8 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
                     variant="ghost"
                     size="sm"
                     onClick={() => setLogoutConfirmOpen(true)}
-                    title="Log out"
-                    aria-label="Log out"
+                    title="Sign out"
+                    aria-label="Sign out"
                 >
                     <LogOut className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -74,10 +74,10 @@ export const UserSection = memo(function UserSection({ compact }: { compact?: bo
             <ConfirmDialog
                 open={logoutConfirmOpen}
                 onOpenChange={setLogoutConfirmOpen}
-                title="Log out?"
+                title="Sign out?"
                 description="You will be signed out of your current session and returned to the home page."
                 secondaryActionText="Cancel"
-                primaryActionText="Log out"
+                primaryActionText="Sign out"
                 onConfirm={handleConfirmLogout}
             />
         </>

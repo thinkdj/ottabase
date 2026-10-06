@@ -162,18 +162,18 @@ export interface PostAuthor {
 }
 
 /**
- * When the content was originally written — an OttaDate FuzzyDateTime stored as JSON.
+ * When the content was originally written, an OttaDate FuzzyDateTime stored as JSON.
  * Distinct from publishedAt (when it appeared on the blog). Supports fuzzy precision:
  * "Late May 2010", "Summer 1998", "Sometime in the 1990s".
  */
 export interface OriginalDate {
-    /** UTC unix seconds — start of the core window */
+    /** UTC unix seconds: start of the core window */
     timestamp: number;
     /** Precision: 'decade' | 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' */
     resolution: string;
     /** Part-of-period refinement: 'early' | 'mid' | 'late' | 'spring' | etc. */
     part?: string;
-    /** "~ish" — the boundary is soft */
+    /** "~ish": the boundary is soft */
     approximate?: boolean;
     /** Inclusive window start (UTC unix seconds) */
     earliest: number;
@@ -275,7 +275,7 @@ export function validateBlurbText(value: unknown): string {
  *
  * Modelled as one list rather than a "source URL", because the two directions people actually
  * publish in are the same relationship seen from opposite ends: you either wrote it here and
- * pushed copies to Instagram/X/Facebook (`origin` unset — this post is the original), or you
+ * pushed copies to Instagram/X/Facebook (`origin` unset, this post is the original), or you
  * wrote it there and this is the copy (`origin: true` on that one entry). A single URL field
  * could only ever express one of those, and never the common case of three copies at once.
  */
@@ -299,7 +299,7 @@ export class CrosspostValidationError extends ContentValidationError {
 }
 
 /**
- * Validate one crosspost permalink. Absolute HTTP(S) only — unlike a photo URL this always points
+ * Validate one crosspost permalink. Absolute HTTP(S) only, unlike a photo URL this always points
  * off-site and is rendered with `target="_blank"`, so an app-relative value is a bug, not a
  * shorthand. Returns null for blank, which the caller drops.
  */
@@ -322,8 +322,8 @@ function crosspostUrl(value: unknown): string | null {
 
 /**
  * Validate the crosspost list. Accepts bare strings as a shorthand for `{ url }` so an API caller
- * can send `["https://…"]`. Blank rows are dropped rather than rejected — the editor always has a
- * trailing empty one — and duplicates collapse to the first occurrence.
+ * can send `["https://…"]`. Blank rows are dropped rather than rejected, the editor always has a
+ * trailing empty one, and duplicates collapse to the first occurrence.
  */
 export function validateCrossposts(value: unknown): PostCrosspost[] | null {
     if (value === undefined || value === null) return null;
@@ -519,7 +519,7 @@ export function validatePhotoJournalItems(value: unknown): PhotoJournalItem[] {
          * The same photograph twice is a caller mistake, and a silently damaging one: `id` is both
          * the React key for the tile and the lightbox registration key, so a repeat renders one
          * frame where two were asked for and leaves that frame unopenable. Reject on ANY identity
-         * a duplicate can arrive under — an explicit `id`, the media library's `mediaId`, or the URL
+         * a duplicate can arrive under: an explicit `id`, the media library's `mediaId`, or the URL
          * itself. Rejecting preserves the caller's ordered album instead of silently changing it.
          */
         if (
@@ -553,7 +553,7 @@ export function validatePhotoJournalNote(value: unknown): string | null {
  * Every content column on a post, checked as ONE payload, at the only place all writes meet.
  *
  * `Post.prepareForDatabase` runs this, so `create`, `update`, and instance `save()` all inherit it
- * and no caller can opt out — that is the whole point. The routes keep calling it too (generic CRUD
+ * and no caller can opt out, that is the whole point. The routes keep calling it too (generic CRUD
  * does), which turns a throw into a 400 with a useful message instead of a 500; that is now defence
  * in depth rather than the only guard.
  *
@@ -563,7 +563,7 @@ export function validatePhotoJournalNote(value: unknown): string | null {
  *
  * Cross-field rules exist because the columns are not independent. `contentType` decides which of
  * them are meaningful, and a post claiming one type while carrying another's payload renders as a
- * blank frame or a missing body — the renderer dispatches on `contentType` alone. Those rules apply
+ * blank frame or a missing body, the renderer dispatches on `contentType` alone. Those rules apply
  * only when `contentType` is part of THIS write: a partial update that never mentions it cannot be
  * judged without re-reading the row, and a read per write is a cost every caller would pay for a
  * case the write methods already prevent.
@@ -679,7 +679,7 @@ export const CONTENT_TYPES: Record<ContentType, { label: string; description: st
  * Display label for a post's content type, safe for UNTRUSTED values.
  *
  * `posts.content_type` is a plain text column with a default, not an enum, and `posts` is exposed
- * through generic CRUD — so a row can legitimately carry a type this build has never heard of.
+ * through generic CRUD, so a row can legitimately carry a type this build has never heard of.
  * Indexing CONTENT_TYPES directly on such a value yields `undefined` and turns `.label` into a
  * render-time TypeError that takes down the whole list. Fall back to the raw value instead.
  */
@@ -794,7 +794,7 @@ export function extractExcerpt(content: EditorJSData, maxLength = 160): string {
  * @returns Formatted date string
  */
 export function formatDate(date: Date | string | number | null, options?: Intl.DateTimeFormatOptions): string {
-    if (!date) return '—';
+    if (!date) return '';
 
     const defaultOptions: Intl.DateTimeFormatOptions = {
         year: 'numeric',

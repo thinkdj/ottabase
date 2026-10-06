@@ -62,10 +62,10 @@ Secrets; it does not modify wrangler.jsonc.
 **Registering the token:**
 
 ```bash
-# Production — store as a Worker secret
+# Production: store as a Worker secret
 pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 
-# Local dev — add to apps/<your-app>/.env.local (gitignored)
+# Local dev: add to apps/<your-app>/.env.local (gitignored)
 CLOUDFLARE_ANALYTICS_API_TOKEN=your-token-here
 # PS: Analytics will NOT work locally.
 ```
@@ -205,7 +205,7 @@ multi-app: same placeholder name = shared resource; different names = isolated (
 
 ### 2. `apps/otta-web/cloudflare-env.d.ts`
 
-**Status:** ✅ Generated — regenerate with `pnpm --filter @ottabase/otta-web cf-typegen` after changing a binding
+**Status:** ✅ Generated, regenerate with `pnpm --filter @ottabase/otta-web cf-typegen` after changing a binding
 
 `wrangler types` writes the `CloudflareEnv` interface from `wrangler.jsonc`, so the two cannot drift (`cf-typegen:check`
 verifies it). Excerpt:
@@ -280,7 +280,7 @@ Ensure `@ottabase/auth` is installed and configured in your application.
 import { handleAuthRequest } from '@ottabase/auth/backend';
 
 // Route every /api/auth/* request through the auth handler. Providers are auto-configured
-// from environment variables (see below) — no config-object builder is required.
+// from environment variables (see below), no config-object builder is required.
 export function handleAuth(request: Request, env: CloudflareEnv) {
     return handleAuthRequest(request, env);
 }
@@ -331,7 +331,7 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 Test each binding in production:
 
 ```bash
-# Test the worker + D1 (a JSON response — even an auth error — proves the worker is serving the API)
+# Test the worker + D1 (a JSON response: even an auth error: proves the worker is serving the API)
 curl https://your-app.workers.dev/api/ottaorm/users
 ```
 
@@ -355,7 +355,7 @@ export default {
         const queue = env.OBCF_QUEUE; // Queue
         const realtime = env.OBCF_REALTIME; // Durable Object
 
-        // D1 via OttaORM (preferred) — see "Database Setup" above:
+        // D1 via OttaORM (preferred): see "Database Setup" above:
         // registerConnection('default', createD1Driver(db));
         const kvClient = createKVClient({ namespace: kv });
         const r2Client = createR2Client({ bucket: r2 });
@@ -425,15 +425,15 @@ wrangler r2 bucket create ottabase-bucket-preview
 
 ### 7. Configure GitHub Secrets
 
-**Production** (main deploy — placeholder values in env.production are auto-detected):
+**Production** (main deploy: placeholder values in env.production are auto-detected):
 
 - `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
 
-**Preview** (PR deploy — placeholder values in env.preview are auto-detected):
+**Preview** (PR deploy: placeholder values in env.preview are auto-detected):
 
 - `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
 
-Local dev does not need these — `wrangler dev` uses local simulators regardless of placeholder values. To add a new
+Local dev does not need these, `wrangler dev` uses local simulators regardless of placeholder values. To add a new
 secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI auto-detects the rest.
 
 ---
@@ -499,7 +499,7 @@ pnpm --filter @ottabase/otta-web cf-typegen
 
 **Cause:** Code reads a binding name that `wrangler.jsonc` does not define (e.g. `env.DB`).
 
-**Solution:** Every binding uses the `OBCF_*` prefix — `env.OBCF_D1`, `env.OBCF_KV`, `env.OBCF_R2`, `env.OBCF_QUEUE`,
+**Solution:** Every binding uses the `OBCF_*` prefix, `env.OBCF_D1`, `env.OBCF_KV`, `env.OBCF_R2`, `env.OBCF_QUEUE`,
 `env.OBCF_REALTIME`. Regenerate `cloudflare-env.d.ts` and let the type-checker find the stragglers.
 
 ---

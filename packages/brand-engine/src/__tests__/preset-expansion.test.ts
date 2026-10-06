@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Preset Expansion Tests – Ensures preset-as-template architecture works correctly
+// Preset Expansion Tests, Ensures preset-as-template architecture works correctly
 // Tests the critical path: preset selection → expansion → DB save → load → render
 // ---------------------------------------------------------------------------
 

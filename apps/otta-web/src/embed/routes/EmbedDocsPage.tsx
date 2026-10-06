@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// Embed: Docs Page — renders package documentation in a minimal, chromeless
+// Embed: Docs Page, renders package documentation in a minimal, chromeless
 // layout designed for iframe embedding. Light/Dark Theme can be controlled
 // via ?theme= param.
 //
 // This component runs inside the EmbedApp provider tree, which has NO session,
-// brand, blog state, or org fetches — only QueryClient + next-themes.
+// brand, blog state, or org fetches, only QueryClient + next-themes.
 // ---------------------------------------------------------------------------
 
 import { docsConfig } from '@/pages/docs/docs.config';

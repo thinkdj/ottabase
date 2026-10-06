@@ -31,7 +31,7 @@ describe('Demo gallery', () => {
         expect(sections.reduce((count, section) => count + section.items.length, 0)).toBe(DEMO_ITEMS.length);
     });
 
-    it('finds demos by label, title or description', () => {
+    it('finds demos by label or description', () => {
         expect(searchDemos('kv').map((item) => item.to)).toContain('/demo/cloudflare/kv');
         expect(searchDemos('fuzzy').map((item) => item.to)).toContain('/demo/ottadate');
         expect(searchDemos('')).toHaveLength(DEMO_ITEMS.length);

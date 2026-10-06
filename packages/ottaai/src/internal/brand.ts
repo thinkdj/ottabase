@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/ottaai — INTERNAL. Not exported from any entry point.
+// @ottabase/ottaai, INTERNAL. Not exported from any entry point.
 // ============================================================
 // This module exists so that "an `AiContext` has no public constructor" is a
 // property of the package's EXPORT MAP rather than a promise in a doc comment.
 //
 // `brandContext` previously lived in `types.ts`, which the root barrel re-exports
-// wholesale (`export * from './types'`) — so the one function the design says must
+// wholesale (`export * from './types'`), so the one function the design says must
 // be unreachable was importable by every consumer. Nothing here is listed in
 // `package.json#exports`, and nothing in `src/index.ts` re-exports it.
 //

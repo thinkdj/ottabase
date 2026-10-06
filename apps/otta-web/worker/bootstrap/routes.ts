@@ -145,9 +145,9 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         // Throttle brute-forcing of BOOTSTRAP_OWNER_SECRET. EVERY bootstrap endpoint is a
         // 401-vs-200 oracle for the secret (esp. the read-only GET /api/status), so without this an
         // attacker could guess it unthrottled here and then make a single valid promote/create-owner
-        // call — making the promote endpoint's own rate limit moot. Only FAILED attempts are counted,
+        // call, making the promote endpoint's own rate limit moot. Only FAILED attempts are counted,
         // so legit use with the correct secret is never limited. enforceBruteForceThrottle fails OPEN
-        // WITH A LOGGED WARNING if the limiter binding is missing (a real 429 still blocks) — the
+        // WITH A LOGGED WARNING if the limiter binding is missing (a real 429 still blocks), the
         // same policy the promote endpoint uses, so the two behave consistently.
         const ip = getClientIpAddress(context.request);
         const limited = await enforceBruteForceThrottle(
@@ -163,7 +163,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         }
         // Deny the HTML wizard anywhere that is not an explicit dev environment.
         // Comparing against the single string 'production' let `prod`, `staging`,
-        // `preview` — and an UNSET ENVIRONMENT — serve the binding inventory and
+        // `preview`, and an UNSET ENVIRONMENT, serve the binding inventory and
         // the names of every secret to an anonymous visitor.
         if (!isDevEnvironment(context.env)) {
             return new Response(renderUnauthorizedPage(), {
@@ -180,19 +180,19 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     if (path === '/__bootstrap__/api/create-owner') return handleCreateOwner(context);
     if (path === '/__bootstrap__/api/finalize') return handleFinalize(context);
 
-    // Focused re-seed page (reconcile default roles) — a lightweight maintenance UI over
+    // Focused re-seed page (reconcile default roles), a lightweight maintenance UI over
     // /api/seed, usable after first-run setup. Matched before the generic wizard fallback below.
     if (path === '/__bootstrap__/seed' && context.request.method === 'GET') {
         return serveReseedPage(context);
     }
 
-    // Focused promote-owner page — grants platform_owner to an existing account via the secret-gated
+    // Focused promote-owner page: grants platform_owner to an existing account via the secret-gated
     // POST /api/admin/platform-owner/promote. Break-glass / ownership-transfer UI (no login needed).
     if (path === '/__bootstrap__/promote-owner' && context.request.method === 'GET') {
         return servePromoteOwnerPage(context);
     }
 
-    // Wizard HTML page — serve for any /__bootstrap__* GET
+    // Wizard HTML page: serve for any /__bootstrap__* GET
     if (context.request.method === 'GET') {
         return serveWizardPage(context);
     }
@@ -217,7 +217,7 @@ export function interceptIfNotReady(request: Request, url: URL, platformState: P
     // Platform is READY and not in panic → let request through
     if (platformState.state === 'READY' && !platformState.panic) return null;
 
-    // Panic mode — NOTE: currently unreachable. The resolver's dead-D1 panic
+    // Panic mode: NOTE: currently unreachable. The resolver's dead-D1 panic
     // probe was removed with the READY fast path (see PlatformStateResult.panic
     // in types.ts); this branch is retained for a future explicit health probe.
     if (platformState.panic) {
@@ -409,7 +409,7 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
         const driver = createD1Driver(env.OBCF_D1);
 
         // Org-mode blogs: the index-swap migration runs once (tracked), but autoInit's
-        // ensure step re-creates schema-declared indexes on EVERY run — suppress the
+        // ensure step re-creates schema-declared indexes on EVERY run, suppress the
         // dropped strict slug indexes so re-running this wizard step can't silently
         // restore app-wide uniqueness and break per-org slug namespaces. Env-aware
         // (OTTABLOG_MODE), matching the sibling /api/ottaorm/init route.
@@ -480,14 +480,14 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         await ensureAppBrandDefaults('Ottabase', appId);
 
         // Seed default roles (platform_owner, owner, admin, editor, viewer, member) AND reconcile
-        // existing system-role permission sets to the canonical definitions — e.g. heal a legacy
+        // existing system-role permission sets to the canonical definitions, e.g. heal a legacy
         // 'owner' = ['*:*'] row in place. This is the DELIBERATE heal path (heal:true); the signup
         // path only creates-if-missing. See ensureDefaultRoles.
         const changedRoles = await Role.ensureDefaultRoles({ heal: true });
         const roleNames = changedRoles.map((r: any) => r.get('name') as string);
 
         // A heal changes what the auth layer grants, so drop RBAC caches and refresh the
-        // (small, system-scoped) platform-owner sessions — otherwise a healed permission set / the
+        // (small, system-scoped) platform-owner sessions, otherwise a healed permission set / the
         // platformAdmin flag wouldn't take effect until the JWT expires. Org-scoped sessions refresh
         // on next sign-in (see reconcileSystemRoleSessions).
         if (changedRoles.length > 0) {
@@ -574,7 +574,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         // Atomically claim the right to create the platform owner account.
         // Unlike a SELECT COUNT(*) check, this INSERT is guarded by the `key`
         // PRIMARY KEY on _ottabase_meta, so if two requests race, only one of
-        // them can win the insert — the other fails immediately and never
+        // them can win the insert, the other fails immediately and never
         // proceeds to create a user, closing the TOCTOU window.
         try {
             await env.OBCF_D1.prepare(`INSERT INTO ${META_TABLE} (key, value, updated_at) VALUES (?, ?, ?)`)
@@ -632,7 +632,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
             assignedRole = provisioned.assignedRole;
         } catch (error) {
             // Provisioning failed after the user row was created. Roll back the orphan user AND
-            // release the claim — otherwise the userCount / OWNER_EXISTS guards above permanently
+            // release the claim, otherwise the userCount / OWNER_EXISTS guards above permanently
             // block a legitimate retry.
             await rollbackOwnerCreation(env, createdUserId, createdOrganizationId);
             return errorResponse('Failed to provision default organization for platform owner account', 500, {
@@ -656,7 +656,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         // Auto-login: create the session cookie so the browser is immediately authenticated.
         // The bootstrap user now holds the SYSTEM-scoped 'platform_owner' grant (via
         // bootstrapFirstUser above) AND the org-scoped 'owner'. Let loadUserContext derive the
-        // real context from those DB grants — it resolves platformAdmin=true and the '*:*'
+        // real context from those DB grants, it resolves platformAdmin=true and the '*:*'
         // permission set from the system-scoped grant, so no fake wildcard is injected here.
         const { cookie, session } = await createSessionCookieForUser(
             {
@@ -734,7 +734,7 @@ async function rollbackOwnerCreation(
         try {
             await User.delete(userId);
         } catch {
-            /* best-effort — a leftover row can still be cleared by re-running init */
+            /* best-effort: a leftover row can still be cleared by re-running init */
         }
     }
     await releaseOwnerClaim(env);
@@ -759,7 +759,7 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
         // Verify tables actually exist before marking READY
         const tableCheck = await verifyCoreTables(env);
         if (!tableCheck.ok) {
-            return errorResponse('Core tables missing — run initialization first', 400, {
+            return errorResponse('Core tables missing: run initialization first', 400, {
                 code: 'CORE_TABLES_MISSING',
                 metadata: { missing: tableCheck.missing },
             });
@@ -769,7 +769,7 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
         const userRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM users').first<any>();
         const userCount = Number(userRow?.count ?? 0);
         if (userCount === 0) {
-            return errorResponse('No admin account found — create a platform owner account first', 400, {
+            return errorResponse('No admin account found: create a platform owner account first', 400, {
                 code: 'NO_OWNER',
             });
         }
@@ -778,7 +778,7 @@ async function handleFinalize(context: BootstrapContext): Promise<Response> {
         const roleRow = await env.OBCF_D1.prepare('SELECT COUNT(*) as count FROM roles').first<any>();
         const roleCount = Number(roleRow?.count ?? 0);
         if (roleCount === 0) {
-            return errorResponse('No roles found — run RBAC seed first', 400, { code: 'NO_ROLES' });
+            return errorResponse('No roles found: run RBAC seed first', 400, { code: 'NO_ROLES' });
         }
 
         // Mark platform as READY in both DB and KV

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Handlers Re-exports
+// Brand Engine, Handlers Re-exports
 // needed for tsconfig paths resolution to work correctly
 // ---------------------------------------------------------------------------
 

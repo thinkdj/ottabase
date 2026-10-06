@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Theme Presets (Shared)
+// Brand Engine, Theme Presets (Shared)
 // Single source of truth for all theme presets
 // ---------------------------------------------------------------------------
 

@@ -501,7 +501,7 @@ export function AdminBlogTranslationsPanel({
         return (
             <Card>
                 <CardContent className="p-6 text-sm text-muted-foreground">
-                    No additional languages are enabled yet. Add languages in Content Studio.
+                    No additional languages are enabled yet. Add languages in Content studio.
                 </CardContent>
             </Card>
         );

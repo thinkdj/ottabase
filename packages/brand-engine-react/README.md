@@ -1,6 +1,6 @@
 # @ottabase/brand-engine-react
 
-React bindings for Ottabase Brand Engine — brand config provider, theme application, and layout resolution.
+React bindings for Ottabase Brand Engine: brand config provider, theme application, and layout resolution.
 
 ## Installation
 
@@ -33,20 +33,20 @@ function MyContent() {
 
 **`useBrand()` returns:**
 
-| Field       | Type                | Description                     |
-| ----------- | ------------------- | ------------------------------- |
-| `config`    | `BrandConfig\|null` | Resolved brand config for route |
-| `isLoading` | `boolean`           | True during initial fetch       |
-| `error`     | `Error\|null`       | Fetch/parse error if any        |
-| `refresh`   | `() => void`        | Manually re-fetch brand config  |
+| Field       | Type                  | Description                     |
+| ----------- | --------------------- | ------------------------------- |
+| `config`    | `BrandConfig\|null`   | Resolved brand config for route |
+| `isLoading` | `boolean`             | True during initial fetch       |
+| `error`     | `Error\|null`         | Fetch/parse error if any        |
+| `refresh`   | `() => Promise<void>` | Manually re-fetch brand config  |
 
 **`BrandProvider` props:**
 
-- `apiEndpoint` — API path to fetch brand config from (e.g. `"/api/brand"`)
-- `appId` — App identifier passed to the API
-- `initialConfig` — Pre-fetched config for SSR/SSG (skips client fetch)
-- `fallbackTheme` — Theme tokens used if the API fails (graceful degradation)
-- `mode` — `'light'` | `'dark'` override (default: matches `prefers-color-scheme`)
+- `apiEndpoint`: API path to fetch brand config from (e.g. `"/api/brand"`)
+- `appId`: App identifier passed to the API
+- `initialConfig`: Pre-fetched config for SSR/SSG (skips client fetch)
+- `fallbackTheme`: Theme tokens used if the API fails (graceful degradation)
+- Light or dark follows the `dark` class on `<html>` (what next-themes sets); there is no `mode` prop
 
 `BrandProvider` automatically retries transient startup failures from `/api/brand` such as temporary `502`, `503`, and
 `504` responses so worker warmup does not immediately drop the app shell into an error state.
@@ -62,20 +62,20 @@ Besides the mode-picked `config.theme`, the config now carries **both** palettes
 | `themeDark`  | Full dark theme (light + kit dark delta), per-route token overrides applied |
 
 The app's theme applicator passes both to `applyBrandTheme(themeLight, themeDark)`, which writes the same dual
-`:root/.dark` stylesheet the edge injects — dark-mode toggling is then pure CSS cascade, no JS re-application.
+`:root/.dark` stylesheet the edge injects, dark-mode toggling is then pure CSS cascade, no JS re-application.
 
 **Zero-FOUC handoff contract:** `resolveConfigForPath` (exported for testing) must derive `themeLight`/`themeDark`
 exactly as the server-side `resolveConfigFromFull` derives the themes it paints into the edge-injected critical CSS.
-When they match, the client's first-load stylesheet replacement is a byte-identical no-op — no re-fetch, no
+When they match, the client's first-load stylesheet replacement is a byte-identical no-op, no re-fetch, no
 base-theme-then-retheme flash. `apps/otta-web/src/__tests__/brand-theme-parity.test.ts` locks this contract.
 
 ### Swapping components per design system (two tiers)
 
 Theming components lives in `@ottabase/ui-shadcn`, not this package, but forks land here first, so the pointer:
 
-1. **Tier 1 (CSS — covers ~90%):** every ui-shadcn primitive stamps `data-slot` (+ `data-variant`/`data-size`); theme
-   CSS like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
-2. **Tier 2 (React — DOM-level differences):** register replacement implementations via
+1. **Tier 1 (CSS: covers ~90%):** every ui-shadcn primitive stamps `data-slot` (+ `data-variant`/`data-size`); theme CSS
+   like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
+2. **Tier 2 (React: DOM-level differences):** register replacement implementations via
    `<BrandComponentsProvider overrides={{ button: UppButton }}>` from `@ottabase/ui-shadcn`. Reserve for components
    whose DOM must genuinely differ; prefer Tier 1.
 
@@ -89,7 +89,7 @@ import { LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import type { LayoutComponentProps } from '@ottabase/brand-engine-react';
 
-// Your layout shell — receives the resolved LayoutConfig
+// Your layout shell: receives the resolved LayoutConfig
 function AppShell({ config, children }: LayoutComponentProps) {
     return (
         <div className={config.navigation === 'sidebar' ? 'with-sidebar' : ''}>
@@ -116,7 +116,7 @@ function App() {
 // TanStack Router (built-in adapter)
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 
-// Custom adapter — any object with a usePathname hook
+// Custom adapter: any object with a usePathname hook
 const myAdapter = { usePathname: () => useMyRouter().pathname };
 ```
 
@@ -152,15 +152,15 @@ const config = resolveConfigForPath(full, '/blog', createRouteMatcher(mappings),
 
 ## Accessibility, SSR & performance
 
-- **SSR (the headline feature)** — the edge resolves the brand config once and injects both the critical CSS (light
+- **SSR (the headline feature)**: the edge resolves the brand config once and injects both the critical CSS (light
   **and** dark) and a JSON hydration payload; `BrandProvider` reuses it via `initialConfig` and **skips the mount
   fetch**, so there is no flash of an unstyled or wrong-branded UI. The edge-painted CSS and the client-re-derived CSS
-  are kept byte-identical on purpose (a tested parity contract) — the client apply is a no-op when they match. Don't
+  are kept byte-identical on purpose (a tested parity contract), the client apply is a no-op when they match. Don't
   `window.location.reload()` to apply a theme.
-- **Performance** — tokens become CSS custom properties written into a single `<style>` block, not per-element inline
+- **Performance**: tokens become CSS custom properties written into a single `<style>` block, not per-element inline
   styles; generated selectors use `:where()` (zero specificity) so mode/scope switches retint without regenerating
   rules. Per-kit custom CSS injection is debounced and front-run at the edge to avoid a late repaint.
-- **Accessibility** — motion is tokenized and zeroed under `prefers-reduced-motion`, and the focus ring is a token
+- **Accessibility**: motion is tokenized and zeroed under `prefers-reduced-motion`, and the focus ring is a token
   (`--focus-ring-*`), so respectful defaults flow from the theme rather than each component.
 
 ## Architecture

@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — EventSink
+// @ottabase/ottaai, EventSink
 // ============================================================
 // Console warnings are unroutable, unsilenceable and unqueryable inside a package.
 //
@@ -37,7 +37,7 @@ export interface CredentialSkippedEvent extends CredentialResolvedEvent {
 export interface CredentialDecryptFailedEvent extends TenancyFields {
     credentialId: string;
     /**
-     * The CODE only — never the envelope. Together with `keyId` + `formatVersion` this is
+     * The CODE only: never the envelope. Together with `keyId` + `formatVersion` this is
      * exactly what diagnosis needs: EVERY row failing decrypt means the wrong master
      * secret is deployed; ONE row failing bad-ciphertext means foreign or corrupt data.
      */
@@ -124,7 +124,7 @@ export const noopEventSink: EventSink = () => {};
 /**
  * Dedupe wrapper for failing-key detection.
  *
- * DETECTION AND DEDUPLICATION BELONG TO THE PACKAGE — without package-side dedupe,
+ * DETECTION AND DEDUPLICATION BELONG TO THE PACKAGE, without package-side dedupe,
  * the first consumer to add notification ships a mail bomb.
  */
 export function createDedupedHealthSink(sink: EventSink, bucketMs = 15 * 60 * 1000): EventSink {

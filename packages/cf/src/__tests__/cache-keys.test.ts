@@ -169,7 +169,7 @@ describe('CacheKeyBuilder', () => {
 
     describe('key length limit', () => {
         it('should allow keys up to 512 bytes', () => {
-            // 512 bytes is exactly the limit — should not throw
+            // 512 bytes is exactly the limit, should not throw
             const longSegment = 'a'.repeat(500);
             expect(() => CacheKeyBuilder.create('ns').segment(longSegment).build()).not.toThrow();
         });
@@ -379,7 +379,7 @@ describe('parseKey', () => {
     });
 
     it('should correctly parse namespace starting with v (not version)', () => {
-        // 'vault' starts with 'v' but is NOT a version tag — must be recognized as namespace
+        // 'vault' starts with 'v' but is NOT a version tag, must be recognized as namespace
         expect(parseKey('vault:org:acme:secret')).toEqual({
             namespace: 'vault',
             scope: 'org',
@@ -389,7 +389,7 @@ describe('parseKey', () => {
     });
 
     it('should correctly parse namespace starting with u (not user scope)', () => {
-        // 'upload' starts with 'u' but is NOT user scope — must be recognized as namespace
+        // 'upload' starts with 'u' but is NOT user scope, must be recognized as namespace
         expect(parseKey('upload:org:acme:file')).toEqual({
             namespace: 'upload',
             scope: 'org',

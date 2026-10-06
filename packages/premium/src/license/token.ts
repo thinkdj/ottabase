@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/premium — license token codec + signature verification
+// @ottabase/premium, license token codec + signature verification
 // ============================================================
 // A license is a compact, OFFLINE-VERIFIABLE token:
 //
 //     obp1.<base64url(claims JSON)>.<base64url(signature)>
 //
-// ECDSA P-256 / SHA-256, verified with Web Crypto — the same primitive set the rest
+// ECDSA P-256 / SHA-256, verified with Web Crypto, the same primitive set the rest
 // of the framework uses, so it runs unchanged on Workers, Node and the browser.
 //
 // WHY OFFLINE: a paid add-on that phones home on the request path adds a network
@@ -14,7 +14,7 @@
 // air-gapped, and cannot be forged without the vendor's private key.
 //
 // WHAT THAT COSTS, stated plainly: an offline token CANNOT BE REVOKED before its
-// expiry. Revocation is what expiry is for — vendors selling subscriptions mint
+// expiry. Revocation is what expiry is for, vendors selling subscriptions mint
 // short-dated tokens and re-issue on renewal. A vendor that needs instant revocation
 // needs an online check, which is a different product decision, not a missing feature.
 // ============================================================
@@ -44,7 +44,7 @@ export function base64UrlToBytes(value: string): Uint8Array {
 
 /** A structurally valid token, split but not yet verified. */
 export interface ParsedLicenseToken {
-    /** The exact base64url payload segment — this, not a re-serialized object, is what was signed. */
+    /** The exact base64url payload segment: this, not a re-serialized object, is what was signed. */
     payloadSegment: string;
     claims: PremiumLicenseClaims;
     signature: Uint8Array;
@@ -54,7 +54,7 @@ export interface ParsedLicenseToken {
  * Split and JSON-decode a token WITHOUT verifying it.
  *
  * Returns null for anything malformed. Callers must treat the claims as untrusted
- * until {@link verifyLicenseSignature} has passed — this function exists so the
+ * until {@link verifyLicenseSignature} has passed, this function exists so the
  * verifier can report "malformed" separately from "bad signature", which is the
  * difference between a typo and an attack in an operator's error message.
  */

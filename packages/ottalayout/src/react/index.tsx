@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout/react – React API
+// @ottabase/ottalayout/react, React API
 //
 // Slot system and page-level layout hints. Import pure logic (types, presets,
 // resolver, validators) from '@ottabase/ottalayout' instead.

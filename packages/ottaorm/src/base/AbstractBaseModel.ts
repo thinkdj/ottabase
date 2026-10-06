@@ -372,7 +372,7 @@ export abstract class AbstractBaseModel {
      *
      * Distinct from `hidden`: hidden fields are loaded and withheld from JSON, omitted ones were
      * never read. `toJson()` and `save()` walk `attributes` directly, so an omitted column is
-     * simply absent from both — a save leaves it untouched rather than nulling it.
+     * simply absent from both, a save leaves it untouched rather than nulling it.
      */
     protected omitted: string[] = [];
 
@@ -490,7 +490,7 @@ export abstract class AbstractBaseModel {
                                 const parsed = JSON.parse(trimmed);
                                 if (Array.isArray(parsed)) return parsed;
                             } catch {
-                                // not valid JSON — treat as CSV below
+                                // not valid JSON: treat as CSV below
                             }
                         }
                         return trimmed.split(/\s*,\s*/);

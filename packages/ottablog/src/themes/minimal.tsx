@@ -99,7 +99,7 @@ export const minimalTheme: Theme = {
                             {formatDate(post.publishedAt)}
                         </time>
                     )}
-                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min</span>}
+                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min read</span>}
                     {post.isFeatured && (
                         <span className="rounded-full bg-background px-2.5 py-0.5 text-muted-foreground ring-1 ring-border">
                             Featured
@@ -118,7 +118,7 @@ export const minimalTheme: Theme = {
             return (
                 <div className={`${props.contentClassName || ''} ${minimalTheme.config?.classes?.content || ''}`}>
                     <Blocks
-                        // Ensure version and time are always present — editorjs-blocks-react-renderer
+                        // Ensure version and time are always present, editorjs-blocks-react-renderer
                         // calls data.version.includes() unconditionally and will throw if absent.
                         data={{ version: '2.30.0', time: Date.now(), ...(post.content as EditorJSData) }}
                         renderers={customRenderers}
@@ -188,7 +188,7 @@ export const minimalTheme: Theme = {
                                 <div className="flex items-center gap-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mt-2">
                                     {post.author?.name && <span>{post.author.name}</span>}
                                     {post.publishedAt && <time>{formatDate(post.publishedAt)}</time>}
-                                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min</span>}
+                                    {post.readingTimeMinutes && <span>{post.readingTimeMinutes} min read</span>}
                                 </div>
                             )}
                         </div>

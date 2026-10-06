@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Favicon helpers
+// Brand Engine, Favicon helpers
 // Icon is typically square and suitable as favicon. Modern browsers accept PNG.
 // Future: Cloudflare Images can generate ico, apple-touch-icon from uploaded icon.
 // ---------------------------------------------------------------------------

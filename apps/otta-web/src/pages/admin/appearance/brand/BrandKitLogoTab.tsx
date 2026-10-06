@@ -40,7 +40,7 @@ const LOGO_SPECS: Record<LogoType, LogoSpec> = {
     },
     'logo-dark': {
         label: 'Dark mode logo',
-        description: 'Replaces the primary logo on dark surfaces — light artwork reads best.',
+        description: 'Replaces the primary logo on dark surfaces, light artwork reads best.',
         spec: 'SVG or transparent PNG · at least 400×100',
         accept: 'image/svg+xml,image/png,image/webp,image/jpeg',
         allowSvg: true,
@@ -64,7 +64,7 @@ const LOGO_SPECS: Record<LogoType, LogoSpec> = {
     },
     'email-logo': {
         label: 'Email logo',
-        description: 'Header artwork for transactional email — most clients cannot render SVG.',
+        description: 'Header artwork for transactional email, most clients cannot render SVG.',
         spec: 'PNG or JPG · about 400px wide',
         accept: 'image/png,image/jpeg,image/webp',
         allowSvg: false,
@@ -122,7 +122,7 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onChanged }: B
                 onChanged(logoType, res.key);
                 toast.success(`${spec.label} updated`);
             } catch (error) {
-                let message = 'Upload failed — please try again';
+                let message = 'Upload failed: please try again';
                 if (error instanceof Response) {
                     const text = await error.text();
                     if (text) message = text;
@@ -145,7 +145,7 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onChanged }: B
                 onChanged(logoType, null);
                 toast.success(`${LOGO_SPECS[logoType].label} removed`);
             } catch {
-                toast.error('Could not remove the image — please try again');
+                toast.error('Could not remove the image, please try again');
             } finally {
                 setRemoving(null);
             }
@@ -156,8 +156,8 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onChanged }: B
     return (
         <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-                Uploads apply to this Brand Kit immediately — no need to press Save. Prefer SVG where supported; it
-                stays crisp at every size.
+                Uploads apply to this Brand Kit immediately, no need to press Save. Prefer SVG where supported; it stays
+                crisp at every size.
             </p>
 
             {!logoBaseUrl && (
@@ -238,7 +238,7 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onChanged }: B
                                         >
                                             <IconPhotoUp className="h-6 w-6" stroke={1.5} />
                                             {hasAsset
-                                                ? 'Uploaded — preview unavailable'
+                                                ? 'Uploaded: preview unavailable'
                                                 : 'Drop image or click to browse'}
                                         </span>
                                     )}

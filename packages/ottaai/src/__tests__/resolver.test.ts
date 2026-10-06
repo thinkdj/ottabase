@@ -75,7 +75,7 @@ function harness(options: Partial<Parameters<typeof createAiProvisioning>[0]> = 
         verifyMembership: () => true,
         authorize: () => true,
         // Supplied so composition does not warn about unbounded platform spend in every
-        // unrelated test — this PLATFORM config genuinely has a usable route. The warning is
+        // unrelated test, this PLATFORM config genuinely has a usable route. The warning is
         // covered explicitly in `review-regressions.test.ts`.
         quota: () => true,
         eventSink: (event, payload) => events.push({ event, payload: payload as unknown as Record<string, unknown> }),
@@ -87,7 +87,7 @@ function harness(options: Partial<Parameters<typeof createAiProvisioning>[0]> = 
 
 beforeEach(() => resetFixtureCounter());
 
-describe('composition — boot tier THROWS', () => {
+describe('composition: boot tier THROWS', () => {
     it('allows platform-only inference with no tenant credential keyring', async () => {
         const ai = createAiProvisioning<AiTenancyTuple>({
             store: createMemoryStore(),
@@ -161,7 +161,7 @@ describe('composition — boot tier THROWS', () => {
         expect(onBoot).toHaveBeenCalledWith(expect.objectContaining({ coherenceCheck: 'skipped' }));
     });
 
-    it('rejects platform.providerKey with no declared provider — inference from a prefix goes stale', () => {
+    it('rejects platform.providerKey with no declared provider, inference from a prefix goes stale', () => {
         expect(() =>
             createAiProvisioning({
                 keyring: createTestKeyring(),
@@ -175,7 +175,7 @@ describe('composition — boot tier THROWS', () => {
         ).toThrow(/must be DECLARED/);
     });
 
-    it('validates EVERY declared task eagerly — a task that can never run is a boot error', () => {
+    it('validates EVERY declared task eagerly, a task that can never run is a boot error', () => {
         expect(() =>
             createAiProvisioning({
                 keyring: createTestKeyring(),
@@ -209,7 +209,7 @@ describe('composition — boot tier THROWS', () => {
     });
 });
 
-describe('mode intersection law — a layer may only REMOVE a permission', () => {
+describe('mode intersection law: a layer may only REMOVE a permission', () => {
     it.each([
         [['auto', 'byok'], 'byok'],
         [['auto', 'platform'], 'platform'],
@@ -226,7 +226,7 @@ describe('mode intersection law — a layer may only REMOVE a permission', () =>
 });
 
 describe('state machine', () => {
-    it('stage 1 — MODE_PLATFORM_ONLY when the tenant path is not permitted', async () => {
+    it('stage 1: MODE_PLATFORM_ONLY when the tenant path is not permitted', async () => {
         const { ai, store } = harness();
         store.seed([await encryptedCredential()]);
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat', { mode: 'platform' });
@@ -234,7 +234,7 @@ describe('state machine', () => {
         expect(resolution.tenantReason).toBe('MODE_PLATFORM_ONLY');
     });
 
-    it('stage 1i — an impersonated actor never spends the tenant key', async () => {
+    it('stage 1i: an impersonated actor never spends the tenant key', async () => {
         const { ai, store } = harness();
         store.seed([await encryptedCredential()]);
         const resolution = await ai.resolve(ai.contextFrom({ ...CONTEXT, impersonated: true }), 'chat');
@@ -242,7 +242,7 @@ describe('state machine', () => {
         expect(resolution.tenantReason).toBe('IMPERSONATED_ACTOR');
     });
 
-    it('stage 2 — refuses an unscoped lookup outright', async () => {
+    it('stage 2: refuses an unscoped lookup outright', async () => {
         const { ai, store } = harness();
         const spy = vi.spyOn(store, 'findCandidates');
         const resolution = await ai.resolve(
@@ -253,7 +253,7 @@ describe('state machine', () => {
         expect(spy).not.toHaveBeenCalled();
     });
 
-    it('stage 4 — NO_CREDENTIAL falls through to the platform under `auto`', async () => {
+    it('stage 4: NO_CREDENTIAL falls through to the platform under `auto`', async () => {
         const { ai } = harness();
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
         expect(resolution.source).toBe('platform');
@@ -261,7 +261,7 @@ describe('state machine', () => {
         expect(resolution.tenantReason).toBe('NO_CREDENTIAL');
     });
 
-    it('BOTH reasons are always returned — otherwise `auto` flattens every cause', async () => {
+    it('BOTH reasons are always returned, otherwise `auto` flattens every cause', async () => {
         const { ai, store } = harness();
         store.seed([await encryptedCredential({ enabled: false })]);
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
@@ -269,7 +269,7 @@ describe('state machine', () => {
         expect(resolution.tenantReason).toBe('ALL_DISABLED');
     });
 
-    it('stage 7✓ — SELECTED on the happy path, with a client', async () => {
+    it('stage 7✓: SELECTED on the happy path, with a client', async () => {
         const { ai, store } = harness();
         store.seed([await encryptedCredential({ model: 'gpt-4o' })]);
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
@@ -280,7 +280,7 @@ describe('state machine', () => {
         expect(resolution.model).toBe('openai/gpt-4o');
     });
 
-    it('stage 8 — no client at all when the mode forbids the platform and nothing was selected', async () => {
+    it('stage 8: no client at all when the mode forbids the platform and nothing was selected', async () => {
         const { ai } = harness();
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'premium');
         expect(resolution.client).toBeNull();
@@ -288,7 +288,7 @@ describe('state machine', () => {
         expect(resolution.reason).toBe('NO_CREDENTIAL');
     });
 
-    it('stage 6b — NO_TENANT_SECRET under `byok` when the winner carries no secret', async () => {
+    it('stage 6b: NO_TENANT_SECRET under `byok` when the winner carries no secret', async () => {
         const { ai, store } = harness();
         store.seed([credentialFixture({ provider: 'openai', secret: { kind: 'none' }, keyHint: '' })]);
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'premium');
@@ -296,7 +296,7 @@ describe('state machine', () => {
         expect(resolution.client).toBeNull();
     });
 
-    it('stage 6 — the keyless-mismatch guard discards the WHOLE credential, including its model', async () => {
+    it('stage 6: the keyless-mismatch guard discards the WHOLE credential, including its model', async () => {
         const { ai, store } = harness();
         store.seed([credentialFixture({ provider: 'openai', secret: { kind: 'none' }, model: 'gpt-4o' })]);
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');
@@ -305,7 +305,7 @@ describe('state machine', () => {
         expect(resolution.model).toBe('openai/gpt-4o-mini');
     });
 
-    it('stage 9✗ — PLATFORM_INCOMPLETE when the adapter says the merged config cannot issue a request', async () => {
+    it('stage 9✗: PLATFORM_INCOMPLETE when the adapter says the merged config cannot issue a request', async () => {
         const transport = createMockTransport();
         transport.isComplete = () => false;
         const { ai } = harness({ transport });
@@ -314,7 +314,7 @@ describe('state machine', () => {
         expect(resolution.client).toBeNull();
     });
 
-    it('the resolver NEVER throws for any of these — absence of a client is the signal', async () => {
+    it('the resolver NEVER throws for any of these, absence of a client is the signal', async () => {
         const { ai } = harness();
         await expect(ai.resolve(ai.contextFrom(CONTEXT), 'premium')).resolves.toBeDefined();
     });
@@ -337,8 +337,8 @@ describe('decrypt failure FAILS CLOSED', () => {
 
         const failure = events.find((entry) => entry.event === 'credential.decrypt_failed');
         expect(failure).toBeDefined();
-        // The event carries the CODE plus keyId + formatVersion — exactly what diagnosis
-        // needs — and never the envelope.
+        // The event carries the CODE plus keyId + formatVersion, exactly what diagnosis
+        // needs, and never the envelope.
         expect(failure!.payload.errorCode).toBe(AI_ERROR_CODES.NO_ENCRYPTION_KEY);
         expect(JSON.stringify(failure!.payload)).not.toContain('AAAA.BBBB.CCCC');
     });
@@ -378,7 +378,7 @@ describe('the pre-resolved credential parameter is a THREE-state seam', () => {
 });
 
 describe('the status primitive is the DRY RUN, not the force-platform flag', () => {
-    it('reports byok for a tenant with a working key — the bug this test exists to prevent', async () => {
+    it('reports byok for a tenant with a working key, the bug this test exists to prevent', async () => {
         const { ai, store } = harness();
         store.seed([await encryptedCredential()]);
         const status = await ai.status(ai.contextFrom(CONTEXT));
@@ -410,7 +410,7 @@ describe('the status primitive is the DRY RUN, not the force-platform flag', () 
 
     it('the management list shows BOTH dimensions, unlike the single-dimension RLS filter', async () => {
         // The route factory reads the store's two-query fan-out, so under `user-then-org` an
-        // org key is still visible and manageable — the RLS policy is defence in depth for
+        // org key is still visible and manageable, the RLS policy is defence in depth for
         // the generic-CRUD path, not the source for this list.
         const { ai, store } = harness();
         store.seed([
@@ -542,7 +542,7 @@ describe('the instrumented client', () => {
         expect(transport.calls).toHaveLength(1);
     });
 
-    it('a 429 reports RATE_LIMITED — the key WORKS, so a boolean-only UI would lie', async () => {
+    it('a 429 reports RATE_LIMITED: the key WORKS, so a boolean-only UI would lie', async () => {
         const { ai, store, transport } = harness();
         store.seed([await encryptedCredential()]);
         const resolution = await ai.resolve(ai.contextFrom(CONTEXT), 'chat');

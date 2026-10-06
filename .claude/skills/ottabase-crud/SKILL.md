@@ -1,7 +1,7 @@
 ---
 name: ottabase-crud
 description:
-    The Ottabase way to build CRUD for an entity — generic OttaORM route + client hooks + the ModelCrud UI. Use for
+    The Ottabase way to build CRUD for an entity, generic OttaORM route + client hooks + the ModelCrud UI. Use for
     "list/create/edit/delete X", "admin table for X", "CRUD screen", "wire up the API for this model". Stops agents from
     hand-rolling custom endpoints and bespoke fetch code.
 ---
@@ -14,11 +14,11 @@ Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
 ## Backend
 
 1. Register the model (see `ottabase-create-model`) in `worker/lib/db-utils.ts` **and** give it an RLS policy
-   (`registerPolicy` after `initRLS()`) — no policy = no access.
+   (`registerPolicy` after `initRLS()`), no policy = no access.
 2. Add the entity to `GENERIC_CRUD_ALLOWLIST` in `worker/routes/ottaorm-crud.ts`. The route is default-deny (403
    `CRUD_NOT_ALLOWED`); once listed, `GET/POST/PATCH/PUT/DELETE /api/ottaorm/{entity}` runs through
    `executeSecureCrudRequest`, filtered by RLS. Grant/auth tables (`user_roles`, `roles`, `permissions`, sessions…) are
-   never exposed here — they have dedicated admin routes.
+   never exposed here, they have dedicated admin routes.
 3. Keep persistence logic in model methods; the worker route only orchestrates/auths/validates.
 
 ## Client
@@ -29,7 +29,7 @@ Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
     export const { useList, useDetail, useFind, useCreate, useUpdate, useDelete, useInfiniteList } =
         createModelHooks<TodoType>({ entityName: 'todos' });
     ```
-    Reads → a query hook; writes → a mutation hook. Retry/backoff/dedup are framework-owned — do not add them.
+    Reads → a query hook; writes → a mutation hook. Retry/backoff/dedup are framework-owned, do not add them.
 
 ## UI (90% case)
 
@@ -40,7 +40,7 @@ Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
     const config = createModelConfig(Todo); // metadata comes from the model (single source of truth)
     // <ModelCrud config={config} />  → list + detail + create/edit/delete + delete-confirm
     ```
-    Field UI/validation come from the model's field metadata — define it once on the model, not in the form.
+    Field UI/validation come from the model's field metadata, define it once on the model, not in the form.
 
 ## Gotchas
 

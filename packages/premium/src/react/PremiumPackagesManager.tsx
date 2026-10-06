@@ -1,14 +1,32 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium/react — the drop-in admin surface
+// @ottabase/premium/react, the drop-in admin surface
 // ============================================================
 // One component gives an app the whole operator story: what is installed, what state
 // each package is in, and where to paste a license. Hosts that want their own layout
-// can build it from the hooks instead — nothing here is privileged.
+// can build it from the hooks instead, nothing here is privileged.
 // ============================================================
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Input,
+} from '@ottabase/ui-shadcn';
 import { CheckCircle2, ExternalLink, KeyRound, Lock, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { usePremiumLicense, usePremiumPackages } from './hooks';
@@ -23,7 +41,7 @@ const STATE_LABEL: Record<PremiumState, string> = {
     disabled: 'Disabled',
 };
 
-/** Badge variant per state. `grace` reads as a warning on purpose — it is a deadline. */
+/** Badge variant per state. `grace` reads as a warning on purpose, it is a deadline. */
 const STATE_VARIANT: Record<PremiumState, 'default' | 'secondary' | 'destructive' | 'outline'> = {
     active: 'default',
     grace: 'secondary',
@@ -87,11 +105,11 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                     <div>
                         <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Plan</dt>
-                        <dd className="text-foreground">{status.plan ?? '—'}</dd>
+                        <dd className="text-foreground">{status.plan ?? 'Not set'}</dd>
                     </div>
                     <div>
                         <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Licensed to</dt>
-                        <dd className="truncate text-foreground">{status.licensee ?? '—'}</dd>
+                        <dd className="truncate text-foreground">{status.licensee ?? 'Not set'}</dd>
                     </div>
                     <div>
                         <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Expires</dt>
@@ -99,8 +117,8 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                             {status.requiresLicense
                                 ? status.expiresAt
                                     ? formatDate(status.expiresAt)
-                                    : 'never'
-                                : 'n/a'}
+                                    : 'Never'
+                                : 'Not needed'}
                         </dd>
                     </div>
                     <div>
@@ -127,7 +145,7 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                 {status.requiresLicense ? (
                     envManaged ? (
                         <p className="rounded-lg bg-background p-3 text-xs text-muted-foreground ring-1 ring-border">
-                            Licensed from an environment variable. Change it where you configure secrets — a key pasted
+                            Licensed from an environment variable. Change it where you configure secrets. A key pasted
                             here would be ignored.
                         </p>
                     ) : (
@@ -151,15 +169,33 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                                     {activate.isPending ? 'Saving…' : 'Activate'}
                                 </Button>
                                 {status.licenseSource === 'store' ? (
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="shrink-0"
-                                        onClick={() => void remove.mutateAsync(status.key)}
-                                        disabled={remove.isPending}
-                                    >
-                                        Remove
-                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="shrink-0"
+                                                disabled={remove.isPending}
+                                            >
+                                                Remove
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Remove this license key?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    {status.name} goes back to unlicensed at once. The key can be pasted
+                                                    again later.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Keep it</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => void remove.mutateAsync(status.key)}>
+                                                    Remove key
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 ) : null}
                             </div>
                             {error ? <p className="text-xs text-destructive">{error}</p> : null}
@@ -228,7 +264,7 @@ export function PremiumPackagesManager({ emptyMessage }: PremiumPackagesManagerP
         return (
             <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
                 {emptyMessage ??
-                    'No premium packages are installed. Register one in ottabase/config.premium.ts to see it here.'}
+                    'No premium packages are installed yet. A package registers itself in config.premium.ts; its license key is then activated here.'}
             </div>
         );
     }

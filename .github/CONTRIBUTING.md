@@ -56,7 +56,7 @@ See [AGENTS.MD](./AGENTS.MD) for full architecture details.
 ### Submitting Pull Requests
 
 1. **Fork the repo** and create a branch from `main`
-2. **Make your changes** — keep them focused and small
+2. **Make your changes**: keep them focused and small
 3. **Add or update tests** for any changed functionality
 4. **Update documentation** (README.md, inline comments) as needed
 5. **Run quality checks:**
@@ -73,24 +73,24 @@ See [AGENTS.MD](./AGENTS.MD) for full architecture details.
 
 Look for issues labeled:
 
-- [`good first issue`](https://github.com/thinkdj/ottabase/labels/good%20first%20issue) — small, well-scoped tasks for
+- [`good first issue`](https://github.com/thinkdj/ottabase/labels/good%20first%20issue), small, well-scoped tasks for
   newcomers
-- [`help wanted`](https://github.com/thinkdj/ottabase/labels/help%20wanted) — areas where we need community help
+- [`help wanted`](https://github.com/thinkdj/ottabase/labels/help%20wanted), areas where we need community help
 
 ## Coding Standards
 
 ### General
 
-- **TypeScript only** — no plain JavaScript in source code
+- **TypeScript only**: no plain JavaScript in source code
 - **Prettier** for formatting (run `pnpm format` before committing)
 - **ESLint** for linting (run `pnpm lint` to check)
 
 ### Architecture
 
-- **Fat Models** — business logic goes in OttaORM `BaseModel` subclasses, not in controllers or services
-- **Edge-compatible** — avoid Node.js-only APIs (`fs`, `child_process`) in app and package code
-- **Workspace protocol** — use `workspace:*` for internal package dependencies
-- **Catalog dependencies** — use `catalog:` for shared external dependencies
+- **Fat Models**: business logic goes in OttaORM `BaseModel` subclasses, not in controllers or services
+- **Edge-compatible**: avoid Node.js-only APIs (`fs`, `child_process`) in app and package code
+- **Workspace protocol**: use `workspace:*` for internal package dependencies
+- **Catalog dependencies**: use `catalog:` for shared external dependencies
 
 ### Packages
 

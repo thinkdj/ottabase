@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout – Built-in Layout Presets
+// @ottabase/ottalayout, Built-in Layout Presets
 //
 // Presets are LayoutConfig variations rendered by the same configurable layout
-// component. They are NOT different React components – the same layout component
+// component. They are NOT different React components, the same layout component
 // receives different LayoutConfig values via the layoutComponent prop on
 // <LayoutResolver>.
 // ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ export interface LayoutPreset {
 
 // ── Preset definitions ─────────────────────────────────────────────────────
 
-/** Blog / marketing homepage – minimal header, full-width, topbar nav */
+/** Blog / marketing homepage: minimal header, full-width, topbar nav */
 export const HOMEPAGE_LAYOUT: LayoutPreset = {
     config: {
         header: 'minimal',
@@ -44,7 +44,7 @@ export const HOMEPAGE_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Standard application shell – topbar + sidebar, fluid width */
+/** Standard application shell: topbar + sidebar, fluid width */
 export const APP_SHELL_LAYOUT: LayoutPreset = {
     config: {
         header: 'topbar',
@@ -59,7 +59,7 @@ export const APP_SHELL_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Documentation layout – narrow sidebar, fixed-width content */
+/** Documentation layout: narrow sidebar, fixed-width content */
 export const DOCS_LAYOUT: LayoutPreset = {
     config: {
         header: 'topbar',
@@ -74,7 +74,7 @@ export const DOCS_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Minimal – no chrome, full width (embeds, iframes, custom pages) */
+/** Minimal: no chrome, full width (embeds, iframes, custom pages) */
 export const MINIMAL_LAYOUT: LayoutPreset = {
     config: {
         header: 'none',
@@ -85,7 +85,7 @@ export const MINIMAL_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Auth pages – minimal header, centered narrow content, no nav */
+/** Auth pages: minimal header, centered narrow content, no nav */
 export const AUTH_LAYOUT: LayoutPreset = {
     config: {
         header: 'minimal',
@@ -99,7 +99,7 @@ export const AUTH_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Landing page – full-width, spacious, topbar nav, prominent footer */
+/** Landing page: full-width, spacious, topbar nav, prominent footer */
 export const LANDING_LAYOUT: LayoutPreset = {
     config: {
         header: 'topbar',
@@ -111,7 +111,7 @@ export const LANDING_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Data-dense dashboard – compact, wide content, collapsible thin sidebar */
+/** Data-dense dashboard: compact, wide content, collapsible thin sidebar */
 export const DASHBOARD_LAYOUT: LayoutPreset = {
     config: {
         header: 'topbar',
@@ -127,7 +127,7 @@ export const DASHBOARD_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Settings / account pages – sidebar nav, medium-width content */
+/** Settings / account pages: sidebar nav, medium-width content */
 export const SETTINGS_LAYOUT: LayoutPreset = {
     config: {
         header: 'topbar',
@@ -142,7 +142,7 @@ export const SETTINGS_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Marketing pages – topbar nav, standard width, sticky header */
+/** Marketing pages: topbar nav, standard width, sticky header */
 export const MARKETING_LAYOUT: LayoutPreset = {
     config: {
         header: 'topbar',
@@ -154,7 +154,7 @@ export const MARKETING_LAYOUT: LayoutPreset = {
     },
 };
 
-/** Fullscreen / immersive – no chrome at all, edge-to-edge */
+/** Fullscreen / immersive: no chrome at all, edge-to-edge */
 export const FULLSCREEN_LAYOUT: LayoutPreset = {
     config: {
         header: 'none',

@@ -61,7 +61,7 @@ function extractSvgFromCursor(val: string): string {
     return '';
 }
 
-/** Basic SVG validation – must contain <svg */
+/** Basic SVG validation: must contain <svg */
 function isValidSvgInput(str: string): boolean {
     const trimmed = str.trim();
     return trimmed.length > 0 && /<svg[\s>]/i.test(trimmed);
@@ -169,7 +169,7 @@ function RegistryPicker({
             </PopoverTrigger>
             <PopoverContent className="w-72 p-2" align="end">
                 <p className="text-xs text-muted-foreground px-1 pb-2">
-                    Built-in cursors — hover a tile to try it, click to use.
+                    Built-in cursors: hover a tile to try it, click to use.
                 </p>
                 <div className="grid grid-cols-4 gap-1">
                     <button
@@ -180,8 +180,8 @@ function RegistryPicker({
                             setOpen(false);
                         }}
                     >
-                        <span className="h-8 w-8 flex items-center justify-center text-muted-foreground text-lg">
-                            —
+                        <span className="h-8 w-8 flex items-center justify-center text-muted-foreground">
+                            <IconPointer className="h-4 w-4" />
                         </span>
                         <span className="text-[9px] text-muted-foreground">native</span>
                     </button>
@@ -217,7 +217,7 @@ function RegistryPicker({
 /** How a cursor state resolves for preview: the CSS to apply plus how to describe its source */
 interface ResolvedCursor {
     css: string;
-    /** Human label for the readout — `registry:key`, `custom SVG`, or `native <state>` */
+    /** Human label for the readout: `registry:key`, `custom SVG`, or `native <state>` */
     label: string;
     /** Art to show in the readout, when the cursor renders an image */
     svg: string | null;
@@ -232,7 +232,7 @@ interface ResolvedCursor {
  */
 interface PreviewTile {
     state: CursorState;
-    /** Swapped in while the pointer is held down — lets one tile exercise grab → grabbing */
+    /** Swapped in while the pointer is held down, lets one tile exercise grab → grabbing */
     pressState?: CursorState;
     hint: string;
     /** Spans the full row instead of taking a grid cell */
@@ -247,7 +247,7 @@ const PREVIEW_TILES: PreviewTile[] = [
         wide: true,
         render: (dark) => (
             <span className={`text-[11px] ${dark ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                Roam this strip — it carries the default cursor
+                Roam this strip: it carries the default cursor
             </span>
         ),
     },
@@ -409,7 +409,7 @@ function PreviewSurface({ config, dark }: { config: Partial<TokenCursors>; dark?
                         <div
                             key={tile.state}
                             style={{ cursor: cursor.css }}
-                            title={`${state} — ${cursor.label}`}
+                            title={`${state}: ${cursor.label}`}
                             onMouseEnter={() => setHovered(tile.state)}
                             onMouseDown={() => tile.pressState && setPressed(true)}
                             onMouseUp={() => setPressed(false)}
@@ -598,7 +598,7 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                             <Label className="capitalize text-muted-foreground">{state} Cursor</Label>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder={`Native ${state} — or registry:… (pick →)`}
+                                    placeholder={`Native ${state}, or registry:… (pick →)`}
                                     value={currentVal}
                                     onChange={(e) => handleUpdate(mode, state, e.target.value)}
                                     className="flex-1"
@@ -685,13 +685,13 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
-                        <Label>Preview — hover the tiles</Label>
+                        <Label>Preview: hover the tiles</Label>
                         <div className="flex flex-col lg:flex-row gap-3">
                             <PreviewSurface config={activeLight} />
                             <PreviewSurface config={activeDark} dark />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Each tile is shaped like the thing its cursor means — hold the drag tile to feel{' '}
+                            Each tile is shaped like the thing its cursor means, hold the drag tile to feel{' '}
                             <code className="font-mono">grabbing</code>. A green dot marks a themed state; dimmed tiles
                             fall back to the native cursor. The dark surface shows how the white outline keeps cursors
                             legible.
@@ -723,7 +723,7 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
             <Dialog open={!!editModal?.open} onOpenChange={(open) => !open && setEditModal(null)}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
                     <DialogHeader>
-                        <DialogTitle>Edit SVG Cursor{editModal ? ` – ${editModal.state}` : ''}</DialogTitle>
+                        <DialogTitle>Edit SVG Cursor{editModal ? `: ${editModal.state}` : ''}</DialogTitle>
                         <DialogDescription>
                             Paste SVG markup below. It will be used as a custom cursor. Recommended size: 24×24 or
                             32×32.
@@ -765,8 +765,8 @@ export function BrandKitCursorsTab({ tokensJson, onTokensChange }: BrandKitCurso
                                     </div>
                                 )
                             ) : (
-                                <div className="w-12 h-12 rounded border border-dashed border-muted-foreground/30 flex items-center justify-center text-muted-foreground text-xs">
-                                    —
+                                <div className="w-12 h-12 rounded border border-dashed border-muted-foreground/30 flex items-center justify-center text-[10px] text-muted-foreground">
+                                    none
                                 </div>
                             )}
                         </div>

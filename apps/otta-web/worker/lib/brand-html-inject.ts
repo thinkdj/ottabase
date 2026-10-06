@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Critical CSS injection for HTML responses (Zero FOUC)
+// Brand Engine, Critical CSS injection for HTML responses (Zero FOUC)
 // Injects :root + .dark CSS vars into <head> before first paint, plus the full
 // resolved brand config as a JSON script tag so the client hydrates without
 // re-fetching /api/brand.
@@ -69,7 +69,7 @@ export async function injectBrandCriticalCSS(
     try {
         const url = new URL(request.url);
         const path = url.pathname || '/';
-        // The worker's configured app id — the same source the client bundle
+        // The worker's configured app id, the same source the client bundle
         // resolves APP_ID from. Request-derived hints (?appId=, X-App-Id) are
         // deliberately NOT consulted: a normal document navigation never
         // carries them, and getOttabaseConfig guarantees a non-empty appId,
@@ -77,7 +77,7 @@ export async function injectBrandCriticalCSS(
         const appId = getOttabaseConfig(env as unknown as Record<string, unknown>).appId;
 
         // Single resolution serves both the critical CSS and the hydration
-        // payload — no duplicate KV reads, no version skew between the two.
+        // payload, no duplicate KV reads, no version skew between the two.
         const fullConfig = await resolveFullBrandConfig(brandResolutionEnv(env), { appId });
         if (!fullConfig) return response;
 
@@ -94,14 +94,14 @@ export async function injectBrandCriticalCSS(
         // rendering fails), the catch block would return the original response whose
         // body is already consumed. Cloudflare Workers cannot stream a consumed body,
         // causing HTTP 500 (Error 1101) on any HTML page (e.g., /blog/demo-content).
-        // Solution: Clone first — read from clone, keep original intact for fallback.
+        // Solution: Clone first, read from clone, keep original intact for fallback.
         const [forRead, fallback] = [response.clone(), response];
         const html = await forRead.text();
         // Sanitized: v2 token values (palette, shadow strings, …) are
         // admin-authored free-form CSS values.
         let headInjection = buildCriticalStyleTagDual(lightTheme, darkTheme, sanitizeCssForStyleTag);
 
-        // Brand font stylesheets — load with the document, not after hydration
+        // Brand font stylesheets: load with the document, not after hydration
         const fontLinks = buildFontLinkTags([
             lightTheme as unknown as Record<string, unknown>,
             darkTheme as unknown as Record<string, unknown>,
@@ -109,12 +109,12 @@ export async function injectBrandCriticalCSS(
         if (fontLinks) headInjection += `\n    ${fontLinks}`;
 
         // Generated effects stylesheet (@font-face, @keyframes, text styles,
-        // link contract, effect utilities, theme css) — '' for themes that use
+        // link contract, effect utilities, theme css), '' for themes that use
         // none. Sanitized: effects.css is theme-authored.
         const effectsTag = buildEffectsStyleTag(lightTheme, sanitizeCssForStyleTag);
         if (effectsTag) headInjection += `\n    ${effectsTag}`;
 
-        // Per-kit custom CSS — previously client-only behind a 300ms debounce
+        // Per-kit custom CSS: previously client-only behind a 300ms debounce
         // (visible FOUC for radically themed kits). Tenant-authored, so it is
         // sanitized before entering the document.
         if (lightConfig.customCss) {
@@ -124,12 +124,12 @@ export async function injectBrandCriticalCSS(
 
         // Hydration handoff: embed the resolved config (+ the appId it was
         // resolved for) so BrandProvider skips its /api/brand mount fetch.
-        // Best effort — if serialization fails, critical CSS still lands and
+        // Best effort, if serialization fails, critical CSS still lands and
         // the client falls back to its normal fetch.
         try {
             headInjection += `\n    ${buildInitialConfigScriptTag({ ...fullConfig, appId })}`;
         } catch {
-            // Hydration payload is a pure optimization — critical CSS above is unaffected.
+            // Hydration payload is a pure optimization, critical CSS above is unaffected.
         }
 
         // Replacer FUNCTION, not a replacement string: the payload carries
@@ -153,7 +153,7 @@ export async function injectBrandCriticalCSS(
             headers,
         });
     } catch {
-        // Safe: `response` (aliased as `fallback`) was never consumed — only the clone was.
+        // Safe: `response` (aliased as `fallback`) was never consumed, only the clone was.
         return response;
     }
 }

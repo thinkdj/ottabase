@@ -1,13 +1,13 @@
 # @ottabase/referrals
 
-Referral system package for Ottabase — schema, model, validation, and attribution tracking.
+Referral system package for Ottabase: schema, model, validation, and attribution tracking.
 
 ## Features
 
-- **Referral username** — Unique, user-chosen identifier for referral links (3–20 chars, `[a-zA-Z0-9_]`)
-- **First-touch attribution** — First valid referral code wins; stored for 90 days then expires
-- **Click analytics** — Referral clicks written to Cloudflare Analytics Engine (WAE); no per-click DB writes
-- **Conversion tracking** — D1 record created on signup, linked to the referring user
+- **Referral username**: Unique, user-chosen identifier for referral links (3 to 20 chars, `[a-zA-Z0-9_]`)
+- **First-touch attribution**: First valid referral code wins; stored for 90 days then expires
+- **Click analytics**: Referral clicks written to Cloudflare Analytics Engine (WAE); no per-click DB writes
+- **Conversion tracking**: D1 record created on signup, linked to the referring user
 
 ## Installation
 
@@ -55,11 +55,11 @@ const result = validateReferralUsername('myusername');
 if (!result.valid) {
     console.error(result.error);
 }
-// Rules: 3–20 characters, letters/numbers/underscores only
+// Rules: 3 to 20 characters, letters/numbers/underscores only
 
 // Check if a stored referral timestamp has expired (90-day window)
 if (isReferralExpired(storedTimestamp)) {
-    // referral cookie is stale — ignore it
+    // referral cookie is stale, ignore it
 }
 ```
 
@@ -76,7 +76,7 @@ import {
 
 ## Database Schema
 
-`referral_tracking` table — stores conversions only (clicks go to WAE):
+`referral_tracking` table: stores conversions only (clicks go to WAE):
 
 | Column           | Type      | Description                         |
 | ---------------- | --------- | ----------------------------------- |
@@ -94,10 +94,10 @@ import {
 
 ## Integration Points
 
-1. **User model** — add `referralUsername` (the user's own code) and `referredById` fields
-2. **Signup flow** — read referral cookie, validate + attribute on account creation
-3. **Click tracking** — write to WAE on each referral link visit (via `@ottabase/analytics`)
-4. **Frontend** — display referral link (`/{username}`), show conversion stats
+1. **User model**: add `referralUsername` (the user's own code) and `referredById` fields
+2. **Signup flow**: read referral cookie, validate + attribute on account creation
+3. **Click tracking**: write to WAE on each referral link visit (via `@ottabase/analytics`)
+4. **Frontend**: display referral link (`/{username}`), show conversion stats
 
 See the Vite app implementation (`/api/referrals/*`) for a full example.
 

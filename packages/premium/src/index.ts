@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium — headless entrypoint
+// @ottabase/premium, headless entrypoint
 // ============================================================
 // Types, manifest definition, license verification, entitlements, lifecycle and the
 // registry. NO REACT LIVES HERE: rendered components are behind `@ottabase/premium/react`

@@ -46,7 +46,7 @@ export class VerificationToken extends BaseModel {
     static packageType: PackageType = 'core';
 
     // `expires` is validated as a `datetime`, so a number/string/Date all coerce to a Date on the
-    // way in — but the column is a plain integer holding a Unix ms timestamp. Without this cast,
+    // way in, but the column is a plain integer holding a Unix ms timestamp. Without this cast,
     // `prepareForDatabase` never converts the coerced Date back to a number and Drizzle tries to
     // bind a Date to the INTEGER column, which fails the insert. Mirrors Session/Account.
     static casts = {

@@ -14,7 +14,7 @@ export interface PhotoJournalGalleryProps {
 /**
  * Column widths, in pairs that fill the 12-column row exactly.
  *
- * Each photograph keeps its OWN height (see `photoAspect`) — that variation is the point, and a
+ * Each photograph keeps its OWN height (see `photoAspect`), that variation is the point, and a
  * grid of identical rectangles reads like brickwork rather than a contact sheet. What the pairs
  * fix is the empty frame: a row used to be as tall as its tallest member while every other tile
  * kept its own height, and the difference showed as blank space inside the short one. Pairing
@@ -222,8 +222,8 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
      * from a journal). Absent means shown: PhotoJournalRenderer forwards `...rest` without applying
      * ArticleBlogRenderer's defaults, so only an explicit `false` hides anything.
      *
-     * The field note is NOT part of this. It reads like a standfirst but it is authored body copy —
-     * the excerpt is DERIVED from it (createPhotoJournalExcerpt), not the other way round — so
+     * The field note is NOT part of this. It reads like a standfirst but it is authored body copy,
+     * the excerpt is DERIVED from it (createPhotoJournalExcerpt), not the other way round, so
      * `showExcerpt`, which defaults to false for articles, would silently delete content from every
      * existing caller. A shell that owns the chrome still owns only the chrome.
      */

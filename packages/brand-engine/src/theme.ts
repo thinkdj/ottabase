@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Brand Theme definition
+// BrandEngine, Brand Theme definition
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { DesignTokens, ModeValue, TokenCursors } from './tokens';
 
 /**
- * A complete BrandTheme – the union of design tokens, layout configuration,
+ * A complete BrandTheme: the union of design tokens, layout configuration,
  * and appearance extras that fully describes a themed experience.
  *
  * BrandTheme replaces the old ThemeConfig from the app-level theme system.

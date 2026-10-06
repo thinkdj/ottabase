@@ -2,10 +2,10 @@
  * The canonical blog route table, as an @ottabase/ottarouter sub-router.
  *
  * Two entry points:
- * - `createBlogRouter(config)` — one call for a new app: builds handlers from
+ * - `createBlogRouter(config)`: one call for a new app: builds handlers from
  *   config and registers the table. Mount it wherever you like:
  *   `apiRouter.mount('/api/blog', createBlogRouter(cfg), { when: gate })`.
- * - `buildBlogRouter(handlers, options)` — registers the same table over an
+ * - `buildBlogRouter(handlers, options)`: registers the same table over an
  *   app-supplied handlers object. otta-web uses this so its handler module
  *   stays the seam for tests/mocks while the route table lives here, once.
  */
@@ -74,7 +74,7 @@ export function buildBlogRouter<Env = unknown>(
     return r;
 }
 
-/** Build handlers from config and register the canonical route table — the one-call entry for new apps. */
+/** Build handlers from config and register the canonical route table, the one-call entry for new apps. */
 export function createBlogRouter<Env = unknown>(
     config: BlogRouterConfig<Env>,
     options?: BuildBlogRouterOptions<Env>,

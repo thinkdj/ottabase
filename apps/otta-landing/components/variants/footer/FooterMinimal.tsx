@@ -1,7 +1,7 @@
 import type { FooterData } from './types';
 
 /**
- * Minimal footer — single-line copyright only.
+ * Minimal footer: single-line copyright only.
  */
 export function FooterMinimal({ siteName = 'Ottabase' }: FooterData) {
     return (

@@ -210,7 +210,7 @@ describe('Export Utilities', () => {
             };
             const md = exportToMarkdown(data);
             expect(md).toContain('> To be or not to be');
-            expect(md).toContain('— Shakespeare');
+            expect(md).toContain('> *Shakespeare*');
         });
 
         it('should convert delimiter blocks', () => {
@@ -418,7 +418,7 @@ describe('Export Utilities', () => {
                 version: '',
             };
             const md = exportToMarkdown(data);
-            expect(md).toContain('1. **Step One** — Do this');
+            expect(md).toContain('1. **Step One**: Do this');
             expect(md).toContain('2. **Step Two**');
         });
 

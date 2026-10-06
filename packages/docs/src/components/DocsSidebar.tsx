@@ -51,13 +51,13 @@ export const DocsSidebar = memo(function DocsSidebar({
     };
 
     return (
-        <aside className={`otta-docs-sidebar ${className}`}>
+        <aside id="otta-docs-sidebar" className={`otta-docs-sidebar ${className}`}>
             {/* Search */}
             <div className="otta-docs-sidebar-search">
                 <div className="otta-docs-search-wrap">
                     <input
                         type="text"
-                        placeholder="Search docs..."
+                        placeholder="Search docs…"
                         aria-label="Search documentation"
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
@@ -84,7 +84,8 @@ export const DocsSidebar = memo(function DocsSidebar({
             </div>
 
             {/* Navigation groups */}
-            <nav className="otta-docs-sidebar-nav">
+            <nav className="otta-docs-sidebar-nav" aria-label="Documentation">
+                {searchQuery && groups.length === 0 && <p className="otta-docs-nav-group-label">No matches</p>}
                 {groups.map((group) => (
                     <div key={group.label} className="otta-docs-nav-group">
                         <p className="otta-docs-nav-group-label">{group.label}</p>
@@ -117,6 +118,7 @@ export const DocsSidebar = memo(function DocsSidebar({
                             key={theme}
                             type="button"
                             title={label}
+                            aria-label={label}
                             aria-pressed={currentTheme === theme}
                             className={`otta-docs-theme-btn ${currentTheme === theme ? 'otta-docs-theme-btn-active' : ''}`}
                             onClick={() => onThemeChange(theme)}

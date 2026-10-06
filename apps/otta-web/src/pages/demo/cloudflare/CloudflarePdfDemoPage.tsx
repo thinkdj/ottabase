@@ -10,10 +10,10 @@ export function CloudflarePdfDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Cloudflare PDF"
+                title="PDF rendering"
                 description="A 101 guide to secure HTML-to-PDF export on Cloudflare Workers."
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Demos"
+                backLabel="Back to Cloudflare"
             />
 
             <Card>

@@ -2,8 +2,8 @@
 // Premium package registry (worker)
 // ============================================================
 // One registry per isolate, built from `ottabase/config.premium.ts`. Everything that
-// needs entitlement answers — the mounted package routes, the `/api/premium` control
-// plane, and any host code calling a gate — goes through this instance so they all share
+// needs entitlement answers, the mounted package routes, the `/api/premium` control
+// plane, and any host code calling a gate, goes through this instance so they all share
 // one resolution cache and one view of what is licensed.
 // ============================================================
 
@@ -47,7 +47,7 @@ export const premium: PremiumRegistry<CloudflareEnv> = createPremiumRegistry<Clo
  * the ORM resolve a table; it exposes nothing on its own, because generic CRUD is
  * default-deny (`GENERIC_CRUD_ALLOWLIST`) and every paid route runs its own gate. Making
  * registration license-dependent would mean an async license check inside the synchronous
- * connection bootstrap — a much worse trade for no extra safety.
+ * connection bootstrap, a much worse trade for no extra safety.
  *
  * Tables and migrations are deliberately NOT read from here: `config.migrations.ts`
  * collects them straight from the manifests, so the migration path never has to build a

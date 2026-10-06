@@ -1,7 +1,7 @@
 /** Status values for comments */
 export type CommentStatus = 'active' | 'deleted' | 'flagged' | 'hidden';
 
-/** Available emoji reactions (extensible — any string key works) */
+/** Available emoji reactions (extensible: any string key works) */
 export const DEFAULT_REACTIONS = ['👍', '👎', '❤️', '😂', '😮', '😢'] as const;
 export type DefaultReaction = (typeof DEFAULT_REACTIONS)[number];
 

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { HeroData } from './types';
 
 /**
- * Split hero — text content on the left, a decorative colour panel on the right.
+ * Split hero: text content on the left, a decorative colour panel on the right.
  * Great for product / SaaS landing pages.
  */
 export function HeroSplit({ title, subtitle, body, actions }: HeroData) {
@@ -38,7 +38,7 @@ export function HeroSplit({ title, subtitle, body, actions }: HeroData) {
                 )}
             </div>
 
-            {/* Visual side — decorative gradient panel */}
+            {/* Visual side: decorative gradient panel */}
             <div className="hidden aspect-[4/3] items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 md:flex">
                 <div className="flex flex-col items-center gap-3">
                     <div className="h-16 w-16 rounded-xl bg-primary/20" />

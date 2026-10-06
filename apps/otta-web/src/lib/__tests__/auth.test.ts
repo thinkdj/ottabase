@@ -5,7 +5,7 @@ describe('resolveEffectiveOrgId', () => {
     it('keeps the platform sentinel sticky for a platform admin even when the session falls back to a real org', () => {
         // Simulates: admin selected Platform (localStorage already 'platform'), then
         // refreshSession() re-reads the session, whose activeOrganizationId is null so
-        // it falls back to the earliest membership (org-fallback) — that fallback must
+        // it falls back to the earliest membership (org-fallback), that fallback must
         // NOT silently revert the explicit Platform selection.
         const user = { platformAdmin: true, organizationId: 'org-fallback', activeOrganizationId: null };
         expect(resolveEffectiveOrgId(user, true, 'platform')).toBe('platform');
@@ -19,7 +19,7 @@ describe('resolveEffectiveOrgId', () => {
     it('adopts a real org once the admin explicitly switches away from Platform (stored value updates first)', () => {
         // ControlsSection updates localStorage to the new org SYNCHRONOUSLY before the
         // PATCH/refreshSession round trip, so by the time this resolves, storedOrgId is
-        // already 'org-2' — not the stale 'platform' value.
+        // already 'org-2', not the stale 'platform' value.
         const user = { platformAdmin: true, organizationId: 'org-2', activeOrganizationId: 'org-2' };
         expect(resolveEffectiveOrgId(user, true, 'org-2')).toBe('org-2');
     });

@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai/transports/gateway — Cloudflare AI Gateway adapter
+// @ottabase/ottaai/transports/gateway, Cloudflare AI Gateway adapter
 // ============================================================
 // Ottabase is Cloudflare-first, so this is the shipped adapter. It is still ONE
 // implementation of a seam: `TransportAdapter`. Direct-to-provider and mock
@@ -15,7 +15,7 @@
 // ROUTING FACTS LIVE IN `./providers`, WIRE DIALECTS IN `./wire`. Both are
 // transcribed from Cloudflare's provider docs and asserted literally by
 // `__tests__/gateway-wire.test.ts`. A provider with no verified entry is REFUSED
-// here rather than served by an OpenAI-shaped guess — the guess returns HTTP 200
+// here rather than served by an OpenAI-shaped guess, the guess returns HTTP 200
 // with an empty completion on at least one shipped provider, which is the worst
 // available failure mode.
 // ============================================================
@@ -59,8 +59,8 @@ export interface GatewayAdapterOptions {
     /**
      * Header carrying a gateway-held provider key NAME (the `alias` secret kind).
      *
-     * Configurable because whether your gateway exposes stored provider keys — and under
-     * what header — is a deployment fact, not a package fact. The default is Cloudflare's
+     * Configurable because whether your gateway exposes stored provider keys, and under
+     * what header, is a deployment fact, not a package fact. The default is Cloudflare's
      * documented BYOK alias header; leave it unless your gateway documents otherwise.
      *
      * @see https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/
@@ -70,7 +70,7 @@ export interface GatewayAdapterOptions {
      * Path used for a `dynamic/<route>` model ref, relative to the gateway base.
      *
      * Cloudflare invokes a dynamic route through the OPENAI-COMPATIBLE endpoint with the
-     * route name in the `model` field — NOT as a URL path segment. Overriding this is an
+     * route name in the `model` field, NOT as a URL path segment. Overriding this is an
      * escape hatch for a gateway that documents otherwise.
      *
      * @see https://developers.cloudflare.com/ai-gateway/features/dynamic-routing/
@@ -88,7 +88,7 @@ export interface GatewayAdapterOptions {
      * in `./providers`. Keys are provider ids, plus `dynamic` (the compat endpoint) and
      * `unified-billing` (the REST endpoint).
      *
-     * For a fact about YOUR deployment the shipped table cannot know — an Azure deployment on
+     * For a fact about YOUR deployment the shipped table cannot know, an Azure deployment on
      * an api-version and model that support `json_schema` (`{ azure: { jsonSchema: true } }`),
      * or a dynamic route you have verified accepts images. Flipping one on for a route that
      * does not support it turns a clean local refusal into a provider 400; run the smoke test.
@@ -104,7 +104,7 @@ const UNIFIED_BILLING_ROUTE_KEY = 'unified-billing';
  * Cloudflare's OpenAI-compatible unified endpoint, which is how a dynamic route is called.
  *
  * NOTE: Cloudflare now documents this endpoint as deprecated in favour of the AI Gateway
- * REST API. It is still the documented invocation path for dynamic routes, so it stays —
+ * REST API. It is still the documented invocation path for dynamic routes, so it stays,
  * but a platform-billed transport built on the REST API is the successor, and this is the
  * line that will move when that lands.
  */
@@ -121,7 +121,7 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
         return override ? { ...base, ...override } : base;
     };
 
-    /** The support of the route a merged config travels on — the same choice `target()` makes. */
+    /** The support of the route a merged config travels on, the same choice `target()` makes. */
     function routeSupportOf(config: MergedTransportConfig): GatewayRouteSupport {
         if (config.billing === 'unified') return supportFor(UNIFIED_BILLING_ROUTE_KEY, UNDOCUMENTED_ROUTE_SUPPORT);
         if (isDynamicRef(config.model)) return supportFor(DYNAMIC_ROUTE_KEY, UNDOCUMENTED_ROUTE_SUPPORT);
@@ -131,7 +131,7 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
 
     return {
         // Surfaced in `configSummary.transport` and in every emitted event. Named for the
-        // Cloudflare product, NOT for the former `@ottabase/cf-ai` package — which this
+        // Cloudflare product, NOT for the former `@ottabase/cf-ai` package, which this
         // transport replaced and which no longer exists.
         name: 'cloudflare-ai-gateway',
 
@@ -141,7 +141,7 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
          * It requires the adapter's own destination fields and does NOT require a provider
          * key (gateway-billed inference has none) or a model (it can arrive per request). A
          * misconfigured deployment therefore yields a client that fails at call time rather
-         * than a clean null — which is why platform config is validated AT BOOT.
+         * than a clean null, which is why platform config is validated AT BOOT.
          *
          * It DOES reject a provider this transport has no verified wire contract for. That
          * is not configuration, it is capability: such a credential can never produce a
@@ -173,7 +173,7 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
          * Azure OpenAI is the whole reason this exists: it is fully supported, but its path
          * carries operator-only `resourceName` / `deploymentName` / `apiVersion`. On a
          * deployment that never set them, the form offers Azure, the tenant pastes a real key,
-         * the row saves — and every call is `MERGE_INCOMPLETE`. Reporting it here removes
+         * the row saves, and every call is `MERGE_INCOMPLETE`. Reporting it here removes
          * Azure from tenant selection at composition, so the offer is never made.
          *
          * Probed by ASKING THE ADAPTER, not by a hard-coded list: a provider that later grows
@@ -183,7 +183,7 @@ export function createGatewayTransport(options: GatewayAdapterOptions = {}): Tra
             const transportConfig = platform.transportConfig ?? {};
             const unservable: string[] = [];
             for (const adapter of Object.values(GATEWAY_PROVIDERS)) {
-                // `model`/`stream` are irrelevant to whether OPERATOR config is present —
+                // `model`/`stream` are irrelevant to whether OPERATOR config is present,
                 // a probe model keeps model-dependent adapters (Google) from false-positiving.
                 const probe = adapter.path({ model: '__probe__', stream: false, transportConfig });
                 if (!probe.ok) unservable.push(adapter.id);
@@ -264,7 +264,7 @@ type Target =
           wire: GatewayWire;
           adapter: GatewayProviderAdapter | null;
           unifiedBilling: boolean;
-          /** What this route accepts beyond text — images, and how JSON is spelled. */
+          /** What this route accepts beyond text, images, and how JSON is spelled. */
           support: GatewayRouteSupport;
       }
     | { ok: false; message: string };
@@ -312,7 +312,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
             //
             // Cloudflare routes `dynamic/<route>` through the OpenAI-compatible endpoint with
             // the route name in the `model` field. Building `.../dynamic/<route>` as a URL
-            // instead 404s at the gateway — and because the route name is operator config,
+            // instead 404s at the gateway, and because the route name is operator config,
             // that failure looks like a gateway outage rather than a client bug.
             const route = ref
                 .trim()
@@ -348,7 +348,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                 ok: false,
                 message:
                     `Model "${parsed.raw}" targets provider "${parsed.provider}" but this credential is for ` +
-                    `"${config.provider}". A model reference may not change the provider — save a credential for ` +
+                    `"${config.provider}". A model reference may not change the provider, save a credential for ` +
                     `"${parsed.provider}" instead.`,
             };
         }
@@ -474,7 +474,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         }
         headers.set('Content-Type', 'application/json');
 
-        // Provider auth — EXACTLY ONE of key / alias is ever present (the merge is
+        // Provider auth: EXACTLY ONE of key / alias is ever present (the merge is
         // subtractive on secrets; a credential supplies the complete provider
         // authentication or none of it).
         //
@@ -553,7 +553,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
 
         // IMAGES ONLY WHERE THE ROUTE DOCUMENTS THEM. A route that does not (Cloudflare's
         // compat endpoint, Unified Billing REST) or a request over the provider's image count
-        // is refused here, before a billable request — a provider that silently drops an
+        // is refused here, before a billable request, a provider that silently drops an
         // image part answers about a picture it never saw.
         const images = countImages(options);
         if (images > 0) {
@@ -574,7 +574,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
 
         // AN ALREADY-ABORTED SIGNAL MUST NOT REACH THE NETWORK. `addEventListener('abort')`
         // never fires on a signal that is already aborted, so without this check a caller who
-        // cancelled before the call still issues a full upstream request — billed, logged,
+        // cancelled before the call still issues a full upstream request: billed, logged,
         // and holding the tenant's key open until the timeout.
         if (options.signal?.aborted) {
             return { ok: false, error: { retryable: false, message: 'Request was aborted before it was sent' } };
@@ -585,7 +585,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         // THE TIMER MUST OUTLIVE THE HEADERS.
         //
-        // Clearing it when `issue()` returns disarms it the moment response HEADERS arrive —
+        // Clearing it when `issue()` returns disarms it the moment response HEADERS arrive,
         // and the body is read afterwards, by `response.json()` or by the SSE reader. A
         // provider that sends headers and then stalls mid-body would hang for as long as the
         // runtime allows, with the tenant's request (and, on a stream, the tenant's key)
@@ -625,7 +625,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
                     error: {
                         statusCode: response.status,
                         retryable: response.status >= 500 || response.status === 429,
-                        // Redacted HERE, at the adapter boundary — provider 4xx bodies
+                        // Redacted HERE, at the adapter boundary, provider 4xx bodies
                         // routinely echo the Authorization header back.
                         message: redactSecrets(text || `Upstream returned ${response.status}`, sentinels),
                     },
@@ -887,7 +887,7 @@ function createGatewayClient(config: MergedTransportConfig, deps: ClientDeps): R
  *
  * Framing follows the SSE spec rather than one provider's habits: CRLF and bare CR are
  * normalised to LF, and an event's `data:` lines are CONCATENATED before parsing. A parser
- * that only understands single-line LF frames does not error on a CRLF provider — it simply
+ * that only understands single-line LF frames does not error on a CRLF provider, it simply
  * buffers the whole response and emits it in one lump at the end, which is a silent
  * downgrade from streaming to not-streaming.
  */
@@ -905,7 +905,7 @@ async function* parseSse(
      *
      * It may be the first half of a CRLF that the network split across two chunks. Rewriting
      * it to LF immediately, and then meeting the LF that follows, manufactures a `\n\n`
-     * boundary in the MIDDLE of a frame — which truncates that frame's JSON and silently
+     * boundary in the MIDDLE of a frame, which truncates that frame's JSON and silently
      * drops it. So it waits one chunk to find out what it was.
      */
     let pendingCr = false;
@@ -944,7 +944,7 @@ async function* parseSse(
             return;
         }
 
-        // An in-stream error object — the 200-with-a-failure case.
+        // An in-stream error object: the 200-with-a-failure case.
         if (parsed.error) {
             const err = parsed.error as { message?: string; code?: string; status?: number };
             yield {
@@ -967,8 +967,8 @@ async function* parseSse(
             const { done, value } = await reader.read();
             if (done) {
                 // FLUSH THE DECODER and parse whatever is left. A provider that ends the
-                // stream without a trailing blank line would otherwise have its final frame —
-                // which for OpenAI-shaped providers is the one carrying USAGE — silently
+                // stream without a trailing blank line would otherwise have its final frame,
+                // which for OpenAI-shaped providers is the one carrying USAGE, silently
                 // discarded, so the metering that streaming exists to get right reports zero.
                 absorb(decoder.decode());
                 if (pendingCr) {
@@ -991,7 +991,7 @@ async function* parseSse(
         }
     } finally {
         // CANCEL, then release. On early consumer termination `releaseLock` alone leaves the
-        // upstream response body open — and with it the request that carries the tenant's key.
+        // upstream response body open, and with it the request that carries the tenant's key.
         try {
             await reader.cancel();
         } catch {

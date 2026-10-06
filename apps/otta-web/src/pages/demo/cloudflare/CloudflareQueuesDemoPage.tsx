@@ -13,6 +13,7 @@ import {
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { useEffect, useState } from 'react';
+import { DemoAdminNotice, useDemoAdmin } from '../DemoAdminOnly';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 interface QueueMessage {
@@ -34,6 +35,7 @@ const JOB_TYPES = [
 ] as const;
 
 export function CloudflareQueuesDemoPage() {
+    const canUse = useDemoAdmin();
     const [jobType, setJobType] = useState<string>('send-email');
     const [payload, setPayload] = useState('{\n  "to": "user@example.com",\n  "subject": "Welcome!"\n}');
     const [delay, setDelay] = useState<number>(0);
@@ -48,15 +50,17 @@ export function CloudflareQueuesDemoPage() {
             const data = await api<{ messages?: QueueMessage[] }>('/api/cloudflare/queues');
             setMessages(data.messages || []);
         } catch {
-            // ignore - toast handles errors
+            // Polling stays quiet; the dispatch form reports its own errors
         }
     };
 
     useEffect(() => {
+        if (!canUse) return;
         void loadMessages();
         const interval = setInterval(loadMessages, 5000);
         return () => clearInterval(interval);
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canUse]);
 
     // Update payload template when job type changes
     useEffect(() => {
@@ -133,11 +137,13 @@ export function CloudflareQueuesDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Queue"
+                title="Queues"
                 description="Async job dispatching with @ottabase/queue"
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Features"
+                backLabel="Back to Cloudflare"
             />
+
+            {!canUse && <DemoAdminNotice />}
 
             <Card>
                 <CardHeader className="pb-3">

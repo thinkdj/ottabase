@@ -3,7 +3,7 @@
 ## Versioning
 
 - This repository follows [Semantic Versioning](https://semver.org/).
-- User-facing changes are tracked in [`CHANGELOG.md`](./CHANGELOG.md).
+- User-facing changes are tracked in [`CHANGELOG.md`](../CHANGELOG.md).
 
 ## Release Flow
 

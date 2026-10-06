@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * clean:kv – Wipe local KV state only.
+ * clean:kv, Wipe local KV state only.
  * This clears .wrangler/state/<version>/kv without touching D1/R2 or build caches.
  */
 import { hasYesFlag, runClean } from './clean-lib.mjs';

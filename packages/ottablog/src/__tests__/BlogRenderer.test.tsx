@@ -223,7 +223,7 @@ describe('BlogRenderer', () => {
         it('lets a surrounding page own the journal header without duplicating it', () => {
             // showTitle/showMetadata are declared on BlogRendererProps for EVERY content type, so a
             // shell that renders its own header and turns them off expects a journal to obey the
-            // same contract an article does. It used to draw its header regardless — two <h1>s.
+            // same contract an article does. It used to draw its header regardless, two <h1>s.
             const journal = createMockPost({
                 title: 'Kyoto, in the rain',
                 contentType: 'photo',
@@ -237,7 +237,7 @@ describe('BlogRenderer', () => {
             expect(owned.container.querySelector('h1')).toBeNull();
             expect(owned.container.textContent).not.toContain('Photo journal · 1 frame');
             expect(owned.container.textContent).not.toContain('Test Author');
-            // The field note is authored body copy, not chrome — the excerpt is derived FROM it —
+            // The field note is authored body copy, not chrome, the excerpt is derived FROM it,
             // so owning the header must never delete it.
             expect(owned.container.textContent).toContain('A quiet blue hour.');
             // The album is the point of the page and is never part of the header contract.
@@ -269,7 +269,7 @@ describe('BlogRenderer', () => {
             const figures = Array.from(container.querySelectorAll('figure'));
             const frameOf = (figure: Element) => figure.querySelector('button')?.className ?? '';
 
-            // Each photograph keeps its own shape — this variation is the layout, not a side effect.
+            // Each photograph keeps its own shape, this variation is the layout, not a side effect.
             expect(frameOf(figures[0])).toContain('aspect-[3/2]');
             expect(frameOf(figures[1])).toContain('aspect-[3/4]');
             expect(frameOf(figures[2])).toContain('aspect-square');

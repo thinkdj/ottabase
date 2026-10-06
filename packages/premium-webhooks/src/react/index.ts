@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks/react — rendered entrypoint
+// @ottabase/premium-webhooks/react, rendered entrypoint
 // ============================================================
 // The root entrypoint stays headless (schema, models, routes, dispatcher) so the Worker
 // bundle never pulls a component library in through the back door.

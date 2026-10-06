@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Selection (ONE pass, ONE winner) + stage-4a aggregation
+// @ottabase/ottaai, Selection (ONE pass, ONE winner) + stage-4a aggregation
 // ============================================================
 
 import type { AiProviderRegistry } from '../registry';
@@ -31,7 +31,7 @@ export interface AssessedCandidate {
 export interface SelectionResult {
     winner: CredentialRecord | null;
     assessed: AssessedCandidate[];
-    /** Populated when nothing was selected — the aggregated stage-4a reason. */
+    /** Populated when nothing was selected, the aggregated stage-4a reason. */
     aggregatedReason: ResolutionReason | null;
 }
 
@@ -41,7 +41,7 @@ export interface SelectionResult {
  * The common real case is a MIXTURE of failing candidates, so pick by the highest-precedence
  * verdict PRESENT among the rows, not by "all":
  *
- *   ALL_DISABLED (the tenant turned something off — most actionable)
+ *   ALL_DISABLED (the tenant turned something off, most actionable)
  *     → CAPABILITY_UNMET → PROVIDER_UNREGISTERED → APP_MISMATCH
  *     → NOT_IN_SCOPE (least actionable)
  */

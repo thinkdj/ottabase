@@ -168,7 +168,7 @@ export function timeFields(ctx: FuzzyBodyContext, show: boolean, before?: () => 
             className: 'ottadate-time-input',
             type: 'number',
             inputmode: 'numeric',
-            placeholder: '––',
+            placeholder: '--',
             'aria-label': label,
         }) as HTMLInputElement;
         field.dataset.key = `time:${label}`;

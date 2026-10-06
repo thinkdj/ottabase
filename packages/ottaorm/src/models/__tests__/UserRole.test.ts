@@ -108,7 +108,7 @@ describe('UserRole composite-key persistence', () => {
 /**
  * Callers gate a privilege DOWNGRADE on this method (roster demotion/removal revokes the user's
  * org-scoped grants before the membership row is rewritten). So "resolved" has to mean "every grant
- * is gone" — a partial delete that resolves would let a demoted owner keep media:*, org:admin, etc.
+ * is gone": a partial delete that resolves would let a demoted owner keep media:*, org:admin, etc.
  */
 describe('UserRole.revokeAllForOrganization', () => {
     afterEach(() => vi.restoreAllMocks());
@@ -128,7 +128,7 @@ describe('UserRole.revokeAllForOrganization', () => {
         expect(destroyB).toHaveBeenCalled();
     });
 
-    it('THROWS when a grant survives — a partial delete must not resolve as success', async () => {
+    it('THROWS when a grant survives, a partial delete must not resolve as success', async () => {
         vi.spyOn(UserRole as any, 'where')
             .mockResolvedValueOnce([{ destroy: vi.fn().mockResolvedValue(undefined) }])
             .mockResolvedValueOnce([{ id: 'grant-still-present' }]); // re-read finds a survivor

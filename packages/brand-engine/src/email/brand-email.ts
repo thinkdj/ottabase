@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Email branding
+// Brand Engine, Email branding
 // Replaces placeholders in email HTML with brand values.
 // ---------------------------------------------------------------------------
 
@@ -29,13 +29,13 @@ function hslStringToHex(hsl: string): string {
  * Applies brand config to email HTML by replacing placeholders.
  *
  * Placeholders:
- * - `{{brandName}}` – brand display name
- * - `{{tagline}}` – optional tagline
- * - `{{logoUrl}}` – logo URL (email-logo or primary)
- * - `{{iconUrl}}` – icon/favicon URL
- * - `{{ogImageUrl}}` – OG image URL
- * - `{{primaryColor}}` – primary color as HSL (e.g. for CSS)
- * - `{{primaryColorHex}}` – primary color as hex (e.g. #3b82f6)
+ * - `{{brandName}}`: brand display name
+ * - `{{tagline}}`: optional tagline
+ * - `{{logoUrl}}`: logo URL (email-logo or primary)
+ * - `{{iconUrl}}`: icon/favicon URL
+ * - `{{ogImageUrl}}`: OG image URL
+ * - `{{primaryColor}}`: primary color as HSL (e.g. for CSS)
+ * - `{{primaryColorHex}}`: primary color as hex (e.g. #3b82f6)
  *
  * @example
  * ```ts

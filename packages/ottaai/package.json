@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/ottaai",
     "version": "0.0.1",
-    "description": "Ottabase AI engine — tenant BYOK provider credentials (user/org/platform), encrypted at rest, deterministic key resolution, task gates, and a Cloudflare AI Gateway transport",
+    "description": "Ottabase AI engine: tenant BYOK provider credentials (user/org/platform), encrypted at rest, deterministic key resolution, task gates, and a Cloudflare AI Gateway transport",
     "type": "module",
     "exports": {
         ".": {

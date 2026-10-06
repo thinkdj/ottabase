@@ -19,7 +19,7 @@ export const DEFAULT_ASPECT_PRESETS: AspectPreset[] = [
 export interface CropperOptions {
     /** Aspect ratio: 1 = square, 16/9 = landscape rect, null = freeform (no constraints) */
     aspectRatio?: number | null;
-    /** Viewfinder shape – rect or circle (circle uses square crop internally) */
+    /** Viewfinder shape: rect or circle (circle uses square crop internally) */
     shape?: CropShape;
     /** Accepted file types (default: png, jpeg) */
     accept?: string;

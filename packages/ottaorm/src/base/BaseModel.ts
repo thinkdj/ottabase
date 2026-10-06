@@ -54,7 +54,7 @@ export interface CollectionQueryOptions {
     orderDirection?: 'asc' | 'desc';
     limit?: number;
     offset?: number;
-    /** Column projection — narrows the SELECT to these fields. */
+    /** Column projection: narrows the SELECT to these fields. */
     select?: string[];
     /** Load deferred columns too. */
     withDeferred?: boolean;
@@ -311,7 +311,7 @@ export class BaseModel extends AbstractBaseModel {
      * Plan a collection read: which columns to SELECT, and which the resulting instances will
      * therefore be missing.
      *
-     * An explicit `select` wins over `deferred` — a caller asking for three columns has already
+     * An explicit `select` wins over `deferred`: a caller asking for three columns has already
      * said what it wants. The primary key is forced into either projection: without it the
      * resulting instances cannot `save()`, `refresh()`, or `destroy()`, which fails far from here.
      *
@@ -347,7 +347,7 @@ export class BaseModel extends AbstractBaseModel {
 
     /**
      * Build the soft-delete exclusion condition if applicable.
-     * Pure function — no shared mutable state.
+     * Pure function: no shared mutable state.
      *
      * @param includeTrashed - When true, skip the soft-delete filter
      */
@@ -1137,7 +1137,7 @@ export class BaseModel extends AbstractBaseModel {
 
                 // For json/array casts, serialize objects/arrays to a JSON string so the value
                 // round-trips through a plain TEXT column (read side parses it back via casts).
-                // Drizzle `mode: 'json'` columns (dataType === 'json') serialize themselves —
+                // Drizzle `mode: 'json'` columns (dataType === 'json') serialize themselves,
                 // skip those to avoid double-encoding.
                 if (castType === 'json' || castType === 'array') {
                     const column = table?.[key];
@@ -1635,7 +1635,7 @@ export class BaseModel extends AbstractBaseModel {
             orderDirection?: 'asc' | 'desc';
             limit?: number;
             offset?: number;
-            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            /** Column projection: narrows the SELECT to these fields (unknown fields ignored). */
             select?: string[];
             /** Load the model's `deferred` columns too. For the rare collection read that needs them. */
             withDeferred?: boolean;
@@ -1745,7 +1745,7 @@ export class BaseModel extends AbstractBaseModel {
         options?: {
             orderBy?: string;
             orderDirection?: 'asc' | 'desc';
-            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            /** Column projection: narrows the SELECT to these fields (unknown fields ignored). */
             select?: string[];
             /** Load the model's `deferred` columns too. For the rare paged read that needs them. */
             withDeferred?: boolean;
@@ -1787,7 +1787,7 @@ export class BaseModel extends AbstractBaseModel {
         options?: {
             orderBy?: string;
             orderDirection?: 'asc' | 'desc';
-            /** Column projection — narrows the SELECT to these fields (unknown fields ignored). */
+            /** Column projection: narrows the SELECT to these fields (unknown fields ignored). */
             select?: string[];
             /** Load the model's `deferred` columns too. For the rare paged read that needs them. */
             withDeferred?: boolean;
@@ -1826,7 +1826,7 @@ export class BaseModel extends AbstractBaseModel {
 
     /**
      * Execute multiple raw SQL statements as an atomic batch.
-     * Uses D1's native batch API — all succeed or all fail.
+     * Uses D1's native batch API, all succeed or all fail.
      *
      * @example
      * ```typescript

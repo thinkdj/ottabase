@@ -45,13 +45,13 @@ pnpm dev
 Then open `http://localhost:3004/__bootstrap__` and run the four-step setup wizard (it asks for
 `BOOTSTRAP_OWNER_SECRET`):
 
-1. **Database** — creates every table and runs migrations
-2. **Roles** — seeds the built-in roles and their permissions
-3. **Owner** — creates your platform owner account and signs you in
-4. **Launch** — pre-flight checks, then marks the platform `READY`
+1. **Database**: creates every table and runs migrations
+2. **Roles**: seeds the built-in roles and their permissions
+3. **Owner**: creates your platform owner account and signs you in
+4. **Launch**: pre-flight checks, then marks the platform `READY`
 
 The same steps are available headless (`POST /__bootstrap__/api/{init,seed,create-owner,finalize}` with an
-`X-Bootstrap-Secret` header) — see `apps/otta-web/worker/bootstrap/README.MD`.
+`X-Bootstrap-Secret` header), see `apps/otta-web/worker/bootstrap/README.MD`.
 
 **You now have:**
 
@@ -104,13 +104,13 @@ The same steps are available headless (`POST /__bootstrap__/api/{init,seed,creat
 - Global user accounts (same login across all tenants)
 - Users can belong to multiple organizations and switch the active one
 - Permissions come from role grants in the active organization, plus any **system-scoped** grants (organization
-  `'system'`) — which is how the platform owner holds platform authority
+  `'system'`), which is how the platform owner holds platform authority
 
 ---
 
 ## Core Concepts
 
-All snippets below run on the server (a Worker route) after the DB connection is initialized — `initDbConnection(env)`
+All snippets below run on the server (a Worker route) after the DB connection is initialized, `initDbConnection(env)`
 from `apps/otta-web/worker/lib/db-utils.ts` registers the D1 driver
 (`registerConnection('default', createD1Driver(env.OBCF_D1))`), every model, and the RLS policies.
 
@@ -159,7 +159,7 @@ const orgs = await OrganizationMember.getUserOrganizations(userId);
 
 ### 3. RBAC (Roles + Permissions)
 
-Permissions are bundled on roles and granted per organization. `organizationId` is **required** on every role API — an
+Permissions are bundled on roles and granted per organization. `organizationId` is **required** on every role API, an
 org-less call throws instead of merging grants from every tenant. Use `'system'` for platform-scoped grants.
 
 ```typescript
@@ -237,8 +237,8 @@ const userLogs = await AuditLog.getByUserInOrganization(userId, 'org-acme', 50);
 
 ### Step 1: Initialize Database
 
-The bootstrap wizard (Quick Start) does this for you. To re-run migrations later — for example after adding a model —
-call the init endpoint. Outside `ENVIRONMENT=development` it requires `MIGRATION_SECRET`:
+The bootstrap wizard (Quick Start) does this for you. To re-run migrations later, for example after adding a model, call
+the init endpoint. Outside `ENVIRONMENT=development` it requires `MIGRATION_SECRET`:
 
 ```bash
 # Local dev
@@ -263,7 +263,7 @@ The wizard's **Roles** step (`POST /__bootstrap__/api/seed`) seeds and heals the
 
 | Role             | Scope        | Permissions                                                             |
 | ---------------- | ------------ | ----------------------------------------------------------------------- |
-| `platform_owner` | `'system'`   | `*:*` — the bootstrapped app owner                                      |
+| `platform_owner` | `'system'`   | `*:*`: the bootstrapped app owner                                       |
 | `owner`, `admin` | organization | full org-level access, including `org:admin` (no system-level wildcard) |
 | `editor`         | organization | `*:read`, `*:create`, `*:update`, `posts:publish`, `posts:manage`       |
 | `author`         | organization | `*:read`, `posts:create`, `posts:update`, `media:create`, `media:read`  |
@@ -399,8 +399,8 @@ export class Project extends BaseModel {
 
 `GET/POST/PATCH/DELETE /api/ottaorm/projects` now works. On create, RLS injects the caller's `organizationId`; a body
 that names another organization is rejected as a cross-tenant write. Generic CRUD enforces **tenant scope**, so any
-active member of the organization can use it — add `requiredPermissions` to the policy, or write a custom route (step
-4), when an action needs a specific permission.
+active member of the organization can use it, add `requiredPermissions` to the policy, or write a custom route (step 4),
+when an action needs a specific permission.
 
 ### 3. Use It from the Client
 
@@ -425,7 +425,7 @@ model's field metadata.
 
 ### 4. A Custom, Permission-Gated Route
 
-When an action is not plain CRUD — or needs a specific permission — add a route. Custom routes go in
+When an action is not plain CRUD, or needs a specific permission, add a route. Custom routes go in
 `apps/otta-web/ottabase/config.routes.ts` (`handleCustomRoutes`), which receives the same `ApiRouteContext` as every
 built-in route.
 
@@ -476,7 +476,7 @@ export async function handleArchiveProject(context: ApiRouteContext, projectId: 
 ```
 
 ```typescript
-// apps/otta-web/ottabase/config.routes.ts — inside handleCustomRoutes(context)
+// apps/otta-web/ottabase/config.routes.ts, inside handleCustomRoutes(context)
 const match = context.route.match(/^\/api\/projects\/([^/]+)\/archive$/);
 if (match && context.method === 'POST') {
     return handleArchiveProject(context, match[1]);
@@ -511,7 +511,7 @@ const archive = useApiMutation<unknown, { id: string }>({
 ### Resolving the Organization for a Request
 
 Use `getRequestContext` from `@ottabase/rbac`. It verifies the session, takes the org from it (or from a requested
-`X-Org-Id` / `?organizationId=`), and **keeps that org only if the user is an active member** — otherwise
+`X-Org-Id` / `?organizationId=`), and **keeps that org only if the user is an active member**: otherwise
 `organizationId` is `null`. The `'system'` scope is kept only for a user holding a system-scoped grant. Never read the
 org straight off a header: it is a request, not an answer (AGENTS.MD "Security Context: what may be trusted").
 
@@ -521,9 +521,9 @@ import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAuthOptions } from '../lib/auth-utils';
 
 const ctx = await getRequestContext(request, env, { getAuthOptions, appId: getOttabaseConfig(env).appId });
-// ctx.organizationId — membership-verified, or null
-// ctx.appId          — from server config, never a header
-// ctx.permissions    — merged system + active-org grants
+// ctx.organizationId, membership-verified, or null
+// ctx.appId, from server config, never a header
+// ctx.permissions, merged system + active-org grants
 ```
 
 For OttaORM queries that go through RLS (`secureCrud` / the generic CRUD route), the app builds the `SecurityContext`
@@ -612,7 +612,7 @@ if (hasPermission(ctx, 'posts:update')) {
 // Method 2: Using the user model (organizationId is required)
 const canDelete = await user.hasPermission('posts:delete', { organizationId: 'org-acme' });
 
-// Method 3: Admin checks — permission + scope, never role names
+// Method 3: Admin checks, permission + scope, never role names
 isOrgAdmin(ctx); // org:admin in the active org (or the platform owner's *:*)
 isPlatformAdmin(ctx); // platform:admin from a SYSTEM-scoped grant only
 ```
@@ -660,7 +660,7 @@ Every audit entry carries:
 
 ### Logging Actions
 
-`AuditLog.log` (from `@ottabase/ottaorm/models`) is always available. The `@ottabase/audit` package adds typed helpers —
+`AuditLog.log` (from `@ottabase/ottaorm/models`) is always available. The `@ottabase/audit` package adds typed helpers,
 add `"@ottabase/audit": "workspace:*"` to your app's dependencies to use them:
 
 ```typescript
@@ -735,8 +735,9 @@ Full walkthrough: [`CLOUDFLARE_DEPLOY.md`](./CLOUDFLARE_DEPLOY.md) (resources, s
 ### 1. Configuration and Secrets
 
 Worker code never reads `process.env`; it reads bindings and vars through `getOttabaseConfig(env)` / `env`. Bindings
-(`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, ...) are declared in `apps/otta-web/wrangler.jsonc` and typed in `cloudflare-env.d.ts`
-— keep the two in sync. Plain vars live per environment in `wrangler.jsonc`; secrets are set with `wrangler secret put`:
+(`OBCF_D1`, `OBCF_KV`, `OBCF_R2`, ...) are declared in `apps/otta-web/wrangler.jsonc` and typed in
+`cloudflare-env.d.ts`, keep the two in sync. Plain vars live per environment in `wrangler.jsonc`; secrets are set with
+`wrangler secret put`:
 
 ```bash
 cd apps/otta-web
@@ -822,7 +823,7 @@ export function withContext(handler: (context: ApiRouteContext, ctx: RequestCont
 
 ### Pattern 2: Tenant-Scoped Queries
 
-Through generic CRUD, RLS scopes every query for you. In your own server code, scope explicitly — keep it on the model:
+Through generic CRUD, RLS scopes every query for you. In your own server code, scope explicitly, keep it on the model:
 
 ```typescript
 export class Project extends BaseModel {
@@ -861,7 +862,7 @@ every request.
 **Problem:** A role/permission call throws
 `User.roles: organizationId is required (use 'system' for platform-scoped grants)`.
 
-**Solution:** Always pass the organization to role APIs — grants are org-scoped.
+**Solution:** Always pass the organization to role APIs, grants are org-scoped.
 
 ```typescript
 // ❌ Wrong
@@ -882,7 +883,7 @@ const roles = await user.roles({
 
 1. Serve entity CRUD through `/api/ottaorm/{entity}` with a `TenantScoped` policy
 2. In custom routes, take the org from `getRequestContext` / `getSecurityContext`, never from a header or body
-3. Direct model calls are not RLS-filtered — always include `organizationId` in the query
+3. Direct model calls are not RLS-filtered, always include `organizationId` in the query
 
 ```typescript
 const ctx = await getRequestContext(request, env, { getAuthOptions, appId: getOttabaseConfig(env).appId });
@@ -924,7 +925,7 @@ console.log(stats);
 1. Check the role carries the permission
 2. Verify the grant is in the **active** organization (or `'system'` for platform permissions)
 3. After changing roles or memberships, live sessions pick it up once the caches are invalidated and the user's profile
-   version is bumped — the admin routes do both
+   version is bumped, the admin routes do both
 
 ```typescript
 import { Role } from '@ottabase/ottaorm/models';

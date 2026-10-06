@@ -93,7 +93,7 @@ export function BrandKitBrandTab({
                 <Label htmlFor="kitName">Kit name</Label>
                 <p className="text-xs text-muted-foreground mb-1">
                     {nameReadOnly
-                        ? 'System default – name cannot be changed'
+                        ? 'System default: name cannot be changed'
                         : 'Display name for this Brand Kit (e.g. Acme, Acme - Christmas)'}
                 </p>
                 <Input

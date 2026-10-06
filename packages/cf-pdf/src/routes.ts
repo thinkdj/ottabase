@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/cf-pdf — Worker route
+// @ottabase/cf-pdf, Worker route
 // ============================================================
 // The route owns the request contract and host-provided access boundary. The renderer
 // itself remains reusable and has no knowledge of sessions, rate limit bindings, or tenancy.

@@ -8,7 +8,7 @@ export function CloudflareImagesDemoPage() {
                 title="Images"
                 description="Image upload, transformation, and optimization"
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Features"
+                backLabel="Back to Cloudflare"
             />
 
             <Card>

@@ -158,7 +158,11 @@ export function FileUploader({
                     <UploadIcon className="h-6 w-6" />
                 </span>
                 <span className="mb-1 text-sm font-medium text-foreground">
-                    {isDragging ? 'Drop files here' : 'Choose a file or drop it here'}
+                    {isDragging
+                        ? 'Drop files here'
+                        : maxFiles > 1
+                          ? 'Choose files or drop them here'
+                          : 'Choose a file or drop it here'}
                 </span>
                 <span className="text-xs text-muted-foreground">
                     {maxFiles > 1 ? `Up to ${maxFiles} files` : 'One file'}

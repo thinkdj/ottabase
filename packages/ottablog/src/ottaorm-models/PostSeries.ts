@@ -185,7 +185,7 @@ export class PostSeries extends BaseModel {
     private static readonly slugConfig: SlugLifecycleConfig = {
         slugPrefix: 'series',
         nameField: 'title',
-        // Series are not type-scoped — unlike tags/categories, a series groups posts
+        // Series are not type-scoped: unlike tags/categories, a series groups posts
         // regardless of content type, so slug uniqueness is per-app only.
         hasType: false,
         entityLabel: 'series',
@@ -212,7 +212,7 @@ export class PostSeries extends BaseModel {
 
     /**
      * Get all series.
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
+     * appId is required: matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
     static async list(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
         const query: Record<string, unknown> = { appId: options.appId };
@@ -225,7 +225,7 @@ export class PostSeries extends BaseModel {
 
     /**
      * Get complete series only.
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
+     * appId is required: matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
     static async complete(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
         const query: Record<string, unknown> = { isComplete: true, appId: options.appId };

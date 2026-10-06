@@ -456,7 +456,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
 
         const accepted = await handleOttaormCrud(createContext());
         expect(accepted.status).toBe(200);
-        // Trimmed, normalized to objects, blank row dropped — same shape the blog routes store.
+        // Trimmed, normalized to objects, blank row dropped, same shape the blog routes store.
         expect((executeSecureCrudRequest as any).mock.calls[0][0].body.crossposts).toEqual([
             { url: 'https://www.instagram.com/p/abc' },
         ]);
@@ -518,7 +518,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
     });
 });
 
-describe('handleOttaormCrud (organization create — owner-membership atomicity)', () => {
+describe('handleOttaormCrud (organization create: owner-membership atomicity)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -624,7 +624,7 @@ describe('handleOttaormCrud (organization mutation authorization)', () => {
         return handleOttaormCrud(createContext());
     }
 
-    // PUT is covered deliberately — secure CRUD treats it as a full update like PATCH, so a guard
+    // PUT is covered deliberately: secure CRUD treats it as a full update like PATCH, so a guard
     // listing only PATCH/DELETE would leave PUT as a silent bypass.
     it.each(['PATCH', 'PUT', 'DELETE'] as const)(
         'blocks a non-owner member from %sing an organization',
@@ -821,7 +821,7 @@ describe('handleOttaormCrud (comments)', () => {
             expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
         });
 
-        it('returns 404 (not a permission error) when the comment organizationId does not match its own target real org — closes the cross-tenant reaction IDOR', async () => {
+        it('returns 404 (not a permission error) when the comment organizationId does not match its own target real org, closes the cross-tenant reaction IDOR', async () => {
             const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
             const { Post } = await import('@ottabase/ottablog');
             const { Comment } = await import('@ottabase/comments');

@@ -482,7 +482,7 @@ export function MediaLibraryBrowser({
                     </CardHeader>
                     <CardContent className={isPicker ? 'px-0' : undefined}>
                         {mediaListQuery.isLoading && items.length === 0 ? (
-                            // Skeleton grid — card is muted, so pulse tiles use bg-background/60 to stay visible
+                            // Skeleton grid: card is muted, so pulse tiles use bg-background/60 to stay visible
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-busy="true">
                                 <span className="sr-only">Loading media library…</span>
                                 {Array.from({ length: 8 }, (_, index) => (

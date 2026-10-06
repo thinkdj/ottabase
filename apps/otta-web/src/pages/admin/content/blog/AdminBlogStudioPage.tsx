@@ -1,5 +1,5 @@
 /**
- * Admin Content Studio Page
+ * Admin Content studio page
  *
  * Manage content themes and plugins, and run the one-time demo content seed.
  */
@@ -167,12 +167,15 @@ export function AdminBlogStudioPage() {
         invalidateEntities: ['posts', 'media', 'comments', 'shortlinks', 'menus', 'users', 'notifications'],
         mutationOptions: {
             onSuccess: (result) => setDemoSeedResult(result),
-            onError: () => {
+            onError: (error) => {
                 setDemoSeedResult(null);
                 setAlertDialog({
                     open: true,
                     title: 'Could not seed demo content',
-                    message: 'Seeding requires the platform owner role. Check your access and try again.',
+                    message:
+                        error instanceof Error && error.message
+                            ? error.message
+                            : 'Seeding needs the platform owner role. Check your access and try again.',
                 });
             },
         },
@@ -266,7 +269,7 @@ export function AdminBlogStudioPage() {
             <BlogAdminNav />
 
             <div className="space-y-1.5">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content Studio</h1>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content studio</h1>
                 <p className="max-w-3xl text-muted-foreground">
                     Manage themes, plugins, and the languages your readers can use.
                 </p>
@@ -393,7 +396,7 @@ export function AdminBlogStudioPage() {
                         </CardTitle>
                         <CardDescription>
                             Fills a fresh install with a believable site: four people with roles, a media library, six
-                            months of articles, release notes, short notes and photo journals with their tags and
+                            months of articles, release notes, short thoughts and photo journals with their tags and
                             series, comment threads, shortlinks and navigation. The kitchensink post renders every block
                             the editor supports, which is the quickest way to check a theme end to end.
                         </CardDescription>
@@ -411,7 +414,7 @@ export function AdminBlogStudioPage() {
                                     Seeding…
                                 </>
                             ) : (
-                                'Seed Demo Content'
+                                'Seed demo content'
                             )}
                         </Button>
                         {demoSeedResult ? (

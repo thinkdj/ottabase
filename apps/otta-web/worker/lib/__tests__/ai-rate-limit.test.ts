@@ -1,5 +1,5 @@
 // ============================================================
-// Inference rate limiting — the burst guard on platform spend.
+// Inference rate limiting, the burst guard on platform spend.
 //
 // The behaviour worth protecting here is the ASYMMETRY: a missing or broken
 // limiter must refuse PLATFORM-paid inference (the operator's money) while
@@ -91,12 +91,12 @@ describe('every dimension is consumed, and all must pass', () => {
 
         for (let i = 0; i < LIMITS.perUser; i++) await appA(CALL);
         expect(await appA(CALL)).toBe(false);
-        // Same user id, different app — untouched budget.
+        // Same user id, different app, untouched budget.
         expect(await appB(CALL)).toBe(true);
     });
 
     it('treats a limit of 0 as "dimension disabled", not "block everything"', async () => {
-        // BYOK, because a PLATFORM call with a non-positive `perApp` is refused outright —
+        // BYOK, because a PLATFORM call with a non-positive `perApp` is refused outright,
         // see the dedicated suite below. Disabling a dimension must not mean "deny".
         const take = limiter({ limits: { perUser: 0, perOrganization: 0, perApp: 0 } });
         for (let i = 0; i < 50; i++) expect(await take({ ...CALL, source: 'byok' })).toBe(true);
@@ -115,11 +115,11 @@ describe('every dimension is consumed, and all must pass', () => {
     });
 });
 
-describe('a rejected call charges NOTHING — the app budget cannot be poisoned', () => {
+describe('a rejected call charges NOTHING, the app budget cannot be poisoned', () => {
     it('does not consume the app bucket when the call is rejected on the USER dimension', async () => {
         // THE DENIAL-OF-SERVICE THIS CLOSES. The old order incremented `app` and only then
-        // checked `user`, so once a user hit their own limit, every further rejected call —
-        // free to them, zero provider tokens — still drained the app-wide budget. With
+        // checked `user`, so once a user hit their own limit, every further rejected call,
+        // free to them, zero provider tokens, still drained the app-wide budget. With
         // perUser=20 and perApp=600 that is 580 rejected calls to deny AI to everyone else
         // for the rest of the minute.
         const store = memoryStore();
@@ -193,7 +193,7 @@ describe('a non-positive perApp cannot silently uncap platform spend', () => {
         expect(await take({ ...CALL, source: 'platform' })).toBe(false);
     });
 
-    it('still allows BYOK when perApp is 0 — the tenant is spending their own money', async () => {
+    it('still allows BYOK when perApp is 0, the tenant is spending their own money', async () => {
         const take = limiter({ limits: { ...LIMITS, perApp: 0 } });
         expect(await take({ ...CALL, source: 'byok' })).toBe(true);
     });
@@ -215,13 +215,13 @@ describe('an unavailable limiter fails CLOSED for platform spend and OPEN for BY
         const take = limiter({ store: null, onWarning: warn });
 
         expect(await take({ ...CALL, source: 'platform' })).toBe(false);
-        // Silent refusal would be its own incident — an operator must be able to find this.
+        // Silent refusal would be its own incident, an operator must be able to find this.
         expect(warn).toHaveBeenCalledWith(expect.stringMatching(/OBCF_KV/));
     });
 
     it('allows BYOK inference when there is no store', async () => {
         // The tenant is spending their own money against their own provider's limits, so a
-        // missing binding is an operator inconvenience — not a reason to brick a paid feature.
+        // missing binding is an operator inconvenience, not a reason to brick a paid feature.
         const warn = vi.fn();
         const take = limiter({ store: null, onWarning: warn });
 
@@ -271,7 +271,7 @@ describe('the operator-facing warning', () => {
 
     it('keys on route usability, NOT on a provider key being present', () => {
         // The blind spot this closes: gateway-billed inference (a gateway holding the
-        // credential — a BYOK alias, unified billing) has NO provider key but still spends the
+        // credential, a BYOK alias, unified billing) has NO provider key but still spends the
         // operator's money. A key-based predicate stayed silent on exactly that deployment.
         // The caller passes the package's `platformRouteUsable`, which asks the transport.
         expect(platformSpendWarning(unbound, true, LIMITS)).toMatch(/usable platform AI route/);
@@ -282,7 +282,7 @@ describe('the operator-facing warning', () => {
         // debugging a refusal the boot log said nothing about.
         expect(platformSpendWarning(bound, true, { ...LIMITS, perApp: 0 })).toMatch(/perApp/);
         expect(platformSpendWarning(bound, true, { ...LIMITS, perApp: -5 })).toMatch(/perApp/);
-        // perUser / perOrganization are optional — no warning for those.
+        // perUser / perOrganization are optional, no warning for those.
         expect(platformSpendWarning(bound, true, { perUser: 0, perOrganization: 0, perApp: 600 })).toBeNull();
     });
 

@@ -117,7 +117,7 @@ describe('injectBrandCriticalCSS', () => {
         const html = await injected.text();
 
         expect(html).toContain('{"tagline":"only $\' left, $$ and $&"}');
-        // Body must appear exactly once — $' expansion would duplicate it into <head>.
+        // Body must appear exactly once, $' expansion would duplicate it into <head>.
         expect(html.match(/MARKER-BODY/g)).toHaveLength(1);
     });
 

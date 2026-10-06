@@ -98,7 +98,7 @@
  * One measure for BOTH image families.
  *
  * `image-block` and `advanced-image-block` are the same component rendered through two renderer
- * configs, and they had drifted to different caps — 800px here, 34rem there. Since the component
+ * configs, and they had drifted to different caps, 800px here, 34rem there. Since the component
  * appends its `advanced-image-block--*` modifiers whichever config supplied the base class, a
  * stretched figure frequently carries `image-block`, so the 800px cap was what actually applied
  * and it pinned the image at 800px inside a 1120px frame.
@@ -117,7 +117,7 @@
  *
  * The arithmetic that makes it symmetric: `width` explicitly accounts for both margins, so
  * `-B + (100% + 2B) + -B = 100%` balances. A box whose width does NOT account for them is
- * over-constrained, and CSS resolves that by discarding one side — which is why an earlier version
+ * over-constrained, and CSS resolves that by discarding one side, which is why an earlier version
  * put the entire bleed on the right edge. The component must not add `w-full` for the same reason.
  *
  * The bleed is stepped by media query rather than computed from `vw`, because `100vw` includes the
@@ -132,7 +132,7 @@
  *   1280px     128px        80px                         48px
  *   1440px     208px       176px                         32px
  *
- * Every figure is measured, not estimated — see scratchpad/stretch-check.html, which loads this
+ * Every figure is measured, not estimated, see scratchpad/stretch-check.html, which loads this
  * stylesheet itself rather than a copy of these rules. Below 1152px nothing is spare, and
  * stretched means the full column.
  */
@@ -180,7 +180,7 @@
  *
  * The base class cannot be relied on: the renderer config gives an image block
  * `cdc-content-block image-block cdc-content-image`, while the component appends
- * `advanced-image-block--stretched` itself — so a real stretched figure often carries the modifier
+ * `advanced-image-block--stretched` itself, so a real stretched figure often carries the modifier
  * WITHOUT `advanced-image-block`. Selectors written as `.advanced-image-block.advanced-image-block
  * --stretched` silently matched nothing. Repeating the modifier class buys the specificity those
  * compound selectors were there for, without assuming a base class that may be absent.
@@ -240,7 +240,7 @@
 }
 
 /*
- * Responsive trim for stretched images — TYPOGRAPHY ONLY.
+ * Responsive trim for stretched images, TYPOGRAPHY ONLY.
  *
  * A second set of width overrides used to live here (`min(90vw, 1400px)`, `calc(100vw - 2rem)`,
  * a fixed `1400px`). Being later in the file they beat the sizing rules above while leaving those
@@ -321,7 +321,7 @@ h6.cdc-content-header {
     margin-bottom: 0.375rem;
 }
 
-/* First heading — no orphaned top gap when it opens a section */
+/* First heading: no orphaned top gap when it opens a section */
 h1.cdc-content-header:first-child,
 h2.cdc-content-header:first-child,
 h3.cdc-content-header:first-child,
@@ -415,7 +415,7 @@ h4.cdc-content-header:first-child {
     list-style: none;
 }
 
-/* Step item — two-column grid: rail | content */
+/* Step item: two-column grid: rail | content */
 .cdc-steps-item {
     display: grid;
     grid-template-columns: 2rem 1fr;
@@ -502,13 +502,13 @@ h4.cdc-content-header:first-child {
     gap: 0.5rem;
 }
 
-/* Individual item — soft-tint row */
+/* Individual item: soft-tint row */
 .cdc-faq-item {
     border-radius: var(--radius);
     overflow: hidden;
 }
 
-/* Question — <summary> for accordion, <h3> for flat */
+/* Question: <summary> for accordion, <h3> for flat */
 .cdc-faq-question {
     display: flex;
     align-items: center;
@@ -541,7 +541,7 @@ h4.cdc-content-header:first-child {
     flex: 1;
 }
 
-/* Chevron in a small chip well — rotates when open */
+/* Chevron in a small chip well, rotates when open */
 .cdc-faq-chevron {
     flex-shrink: 0;
     display: flex;
@@ -566,7 +566,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     transform: rotate(180deg);
 }
 
-/* Answer — plain panel under the tinted question row */
+/* Answer: plain panel under the tinted question row */
 .cdc-faq-answer {
     margin: 0;
     padding: 1rem 1.25rem;
@@ -577,7 +577,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     white-space: pre-line;
 }
 
-/* Flat variant: question is an h3 — not interactive, so no hover deepen */
+/* Flat variant: question is an h3, not interactive, so no hover deepen */
 .cdc-faq-question--flat {
     cursor: default;
     margin: 0;
@@ -1007,7 +1007,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     object-fit: cover;
 }
 
-/* Labels — micro-label chips on a soft scrim */
+/* Labels: micro-label chips on a soft scrim */
 .cdc-before-after__label {
     position: absolute;
     padding: 0.25rem 0.5rem;

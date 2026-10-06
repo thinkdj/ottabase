@@ -1,10 +1,10 @@
 'use client';
 
 // ============================================================
-// @ottabase/ottaai/react — the drop-in settings surface
+// @ottabase/ottaai/react, the drop-in settings surface
 // ============================================================
 // Built on the house primitives: quiet `bg-muted/40` cards, semantic tokens only
-// (no `dark:` variants needed — every colour utility is `hsl(var(--x))`), motion
+// (no `dark:` variants needed, every colour utility is `hsl(var(--x))`), motion
 // via `duration-normal ease-theme`, and `ConfirmDialog` from
 // `@ottabase/ui-components` for the destructive path.
 //
@@ -57,7 +57,7 @@ interface DraftState {
     provider: string;
     model: string;
     secret: string;
-    /** The provider the row had when the form opened — drives the switch guard. */
+    /** The provider the row had when the form opened, drives the switch guard. */
     originalProvider: string | null;
 }
 
@@ -97,8 +97,8 @@ export function AiProviderSettings({
     // A DORMANT DEPLOYMENT still mounts this component: the consuming app gates on a
     // BUILD-TIME client flag, which cannot see whether the server has a keyring. The routes
     // answer 501 NOT_CONFIGURED, and a card whose only button leads to a guaranteed failure
-    // is worse than no card. Rendering nothing is also what the toggle's docs promise —
-    // "dormant until the secret is set" — so this is the last hop of that contract.
+    // is worse than no card. Rendering nothing is also what the toggle's docs promise,
+    // "dormant until the secret is set", so this is the last hop of that contract.
     const dormant = [providersQuery.error, statusQuery.error, credentials.error].some(
         (error) => (error as { status?: number } | null)?.status === 501,
     );
@@ -106,7 +106,7 @@ export function AiProviderSettings({
 
     // AND-ed with SERVER TRUTH: under a user-first strategy the management filter keys on
     // userId, so an org-scoped row would vanish from this very list the moment it is
-    // saved. The server refuses the write too — this only hides an option that cannot work.
+    // saved. The server refuses the write too, this only hides an option that cannot work.
     const orgScopeAvailable = allowOrgScope && statusQuery.data?.orgScopeManageable === true;
 
     const form = verifyFormState({
@@ -145,7 +145,7 @@ export function AiProviderSettings({
             label: draft.label.trim() || null,
             provider: draft.provider,
             model: draft.model.trim() || null,
-            // Blank means KEEP — send the field only when the user typed something.
+            // Blank means KEEP: send the field only when the user typed something.
             ...(draft.secret.trim() ? { secret: draft.secret.trim() } : {}),
         };
 
@@ -186,7 +186,7 @@ export function AiProviderSettings({
                 <p className="max-w-3xl text-muted-foreground">{description}</p>
             </div>
 
-            {/* WHAT IS ACTUALLY IN USE — the only honest answer, and the reason the row
+            {/* WHAT IS ACTUALLY IN USE, the only honest answer, and the reason the row
                 badge below says "Active" and never "In use". */}
             <Card>
                 <CardHeader>
@@ -231,7 +231,7 @@ export function AiProviderSettings({
                                       : 'Not configured'}
                             </Badge>
                             <span className="text-muted-foreground">
-                                {status?.provider ?? '—'}
+                                {status?.provider ?? 'No provider'}
                                 {status?.model ? ` · ${status.model}` : ''}
                             </span>
                         </div>
@@ -282,7 +282,7 @@ export function AiProviderSettings({
                                 <div className="min-w-0 space-y-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="font-medium">{row.label || row.provider}</span>
-                                        {/* "Active", never "In use" — `isActive` is a
+                                        {/* "Active", never "In use", `isActive` is a
                                             tie-break among siblings at the SAME specificity
                                             rung, not what the resolver obeys. */}
                                         {row.isActive ? (
@@ -379,7 +379,7 @@ export function AiProviderSettings({
                                     }
                                 >
                                     <option value="user">Just me</option>
-                                    <option value="organization">Everyone in this workspace</option>
+                                    <option value="organization">Everyone in this organization</option>
                                 </NativeSelect>
                             </div>
                         ) : null}
@@ -448,7 +448,7 @@ export function AiProviderSettings({
                                     id="ottaai-secret"
                                     type="password"
                                     // WITHOUT THIS, browser password managers offer to save the
-                                    // provider key and later autofill it — which both corrupts
+                                    // provider key and later autofill it, which both corrupts
                                     // "leave blank to keep" and stores the key somewhere new.
                                     autoComplete="off"
                                     value={draft.secret}
@@ -549,7 +549,7 @@ function explainTenantReason(reason: string): string {
         case 'APP_MISMATCH':
             return 'Your key was connected in a different app and does not apply here.';
         case 'NOT_IN_SCOPE':
-            return 'Your key was connected in a different workspace and does not apply here.';
+            return 'Your key was connected in a different organization and does not apply here.';
         case 'CREDENTIAL_UNREADABLE':
             return 'Your saved key could not be read. Please re-enter it.';
         case 'SKIPPED_KEYLESS_MISMATCH':

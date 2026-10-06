@@ -45,7 +45,7 @@ function StarRating({ rating }: { rating: number }) {
     );
 }
 
-/** Author attribution row — avatar + name + role + company */
+/** Author attribution row: avatar + name + role + company */
 function AuthorAttribution({
     authorName,
     authorRole,
@@ -109,7 +109,7 @@ function AuthorAttribution({
  *
  * Three variants:
  * - `card` (default): Bordered card with avatar, attribution, quote, stars.
- * - `minimal`: Clean inline quote with minimal attribution — no border.
+ * - `minimal`: Clean inline quote with minimal attribution, no border.
  * - `featured`: Full-width hero-style testimonial with large quote and optional logo.
  *
  * Emits `application/ld+json` Review structured data when rating is provided.
@@ -246,7 +246,7 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
                 </figure>
             )}
 
-            {/* Speech-bubble variant — similar to minimal but with a bubble border + pointer */}
+            {/* Speech-bubble variant: similar to minimal but with a bubble border + pointer */}
             {variant === 'quote-bubble' && (
                 <figure
                     className={`${className} my-6 not-prose cdc-content-testimonial cdc-testimonial-bubble`}
@@ -270,7 +270,7 @@ const Testimonial: RenderFn<TestimonialData> = ({ data, className = '' }) => {
                 </figure>
             )}
 
-            {/* Side-by-side variant — avatar/author info on left, quote on right */}
+            {/* Side-by-side variant: avatar/author info on left, quote on right */}
             {variant === 'side-by-side' && (
                 <figure
                     className={`${className} my-6 not-prose cdc-content-testimonial cdc-testimonial-side`}

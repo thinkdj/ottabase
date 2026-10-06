@@ -40,8 +40,8 @@ export function UiBaseDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="UI Base"
-                description="Framework-agnostic CSS foundation: reset, base styles, and animations. No React or Mantine dependency — pure CSS that every app imports first."
+                title="UI base"
+                description="Framework-agnostic CSS foundation: reset, base styles, and animations. No React dependency: pure CSS that every app imports first."
                 actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/ui-base
@@ -65,11 +65,11 @@ export function UiBaseDemoPage() {
                         </p>
                         <ol className="list-inside list-decimal space-y-1">
                             <li>
-                                <strong>ProviderUIBase</strong> — React provider that wraps children with base context
+                                <strong>ProviderUIBase</strong>: React provider that wraps children with base context
                                 (font families, etc.).
                             </li>
                             <li>
-                                <strong>Styles</strong> — CSS reset + ottabase base styles + animations, imported via{' '}
+                                <strong>Styles</strong>: CSS reset + ottabase base styles + animations, imported via{' '}
                                 <code className="rounded bg-background px-1 py-0.5 text-xs ring-1 ring-border">
                                     @ottabase/ui-base/styles
                                 </code>
@@ -77,8 +77,8 @@ export function UiBaseDemoPage() {
                             </li>
                         </ol>
                         <p className="pt-1">
-                            All other UI packages (<code>ui-shadcn</code>, <code>ui-mantine</code>,{' '}
-                            <code>ui-components</code>) build on top of this base.
+                            The other UI packages (<code>ui-shadcn</code> and <code>ui-components</code>) build on top
+                            of this base.
                         </p>
                     </div>
                 </CardHeader>
@@ -100,7 +100,7 @@ import { ProviderUIBase } from '@ottabase/ui-base';
 
 function App() {
     return (
-        <ProviderUIBase fontFamilies={{ sans: 'Inter', mono: 'JetBrains Mono' }}>
+        <ProviderUIBase fontFamilies={{ primary: 'Inter', heading: 'Work Sans', monospace: 'JetBrains Mono' }}>
             {children}
         </ProviderUIBase>
     );
@@ -161,7 +161,7 @@ function App() {
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                                 <p className="text-xs text-muted-foreground mb-3">
-                                    <code>.highlight-and-fade-out-bg</code> — one-shot attention flash (re-triggers on
+                                    <code>.highlight-and-fade-out-bg</code>: one-shot attention flash (re-triggers on
                                     remount)
                                 </p>
                                 <div className="flex flex-wrap gap-2">
@@ -220,7 +220,7 @@ function App() {
                             <p className="text-3xl font-bold mt-2">Heading 2</p>
                             <p className="text-2xl font-semibold mt-2">Heading 3</p>
                             <p className="text-xl font-semibold mt-2">Heading 4</p>
-                            <p className="text-base mt-2">Body text — the quick brown fox jumps over the lazy dog.</p>
+                            <p className="text-base mt-2">Body text: the quick brown fox jumps over the lazy dog.</p>
                             <p className="text-sm text-muted-foreground mt-2">
                                 Small / muted text for secondary information.
                             </p>

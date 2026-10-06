@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — CredentialStore seam
+// @ottabase/ottaai, CredentialStore seam
 // ============================================================
 // Returns PLAIN RECORDS, never ORM instances. That is what makes the resolver
 // unit-testable with no database today, lets an adopting app back the package
@@ -28,7 +28,7 @@ export interface CredentialStore {
      * has either bypassed row scoping or changed the candidate set. The store owns the
      * fan-out; the RESOLVER owns the union and de-dupe, so selection stays pure.
      *
-     * Filters ONLY on the tenancy dimensions — NOT on `enabled`, `appId` or `provider`,
+     * Filters ONLY on the tenancy dimensions, NOT on `enabled`, `appId` or `provider`,
      * because every one of those is a VERDICT the resolver must be able to report.
      * Filtering them in SQL kills the reason code at the database layer.
      */
@@ -37,7 +37,7 @@ export interface CredentialStore {
     /**
      * Load one credential by client-supplied id, SCOPE-CHECKED IN THE QUERY.
      *
-     * Returns null for both "not found" and "not yours" — the same answer closes the
+     * Returns null for both "not found" and "not yours", the same answer closes the
      * existence oracle. The scope check must be part of the query, not a comparison after
      * it, or the two branches differ in work performed and the oracle reopens as a timing
      * side channel.
@@ -69,7 +69,7 @@ export interface CredentialStore {
      *
      * The completion criterion for removing a secret from the keyring is that this
      * returns 0. A partial restore, or a re-wrap that updated the blob and not the
-     * column, makes the INDEX count read zero while old-key rows remain — retire on
+     * column, makes the INDEX count read zero while old-key rows remain, retire on
      * that and those credentials are permanently undecryptable, reported as
      * "decrypt-failed", which sends incident response in exactly the wrong direction.
      */

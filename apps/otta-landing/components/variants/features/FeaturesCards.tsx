@@ -1,7 +1,7 @@
 import type { FeaturesData } from './types';
 
 /**
- * Card-based features — each feature in a bordered card with hover lift.
+ * Card-based features: each feature in a bordered card with hover lift.
  */
 export function FeaturesCards({ title, features }: FeaturesData) {
     return (

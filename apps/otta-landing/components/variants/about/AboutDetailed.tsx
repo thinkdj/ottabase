@@ -8,14 +8,14 @@ import type { AboutData } from './types';
 import { DEFAULT_GITHUB_URL } from './types';
 
 /**
- * Detailed about page — card-based layout with feature highlights,
+ * Detailed about page: card-based layout with feature highlights,
  * tech-stack badges, and a prominent CTA section.
  */
 export function AboutDetailed({ title, description, githubUrl = DEFAULT_GITHUB_URL }: AboutData) {
     const features = [
         {
             heading: 'Edge-First',
-            body: 'Deployed on Cloudflare Workers via OpenNext — sub-50 ms TTFB worldwide.',
+            body: 'Deployed on Cloudflare Workers via OpenNext, sub-50 ms TTFB worldwide.',
         },
         {
             heading: 'Themeable',
@@ -35,7 +35,7 @@ export function AboutDetailed({ title, description, githubUrl = DEFAULT_GITHUB_U
         },
         {
             heading: 'Configurable',
-            body: 'Slot-based component system — swap hero, features, CTA, navbar, and footer variants at runtime.',
+            body: 'Slot-based component system: swap hero, features, CTA, navbar, and footer variants at runtime.',
         },
     ];
 

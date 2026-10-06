@@ -1,12 +1,12 @@
 /**
- * @ottabase/ottadate — Headless fuzzy-selection state controller
+ * @ottabase/ottadate: Headless fuzzy-selection state controller
  *
  * The shared brain of both fuzzy pickers (FuzzyDateTimePicker and
- * FuzzyDateTimeCompact). No DOM — the pickers are thin views over this.
+ * FuzzyDateTimeCompact). No DOM, the pickers are thin views over this.
  *
  * Interaction model: RESOLUTION IS DERIVED, NEVER DECLARED.
  * Every level answers the recursive question "when in X?" with one of three
- * moves — name the sub-unit (drill deeper), pick a PART (a coarse terminal
+ * moves, name the sub-unit (drill deeper), pick a PART (a coarse terminal
  * refinement like "early" / "summer" / "night"), or stop:
  *
  *   decade only               → resolution 'decade'   ("Sometime in the 1990s")
@@ -34,7 +34,7 @@ import {
 } from './fuzzy';
 
 export interface FuzzySelectionOptions {
-    /** Allowed resolutions — coarsest = required baseline, finest = max drill depth */
+    /** Allowed resolutions: coarsest = required baseline, finest = max drill depth */
     resolutions?: DateResolution[];
     /** Offer part-of-period refinements. Default: true */
     parts?: boolean;
@@ -60,7 +60,7 @@ export interface FuzzySelectionState {
     daySet: boolean;
     /** Terminal part refinement of the deepest named level, if any */
     part: DatePart | null;
-    /** "~ish" — soft boundary, widens the stored interval */
+    /** "~ish": soft boundary, widens the stored interval */
     approximate: boolean;
     /** False until the user has made any selection (or a value was loaded) */
     hasSelection: boolean;
@@ -111,11 +111,11 @@ export interface FuzzySelection {
     setSecond(second: number | null): void;
     /** Set/clear the terminal part refinement (validated against partOptions) */
     setPart(part: DatePart | null): void;
-    /** Toggle a part chip — re-selecting the active part clears it */
+    /** Toggle a part chip: re-selecting the active part clears it */
     togglePart(part: DatePart): void;
     setApproximate(approximate: boolean): void;
     toggleApproximate(): void;
-    /** Today's date, no time or part — the common "it happened today" shortcut */
+    /** Today's date, no time or part, the common "it happened today" shortcut */
     setToday(): void;
     /**
      * Name a period exactly: `level` and every coarser level come from `at`,
@@ -154,13 +154,13 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         hasSelection: false,
     };
 
-    // The level the current part refines — used to invalidate it when the
+    // The level the current part refines, used to invalidate it when the
     // selection depth changes (a part is terminal at exactly one level).
     let partLevel: DateResolution | null = null;
 
     const levelAllowed = (level: DateResolution) => isResolutionFinerOrEqual(finest, level);
 
-    /** Base levels are the required minimum — keep them filled at all times */
+    /** Base levels are the required minimum, keep them filled at all times */
     function applyBaseFloor() {
         if (isResolutionFinerOrEqual(base, 'year')) state.yearSet = true;
         if (isResolutionFinerOrEqual(base, 'month')) state.monthSet = true;
@@ -201,7 +201,7 @@ export function createFuzzySelection(options: FuzzySelectionOptions = {}): Fuzzy
         return partsEnabled ? partsForResolution(resolution()) : [];
     }
 
-    /** A part is bound to one level — drop it whenever the selection depth changes */
+    /** A part is bound to one level, drop it whenever the selection depth changes */
     function sanitizePart() {
         if (state.part && partLevel !== resolution()) {
             state.part = null;

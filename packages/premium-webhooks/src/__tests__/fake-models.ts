@@ -21,7 +21,7 @@ export function resetTables(): void {
     tables.deliveries = [];
 }
 
-/** Every key in `filter` must match exactly — the same AND-ed equality the ORM applies. */
+/** Every key in `filter` must match exactly, the same AND-ed equality the ORM applies. */
 function matches(row: Row, filter: Record<string, unknown>): boolean {
     return Object.entries(filter).every(([key, value]) => row[key] === value);
 }

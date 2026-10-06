@@ -142,7 +142,7 @@ function buildRateLimitResponse(rateLimitData: {
 
 /**
  * Best-effort brute-force throttle for SECRET-GATED endpoints (bootstrap secret check,
- * platform-owner promote). The secret compare — not the limiter — is the authoritative gate
+ * platform-owner promote). The secret compare, not the limiter, is the authoritative gate
  * here; this rate limit is defense-in-depth against guessing that secret.
  *
  * Returns:
@@ -151,7 +151,7 @@ function buildRateLimitResponse(rateLimitData: {
  *  - `null` (after logging a warning) when the limiter itself is UNAVAILABLE (no OBCF_KV /
  *    OBCF_RATE_LIMITER binding, i.e. `enforceRateLimit` would 500). We deliberately FAIL OPEN
  *    behind the secret gate so a missing limiter binding can't brick first-run bootstrap or
- *    break-glass ownership recovery — but we log so the degraded state is diagnosable.
+ *    break-glass ownership recovery, but we log so the degraded state is diagnosable.
  *
  * Use this (not raw `enforceRateLimit`) wherever a secret already gates the endpoint, so
  * bootstrap and promote share one consistent fail-open-with-log policy instead of one silently
@@ -169,7 +169,7 @@ export async function enforceBruteForceThrottle(
 
     // status 500: limiter unavailable. Fail OPEN behind the secret gate, but make it visible.
     console.warn(
-        `[rate-limit] limiter unavailable for "${label}" — proceeding WITHOUT brute-force throttle. ` +
+        `[rate-limit] limiter unavailable for "${label}", proceeding WITHOUT brute-force throttle. ` +
             `Configure OBCF_RATE_LIMITER or OBCF_KV to restore it.`,
     );
     return null;

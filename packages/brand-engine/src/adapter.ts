@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Theme JSON adapter
+// BrandEngine, Theme JSON adapter
 //
 // Converts the per-app ThemeConfig JSON format into a BrandTheme.
 // ---------------------------------------------------------------------------
@@ -15,7 +15,7 @@ import type { DesignTokens, TokenCursors } from './tokens';
  *   name, typography, colors, spacing, radius, shadows, motion, layout, cursors
  * plus any v2 token category (palette, typeScale, border, focus, interaction,
  * links, selection, scrollbar, native, zIndex, textStyles, fontFaces, effects,
- * scopes, surface, aliases) — those pass through verbatim.
+ * scopes, surface, aliases), those pass through verbatim.
  */
 export interface LegacyThemeConfig extends Partial<Omit<DesignTokens, 'color' | 'shadow'>> {
     name: string;

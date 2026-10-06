@@ -1,5 +1,5 @@
 // ============================================================
-// The server surface — the half a customer cannot edit.
+// The server surface, the half a customer cannot edit.
 //
 // These assert the property the browser gates cannot: an unlicensed package's routes
 // REFUSE, they do not merely disappear from the UI.
@@ -160,7 +160,7 @@ describe('feature and limit guards', () => {
         expect(body.metadata.limit).toBe(5);
     });
 
-    it('answers 403 (not 402) for a package that is not installed — money does not fix a typo', async () => {
+    it('answers 403 (not 402) for a package that is not installed, money does not fix a typo', async () => {
         const registry = makeRegistry();
         const denied = await requirePremiumFeature(registry, {}, 'not-a-package', 'x');
 

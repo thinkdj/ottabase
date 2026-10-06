@@ -18,7 +18,7 @@ import { AiProviderSettings, AiProvisioningProvider } from '@ottabase/ottaai/rea
  */
 const aiRequest = async <T,>(path: string, init?: { method?: string; body?: unknown }): Promise<T> => {
     // The api client returns undefined for a 204 or a non-JSON 2xx, so this must not assume
-    // an envelope is present — otherwise a legitimate empty success becomes a TypeError.
+    // an envelope is present, otherwise a legitimate empty success becomes a TypeError.
     const response = await api<{ data: T } | undefined>(path, { method: init?.method ?? 'GET', body: init?.body });
     return response?.data as T;
 };

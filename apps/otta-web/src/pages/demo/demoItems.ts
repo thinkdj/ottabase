@@ -1,7 +1,8 @@
 /**
- * Single source of truth for demo gallery items.
- * Used by both DemoLayout (sidemenu) and DemoIndexPage (cards).
+ * Single source of truth for the demo gallery: the sidebar, the index cards, the command
+ * palette, the Cloudflare overview and the breadcrumbs all read this list.
  */
+import { PACKAGES_ENABLED } from '@/ottabase/config';
 import { IconMessageCircle } from '@tabler/icons-react';
 import {
     Bell,
@@ -9,7 +10,6 @@ import {
     Bot,
     Calendar,
     Clock,
-    Cloud,
     Code,
     Crop,
     Database,
@@ -64,12 +64,21 @@ export const DEMO_GROUPS: DemoGroup[] = [
         description: 'Theming, the layout engine, navigation and the UI kits.',
     },
     { id: 'content', label: 'Content', description: 'Writing, rendering, media, dates and languages.' },
-    { id: 'data', label: 'Data and forms', description: 'The ORM, forms, selects, tables, state and config.' },
-    { id: 'platform', label: 'Platform', description: 'Auth, email, notifications, analytics, logs and jobs.' },
+    {
+        id: 'data',
+        label: 'Data and forms',
+        description: 'The ORM, forms, selects, tables, state, the API client and config.',
+    },
+    {
+        id: 'platform',
+        label: 'Platform',
+        description: 'Auth, email, notifications, analytics, logs, jobs and the CLI scripts.',
+    },
     {
         id: 'cloudflare',
         label: 'Cloudflare',
-        description: 'Every binding the worker can use, each with a live page.',
+        description:
+            'The bindings the worker uses. The live pages need a platform admin; Images and Hyperdrive are setup guides.',
         overview: '/demo/cloudflare',
     },
 ];
@@ -78,455 +87,369 @@ export interface DemoItem {
     to: string;
     group: DemoGroupId;
     icon: ElementType;
-    /** Short label for sidemenu */
+    /** The one name the sidebar, the cards, the page heading and the breadcrumb all use */
     label: string;
-    /** Card title (can differ from label) */
-    title: string;
-    /** Card description */
+    /** Card description, one or two sentences */
     description: string;
-    /** Card button variant - featured */
-    buttonVariant?: 'default' | 'outline';
+    /** Shown with a Featured badge on the card */
+    featured?: boolean;
+    /** Listed only while this package is enabled; its page would fail without it */
+    requiresPackage?: keyof typeof PACKAGES_ENABLED;
 }
 
-export const DEMO_ITEMS: DemoItem[] = [
+const ALL_DEMOS: DemoItem[] = [
     {
         to: '/demo/theming',
         group: 'design',
         icon: Paintbrush,
-        label: 'Brand Engine (Theming)',
-        title: 'Theming Configurator',
-        description: 'Theme presets and light/dark mode. Admin-configured Brand Engine themes with live preview.',
-        buttonVariant: 'outline',
+        label: 'Theming',
+        description: 'Theme presets and light or dark mode, with the brand kit the admin configured applied live.',
     },
     {
         to: '/demo/layout',
         group: 'design',
         icon: Layout,
-        label: 'Layout Engine (Dynamic)',
-        title: 'Dynamic Layout Engine',
+        label: 'Layout engine',
         description:
             'Live-preview every layout preset per route, and test path-to-layout resolution with priority rules.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/medialibrary',
         group: 'content',
         icon: Blocks,
-        label: 'Media Library',
-        title: 'Media Library',
-        description: 'Media viewer/lightbox components with image and video previews from @ottabase/medialibrary.',
-        buttonVariant: 'outline',
+        label: 'Media library',
+        description: 'Lightbox and media viewer components with image and video previews from @ottabase/medialibrary.',
     },
     {
         to: '/demo/ottaeditor',
         group: 'content',
         icon: Type,
         label: 'OttaEditor',
-        title: 'OttaEditor',
-        description: 'Rich text editor with custom plugins and formatting capabilities',
-        buttonVariant: 'outline',
+        description: 'Rich text editor with custom block tools and formatting.',
     },
     {
         to: '/demo/ui-cropper',
         group: 'content',
         icon: Crop,
-        label: 'Image Cropper',
-        title: 'Image Cropper',
+        label: 'Image cropper',
         description:
-            'Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~2–3 KB gzipped.',
-        buttonVariant: 'outline',
+            'Vanilla image cropper: crop, flip, rotate and zoom with a rectangle or circle viewfinder. PNG or JPEG out, no React, under 10 KB gzipped.',
     },
     {
         to: '/demo/split-pane',
         group: 'design',
         icon: SplitSquareHorizontal,
-        label: 'Split Pane',
-        title: 'Split Pane',
-        description:
-            'Minimal, clean split-pane component with support for nested layouts, snap points, and percentage-based sizing',
-        buttonVariant: 'outline',
+        label: 'Split pane',
+        description: 'Split panes with nested layouts, snap points and percentage or pixel sizes.',
     },
     {
         to: '/demo/codeblock',
         group: 'content',
         icon: Highlighter,
-        label: 'Code Highlighting',
-        title: 'Code Highlighting',
+        label: 'Code highlighting',
         description:
-            'GitHub-style syntax highlighting with highlight.js. Supports 190+ languages, copy to clipboard, line numbers, and light/dark themes.',
-        buttonVariant: 'outline',
+            'Syntax highlighting with highlight.js: bundled grammars for the web stack, copy to clipboard, line numbers and dark mode.',
     },
     {
         to: '/demo/state',
         group: 'data',
         icon: Settings,
-        label: 'Global State Management',
-        title: 'Global State Management',
-        description:
-            'Global state with Jotai atoms: theme, user, sidebar, scale, zoom. Integrates with next-themes for light/dark mode.',
-        buttonVariant: 'outline',
+        label: 'State',
+        description: 'Global state with Jotai atoms: theme, user, sidebar, scale and zoom, wired to next-themes.',
     },
     {
         to: '/demo/ottaorm',
         group: 'data',
         icon: Database,
         label: 'OttaORM',
-        title: 'OttaORM',
-        description: 'Class-based Drizzle ORM demo running on D1 via Worker endpoints',
-        buttonVariant: 'outline',
+        description: 'Class-based models on D1, queried through the generic CRUD endpoints and TanStack Query hooks.',
     },
     {
         to: '/demo/comments',
         group: 'content',
         icon: IconMessageCircle,
         label: 'Comments',
-        title: 'Comments',
-        description: 'Threaded comments with reactions, moderation, and polymorphic targeting',
-        buttonVariant: 'outline',
+        description: 'Threaded comments with reactions, moderation and polymorphic targets.',
+        requiresPackage: 'comments',
     },
     {
         to: '/demo/ottaforms',
         group: 'data',
         icon: FileText,
         label: 'OttaForms',
-        title: 'OttaForms',
         description:
             'Auto-generated CRUD forms from OttaORM model metadata. List, detail, create, and edit views with relationship field support.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/ottaselect',
         group: 'data',
         icon: List,
         label: 'OttaSelect',
-        title: 'OttaSelect',
         description: 'Searchable select component with async data loading and custom rendering.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/ui-datatable',
         group: 'data',
         icon: Layout,
         label: 'DataTable',
-        title: 'DataTable',
         description:
-            'Advanced data table on TanStack Table v8: server-side sort/filter/pagination, column visibility, row selection, bulk actions.',
-        buttonVariant: 'default',
+            'Data table on TanStack Table v8: sorting, filtering, pagination, column visibility, row selection and bulk actions.',
+        featured: true,
     },
     {
         to: '/demo/logger',
         group: 'platform',
         icon: FileStack,
         label: 'Logger',
-        title: 'Logger',
-        description: 'Extensible logger with levels, transports, formatters, child loggers, and config-based setup.',
-        buttonVariant: 'outline',
+        description: 'Logger with levels, transports, formatters and child loggers.',
     },
     {
         to: '/demo/cloudflare/ai',
         group: 'cloudflare',
         icon: Bot,
-        label: 'OttaAI Playground',
-        title: 'OttaAI Playground',
+        label: 'OttaAI',
         description:
-            'Tenant-aware chat and embeddings through Cloudflare AI Gateway — tenant key or platform fallback, with server-side task gates',
-        buttonVariant: 'outline',
+            'Tenant-aware chat and embeddings through Cloudflare AI Gateway, with your key or the platform key and server-side task gates.',
+        requiresPackage: 'ottaai',
     },
     {
         to: '/demo/cloudflare/pdf',
         group: 'cloudflare',
         icon: FileText,
-        label: 'PDF Rendering',
-        title: 'Cloudflare PDF Rendering',
+        label: 'PDF rendering',
         description: 'Secure HTML-to-PDF export with static DOM capture, Browser Rendering, and safe metadata.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/cloudflare/file-upload',
         group: 'cloudflare',
         icon: Upload,
-        label: 'File Upload',
-        title: 'File Upload Package',
-        description:
-            'Drag-and-drop file uploader with progress tracking, validation, and Cloudflare R2/Images integration',
-        buttonVariant: 'outline',
+        label: 'File upload',
+        description: 'Drag-and-drop uploader with progress, validation and R2 storage.',
     },
     {
         to: '/demo/timezone',
         group: 'content',
         icon: Clock,
-        label: 'Timezone Utils',
-        title: 'Timezone Utilities',
-        description:
-            "Production-ready timezone standardization: always store in UTC, display in user's timezone. Lightweight and type-safe.",
-        buttonVariant: 'outline',
+        label: 'Timezone',
+        description: "Store in UTC, display in the user's timezone: conversion, formatting and DST helpers.",
     },
     {
         to: '/demo/api',
         group: 'data',
         icon: Zap,
-        label: 'API Client',
-        title: 'API Client',
-        description: 'Type-safe fetch wrapper with error handling, auth injection, and shorthand method syntax',
-        buttonVariant: 'outline',
+        label: 'API client',
+        description: 'Type-safe fetch wrapper with error handling, auth injection and shorthand methods.',
     },
     {
         to: '/demo/renderer',
         group: 'content',
         icon: Code,
-        label: 'Content Renderer',
-        title: 'OttaRenderer',
-        description: 'Content renderer for EditorJS and HTML with custom block renderers and dark mode support',
-        buttonVariant: 'outline',
+        label: 'OttaRenderer',
+        description: 'Renders Editor.js and HTML content with custom block renderers and dark mode.',
     },
     {
         to: '/demo/email',
         group: 'platform',
         icon: Mail,
-        label: 'Email Templates',
-        title: 'Email Templates',
-        description: 'Preview Handlebars email templates and replacement data with the @ottabase/email package',
-        buttonVariant: 'outline',
+        label: 'Email',
+        description: 'Every email the app sends, rendered from the catalogue with editable sample data.',
     },
     {
         to: '/demo/notifications',
         group: 'platform',
         icon: Bell,
         label: 'Notifications',
-        title: 'Notifications',
         description:
-            'Multi-channel notification system with email, WebSocket, and system alerts via @ottabase/notifications',
-        buttonVariant: 'outline',
+            'A mock inbox showing notification shapes, channels and priorities. The real inbox lives at /notifications.',
     },
     {
         to: '/demo/spotlight',
         group: 'design',
         icon: ScanSearch,
         label: 'Spotlight',
-        title: 'Spotlight',
         description: 'Command palette with keyboard shortcuts, search handlers, and customizable result rendering.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/menus',
         group: 'design',
         icon: PanelTop,
-        label: 'Menu Renderer',
-        title: 'OttaMenu',
+        label: 'OttaMenu',
         description: 'Renderer playground for flyout, mega, navbar, dropdown, sidebar, and footer menu variants.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/analytics',
         group: 'platform',
         icon: Zap,
         label: 'Analytics',
-        title: 'Analytics',
-        description: 'Track events and query aggregated metrics through @ottabase/analytics endpoints.',
-        buttonVariant: 'outline',
+        description:
+            'Track events and query aggregated metrics through the @ottabase/analytics endpoints (platform admin).',
     },
     {
         to: '/demo/auth',
         group: 'platform',
         icon: ShieldCheck,
-        label: 'Auth Session',
-        title: 'Auth Session',
-        description: 'Inspect auth session state, refresh/logout behavior, and localStorage helper keys.',
-        buttonVariant: 'outline',
+        label: 'Auth session',
+        description: 'Inspect the session state, refresh and sign-out behaviour, and the storage keys.',
     },
     {
         to: '/demo/brand-engine',
         group: 'design',
         icon: Palette,
-        label: 'Brand Engine',
-        title: 'Brand Engine',
-        description: 'View active brand config and test route mapping resolution from @ottabase/brand-engine-react.',
-        buttonVariant: 'outline',
+        label: 'Brand engine',
+        description: 'The active brand config and route mapping resolution from @ottabase/brand-engine-react.',
     },
     {
         to: '/demo/ottadate',
         group: 'content',
         icon: Calendar,
         label: 'OttaDate',
-        title: 'OttaDate',
         description:
             'Fuzzy dates people half remember (a zooming, hands-on playground), plus exact date, range and time pickers.',
-        buttonVariant: 'default',
+        featured: true,
     },
     {
         to: '/demo/i18n',
         group: 'content',
         icon: Languages,
-        label: 'Internationalization (i18n)',
-        title: 'Internationalization',
+        label: 'i18n',
         description: 'Locale switching, translations, and pluralization with the i18n package.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/breadcrumbs',
         group: 'design',
         icon: Navigation,
         label: 'Breadcrumbs',
-        title: 'Smart Breadcrumbs',
-        description:
-            'Automatic breadcrumb navigation with intelligent route metadata and human-readable labels. Fully TanStack Router integrated.',
-        buttonVariant: 'outline',
+        description: 'Breadcrumb navigation from route metadata with readable labels, built on TanStack Router.',
     },
     {
         to: '/demo/shadcn',
         group: 'design',
         icon: Palette,
         label: 'shadcn/ui',
-        title: 'shadcn/ui Demo',
-        description: 'Explore shadcn/ui primitives with Tailwind utilities and shared theme providers',
-        buttonVariant: 'outline',
+        description: 'The shadcn/ui primitives with Tailwind utilities and the shared theme providers.',
     },
     {
         to: '/demo/cron',
         group: 'platform',
         icon: Timer,
-        label: 'Cron Scheduler',
-        title: 'Cron Scheduler',
+        label: 'Cron',
         description:
             'Laravel-style cron scheduler with expression parser, presets, and next-run calculation via @ottabase/cron.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/ui-tailwind',
         group: 'design',
         icon: Wind,
-        label: 'Tailwind (Preset)',
-        title: 'Tailwind (Preset)',
+        label: 'Tailwind preset',
         description:
             'Shared Tailwind CSS preset mapping HSL CSS variables to utilities. Live token swatches and dark mode preview.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/ui-components',
         group: 'design',
         icon: Blocks,
-        label: 'UI Components',
-        title: 'UI Components',
-        description: 'Shared React components: ConfirmDialog, MessageBox, Logo, DarkModeToggle, and BlogPagination.',
-        buttonVariant: 'outline',
+        label: 'UI components',
+        description:
+            'Shared React components: ConfirmDialog, EmptyState, LoadingState, Chip, JsonEditor, Logo and more.',
     },
     {
         to: '/demo/ui-base',
         group: 'design',
         icon: Layers,
-        label: 'UI Base',
-        title: 'UI Base',
+        label: 'UI base',
         description:
             'Framework-agnostic CSS foundation: reset, base styles, animations, and the ProviderUIBase provider.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/scripts',
         group: 'platform',
         icon: Terminal,
-        label: 'Scripts (CLI)',
-        title: 'Scripts (CLI)',
+        label: 'Scripts',
         description: 'CLI tools for command discovery, Cloudflare setup, local env secrets, and cache/state cleanup.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/config',
         group: 'data',
         icon: Settings,
         label: 'Config',
-        title: 'Config',
         description:
             'Centralized app configuration: createAppConfig, defineOttabaseConfig, package gating, and env resolution.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/cloudflare/d1',
         group: 'cloudflare',
         icon: Database,
-        label: 'D1 Database',
-        title: 'D1 Database',
+        label: 'D1',
         description: 'SQLite at the edge: typed queries, migrations and CRUD against the bound D1 database.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/cloudflare/kv',
         group: 'cloudflare',
         icon: KeyRound,
-        label: 'KV Storage',
-        title: 'KV Storage',
-        description: 'Key-value reads and writes with TTLs and metadata, the store behind sessions and caches.',
-        buttonVariant: 'outline',
+        label: 'KV',
+        description: 'Key-value reads and writes with TTLs, the store behind sessions and caches.',
     },
     {
         to: '/demo/cloudflare/r2',
         group: 'cloudflare',
         icon: HardDrive,
-        label: 'R2 Storage',
-        title: 'R2 Storage',
-        description: 'Object storage for uploads and exports, with signed access and no egress fees.',
-        buttonVariant: 'outline',
+        label: 'R2',
+        description: 'Object storage for uploads and exports with no egress fees.',
     },
     {
         to: '/demo/cloudflare/images',
         group: 'cloudflare',
         icon: ImageIcon,
         label: 'Images',
-        title: 'Cloudflare Images',
         description: 'Upload, resize and deliver images through Cloudflare Images.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/cloudflare/hyperdrive',
         group: 'cloudflare',
         icon: Gauge,
         label: 'Hyperdrive',
-        title: 'Hyperdrive',
         description: 'Connection pooling and query caching for an external Postgres or MySQL database.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/cloudflare/queues',
         group: 'cloudflare',
         icon: ListOrdered,
         label: 'Queues',
-        title: 'Queues',
         description: 'Producers, consumers and retries on Cloudflare Queues for work that can wait.',
-        buttonVariant: 'outline',
     },
     {
         to: '/demo/cloudflare/rate-limiting',
         group: 'cloudflare',
         icon: ShieldAlert,
-        label: 'Rate Limiting',
-        title: 'Rate Limiting',
-        description: 'Per key request throttling with the Rate Limiting binding, and what a blocked call sees.',
-        buttonVariant: 'outline',
+        label: 'Rate limiting',
+        description: 'Per-key request throttling with the Rate Limiting binding, and what a blocked call sees.',
     },
     {
         to: '/demo/cloudflare/realtime',
         group: 'cloudflare',
         icon: Radio,
         label: 'Realtime',
-        title: 'Realtime Pub/Sub',
-        description: 'WebSocket channels over Durable Objects with offline buffering and presence.',
-        buttonVariant: 'outline',
+        description: 'WebSocket channels over Durable Objects with offline buffering.',
     },
     {
         to: '/demo/cloudflare/pdf/playground',
         group: 'cloudflare',
         icon: FileOutput,
-        label: 'PDF Playground',
-        title: 'PDF Playground',
+        label: 'PDF playground',
         description: 'Render a document to PDF with Browser Rendering and tune the page, margins and headers.',
-        buttonVariant: 'outline',
     },
 ];
 
-/** Items that match a query in their label, title or description; everything when the query is empty. */
+/** The demos this install can show: a demo of a disabled package is left out everywhere */
+export const DEMO_ITEMS: DemoItem[] = ALL_DEMOS.filter(
+    (item) => !item.requiresPackage || PACKAGES_ENABLED[item.requiresPackage],
+);
+
+/** Items that match a query in their label or description; everything when the query is empty. */
 export function searchDemos(query: string, items: DemoItem[] = DEMO_ITEMS): DemoItem[] {
     const q = query.trim().toLowerCase();
     if (!q) return items;
-    return items.filter((item) => `${item.label} ${item.title} ${item.description}`.toLowerCase().includes(q));
+    return items.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(q));
 }
 
 /** The gallery sections in order, each with its items; a section with nothing in it is left out. */

@@ -7,7 +7,7 @@ import { index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-co
 export const commentReactionsTable = sqliteTable(
     'comment_reactions',
     {
-        // Primary key — auto-generated UUID
+        // Primary key: auto-generated UUID
         id: text('id')
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
@@ -27,7 +27,7 @@ export const commentReactionsTable = sqliteTable(
             .$defaultFn(() => Date.now()),
     },
     (table) => [
-        // One reaction per (comment, emoji, user) — toggling is INSERT-OR-IGNORE / DELETE against
+        // One reaction per (comment, emoji, user), toggling is INSERT-OR-IGNORE / DELETE against
         // this constraint, making it atomic at the DB level (no read-modify-write race).
         unique('comment_reactions_unique_idx').on(table.commentId, table.emoji, table.userId),
         // Fetch/aggregate all reactions for a set of comments (the enrichment query on comment lists)

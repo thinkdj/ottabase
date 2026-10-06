@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout – Layout System Types
+// @ottabase/ottalayout, Layout System Types
 //
 // Canonical type definitions for the layout system.
 // ---------------------------------------------------------------------------
@@ -30,7 +30,7 @@ export type ContainerPadding = 'none' | 'sm' | 'md' | 'lg';
 // ── Main config ────────────────────────────────────────────────────────────
 
 /**
- * Layout configuration – stored per theme/tenant.
+ * Layout configuration: stored per theme/tenant.
  * Treats layouts as configurable modules, decoupled from appearance tokens.
  * Optional fields receive sensible defaults via `mergeLayoutConfig()`.
  */
@@ -58,7 +58,7 @@ export interface LayoutConfig {
     sidebarPosition?: 'left' | 'right';
     /** Horizontal padding for the main content container (default: 'md') */
     containerPadding?: ContainerPadding;
-    /** Center content vertically – for auth / splash pages (default: false) */
+    /** Center content vertically: for auth / splash pages (default: false) */
     centerContent?: boolean;
 
     // ── Dimension tokens (optional CSS lengths, emitted as --layout-* vars) ──
@@ -88,7 +88,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
     centerContent: false,
 };
 
-/** Defaults for optional fields — used by mergeLayoutConfig */
+/** Defaults for optional fields: used by mergeLayoutConfig */
 export const LAYOUT_FIELD_DEFAULTS: Required<
     Pick<
         LayoutConfig,
@@ -110,7 +110,7 @@ export const LAYOUT_FIELD_DEFAULTS: Required<
 
 // ── Route mapping ──────────────────────────────────────────────────────────
 
-/** A route mapping entry — maps a URL path pattern to a layout preset */
+/** A route mapping entry: maps a URL path pattern to a layout preset */
 export interface RouteMapping {
     pathPattern: string;
     layoutTemplateId: string;
@@ -150,7 +150,7 @@ export const BUILT_IN_MENU_SLOTS: BuiltInMenuSlotName[] = [
     'admin-nav',
 ];
 
-/** Menu slot assignment — maps a named slot to a menu with render type */
+/** Menu slot assignment: maps a named slot to a menu with render type */
 export interface MenuSlotConfig {
     /** Named slot in the layout (e.g. 'header-nav', 'sidebar-nav') */
     slotName: string;

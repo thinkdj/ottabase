@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Optional audit logging
+// Brand Engine, Optional audit logging
 // Integrates with @ottabase/audit when available. Failures are swallowed.
 // ---------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ export interface BrandAuditUser {
 }
 
 /**
- * Log brand-related action to audit. Non-blocking – failures are caught.
+ * Log brand-related action to audit. Non-blocking, failures are caught.
  * Pass the logged-in actor; omit when unauthenticated (stores NULL, avoids FK violation).
  * `appId` scopes the row to the app the brand kit belongs to (null = system default kit).
  */

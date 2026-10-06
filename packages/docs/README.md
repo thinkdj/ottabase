@@ -13,8 +13,8 @@ table of contents. Colors from Brand Kit; layout themes control spacing and dens
 - Previous/Next page navigation
 - Three layout themes: `compact`, `standard`, `spacious` (colors from Brand Kit) with subtle sidebar switcher
 - Enhanced code blocks with copy-to-clipboard
-- Extensible — CSS custom properties and composable config for easy customization
-- Zero required runtime dependencies (only React peer dep)
+- Extensible, CSS custom properties and composable config for easy customization
+- One runtime dependency (`@ottabase/utils`); React is a peer
 
 ## Installation
 
@@ -26,9 +26,9 @@ pnpm add @ottabase/docs
 
 The package splits along a UI boundary so the `.` barrel pulls in zero rendered React:
 
-- `@ottabase/docs` — pure, tree-shakeable helpers and types: `buildPageSlug`, `extractTitle`, `extractToc`,
+- `@ottabase/docs`: pure, tree-shakeable helpers and types: `buildPageSlug`, `extractTitle`, `extractToc`,
   `fileNameToSlug`, `findPageBySlug`, `organizePages`, `slugToTitle`, the `useDocs` hook, and all type re-exports.
-- `@ottabase/docs/react` — rendered components: `DocsLayout`, `DocsSidebar`, `MarkdownRenderer`, `TableOfContents` (this
+- `@ottabase/docs/react`: rendered components: `DocsLayout`, `DocsSidebar`, `MarkdownRenderer`, `TableOfContents` (this
   is the only entry that value-imports `@ottabase/ui-code-highlight`, an optional peer).
 
 ## Quick Start

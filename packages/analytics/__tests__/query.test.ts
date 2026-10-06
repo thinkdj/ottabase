@@ -133,7 +133,7 @@ describe('buildAnalyticsQuery', () => {
         expect(sql).not.toContain('index1 =');
     });
 
-    it('clamps days to 1–90 range', () => {
+    it('clamps days to 1 to 90 range', () => {
         const sql1 = buildAnalyticsQuery({ dataset: 'test', days: 0 });
         expect(sql1).toContain("INTERVAL '1' DAY");
 
@@ -141,7 +141,7 @@ describe('buildAnalyticsQuery', () => {
         expect(sql2).toContain("INTERVAL '90' DAY");
     });
 
-    it('clamps limit to 1–1000 range', () => {
+    it('clamps limit to 1 to 1000 range', () => {
         const sql = buildAnalyticsQuery({ dataset: 'test', limit: 5000 });
         expect(sql).toContain('LIMIT 1000');
     });
@@ -290,7 +290,7 @@ describe('buildTopKQuery', () => {
         expect(sql).toContain("INTERVAL '30' DAY");
     });
 
-    it('clamps k to 1–100', () => {
+    it('clamps k to 1 to 100', () => {
         const sql = buildTopKQuery({ dataset: 'test', column: 'blob1', k: 500 });
         expect(sql).toContain('LIMIT 100');
     });
@@ -308,7 +308,7 @@ describe('buildQuantileQuery', () => {
         expect(sql).toContain('double2');
     });
 
-    it('clamps quantile to 0–1', () => {
+    it('clamps quantile to 0 to 1', () => {
         const sql = buildQuantileQuery({ dataset: 'test', quantile: 2.5 });
         expect(sql).toContain('quantileWeighted(1)');
     });

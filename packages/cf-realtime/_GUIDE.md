@@ -71,7 +71,7 @@ export default {
             return stub.fetch(request);
         }
 
-        // Broadcast API — server-to-server only, requires a shared secret
+        // Broadcast API: server-to-server only, requires a shared secret
         if (url.pathname === '/api/broadcast' && request.method === 'POST') {
             const token = request.headers.get('Authorization');
             if (!token || token !== `Bearer ${env.BROADCAST_SECRET}`) {

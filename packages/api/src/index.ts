@@ -341,7 +341,7 @@ export function createApiClient(config: ApiClientConfig = {}): ApiFunction {
             }
         }
 
-        // Detect FormData – skip Content-Type (browser sets multipart boundary)
+        // Detect FormData: skip Content-Type (browser sets multipart boundary)
         // and skip JSON.stringify so the raw FormData is sent as-is.
         const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 

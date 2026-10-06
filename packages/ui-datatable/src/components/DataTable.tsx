@@ -15,7 +15,7 @@ import { DataTableToolbar } from './DataTableToolbar';
 import { LoadingState } from '@ottabase/ui-components';
 
 /**
- * DataTable — the primary table renderer.
+ * DataTable: the primary table renderer.
  *
  * Renders header, body, toolbar, and pagination from a TanStack Table instance.
  * Designed to be composed with `useDataTable()`, with `useListState()` for server-paged lists.
@@ -208,6 +208,13 @@ export function DataTable<TData extends object>({
                                                 onRowClick && 'cursor-pointer',
                                             )}
                                             onClick={() => onRowClick?.(row.original)}
+                                            tabIndex={onRowClick ? 0 : undefined}
+                                            onKeyDown={(event) => {
+                                                if (!onRowClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+                                                if (event.target !== event.currentTarget) return;
+                                                event.preventDefault();
+                                                onRowClick(row.original);
+                                            }}
                                         >
                                             {row.getVisibleCells().map((cell) => {
                                                 const meta = cell.column.columnDef.meta as

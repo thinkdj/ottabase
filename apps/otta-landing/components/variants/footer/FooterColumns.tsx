@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { FooterData } from './types';
 
 /**
- * Columns footer — multi-column layout with grouped links.
+ * Columns footer: multi-column layout with grouped links.
  */
 export function FooterColumns({ siteName = 'Ottabase', links = [], tagline }: FooterData) {
     // Split links into two columns for visual balance

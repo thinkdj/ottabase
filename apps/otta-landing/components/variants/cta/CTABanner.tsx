@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { CTAData } from './types';
 
 /**
- * Banner CTA — full-width coloured strip with bold text and actions.
+ * Banner CTA: full-width coloured strip with bold text and actions.
  */
 export function CTABanner({ title, description, actions }: CTAData) {
     return (

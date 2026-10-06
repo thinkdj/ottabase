@@ -15,7 +15,7 @@ description:
 
 Cloudflare wakes the worker once a minute; per-task cadence is evaluated against DB rows.
 
-1. `wrangler.jsonc` → `"triggers": { "crons": ["* * * * *"] }` — one tick/minute.
+1. `wrangler.jsonc` → `"triggers": { "crons": ["* * * * *"] }`: one tick/minute.
 2. Worker `scheduled:` export → `handleAppScheduled` (guards platform-ready + the tick expression), then
    `runAppCronTick(env)` → `appCronScheduler.tick(env, appTaskRepository(env))` (repository is app-scoped). `tick`
    returns `{ executed, failed, skipped }`; a task whose run or bookkeeping throws counts as `failed` and the tick
@@ -32,13 +32,13 @@ Cloudflare wakes the worker once a minute; per-task cadence is evaluated against
    `handleAdminCronCreate`) with a cron expression. The repository (`createTaskRepository`) handles atomic locking so a
    task runs once even across overlapping ticks.
 
-Heavy work should be **enqueued** (`OBCF_QUEUE`) from the handler, not done inline — the existing handlers dispatch to
+Heavy work should be **enqueued** (`OBCF_QUEUE`) from the handler, not done inline, the existing handlers dispatch to
 the queue (see `ottabase-queue`).
 
 ## Parser utilities (if you just need expression math)
 
 `parseCron(expr)`, `matchesCron(expr, date)`, `getNextRun(expr, after?)` (UTC, standard DOM-OR-DOW), `CronPresets`.
-Hand-rolled 5-field parser — no external cron lib.
+Hand-rolled 5-field parser: no external cron lib.
 
 ## Static handler (alternative, code-defined)
 
@@ -47,11 +47,11 @@ if you want jobs defined purely in code with their own Cron Triggers, rather tha
 
 ## Gotchas
 
-- The Cloudflare `scheduled` path has no HTTP auth at all — it is guarded by platform-ready + the tick-expression check.
+- The Cloudflare `scheduled` path has no HTTP auth at all, it is guarded by platform-ready + the tick-expression check.
   Admin auth gates the `/api/admin/cron` routes; `checkCronAuth` / `CRON_SECRET` gate separately HTTP-triggered cron
   endpoints (e.g. blog publish-scheduled) and are open when `ENVIRONMENT` is a dev value.
 - Cron math is **UTC**. Convert for user-facing schedules.
-- Adding a cron trigger changes `wrangler.jsonc` — keep binding/trigger config in sync per the cloudflare rules.
+- Adding a cron trigger changes `wrangler.jsonc`: keep binding/trigger config in sync per the cloudflare rules.
 
 ## Authoritative sources
 

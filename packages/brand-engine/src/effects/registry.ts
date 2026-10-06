@@ -1,14 +1,14 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Effect & Keyframe registries
+// Brand Engine, Effect & Keyframe registries
 //
 // Reusable CSS building blocks referenced from theme tokens by `registry:key`
 // (same grammar as the cursor registry). Registry entries are code, shipped
 // with the engine; themes reference them from JSON so artwork/recipes can be
 // tuned centrally without editing every theme.
 //
-//   • EFFECT_REGISTRY  – declaration blocks for `effects.utilities`
+//   • EFFECT_REGISTRY: declaration blocks for `effects.utilities`
 //                        ("scanlines", "noise", …) → generated `.{class} { … }`
-//   • KEYFRAME_REGISTRY – @keyframes bodies for `motion.keyframes`
+//   • KEYFRAME_REGISTRY, @keyframes bodies for `motion.keyframes`
 //                        ("shimmer", "blink", …) → generated `@keyframes name { … }`
 // ---------------------------------------------------------------------------
 
@@ -18,12 +18,12 @@ const NOISE_SVG_URI =
 
 /**
  * Effect utility declaration blocks. Values are raw CSS declarations (no
- * selector, no braces) — the effects stylesheet builder wraps them in the
+ * selector, no braces), the effects stylesheet builder wraps them in the
  * theme-chosen class name. Color-bearing effects read theme vars so they
  * retint with the brand.
  */
 export const EFFECT_REGISTRY: Record<string, string> = {
-    /** CRT scanline overlay – subtle horizontal line texture */
+    /** CRT scanline overlay: subtle horizontal line texture */
     scanlines:
         'background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.06) 0px, rgb(0 0 0 / 0.06) 1px, transparent 1px, transparent 3px);',
 
@@ -33,7 +33,7 @@ export const EFFECT_REGISTRY: Record<string, string> = {
     /** Blueprint/graph-paper grid over the current background */
     grid: 'background-image: linear-gradient(hsl(var(--border) / 0.6) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.6) 1px, transparent 1px); background-size: 24px 24px;',
 
-    /** Photographic vignette – darkened corners via inset shadow */
+    /** Photographic vignette: darkened corners via inset shadow */
     vignette: 'box-shadow: inset 0 0 120px 30px rgb(0 0 0 / 0.35);',
 
     /** 90s bevel/groove divider treatment for hr-like elements */

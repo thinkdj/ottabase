@@ -376,7 +376,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                     ) : (
                         <>
                             <Save className="h-4 w-4" />
-                            {mode === 'create' ? 'Create' : 'Save Changes'}
+                            {mode === 'create' ? 'Create' : 'Save changes'}
                         </>
                     )}
                 </button>

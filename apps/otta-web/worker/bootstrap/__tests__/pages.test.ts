@@ -23,7 +23,7 @@ const stateOf = (over: Partial<PlatformStateResult> = {}): PlatformStateResult =
     state: 'UNINITIALIZED',
     source: 'probe',
     panic: false,
-    reason: 'No _ottabase_meta table found — fresh installation',
+    reason: 'No _ottabase_meta table found: fresh installation',
     bindings: bindings(),
     ...over,
 });
@@ -43,7 +43,7 @@ const ALL_PAGES: Array<[string, string]> = [
     ['unauthorized', renderUnauthorizedPage()],
 ];
 
-describe('bootstrap pages — shared contract', () => {
+describe('bootstrap pages: shared contract', () => {
     it.each(ALL_PAGES)('%s is a complete, self-contained document', (_name, html) => {
         expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
         expect(html).toContain('<title>');
@@ -118,7 +118,7 @@ describe('client state hygiene', () => {
     });
 
     it.each(ALL_PAGES)('%s applies dark tokens to the media query and the override alike', (_name, html) => {
-        // Both blocks are interpolated from one DARK_TOKENS constant — if this count
+        // Both blocks are interpolated from one DARK_TOKENS constant, if this count
         // ever drops to 1, the toggle and the system default have drifted apart.
         const occurrences = html.split('--background: 148 24% 6%;').length - 1;
         expect(occurrences).toBe(2);
@@ -127,7 +127,7 @@ describe('client state hygiene', () => {
     });
 });
 
-describe('renderWizardPage — /__bootstrap__', () => {
+describe('renderWizardPage: /__bootstrap__', () => {
     it('renders four action steps with the token field shared across them', () => {
         const html = renderWizardPage(notReadyState);
         expect(html).toContain('id="bootstrap-secret"');
@@ -137,7 +137,7 @@ describe('renderWizardPage — /__bootstrap__', () => {
         for (const step of ['Database', 'Roles', 'Owner', 'Launch']) {
             expect(html).toContain(step);
         }
-        // The rail is the only progress indicator — the old tab strip + progress bar are gone.
+        // The rail is the only progress indicator, the old tab strip + progress bar are gone.
         expect(html).not.toContain('progress-fill');
         expect(html).not.toContain('step-tab');
     });
@@ -210,7 +210,7 @@ describe('renderWizardPage — /__bootstrap__', () => {
     });
 });
 
-describe('renderReseedPage — /__bootstrap__/seed', () => {
+describe('renderReseedPage: /__bootstrap__/seed', () => {
     it('renders a full, self-contained HTML page with the reconcile action', () => {
         const html = renderReseedPage(readyState);
         expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
@@ -230,7 +230,7 @@ describe('renderReseedPage — /__bootstrap__/seed', () => {
     });
 });
 
-describe('renderPromoteOwnerPage — /__bootstrap__/promote-owner', () => {
+describe('renderPromoteOwnerPage: /__bootstrap__/promote-owner', () => {
     it('renders a secret + email form that posts to the promote endpoint', () => {
         const html = renderPromoteOwnerPage(readyState);
         expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
@@ -243,7 +243,7 @@ describe('renderPromoteOwnerPage — /__bootstrap__/promote-owner', () => {
     });
 });
 
-describe('renderBindingsErrorPage — missing configuration', () => {
+describe('renderBindingsErrorPage: missing configuration', () => {
     it('lists only D1 as blocking and demotes the rest to recommended', () => {
         const html = renderBindingsErrorPage(stateOf({ bindings: bindings({ d1: false, kv: false, r2: false }) }));
         expect(html).toContain('Required');
@@ -266,7 +266,7 @@ describe('destructive-action safety', () => {
     });
 });
 
-describe('renderMaintenancePage — degraded platform', () => {
+describe('renderMaintenancePage: degraded platform', () => {
     it('lets the reader stop the automatic reload', () => {
         // WCAG 2.2.1: an auto-refreshing page must offer a way to turn it off.
         const html = renderMaintenancePage(readyState);
@@ -277,7 +277,7 @@ describe('renderMaintenancePage — degraded platform', () => {
     });
 });
 
-describe('renderUnauthorizedPage — no valid token', () => {
+describe('renderUnauthorizedPage: no valid token', () => {
     it('asks for the token without disclosing platform internals', () => {
         const html = renderUnauthorizedPage();
         expect(html).toContain('This page needs a setup token');

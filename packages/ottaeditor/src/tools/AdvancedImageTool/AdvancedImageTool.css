@@ -260,7 +260,7 @@
 /*
  * Sized and centred against the editor column, not the viewport, and by AUTO margins so the box is
  * never over-constrained. `width: 100vw; left: 50%; translateX(-50%)` sized the image to the whole
- * window and then centred it on an off-centre column — the editor lives in a two-thirds pane beside
+ * window and then centred it on an off-centre column, the editor lives in a two-thirds pane beside
  * a sidebar, so the image left the pane entirely. Mirrors the renderer's --stretched rule so what an
  * author sees while writing is what publishes.
  */
@@ -292,7 +292,7 @@
     position: relative;
 }
 
-/* Chip recipe — matches the renderer's featured star badge */
+/* Chip recipe: matches the renderer's featured star badge */
 .advanced-image-container--featured::before {
     content: '★';
     position: absolute;
@@ -401,7 +401,7 @@
         width: 100%;
     }
 
-    /* Full column on narrow screens — there is no room to be narrower than the text. */
+    /* Full column on narrow screens, there is no room to be narrower than the text. */
     .advanced-image-container--stretched {
         width: 100%;
         margin-block: 1rem;

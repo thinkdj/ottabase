@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate/parse — Type-to-parse sub-path export
+ * @ottabase/ottadate/parse: Type-to-parse sub-path export
  *
  * Turn typed memories ("early 90s", "summer 98", "21 july 2026", "last night")
  * into FuzzyDateTime values, and typed exact dates ("5 jan 2026", "tomorrow

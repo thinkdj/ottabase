@@ -445,7 +445,7 @@ describe('roster access boundary (owner/admin membership in the TARGET org)', ()
     it('denies a rank-and-file member self-promoting to owner in the target org', async () => {
         // Regression for the roster-escalation report: the attacker passes requireAdminAccess via
         // org:admin in their OWN personal org (auth.organizationId here), and is a plain 'member' of
-        // the target org-9. assertRosterAccess must require OWNER/ADMIN in org-9 — a plain member
+        // the target org-9. assertRosterAccess must require OWNER/ADMIN in org-9, a plain member
         // (isOwnerOrAdmin=false) is rejected, so they can never PATCH their own role to 'owner'.
         vi.mocked(requireAdminAccess).mockResolvedValue({
             ...systemAuth,

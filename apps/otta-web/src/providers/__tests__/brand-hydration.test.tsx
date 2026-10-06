@@ -2,7 +2,7 @@
 // Edge → client brand hydration handoff contract test.
 // Round-trips a realistic config through the REAL buildInitialConfigScriptTag
 // (what the worker injects) into the DOM and back through the REAL
-// readInjectedBrandConfig (what Providers.tsx hydrates from) — the two halves
+// readInjectedBrandConfig (what Providers.tsx hydrates from), the two halves
 // are otherwise only linked by an unchecked type cast.
 // ---------------------------------------------------------------------------
 
@@ -66,7 +66,7 @@ describe('brand hydration handoff (worker tag → client reader)', () => {
 
     it('survives </script> sequences in values without truncating the tag', () => {
         injectTag(REALISTIC_CONFIG);
-        // Exactly one script tag must exist — a breakout would orphan trailing content.
+        // Exactly one script tag must exist, a breakout would orphan trailing content.
         expect(document.querySelectorAll(`#${INITIAL_CONFIG_ELEMENT_ID}`)).toHaveLength(1);
         expect(readInjectedBrandConfig()?.brandKitsMap.default.tagline).toBe("only $' left </script>");
     });

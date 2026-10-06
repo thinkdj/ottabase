@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// @ottabase/ottaai/react — provider + the request seam
+// @ottabase/ottaai/react, provider + the request seam
 // ============================================================
 // `'use client'` matters only for a Next.js consumer; it is harmless elsewhere.
 //

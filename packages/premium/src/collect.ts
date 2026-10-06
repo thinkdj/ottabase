@@ -1,12 +1,12 @@
 // ============================================================
-// @ottabase/premium — manifest collection
+// @ottabase/premium, manifest collection
 // ============================================================
 // Pure functions over a list of manifests, with no registry and no env.
 //
 // They exist because the host needs a package's TABLES at points where no request env
 // exists to verify a license against: `drizzle-kit push`, the auto-migration collector,
 // and the synchronous model-registry bootstrap. Requiring a registry there would mean
-// building the whole runtime — auth included — just to answer "which tables exist".
+// building the whole runtime, auth included, just to answer "which tables exist".
 // ============================================================
 
 import type { PremiumNavItem, PremiumPackage } from './types';

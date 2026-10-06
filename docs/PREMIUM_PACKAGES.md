@@ -28,7 +28,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init   # creates the package's ta
 …and paste the license at **Admin → Growth → Premium packages** (or set `PREMIUM_LICENSE_<KEY>`).
 
 The server integration is centralized here: tables, migrations, models, RLS policies and API routes are read from the
-manifest. You do **not** touch `config.migrations.ts`, `config.routes.ts`, `db-utils.ts` or `ottabase.config.ts` — those
+manifest. You do **not** touch `config.migrations.ts`, `config.routes.ts`, `db-utils.ts` or `ottabase.config.ts`: those
 are for free built-in and custom packages, and a Premium Package deliberately bypasses all four.
 
 ### Client adapter
@@ -41,7 +41,7 @@ exports stay in sync.
 
 ### Uninstalling
 
-Delete the entry from `PREMIUM_PACKAGES`. Routes and nav disappear on the next deploy. **Tables are left alone** —
+Delete the entry from `PREMIUM_PACKAGES`. Routes and nav disappear on the next deploy. **Tables are left alone**:
 dropping customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a
 migration that says so.
 
@@ -64,8 +64,8 @@ migration that says so.
 
 ## 3. Licensing
 
-A license is a signed, offline-verifiable token — `obp1.<claims>.<signature>`, ECDSA P-256 over Web Crypto. It is
-checked in microseconds, works air-gapped, and cannot be forged without the vendor's private key.
+A license is a signed, offline-verifiable token, `obp1.<claims>.<signature>`, ECDSA P-256 over Web Crypto. It is checked
+in microseconds, works air-gapped, and cannot be forged without the vendor's private key.
 
 **It also cannot be revoked before it expires.** Revocation is what expiry is for: subscription vendors mint short-dated
 tokens and re-issue on renewal.
@@ -83,7 +83,7 @@ Env wins deliberately: the key in your infrastructure config must be the key act
 Pasting a malformed, mismatched, expired, or otherwise non-serving key returns a validation error and leaves any
 currently working stored key untouched.
 
-`PREMIUM_PKG_<KEY>=false` switches a package off entirely — the kill switch, independent of licensing.
+`PREMIUM_PKG_<KEY>=false` switches a package off entirely, the kill switch, independent of licensing.
 
 ### Scope
 
@@ -92,14 +92,14 @@ must use a separate tenant-scoped billing and entitlement system; a package lice
 
 ### States
 
-| State        | Serving | What the app does                                           |
-| ------------ | ------- | ----------------------------------------------------------- |
-| `active`     | yes     | Everything the plan includes                                |
-| `grace`      | yes     | Expired, inside `graceDays` — serving, badged as a deadline |
-| `expired`    | no      | Paid surface closed; **free tier still works**              |
-| `invalid`    | no      | Bad signature, wrong package, or wrong `appId`              |
-| `unlicensed` | no      | Registered, no key supplied — free tier applies             |
-| `disabled`   | no      | Switched off by config or env                               |
+| State        | Serving | What the app does                                          |
+| ------------ | ------- | ---------------------------------------------------------- |
+| `active`     | yes     | Everything the plan includes                               |
+| `grace`      | yes     | Expired, inside `graceDays`: serving, badged as a deadline |
+| `expired`    | no      | Paid surface closed; **free tier still works**             |
+| `invalid`    | no      | Bad signature, wrong package, or wrong `appId`             |
+| `unlicensed` | no      | Registered, no key supplied, free tier applies             |
+| `disabled`   | no      | Switched off by config or env                              |
 
 ---
 
@@ -107,13 +107,13 @@ must use a separate tenant-scoped billing and entitlement system; a package lice
 
 Set on the manifest's `routes.gate`:
 
-**`'license'` (default)** — the whole namespace requires a serving license. One gate, no way to forget one. Right for a
+**`'license'` (default)**: the whole namespace requires a serving license. One gate, no way to forget one. Right for a
 package with no free tier.
 
-**`'entitlements'`** — routes mount whenever the package is not disabled, and the package guards its own paid paths.
-This is what makes a free tier reachable (`1 endpoint free, 25 on Pro`); under `'license'` an unlicensed caller gets 402
-for the whole namespace and never reaches the free path. The cost is real: every paid route must call a guard itself,
-and a missed call is an unguarded paid route.
+**`'entitlements'`**: routes mount whenever the package is not disabled, and the package guards its own paid paths. This
+is what makes a free tier reachable (`1 endpoint free, 25 on Pro`); under `'license'` an unlicensed caller gets 402 for
+the whole namespace and never reaches the free path. The cost is real: every paid route must call a guard itself, and a
+missed call is an unguarded paid route.
 
 ```typescript
 import { requirePremiumFeature, requirePremiumLimit } from '@ottabase/premium/server';
@@ -121,7 +121,7 @@ import { requirePremiumFeature, requirePremiumLimit } from '@ottabase/premium/se
 const denied = await requirePremiumFeature(registry, env, 'reports', 'reports.export');
 if (denied) return denied; // 402 { code: 'PREMIUM_REQUIRED', metadata: { package, reason, purchaseUrl } }
 
-// `current` MUST be measured server-side — a client-supplied count raises its own ceiling.
+// `current` MUST be measured server-side, a client-supplied count raises its own ceiling.
 const overLimit = await requirePremiumLimit(registry, env, 'reports', 'reports', await Report.count());
 if (overLimit) return overLimit;
 ```
@@ -181,7 +181,7 @@ import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-
 const { publicKey, privateKey } = await generateLicenseKeypair(); // publicKey → your manifest
 ```
 
-Keep the private key where release signing material lives — **never in the repo, never in the app, never in an env var
+Keep the private key where release signing material lives: **never in the repo, never in the app, never in an env var
 the app can read**. Anyone holding it can mint licenses for your package forever.
 
 Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See
@@ -192,7 +192,7 @@ tier, and a licensed delivery log.
 
 - **Free tier that survives expiry.** A lapsed license collapses to `freeFeatures`/`freeLimits`, not to nothing. The
   customer keeps their data and their basic path; only the paid surface closes.
-- **Undeclared limits are unlimited**, not zero — a package that never declares a ceiling is saying it does not cap.
+- **Undeclared limits are unlimited**, not zero, a package that never declares a ceiling is saying it does not cap.
 - **Lifecycle hooks are best-effort and must be idempotent.** A throwing hook is logged and swallowed, because a paid
   add-on's bookkeeping must never take the host app down. Anything that _must_ succeed belongs in a migration.
 - **Do not stamp tenancy from request input.** Take `organizationId`/`appId` from the resolved caller; that value is the
@@ -204,6 +204,6 @@ tier, and a licensed delivery log.
 
 ## See also
 
-- [`packages/premium/README.md`](../packages/premium/README.md) — full API
-- [`packages/premium-webhooks/README.md`](../packages/premium-webhooks/README.md) — the worked example
-- [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
+- [`packages/premium/README.md`](../packages/premium/README.md), full API
+- [`packages/premium-webhooks/README.md`](../packages/premium-webhooks/README.md), the worked example
+- [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md), free packages, for comparison

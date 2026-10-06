@@ -49,7 +49,7 @@ describe('getAiConfigSnapshot', () => {
         expect(snapshot.providers.find((item) => item.id === 'azure')?.unservable).toBe(true);
     });
 
-    it('stays honest when the keyring is missing — dormant, not a crash', () => {
+    it('stays honest when the keyring is missing, dormant, not a crash', () => {
         const snapshot = getAiConfigSnapshot(env({ AI_CREDENTIAL_SECRET: undefined }));
         expect(snapshot.configured).toBe(false);
         expect(snapshot.keyring.present).toBe(false);

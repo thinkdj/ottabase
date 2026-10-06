@@ -1,14 +1,14 @@
 // ============================================================
-// @ottabase/ottaai/resolver — the core (L3)
+// @ottabase/ottaai/resolver, the core (L3)
 // ============================================================
 // AN INSTANCE, NOT MODULE GLOBALS.
 //
 // Holding the master secret, registry and logger at module scope with a
-// per-request setter is not merely inelegant on a reused edge isolate — it is
+// per-request setter is not merely inelegant on a reused edge isolate, it is
 // INCORRECT: request A sets secret X, awaits, request B sets secret Y, A decrypts
 // with Y. A single-app, single-secret deployment can never observe this, which is
 // why it would be found in production by the first consumer running two apps,
-// per-app key custody, or two environments in one worker — and the symptom is a
+// per-app key custody, or two environments in one worker, and the symptom is a
 // generic decrypt failure, indistinguishable from a botched rotation.
 // ============================================================
 
@@ -81,7 +81,7 @@ export interface AuthorizeInput {
  * Under an org strategy, EVERY member of the org can read the key hint, replace the key,
  * disable it, or delete it. Replacement is the sharp end: a member who swaps the org key
  * for one they control makes every colleague's prompts flow through their provider
- * account — prompt exfiltration wearing a settings form.
+ * account, prompt exfiltration wearing a settings form.
  *
  * "PRIVILEGED READ" IS NOT PADDING: `testSavedCredential` decrypts the org key and emits
  * it outbound on a member's command; classifying that as a read is what lets a non-admin
@@ -97,7 +97,7 @@ export type VerifyMembership = (input: { userId: string | null; organizationId: 
 // ---------------------------------------------------------------------------
 
 export interface CreateAiProvisioningOptions<HostContext = unknown> {
-    /** Encryption keyring. NEVER defaulted — composition fails without it. */
+    /** Encryption keyring. NEVER defaulted, composition fails without it. */
     keyring?: Keyring;
     /** Optional extra/legacy envelope readers. Defaults to the v1 registry. */
     decryptors?: DecryptorRegistry;
@@ -119,7 +119,7 @@ export interface CreateAiProvisioningOptions<HostContext = unknown> {
      * guarantee is structural (nothing else can construct the brand) AND dependency-free
      * (the package imports no auth package).
      *
-     * NAME IT `contextFrom` IN EXACTLY ONE PLACE — the app-level helper that turns an
+     * NAME IT `contextFrom` IN EXACTLY ONE PLACE, the app-level helper that turns an
      * HTTP request into a security context is `contextFromRequest` and belongs to the app.
      */
     contextFrom: (hostContext: HostContext) => AiTenancyTuple;
@@ -163,7 +163,7 @@ export interface CreateAiProvisioningOptions<HostContext = unknown> {
      */
     allowOrgCredentials?: boolean;
     /**
-     * The KILL SWITCH — turning BYOK off is NOT expressed as a mode.
+     * The KILL SWITCH: turning BYOK off is NOT expressed as a mode.
      *
      * `app: 'platform'` + any declared `byok` task intersects to {✗,✗}, which would hard
      * throw every gated feature at boot rather than degrading. That is a foreseeable
@@ -177,7 +177,7 @@ export interface CreateAiProvisioningOptions<HostContext = unknown> {
 }
 
 export interface ResolveOptions {
-    /** Narrowing only — intersected with app + task modes. */
+    /** Narrowing only: intersected with app + task modes. */
     mode?: AiMode;
     /** Per-call model override. Beats every other rung of the model chain. */
     model?: string;
@@ -185,14 +185,14 @@ export interface ResolveOptions {
      * THREE-STATE SEAM. `undefined` ⇒ do the lookup; a record ⇒ use it; explicit `null`
      * ⇒ FORCE THE PLATFORM PATH with no lookup.
      *
-     * The check is `!== undefined`, not truthiness — a `?? await lookup()` refactor
+     * The check is `!== undefined`, not truthiness, a `?? await lookup()` refactor
      * destroys it.
      */
     credential?: CredentialRecord | null;
     /**
-     * Run stages 1–7 and stop BEFORE constructing a transport client.
+     * Run stages 1 to 7 and stop BEFORE constructing a transport client.
      *
-     * DO NOT build the status endpoint by passing `credential: null` — that is the
+     * DO NOT build the status endpoint by passing `credential: null`: that is the
      * force-platform flag and it makes status report `source: 'platform'` for every
      * tenant forever, including tenants with a working key, so the gate never opens.
      */
@@ -218,7 +218,7 @@ export interface AiStatus {
      *
      * A rung the strategy cannot SCORE is dead data: under `strategy: 'user'` an org-only
      * row scores 0 and is permanently unselectable, so offering "save for the whole
-     * workspace" there produces a credential that is written, listed, and never used — the
+     * workspace" there produces a credential that is written, listed, and never used, the
      * worst kind of bug, because nothing errors.
      *
      * NOTE this is about SELECTABILITY, not visibility. The management list is built on the
@@ -236,7 +236,7 @@ export interface AiStatus {
 /** Strategies under which an org-scoped row can actually be selected (score > 0). */
 const ORG_MANAGEABLE_STRATEGIES: AiStrategy[] = ['org', 'user-then-org', 'org-then-user'];
 
-/** The answer to "may this context run this task?" — allowed, or allowed-not plus why. */
+/** The answer to "may this context run this task?", allowed, or allowed-not plus why. */
 export type GateDecision = { allowed: true } | { allowed: false; code: AiErrorCode; reason: ResolutionReason };
 
 export interface AiProvisioning<HostContext = unknown> {
@@ -246,12 +246,12 @@ export interface AiProvisioning<HostContext = unknown> {
     resolve(context: AiContext, taskKey: string, options?: ResolveOptions): Promise<AiResolution<AiClient>>;
 
     /**
-     * THE GATE AND THE CLIENT FROM ONE RESOLUTION — what an inference route should call.
+     * THE GATE AND THE CLIENT FROM ONE RESOLUTION, what an inference route should call.
      *
      * `requireByok(...)` followed by `resolve(...)` is the obvious shape and it does the
      * whole job TWICE: two candidate fan-outs (two D1 queries each under a mixed strategy)
      * and two envelope decryptions, per inference, on the hot path. Worse, the two runs can
-     * legitimately disagree — a credential deleted between them turns an allowed gate into a
+     * legitimately disagree, a credential deleted between them turns an allowed gate into a
      * `NOT_CONFIGURED` client, which reads as a bug in the gate.
      *
      * One resolution, one verdict, one client.
@@ -262,7 +262,7 @@ export interface AiProvisioning<HostContext = unknown> {
         options?: ResolveOptions,
     ): Promise<{ gate: GateDecision; resolution: AiResolution<AiClient> }>;
 
-    /** "What would resolve for this context" — computed by the SAME resolver, via the dry run. */
+    /** "What would resolve for this context", computed by the SAME resolver, via the dry run. */
     status(context: AiContext): Promise<AiStatus>;
 
     /**
@@ -270,7 +270,7 @@ export interface AiProvisioning<HostContext = unknown> {
      * cannot drift. A gate enforced in the browser is bypassable: a provider that checks a
      * derived flag and refuses to call the endpoint stops nobody with a fetch call.
      *
-     * Prefer `resolveWithGate` on a route that goes on to make the call — this one builds no
+     * Prefer `resolveWithGate` on a route that goes on to make the call, this one builds no
      * client, so using both means resolving twice.
      */
     requireByok(context: AiContext, taskKey: string): Promise<GateDecision>;
@@ -291,7 +291,7 @@ export interface AiProvisioning<HostContext = unknown> {
     readonly orgCredentialsAllowed: boolean;
     readonly byokEnabled: boolean;
     /**
-     * Whether a PLATFORM call can actually be made under this configuration — asked of the
+     * Whether a PLATFORM call can actually be made under this configuration, asked of the
      * transport at composition, not inferred from `platform.providerKey`.
      *
      * THE DISTINCTION IS LOAD-BEARING FOR SPEND WARNINGS. Gateway-billed inference has no
@@ -380,7 +380,7 @@ export function createAiProvisioning<HostContext = unknown>(
     //
     // A provider the transport supports in principle but cannot route under THIS operator's
     // config (Azure without `resourceName`/`deploymentName`/`apiVersion`) would otherwise be
-    // offered in the form, accept a real tenant key, save, list — and fail every call with
+    // offered in the form, accept a real tenant key, save, list, and fail every call with
     // `MERGE_INCOMPLETE`. Narrowing here means the offer is never made, and it is narrowing
     // rather than unregistering so the platform path and the keyless-mismatch guard are
     // untouched. Computed ONCE per instance: the answer depends only on operator config.
@@ -395,7 +395,7 @@ export function createAiProvisioning<HostContext = unknown>(
     if (orgDimension && !options.verifyMembership) {
         throw new AiProvisioningError(
             `strategy "${strategy}" includes an organization dimension, so createAiProvisioning requires ` +
-                'a `verifyMembership(actor, orgId)` callback. A host with no membership source must write one — ' +
+                'a `verifyMembership(actor, orgId)` callback. A host with no membership source must write one, ' +
                 '"the framework did not expose a list" is exactly the deployment where the check matters most.',
             AI_ERROR_CODES.CONFIGURATION,
         );
@@ -413,7 +413,7 @@ export function createAiProvisioning<HostContext = unknown>(
     const tasks = new Map<string, ResolvedTaskPolicy>();
     for (const declared of options.tasks) {
         const task = resolveEffectiveTaskPolicy(declared, { appMode, byokEnabled });
-        // Throws when the static intersection is {✗,✗} — a task that can never run is a
+        // Throws when the static intersection is {✗,✗}, a task that can never run is a
         // BOOT ERROR, not a silent dead feature.
         if (task.mode === 'byok' && task.degradation === 'platform-on-auth-error') {
             throw new AiProvisioningError(
@@ -434,7 +434,7 @@ export function createAiProvisioning<HostContext = unknown>(
     // ── Platform coherence, validated AT BOOT, not at first inference ────────────
     if (options.platform.providerKey && !options.platform.provider) {
         throw new AiProvisioningError(
-            "platform.providerKey is set but platform.provider is not. The key's provider must be DECLARED — " +
+            "platform.providerKey is set but platform.provider is not. The key's provider must be DECLARED, " +
                 "inferring it from the key's prefix is a guess that goes stale.",
             AI_ERROR_CODES.CONFIGURATION,
         );
@@ -442,7 +442,7 @@ export function createAiProvisioning<HostContext = unknown>(
     if (options.platform.provider && options.platform.model) {
         if (isDynamicModelRef(options.platform.model)) {
             // The route owns provider selection and the operator has taken that
-            // responsibility, so the check is UNANSWERABLE — skip it out loud rather than
+            // responsibility, so the check is UNANSWERABLE, skip it out loud rather than
             // passing silently.
             options.onBoot?.({
                 coherenceCheck: 'skipped',
@@ -462,7 +462,7 @@ export function createAiProvisioning<HostContext = unknown>(
     }
 
     /**
-     * WHETHER A PLATFORM CALL CAN ACTUALLY BE MADE — asked of the TRANSPORT, not inferred
+     * WHETHER A PLATFORM CALL CAN ACTUALLY BE MADE, asked of the TRANSPORT, not inferred
      * from `providerKey`.
      *
      * "The operator has a provider key" is the wrong predicate and it is wrong in the
@@ -474,7 +474,7 @@ export function createAiProvisioning<HostContext = unknown>(
      * that needed it.
      *
      * Computed ONCE at composition across every task's effective platform model (provider
-     * pin → task default → platform default) and asking `transport.isComplete` — the same
+     * pin → task default → platform default) and asking `transport.isComplete`: the same
      * question the resolver asks at stage 9. Using only `platform.model` misses spend through
      * task defaults, especially on Unified Billing where a model is required up front.
      */
@@ -524,15 +524,15 @@ export function createAiProvisioning<HostContext = unknown>(
             gateway: options.platform.gateway ?? null,
         },
         // Whether the platform path can serve a call AT ALL. A host's own spend warnings
-        // should key on this, not on `hasProviderKey` — see the note on `platformRouteUsable`.
+        // should key on this, not on `hasProviderKey`: see the note on `platformRouteUsable`.
         platformRouteUsable,
         // A USABLE PLATFORM ROUTE WITH NO QUOTA HOOK IS UNBOUNDED OPERATOR SPEND.
         //
         // Surfaced, not thrown. Missing `authorize` is a SECURITY hole (any org member can
         // take the shared key), so that one hard-fails at composition. This is a COST hole:
         // recoverable, visible on an invoice, and hard-failing it would brick every existing
-        // deployment that has a platform route. But it is silent by nature — everything works
-        // and the bill arrives later — so it must at least be in the record.
+        // deployment that has a platform route. But it is silent by nature, everything works
+        // and the bill arrives later, so it must at least be in the record.
         ...(platformRouteUsable && !options.quota ? { platformSpendUnbounded: true } : {}),
     });
 
@@ -576,8 +576,8 @@ export function createAiProvisioning<HostContext = unknown>(
      * | 1 | per-call explicit     | always (escape hatch)                                  |
      * | 2 | task's pinned model   | `modelPolicy: 'task-pinned'`                           |
      * | 3 | credential's model    | `source === 'byok'` and task is tenant-preferred       |
-     * | 4 | task's default model  | —                                                      |
-     * | 5 | platform default      | —                                                      |
+     * | 4 | task's default model  |, |
+     * | 5 | platform default      |, |
      */
     function resolveModel(input: {
         task: ResolvedTaskPolicy;
@@ -586,7 +586,7 @@ export function createAiProvisioning<HostContext = unknown>(
     }): string | null {
         if (input.perCall?.trim()) {
             const parsed = parseModelRef(input.perCall, registry);
-            // A `dynamic/<route>` ref names an OPERATOR route — its key, its budget cap, its
+            // A `dynamic/<route>` ref names an OPERATOR route: its key, its budget cap, its
             // fallback order. The write path already refuses one from a tenant credential;
             // the per-call override is a SECOND door into the same merge, and a call site
             // that forwards a request body would otherwise hand a caller the operator's
@@ -656,7 +656,7 @@ export function createAiProvisioning<HostContext = unknown>(
      * A per-invocation memo for the candidate fetch ONLY.
      *
      * Deliberately narrow. The full resolution memo must key on (context identity, effective
-     * mode, task key) — BOTH terms are load-bearing, because two tasks in one request can
+     * mode, task key), BOTH terms are load-bearing, because two tasks in one request can
      * narrow mode differently and a context-only memo would hand a platform-narrowed task
      * the byok resolution, or the reverse. The CANDIDATE SET, by contrast, is mode- and
      * task-independent: it depends only on the tenancy tuple and the strategy. So this
@@ -835,7 +835,7 @@ export function createAiProvisioning<HostContext = unknown>(
             return { resolution: fallThrough('NO_TENANT_CONTEXT'), candidates: [] };
         }
 
-        // ── Stage 2m: MEMBERSHIP VERIFICATION — unconditional, inside the package ─
+        // ── Stage 2m: MEMBERSHIP VERIFICATION, unconditional, inside the package ─
         //
         // The brand on `AiContext` enforces PROVENANCE (only the host's mapper can mint
         // one). It does NOT enforce VERIFICATION. Requiring a `verifyMembership` callback at
@@ -944,7 +944,7 @@ export function createAiProvisioning<HostContext = unknown>(
 
         const winner = selection.winner;
 
-        // ── Stage 6: keyless-mismatch guard (before decrypt — nothing to decrypt) ─
+        // ── Stage 6: keyless-mismatch guard (before decrypt, nothing to decrypt) ─
         if (
             keylessMismatch({
                 credential: winner,
@@ -967,7 +967,7 @@ export function createAiProvisioning<HostContext = unknown>(
                 organizationId: context.organizationId,
                 userId: context.userId,
             });
-            // The guard discards the WHOLE credential, INCLUDING ITS MODEL — the
+            // The guard discards the WHOLE credential, INCLUDING ITS MODEL, the
             // fall-through uses the PLATFORM'S model. Half-merging tenant model over
             // platform key is exactly the failure being prevented.
             return { resolution: fallThrough('SKIPPED_KEYLESS_MISMATCH'), candidates: explanations };
@@ -1012,7 +1012,7 @@ export function createAiProvisioning<HostContext = unknown>(
                 //
                 // A decrypt failure means A CREDENTIAL EXISTS AND WE CANNOT READ IT. The
                 // reflexive implementation wraps resolve in try/catch and degrades to the
-                // platform — which inverts the cost model exactly where it matters most: a
+                // platform, which inverts the cost model exactly where it matters most: a
                 // wrong master secret in a deploy silently moves EVERY tenant's spend onto
                 // the operator's bill while traffic looks completely normal, and the
                 // incident is discovered by invoice. Fail-closed makes a fleet-wide
@@ -1091,7 +1091,7 @@ export function createAiProvisioning<HostContext = unknown>(
         const effectiveDegradation = task.degradation ?? degradation;
         // The fallback must use the SAME model chain as every other platform-path build.
         // Hard-coding `platform.model` skips the task's `defaultModel` and the per-call
-        // override — so a deployment with no platform default sends a request with NO model
+        // override, so a deployment with no platform default sends a request with NO model
         // field at all, and a caller-requested model is silently swapped for another.
         const fallbackModel = resolveModel({ task, credential: null, perCall: resolveOptions.model });
         // The degraded retry must satisfy the task's capabilities exactly like the fall-through
@@ -1192,7 +1192,7 @@ export function createAiProvisioning<HostContext = unknown>(
         async resolveWithGate(context, taskKey, resolveOptions = {}) {
             const task = taskOrThrow(taskKey);
             // ONE resolution, with the client built. The gate is then a pure function of what
-            // that resolution already computed — no second fan-out, no second decrypt.
+            // that resolution already computed, no second fan-out, no second decrypt.
             const { resolution } = await runResolution(context, taskKey, resolveOptions);
             return { gate: gateFor(task, resolution), resolution };
         },
@@ -1204,7 +1204,7 @@ export function createAiProvisioning<HostContext = unknown>(
             const memo: CandidateMemo = new Map();
 
             for (const task of tasks.values()) {
-                // THE DRY RUN — stages 1..7 with no transport client. NOT `credential: null`.
+                // THE DRY RUN: stages 1..7 with no transport client. NOT `credential: null`.
                 const { resolution } = await runResolution(context, task.key, { buildClient: false }, memo);
 
                 // PICK THE MOST INFORMATIVE resolution, not the first one declared.
@@ -1213,7 +1213,7 @@ export function createAiProvisioning<HostContext = unknown>(
                 // `tasks[0]` makes that answer a function of ARRAY ORDER: an operator who
                 // declares a `mode: 'platform'` internal task first (a documented, supported
                 // narrowing) would short-circuit it at stage 1 and report `source:'platform',
-                // hasSecret:false` for EVERY tenant — telling a paying tenant their key is
+                // hasSecret:false` for EVERY tenant, telling a paying tenant their key is
                 // unused while their gated tasks are in fact running on it.
                 //
                 // A byok resolution always wins; otherwise the first task whose tenant path
@@ -1249,7 +1249,7 @@ export function createAiProvisioning<HostContext = unknown>(
                 strategy,
                 // BOTH terms, ANDed on the SERVER. The strategy decides whether such a row
                 // could ever be selected; the dial decides whether the operator offers it at
-                // all. The settings component reads this one field — it does not need (and
+                // all. The settings component reads this one field, it does not need (and
                 // must not need) a second, independently-read copy of the app config to work
                 // out the same answer.
                 orgScopeManageable: orgCredentialsAllowed && ORG_MANAGEABLE_STRATEGIES.includes(strategy),

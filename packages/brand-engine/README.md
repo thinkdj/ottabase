@@ -1,36 +1,36 @@
 # @ottabase/brand-engine
 
-Unified theme engine for Ottabase — design tokens, preset template expansion, CSS variable injection, email branding,
-and brand persistence via D1.
+Unified theme engine for Ottabase: design tokens, preset template expansion, CSS variable injection, email branding, and
+brand persistence via D1.
 
 ## Features
 
-- **Design Tokens** — Typed schema for colors, typography, spacing, shadows, motion, cursors — plus the v2 categories
+- **Design Tokens**: Typed schema for colors, typography, spacing, shadows, motion, cursors, plus the v2 categories
   below for full design-system fidelity
-- **Preset Templates** — Theme presets expanded and saved to database (no runtime resolution needed)
-- **CSS Runtime** — Inject design tokens as CSS custom properties; auto-load Google Fonts
-- **Critical CSS** — Server-rendered dual-mode (light + dark) style tags for zero-FOUC
-- **Effects Stylesheet** — Generated `@font-face`/`@keyframes`/text styles/link contract/theme CSS (`#brand-effects`)
-- **Email Branding** — Replace `{{brandName}}`, `{{logoUrl}}`, etc. in email HTML
-- **Favicon** — Resolve best favicon URL from brand config
-- **Built-in Presets** — Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant, plus two full 1:1 design-system
+- **Preset Templates**: Theme presets expanded and saved to database (no runtime resolution needed)
+- **CSS Runtime**: Inject design tokens as CSS custom properties; auto-load Google Fonts
+- **Critical CSS**: Server-rendered dual-mode (light + dark) style tags for zero-FOUC
+- **Effects Stylesheet**: Generated `@font-face`/`@keyframes`/text styles/link contract/theme CSS (`#brand-effects`)
+- **Email Branding**: Replace `{{brandName}}`, `{{logoUrl}}`, etc. in email HTML
+- **Favicon**: Resolve best favicon URL from brand config
+- **Built-in Presets**: Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant, plus two full 1:1 design-system
   ports used as fidelity references: Visited (the90s.page) and Marquee (uppcoming)
-- **Fonts & Cursors** — Google Fonts catalog, custom cursor SVG registry
+- **Fonts & Cursors**: Google Fonts catalog, custom cursor SVG registry
 
 ## v2 Token Categories (design-system fidelity)
 
 Two families of categories:
 
-- **Defaulted** (`color`, `typography`, `spacing`, `radius`, `shadow`, `motion`) — engine defaults are merged under
-  theme values; their vars are always emitted.
-- **Sparse** (everything below) — emitted **only when the theme defines them**. Fallbacks live in the consumers
+- **Defaulted** (`color`, `typography`, `spacing`, `radius`, `shadow`, `motion`), engine defaults are merged under theme
+  values; their vars are always emitted.
+- **Sparse** (everything below): emitted **only when the theme defines them**. Fallbacks live in the consumers
   (`tailwind.base.cjs` utilities + static rules in `ui-shadcn/styles/shadcn.css`), so a theme that defines none of them
   renders pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
   `var(--specific, var(--global, <today's literal>))`.
 
 | Category      | Shape (in `tokensJson`)                                                     | Emission                                                                      |
 | ------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `palette`     | `{ "link": "#2323E8", "glow": "color-mix(in srgb, var(--link) 36%, …)" }`   | `--{name}` **verbatim** — one-knob `color-mix()` ramps live here              |
+| `palette`     | `{ "link": "#2323E8", "glow": "color-mix(in srgb, var(--link) 36%, …)" }`   | `--{name}` **verbatim**: one-knob `color-mix()` ramps live here               |
 | `typography`  | open roles: `heading/body/handwriting/mono` + any (`label`, `ticker`, …)    | `--font-{role}`, `--typography-{role}-{weight,line-height,spacing,transform}` |
 | `typeScale`   | `{ "sm": { "size": "14px", "lineHeight": "1.55" }, … }`                     | `--text-{step}(-lh/-ls/-weight)` → every Tailwind `text-{step}`               |
 | `radius`      | scalar **or** `{ base, sm, md, lg, xl, 2xl, full }`                         | `--radius`, `--radius-{size}` (set `full: 2px` to ban pills)                  |
@@ -38,7 +38,7 @@ Two families of categories:
 | `border`      | `{ width, widthStrong, style }`                                             | `--border-width(-strong)`, `--border-style`                                   |
 | `motion`      | + `easingSpring`, `durations`/`easings` records, `keyframes` (registry: ok) | `--ease-spring`, `--duration-{name}`, `@keyframes` in effects                 |
 | `focus`       | `{ width, style, color, offset }`                                           | `--focus-ring-*` → ONE global `:focus-visible` rule                           |
-| `interaction` | `{ hoverTransform, hoverFilter, activeTransform, activeShadow, … }`         | `--hover-*` / `--press-*` — press physics on `[data-slot]`                    |
+| `interaction` | `{ hoverTransform, hoverFilter, activeTransform, activeShadow, … }`         | `--hover-*` / `--press-*`: press physics on `[data-slot]`                     |
 | `links`       | `{ color, hoverColor, visitedColor, activeColor, underline, thickness, … }` | `--link-*` + generated anchor contract (incl. real `:visited`)                |
 | `selection`   | `{ background, foreground }`                                                | `::selection` via `--selection-bg/fg`                                         |
 | `scrollbar`   | `{ width, thumb, track }` (define thumb+track together)                     | `scrollbar-width/color` on `:root`                                            |
@@ -54,13 +54,13 @@ Two families of categories:
 Notes:
 
 - Every mode-aware category accepts the `{ light, dark }` `ModeValue` split; a flat value applies to both modes.
-- `TOKEN_CATEGORY_KEYS` (tokens.ts) is the single source of truth — preset expansion, the legacy adapter and preview all
+- `TOKEN_CATEGORY_KEYS` (tokens.ts) is the single source of truth, preset expansion, the legacy adapter and preview all
   iterate it, so **adding a category = type + default + resolver in `resolve-core.ts` + emitter**.
 - Resolution is shared: `resolve-core.ts` backs `resolveTheme`, `brandKitToTheme` and `buildPreviewTheme` (previously
   three drifting copies).
 - **Three stylesheets**, all edge-injected and client-replaced by id: `#brand-critical` (vars + scope rooms),
   `#brand-effects` (generated rules), `#brand-custom-css` (kit escape hatch). The client applies themes by replacing
-  stylesheet text (`applyBrandTheme(light, dark)`) — never inline styles — so `.dark`/scope re-binding is pure CSS
+  stylesheet text (`applyBrandTheme(light, dark)`), never inline styles, so `.dark`/scope re-binding is pure CSS
   cascade.
 
 ### Component hooks (ui-shadcn)
@@ -69,11 +69,11 @@ Injected theme CSS comes after the bundled CSS, so equal-specificity selectors w
 `data-slot` (CVA components also stamp `data-variant`/`data-size`), which makes
 `[data-slot='button'][data-variant='outline']:hover { … }` the component restyling API. Button/Card also ship an empty
 `[data-decor]` span (hidden by default) for shine/ornament layers. For components whose **DOM** must differ, register a
-React override: `<BrandComponentsProvider overrides={{ button: UppButton }}>` (Tier-2 escape hatch — prefer CSS).
+React override: `<BrandComponentsProvider overrides={{ button: UppButton }}>` (Tier-2 escape hatch, prefer CSS).
 
 ### Porting a design system (checklist)
 
-See `themes/visited.json` — a complete 1:1 port of "Visited" (the90s.page). Recipe: semantic HSL palettes per room →
+See `themes/visited.json`: a complete 1:1 port of "Visited" (the90s.page). Recipe: semantic HSL palettes per room →
 `colors` (+ `scopes` for in-page rooms like `afterdark`); brand-knob derivations → `palette` with `color-mix()`; type
 ramp → `typeScale`; chrome laws → `radius`/`shadow`/`border`/`focus`/`links`/`selection`/`native`; press feel →
 `interaction` (+ `motion.durations`); named voices → `textStyles`; bespoke recipes → `effects.utilities` +
@@ -105,7 +105,7 @@ merged with any custom `tokensJson` overrides (cursors, which presets don't defi
 saved. Send the preset id through the brand-kit API rather than expanding it yourself:
 
 ```typescript
-// PUT /api/brand/kits/:id — the handler expands the preset and merges overrides
+// PUT /api/brand/kits/:id, the handler expands the preset and merges overrides
 // (api = useApiClient() from @ottabase/ottaorm/client; customOverrides = partial tokens object or null)
 await api(`/api/brand/kits/${kitId}`, {
     method: 'PUT',
@@ -207,7 +207,7 @@ deletes anything, so a bad request leaves the existing mappings intact.
 Menu slots map named layout positions (e.g. `header-nav`, `sidebar-nav`) to specific menus with a render type. The
 resolved data is also included in the `GET /api/brand` response so clients get everything in one fetch.
 
-**GET /api/brand/menu-slots** — Returns resolved slot assignments grouped by slot name, including full menu + items:
+**GET /api/brand/menu-slots**: Returns resolved slot assignments grouped by slot name, including full menu + items:
 
 ```json
 {
@@ -224,7 +224,7 @@ resolved data is also included in the `GET /api/brand` response so clients get e
 }
 ```
 
-**PUT /api/brand/menu-slots** — Replace all assignments for the app:
+**PUT /api/brand/menu-slots**: Replace all assignments for the app:
 
 ```json
 {
@@ -251,8 +251,8 @@ Valid `renderType` values: `sidebar`, `flyout`, `mega`, `navbar`, `dropdown`, `f
 
 - **brand-engine** owns theme tokens, brand persistence (D1), Menu/MenuItem models, menu slot assignments, and all API
   handlers
-- **ottalayout** owns layout types and route resolution (pure — no persistence)
-- **ottamenu** owns menu type definitions and React renderers (pure — no persistence)
+- **ottalayout** owns layout types and route resolution (pure, no persistence)
+- **ottamenu** owns menu type definitions and React renderers (pure, no persistence)
 - **brand-engine-react** wires them together at runtime with `<BrandProvider>` and `<LayoutResolver>`
 
 **Dependency flow**: brand-engine → ottalayout (types), ottamenu (types). No circular dependencies.

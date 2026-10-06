@@ -1,8 +1,8 @@
 // ====================================================================
-// otta-web — redacted OttaAI / AI Gateway operator snapshot
+// otta-web, redacted OttaAI / AI Gateway operator snapshot
 // --------------------------------------------------------------------
 // WHAT AN OPERATOR CAN SEE WITHOUT OPENING .dev.vars. Secrets never leave this
-// file as values — only present/absent, plus the non-secret dials already frozen
+// file as values, only present/absent, plus the non-secret dials already frozen
 // in `features.ottaai`. The growth BYOK page is the tenant surface; this is the
 // control-plane answer to "what is this deployment actually running?"
 // ====================================================================
@@ -130,7 +130,7 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
     });
     const transportRouteUsable = resolvedTasks.some((task) => transport.isComplete(platformRouteFor(task)));
     /**
-     * Capabilities a task REQUIRES that its platform ROUTE cannot carry — e.g. `vision` on
+     * Capabilities a task REQUIRES that its platform ROUTE cannot carry, e.g. `vision` on
      * Unified Billing. The resolver turns these into CAPABILITY_UNMET; this names them for the
      * operator, so "why does scan never run on the platform floor?" is answerable here.
      */
@@ -175,7 +175,7 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
             );
         }
     }
-    // Only meaningful when a platform route exists at all — otherwise "missing route" says it.
+    // Only meaningful when a platform route exists at all, otherwise "missing route" says it.
     const routeGapTasks = transportRouteUsable
         ? resolvedTasks
               .map((task) => ({ key: task.key, gaps: platformRouteGaps(task) }))
@@ -183,7 +183,7 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
         : [];
     if (routeGapTasks.length > 0) {
         missing.push(
-            `The platform route cannot carry ${routeGapTasks.map((t) => `${t.gaps.join('+')} for ${t.key}`).join(', ')} — ` +
+            `The platform route cannot carry ${routeGapTasks.map((t) => `${t.gaps.join('+')} for ${t.key}`).join(', ')}, ` +
                 'those tasks run only on a tenant key. Use a provider-native platform route (a provider key) to serve them.',
         );
     }

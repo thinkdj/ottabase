@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Convert BrandKit to theme/identity for ResolvedBrandConfig
+// Brand Engine, Convert BrandKit to theme/identity for ResolvedBrandConfig
 // Supports parent kit inheritance: child tokens are deep-merged on top of parent's.
 // Per-category resolution delegates to resolve-core.ts (shared with resolver.ts
 // and previewTheme.ts).
@@ -100,7 +100,7 @@ export async function resolveInheritanceChain(kit: BrandKit): Promise<BrandTheme
  *              that have an explicit `{ light, dark }` ModeValue split in the source data.
  *              Colors and shadows are ALWAYS included in the dark delta (their dark
  *              defaults differ from light). fontFaces/effects/scopes are never
- *              mode-split — they ride the light theme and survive the deepMerge.
+ *              mode-split, they ride the light theme and survive the deepMerge.
  *              Consumers (resolveConfigFromFull server-side, resolveConfigForPath
  *              client-side) deep-merge lightTheme + darkDelta at request time.
  */
@@ -128,7 +128,7 @@ export async function brandKitToTheme(
         const split = darkSplitCategories(tokens);
         const delta: Partial<ResolvedBrandTheme> = {};
 
-        // Colors + shadows: ALWAYS in the delta — dark defaults differ from light
+        // Colors + shadows: ALWAYS in the delta, dark defaults differ from light
         const colors = resolveAliases(resolveColors(tokens, mode), tokens?.aliases);
         delta.colors = colors;
         delta.shadows = resolveShadows(tokens, mode);
@@ -166,7 +166,7 @@ export async function brandKitToTheme(
             delta.cursors = pickMode(rawCursors, mode) ?? DEFAULT_CURSORS;
         }
 
-        // layout is never mode-split; omit from dark delta — inherited from light via deepMerge
+        // layout is never mode-split; omit from dark delta, inherited from light via deepMerge
 
         return delta;
     }

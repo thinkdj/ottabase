@@ -64,7 +64,7 @@ export function MediaLightbox({
             try {
                 video.pause();
             } catch {
-                // ignore — browser may block for detached elements
+                // ignore: browser may block for detached elements
             }
         });
     }, [activeIndex, isOpen]);
@@ -135,7 +135,7 @@ export function MediaLightbox({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label="Download media"
+                        aria-label="Download"
                     >
                         <IconArrowBarToDown className="h-5 w-5" />
                     </a>
@@ -151,7 +151,7 @@ export function MediaLightbox({
                         type="button"
                         onClick={onClose}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label="Close media viewer"
+                        aria-label="Close"
                     >
                         <IconX className="h-5 w-5" />
                     </button>
@@ -170,7 +170,7 @@ export function MediaLightbox({
                                 onClick={onPrevious}
                                 disabled={!canGoPrevious}
                                 className="absolute left-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
-                                aria-label="Previous media item"
+                                aria-label="Previous"
                             >
                                 <IconChevronLeft className="h-6 w-6" />
                             </button>
@@ -179,7 +179,7 @@ export function MediaLightbox({
                                 onClick={onNext}
                                 disabled={!canGoNext}
                                 className="absolute right-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
-                                aria-label="Next media item"
+                                aria-label="Next"
                             >
                                 <IconChevronRight className="h-6 w-6" />
                             </button>

@@ -43,6 +43,11 @@ export interface OttaSelectProps {
      */
     onCreate?: (name: string) => void | Promise<OttaSelectInputItem | void>;
 
+    // Naming: a <label htmlFor={id}>, aria-labelledby or aria-label; the placeholder otherwise
+    id?: string;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+
     // UI customization
     placeholder?: string;
     disabled?: boolean;
@@ -97,7 +102,7 @@ export interface OttaSelectProps {
 
 // Component-local spacing unit: follows the brand's --spacing-element at half
 // strength, so spacious themes add breathing room without ballooning controls.
-// Type NEVER scales with spacing — fonts/icons are fixed per size variant.
+// Type NEVER scales with spacing, fonts/icons are fixed per size variant.
 // At the baseline token (0.5rem) every size renders pixel-identical to the
 // original fixed design (xs 32px / sm 36px / md 42px / lg 48px triggers).
 const OTTA_SELECT_BASE_VARS = '[--otta-select-space:calc(0.5rem_+_(var(--spacing-element,0.5rem)_-_0.5rem)*0.5)]';
@@ -160,7 +165,7 @@ const OTTA_SELECT_SIZE_CLASSES: Record<OttaSelectSize, string> = {
         '[--otta-select-font-size:0.875rem]',
         '[--otta-select-chip-font-size:0.8125rem]',
         '[--otta-select-icon-size:1rem]',
-        // md is the theme baseline — trigger matches --radius exactly
+        // md is the theme baseline, trigger matches --radius exactly
         '[--otta-select-radius:var(--radius,0.75rem)]',
         '[--otta-select-chip-radius:calc(var(--radius,0.75rem)*0.67)]',
         '[--otta-select-dropdown-offset:calc(var(--otta-select-space)*1)]',
@@ -271,8 +276,11 @@ export function OttaSelect({
     fetchCollection,
     searchable = true,
     searchDebounceMs = 300,
-    searchPlaceholder = 'Search...',
+    searchPlaceholder = 'Search…',
     onCreate,
+    id,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
     placeholder = 'Select an option',
     disabled = false,
     clearable = true,
@@ -285,7 +293,7 @@ export function OttaSelect({
     dropdownClassName,
     maxDisplayItems = 100,
     emptyMessage = 'No options found',
-    loadingMessage = 'Loading...',
+    loadingMessage = 'Loading…',
     errorMessage = 'Error loading options',
     showSelectedFirst = true,
     showChips = true,
@@ -738,8 +746,10 @@ export function OttaSelect({
             <button
                 type="button"
                 role="combobox"
-                // A combobox is not named by its content, so the placeholder names the field
-                aria-label={placeholder}
+                id={id}
+                // A combobox is not named by its content: a label names it, else the placeholder
+                aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? placeholder)}
+                aria-labelledby={ariaLabelledBy}
                 aria-expanded={isOpen}
                 aria-haspopup="listbox"
                 aria-controls={isOpen ? listId : undefined}

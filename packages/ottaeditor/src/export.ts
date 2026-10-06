@@ -91,7 +91,7 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
                 .split('\n')
                 .map((line: string) => `> ${line}`)
                 .join('\n');
-            const caption = data.caption ? `\n>\n> — ${convertInlineHTML(data.caption)}` : '';
+            const caption = data.caption ? `\n>\n> *${convertInlineHTML(data.caption)}*` : '';
             return `${lines}${caption}`;
         }
 
@@ -177,7 +177,7 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
             if (data.authorName) attribution.push(`**${convertInlineHTML(data.authorName)}**`);
             if (data.authorRole) attribution.push(convertInlineHTML(data.authorRole));
             if (data.authorCompany) attribution.push(convertInlineHTML(data.authorCompany));
-            if (attribution.length) parts.push(`> — ${attribution.join(', ')}`);
+            if (attribution.length) parts.push(`> *${attribution.join(', ')}*`);
             if (data.rating != null && data.rating > 0) {
                 const stars = '★'.repeat(Math.round(data.rating)) + '☆'.repeat(5 - Math.round(data.rating));
                 parts.push(`> ${stars}`);
@@ -190,7 +190,7 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
                 .map((item: { title: string; content: string }, i: number) => {
                     const title = convertInlineHTML(item.title || '');
                     const content = convertInlineHTML(item.content || '');
-                    return content ? `${i + 1}. **${title}** — ${content}` : `${i + 1}. **${title}**`;
+                    return content ? `${i + 1}. **${title}**: ${content}` : `${i + 1}. **${title}**`;
                 })
                 .join('\n');
 
@@ -248,7 +248,7 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
                 lines.push('');
                 hotspots.forEach((hs: { title: string; content: string; x: number; y: number }, idx: number) => {
                     const title = hs.title || `Hotspot ${idx + 1}`;
-                    lines.push(`${idx + 1}. **${title}** — ${hs.content || ''}`);
+                    lines.push(`${idx + 1}. **${title}**: ${hs.content || ''}`);
                 });
             }
             if (data.caption) lines.push(`\n*${convertInlineHTML(data.caption)}*`);

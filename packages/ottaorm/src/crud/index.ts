@@ -38,7 +38,7 @@ export interface CrudRequest {
     /**
      * Populated by parseCrudRequest when the incoming request is malformed
      * (e.g. invalid JSON body or invalid `where` query JSON). handleCrud
-     * short-circuits with 400 when this is set — fail closed, not open.
+     * short-circuits with 400 when this is set, fail closed, not open.
      */
     parseError?: { message: string; code: string; status?: 400 | 413 };
     query?: {
@@ -310,7 +310,7 @@ export async function handleCrud(request: CrudRequest): Promise<CrudResponse> {
                 };
             }
 
-            // Regular list (non-paginated) — cap limit/offset to prevent abuse
+            // Regular list (non-paginated): cap limit/offset to prevent abuse
             const cappedLimit = query?.limit ?? MAX_LIST_LIMIT;
             const cappedOffset = query?.offset ?? 0;
 

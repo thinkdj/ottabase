@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/premium-webhooks",
     "version": "1.0.0",
-    "description": "Outbound webhooks for Ottabase apps — the worked example of a paid package built on @ottabase/premium. HMAC-signed deliveries, endpoint health, and a licensed delivery log",
+    "description": "Outbound webhooks for Ottabase apps, the worked example of a paid package built on @ottabase/premium. HMAC-signed deliveries, endpoint health, and a licensed delivery log",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.js",

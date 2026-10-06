@@ -59,7 +59,7 @@ export type DocsCodeRenderMode =
 export interface DocsConfig {
     /** Documentation sources. Slugs are relative; the host router owns the URL prefix (see onNavigate). */
     sources: DocsSource[];
-    /** Layout theme — 'compact' | 'standard' | 'spacious' */
+    /** Layout theme: 'compact' | 'standard' | 'spacious' */
     theme?: DocsTheme;
     /** Code block rendering: 'simple' or 'ui-code-highlight' (default) */
     codeRenderMode?: DocsCodeRenderMode;

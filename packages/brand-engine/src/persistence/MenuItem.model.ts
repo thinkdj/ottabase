@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – MenuItem OttaORM Model
+// Brand Engine, MenuItem OttaORM Model
 // Individual links/entries within a Menu. Supports nesting via parentId.
 // ---------------------------------------------------------------------------
 

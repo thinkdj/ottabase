@@ -198,7 +198,7 @@
     white-space: nowrap;
 }
 
-/* ── Dot (hotspot marker) — primary fill + ring, floats over imagery ─────── */
+/* ── Dot (hotspot marker): primary fill + ring, floats over imagery ─────── */
 
 .cdx-image-hotspots__dot {
     position: absolute;
@@ -236,7 +236,7 @@
     opacity: 0.8;
 }
 
-/* ── Tooltip (inline form on dot click) — floating UI, keeps elevation ───── */
+/* ── Tooltip (inline form on dot click), floating UI, keeps elevation ───── */
 
 .cdx-image-hotspots__tooltip {
     position: absolute;

@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/analytics",
     "version": "1.0.0",
-    "description": "Cloudflare Workers Analytics Engine wrapper — track events, query aggregated data",
+    "description": "Cloudflare Workers Analytics Engine wrapper, track events, query aggregated data",
     "type": "module",
     "main": "dist/index.js",
     "module": "dist/index.mjs",

@@ -51,7 +51,7 @@ describe('DocsLayout', () => {
     it('toggles mobile nav and closes on Escape', () => {
         const { container } = render(<DocsLayout config={mockConfig} activeSlug="guides/intro" />);
 
-        const toggle = screen.getByRole('button', { name: /toggle navigation/i });
+        const toggle = screen.getByRole('button', { name: /menu/i });
         const sidebar = container.querySelector('aside.otta-docs-sidebar');
         expect(sidebar).not.toHaveClass('otta-docs-sidebar-open');
 
@@ -65,7 +65,7 @@ describe('DocsLayout', () => {
     it('locks body scroll while mobile nav is open', () => {
         render(<DocsLayout config={mockConfig} activeSlug="guides/intro" />);
 
-        const toggle = screen.getByRole('button', { name: /toggle navigation/i });
+        const toggle = screen.getByRole('button', { name: /menu/i });
         expect(document.body.style.overflow).toBe('');
 
         fireEvent.click(toggle);

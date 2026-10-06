@@ -1,5 +1,5 @@
 // ============================================================
-// The registry — resolution, license precedence, and the lifecycle it drives.
+// The registry: resolution, license precedence, and the lifecycle it drives.
 //
 // The two behaviours that matter most to a host app are here: a stock app with no
 // Premium Packages must be completely unaffected, and a package whose license cannot be
@@ -306,7 +306,7 @@ describe('lifecycle', () => {
         expect(await registry.uninstall({}, 'webhooks')).toBe(true);
         expect(hooks.onUninstall).toHaveBeenCalledTimes(1);
         expect(await store.get('webhooks')).toBeNull();
-        // Still registered — uninstall removes bookkeeping, not the config entry.
+        // Still registered: uninstall removes bookkeeping, not the config entry.
         expect(registry.get('webhooks')).not.toBeNull();
     });
 

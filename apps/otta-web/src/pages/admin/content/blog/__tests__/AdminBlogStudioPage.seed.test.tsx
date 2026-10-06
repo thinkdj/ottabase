@@ -46,7 +46,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../BlogAdminNav', () => ({ BlogAdminNav: () => null }));
 vi.mock('../blogAdminPaths', () => ({ useBlogSurface: () => ({ contentPath: '/admin/content/blog' }) }));
 
-// Passthrough shadcn primitives — assertions target text and the click handler.
+// Passthrough shadcn primitives: assertions target text and the click handler.
 // `asChild` is a Radix slot hint, never a DOM attribute, so it is dropped.
 vi.mock('@ottabase/ui-shadcn', () => {
     const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
@@ -105,7 +105,7 @@ const NOTHING = {
     notifications: none,
 };
 
-describe('Content Studio demo seeding', () => {
+describe('Content studio demo seeding', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mutationOptionsFor.clear();

@@ -1,5 +1,5 @@
 // ============================================================
-// Blog routes — thin adapter over @ottabase/ottablog/router
+// Blog routes, thin adapter over @ottabase/ottablog/router
 // ============================================================
 //
 // The handler bodies and the canonical route table live in the package
@@ -30,7 +30,7 @@ export interface BlogRouteContext {
  * Org-mode tenant resolution for public blog requests, in priority order:
  * explicit `?org=` query param, `x-org-id` header, then the request subdomain
  * (first host label) resolved to an organization by slug. Returns null when
- * nothing resolves — the blog then serves platform-owned content.
+ * nothing resolves, the blog then serves platform-owned content.
  * Exported for the SEO injector, which must scope its post lookup identically.
  */
 export async function resolveBlogOrganizationId(ctx: {
@@ -45,7 +45,7 @@ export async function resolveBlogOrganizationId(ctx: {
 
     // Explicit PLATFORM selection (org switcher's Platform scope, or ?org=platform):
     // serve the platform-owned blog (organizationId NULL) instead of guessing from
-    // the subdomain. Public content — harmless for anyone to request explicitly.
+    // the subdomain. Public content, harmless for anyone to request explicitly.
     const fromQuery = clean(ctx.url.searchParams.get('org'));
     if (fromQuery === PLATFORM_ORG_SENTINEL) return null;
     if (fromQuery) return fromQuery;
@@ -76,7 +76,7 @@ export async function resolveBlogOrganizationId(ctx: {
  * Per-request memo over resolveBlogOrganizationId for the worker's HTML
  * injector chain: the SEO and theme injectors receive the SAME Request object
  * and would otherwise each pay the subdomain→Organization D1 lookup. WeakMap
- * keyed by Request — distinct requests never share, entries are GC'd with the
+ * keyed by Request, distinct requests never share, entries are GC'd with the
  * request.
  */
 const orgResolutionByRequest = new WeakMap<Request, Promise<string | null>>();

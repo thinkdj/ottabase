@@ -1,5 +1,5 @@
 /**
- * @ottabase/analytics — Types
+ * @ottabase/analytics: Types
  *
  * Core type definitions for the Analytics Engine wrapper.
  * WAE supports up to 1 index, 20 blobs (strings), and 20 doubles (numbers).
@@ -31,7 +31,7 @@ export interface TrackEventOptions {
 }
 
 /**
- * Structured event payload — a higher-level wrapper that maps
+ * Structured event payload: a higher-level wrapper that maps
  * well-known fields into the positional blob/double slots.
  *
  * Slot mapping:
@@ -42,7 +42,7 @@ export interface TrackEventOptions {
  * - blob4   = userAgent (truncated to 200 chars)
  * - blob5   = referer
  * - blob6   = visitorId (hashed visitor fingerprint)
- * - blob7–blob11 = metadata[0]–metadata[4]
+ * - blob7 to blob11 = metadata[0] to metadata[4]
  * - double1 = value (default 1)
  */
 export interface CoreEventOptions {
@@ -74,7 +74,7 @@ export interface CoreEventOptions {
     visitorId?: string;
 
     /**
-     * Up to 5 free-form metadata strings (blob7 – blob11).
+     * Up to 5 free-form metadata strings (blob7, blob11).
      * Use for page URL, button ID, campaign, etc.
      */
     metadata?: string[];
@@ -115,7 +115,7 @@ export interface AnalyticsQueryFilters {
     /** Filter on index1 (exact match). Alphanumeric + dash/underscore only. */
     indexFilter?: string;
 
-    /** Lookback window in days (1–90, default 7). */
+    /** Lookback window in days (1 to 90, default 7). */
     days?: number;
 
     /**
@@ -156,7 +156,7 @@ export interface TopKQueryOptions {
     /** Number of top values to return (default 10). */
     k?: number;
 
-    /** Lookback window in days (1–90, default 7). */
+    /** Lookback window in days (1 to 90, default 7). */
     days?: number;
 
     /** Filter on index1 (exact match). */
@@ -171,13 +171,13 @@ export interface QuantileQueryOptions {
     /** WAE dataset name. */
     dataset: string;
 
-    /** Percentile (0–1, e.g. 0.95 for p95, 0.5 for median). */
+    /** Percentile (0 to 1, e.g. 0.95 for p95, 0.5 for median). */
     quantile: number;
 
     /** Double column to compute percentile on (default: `"double1"`). */
     column?: string;
 
-    /** Lookback window in days (1–90, default 7). */
+    /** Lookback window in days (1 to 90, default 7). */
     days?: number;
 
     /** Filter on index1. */
@@ -201,10 +201,10 @@ export interface FunnelQueryOptions {
     /** WAE dataset name (all steps must be in the same dataset). */
     dataset: string;
 
-    /** Ordered funnel steps — each is an event name. */
+    /** Ordered funnel steps: each is an event name. */
     steps: FunnelStep[];
 
-    /** Lookback window in days (1–90, default 7). */
+    /** Lookback window in days (1 to 90, default 7). */
     days?: number;
 
     /** Extra WHERE clause applied to all steps. */

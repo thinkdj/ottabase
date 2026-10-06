@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – render barrel (MenuRenderer lives in MenuRenderer.tsx to avoid
+// Ottamenu, render barrel (MenuRenderer lives in MenuRenderer.tsx to avoid
 // circular imports with MenuSlotRenderer)
 // ---------------------------------------------------------------------------
 

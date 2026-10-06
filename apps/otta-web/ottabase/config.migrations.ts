@@ -9,7 +9,7 @@
 // 1. Import the package's table schema and migrations
 // 2. Add it to `PACKAGE_REGISTRY` below
 // 3. Add the key to `BUILT_IN_PACKAGES` in @ottabase/config and ottabase.config.ts
-// NOTE: brandEngine is core (always enabled) — in PACKAGE_REGISTRY but not in BUILT_IN_PACKAGES
+// NOTE: brandEngine is core (always enabled), in PACKAGE_REGISTRY but not in BUILT_IN_PACKAGES
 //
 // HOW TO ADD A CUSTOM PACKAGE:
 // 1. Import tables, add to `PACKAGE_REGISTRY` with key matching ottabase.config `customPackages`
@@ -135,7 +135,7 @@ export function getEnabledPackageTables(env?: Record<string, unknown>) {
     const config = getOttabaseConfig(env);
     const tables: Record<string, unknown> = {};
 
-    // Built-in packages (brandEngine is core — always included)
+    // Built-in packages (brandEngine is core, always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
         if (pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) {
             Object.assign(tables, pkgConfig.tables);
@@ -165,7 +165,7 @@ export function getEnabledPackageMigrations(env?: Record<string, unknown>): Migr
     const config = getOttabaseConfig(env);
     const migrations: Migration[] = [];
 
-    // Built-in packages (brandEngine is core — always included)
+    // Built-in packages (brandEngine is core, always included)
     for (const [pkgName, pkgConfig] of Object.entries(PACKAGE_REGISTRY)) {
         if ((pkgName === 'brandEngine' || config.packages[pkgName as BuiltInPackageName]) && pkgConfig.migrations) {
             migrations.push(...pkgConfig.migrations);

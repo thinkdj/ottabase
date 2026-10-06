@@ -13,6 +13,7 @@ import {
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
 import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Inbox, Mail, Radio } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -118,7 +119,12 @@ export function DemoNotificationsPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="Notifications"
-                description="Multi-channel notification system with email, WebSocket, and system alerts"
+                description={
+                    <>
+                        A mock inbox for the notification shapes, channels and priorities. The real inbox, fed by{' '}
+                        <code>@ottabase/notifications</code>, is at <Link to="/notifications">/notifications</Link>.
+                    </>
+                }
             />
 
             {/* Stats Cards */}

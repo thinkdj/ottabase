@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium-webhooks/react — query hooks
+// @ottabase/premium-webhooks/react, query hooks
 // ============================================================
 // These reuse the premium provider's `requestAbsolute` seam rather than introducing a
 // second client: the app's API client is what attaches `X-Org-Id` and `X-App-Id`, and
@@ -27,7 +27,7 @@ export const webhookQueryKeys = {
     deliveries: (endpointId?: string) => [WEBHOOK_ENDPOINTS_ENTITY, 'deliveries', endpointId ?? 'all'] as const,
 };
 
-/** A created endpoint — the ONE response that ever carries the signing secret. */
+/** A created endpoint: the ONE response that ever carries the signing secret. */
 export type CreatedWebhookEndpoint = WebhookEndpointView & { secret?: string };
 
 export function useWebhookEndpoints() {

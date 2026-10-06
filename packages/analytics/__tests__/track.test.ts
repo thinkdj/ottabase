@@ -96,7 +96,7 @@ describe('trackCoreEvent', () => {
         });
     });
 
-    it('appends metadata strings as blob7–blob11 (after visitorId)', () => {
+    it('appends metadata strings as blob7 to blob11 (after visitorId)', () => {
         trackCoreEvent({
             dataset: mockDataset as any,
             event: 'button_click',

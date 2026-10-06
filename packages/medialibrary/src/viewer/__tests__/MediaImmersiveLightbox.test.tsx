@@ -190,7 +190,7 @@ describe('MediaImmersiveLightbox drag navigation', () => {
         fireEvent.click(document.body.querySelector('[aria-label="Next"]')!);
 
         // Content swaps in place: the same three nodes hold the same positions, so nothing
-        // sweeps across the viewport — the bug was slots springing back to a default order.
+        // sweeps across the viewport, the bug was slots springing back to a default order.
         expect(['previous', 'active', 'next'].map((name) => slide(name as 'active'))).toEqual(nodes);
         expect(nodes.map((node) => node.style.transform)).toEqual(transforms);
         expect(activeSrc()).toBe('https://example.com/three.jpg');
@@ -277,7 +277,7 @@ describe('MediaImmersiveLightbox drag navigation', () => {
         dragLeft(viewport());
 
         const nextButton = getByLabelText('Next') as HTMLButtonElement;
-        const secondThumbnail = getByLabelText('View image 2') as HTMLButtonElement;
+        const secondThumbnail = getByLabelText('View item 2') as HTMLButtonElement;
         expect(nextButton.disabled).toBe(true);
         expect(secondThumbnail.disabled).toBe(true);
         fireEvent.click(nextButton);

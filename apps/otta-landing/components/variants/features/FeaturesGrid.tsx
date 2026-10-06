@@ -1,7 +1,7 @@
 import type { FeaturesData } from './types';
 
 /**
- * Grid features — two-column bordered list (the original default).
+ * Grid features: two-column bordered list (the original default).
  */
 export function FeaturesGrid({ title, features }: FeaturesData) {
     return (

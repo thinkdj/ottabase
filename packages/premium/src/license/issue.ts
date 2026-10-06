@@ -1,9 +1,9 @@
 // ============================================================
-// @ottabase/premium/license-tools — VENDOR-SIDE key + license minting
+// @ottabase/premium/license-tools, VENDOR-SIDE key + license minting
 // ============================================================
 // Deliberately behind its own subpath. A consuming app never imports this: it only
 // ever VERIFIES, and shipping the minting helpers next to the verifier invites the
-// one mistake that makes the whole scheme decorative — bundling a private key into
+// one mistake that makes the whole scheme decorative, bundling a private key into
 // the app that is supposed to be gated by it.
 //
 // Keep the private key wherever you keep your release signing material. Anyone
@@ -16,9 +16,9 @@ import { LICENSE_TOKEN_PREFIX, base64UrlToBytes, bytesToBase64Url } from './toke
 const encoder = new TextEncoder();
 
 export interface PremiumKeypair {
-    /** base64url SPKI — this is the value that goes in the package manifest. */
+    /** base64url SPKI: this is the value that goes in the package manifest. */
     publicKey: string;
-    /** base64url PKCS8 — vendor secret. Never ship this. */
+    /** base64url PKCS8: vendor secret. Never ship this. */
     privateKey: string;
 }
 

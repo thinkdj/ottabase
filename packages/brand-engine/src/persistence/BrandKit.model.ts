@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – BrandKit OttaORM Model (v2: per-app scoping)
+// Brand Engine, BrandKit OttaORM Model (v2: per-app scoping)
 // Self-contained: identity, logos, colors, fonts, theme. Scoped by appId.
 // ---------------------------------------------------------------------------
 

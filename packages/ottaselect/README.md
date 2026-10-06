@@ -1,7 +1,7 @@
 # @ottabase/ottaselect
 
 A select component that accepts **any object format** and always returns a standardized output. Perfect for React
-applications with dynamic data sources and CrudHub integration.
+applications with dynamic data sources and async collections from your API.
 
 ## Key Features
 
@@ -14,7 +14,7 @@ applications with dynamic data sources and CrudHub integration.
   damped strength while type stays fixed per size
 - **Pagination Support** - Selected items persist even when not in current API response
 - **Real-time search** - Debounced search with client-side or server-side filtering
-- **CrudHub Integration** - Built-in async collection fetching support
+- **Async collections** - Built-in fetching from any API, with search passed through
 - **Loading & Error states** - Beautiful loading indicators and error handling
 - **Search-as-you-type** - Type on the trigger to open and filter; Enter picks the first match
 - **Create inline** - `onCreate` offers "Create 'x'" when nothing matches
@@ -61,7 +61,7 @@ function MyComponent() {
 - `md` is the default and matches the existing control size.
 - Whitespace (paddings, min-height) follows the brand's `--spacing-element` at half strength, and corner rounding
   follows `--radius`, so controls breathe with the active theme. Font and icon sizes are fixed per variant and never
-  scale with spacing — a spacious theme widens a control's padding, not its text.
+  scale with spacing, a spacious theme widens a control's padding, not its text.
 
 ```tsx
 <OttaSelect size="xs" items={items} placeholder="Ultra compact" />
@@ -196,7 +196,7 @@ const [selected, setSelected] = useState([
 
 **Result**: India and Brazil stay visible at the top of the dropdown even though the API doesn't return them!
 
-## Async Fetch (API/CrudHub)
+## Async Fetch (API)
 
 ```tsx
 async function fetchUsers(searchQuery: string) {

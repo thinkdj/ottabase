@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Field metadata IS the admin UI
+// @ottabase/ottaai, Field metadata IS the admin UI
 // ============================================================
 // `ModelFields` drives SERVER VALIDATION and the GENERATED FORM AND TABLE
 // simultaneously, so the write-only-secret UX falls out of metadata rather than
@@ -41,7 +41,7 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
             sortable: true,
             uiConfig: {
                 label: 'Name',
-                description: 'A name you will recognise later — "Work", "Personal", "Marketing team key".',
+                description: 'A name you will recognize later: "Work", "Personal", "Marketing team key".',
                 placeholder: 'My OpenAI key',
             },
             formConfig: { fieldType: 'input', order: 10 },
@@ -57,7 +57,7 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
             formConfig: {
                 fieldType: 'select',
                 order: 20,
-                // Generated from the per-instance registry — one object, form and guards.
+                // Generated from the per-instance registry, one object, form and guards.
                 // TENANT-SELECTABLE ONLY: a provider the platform uses but a tenant cannot
                 // bring a key for (Workers AI), or one with no verified wire contract, must
                 // not appear in a BYOK form. The write path rejects the same set, so the two
@@ -86,7 +86,7 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
         /**
          * The WRITE-ONLY secret.
          *
-         * `autoComplete: 'off'` is not cosmetic — without it browser password managers offer
+         * `autoComplete: 'off'` is not cosmetic, without it browser password managers offer
          * to save the provider key and later AUTOFILL it, which both corrupts the "leave blank
          * to keep the existing key" semantics and stores the key somewhere new.
          *
@@ -108,7 +108,7 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
             validation: { rules: 'max:8192' },
         },
 
-        /** Read-only, table-visible. NEVER client-writable — a writable hint is a display lie the gate reads as truth. */
+        /** Read-only, table-visible. NEVER client-writable, a writable hint is a display lie the gate reads as truth. */
         keyHint: {
             type: 'string',
             editable: false,
@@ -129,7 +129,7 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
         },
 
         /**
-         * Rank-only tie-break. Deliberately NOT in the update allow-list (see the model) —
+         * Rank-only tie-break. Deliberately NOT in the update allow-list (see the model),
          * removing the UI affordance is not the remedy; removing the write path is.
          * Activation goes through the dedicated `activate` mutation.
          */
@@ -153,7 +153,7 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
         organizationId: {
             type: 'string',
             editable: false,
-            uiConfig: { label: 'Organization', description: 'Set automatically from the current workspace.' },
+            uiConfig: { label: 'Organization', description: 'Set automatically from the current organization.' },
             formConfig: { visible: false },
             tableConfig: { visible: false },
         },
@@ -237,12 +237,12 @@ export function buildCredentialFields(registry: AiProviderRegistry): ModelFields
  * clause, on ANY path.
  *
  * Marking the ciphertext column hidden covers SERIALISATION. It does not cover `where` /
- * `orderBy`, which generic CRUD passes straight through to the model — so a filterable
+ * `orderBy`, which generic CRUD passes straight through to the model, so a filterable
  * secret column is an equality and ordering ORACLE reachable through an endpoint nobody
  * wrote by hand, and declaring `filterable: false` metadata does not close it (nothing
  * reads that flag).
  *
- * Covers EVERY FIELD OF THE SECRET UNION — ciphertext, alias AND the discriminator — plus
+ * Covers EVERY FIELD OF THE SECRET UNION, ciphertext, alias AND the discriminator, plus
  * `keyHint`, which is a per-character oracle on the last four characters of the key.
  */
 export const CREDENTIAL_QUERY_DENY_LIST: readonly string[] = Object.freeze([

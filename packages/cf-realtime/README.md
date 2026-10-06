@@ -7,7 +7,7 @@ applications with WebSocket support, offline message queuing, and TypeScript-fir
 
 - **Real-time WebSocket connections** with auto-reconnect
 - **Channel-based pub/sub** (subscribe to `org-1201`, `user-22`, `system`, etc.)
-- **Offline message queuing** — messages are delivered when clients reconnect
+- **Offline message queuing**: messages are delivered when clients reconnect
 - **TypeScript-first** with full type safety
 - **Powered by Cloudflare Durable Objects** for global scale
 - **Pusher-like API** for easy migration
@@ -42,14 +42,14 @@ export default {
     async fetch(request: Request, env: CloudflareEnv): Promise<Response> {
         const url = new URL(request.url);
 
-        // WebSocket upgrade — forward to the Durable Object
+        // WebSocket upgrade: forward to the Durable Object
         if (url.pathname === '/realtime' && request.headers.get('Upgrade') === 'websocket') {
             const id = env.OBCF_REALTIME.idFromName('global');
             const stub = env.OBCF_REALTIME.get(id);
             return stub.fetch(request);
         }
 
-        // Broadcast endpoint — requires authentication + channel-level authorization
+        // Broadcast endpoint: requires authentication + channel-level authorization
         if (url.pathname === '/api/broadcast' && request.method === 'POST') {
             const publisher = await validatePublisher(request, env);
             if (!publisher) {

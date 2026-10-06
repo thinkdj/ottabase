@@ -51,7 +51,7 @@ export interface BeforeAfterData {
     afterLabel: string;
     /** Slider orientation: 'horizontal' (left↔right) or 'vertical' (top↔bottom) */
     orientation: 'horizontal' | 'vertical';
-    /** Initial slider position 0–100 (percentage from left/top) */
+    /** Initial slider position 0 to 100 (percentage from left/top) */
     sliderPosition: number;
     /** Optional caption below the block */
     caption: string;
@@ -68,7 +68,7 @@ export interface BeforeAfterData {
 export interface BeforeAfterToolConfig {
     /** Default orientation */
     defaultOrientation?: 'horizontal' | 'vertical';
-    /** Default slider position (0–100) */
+    /** Default slider position (0 to 100) */
     defaultPosition?: number;
     /** Namespace for media library events (default: 'default') */
     namespace?: string;
@@ -372,7 +372,7 @@ export default class BeforeAfterTool {
         if (!sizeControls) {
             sizeControls = document.createElement('div');
             sizeControls.className = 'cdx-before-after__size-controls';
-            /* Insert right after the form — always above the preview */
+            /* Insert right after the form, always above the preview */
             const form = this.wrapper.querySelector('.cdx-before-after__form');
             if (form?.nextSibling) {
                 this.wrapper.insertBefore(sizeControls, form.nextSibling);
@@ -565,7 +565,7 @@ export default class BeforeAfterTool {
         if (this.data.height) {
             container.style.height = this.data.height;
         } else if (this.data.imageFit === 'cover') {
-            /* Default height for cover mode — percentage heights don't resolve
+            /* Default height for cover mode, percentage heights don't resolve
                without an explicit parent height, causing the image to collapse */
             container.style.height = '300px';
         }

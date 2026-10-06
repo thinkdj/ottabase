@@ -1,5 +1,5 @@
 // ============================================================
-// Outbound delivery — what actually leaves the worker.
+// Outbound delivery, what actually leaves the worker.
 //
 // Three properties matter: the payload is signed, a lapsed license stops delivery
 // entirely, and a failing customer endpoint never escapes as an exception into the
@@ -92,7 +92,7 @@ describe('dispatchWebhookEvent', () => {
         await expect(verifySignatureHeader(SECRET, init.body as string, headers[SIGNATURE_HEADER])).resolves.toBe(true);
     });
 
-    it('never follows a redirect — a 3xx into a private address would be an SSRF', async () => {
+    it('never follows a redirect: a 3xx into a private address would be an SSRF', async () => {
         seedEndpoint();
         await dispatchWebhookEvent({
             registry: makeRegistry(),
@@ -258,7 +258,7 @@ describe('dispatchWebhookEvent', () => {
 });
 
 describe('summarizeDeliveryError', () => {
-    it('never returns the raw failure — those carry the signed body and the URL', () => {
+    it('never returns the raw failure, those carry the signed body and the URL', () => {
         const detailed = new TypeError('fetch to https://example.com?token=SECRET failed');
         expect(summarizeDeliveryError(detailed)).toBe('TypeError');
         expect(summarizeDeliveryError(new Error('boom'))).toBe('request failed');

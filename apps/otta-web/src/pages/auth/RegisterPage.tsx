@@ -1,3 +1,4 @@
+import { SEOHead } from '@/components/SEOHead';
 import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
@@ -143,7 +144,7 @@ export function RegisterPage() {
 
     return (
         <AuthShell
-            title="Create your account"
+            title="Create account"
             subtitle={`Join ${APP_META.appName}`}
             footer={
                 <>
@@ -154,6 +155,7 @@ export function RegisterPage() {
                 </>
             }
         >
+            <SEOHead title={`Create account · ${APP_META.appName}`} />
             {referralCode && (
                 <div className="rounded-lg bg-background p-3 text-sm ring-1 ring-border">
                     <p className="font-medium">

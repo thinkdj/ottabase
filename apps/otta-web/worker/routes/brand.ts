@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
-// Brand API routes – Brand Kits, layouts, mappings, GET /api/brand (path-aware)
-// v2: All scoped by appId only – no organizationId.
+// Brand API routes: Brand Kits, layouts, mappings, GET /api/brand (path-aware)
+// v2: All scoped by appId only, no organizationId.
 // ---------------------------------------------------------------------------
 
 import {
@@ -135,7 +135,7 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         return handlePutMappings(request, envBrand, appId);
     }
 
-    // Menu Slots – assign menus to named layout slots
+    // Menu Slots: assign menus to named layout slots
     if (route === '/api/brand/menu-slots' && method === 'GET') {
         return handleGetMenuSlots(request, envBrand, appId);
     }
@@ -148,7 +148,7 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         return handlePutMenuSlots(request, envBrand, appId);
     }
 
-    // Menu CRUD – menus + items (cache invalidation on mutations)
+    // Menu CRUD: menus + items (cache invalidation on mutations)
     if (route === '/api/brand/menus' && method === 'GET') {
         return handleGetMenus(request, envBrand, appId);
     }

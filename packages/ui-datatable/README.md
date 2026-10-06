@@ -1,13 +1,12 @@
 # @ottabase/ui-datatable
 
 Advanced, headless-first data table built on **TanStack Table v8** for ottabase. Supports server-side
-sort/filter/pagination (via OttaORM), column visibility, row selection, inline editing, bulk actions, and theme-aware
-styling.
+sort/filter/pagination (via OttaORM), column visibility, row selection, bulk actions, and theme-aware styling.
 
 ## Why
 
 Every admin panel, CMS, and SaaS dashboard needs a rich data table. **OttaORM** and **@ottabase/forms** handle
-create/edit; this package handles **list views** — closing the full CRUD loop.
+create/edit; this package handles **list views**: closing the full CRUD loop.
 
 ## Two entry points (headless vs rendered)
 
@@ -27,7 +26,7 @@ from the root never drags in `lucide-react` or `clsx`.
 pnpm add @ottabase/ui-datatable
 ```
 
-**Peer dependencies:** `react`, `react-dom` (required), plus `lucide-react` and `clsx` (**optional** — only needed when
+**Peer dependencies:** `react`, `react-dom` (required), plus `lucide-react` and `clsx` (**optional**: only needed when
 you use the `/react` subpath).
 
 ## Quick Start
@@ -147,7 +146,7 @@ function TodosPage() {
 ## Integration with @ottabase/forms
 
 `@ottabase/forms`' `ModelTable` component is now powered by `@ottabase/ui-datatable` internally. If you use `ModelCrud`,
-you get the upgraded table automatically — no changes needed:
+you get the upgraded table automatically, no changes needed:
 
 ```tsx
 import { createModelConfig } from '@ottabase/forms';
@@ -176,13 +175,13 @@ Exported from the headless root `@ottabase/ui-datatable`.
 
 Exported from `@ottabase/ui-datatable/react`.
 
-| Component               | Description                                             |
-| ----------------------- | ------------------------------------------------------- |
-| `DataTable`             | Main table renderer — header, body, toolbar, pagination |
-| `DataTableToolbar`      | Search input, column visibility toggle, bulk actions    |
-| `DataTablePagination`   | Page navigation with size selector                      |
-| `DataTableColumnHeader` | Sortable column header with direction indicators        |
-| `DataTableViewOptions`  | Column visibility dropdown                              |
+| Component               | Description                                            |
+| ----------------------- | ------------------------------------------------------ |
+| `DataTable`             | Main table renderer: header, body, toolbar, pagination |
+| `DataTableToolbar`      | Search input, column visibility toggle, bulk actions   |
+| `DataTablePagination`   | Page navigation with size selector                     |
+| `DataTableColumnHeader` | Sortable column header with direction indicators       |
+| `DataTableViewOptions`  | Column visibility dropdown                             |
 
 ### Column Helpers
 
@@ -269,23 +268,23 @@ custom editors and filter server-side via `useListState`.
 ## Theming
 
 The rendered `/react` components style themselves with theme CSS variables (the same names `@ottabase/ui-shadcn` /
-`@ottabase/ui-tailwind` define). This package does **not** depend on those design-system packages — it just consumes the
+`@ottabase/ui-tailwind` define). This package does **not** depend on those design-system packages, it just consumes the
 variables the host app already provides, so it works out of the box in light and dark mode. Key variables used:
 
-- `--background`, `--foreground` — base colors
-- `--muted`, `--muted-foreground` — headers, empty states
-- `--border`, `--input`, `--ring` — borders and focus rings
-- `--primary`, `--primary-foreground` — buttons, selection
-- `--accent` — hover states
-- `--destructive` — delete actions
+- `--background`, `--foreground`: base colors
+- `--muted`, `--muted-foreground`: headers, empty states
+- `--border`, `--input`, `--ring`: borders and focus rings
+- `--primary`, `--primary-foreground`: buttons, selection
+- `--accent`: hover states
+- `--destructive`: delete actions
 
 ## Architecture
 
 ```
 @ottabase/ui-datatable
 ├── src/
-│   ├── index.ts                        # `.` barrel — PURE (hooks, types, truncateText)
-│   ├── react.ts                        # `/react` barrel — rendered UI + column factories
+│   ├── index.ts                        # `.` barrel: PURE (hooks, types, truncateText)
+│   ├── react.ts                        # `/react` barrel, rendered UI + column factories
 │   ├── types.ts                        # Core type definitions
 │   ├── hooks/
 │   │   ├── useDataTable.ts             # Client-side table hook
@@ -315,7 +314,7 @@ The row actions dropdown (`actionsColumn` with 3+ actions) renders with `positio
 ### `onCellClick` stops propagation
 
 When `onCellClick` is provided, clicking a cell fires `onCellClick(row, columnId, value)` and calls
-`e.stopPropagation()` — the row-level `onRowClick` will **not** fire for that click. This lets you use both handlers
+`e.stopPropagation()`: the row-level `onRowClick` will **not** fire for that click. This lets you use both handlers
 without double-firing.
 
 ### Column sizing defaults
@@ -337,20 +336,20 @@ bulk action buttons + selection count. Clearing the selection restores the searc
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — renders a semantic `<table>`; selected rows expose `data-state="selected"` and the loading overlay
+- **Accessibility**: renders a semantic `<table>`; selected rows expose `data-state="selected"` and the loading overlay
   sets `aria-busy` so assistive tech is told the grid is updating. Row actions and the selection checkbox column are
   keyboard-operable.
 - **SSR**: client-rendered. For large datasets use the server-side path (`useListState` with your API): sort, filter,
   and pagination happen in the API, so the browser never sorts or filters a big result set. Pair with OttaORM `deferred`
   columns to keep list payloads small.
-- **Performance** — the headless `useDataTable` hook separates table state from rendering (usable without the
-  `DataTable` component). Server-side mode is the scaling story; the client-side path is for modest datasets. Pagination
-  is 1-indexed and page size is explicit, so you control how many rows render.
+- **Performance**: the headless `useDataTable` hook separates table state from rendering (usable without the `DataTable`
+  component). Server-side mode is the scaling story; the client-side path is for modest datasets. Pagination is
+  1-indexed and page size is explicit, so you control how many rows render.
 
 ## Dependencies
 
-- **@tanstack/react-table** v8 — headless table core (real dependency; the pure hooks use its runtime, so it is never
+- **@tanstack/react-table** v8: headless table core (real dependency; the pure hooks use its runtime, so it is never
   optional)
-- **react**, **react-dom** — required peers
-- **lucide-react** — icons — optional peer, needed only by the `/react` subpath
-- **clsx** — className merging — optional peer, needed only by the `/react` subpath
+- **react**, **react-dom**: required peers
+- **lucide-react**: icons, optional peer, needed only by the `/react` subpath
+- **clsx**: className merging, optional peer, needed only by the `/react` subpath

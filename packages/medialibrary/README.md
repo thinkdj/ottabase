@@ -23,7 +23,7 @@ behind a single isolated subpath.
 | `@ottabase/medialibrary/schema` | `mediaTable` + `MediaType` / `NewMediaType` (re-exported from `@ottabase/ottaorm`). Schema/migration wiring.                                                                                                                     | No                      |
 | `@ottabase/medialibrary/react`  | **Rendered UI.** `MediaLightbox`, `MediaImmersiveLightbox`, `MediaLightboxProvider` (+ `useMediaLightboxRegistration`, `useOptionalMediaLightbox`), `MediaPreview`, `ZoomableImage`.                                             | Yes                     |
 
-Because rendered UI is isolated, `react`, `react-dom`, and `@tabler/icons-react` are **optional** peer dependencies —
+Because rendered UI is isolated, `react`, `react-dom`, and `@tabler/icons-react` are **optional** peer dependencies:
 callers that only use the pure helpers, schema, or the state machine do not need them installed. The package sets
 `"sideEffects": false` for tree-shaking.
 
@@ -81,7 +81,7 @@ const record = createMediaLibraryRecordInput({
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 
-// Admin / editor preview — shows metadata sidebar
+// Admin / editor preview: shows metadata sidebar
 export function PostPreview({ content }: { content: any }) {
     return (
         <MediaLightboxProvider>
@@ -90,7 +90,7 @@ export function PostPreview({ content }: { content: any }) {
     );
 }
 
-// Public blog page — cinematic gallery with auto-hiding controls
+// Public blog page: cinematic gallery with auto-hiding controls
 export function PostContent({ content }: { content: any }) {
     return (
         <MediaLightboxProvider variant="immersive">
@@ -111,17 +111,17 @@ When the renderer's image blocks are inside the provider, they automatically reg
 - auto-hiding controls after inactivity (immersive only)
 - caption/title overlay (immersive only)
 
-`variant="default"` — rich admin/editor viewer with metadata sidebar, download, and open-in-tab actions.
-`variant="immersive"` — cinematic end-user gallery: pure black backdrop, auto-hiding chrome, caption overlay, smooth
+`variant="default"`: rich admin/editor viewer with metadata sidebar, download, and open-in-tab actions.
+`variant="immersive"`: cinematic end-user gallery: pure black backdrop, auto-hiding chrome, caption overlay, smooth
 thumbnail scrolling.
 
 ### Lightbox Lifecycle Hooks
 
 `MediaLightboxProvider` supports lifecycle callbacks:
 
-- `onOpen(item, index)` — fired when the lightbox opens.
-- `onNavigate(item, index, direction)` — fired when the active item changes while open (`previous`, `next`, `jump`).
-- `onClose()` — fired when the lightbox closes.
+- `onOpen(item, index)`: fired when the lightbox opens.
+- `onNavigate(item, index, direction)`: fired when the active item changes while open (`previous`, `next`, `jump`).
+- `onClose()`: fired when the lightbox closes.
 
 ```tsx
 <MediaLightboxProvider
@@ -162,7 +162,7 @@ with a `0.75rem` fallback when no theme stylesheet is present. The immersive lig
 for border-radius customization of its thumbnail UI:
 
 ```css
-/* Defaults — override in your own CSS to customise */
+/* Defaults: override in your own CSS to customise */
 --lb-strip-radius: 0.75rem; /* thumbnail strip container */
 --lb-thumb-radius: 0.5rem; /* individual thumbnail buttons */
 ```
@@ -199,7 +199,7 @@ import { ZoomableImage } from '@ottabase/medialibrary/react';
 <ZoomableImage src="/photo.jpg" alt="Description" mode="lightbox" />;
 ```
 
-- **Scroll wheel** zooms in/out (1×–5×, 0.25× steps)
+- **Scroll wheel** zooms in/out (1× to 5×, 0.25× steps)
 - **Click** toggles 2× zoom by default (`zoomStart="double"` opts into double-click)
 - **Pinch-to-zoom** on touch devices
 - **Double-tap** toggles 2× zoom on touch devices
@@ -227,7 +227,7 @@ and springs back when released short of the swipe threshold. The neighboring ite
 navigation direction is always clear; a committed drag completes into that neighboring item instead of bouncing back
 before it changes.
 
-- **Commit:** a drag commits past 90px (or 20% of a narrow slide), or as a fling — at least 36px with a _release_ speed
+- **Commit:** a drag commits past 90px (or 20% of a narrow slide), or as a fling, at least 36px with a _release_ speed
   of 0.45px/ms, measured over the last ~80ms rather than averaged over the whole gesture.
 - **Intent is decided once.** A press becomes a swipe after 8px of mostly-horizontal travel and then tracks the pointer
   however diagonal it gets; a gesture that starts vertical never becomes a swipe; a few pixels of wobble stay a click.

@@ -93,8 +93,8 @@ flowchart TD
 
 Referral-related columns (see `packages/ottaorm` user model):
 
-- `referralUsername` — unique public handle used in links
-- `referredById` — optional FK-style id of the referring user
+- `referralUsername`: unique public handle used in links
+- `referredById`: optional FK-style id of the referring user
 
 Typical helpers: find by referral username, load referrer / referred users (see model API in-repo).
 
@@ -146,8 +146,8 @@ Records a click when click tracking is enabled.
 
 **Responses**
 
-- `200` — tracking row created
-- `404` — unknown referral username (no row created)
+- `200`: tracking row created
+- `404`: unknown referral username (no row created)
 
 Server enriches IP and user agent from the incoming request where applicable.
 
@@ -179,9 +179,9 @@ route implementation for the exact shape).
 
 Referral behavior is controlled in **`apps/otta-web/ottabase/ottabase.config.ts`**.
 
-1. **Package gate** — `packages.referrals: true | false` controls whether referral routes and the `ReferralTracking`
+1. **Package gate**: `packages.referrals: true | false` controls whether referral routes and the `ReferralTracking`
    model are registered.
-2. **Feature flags** — `features.referrals`:
+2. **Feature flags**: `features.referrals`:
 
 ```typescript
 features: {
@@ -205,15 +205,15 @@ The client reads **`REFERRALS_CONFIG`** from `ottabase/config.loader.ts` (derive
 
 ### Changing the referral param key
 
-`referralParam` is the query-param key that carries an inbound referral code — `ref` in
+`referralParam` is the query-param key that carries an inbound referral code, `ref` in
 `https://app.example.com/?ref=johndoe`. Set it once and the tracker (reads `?<key>=`), the URL cleanup, and the
 dashboard share-link builder all follow it; no other code changes are needed. Keys are restricted to letters, digits,
-underscore, and hyphen — any other value falls back to `ref`.
+underscore, and hyphen, any other value falls back to `ref`.
 
-- **Owner / config file** — edit `features.referrals.referralParam` in `ottabase/ottabase.config.ts`. This is the value
+- **Owner / config file**: edit `features.referrals.referralParam` in `ottabase/ottabase.config.ts`. This is the value
   the browser client uses (client has no access to Cloudflare env), so it is the source of truth for share links and
   inbound tracking.
-- **Per-deploy env override** — `REFERRAL_PARAM` overrides the value wherever the worker resolves config via
+- **Per-deploy env override**: `REFERRAL_PARAM` overrides the value wherever the worker resolves config via
   `getOttabaseConfig(env)`. As with the other referral flags (`enabled`, `trackClicks`, `expiryDays`), set the config
   file for anything the client relies on.
 
@@ -286,7 +286,7 @@ call `processReferralAttribution` in the same way with data from the client or s
 
 Usernames are validated in `@ottabase/referrals` (see `validation.ts`):
 
-- Length: 3–20 characters
+- Length: 3 to 20 characters
 - Charset: letters, digits, underscore (`a-z`, `A-Z`, `0-9`, `_`)
 - Uniqueness enforced at update time
 
@@ -361,11 +361,11 @@ data. The dashboard should warn when changing username.
 ## Production considerations
 
 1. **Rate limiting** on `/api/referrals/track` to reduce abuse
-2. **Auth hardening** — keep attribution server-side; never trust client-only flags
-3. **Fraud** — optional IP / device heuristics beyond the template
-4. **Observability** — log attribution failures with safe metadata
-5. **Multi-tenant** — ensure RLS / `organizationId` rules include referral tables if you extend tenancy
-6. **Indexes** — confirm hot queries are covered (package migrations + D1)
+2. **Auth hardening**: keep attribution server-side; never trust client-only flags
+3. **Fraud**: optional IP / device heuristics beyond the template
+4. **Observability**: log attribution failures with safe metadata
+5. **Multi-tenant**: ensure RLS / `organizationId` rules include referral tables if you extend tenancy
+6. **Indexes**: confirm hot queries are covered (package migrations + D1)
 
 ---
 

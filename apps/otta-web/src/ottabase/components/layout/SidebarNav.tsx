@@ -14,7 +14,7 @@ const WIDTH_MAP: Record<string, string> = {
     'w-80': '20rem',
 };
 
-/** Static CSS for sidebar width — hoisted to avoid re-injecting on every render */
+/** Static CSS for sidebar width, hoisted to avoid re-injecting on every render */
 const SIDEBAR_WIDTH_CSS = `@media (min-width: 768px) { aside[style*="--sidebar-width"] { width: var(--sidebar-width); } }`;
 
 export const SidebarNav = memo(function SidebarNav({ widthClass = 'w-56' }: { widthClass?: string }) {

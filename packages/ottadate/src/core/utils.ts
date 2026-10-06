@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Date utility helpers
+ * @ottabase/ottadate: Date utility helpers
  *
  * Thin wrappers around date-fns for common calendar operations.
  * All internal dates use JS Date objects; conversion to/from unix timestamps
@@ -90,7 +90,7 @@ export function resolveTimezone(tz: string | 'auto'): string {
 }
 
 // ---------------------------------------------------------------------------
-// Timestamp conversion — boundary layer (external ↔ internal Date)
+// Timestamp conversion, boundary layer (external ↔ internal Date)
 // ---------------------------------------------------------------------------
 
 /**
@@ -251,7 +251,7 @@ export function isDateInBounds(date: Date, minDate?: Date | null, maxDate?: Date
 // Hour/minute/second generation helpers
 // ---------------------------------------------------------------------------
 
-/** Generate hours array (0–23) */
+/** Generate hours array (0 to 23) */
 export function getHoursList(): number[] {
     return Array.from({ length: 24 }, (_, i) => i);
 }

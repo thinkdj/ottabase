@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottamenu – Shared types
+// @ottabase/ottamenu, Shared types
 //
 // Pure type definitions for menu items and menus. No ORM, no persistence.
 // Used by renderers (in this package) and by brand-engine (for persistence).

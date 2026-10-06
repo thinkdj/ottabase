@@ -26,8 +26,8 @@ Ottabase includes a complete multi-tenant RBAC (Role-Based Access Control) syste
 ```
 System Roles (Global)
     ├─ platform_owner - Bootstrapped app owner (system-scoped, *:* → holds platform:admin)
-    ├─ owner          - Organization owner (org-scoped bundle incl. org:admin — no *:*)
-    ├─ admin          - Organization administrator (same org-scoped bundle — no *:*)
+    ├─ owner          - Organization owner (org-scoped bundle incl. org:admin, no *:*)
+    ├─ admin          - Organization administrator (same org-scoped bundle, no *:*)
     └─ member         - Basic access
 
 Organization (Tenant)           organizationId OR null
@@ -44,17 +44,17 @@ A role is a **bundle of permissions**; its NAME is a label, never an authorizati
 
 - **Platform admin** (SaaS control plane): a **system-scoped** (`organization_id = 'system'`) grant carrying
   `platform:admin` (or `*:*`). Only `platform_owner` gets this, via the bootstrap. Checked by
-  `assertAdmin(..., { scope: 'system' })`, `ProtectedRoute requirePlatformAdmin`, and RLS `requirePlatformAdmin` — all
+  `assertAdmin(..., { scope: 'system' })`, `ProtectedRoute requirePlatformAdmin`, and RLS `requirePlatformAdmin`: all
   reading the scope-aware `platformAdmin`/`systemPermissions`, never a name.
 - **Org admin** (own tenant: blog, media, members, settings): an **org-scoped** grant carrying `org:admin`. Held by
   `owner`/`admin`. A platform owner also passes (their `*:*` matches `org:admin`).
 
-This is why a self-registered user — who receives the RBAC role _named_ `owner` in their personal org — can administer
+This is why a self-registered user, who receives the RBAC role _named_ `owner` in their personal org, can administer
 their own workspace but can NEVER reach the control plane: `org:admin` is not `platform:admin`, and their grant is not
 system-scoped. Renaming a role, or a tenant creating a role named `admin`, changes nothing about what it can do.
 
 **Self-healing system roles:** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role rows to the
-canonical permission sets — correcting a role seeded under an older definition (e.g. a legacy `owner = ['*:*']`) without
+canonical permission sets, correcting a role seeded under an older definition (e.g. a legacy `owner = ['*:*']`) without
 a manual re-seed or DB wipe. The reconcile runs on the deliberate seed path (`/__bootstrap__/seed`); the
 signup/provisioning hot path only creates missing roles and never rewrites existing ones. Customize by creating NEW
 roles, never by editing system ones (the admin API rejects edits to `isSystem` roles).
@@ -100,7 +100,7 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 ### 2. Seed Data
 
 Default system roles are seeded automatically via `Role.ensureDefaultRoles()` when the platform owner is created during
-bootstrap. To reconcile them to the canonical definitions after a framework upgrade, run the secret-gated seed step —
+bootstrap. To reconcile them to the canonical definitions after a framework upgrade, run the secret-gated seed step,
 open `/__bootstrap__/seed` or `POST /__bootstrap__/api/seed`.
 
 Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`, `admin`, `editor`, `author`, `viewer`,
@@ -109,7 +109,7 @@ Creates default system roles: `platform_owner` (bootstrapped app owner), `owner`
 ### 3. Enable Row-Level Security in Worker
 
 Isolation is enforced automatically by the RLS engine. Call `initRLS()` once at startup, then route CRUD through
-`rlsMiddleware` with an explicit `getContext` that derives the `SecurityContext` from a **verified session/JWT** — never
+`rlsMiddleware` with an explicit `getContext` that derives the `SecurityContext` from a **verified session/JWT**: never
 from raw client headers.
 
 ```typescript
@@ -142,7 +142,7 @@ export default {
 ```
 
 > Already parsed the request elsewhere? Call `executeSecureCrudRequest(crudRequest, context)` directly instead of
-> `rlsMiddleware`. (The older `tenantAwareCrudMiddleware` has been removed — it only scoped a hardcoded model list and
+> `rlsMiddleware`. (The older `tenantAwareCrudMiddleware` has been removed, it only scoped a hardcoded model list and
 > was fail-open for everything else; RLS is fail-closed and covers every registered model.)
 
 **What this does:**
@@ -161,7 +161,6 @@ http://localhost:3003/admin/access/users                         # User Manageme
 http://localhost:3003/admin/access/users/:userId/rbac            # User RBAC Assignment
 
 # RBAC Management
-http://localhost:3003/admin/access/rbac                          # RBAC Admin Dashboard
 http://localhost:3003/admin/access/rbac                          # Roles and their permissions
 
 # Organization Management
@@ -174,8 +173,8 @@ http://localhost:3003/admin/access/organizations/:id/members     # Organization 
 http://localhost:3003/profile                                    # User Profile Page
 
 # Audit & Security
-http://localhost:3003/admin/security/audit                       # Audit Log Viewer
-http://localhost:3003/admin/security/rls                         # RLS Demo Page
+http://localhost:3003/admin/security/audit                       # Audit log
+http://localhost:3003/admin/security/rls                         # Row-level security inspector
 ```
 
 ---
@@ -246,7 +245,7 @@ const reviewerRole = await Role.create({
     permissions: ['posts:*', 'tags:read'],
 });
 
-// Assign role to user — organizationId is required (the tenant this grant applies in)
+// Assign role to user: organizationId is required (the tenant this grant applies in)
 await user.assignRole(reviewerRole.id, currentUser.id, org.id);
 
 // Check permission (org-scoped)
@@ -346,13 +345,13 @@ await cache.invalidateOrganization(org.id);
 
 The otta-web template also caches the **security-context membership lookups** (org + group memberships resolved by
 `getSecurityContext` on every authenticated request) behind a 5-minute KV read-through cache
-(`auth:usr:{userId}:member-orgs`, `auth:usr:{userId}:member-groups:{orgId|none}`) — same TTL as the RBAC cache.
+(`auth:usr:{userId}:member-orgs`, `auth:usr:{userId}:member-groups:{orgId|none}`), same TTL as the RBAC cache.
 
 - **Invalidation is eager** on every in-app membership mutation: sign-in invite activation, admin member
-  invite/update/remove, organization creation, and generic CRUD on `user_groups`/`user_group_members` — via
+  invite/update/remove, organization creation, and generic CRUD on `user_groups`/`user_group_members`: via
   `invalidateMembershipCache(kv, userId)` in `worker/lib/auth-utils.ts`. Call it from any custom route that mutates
-  memberships. (`organization_members` is blocked from generic CRUD entirely — the admin routes are the only path.)
-- **Fail-safe:** a KV failure falls back to the direct D1 query — caching can never weaken membership enforcement.
+  memberships. (`organization_members` is blocked from generic CRUD entirely, the admin routes are the only path.)
+- **Fail-safe:** a KV failure falls back to the direct D1 query, caching can never weaken membership enforcement.
 - **Propagation bound:** only for mutations made outside the instrumented paths (custom code, direct D1 edits): the 300s
   TTL plus KV eventual consistency (~6 minutes worst case cross-colo).
 
@@ -420,7 +419,7 @@ Features:
 - Create new organization
 - Edit organization details
 - Delete organization
-- Pagination (15/25/50/100 per page)
+- Pagination (25/50/100 per page)
 - Search and filtering
 - Error handling with retry
 
@@ -436,7 +435,6 @@ Features:
 - **Quick role assignment** - Click role badge to change
 - Remove members
 - Pagination and filtering
-- Real-time updates
 
 ### Roles
 
@@ -453,7 +451,7 @@ One screen: the role list on the left (custom roles, then system roles), the sel
 - System roles are read-only (they are defined in code and reconciled on deploy); create a custom role instead.
 - `?role=<id>` selects a role, `?role=new` starts a new one, so links into a specific role work.
 
-### Audit Log Viewer
+### Audit log
 
 **Route:** `/admin/security/audit` **File:** `apps/otta-web/src/pages/admin/security/audit/AuditLogViewerPage.tsx`
 
@@ -461,11 +459,10 @@ Features:
 
 - Advanced filtering (action, entity, user, org)
 - Search functionality
-- Pagination (10/25/50/100 per page)
+- Grouped by day, newest first, with the filters in the URL so a view can be shared
 - Export for compliance
-- Real-time updates
 
-### Organization Registration (NEW)
+### Organization Registration
 
 **Route:** `/admin/access/organizations/new` **File:**
 `apps/otta-web/src/pages/admin/access/organizations/OrganizationRegistrationPage.tsx`
@@ -479,7 +476,7 @@ Features:
 - Centered card layout for onboarding
 - Navigates to members page on success
 
-### Organization Settings (NEW)
+### Organization Settings
 
 **Route:** `/admin/access/organizations/:id/settings` **File:**
 `apps/otta-web/src/pages/admin/access/organizations/OrganizationSettingsPage.tsx`
@@ -492,9 +489,8 @@ Features:
 - Organization metadata display
 - **Danger Zone** section for deletion
 - Confirmation dialog for destructive actions
-- Real-time updates with optimistic UI
 
-### User Profile (NEW)
+### User Profile
 
 **Route:** `/profile` **File:** `apps/otta-web/src/pages/user/UserProfilePage.tsx`
 
@@ -506,23 +502,22 @@ Features:
 - Copyable user ID
 - Email verification badge
 - Member since date display
-- Security section (password, 2FA placeholders)
+- Security section (password, active sessions, linked providers)
 - Dark mode support
 
-### User Management (NEW)
+### User Management
 
 **Route:** `/admin/access/users` **File:** `apps/otta-web/src/pages/admin/access/users/UserManagementPage.tsx`
 
 Features:
 
 - Admin-level system-wide user management
-- Statistics cards (total users, admins, verified, new this month)
 - Search functionality
 - User table with avatars, roles, status
 - Links to individual user RBAC page
 - GitHub-like minimal design
 
-### User RBAC Assignment (NEW)
+### User RBAC Assignment
 
 **Route:** `/admin/access/users/:userId/rbac` **File:** `apps/otta-web/src/pages/admin/access/users/UserRBACPage.tsx`
 
@@ -534,9 +529,8 @@ Features:
 - Quick role change dropdown with color-coded badges
 - Remove from organization
 - User profile display with avatar
-- Real-time updates with optimistic UI
 
-### Organization Switcher Component (NEW)
+### Organization Switcher Component
 
 **File:** `apps/otta-web/src/components/OrganizationSwitcher.tsx`
 
@@ -654,7 +648,7 @@ import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, useTogglePermiss
 // List roles (GET /api/admin/roles)
 const { data: roles } = useRoles();
 
-// Create role (POST /api/admin/roles — platform-admin only; roles are platform-wide bundles)
+// Create role (POST /api/admin/roles: platform-admin only; roles are platform-wide bundles)
 const createMutation = useCreateRole();
 createMutation.mutate({
     name: 'content-reviewer',
@@ -788,7 +782,7 @@ async function getSecurityContext(request: Request, env: CloudflareEnv): Promise
         userId,
         organizationId,
         memberOrganizationIds,
-        appId: getOttabaseConfig(env).appId, // server config — never an x-app-id header
+        appId: getOttabaseConfig(env).appId, // server config, never an x-app-id header
         roles: session?.user?.roles,
         permissions: session?.user?.permissions,
     };
@@ -821,11 +815,11 @@ see `packages/auth/README.md` for the full route table.
 
 ### Organization ID Sources
 
-1. **Session** — `session.user.organizationId`, resolved server-side at sign-in (the default).
-2. **`X-Org-Id` header** — sent by the API client when the user picks an org in the switcher. It is only a request: the
+1. **Session**: `session.user.organizationId`, resolved server-side at sign-in (the default).
+2. **`X-Org-Id` header**: sent by the API client when the user picks an org in the switcher. It is only a request: the
    server uses it if it is in the user's active memberships and ignores it otherwise.
 
-Never derive the organization from an unvalidated header, query parameter or subdomain — RLS trusts whatever
+Never derive the organization from an unvalidated header, query parameter or subdomain, RLS trusts whatever
 `organizationId` it is given. See AGENTS.MD "Security Context: what may be trusted".
 
 ### Frontend Integration
@@ -887,7 +881,7 @@ works seamlessly ✅ **Audit-ready** - All violations logged with full user cont
 Row-Level Security (RLS) automatically enforces data isolation at the database level. Every query is filtered based on
 your security context (user, organization, app) **without any manual filtering required**.
 
-**Where it applies:** RLS runs on the **secure CRUD path** — `executeSecureCrudRequest` / `rlsMiddleware`, which
+**Where it applies:** RLS runs on the **secure CRUD path**: `executeSecureCrudRequest` / `rlsMiddleware`, which
 otta-web's generic `/api/ottaorm/{model}` route uses. Direct model calls in server code (`Post.where(...)`) are trusted
 code and are **not** filtered: when a custom route reads tenant data, pass the tenant filter yourself (from the verified
 security context) or route the request through `executeSecureCrudRequest`.
@@ -991,11 +985,11 @@ The security context determines what data a user can access:
 ```typescript
 interface SecurityContext {
     userId?: string; // Current user ID (from the verified session)
-    organizationId?: string | null; // Active org — membership-validated (null for single-founder)
+    organizationId?: string | null; // Active org, membership-validated (null for single-founder)
     appId?: string; // From server config (getOttabaseConfig), never a request header
     roles?: string[]; // User roles in the active org
     permissions?: string[]; // User permissions in the active org
-    platformAdmin?: boolean; // System-scoped platform:admin grant — never inferred from a role name
+    platformAdmin?: boolean; // System-scoped platform:admin grant, never inferred from a role name
     memberOrganizationIds?: string[]; // Orgs with an active membership
     memberGroupIds?: string[]; // Accessible user groups
 }
@@ -1130,7 +1124,7 @@ export async function handleCreatePost(request: Request, env: CloudflareEnv): Pr
 
     const user = await User.find(session.user.id);
     if (!(await user?.hasPermission('posts:create', { organizationId }))) {
-        return errorResponse('Forbidden', 403); // generic — never name the missing permission
+        return errorResponse('Forbidden', 403); // generic, never name the missing permission
     }
     // ... create post
 }

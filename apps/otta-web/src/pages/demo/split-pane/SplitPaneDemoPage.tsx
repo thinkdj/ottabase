@@ -4,13 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@otta
 import { DemoPageHeader } from '../DemoPageHeader';
 
 export function SplitPaneDemoPage() {
-    const [size1, setSize1] = useState<number>(50);
-    const [size2, setSize2] = useState<number>(50);
-    const [size3, setSize3] = useState<number>(50);
+    const [size1, setSize1] = useState<number>(300);
+    const [size2, setSize2] = useState<number>(300);
+    const [size3, setSize3] = useState<number>(33);
 
     return (
         <div className="space-y-8">
-            <DemoPageHeader title="Split Pane" description="Minimal, clean split-pane component with no frills" />
+            <DemoPageHeader title="Split pane" description="Minimal, clean split-pane component with no frills" />
 
             {/* Basic Vertical Split */}
             <Card>

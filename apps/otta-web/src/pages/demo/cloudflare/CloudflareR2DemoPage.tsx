@@ -1,6 +1,7 @@
 import { ConfirmDialog } from '@ottabase/ui-components';
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
 import { useEffect, useState } from 'react';
+import { DemoAdminNotice, useDemoAdmin } from '../DemoAdminOnly';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 interface R2Object {
@@ -12,6 +13,7 @@ interface R2Object {
 }
 
 export function CloudflareR2DemoPage() {
+    const canUse = useDemoAdmin();
     const [file, setFile] = useState<File | null>(null);
     const [key, setKey] = useState('');
     const [objects, setObjects] = useState<R2Object[]>([]);
@@ -42,8 +44,10 @@ export function CloudflareR2DemoPage() {
     };
 
     useEffect(() => {
+        if (!canUse) return;
         void loadObjects();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canUse]);
 
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,11 +158,13 @@ export function CloudflareR2DemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="R2 Storage"
+                title="R2"
                 description="Object storage for file uploads and downloads"
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare"
             />
+
+            {!canUse && <DemoAdminNotice />}
 
             {error ? <Alert variant="destructive">{error}</Alert> : null}
 

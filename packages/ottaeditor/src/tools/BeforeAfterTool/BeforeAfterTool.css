@@ -52,7 +52,7 @@
     height: 1rem;
 }
 
-/* ── Orientation Toggle — segment pattern ────────────────────────────────── */
+/* ── Orientation Toggle: segment pattern ────────────────────────────────── */
 
 .cdx-before-after__orientation-toggle {
     display: inline-flex;
@@ -273,7 +273,7 @@
     object-fit: cover;
 }
 
-/* ── Drag Handle — floating control over imagery, keeps elevation ────────── */
+/* ── Drag Handle: floating control over imagery, keeps elevation ────────── */
 
 .cdx-before-after__handle {
     position: absolute;
@@ -318,7 +318,7 @@
 
 /* ── Labels ──────────────────────────────────────────────────────────────── */
 
-/* Micro-label chips on a soft scrim — matches the renderer's .cdc-before-after__label */
+/* Micro-label chips on a soft scrim, matches the renderer's .cdc-before-after__label */
 .cdx-before-after__label {
     position: absolute;
     padding: 0.25rem 0.5rem;

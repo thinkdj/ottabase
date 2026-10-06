@@ -1,7 +1,7 @@
 /**
- * @ottabase/ottadate — parseFuzzyInput
+ * @ottabase/ottadate: parseFuzzyInput
  *
- * Turns a typed memory into a FuzzyDateTime — the text front-end to the same
+ * Turns a typed memory into a FuzzyDateTime, the text front-end to the same
  * vocabulary the pickers build visually. A small token grammar (no NLP deps):
  *
  *   "early 90s"        → decade + part        "Early 1990s"
@@ -13,7 +13,7 @@
  *   "yesterday" / "last night" / "tonight" / "this morning"
  *
  * Deliberately STRICT: any unrecognized token fails the parse (null) rather
- * than guessing — a wrong date silently accepted is worse than a red ring.
+ * than guessing, a wrong date silently accepted is worse than a red ring.
  * English-only for now. Ambiguity conventions: "may 10" reads as May 10 of the
  * current year (day, not 2010); two-digit years/decades resolve to the most
  * recent past occurrence ("98" → 1998, "20s" → 2020s, "30s" → 1930s).
@@ -234,7 +234,7 @@ export function parseFuzzyInput(input: string, options: ParseFuzzyOptions = {}):
     let day: number | null = null;
 
     if (relative) {
-        // Relative words own the whole date — explicit date tokens contradict them
+        // Relative words own the whole date, explicit date tokens contradict them
         if (decade != null || year != null || month != null || smallNumbers.length) return null;
         const d = new Date(now.getTime());
         if (relative === 'yesterday') d.setDate(d.getDate() - 1);
@@ -244,7 +244,7 @@ export function parseFuzzyInput(input: string, options: ParseFuzzyOptions = {}):
     }
 
     if (decade != null) {
-        // A decade is terminal — no finer tokens may accompany it
+        // A decade is terminal: no finer tokens may accompany it
         if (year != null || month != null || smallNumbers.length || hour != null) return null;
         if (part && !EML.includes(part)) return null;
         return createFuzzyDateTime(new Date(Date.UTC(decade, 0, 1)), 'decade', {
@@ -255,7 +255,7 @@ export function parseFuzzyInput(input: string, options: ParseFuzzyOptions = {}):
         });
     }
 
-    // Distribute leftover 1–2 digit numbers: day (≤31, needs a month) or 2-digit year
+    // Distribute leftover 1 to 2 digit numbers: day (≤31, needs a month) or 2-digit year
     for (const n of smallNumbers) {
         if (month != null && n >= 1 && n <= 31 && day == null) {
             day = n;
@@ -286,7 +286,7 @@ export function parseFuzzyInput(input: string, options: ParseFuzzyOptions = {}):
     if (part) {
         if (hour != null) return null; // "night 14:30" is contradictory
         if (DAY_PARTS.includes(part) && day == null) return null;
-        if (!DAY_PARTS.includes(part) && day != null) return null; // "early may 21" — day is already precise
+        if (!DAY_PARTS.includes(part) && day != null) return null; // "early may 21", day is already precise
         if (part in SEASONS || ['spring', 'summer', 'autumn', 'winter'].includes(part)) {
             if (month != null) return null; // "summer may 2010" is contradictory
         }

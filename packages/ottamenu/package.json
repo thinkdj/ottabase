@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/ottamenu",
     "version": "1.0.0",
-    "description": "Pure menu types, renderers, and tree utilities for Ottabase – sidebar, flyout, mega, navbar, dropdown, footer",
+    "description": "Pure menu types, renderers, and tree utilities for Ottabase: sidebar, flyout, mega, navbar, dropdown, footer",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",

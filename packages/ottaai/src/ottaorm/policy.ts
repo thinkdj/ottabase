@@ -1,11 +1,11 @@
 // ====================================================================
-// @ottabase/ottaai — RLS policy for `ai_provider_credentials`
+// @ottabase/ottaai, RLS policy for `ai_provider_credentials`
 // --------------------------------------------------------------------
 // PLANE: MANAGEMENT (tenant CRUD over the credential table).
 //
 // The CALL plane (the resolver) deliberately BYPASSES RLS: it is trusted server
 // code holding an already-authenticated context, and RLS stops tenant A editing
-// tenant B's row — it does not police the server's own lookup. That bypass is
+// tenant B's row, it does not police the server's own lookup. That bypass is
 // INTENTIONAL. Do not "restore consistency" by routing the resolver through here.
 //
 // Registration (AFTER initRLS(), because the registry is last-write-wins):
@@ -43,7 +43,7 @@ export interface CredentialPolicyOptions {
 /**
  * RLS FILTERS ARE SINGLE-DIMENSION, SO THE TWO PLANES LEGITIMATELY DISAGREE.
  *
- * A filter is an AND-ed equality map; it cannot express `org = X OR user = Y` — exactly
+ * A filter is an AND-ed equality map; it cannot express `org = X OR user = Y`: exactly
  * the disjunction the resolver evaluates.
  *
  * | strategy         | filter dimension                 | rows the resolver may use that this cannot show |
@@ -70,8 +70,8 @@ export function createCredentialPolicy(options: CredentialPolicyOptions): ModelR
     /**
      * Membership-verified org id, or null.
      *
-     * Returning the context's CLAIMED org id verbatim — next to a membership list that is
-     * never read — is the single highest-leverage fix-once-instead-of-N-times item in this
+     * Returning the context's CLAIMED org id verbatim, next to a membership list that is
+     * never read, is the single highest-leverage fix-once-instead-of-N-times item in this
      * design: every consuming app would inherit the hole. `memberOrganizationIds` is the
      * framework's already-verified list; `undefined` means "membership unknown", an empty
      * array is a real "no orgs" answer and must fail closed.
@@ -94,7 +94,7 @@ export function createCredentialPolicy(options: CredentialPolicyOptions): ModelR
 
         // `appId` is AND-ed in on EVERY operation. A boundary enforced on the call plane
         // but not the management plane is not a boundary: a second app on the shared
-        // database could not USE another app's key but could REPLACE it — swapping the
+        // database could not USE another app's key but could REPLACE it, swapping the
         // secret for one they control so the first app's inference silently flows through
         // it. Strictly worse than a read leak.
         if (context.appId) base.appId = context.appId;
@@ -123,7 +123,7 @@ export function createCredentialPolicy(options: CredentialPolicyOptions): ModelR
         model: 'ai_provider_credentials',
         policy: { level: 'custom', filter },
         // Injected on create, validated always. Note this ALSO widens the writable
-        // allow-list on create AND update — which is exactly why the model's own `update`
+        // allow-list on create AND update, which is exactly why the model's own `update`
         // override rejects tenancy keys, where no policy config can re-enable them.
         contextFields: ['organizationId', 'appId', 'userId'],
         auditEnabled: true,
@@ -134,7 +134,7 @@ export function createCredentialPolicy(options: CredentialPolicyOptions): ModelR
  * The org-scoped `authorize` hook, in the framework's native shape (RBAC permissions).
  *
  * RLS isolates TENANTS, not MEMBERS. Under an org strategy every member of the org could
- * otherwise read the key hint, replace the key, disable it, or delete it — and replacement
+ * otherwise read the key hint, replace the key, disable it, or delete it, and replacement
  * is the sharp end: swap the org key for one you control and every colleague's prompts
  * flow through your provider account. User-scoped rows are self-owned and need no gate.
  *

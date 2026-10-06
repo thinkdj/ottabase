@@ -38,7 +38,7 @@ interface DataTableToolbarProps<TData> {
 }
 
 /**
- * Toolbar for the DataTable — search input, column visibility toggle,
+ * Toolbar for the DataTable: search input, column visibility toggle,
  * bulk action buttons, and custom slots.
  */
 export function DataTableToolbar<TData>({
@@ -46,7 +46,7 @@ export function DataTableToolbar<TData>({
     searchValue: controlledSearch,
     onSearchChange,
     showSearch = onSearchChange !== undefined || !table.options.manualFiltering,
-    searchPlaceholder = 'Search...',
+    searchPlaceholder = 'Search…',
     showColumnVisibility = true,
     bulkActions,
     selectedCount = 0,

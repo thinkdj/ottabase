@@ -1,6 +1,6 @@
 /**
  * Avatar Edit Modal
- * Shows cropper directly – drop or click the empty stage, or Replace on the photo.
+ * Shows cropper directly, drop or click the empty stage, or Replace on the photo.
  * Supports pre-loading the current avatar (URL, base64, or blob).
  */
 
@@ -29,7 +29,7 @@ interface AvatarEditModalProps {
     onError?: (message: string) => void;
     /** When true, shows "Remove current photo" option */
     hasImage?: boolean;
-    /** Current avatar URL/base64 – pre-loaded into cropper when modal opens */
+    /** Current avatar URL/base64: pre-loaded into cropper when modal opens */
     currentImageUrl?: string | null;
 }
 

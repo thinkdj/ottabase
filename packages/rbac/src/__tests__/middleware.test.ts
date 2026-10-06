@@ -16,7 +16,7 @@ function mockUser(permissionsByOrg: Record<string, string[]>) {
 const ok = vi.fn(async (_request: Request) => new Response('ok'));
 
 describe('withRBAC', () => {
-    it('returns 401 when no getUserFromRequest is configured — never trusts an x-user-id header', async () => {
+    it('returns 401 when no getUserFromRequest is configured, never trusts an x-user-id header', async () => {
         const handler = withRBAC(ok, { permissions: 'users:read' } as any);
         const res = await handler(new Request('http://x/', { headers: { 'x-user-id': 'user-1' } }));
         expect(res.status).toBe(401);

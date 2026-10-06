@@ -48,7 +48,7 @@ const TRASH_ICON =
     '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 
 /**
- * LayoutTool – multi-column layout where each column contains a full
+ * LayoutTool: multi-column layout where each column contains a full
  * nested EditorJS instance. Supports presets 50/50, 25/75, 75/25,
  * 33/67, 67/33, and three equal columns.
  */
@@ -300,7 +300,7 @@ export default class LayoutTool implements BlockTool {
                 const Tool = require(module).default || require(module);
                 tools[name] = config ? { class: Tool, config } : { class: Tool };
             } catch {
-                // Tool not available – skip silently
+                // Tool not available: skip silently
             }
         }
 

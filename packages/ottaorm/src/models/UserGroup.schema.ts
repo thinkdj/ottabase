@@ -13,7 +13,7 @@ import { organizationsTable } from './Organization.schema';
 import { usersTable } from './User.schema';
 
 /**
- * user_groups — a named grouping of users inside one organization, optionally scoped to a single
+ * user_groups: a named grouping of users inside one organization, optionally scoped to a single
  * app (`app_id` null = shared across the org's apps).
  */
 export const userGroupsTable = sqliteTable(
@@ -49,7 +49,7 @@ export const userGroupsTable = sqliteTable(
 );
 
 /**
- * user_group_members — a user's (or a pending email invite's) membership in a user_group.
+ * user_group_members: a user's (or a pending email invite's) membership in a user_group.
  *
  * Mirrors organization_members: a free-form `role` (apps define the vocabulary; defaults to
  * "member"), a status lifecycle (`invited` → `active`, or `suspended`), and email-first invites

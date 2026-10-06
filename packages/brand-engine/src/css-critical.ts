@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Critical CSS for Edge/SSR (Zero FOUC)
+// BrandEngine, Critical CSS for Edge/SSR (Zero FOUC)
 //
 // Generates :root { --var: value; } string from resolved theme.
 // Injected at edge/SSR before first paint to eliminate flash of unstyled content.
@@ -43,7 +43,7 @@ export function buildCriticalStyleTag(theme: ResolvedBrandTheme): string {
 /**
  * Wraps dual-mode critical CSS (light + dark) for universal theme application.
  * Ensures correct palette shows on first paint regardless of user's color scheme.
- * Pass `sanitize` (e.g. sanitizeCssForStyleTag) when injecting into raw HTML —
+ * Pass `sanitize` (e.g. sanitizeCssForStyleTag) when injecting into raw HTML:
  * v2 token values (palette, shadows, links colors) are admin-authored free-form
  * strings, so the tag must be breakout-proofed like effects/custom CSS.
  * (The client path is immune: upsertStyleElement assigns textContent.)
@@ -62,7 +62,7 @@ export function buildCriticalStyleTagDual(
  * Wraps the generated effects stylesheet (@font-face, @keyframes, text-style
  * voices, link contract, effect utilities, theme css) for edge injection.
  * Returns '' when the theme uses none of the generative categories.
- * Pass `sanitize` (e.g. sanitizeCssForStyleTag) when injecting into raw HTML —
+ * Pass `sanitize` (e.g. sanitizeCssForStyleTag) when injecting into raw HTML,
  * effects.css is theme-authored and could otherwise close the style tag.
  */
 export function buildEffectsStyleTag(theme: ResolvedBrandTheme, sanitize?: (css: string) => string): string {

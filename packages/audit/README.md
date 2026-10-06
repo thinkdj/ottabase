@@ -330,7 +330,7 @@ Every `log*` helper persists `context.organizationId` and `context.appId` with t
 ### Middleware: `withAudit(handler, options)`
 
 Wraps a fetch-style handler and logs each request. The acting user comes only from `options.getActor`, resolved from a
-verified session — request headers such as `x-user-id` are client-controlled and are never read. Without `getActor` the
+verified session, request headers such as `x-user-id` are client-controlled and are never read. Without `getActor` the
 entry has no user.
 
 ```typescript

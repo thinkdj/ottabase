@@ -1,16 +1,16 @@
 // ============================================================
-// @ottabase/ottaai — Core types (L0, dependency-free)
+// @ottabase/ottaai, Core types (L0, dependency-free)
 // ============================================================
 // Vocabulary, normalised once so the rest of the package can stop arguing about it:
-//   mode      — WHERE a key may come from
-//   strategy  — WHOSE key outranks whose
-//   context   — the AUTHENTICATED org/user/app of this request
-//   source    — 'byok' | 'platform' | null
-//   reason    — WHY that source
-//   task key  — which declared task this call belongs to
+//   mode: WHERE a key may come from
+//   strategy, WHOSE key outranks whose
+//   context, the AUTHENTICATED org/user/app of this request
+//   source, 'byok' | 'platform' | null
+//   reason, WHY that source
+//   task key, which declared task this call belongs to
 //
 // Two collisions worth naming because they are silent:
-//   • Do NOT name either the precedence dial or the request identity `scope` —
+//   • Do NOT name either the precedence dial or the request identity `scope`:
 //     they sit one line apart at every call site.
 //   • Do NOT use `app` as a mode or source value. `appId` is a real tenancy
 //     dimension here, so `mode: 'app'` reads as "the app dimension". Use `platform`.
@@ -24,18 +24,18 @@ import type { SecretRef, SecretValue } from './secret';
 // ---------------------------------------------------------------------------
 
 /**
- * Where a key may come from — really TWO PERMISSION BITS.
+ * Where a key may come from, really TWO PERMISSION BITS.
  *
  * | mode       | mayUseTenantKey | mayUsePlatformKey |
  * | ---------- | --------------- | ----------------- |
  * | `platform` | ✗               | ✓                 |
  * | `auto`     | ✓               | ✓                 |
  * | `byok`     | ✓               | ✗                 |
- * | —          | ✗               | ✗ → error         |
+ * |, | ✗               | ✗ → error         |
  */
 export type AiMode = 'platform' | 'auto' | 'byok';
 
-/** Whose key outranks whose. A TASK MAY NEVER OVERRIDE THIS — see `AiTaskPolicy`. */
+/** Whose key outranks whose. A TASK MAY NEVER OVERRIDE THIS, see `AiTaskPolicy`. */
 export type AiStrategy = 'user' | 'org' | 'user-then-org' | 'org-then-user';
 
 /** App-dimension matching. `strict` is the default and the only safe first configuration. */
@@ -72,7 +72,7 @@ export interface AiTenancyTuple {
     organizationId: string | null;
     /**
      * The deployment's app identity. MUST come from authenticated deployment identity
-     * (config), NEVER from a request header, host, or query parameter — it is an
+     * (config), NEVER from a request header, host, or query parameter, it is an
      * isolation boundary, and a boundary derived from client input is not one.
      */
     appId: string | null;
@@ -89,12 +89,12 @@ export interface AiTenancyTuple {
  *
  * WHY THAT MATTERS: the resolver deliberately bypasses RLS (it is trusted code with an
  * already-authenticated context). A resolver running on an UNVERIFIED context is a
- * cross-tenant key oracle, and the realistic bug is mundane — an org id derived from a
+ * cross-tenant key oracle, and the realistic bug is mundane, an org id derived from a
  * header, subdomain or query parameter, fed to both the RLS policy and the RLS-bypassing
  * resolver. Set one header, run on another tenant's key and bill.
  *
  * WHAT THE BRAND IS NOT: an authorization boundary. It stops an ACCIDENT (a hand-built
- * literal), not an adversary — the minting function is one import away for anyone editing
+ * literal), not an adversary, the minting function is one import away for anyone editing
  * this package, and `contextFrom` trusts whatever the host's mapper returns. Membership is
  * verified separately and unconditionally, on every resolution, inside the resolver.
  *
@@ -114,7 +114,7 @@ export interface AiContext extends AiTenancyTuple {
  * A credential as the PURE layers see it: a plain record, never an ORM instance.
  *
  * With ORM instances in the pure layer, every consumer's tests duplicate a cast through
- * a constructor that is not public API — and the "storage interface" becomes fiction,
+ * a constructor that is not public API, and the "storage interface" becomes fiction,
  * because every implementation would have to produce ORM instances.
  *
  * NON-SERIALISABLE BY CONSTRUCTION: `secret` carries the union, so a record must never
@@ -123,7 +123,7 @@ export interface AiContext extends AiTenancyTuple {
  * never putting a record in an event payload (the payload types forbid it).
  *
  * Two details must survive the store's row→record mapping:
- *  • ABSENT FLAGS ARE PERMISSIVE — only an explicit `false` disables or deactivates, so
+ *  • ABSENT FLAGS ARE PERMISSIVE, only an explicit `false` disables or deactivates, so
  *    migrated/seeded/imported rows are not silently dead.
  *  • The tie-break timestamp is read DEFENSIVELY (Date *or* epoch number) because casts
  *    may not have been applied.
@@ -132,13 +132,13 @@ export interface CredentialRecord {
     id: string;
     label: string | null;
     provider: string;
-    /** Bare id, qualified ref, or `dynamic/<route>` — one column holds all three. */
+    /** Bare id, qualified ref, or `dynamic/<route>`: one column holds all three. */
     model: string | null;
     secret: SecretRef;
     keyHint: string;
     /** Tenant pause switch. HARD FILTER. Absent counts as enabled. */
     enabled: boolean;
-    /** Tenant preference among siblings. RANK ONLY — never excludes. Absent counts as active. */
+    /** Tenant preference among siblings. RANK ONLY, never excludes. Absent counts as active. */
     isActive: boolean;
     organizationId: string | null;
     userId: string | null;
@@ -147,10 +147,10 @@ export interface CredentialRecord {
     updatedAt: number;
     /** Non-secret, operator-validated per-provider bag (see `destinationKeysFor`). */
     transportConfig: Record<string, unknown> | null;
-    /** Keyring index — the ENVELOPE stays authoritative, these columns are for batching only. */
+    /** Keyring index: the ENVELOPE stays authoritative, these columns are for batching only. */
     keyId: string | null;
     formatVersion: string | null;
-    // Health (system-written only — see the three-axis lifecycle rule).
+    // Health (system-written only: see the three-axis lifecycle rule).
     lastUsedAt: number | null;
     lastSuccessAt: number | null;
     lastErrorAt: number | null;
@@ -159,7 +159,7 @@ export interface CredentialRecord {
 }
 
 /**
- * The safe projection of a credential — everything the management UI and support need,
+ * The safe projection of a credential, everything the management UI and support need,
  * with the secret union STRUCTURALLY ABSENT from the type.
  *
  * `explainResolution` returns these, never `CredentialRecord`s: a version that returns
@@ -195,7 +195,7 @@ export interface CredentialView {
 /**
  * Every candidate gets a VERDICT; only eligible candidates get a SCORE.
  *
- * (A tri-state numeric score cannot carry these reasons — `-1` for disabled and `0`
+ * (A tri-state numeric score cannot carry these reasons, `-1` for disabled and `0`
  * for out-of-scope end up sharing a channel with specificity.)
  */
 export type CredentialVerdict =
@@ -208,7 +208,7 @@ export type CredentialVerdict =
     | 'CAPABILITY_UNMET'
     | 'PROVIDER_UNREGISTERED';
 
-/** Why the resolver ended where it did. Returned on EVERY path — public API. */
+/** Why the resolver ended where it did. Returned on EVERY path, public API. */
 export type ResolutionReason =
     | 'SELECTED'
     | 'PLATFORM_FALLBACK'
@@ -232,7 +232,7 @@ export type ResolutionReason =
 /** Where the key that will pay for this call came from. */
 export type ResolutionSource = 'byok' | 'platform' | null;
 
-/** Per-candidate detail for `explainResolution` — a verdict projection, never records. */
+/** Per-candidate detail for `explainResolution`: a verdict projection, never records. */
 export interface CandidateExplanation extends CredentialView {
     verdict: CredentialVerdict;
     /** Specificity score. Present only for `ELIGIBLE` candidates. */
@@ -261,12 +261,12 @@ export interface PlatformAiConfig {
     apiToken?: string;
     /**
      * The provider whose key `providerKey` belongs to. DECLARED, never inferred from the
-     * key's prefix — inference is a guess that goes stale.
+     * key's prefix, inference is a guess that goes stale.
      */
     provider?: string;
     /**
      * The platform's provider key. OPTIONAL ON PURPOSE: gateway-billed inference has no
-     * platform provider key, and sending no provider authorization header is a FEATURE —
+     * platform provider key, and sending no provider authorization header is a FEATURE,
      * it is what routes a call to gateway-billed inference.
      */
     providerKey?: string;
@@ -278,7 +278,7 @@ export interface PlatformAiConfig {
     billing?: 'provider-key' | 'unified';
     /** Platform default model. `dynamic/<route>` requires provider-native Gateway authentication. */
     model?: string;
-    /** Injected fetch — lets resolver tests run with no network. Inherited by tenant clients. */
+    /** Injected fetch: lets resolver tests run with no network. Inherited by tenant clients. */
     fetch?: typeof fetch;
     /** Per-request defaults handed to the transport (timeouts, cache ttl, …). */
     defaults?: Record<string, unknown>;
@@ -290,7 +290,7 @@ export interface PlatformAiConfig {
  * The result of merging a credential OVER the platform config.
  *
  * NOTE this object carries the tenant's provider key. It exists ONLY inside the transport
- * adapter and is NEVER part of a resolution return shape — returning it would mean any app
+ * adapter and is NEVER part of a resolution return shape, returning it would mean any app
  * that logs a resolution has written a tenant's provider key to a log aggregator.
  */
 export interface MergedTransportConfig {
@@ -334,13 +334,13 @@ export interface ResolutionConfigSummary {
 // ---------------------------------------------------------------------------
 
 export interface AiResolution<TClient = unknown> {
-    /** The instrumented client, or null. ABSENCE OF A CLIENT IS THE SIGNAL — resolve never throws. */
+    /** The instrumented client, or null. ABSENCE OF A CLIENT IS THE SIGNAL, resolve never throws. */
     client: TClient | null;
     source: ResolutionSource;
     /** The terminal reason. */
     reason: ResolutionReason;
     /**
-     * Why the TENANT path produced nothing — populated whenever the tenant path was
+     * Why the TENANT path produced nothing, populated whenever the tenant path was
      * attempted. Without this, the default configuration (`auto`) flattens every distinct
      * cause into `PLATFORM_FALLBACK`, and "why am I not on my own key?" becomes
      * permanently unanswerable.

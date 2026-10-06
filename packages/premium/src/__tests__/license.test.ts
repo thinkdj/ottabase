@@ -1,5 +1,5 @@
 // ============================================================
-// License verification — the security boundary of the whole framework.
+// License verification, the security boundary of the whole framework.
 //
 // Every test here answers one question: can a customer unlock a Premium Package
 // WITHOUT the vendor's private key? A pass means no; a regression here means the
@@ -70,7 +70,7 @@ describe('forgery resistance', () => {
         const token = await issueLicense({ ...base, plan: 'starter' }, keys.privateKey);
         const [prefix, , signature] = token.split('.');
 
-        // Re-encode the payload with an upgraded plan — the attack the signature exists to stop.
+        // Re-encode the payload with an upgraded plan, the attack the signature exists to stop.
         const forgedPayload = bytesToBase64Url(
             new TextEncoder().encode(JSON.stringify({ ...base, plan: 'enterprise', id: 'lic_x', iat: 1 })),
         );

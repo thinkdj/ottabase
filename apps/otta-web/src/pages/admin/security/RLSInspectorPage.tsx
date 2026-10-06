@@ -1,5 +1,5 @@
 /**
- * Row-Level Security (RLS) Inspector
+ * Row-level security (RLS) inspector
  *
  * Shows the platform's RLS policy summary and a panel of representative
  * security checks (tenant isolation, cross-tenant write blocks, audit-log
@@ -235,9 +235,9 @@ export function RLSInspectorPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Row-Level Security (RLS) Demo</h1>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Row-level security</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Database-level security that makes data leaks impossible
+                        Tenant isolation policies, and a live check that they hold.
                     </p>
                 </div>
             </div>
@@ -275,7 +275,7 @@ export function RLSInspectorPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-sm leading-relaxed text-muted-foreground">
-                                Row-Level Security (RLS) automatically enforces data isolation at the database level.
+                                Row-level security (RLS) automatically enforces data isolation at the database level.
                                 Every query is filtered based on your security context (user, organization, app) without
                                 any manual filtering required.
                             </p>

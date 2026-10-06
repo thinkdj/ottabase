@@ -11,7 +11,7 @@ import { ReferralTracking } from '@ottabase/referrals';
 export interface ReferralAttributionOptions {
     newUserId: string;
     referralCode: string;
-    /** Click/conversion context — captured at signup time */
+    /** Click/conversion context: captured at signup time */
     ipAddress?: string | null;
     userAgent?: string | null;
     referer?: string | null;
@@ -87,7 +87,7 @@ export async function processReferralAttribution(
         }
 
         // 3. Create conversion record (clicks are in WAE; only conversions go to D1)
-        // Capture full context — ipAddress, userAgent, referer, meta (UTM params, headers)
+        // Capture full context: ipAddress, userAgent, referer, meta (UTM params, headers)
         await ReferralTracking.create({
             userId: referrerId,
             referralCode,

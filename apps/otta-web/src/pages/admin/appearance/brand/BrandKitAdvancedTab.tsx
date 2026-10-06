@@ -106,7 +106,7 @@ export function BrandKitAdvancedTab({
                 />
             </div>
 
-            {/* Raw design-tokens JSON – power-user escape hatch */}
+            {/* Raw design-tokens JSON: power-user escape hatch */}
             {onTokensChange && (
                 <div>
                     <Label htmlFor="tokensJson">Design tokens (JSON)</Label>

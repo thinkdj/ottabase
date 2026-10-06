@@ -215,7 +215,7 @@ export function AdminBlogListPage() {
 
             <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content</h1>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Posts</h1>
                     <p className="max-w-3xl text-muted-foreground">
                         Articles, quick thoughts, photo journals, changelogs, documentation, news and announcements.
                     </p>

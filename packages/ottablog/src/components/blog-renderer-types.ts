@@ -3,8 +3,8 @@
  *
  * Prop/data contracts for the blog renderer and excerpt card. These are consumed as type-only
  * shapes by pure modules (theme types, plugin types, the plugin content injector) as well as by
- * the rendered `BlogRenderer.tsx`. Keeping them here — free of any `@ottabase/ottarenderer` or
- * React runtime import — lets the pure package root reference them without pulling in rendered UI.
+ * the rendered `BlogRenderer.tsx`. Keeping them here, free of any `@ottabase/ottarenderer` or
+ * React runtime import, lets the pure package root reference them without pulling in rendered UI.
  */
 
 import type React from 'react';
@@ -32,7 +32,7 @@ export interface BlogPostData {
     excerpt?: string | null;
     /** First-class plain-text body for short-form thoughts. */
     blurbText?: string | null;
-    /** The same post elsewhere — Instagram, X, Facebook. See `PostCrosspost`. */
+    /** The same post elsewhere: Instagram, X, Facebook. See `PostCrosspost`. */
     crossposts?: PostCrosspost[] | null;
     /** Optional short introduction for a photo-first post. */
     photoNote?: string | null;
@@ -50,7 +50,7 @@ export interface BlogPostData {
     readingTimeMinutes?: number | null;
     wordCount?: number | null;
     isFeatured?: boolean;
-    /** When this content was originally written (fuzzy date) — distinct from publishedAt */
+    /** When this content was originally written (fuzzy date), distinct from publishedAt */
     originalDate?: OriginalDate | null;
     publishedAt?: Date | string | number | null;
     createdAt?: Date | string | number | null;

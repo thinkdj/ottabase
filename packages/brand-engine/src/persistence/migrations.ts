@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Custom migrations
+// Brand Engine, Custom migrations
 // Indexes for menu_items to optimize WHERE appId and WHERE menuId queries.
 // ---------------------------------------------------------------------------
 

@@ -298,7 +298,7 @@ export async function executeSecureCrudRequest(
     } catch (error) {
         if (error instanceof RLSError) {
             // Persist the violation at the request boundary (awaited), where it ties into the
-            // response lifecycle — instead of an unreliable fire-and-forget from the constructor.
+            // response lifecycle, instead of an unreliable fire-and-forget from the constructor.
             if (error.violation) {
                 try {
                     await logSecurityViolation(error.violation);
@@ -361,7 +361,7 @@ export async function executeSecureCrudRequest(
  * Fail closed if any RLS-managed field is not a real column on the registered model.
  * `buildWhereConditions` silently drops unknown columns, so an RLS filter referencing a
  * mistyped/missing column would otherwise evaporate and return UNSCOPED rows. When the model
- * isn't registered we skip (handleCrud returns MODEL_NOT_FOUND) — so this is also a no-op in
+ * isn't registered we skip (handleCrud returns MODEL_NOT_FOUND), so this is also a no-op in
  * tests that register only a policy without a model.
  */
 function assertSecurityColumns(model: string, fields: string[], context: SecurityContext): void {
@@ -379,7 +379,7 @@ function assertSecurityColumns(model: string, fields: string[], context: Securit
 }
 
 /**
- * Fields the RLS policy injects/enforces on writes — these must be allowed past the
+ * Fields the RLS policy injects/enforces on writes, these must be allowed past the
  * writable-field check even if the model marks them non-editable.
  */
 function securityWriteFields(model: string): string[] {

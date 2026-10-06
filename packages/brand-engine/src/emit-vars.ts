@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – CSS variable emitters
+// BrandEngine, CSS variable emitters
 //
 // Small, per-category "token value → CSS custom property" writers shared by
 // the full theme var-map builder (css-runtime.ts) and the scoped-room CSS
 // builder (effects/index.ts). Each emitter writes ONLY the fields the theme
-// defines — sparse categories stay sparse.
+// defines, sparse categories stay sparse.
 // ---------------------------------------------------------------------------
 
 import type {

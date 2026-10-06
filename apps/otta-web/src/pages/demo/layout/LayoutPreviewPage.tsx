@@ -13,7 +13,7 @@ function isPresetId(value: string | undefined): value is LayoutPresetId {
 }
 
 /**
- * /layout-preview/$preset — each URL pins one built-in preset for itself via useLayoutMeta,
+ * /layout-preview/$preset: each URL pins one built-in preset for itself via useLayoutMeta,
  * so moving between preview URLs swaps the whole app shell, and leaving the preview restores
  * the route's normal layout. Page-level only: no layout rules are written, nothing else changes.
  */

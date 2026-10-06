@@ -1,5 +1,5 @@
 /**
- * Public changelog detail — blog-style article with OttaRenderer for EditorJS body.
+ * Public changelog detail: blog-style article with OttaRenderer for EditorJS body.
  *
  * Uses the unified ottablog Post model with contentType='changelog'.
  */

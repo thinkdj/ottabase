@@ -178,7 +178,7 @@ describe('AdminBlogEditorPage nuances', () => {
             perPage: number,
         ) {
             if (junctionPostIds === null) {
-                // No junction filter — standard paginate
+                // No junction filter: standard paginate
                 const total = allPostIds.length;
                 const totalPages = Math.ceil(total / perPage);
                 const paged = allPostIds.slice((page - 1) * perPage, page * perPage);
@@ -234,7 +234,7 @@ describe('AdminBlogEditorPage nuances', () => {
 });
 
 // ---------------------------------------------------------------------------
-// useEditorLeaveGuard — shouldWarnOnLeave logic
+// useEditorLeaveGuard, shouldWarnOnLeave logic
 // ---------------------------------------------------------------------------
 
 /**
@@ -257,7 +257,7 @@ function computeShouldWarn({
     return title.trim() !== '' || editorDirty;
 }
 
-describe('useEditorLeaveGuard — shouldWarnOnLeave', () => {
+describe('useEditorLeaveGuard: shouldWarnOnLeave', () => {
     describe('edit mode', () => {
         it('warns when form is dirty', () => {
             expect(computeShouldWarn({ isEditMode: true, isDirty: true, title: '', editorDirty: false })).toBe(true);
@@ -268,7 +268,7 @@ describe('useEditorLeaveGuard — shouldWarnOnLeave', () => {
         });
 
         it('does not warn even if editor has changes once isDirty is false', () => {
-            // isDirty already incorporates editorDirty — editorDirty is redundant in edit mode
+            // isDirty already incorporates editorDirty: editorDirty is redundant in edit mode
             expect(computeShouldWarn({ isEditMode: true, isDirty: false, title: 'My Title', editorDirty: true })).toBe(
                 false,
             );

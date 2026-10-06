@@ -51,7 +51,6 @@ export {
 } from './defaultPlugins';
 
 // Export custom tools
-export { default as AdvancedImageRenderer } from './tools/AdvancedImageTool/AdvancedImageRenderer';
 export { default as AdvancedImageTool } from './tools/AdvancedImageTool/AdvancedImageTool';
 export type { AdvancedImageData } from './tools/AdvancedImageTool/types';
 export type { AIDisclosureLevel, DisclosureData } from './tools/DisclosureTool/DisclosureTool';

@@ -1,6 +1,6 @@
 # @ottabase/premium-webhooks
 
-Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
+Outbound webhooks for Ottabase apps, and the **worked example** of a Premium Package built on
 [`@ottabase/premium`](../premium/README.md).
 
 Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed deliveries. The package ships a
@@ -36,7 +36,7 @@ PREMIUM_LICENSE_WEBHOOKS=obp1.…
 
 ## Licensing
 
-**The demo keypair in `src/demo-license.ts` is published on purpose — including the private key.** Anyone can mint a
+**The demo keypair in `src/demo-license.ts` is published on purpose, including the private key.** Anyone can mint a
 license for `webhooks`; that is what makes the flow above try-able without buying anything.
 
 A real vendor generates its own keypair, puts only the **public** key in the manifest, and keeps the private key
@@ -117,8 +117,8 @@ stronger promise.
 Safe to call unconditionally: a disabled or uninstalled package returns `[]`, while an unlicensed package delivers its
 free tier, so host code never has to ask whether the add-on is installed.
 
-**Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue — a retry loop on the request
-path turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
+**Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue, a retry loop on the request path
+turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
 consumer can own the retry policy.
 
 An unlicensed package delivers its free tier; only a disabled or uninstalled package returns no deliveries. Personal
@@ -134,7 +134,7 @@ Every request carries:
 | `X-Ottabase-Event`     | Event name, so you can route without parsing |
 | `X-Ottabase-Delivery`  | Delivery id, for idempotent receivers        |
 
-The signature covers `` `${timestamp}.${body}` `` — the timestamp is **inside** the signed string, so a receiver that
+The signature covers `` `${timestamp}.${body}` ``, the timestamp is **inside** the signed string, so a receiver that
 enforces a tolerance window actually rejects replays. Verify with the helper rather than re-implementing it:
 
 ```typescript
@@ -150,7 +150,7 @@ recreate the endpoint if it is lost.
 
 ## API
 
-All routes are mounted at `/api/webhooks` with `gate: 'entitlements'` — the namespace stays reachable so the free tier
+All routes are mounted at `/api/webhooks` with `gate: 'entitlements'`: the namespace stays reachable so the free tier
 works, and each paid path guards itself.
 
 | Method   | Path          | Gate                     |
@@ -166,12 +166,12 @@ works, and each paid path guards itself.
 ## Security notes
 
 - **HTTPS only**, no credentials in the URL, and literal private/loopback/link-local destinations are refused on write.
-- **Redirects are never followed** (`redirect: 'manual'`) — a 3xx into an internal address would re-open SSRF after the
+- **Redirects are never followed** (`redirect: 'manual'`), a 3xx into an internal address would re-open SSRF after the
   URL check passed.
 - **What this cannot do:** stop a hostname that _resolves_ to a private address. That needs DNS resolution before the
   request, which the Workers runtime does not expose. Deployments with sensitive internal services should route
   deliveries through an egress proxy that enforces the network boundary properly.
-- **Delivery errors are summarized, never logged raw** — a fetch error can carry the signed body and the full URL into a
+- **Delivery errors are summarized, never logged raw**: a fetch error can carry the signed body and the full URL into a
   log sink.
 - The signing secret is **not encrypted at rest**. It is a per-endpoint shared secret that must be readable to sign; a
   package needing envelope encryption should follow `@ottabase/ottaai`'s credential store instead.

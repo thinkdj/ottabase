@@ -4,7 +4,7 @@ Lightweight, chromeless routes for embedding Ottabase content in external sites 
 
 ## How It Works
 
-Routes under `/embed/*` boot a **separate React tree** in [main.tsx](../main.tsx) — completely bypassing the main app's
+Routes under `/embed/*` boot a **separate React tree** in [main.tsx](../main.tsx), completely bypassing the main app's
 provider stack (no BrandProvider, session, blog state, or org fetches). Only `QueryClient` and `next-themes` are loaded.
 
 ```
@@ -35,15 +35,15 @@ main.tsx
 
 | Full App                             | Embed                                            |
 | ------------------------------------ | ------------------------------------------------ |
-| Jotai store                          | —                                                |
-| I18nProvider                         | —                                                |
-| BlogStudioProvider                   | —                                                |
-| BrandProvider (fetches `/api/brand`) | —                                                |
+| Jotai store                          | -                                                |
+| I18nProvider                         | -                                                |
+| BlogStudioProvider                   | -                                                |
+| BrandProvider (fetches `/api/brand`) | -                                                |
 | OttaQueryProvider                    | QueryClient (static config, no refetch on focus) |
-| ProviderUIBase + ProviderFont        | —                                                |
+| ProviderUIBase + ProviderFont        | -                                                |
 | ProviderNextThemes                   | NextThemesProvider                               |
-| ThemeProvider + BrandThemeApplicator | —                                                |
-| SpotlightProvider                    | —                                                |
+| ThemeProvider + BrandThemeApplicator | -                                                |
+| SpotlightProvider                    | -                                                |
 
 **API calls on embed routes: zero** (docs content is bundled via `import.meta.glob`).
 

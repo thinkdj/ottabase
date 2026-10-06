@@ -1,10 +1,10 @@
 // ============================================================
-// Config Loader — Single source: ottabase.config.ts
+// Config Loader, Single source: ottabase.config.ts
 // ============================================================
 // Precedence: ENV VAR >> config file >> default
 // Secrets (AUTH_SECRET, OAuth keys, API keys) = env only, never in config.
 //
-// IMPORTANT — Static vs env-aware usage:
+// IMPORTANT: Static vs env-aware usage:
 // - Exports below (APP_META, PACKAGES_ENABLED, etc.) use base config at module load.
 // - Worker routes call getOttabaseConfig(env) and receive env overrides per request.
 // - Client runs in browser with no access to Cloudflare env; uses static exports.

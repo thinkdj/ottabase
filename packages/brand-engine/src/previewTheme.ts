@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Client-side preview theme builder
+// Brand Engine, Client-side preview theme builder
 // Builds ResolvedBrandTheme from BrandKitItem-like data for realtime admin preview
 // Works with preset-as-template architecture (no registry needed).
 // Per-category resolution delegates to resolve-core.ts (shared with
@@ -31,7 +31,7 @@ export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light
     if (kitData.tokensJson) {
         try {
             const parsed = JSON.parse(kitData.tokensJson) as Record<string, unknown>;
-            // Extract cursors separately – they live at root of tokensJson, not inside DesignTokens
+            // Extract cursors separately: they live at root of tokensJson, not inside DesignTokens
             const { cursors, colors: legacyColors, ...tokenRest } = parsed;
             tokens = { ...tokenRest } as Partial<DesignTokens>;
 

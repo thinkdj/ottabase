@@ -1,5 +1,5 @@
 // ============================================================
-// Signing — the only thing that lets a receiver trust a delivery.
+// Signing, the only thing that lets a receiver trust a delivery.
 // ============================================================
 
 import { describe, expect, it } from 'vitest';
@@ -25,7 +25,7 @@ describe('signPayload', () => {
         expect(a).toMatch(/^[0-9a-f]{64}$/);
     });
 
-    it('changes when the timestamp changes — the binding that makes replay detectable', async () => {
+    it('changes when the timestamp changes, the binding that makes replay detectable', async () => {
         expect(await signPayload(SECRET, BODY, NOW)).not.toBe(await signPayload(SECRET, BODY, NOW + 1));
     });
 
@@ -62,7 +62,7 @@ describe('verifySignatureHeader', () => {
         await expect(verifySignatureHeader(SECRET, BODY, header, { now: NOW + 60 })).resolves.toBe(true);
     });
 
-    it('rejects a forged timestamp — the signature covers it', async () => {
+    it('rejects a forged timestamp: the signature covers it', async () => {
         const header = await buildSignatureHeader(SECRET, BODY, NOW);
         const forged = header.replace(`t=${NOW}`, `t=${NOW + 3000}`);
         await expect(verifySignatureHeader(SECRET, BODY, forged, { now: NOW + 3000 })).resolves.toBe(false);

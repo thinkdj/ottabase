@@ -78,7 +78,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         try {
             localStorage.setItem(LAYOUT_OVERRIDES_KEY, JSON.stringify(overrides));
         } catch {
-            // storage full – silent fail
+            // storage full: silent fail
         }
     }, []);
 

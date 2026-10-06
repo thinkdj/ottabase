@@ -26,10 +26,10 @@ describe('ZoomableImage', () => {
         // Initial render: no zoom indicator at 1x
         expect(container.querySelector('.tabular-nums')).toBeNull();
 
-        // Change src — component should reset zoom back to 1x
+        // Change src: component should reset zoom back to 1x
         rerender(<ZoomableImage src="https://example.com/photo-b.jpg" alt="Photo B" />);
 
-        // After src change, still at 1x — no zoom indicator
+        // After src change, still at 1x, no zoom indicator
         expect(container.querySelector('.tabular-nums')).toBeNull();
 
         // Verify the new image src is rendered

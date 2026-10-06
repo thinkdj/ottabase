@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @ottabase/ottalayout – Layout path resolution (pure functions, no React)
+// @ottabase/ottalayout, Layout path resolution (pure functions, no React)
 //
 // Resolves which layout preset to use for a given URL path. Path patterns
 // support * (single segment) and ** (zero-or-more segments) wildcards.
@@ -24,7 +24,7 @@ export function pathPatternToRegex(pattern: string): RegExp {
         .replace(/<<GLOB>>/g, '.*')
         .replace(/<<STAR>>/g, '[^/]+');
 
-    // /blog/** should match /blog and /blog/anything – make trailing /.* optional
+    // /blog/** should match /blog and /blog/anything, make trailing /.* optional
     if (pattern.endsWith('/**')) {
         escaped = escaped.replace(/\/\.\*$/, '(\/.*)?');
     }

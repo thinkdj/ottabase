@@ -7,7 +7,7 @@
         "**/*.css",
         "**/BlogRenderer.tsx"
     ],
-    "_exports_note": "SOURCE-EXPORTED ON PURPOSE — and therefore deliberately has NO build script. This package holds module-level singletons (hookRegistry, pluginRegistry, themeRegistry, StudioManager). The app pins @ottabase/ottablog and /renderer to src via tsconfig paths, so a second, prebuilt dist copy would split those registries: initOttablog would register a theme/plugin in one copy while the renderer read the other. CI still covers this package via lint/type-check/test plus the app build that compiles its source. See ottaai for the same shape.",
+    "_exports_note": "SOURCE-EXPORTED ON PURPOSE, and therefore deliberately has NO build script. This package holds module-level singletons (hookRegistry, pluginRegistry, themeRegistry, StudioManager). The app pins @ottabase/ottablog and /renderer to src via tsconfig paths, so a second, prebuilt dist copy would split those registries: initOttablog would register a theme/plugin in one copy while the renderer read the other. CI still covers this package via lint/type-check/test plus the app build that compiles its source. See ottaai for the same shape.",
     "exports": {
         ".": {
             "types": "./src/index.ts",

@@ -14,10 +14,10 @@ export interface NavLink {
  */
 const NAV_LINKS_ALL: NavLink[] = [
     { to: '/', label: 'Home' },
-    { to: '/demo', label: 'Demo' },
+    { to: '/demo', label: 'Demos' },
     { to: '/docs', label: 'Docs' },
     { to: '/blog', label: 'Blog' },
-    { to: '/changelog', label: "What's New" },
+    { to: '/changelog', label: "What's new" },
     { to: '/shortlinks', label: 'Shortlinks' },
     { to: '/dashboard', label: 'Dashboard', authRequired: true },
     { to: '/referrals', label: 'Referrals', authRequired: true },

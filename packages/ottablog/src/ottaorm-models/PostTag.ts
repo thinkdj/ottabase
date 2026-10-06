@@ -224,7 +224,7 @@ export class PostTag extends BaseModel {
 
     /**
      * Get all post tags by type.
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
+     * appId is required: matches NOT NULL schema constraint and prevents cross-tenant data leaks.
      */
     static async byType(
         type: string,

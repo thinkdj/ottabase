@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Renderer component tests
+// Ottamenu, Renderer component tests
 // Tests rendering of all 6 menu types via MenuRenderer + individual renderers.
 // ---------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 /**
- * Blog import/export — the portable file format plus a Markdown reader.
+ * Blog import/export: the portable file format plus a Markdown reader.
  *
  * One wire shape (`BlogExportPost`) travels both ways: `GET /api/blog/export` writes it and
  * `POST /api/blog/import` reads it. Markdown files are converted into the same shape client-side,
@@ -48,14 +48,14 @@ export interface BlogExportPost {
     privateNotes?: EditorJSData | null;
     isFeatured?: boolean;
     allowComments?: boolean;
-    /** Exported for information only — a password never leaves the server, so import drops protection. */
+    /** Exported for information only: a password never leaves the server, so import drops protection. */
     isProtected?: boolean;
     publishAt?: number | null;
     publishedAt?: number | null;
     seriesOrder?: number | null;
     /** Tag names. */
     tags?: string[];
-    /** Category names (flat — hierarchy is not carried). */
+    /** Category names (flat: hierarchy is not carried). */
     categories?: string[];
     /** Series title. */
     series?: string | null;
@@ -257,7 +257,7 @@ const INLINE_LINK = new RegExp(String.raw`!?\[([^\]]+)\]\(\s*<?${URL_PART}>?(?:\
  * Convert CommonMark-style Markdown into the EditorJS blocks OttaEditor and the renderer use:
  * paragraph, header, list (nested), code, quote, delimiter, image. Inline bold/italic/code/links
  * become the inline HTML EditorJS stores. Raw HTML is escaped (shown as text), never executed.
- * Not covered: tables, setext headings, indented code blocks, footnotes — they import as text.
+ * Not covered: tables, setext headings, indented code blocks, footnotes, they import as text.
  */
 export function markdownToEditorJs(markdown: string): EditorJSData {
     const lines = markdown.replace(/\r\n?/g, '\n').split('\n');

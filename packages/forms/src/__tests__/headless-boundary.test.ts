@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 // Import the PURE root barrel (what consumers get from `@ottabase/forms`).
 // NOTE: rendered components (ModelForm, ModelCrud, ModelTable, ModelDetail,
-// FormField) deliberately do NOT live here — they moved to the
+// FormField) deliberately do NOT live here, they moved to the
 // `@ottabase/forms/react` subpath (src/react.ts). This test guards that
 // boundary. It must NOT import any UI package or component.
 import * as forms from '../index';

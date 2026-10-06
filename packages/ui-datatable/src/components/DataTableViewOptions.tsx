@@ -14,7 +14,7 @@ interface DataTableViewOptionsProps<TData> {
 }
 
 /**
- * Column visibility toggle — dropdown listing all hideable columns
+ * Column visibility toggle: dropdown listing all hideable columns
  * with checkboxes to show/hide them.
  */
 export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps<TData>) {

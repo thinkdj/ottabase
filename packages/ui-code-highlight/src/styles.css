@@ -1,7 +1,7 @@
 /* GitHub-style syntax highlighting for light and dark modes */
 
 /*
- * Syntax design tokens — package-level defaults (GitHub Light palette).
+ * Syntax design tokens: package-level defaults (GitHub Light palette).
  * :where() keeps specificity at zero so any app-level declaration
  * (e.g. a brand theme's :root/.dark block) always wins.
  */

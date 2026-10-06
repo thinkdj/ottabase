@@ -28,9 +28,9 @@ pnpm add @ottabase/spotlight
 
 The package ships two entry points so consumers only pull in UI dependencies when they actually render UI:
 
-- `@ottabase/spotlight` — **pure**. Context, hooks and API helpers (`useSpotlight`, `useSpotlightSearch`,
+- `@ottabase/spotlight`: **pure**. Context, hooks and API helpers (`useSpotlight`, `useSpotlightSearch`,
   `createApiSearchHandler`, `createApiSearchHandlerWithSignal`) plus all types. No UI dependencies.
-- `@ottabase/spotlight/react` — the **rendered** components (`SpotlightProvider`, `Spotlight`). These pull in the
+- `@ottabase/spotlight/react`: the **rendered** components (`SpotlightProvider`, `Spotlight`). These pull in the
   optional peer dependencies `@ottabase/ui-shadcn`, `@radix-ui/react-dialog` and `@tabler/icons-react`.
 
 Install the UI peers alongside the package when you render components:

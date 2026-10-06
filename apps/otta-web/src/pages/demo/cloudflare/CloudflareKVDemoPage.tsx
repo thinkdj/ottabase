@@ -81,7 +81,7 @@ export function CloudflareKVDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="KV Storage"
+                title="KV"
                 description="Key-value storage with optional TTL (Time To Live)"
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare"

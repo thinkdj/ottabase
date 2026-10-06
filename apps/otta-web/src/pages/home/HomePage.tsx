@@ -1,85 +1,17 @@
-import { APP_META } from '@/ottabase/config';
+import { SEOHead } from '@/components/SEOHead';
+import { APP_DESCRIPTION, APP_META } from '@/ottabase/config';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { useMemo } from 'react';
 import { OttabaseHero } from './OttabaseHero';
 
-const HOME_HERO_BLOCK_IDS = new Set(['home-title', 'thesis-quote', 'home-lead', 'home-hero-ctas']);
-
-/** EditorJS blocks for the home page. */
-function createHomeLandingEditorData(appName: string) {
+/** The Editor.js blocks under the hero; the same block types the blog renders. */
+function createHomeLandingEditorData() {
     return {
         time: Date.now(),
         version: '2.28.0',
         blocks: [
-            // ── Hero title + lead ────────────────────────────────────────────
-            {
-                id: 'home-title',
-                type: 'header',
-                data: { text: appName, level: 1 },
-            },
-            // ── Thesis ───────────────────────────────────────────────────────
-            {
-                id: 'thesis-quote',
-                type: 'quote',
-                data: {
-                    text: 'No boilerplate. No assembly of infrastructure. Just ship the product.',
-                    caption: '',
-                    alignment: 'left',
-                },
-            },
-            // ── Desc ───────────────────────────────────────────────────────
-            {
-                id: 'home-lead',
-                type: 'paragraph',
-                data: {
-                    text: 'Production-grade Apps/SaaS/Sites on <strong>Cloudflare Workers</strong>. Multi-tenant isolation, fat models, runtime theming, and 45+ batteries-included packages — all wired together and ready to ship. <strong>Fast. For the Solo Founder.</strong>',
-                },
-            },
-            // Hero CTAs
-            {
-                id: 'home-hero-ctas',
-                type: 'layout',
-                data: {
-                    preset: '1-1',
-                    columns: [
-                        {
-                            content: {
-                                blocks: [
-                                    {
-                                        id: 'cta-start',
-                                        type: 'cta',
-                                        data: {
-                                            text: 'Get started',
-                                            url: '/docs',
-                                            style: 'primary',
-                                            alignment: 'right',
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                        {
-                            content: {
-                                blocks: [
-                                    {
-                                        id: 'cta-demos',
-                                        type: 'cta',
-                                        data: {
-                                            text: 'Explore demos',
-                                            url: '/demo',
-                                            style: 'outline',
-                                            alignment: 'left',
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                },
-            },
-
             // ── Three pillars ────────────────────────────────────────────────
             {
                 id: 'pillars',
@@ -95,7 +27,7 @@ function createHomeLandingEditorData(appName: string) {
                                         id: 'p1p',
                                         type: 'paragraph',
                                         data: {
-                                            text: 'Runs on Cloudflare Workers globally. No cold starts, no servers — your backend <em>is</em> the CDN.',
+                                            text: 'Runs on Cloudflare Workers globally. No cold starts, no servers, your backend <em>is</em> the CDN.',
                                         },
                                     },
                                 ],
@@ -123,7 +55,7 @@ function createHomeLandingEditorData(appName: string) {
                                         id: 'p3p',
                                         type: 'paragraph',
                                         data: {
-                                            text: 'Business logic lives in models, not controllers. One TypeScript class owns schema, casts, RLS, and hooks.',
+                                            text: 'Business logic lives in models, not controllers. One TypeScript class owns schema, casts, hooks and the policy that scopes its rows.',
                                         },
                                     },
                                 ],
@@ -139,7 +71,7 @@ function createHomeLandingEditorData(appName: string) {
                 id: 'batteries-lead',
                 type: 'paragraph',
                 data: {
-                    text: 'Forty-five packages, <mark class="cdx-marker"><strong>one</strong> pnpm install</mark>. Everything below ships wired together — auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
+                    text: 'Fifty packages, <mark class="cdx-marker"><strong>one</strong> pnpm install</mark>. Everything below ships wired together: auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
                 },
             },
             {
@@ -248,11 +180,10 @@ function createHomeLandingEditorData(appName: string) {
                 data: {
                     language: 'typescript',
                     showLineNumbers: true,
-                    code: `// One class. Schema + RLS + hooks. Pseudo-code, see docs for exact API.
+                    code: `// One class: schema, casts and behaviour
 export class Post extends BaseModel {
     static entity = 'posts';
-    static table  = postsTable;
-    static rls = { tenant: { field: 'organizationId' } };
+    static table = postsTable;
     static casts = { publishedAt: 'date' as const };
 
     async publish() {
@@ -262,7 +193,10 @@ export class Post extends BaseModel {
     }
 }
 
-// TanStack Query hooks — zero boilerplate
+// Tenant isolation is a policy registered for the model, applied to every query
+registerPolicy({ model: 'posts', policy: RLSPolicies.TenantScoped() });
+
+// TanStack Query hooks for the client, no fetch code
 export const { useList, useCreate, useUpdate, useDelete } =
     createModelHooks<PostType>({ entityName: 'posts' });`,
                 },
@@ -283,12 +217,12 @@ export const { useList, useCreate, useUpdate, useDelete } =
                         {
                             title: 'Configure',
                             content:
-                                '<code class="inline-code">.env.example → .env.local</code> with D1 binding, R2 bucket, OAuth.',
+                                'Bindings (D1, R2, KV, Queues) live in <code class="inline-code">wrangler.jsonc</code>; secrets such as OAuth keys go in <code class="inline-code">.dev.vars</code> locally and <code class="inline-code">wrangler secret put</code> in production.',
                         },
                         {
-                            title: 'Bootstrap & ship',
+                            title: 'Bootstrap and ship',
                             content:
-                                'GUI Bootstrapping, create platform owner, configure Cloudflare API, <code class="inline-code">wrangler deploy</code>. Github CI/CD included.',
+                                'The bootstrap page creates the tables and the platform owner, then <code class="inline-code">wrangler deploy</code>. GitHub Actions for CI and deploys are included.',
                         },
                     ],
                 },
@@ -301,7 +235,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                 data: {
                     title: 'One account. No servers.',
                     message:
-                        'Everything here runs on a single Cloudflare account — Workers, D1, R2, KV, Queues, Durable Objects. Wrangler emulates the whole stack locally, so dev needs no Docker and prod needs no pager.',
+                        'Everything here runs on a single Cloudflare account: Workers, D1, R2, KV, Queues, Durable Objects. Wrangler emulates the whole stack locally, so dev needs no Docker and prod needs no pager.',
                 },
             },
 
@@ -310,7 +244,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                 id: 'meta-spoiler',
                 type: 'spoiler',
                 data: {
-                    text: 'Every section on this page — the steps, the table, the FAQ, even this spoiler — is an EditorJS block authored in OttaEditor and rendered by OttaRenderer. The landing page is the demo.',
+                    text: 'Everything below the hero, the steps, the table, the FAQ, even this spoiler, is an Editor.js block rendered by OttaRenderer, the same renderer the blog uses. The landing page is the demo.',
                 },
             },
 
@@ -324,19 +258,19 @@ export const { useList, useCreate, useUpdate, useDelete } =
                     items: [
                         {
                             question: 'Is multi-tenancy production-ready?',
-                            answer: 'Yes. RLS rules are declared on the model and enforced on every query automatically.',
+                            answer: 'Yes. Each model registers a row-level policy, and the ORM applies it to every query automatically.',
                         },
                         {
                             question: 'How does per-tenant theming work?',
                             answer: 'Brand Engine stores tokens in the DB and injects CSS custom vars at request time. Cached on edge via KV.',
                         },
                         {
-                            question: 'What db is supported?',
+                            question: 'Which database is supported?',
                             answer: 'Cloudflare D1 (SQLite at the edge) via Drizzle ORM. Migrations via a single API call (or via admin UI).',
                         },
                         {
                             question: 'Can I white-label it for clients?',
-                            answer: 'That is what Brand Engine is for: logos, colors, typography, motion — even custom cursors — stored as Brand Kits and applied per app or per route at runtime.',
+                            answer: 'That is what Brand Engine is for: logos, colors, typography, motion, even custom cursors, stored as Brand Kits and applied per app or per route at runtime.',
                         },
                     ],
                 },
@@ -352,7 +286,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                     items: [
                         { url: '/docs', title: 'Documentation', note: 'Setup, architecture, and package guides' },
                         { url: '/demo', title: 'Demo gallery', note: 'Every package, running live in this app' },
-                        { url: '/blog', title: 'Blog', note: 'Published with Ottablog — the CMS in the box' },
+                        { url: '/blog', title: 'Blog', note: 'Published with Ottablog: the CMS in the box' },
                         { url: 'https://ottabase.com', title: 'ottabase.com', note: 'Project home' },
                     ],
                 },
@@ -389,7 +323,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                                         type: 'cta',
                                         data: {
                                             text: 'Read the docs',
-                                            url: '/docs/',
+                                            url: '/docs',
                                             style: 'outline',
                                             alignment: 'left',
                                         },
@@ -400,15 +334,16 @@ export const { useList, useCreate, useUpdate, useDelete } =
                     ],
                 },
             },
-        ].filter(({ id }) => !HOME_HERO_BLOCK_IDS.has(id)),
+        ],
     };
 }
 
 export function HomePage() {
-    const editorData = useMemo(() => createHomeLandingEditorData('Ottabase'), []);
+    const editorData = useMemo(() => createHomeLandingEditorData(), []);
 
     return (
         <>
+            <SEOHead title={APP_META.appName} description={APP_DESCRIPTION} />
             <div className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 md:px-10 md:pt-10 lg:px-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <OttabaseHero appName={APP_META.appName} />
             </div>

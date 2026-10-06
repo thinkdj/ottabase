@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Cursor SVG Registry
+// Brand Engine, Cursor SVG Registry
 // Themed cursor art referenced from theme configs (e.g. cursors.default:
-// "registry:arrow-crimson"). Each entry carries its hotspot — the click point
+// "registry:arrow-crimson"). Each entry carries its hotspot, the click point
 // in SVG user units; without one the browser anchors clicks at the top-left
-// corner, which makes centered cursors (crosshair, I-beam) unusable — and the
+// corner, which makes centered cursors (crosshair, I-beam) unusable, and the
 // CSS keyword to fall back to where the image cannot render.
 // ---------------------------------------------------------------------------
 
@@ -16,8 +16,8 @@ export interface CursorDef {
     fallback: string;
 }
 
-// All cursors share a 24x24 canvas. Depth comes from three stacked paths —
-// an offset dark blob, a white halo, then the colored body — instead of an
+// All cursors share a 24x24 canvas. Depth comes from three stacked paths:
+// an offset dark blob, a white halo, then the colored body, instead of an
 // SVG filter, so rasterization is identical across browsers.
 const svg24 = (inner: string): string =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">${inner}</svg>`;

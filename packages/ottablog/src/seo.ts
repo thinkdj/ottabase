@@ -1,5 +1,5 @@
 /**
- * Per-post SEO meta for edge injection — pure, React-free builders.
+ * Per-post SEO meta for edge injection, pure, React-free builders.
  *
  * The app's worker detects a blog detail document navigation, loads the
  * published post, and splices `buildPostSeoTags(...)` into `<head>` so
@@ -23,7 +23,7 @@ export function escapeHtml(value: string): string {
 /**
  * Serialize JSON for embedding inside a <script> tag. Escapes the characters
  * that could close the tag or corrupt the document (`<`, `>`, `&`) plus the
- * JS line separators U+2028/U+2029 — same treatment as the brand hydration
+ * JS line separators U+2028/U+2029, same treatment as the brand hydration
  * payload.
  */
 export function jsonForScriptTag(value: unknown): string {
@@ -32,7 +32,7 @@ export function jsonForScriptTag(value: unknown): string {
 
 /**
  * Extract the post slug from a blog detail pathname.
- * Matches exactly `<basePath>/<slug>` — `/blog` itself and deeper paths like
+ * Matches exactly `<basePath>/<slug>`: `/blog` itself and deeper paths like
  * `/blog/tag/x` (archive routes) return null. The returned slug is decoded.
  */
 export function extractBlogSlugFromPath(pathname: string, basePath = '/blog'): string | null {
@@ -98,7 +98,7 @@ function resolveHttpUrl(value: string | null | undefined, baseUrl: string): stri
  * Build the `<head>` block for a blog post: description, canonical, OpenGraph,
  * Twitter card, and an Article JSON-LD script. Returns fully escaped HTML.
  * The document `<title>` is handled separately (it usually needs a REPLACE of
- * the SPA's static tag, not an append) — see `replaceDocumentTitle`.
+ * the SPA's static tag, not an append), see `replaceDocumentTitle`.
  */
 export function buildPostSeoTags(input: PostSeoInput): string {
     const title = escapeHtml(input.title);

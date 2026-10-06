@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Root (L0 primitives + L1 crypto + L2 pure)
+// @ottabase/ottaai, Root (L0 primitives + L1 crypto + L2 pure)
 // ============================================================
 // DEPENDENCY-FREE by contract. No ORM, no React, no network.
 //

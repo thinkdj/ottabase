@@ -3,6 +3,7 @@ import { api, ApiError, isApiError } from '@/lib/api';
 import { ConnectionState, RealtimeClient } from '@ottabase/cf-realtime';
 import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
 import { useEffect, useRef, useState } from 'react';
+import { DemoAdminNotice, useDemoAdmin } from '../DemoAdminOnly';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 interface Message {
@@ -21,6 +22,7 @@ interface Stats {
 }
 
 export function CloudflareRealtimeDemoPage() {
+    const canUse = useDemoAdmin();
     const [client, setClient] = useState<RealtimeClient | null>(null);
     const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
     const [subscribedChannels, setSubscribedChannels] = useState<string[]>([]);
@@ -48,7 +50,7 @@ export function CloudflareRealtimeDemoPage() {
                 url: wsUrl,
                 clientId: `demo-${Math.random().toString(36).slice(2, 11)}`,
                 autoReconnect: true,
-                debug: true,
+                debug: false,
             });
 
             realtimeClient.onStateChange((state) => {
@@ -166,10 +168,12 @@ export function CloudflareRealtimeDemoPage() {
     };
 
     useEffect(() => {
+        if (!canUse) return;
         void fetchStats();
         const interval = setInterval(fetchStats, 5000);
         return () => clearInterval(interval);
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canUse]);
 
     useEffect(() => {
         return () => {
@@ -180,11 +184,13 @@ export function CloudflareRealtimeDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Realtime Pub/Sub"
+                title="Realtime"
                 description="WebSocket-based real-time messaging with offline support"
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare"
             />
+
+            {!canUse && <DemoAdminNotice />}
 
             {serviceError ? (
                 <ApiErrorDisplay error={serviceError} />

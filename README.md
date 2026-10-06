@@ -76,16 +76,16 @@ Workers.
 
 ### Developer Speed
 
-| Capability                          | Ottabase            | Supabase     | Railway            | Convex    |
-| ----------------------------------- | ------------------- | ------------ | ------------------ | --------- |
-| Time to MVP                         | » Hours to days     | ◔ Days–weeks | ◔ Weeks            | ◔ Days    |
-| Full-stack starter in your repo     | ✓ Yes               | ✗ No         | ✗ No               | ◑ Partial |
-| Model-driven CRUD primitives        | ✓ Built in          | ◑ DIY        | ✗ No               | ◑ Partial |
-| RBAC + multi-tenant SaaS primitives | ✓ Included          | ◑ DIY        | ✗ No               | ◑ DIY     |
-| UI/component packages included      | ✓ Yes               | ✗ No         | ✗ No               | ✗ No      |
-| Blog/CMS package included           | ✓ Yes               | ✗ No         | ✗ No               | ✗ No      |
-| Type safety (TS-first)              | ✓ Deeply integrated | ◑ Partial    | ◑ Depends on stack | ✓ Strong  |
-| Local dev experience                | ✓ Unified           | ◑ Mixed      | ◑ Basic            | ✓ Good    |
+| Capability                          | Ottabase            | Supabase        | Railway            | Convex    |
+| ----------------------------------- | ------------------- | --------------- | ------------------ | --------- |
+| Time to MVP                         | » Hours to days     | ◔ Days to weeks | ◔ Weeks            | ◔ Days    |
+| Full-stack starter in your repo     | ✓ Yes               | ✗ No            | ✗ No               | ◑ Partial |
+| Model-driven CRUD primitives        | ✓ Built in          | ◑ DIY           | ✗ No               | ◑ Partial |
+| RBAC + multi-tenant SaaS primitives | ✓ Included          | ◑ DIY           | ✗ No               | ◑ DIY     |
+| UI/component packages included      | ✓ Yes               | ✗ No            | ✗ No               | ✗ No      |
+| Blog/CMS package included           | ✓ Yes               | ✗ No            | ✗ No               | ✗ No      |
+| Type safety (TS-first)              | ✓ Deeply integrated | ◑ Partial       | ◑ Depends on stack | ✓ Strong  |
+| Local dev experience                | ✓ Unified           | ◑ Mixed         | ◑ Basic            | ✓ Good    |
 
 ---
 
@@ -136,7 +136,7 @@ ottabase/
 │   ├── state/            # Jotai atoms (theme, user, sidebar)
 │   ├── ui-shadcn/        # shadcn/ui components
 │   ├── ui-mantine/       # Optional Mantine adapter (the app does not use it)
-│   ├── ui-components/    # Shared components (DarkModeToggle, Logo)
+│   ├── ui-components/    # Shared components (ConfirmDialog, EmptyState, Chip, Logo)
 │   ├── ui-code-highlight/ # Code syntax highlighting
 │   ├── ui-split-pane/    # Resizable split pane
 │   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
@@ -264,7 +264,8 @@ export class Todo extends BaseModel {
 
 ```typescript
 // ottabase/db/schema.ts
-export { usersTable, postsTable } from '@ottabase/ottaorm'; // Core
+export { usersTable } from '@ottabase/ottaorm'; // Core
+export { postsTable } from '@ottabase/ottablog'; // Package
 export { todosTable } from '../models/Todo'; // App
 ```
 
@@ -343,7 +344,7 @@ createTodo.mutate({ title: 'New Todo' });
 ### Premium Packages
 
 Sell add-ons for your app, or install someone else's. One server manifest carries everything a Premium Package
-contributes — tables, models, routes, nav, entitlements and lifecycle hooks — and installing it starts with
+contributes: tables, models, routes, nav, entitlements and lifecycle hooks, and installing it starts with
 `ottabase/config.premium.ts`. Rendered pages and Drizzle's static schema export are explicit build-time adapters, kept
 in sync by the app's premium-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing
 phones home. An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
@@ -357,12 +358,12 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
 ### Brand, Layout & Content
 
-| Package                        | Purpose                                                              |
-| ------------------------------ | -------------------------------------------------------------------- |
-| `@ottabase/brand-engine`       | Design tokens, preset expansion, CSS injection, email branding       |
-| `@ottabase/brand-engine-react` | `BrandProvider`, `LayoutResolver`, `useBrand()` React bindings       |
-| `@ottabase/ottalayout`         | Layout types, 10 presets, path resolver, React slots, LayoutMeta     |
-| `@ottabase/ottablog`           | Blog/CMS models (Post, Category, Tag, Series, Version) + Blog Studio |
+| Package                        | Purpose                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `@ottabase/brand-engine`       | Design tokens, preset expansion, CSS injection, email branding          |
+| `@ottabase/brand-engine-react` | `BrandProvider`, `LayoutResolver`, `useBrand()` React bindings          |
+| `@ottabase/ottalayout`         | Layout types, 10 presets, path resolver, React slots, LayoutMeta        |
+| `@ottabase/ottablog`           | Blog/CMS models (Post, Category, Tag, Series, Version) + Content studio |
 
 ### UI Components
 
@@ -371,8 +372,8 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 | `@ottabase/ui-shadcn`         | shadcn/ui components, ShadcnProviders                     |
 | `@ottabase/ui-mantine`        | Optional Mantine adapter and presets; not used by the app |
 | `@ottabase/ui-base`           | Framework-agnostic base styles                            |
-| `@ottabase/ui-components`     | Shared components: DarkModeToggle, Logo                   |
-| `@ottabase/ui-code-highlight` | Code syntax highlighting (Prism/Shiki)                    |
+| `@ottabase/ui-components`     | Shared components: ConfirmDialog, EmptyState, Chip, Logo  |
+| `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                   |
 | `@ottabase/ui-split-pane`     | Resizable split-pane layout component                     |
 | `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)  |
 | `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)             |
@@ -504,7 +505,7 @@ export const { useList, useCreate, ... } = createModelHooks({ entityName: "short
 ## Commands
 
 ```bash
-pnpm commands         # Every script in one annotated table — start here
+pnpm commands         # Every script in one annotated table, start here
 pnpm commands clean   # Filter to a topic
 ```
 

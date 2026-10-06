@@ -10,7 +10,7 @@ export type MapTheme = 'default' | 'dark' | 'satellite' | 'terrain';
  * @property url - Map URL (Google Maps or OpenStreetMap)
  * @property provider - 'gmaps' | 'openstreetmap'
  * @property theme - 'default' | 'dark' | 'satellite' | 'terrain'
- * @property height - iframe height in px (clamped 100–800)
+ * @property height - iframe height in px (clamped 100 to 800)
  * @property caption - Optional figure caption
  * @property zoom - Zoom level (default 13)
  */
@@ -56,7 +56,7 @@ function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: n
         (h) => host === h || host.endsWith(`.${h}`),
     );
 
-    // Already an embed URL – allow only for known hosts
+    // Already an embed URL: allow only for known hosts
     if (url.includes('/embed') || url.includes('output=embed') || url.includes('export/embed')) {
         if ((provider === 'gmaps' && isGMapsHost) || (provider === 'openstreetmap' && isOsmHost)) {
             return url;
@@ -69,7 +69,7 @@ function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: n
 
         const mapType = theme === 'satellite' ? 'k' : theme === 'terrain' ? 'p' : 'm';
 
-        // https://goo.gl/maps/... short links – wrap in embed
+        // https://goo.gl/maps/... short links, wrap in embed
         if (url.includes('goo.gl/maps/')) {
             return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&output=embed&t=${mapType}`;
         }

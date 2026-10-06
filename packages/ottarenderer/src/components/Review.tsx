@@ -99,7 +99,7 @@ const StarRating = ({
     };
 
     return (
-        <div className="flex items-center gap-0.5" role="img" aria-label={`Rating: ${rating} out of ${maxStars} stars`}>
+        <div className="flex items-center gap-0.5" role="img" aria-label={`Rated ${rating} out of ${maxStars}`}>
             {stars.map((type, i) => {
                 const starClass = sizeClasses[size];
                 if (type === 'full') return <FullStar key={i} className={`${starClass} text-warning`} />;
@@ -121,7 +121,7 @@ const getRatingColor = (rating: number, maxStars: number): string => {
     return 'bg-destructive text-destructive-foreground';
 };
 
-// Rating badge — circular, clean
+// Rating badge: circular, clean
 const RatingBadge = ({ rating, maxStars, size = 'lg' }: { rating: number; maxStars: number; size?: 'sm' | 'lg' }) => {
     const display = rating.toFixed(rating % 1 !== 0 ? 1 : 0);
     const colorClass = getRatingColor(rating, maxStars);

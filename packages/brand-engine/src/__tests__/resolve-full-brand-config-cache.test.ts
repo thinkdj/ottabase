@@ -41,7 +41,7 @@ import { resolveFullBrandConfig } from '../persistence/resolveBrandConfig';
 
 const ENV = { OBCF_D1: {} as any, OBCF_KV: {} as any, OBCF_R2: {} as any };
 
-describe('resolveFullBrandConfig — cache read/write semantics', () => {
+describe('resolveFullBrandConfig: cache read/write semantics', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockCreateBrandCache.mockReturnValue({

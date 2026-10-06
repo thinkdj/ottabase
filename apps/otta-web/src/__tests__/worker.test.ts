@@ -166,7 +166,7 @@ describe('Cloudflare Worker API', () => {
         // organization_members). The shortlinks RLS policy is platform-admin gated
         // (requirePlatformAdmin), and the hard-block additionally routes all management through
         // /api/shortlinks, which gates on requireAdminAccess({ scope: 'system' }) and owns
-        // analytics/slug handling — see 'Legacy /api/shortlinks' below.
+        // analytics/slug handling, see 'Legacy /api/shortlinks' below.
         it('should be disabled, even for an authenticated admin session', async () => {
             (getSession as any).mockResolvedValue({ user: { id: 'admin-1', roles: ['admin'] } });
 

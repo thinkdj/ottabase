@@ -23,13 +23,13 @@ function ctx(body: unknown) {
     } as any;
 }
 
-describe('handleAdminRoleUpdate — system-role edit guard', () => {
+describe('handleAdminRoleUpdate: system-role edit guard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(requireAdminAccess).mockResolvedValue({ user: { id: 'admin-1' } } as any);
     });
 
-    it('REJECTS editing a built-in (isSystem) role — framework-owned, would be reverted by self-heal', async () => {
+    it('REJECTS editing a built-in (isSystem) role, framework-owned, would be reverted by self-heal', async () => {
         vi.mocked(Role.find as any).mockResolvedValue({
             get: (k: string) => (k === 'isSystem' ? true : null),
             set: vi.fn(),

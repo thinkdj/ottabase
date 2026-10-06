@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – KV caching for resolved brand config (v2: per-app + per-kit)
+// Brand Engine, KV caching for resolved brand config (v2: per-app + per-kit)
 // Per-kit caching: Each kit cached separately for surgical invalidation
 // Meta cache: Route mappings + layouts cached per-app
 // ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ export function createBrandCache(kv: KVNamespace): BrandCacheClient {
         },
 
         async setResolutionData(appId, _mode, data) {
-            // Store per-kit + meta — include menuSlots for consistent response shape
+            // Store per-kit + meta: include menuSlots for consistent response shape
             await this.setMeta(appId, {
                 routeMappings: data.routeMappings,
                 layoutTemplatesMap: data.layoutTemplatesMap,

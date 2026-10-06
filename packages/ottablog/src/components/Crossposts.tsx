@@ -8,7 +8,7 @@ import { BlurbTextLinksAllowed } from './BlurbText';
  * One crosspost link.
  *
  * Degrades to plain text where anchors are not allowed: timeline cards are wrapped in a link by
- * their caller, so an `<a>` here would nest — the same constraint `BlurbText` reads from
+ * their caller, so an `<a>` here would nest, the same constraint `BlurbText` reads from
  * `BlurbTextLinksAllowed`. The microformats classes make this machine-readable to the IndieWeb
  * tools that already understand the pattern: `u-url` for the copy this post was taken from,
  * `u-syndication` for copies pushed out from here.
@@ -39,7 +39,7 @@ export interface CrosspostsProps {
 /**
  * "originally on instagram.com · also on x.com · facebook.com"
  *
- * Split by direction on purpose. "Originally on" is attribution — this post is the copy — and
+ * Split by direction on purpose. "Originally on" is attribution, this post is the copy, and
  * reads as part of the byline next to the author. "Also on" points outward at copies. One list
  * showing both undifferentiated would leave a reader unable to tell which link is the real home.
  *

@@ -72,7 +72,7 @@ export async function checkMigrationAuth(
 ): Promise<boolean> {
     // Deliberately narrower than isDevEnvironment(): this gates schema auto-migrations
     // (including destructive ones), so ONLY an explicit 'development' ENVIRONMENT bypasses
-    // MIGRATION_SECRET. An UNSET ENVIRONMENT must fail closed — otherwise a production deploy
+    // MIGRATION_SECRET. An UNSET ENVIRONMENT must fail closed, otherwise a production deploy
     // that forgot to set ENVIRONMENT would let any anonymous caller run migrations. (Local dev
     // sets ENVIRONMENT='development' in wrangler.jsonc, so the local flow is unaffected.)
     const isDev = env.ENVIRONMENT === 'development';
@@ -146,7 +146,7 @@ function registerAppModels(env: CloudflareEnv): void {
     const appModels = [Todo];
     // Premium Packages (ottabase/config.premium.ts). Registered regardless of license state:
     // registration only teaches the ORM about a table, and every paid route runs its own
-    // gate — generic CRUD refuses these models by default (GENERIC_CRUD_ALLOWLIST).
+    // gate, generic CRUD refuses these models by default (GENERIC_CRUD_ALLOWLIST).
     const premiumModels = getPremiumPackageModels() as typeof appModels;
     const premiumPolicies = premium.policies();
 
@@ -166,12 +166,12 @@ function registerAppModels(env: CloudflareEnv): void {
     // built-in policy with the same model name.
     for (const policy of premiumPolicies) registerPolicy(policy as ModelRLSConfig);
 
-    // AI provider credentials — registered AFTER initRLS() for the same reason as the
+    // AI provider credentials: registered AFTER initRLS() for the same reason as the
     // ottablog overrides below: the RLS registry is last-write-wins, so a policy registered
     // before initRLS() would be silently replaced by the built-ins if the name ever collided.
     //
     // The STRATEGY here MUST match the one passed to createAiProvisioningWithStorage
-    // (worker/lib/ai.ts) — both read `config.features.ottaai.strategy`, which is what makes
+    // (worker/lib/ai.ts), both read `config.features.ottaai.strategy`, which is what makes
     // the match structural rather than a comment in two files. Mismatch them and tenants
     // manage one set of rows while their calls use another, with NO error.
     if (packages.ottaai) {

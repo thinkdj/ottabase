@@ -37,10 +37,10 @@ jobs:
                     echo "⏭️  Skipping deployment: #skipdeploy found in commit message"
                   else
                     echo "skip_deploy=false" >> $GITHUB_OUTPUT
-                    echo "✅ No #skipdeploy – deployment will run"
+                    echo "✅ No #skipdeploy, deployment will run"
                   fi
 
-    # Build and cache packages (reusable workflow) — only when the matrix has something to deploy,
+    # Build and cache packages (reusable workflow), only when the matrix has something to deploy,
     # so docs-only / #skipdeploy pushes don't spend a runner on a build nobody consumes.
     build-packages:
         needs: prepare-deployment
@@ -119,7 +119,7 @@ jobs:
                   AFTER="${{ github.sha }}"
 
                   if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-                    echo "⚠️  First push or force push — no before SHA; treating all apps as changed"
+                    echo "⚠️  First push or force push, no before SHA; treating all apps as changed"
                     PACKAGES_CHANGED="true"
                     CHANGED_FILES=""
                   else
@@ -473,7 +473,7 @@ jobs:
                   echo "✅ Build tools verified"
 
             # Restore pre-built packages from cache (built by build-packages job).
-            # Uses the key emitted by build-packages directly — no hash recomputation here.
+            # Uses the key emitted by build-packages directly, no hash recomputation here.
             # This is the single source of truth: same key that was saved = guaranteed hit.
             - name: Restore cached packages
               uses: actions/cache/restore@v6

@@ -34,7 +34,7 @@ export {
 // Pure lightbox state machine (no React, no JSX, no icons).
 export { clampMediaIndex, createMediaLightboxState, getAdjacentMediaIndex } from './viewer/lightbox-state';
 
-// Headless URL-sync hook — react-only, no rendered UI. Stays on the pure root.
+// Headless URL-sync hook: react-only, no rendered UI. Stays on the pure root.
 // The rendered viewer surface (MediaLightbox, MediaPreview, ZoomableImage, the
 // provider, and its registration hooks) lives at `@ottabase/medialibrary/react`.
 export { useMediaLightboxUrlSync } from './viewer/useMediaLightboxUrlSync';

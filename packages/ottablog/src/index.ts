@@ -181,7 +181,7 @@ export type { PostSeoInput } from './seo';
 
 // Blog-renderer prop/data types (pure, type-only). The rendered components (BlogRenderer,
 // BlogExcerptCard, BlogRendererErrorBoundary), the default/minimal themes, and initOttablog are
-// UI — import them from the '@ottabase/ottablog/renderer' subpath.
+// UI, import them from the '@ottabase/ottablog/renderer' subpath.
 export type {
     BlurbRendererProps,
     BlogExcerptCardProps,

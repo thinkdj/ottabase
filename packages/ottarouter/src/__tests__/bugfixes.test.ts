@@ -19,7 +19,7 @@ describe('bugfixes: onError invoked at most once', () => {
         expect(seen).toEqual(['handler blew up']);
     });
 
-    it('a failing onError response still unwinds — but only once — through outer finalizer middleware', async () => {
+    it('a failing onError response still unwinds, but only once, through outer finalizer middleware', async () => {
         const router = new Router();
         let onErrorCalls = 0;
         router.onError(() => {
@@ -197,7 +197,7 @@ describe('bugfixes: mount() is atomic and rejects re-mounting', () => {
         sub.get('/:slug', () => new Response('sub-old'));
         expect(() => router.mount('/api', sub, {})).toThrow(RouteConflictError);
 
-        // sub must not be frozen — still safe to keep configuring a fresh router
+        // sub must not be frozen, still safe to keep configuring a fresh router
         // and mount that instead.
         const fixedSub = new Router();
         fixedSub.get('/items/:slug', () => new Response('sub-new'));

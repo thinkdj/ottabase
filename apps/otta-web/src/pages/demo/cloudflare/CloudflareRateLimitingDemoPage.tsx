@@ -79,10 +79,10 @@ export function CloudflareRateLimitingDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Rate Limiting"
+                title="Rate limiting"
                 description="Request throttling and protection"
                 backTo="/demo/cloudflare"
-                backLabel="Back to Cloudflare Features"
+                backLabel="Back to Cloudflare"
             />
 
             <div className="rounded-xl bg-muted/40 p-4">

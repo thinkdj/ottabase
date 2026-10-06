@@ -1,312 +1,133 @@
 import { useSession } from '@/lib/auth';
-import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
-import {
-    Alert,
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-    NativeSelect,
-    NativeSelectOption,
-} from '@ottabase/ui-shadcn';
+import { createModelHooks } from '@ottabase/ottaorm/client';
+import { EmptyState } from '@ottabase/ui-components';
+import { Alert, Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input } from '@ottabase/ui-shadcn';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
-import { EmptyState } from '@ottabase/ui-components';
 
-// ============================================================
-// App-specific model types (defined per-app)
-// ============================================================
-
-interface User {
-    id: string;
-    name: string | null;
-    email: string;
-}
-
-interface Post {
+/** The app's Todo model, as the client sees it */
+interface Todo {
     id: string;
     title: string;
-    content: string | null;
-    published: boolean;
-    authorId: string;
+    completed: boolean;
 }
 
-// ============================================================
-// Create query hooks for this app's models
-// Uses /api/ottaorm/{entityName} automatically via generic CRUD handler
-// ============================================================
-
-const userHooks = createModelHooks<User>({ entityName: 'users' });
-const postHooks = createModelHooks<Post>({ entityName: 'posts' });
-
-// ============================================================
-// Component
-// ============================================================
+// One call per model gives list, get, create, update and delete hooks over /api/ottaorm/todos,
+// the generic CRUD route every allow-listed model shares.
+const todoHooks = createModelHooks<Todo>({ entityName: 'todos' });
 
 export function OttaORMDemoPage() {
     const { isAuthenticated, isInitialized, isLoading: authLoading } = useSession();
-    const [newUserName, setNewUserName] = useState('');
-    const [newUserEmail, setNewUserEmail] = useState('');
-    const [newPostTitle, setNewPostTitle] = useState('');
-    const [selectedUserId, setSelectedUserId] = useState('');
+    const [title, setTitle] = useState('');
     // Do not start privileged queries from the persisted browser snapshot. The
     // root session bootstrap must first confirm that snapshot with the server.
     const canUseCrud = isInitialized && isAuthenticated && !authLoading;
 
-    // TanStack Query hooks - automatic caching, loading states, and refetching
-    const {
-        data: users = [],
-        isLoading: usersLoading,
-        error: usersError,
-    } = userHooks.useList(undefined, { enabled: canUseCrud });
+    // TanStack Query under the hood: caching, loading state and refetching come for free
+    const { data: todos = [], isLoading, error } = todoHooks.useList(undefined, { enabled: canUseCrud });
+    const createTodo = todoHooks.useCreate();
+    const updateTodo = todoHooks.useUpdate();
+    const deleteTodo = todoHooks.useDelete();
+    const busy = createTodo.isPending || updateTodo.isPending || deleteTodo.isPending;
 
-    const {
-        data: posts = [],
-        isLoading: postsLoading,
-        error: postsError,
-    } = postHooks.useList(undefined, { enabled: canUseCrud });
-
-    // Database initialization mutation
-    const initDb = useApiMutation<{ success: boolean }>({
-        endpoint: '/api/ottaorm/init',
-        method: 'POST',
-        invalidateKeys: [['users'], ['posts']],
-    });
-
-    // User mutations with automatic cache invalidation
-    const createUser = userHooks.useCreate();
-    const deleteUser = userHooks.useDelete();
-
-    // Post mutations with automatic cache invalidation
-    const createPost = postHooks.useCreate();
-    const deletePost = postHooks.useDelete();
-
-    // Combined loading/error states
-    const error = usersError?.message || postsError?.message || initDb.error?.message;
-
-    // Check if DB is initialized (has any data or init succeeded)
-    const dbReady = initDb.isSuccess || users.length > 0 || posts.length > 0;
-
-    const handleAddUser = async (e: React.FormEvent) => {
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!canUseCrud) return;
-        if (!newUserName.trim() || !newUserEmail.trim()) return;
-
-        await createUser.mutateAsync({
-            name: newUserName,
-            email: newUserEmail,
-        });
-        setNewUserName('');
-        setNewUserEmail('');
-    };
-
-    const handleAddPost = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!canUseCrud) return;
-        if (!newPostTitle.trim() || !selectedUserId) return;
-
-        await createPost.mutateAsync({
-            title: newPostTitle,
-            authorId: selectedUserId,
-            content: 'Sample post content',
-        });
-        setNewPostTitle('');
+        if (!canUseCrud || !title.trim()) return;
+        await createTodo.mutateAsync({ title: title.trim() });
+        setTitle('');
     };
 
     return (
         <div className="space-y-8">
             <DemoPageHeader
                 title="OttaORM"
-                description="Class-based Drizzle models with TanStack Query - automatic caching, loading states, and optimistic updates"
+                description="Class-based models on D1, reached through the generic CRUD route and TanStack Query hooks: caching, loading states and cache updates without any fetch code of your own."
             />
 
-            {error ? <Alert variant="destructive">{error}</Alert> : null}
+            {error ? <Alert variant="destructive">{error.message}</Alert> : null}
 
             {!canUseCrud ? (
-                <Alert variant="warning">Sign in to enable OttaORM CRUD requests in this demo.</Alert>
-            ) : null}
+                <Alert variant="warning">Sign in to read and write the todos table through OttaORM.</Alert>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
+                            Todos
+                            {isLoading && <span className="text-xs font-normal text-muted-foreground">Loading…</span>}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <form onSubmit={handleAdd} className="flex gap-2">
+                            <Input
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="What needs to be done?"
+                                aria-label="New todo"
+                                disabled={createTodo.isPending}
+                            />
+                            <Button type="submit" disabled={createTodo.isPending || !title.trim()} className="shrink-0">
+                                {createTodo.isPending ? 'Adding…' : 'Add'}
+                            </Button>
+                        </form>
 
-            {canUseCrud && !dbReady && !error ? (
-                <div className="rounded-xl bg-muted/40 p-4">
-                    <p className="mb-3 text-sm text-muted-foreground">
-                        Database not initialized. Click below to set up tables.
-                    </p>
-                    <Button
-                        onClick={() => {
-                            const searchParams = new URLSearchParams(window.location.search);
-                            const secret = searchParams.get('secret');
-                            initDb.mutate(secret ? { secret } : {});
-                        }}
-                        disabled={initDb.isPending}
-                    >
-                        {initDb.isPending ? 'Initializing...' : 'Initialize Database'}
-                    </Button>
-                </div>
-            ) : null}
-
-            {dbReady ? (
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
-                                Users
-                                {usersLoading && (
-                                    <span className="text-xs font-normal text-muted-foreground">Loading...</span>
-                                )}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <form onSubmit={handleAddUser} className="space-y-2">
-                                <Input
-                                    value={newUserName}
-                                    onChange={(e) => setNewUserName(e.target.value)}
-                                    placeholder="Name..."
-                                    disabled={createUser.isPending}
-                                />
-                                <Input
-                                    type="email"
-                                    value={newUserEmail}
-                                    onChange={(e) => setNewUserEmail(e.target.value)}
-                                    placeholder="Email..."
-                                    disabled={createUser.isPending}
-                                />
-                                <Button
-                                    type="submit"
-                                    disabled={createUser.isPending || !newUserName.trim() || !newUserEmail.trim()}
-                                    className="w-full"
-                                >
-                                    {createUser.isPending ? 'Adding...' : 'Add User'}
-                                </Button>
-                            </form>
-
-                            <div className="space-y-2">
-                                {users.length === 0 ? (
-                                    <EmptyState title="No users yet. Add one above!" compact />
-                                ) : (
-                                    users.map((user, index) => (
-                                        <div
-                                            key={user.id || `user-${index}`}
-                                            className="rounded-lg bg-background p-4 ring-1 ring-border"
+                        {todos.length === 0 ? (
+                            <EmptyState
+                                title="No todos yet"
+                                description="Add one above; it lands in D1 through the model."
+                                compact
+                            />
+                        ) : (
+                            <ul className="space-y-2">
+                                {todos.map((todo) => (
+                                    <li
+                                        key={todo.id}
+                                        className="flex items-center gap-3 rounded-lg bg-background p-3 ring-1 ring-border"
+                                    >
+                                        <Checkbox
+                                            checked={todo.completed}
+                                            disabled={busy}
+                                            aria-label={`Mark "${todo.title}" as ${todo.completed ? 'open' : 'done'}`}
+                                            onCheckedChange={(checked) =>
+                                                updateTodo.mutate({
+                                                    id: todo.id,
+                                                    data: { completed: checked === true },
+                                                })
+                                            }
+                                        />
+                                        <span
+                                            className={`flex-1 text-sm ${todo.completed ? 'text-muted-foreground line-through' : ''}`}
                                         >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div>
-                                                    <p className="font-medium">{user.name || '(No name)'}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {user.email || '(No email)'}
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    onClick={() => deleteUser.mutate(user.id)}
-                                                    disabled={deleteUser.isPending}
-                                                    variant="destructive"
-                                                    size="sm"
-                                                >
-                                                    Delete
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
-                                Posts
-                                {postsLoading && (
-                                    <span className="text-xs font-normal text-muted-foreground">Loading...</span>
-                                )}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <form onSubmit={handleAddPost} className="space-y-2">
-                                <NativeSelect
-                                    value={selectedUserId}
-                                    onChange={(e) => setSelectedUserId(e.target.value)}
-                                    disabled={createPost.isPending || users.length === 0}
-                                    aria-label="Select post author"
-                                    wrapperClassName="w-full"
-                                >
-                                    {[
-                                        <NativeSelectOption key="_placeholder" value="">
-                                            Select author...
-                                        </NativeSelectOption>,
-                                        ...users.map((user, index) => (
-                                            <NativeSelectOption key={user.id || `opt-${index}`} value={user.id}>
-                                                {user.name ||
-                                                    user.email ||
-                                                    (user.id ? `User ${user.id.substring(0, 8)}` : 'Unknown User')}
-                                            </NativeSelectOption>
-                                        )),
-                                    ]}
-                                </NativeSelect>
-                                <Input
-                                    value={newPostTitle}
-                                    onChange={(e) => setNewPostTitle(e.target.value)}
-                                    placeholder="Post title..."
-                                    disabled={createPost.isPending}
-                                />
-                                <Button
-                                    type="submit"
-                                    disabled={createPost.isPending || !newPostTitle.trim() || !selectedUserId}
-                                    className="w-full"
-                                >
-                                    {createPost.isPending ? 'Adding...' : 'Add Post'}
-                                </Button>
-                            </form>
-
-                            <div className="space-y-2">
-                                {posts.length === 0 ? (
-                                    <EmptyState title="No posts yet. Create users first, then add posts!" compact />
-                                ) : (
-                                    posts.map((post, index) => (
-                                        <div
-                                            key={post.id || `post-${index}`}
-                                            className="rounded-lg bg-background p-4 ring-1 ring-border"
+                                            {todo.title}
+                                        </span>
+                                        <Button
+                                            onClick={() => deleteTodo.mutate(todo.id)}
+                                            disabled={busy}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-muted-foreground hover:text-destructive"
                                         >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div>
-                                                    <p className="font-medium">{post.title}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        By:{' '}
-                                                        {users.find((u) => u.id === post.authorId)?.name || 'Unknown'}
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    onClick={() => deletePost.mutate(post.id)}
-                                                    disabled={deletePost.isPending}
-                                                    variant="destructive"
-                                                    size="sm"
-                                                >
-                                                    Delete
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            ) : null}
+                                            Delete
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">TanStack Query Benefits</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">What the hooks give you</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                        <li>Automatic caching - data is cached and reused across components</li>
-                        <li>Background refetching - data stays fresh automatically</li>
-                        <li>Loading states - no manual loading state management</li>
-                        <li>Error handling - built-in error boundaries support</li>
-                        <li>Optimistic updates - instant UI feedback (configurable)</li>
-                        <li>Request deduplication - multiple components share the same request</li>
-                        <li>DevTools - inspect queries and cache in the floating panel (bottom-left)</li>
+                        <li>Caching: data is cached and shared across components</li>
+                        <li>Background refetching: data stays fresh on its own</li>
+                        <li>Loading and error states: no state management of your own</li>
+                        <li>Cache updates: a create, update or delete refreshes the list</li>
+                        <li>Request deduplication: components asking for the same list share one request</li>
+                        <li>DevTools: inspect queries and the cache in the floating panel</li>
                     </ul>
                 </CardContent>
             </Card>

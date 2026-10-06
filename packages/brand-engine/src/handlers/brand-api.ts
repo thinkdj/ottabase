@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – API handlers for brand config (v2: per-app scoping)
-// GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally.
+// Brand Engine, API handlers for brand config (v2: per-app scoping)
+// GET /api/brand: full config (route mappings, layouts, all brand kits). Client resolves path locally.
 // ---------------------------------------------------------------------------
 
 import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
@@ -17,7 +17,7 @@ export interface BrandApiEnv {
     R2_PUBLIC_URL?: string;
 }
 
-/** Compact response when single kit – avoids repeating brandKitId on every route */
+/** Compact response when single kit, avoids repeating brandKitId on every route */
 export type CompactBrandConfig = Omit<FullBrandConfig, 'routeMappings'> & {
     kit: string;
     routes: [string, string, number][]; // [path, layout, priority]
@@ -42,7 +42,7 @@ function toCompactResponse(config: FullBrandConfig): CompactBrandConfig | FullBr
 }
 
 /**
- * GET /api/brand – Return full resolution data in one response.
+ * GET /api/brand: Return full resolution data in one response.
  * Returns both light and dark themes per kit so client can switch modes without refetch.
  * When single brand kit: compact format (kit + routes). Client expands and matches path locally.
  * Scoped by appId (not organizationId).

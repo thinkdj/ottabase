@@ -230,7 +230,7 @@ at every enforcement layer.
 const user = await User.find('user-id');
 
 // Every method below takes a REQUIRED organizationId ('system' for platform grants) and throws
-// without one — an org-less call used to merge the user's grants from every tenant.
+// without one, an org-less call used to merge the user's grants from every tenant.
 
 // Role management (org-scoped; idempotent on userId + roleId + organizationId)
 await user.assignRole(roleId, assignedBy, organizationId, { cache }); // bumps the org's cache version
@@ -296,7 +296,7 @@ or the missing list, use `evaluatePermission` / `evaluateRole`, which return
 | `member`         | `*:read`                                | Basic read access                                       |
 
 > **Authorization is permission + scope, never role NAME.** Platform authority requires a **system-scoped** grant
-> carrying `platform:admin` (or `*:*`) — only `platform_owner` has it. Org admins hold `org:admin` **org-scoped**.
+> carrying `platform:admin` (or `*:*`), only `platform_owner` has it. Org admins hold `org:admin` **org-scoped**.
 > `assertAdmin(ctx, { scope: 'system' | 'organization' | 'either' })` reads `ctx.systemPermissions` for platform scope
 > and `ctx.permissions` for org scope; there is no role-name check. RLS `AdminOnly()` sets `requirePlatformAdmin`
 > (checked against the scope-aware `platformAdmin` flag). `Role.ensureDefaultRoles()` is create-if-missing by default;
@@ -328,7 +328,7 @@ await user.hasPermission('posts:edit', {
 
 ### Single Founder
 
-Grants still live in an org — the founder's personal org, or `'system'` for platform-level grants. There is no org-less
+Grants still live in an org, the founder's personal org, or `'system'` for platform-level grants. There is no org-less
 "global" check; omitting `organizationId` throws.
 
 ```typescript

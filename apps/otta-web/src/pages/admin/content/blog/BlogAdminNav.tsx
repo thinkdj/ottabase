@@ -17,17 +17,17 @@ export function BlogAdminNav() {
     // Links resolve against the active surface (/admin/content/blog or /studio),
     // so the same nav serves both the control plane and the editorial studio.
     const NAV_ITEMS = [
-        { to: surface.contentPath, label: 'Content', icon: FileText, exact: true },
-        { to: surface.tagsPath, label: 'Tag', icon: Tag, exact: false },
-        { to: surface.categoriesPath, label: 'Category', icon: FolderTree, exact: false },
+        { to: surface.contentPath, label: 'Posts', icon: FileText, exact: true },
+        { to: surface.tagsPath, label: 'Tags', icon: Tag, exact: false },
+        { to: surface.categoriesPath, label: 'Categories', icon: FolderTree, exact: false },
         { to: surface.seriesPath, label: 'Series', icon: Layers, exact: false },
         // Theme/plugin management is studio-ADMIN only server-side. Under /admin/content/blog
         // the surface itself is already org:admin-gated, so it always applies there; under
         // /studio (content-permission gated, no admin requirement) a plain author/editor
-        // would otherwise see a nav item that 403s on every action — hide it for them instead.
+        // would otherwise see a nav item that 403s on every action, hide it for them instead.
         ...(surface.inStudio && !isOrgAdmin(user)
             ? []
-            : [{ to: surface.themesPath, label: 'Content Studio', icon: Palette, exact: false }]),
+            : [{ to: surface.themesPath, label: 'Content studio', icon: Palette, exact: false }]),
     ] as const;
 
     const isActive = (to: string, exact?: boolean) => {

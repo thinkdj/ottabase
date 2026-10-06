@@ -66,7 +66,7 @@ export function FileUploadItem({ file, onRemove, onRetry, showRemove = true }: F
                                 type="button"
                                 onClick={() => onRemove(file.id)}
                                 className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                aria-label="Remove file"
+                                aria-label={`Remove ${file.file.name}`}
                             >
                                 <svg className="h-4 w-4" {...icon}>
                                     <path d="M6 18L18 6M6 6l12 12" />
@@ -87,6 +87,7 @@ export function FileUploadItem({ file, onRemove, onRetry, showRemove = true }: F
                     <div
                         className="h-1.5 w-full rounded-full bg-muted"
                         role="progressbar"
+                        aria-label={`Uploading ${file.file.name}`}
                         aria-valuenow={file.progress}
                         aria-valuemin={0}
                         aria-valuemax={100}

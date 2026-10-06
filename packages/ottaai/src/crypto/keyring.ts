@@ -1,12 +1,12 @@
 // ============================================================
-// @ottabase/ottaai — Keyring + versioned decryptor registry
+// @ottabase/ottaai, Keyring + versioned decryptor registry
 // ============================================================
 // Both ship in v1 because BOTH are unretrofittable:
 //
 //  • A format version WITHOUT a key id has no slot naming WHICH master secret
 //    wrapped a row. You cannot run two secrets concurrently, cannot re-wrap
 //    lazily on read, and cannot distinguish an old-secret row from a corrupt
-//    one from a foreign one — every failure looks identical, and rotation
+//    one from a foreign one, every failure looks identical, and rotation
 //    becomes a flag day or a mass "re-enter your key" email.
 //
 //  • A reader that hard-rejects any prefix other than the current one makes
@@ -30,7 +30,7 @@ export interface KeyringOptions {
     currentKeyId: string;
 }
 
-/** The four derived rotation states. DERIVED, never stored — there is no state row to desync. */
+/** The four derived rotation states. DERIVED, never stored, there is no state row to desync. */
 export type RotationState = 'single' | 'dual' | 'drain' | 'retire';
 
 export interface Keyring {
@@ -45,7 +45,7 @@ export interface Keyring {
 }
 
 /**
- * FROZEN INVARIANT #1 — THE MASTER-SECRET TRIM.
+ * FROZEN INVARIANT #1: THE MASTER-SECRET TRIM.
  *
  * Normalise (trim surrounding whitespace) at EXACTLY THIS ONE PLACE, applied identically
  * to a configured secret and to any explicitly passed override.
@@ -69,7 +69,7 @@ export function normalizeMasterSecret(secret: string): string {
  *
  * Rejects at composition any master secret below {@link MIN_MASTER_SECRET_BYTES} of decoded
  * material. THE PREMISE OF CHOOSING HKDF OVER PBKDF2 IS THAT THE SECRET IS HIGH-ENTROPY AND
- * MACHINE-GENERATED — HKDF-Extract over a weak secret is one hash, so an operator who sets a
+ * MACHINE-GENERATED, HKDF-Extract over a weak secret is one hash, so an operator who sets a
  * project name or a reused password turns one stolen database backup into an offline break of
  * every tenant's key at commodity GPU rates with no iteration cost. A future reader who
  * relaxes this length check has silently downgraded the cipher.
@@ -102,7 +102,7 @@ export function createKeyring(options: KeyringOptions): Keyring {
             throw new AiProvisioningError(
                 `Master secret for key id "${keyId}" carries ${bytes.length} bytes of material; ` +
                     `at least ${MIN_MASTER_SECRET_BYTES} are required. Generate one with a CSPRNG ` +
-                    '(`openssl rand -base64 48`) — never type one.',
+                    '(`openssl rand -base64 48`): never type one.',
                 AI_ERROR_CODES.CONFIGURATION,
             );
         }
@@ -131,7 +131,7 @@ export function createKeyring(options: KeyringOptions): Keyring {
  *
  *   single → dual  (new secret added, old still primary, both readable)
  *          → drain (new secret primary, background re-wrap running, old still readable)
- *          → retire(old removed — PERMITTED ONLY at a zero-rows envelope scan)
+ *          → retire(old removed: PERMITTED ONLY at a zero-rows envelope scan)
  */
 export function rotationState(keyring: Keyring, previousKeyId?: string | null): RotationState {
     const ids = keyring.keyIds();
@@ -171,7 +171,7 @@ export function createDecryptorRegistry(initial?: Record<string, EnvelopeDecrypt
 }
 
 /**
- * DECLARED, NOT IMPLEMENTED — the seam a future network KMS plugs into.
+ * DECLARED, NOT IMPLEMENTED, the seam a future network KMS plugs into.
  *
  * If key material ever moves behind a network service, cache the DERIVED key and never
  * the plaintext master secret, keyed by `(instance, keyId, record id)`. A derived-key

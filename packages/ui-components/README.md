@@ -124,8 +124,8 @@ const [value, setValue] = useState({ hello: 'world', count: 1 });
 Keyboard: `Enter` commits an inline edit, `Escape` cancels. In Raw mode, `Ctrl/Cmd+S` formats.
 
 This is the canonical JSON editor in the monorepo. `@ottabase/forms` uses it internally for `fieldType: 'json'` fields
-and the admin blog editor uses it for the Custom Meta tab — reach for this component instead of adding a third-party
-JSON editor dependency.
+and the admin blog editor uses it for the Custom Meta tab, reach for this component instead of adding a third-party JSON
+editor dependency.
 
 ### DarkModeToggle
 
@@ -215,8 +215,8 @@ const config = createAppConfig({
 This component requires:
 
 - `@ottabase/config` - For configuration management
-- `next/link` - For optional link functionality (**Next.js only**; if using TanStack Router or another framework, wrap
-  the Logo in your router's `<Link>` component instead and omit `linkUrl`)
+- `linkUrl` renders a plain `<a>`; with a client-side router, wrap the Logo in your router's `<Link>` instead and omit
+  `linkUrl`
 - Internal DarkModeToggle component (if darkModeSwitcher is true)
 
 ## Tree Shaking
@@ -239,6 +239,9 @@ import { DarkModeToggle } from '@ottabase/ui-components';
 - `@ottabase/ui-components/empty-state` - EmptyState component
 - `@ottabase/ui-components/loading-state` - LoadingState component
 - `@ottabase/ui-components/logo` - Logo component
+- `@ottabase/ui-components/json-editor` - JsonEditor component
+- `@ottabase/ui-components/blog-pagination` - BlogPagination component
+- `@ottabase/ui-components/history-go-back-button` - HistoryGoBackButton component
 
 ## Installation
 

@@ -41,7 +41,7 @@ it.
     import { ProviderUIBase } from '@ottabase/ui-base';
     import { MANTINE_DEMO_COLOR_DEFAULT, MANTINE_DEMO_THEME_COLORS, ProviderUIMantine } from '@ottabase/ui-mantine';
     import { useAtomValue } from 'jotai';
-    import { themeAtom } from '@/ottabase/state/appGlobalState';
+    import { themeAtom } from '@/ottabase/state/appState';
 
     function App({ children }) {
         const theme = useAtomValue(themeAtom);

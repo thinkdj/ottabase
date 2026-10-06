@@ -1,10 +1,10 @@
 // ====================================================================
-// otta-web — inference rate limiting
+// otta-web, inference rate limiting
 // --------------------------------------------------------------------
 // A RATE LIMIT, NOT A BILLING QUOTA. It bounds burst and abuse; it does not
 // bound total spend. Real spend accounting needs a strongly consistent counter
 // and a commercial policy (free tier, reset period, retries, refunds, admin
-// overrides, per-model pricing) — an approximate KV count is not a billing
+// overrides, per-model pricing), an approximate KV count is not a billing
 // boundary and is deliberately not pretending to be one.
 //
 // WHY THIS EXISTS AT ALL: `/api/ai/complete` is authenticated, and that is the
@@ -32,7 +32,7 @@
 
 import type { QuotaCheck } from '@ottabase/ottaai/resolver';
 import type { OttaaiRateLimitConfig } from '@ottabase/config';
-// `CloudflareEnv` is AMBIENT — `cloudflare-env.d.ts` declares it globally with no export,
+// `CloudflareEnv` is AMBIENT: `cloudflare-env.d.ts` declares it globally with no export,
 // so importing it fails with TS2306. See the note in `ai.ts`.
 
 /** The KV surface this needs. Matches `KVNamespace`, and keeps the module testable. */
@@ -59,7 +59,7 @@ const KEY_PREFIX = 'ottaai:rl:';
  * Build the `quota` hook for `createAiProvisioningWithStorage`.
  *
  * Returns `false` to refuse, which the package turns into a `RATE_LIMITED` result and a
- * `quota.exceeded` event — so the refusal is classified, attributed and observable rather
+ * `quota.exceeded` event, so the refusal is classified, attributed and observable rather
  * than a bare 429 thrown from a route.
  */
 export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
@@ -69,7 +69,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
     return async ({ source, organizationId, userId }) => {
         // A PLATFORM CALL REQUIRES A POSITIVE APP CEILING.
         //
-        // `perApp` is the ONLY aggregate limit — `perUser` and `perOrganization` bound one
+        // `perApp` is the ONLY aggregate limit, `perUser` and `perOrganization` bound one
         // actor each and say nothing about the total. Treating `perApp: 0` as "dimension
         // disabled" therefore quietly restores exactly the unlimited operator spend this
         // module exists to prevent, and a negative value used to arrive at the same place
@@ -87,7 +87,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
         // stops a single account looping, `perOrganization` stops a workspace fanning the
         // same abuse across seats, and `perApp` is the aggregate burst ceiling across every
         // account. `source: 'platform'` covers gateway-billed inference too, not just a
-        // platform provider key — both spend the operator's money.
+        // platform provider key, both spend the operator's money.
         const buckets: Array<{ dimension: string; id: string; limit: number }> = [
             { dimension: 'app', id: options.appId, limit: options.limits.perApp },
         ];
@@ -97,7 +97,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
         }
 
         const active = buckets.filter((bucket) => bucket.limit > 0);
-        // Reachable only for BYOK with every dimension disabled — a platform call with
+        // Reachable only for BYOK with every dimension disabled, a platform call with
         // `perApp <= 0` was already refused above, and any positive `perApp` keeps that
         // bucket active.
         if (active.length === 0) return true;
@@ -119,7 +119,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
             // BYOK fails OPEN: the tenant is spending their own money against their own
             // provider's limits, so a missing binding here is an operator inconvenience, not
             // an operator cost. Bricking a tenant's paid feature over it would be worse.
-            warn('[ottaai] Rate limiter unavailable (no OBCF_KV binding) — BYOK inference proceeding unthrottled.');
+            warn('[ottaai] Rate limiter unavailable (no OBCF_KV binding), BYOK inference proceeding unthrottled.');
             return true;
         }
 
@@ -151,7 +151,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
         // THE ORDER-DEPENDENT VERSION OF THIS WAS A DENIAL-OF-SERVICE. Incrementing each
         // bucket as it passed meant a call rejected on a NARROW dimension had already
         // consumed a WIDER one: with perUser=20 and perApp=600, a single user's 21st call
-        // incremented `app` and only then failed on `user` — so 580 further rejected calls,
+        // incremented `app` and only then failed on `user`, so 580 further rejected calls,
         // costing that user nothing and spending no provider tokens, drained the app-wide
         // budget and denied AI to every other account for the rest of the minute.
         //
@@ -159,7 +159,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
         // limit but over their ORG limit poisons `app` the same way. Only checking everything
         // before writing anything closes it.
         //
-        // Reads run in PARALLEL — lower latency on the inference path, and it narrows the
+        // Reads run in PARALLEL: lower latency on the inference path, and it narrows the
         // read-to-write window that preflighting otherwise widens.
         let raw: Array<string | null>;
         try {
@@ -187,7 +187,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
             );
         } catch {
             // A partial write leaves some dimensions charged and others not. That over-counts,
-            // i.e. it errs toward refusing — the safe direction for a spend control.
+            // i.e. it errs toward refusing, the safe direction for a spend control.
             return onStorageFailure('write');
         }
 
@@ -207,7 +207,7 @@ export function createAiRateLimiter(options: AiRateLimiterOptions): QuotaCheck {
  * whether a platform call can actually be made. Deriving it here from "is a provider key
  * set?" was wrong in the direction that matters: gateway-billed inference has no provider
  * key, so a key-based predicate stayed silent on precisely the deployment that could spend
- * the operator's money without a limiter. The runtime refusal was correct either way — this
+ * the operator's money without a limiter. The runtime refusal was correct either way, this
  * is about the operator finding out at boot rather than from per-call warnings.
  */
 export function platformSpendWarning(
@@ -228,7 +228,7 @@ export function platformSpendWarning(
         return (
             'A usable platform AI route is configured but rateLimit.perApp is not positive, so there is no ceiling ' +
             'on aggregate spend. Platform-paid calls will be REFUSED. Set a large perApp value rather than 0 if ' +
-            'you intend a high cap — perUser and perOrganization bound one actor each, not the total.'
+            'you intend a high cap, perUser and perOrganization bound one actor each, not the total.'
         );
     }
 

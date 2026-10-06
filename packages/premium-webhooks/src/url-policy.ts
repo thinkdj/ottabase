@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — destination URL policy
+// @ottabase/premium-webhooks, destination URL policy
 // ============================================================
 // An outbound webhook is a customer-controlled URL that the SERVER fetches. That is the
 // textbook SSRF shape, so the destination is validated on write and the fetch never
@@ -74,7 +74,7 @@ function isBlockedIpv6(hostname: string): boolean {
 /**
  * Validate a destination URL, returning the normalized href.
  *
- * Throws {@link WebhookUrlError} with a message written for the customer — this one is
+ * Throws {@link WebhookUrlError} with a message written for the customer, this one is
  * safe to show, because it is entirely about the value they just typed.
  */
 export function assertDeliverableUrl(rawUrl: string): string {

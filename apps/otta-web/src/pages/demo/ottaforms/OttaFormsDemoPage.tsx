@@ -130,15 +130,6 @@ export function OttaFormsDemoPage() {
                                 apiBasePath="/api/ottaorm"
                                 perPage={10}
                                 header={selectedModel === 'users' ? <ProtectedUsersNotice /> : undefined}
-                                onCreate={(record) => {
-                                    console.log('Created:', record);
-                                }}
-                                onUpdate={(record) => {
-                                    console.log('Updated:', record);
-                                }}
-                                onDelete={(id) => {
-                                    console.log('Deleted:', id);
-                                }}
                             />
                         </CardContent>
                     </Card>

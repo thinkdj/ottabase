@@ -1,11 +1,11 @@
 // ============================================================
-// AI rate-limit dials — the config path and the env path must agree.
+// AI rate-limit dials, the config path and the env path must agree.
 // ============================================================
 // The bug this file exists for: `defineOttabaseConfig` clamped negative limits to
 // the default, while `resolveConfigWithEnv` passed `parseInt` output straight
 // through. A negative limit then reads downstream as "dimension disabled", so
 // `OTTAAI_RATE_LIMIT_PER_APP=-1` silently removed the only aggregate ceiling on
-// operator spend — through the one path an operator is most likely to reach for
+// operator spend, through the one path an operator is most likely to reach for
 // in a hurry.
 // ============================================================
 

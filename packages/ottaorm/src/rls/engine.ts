@@ -40,7 +40,7 @@ export class RLSEngine {
     }
 
     /**
-     * Compute the pure RLS read filter for a model — without any caller-supplied
+     * Compute the pure RLS read filter for a model, without any caller-supplied
      * `where` merged in. Runs role/permission checks. Exposed so the secure CRUD
      * layer can validate the filter's columns against the model BEFORE running a
      * query, and fail closed if a security column is missing (rather than silently
@@ -176,12 +176,12 @@ export class RLSEngine {
 
     /**
      * Check if context has permission. Supports wildcards:
-     * - *:* grants all (bare * does NOT grant—use *:* for super-admin)
+     * - *:* grants all (bare * does NOT grant, use *:* for super-admin)
      * - brand:* matches brand:edit, brand:read
      * - *:edit matches posts:edit, brand:edit
      *
      * Only 2-segment (resource:action) permissions are supported.
-     * 3+ segment permissions (e.g. brand:edit:admin) are rejected—no wildcard matching.
+     * 3+ segment permissions (e.g. brand:edit:admin) are rejected, no wildcard matching.
      */
     private hasPermission(context: SecurityContext, required: string): boolean {
         return hasGrantedPermission(context.permissions, required);
@@ -191,7 +191,7 @@ export class RLSEngine {
      * Check role/permission requirements
      */
     private checkAccess(model: string, context: SecurityContext, policy: RLSPolicy): void {
-        // Platform-admin gate (scope-aware — set upstream from a system-scoped grant, never a role name)
+        // Platform-admin gate (scope-aware: set upstream from a system-scoped grant, never a role name)
         if (policy.requirePlatformAdmin && !context.platformAdmin) {
             throw new RLSError(`Access denied: ${model} requires platform administrator`, {
                 type: 'permission_denied',
@@ -234,14 +234,14 @@ export class RLSEngine {
     /**
      * Defense-in-depth tenant check. When the caller supplies the set of organizations the
      * user actually belongs to (`context.memberOrganizationIds`), refuse any operation scoped
-     * to an organization outside that set — closing the "trust the X-Org-Id header" gap.
+     * to an organization outside that set, closing the "trust the X-Org-Id header" gap.
      *
      * Opt-in by data, and the empty list is meaningful:
      *  - `undefined` → caller didn't resolve membership → no-op (backward compatible).
      *  - `[]`        → caller resolved it and the user belongs to ZERO orgs → fail closed; no
      *                  organization claim can ever be satisfied by an empty set.
      * A null/undefined org (system or single-founder rows) is not a tenant claim and is skipped.
-     * Only PLATFORM administrators may act across tenants — gated on the scope-aware
+     * Only PLATFORM administrators may act across tenants, gated on the scope-aware
      * `platformAdmin` flag, NOT the `*:*` permission string. Those differ: a platform owner has
      * both, but a stale/org-scoped grant can carry `*:*` (org-level) WITHOUT being a platform
      * admin. Trusting the permission string here would let such a grant bypass the tenant check;
@@ -265,7 +265,7 @@ export class RLSEngine {
     /**
      * Validate data integrity (prevent cross-tenant writes).
      * Note: For UPDATE/DELETE, secure-crud pre-verifies access via applyReadFilter before
-     * calling this—so records you cannot read cannot be updated or deleted.
+     * calling this, so records you cannot read cannot be updated or deleted.
      */
     private validateDataIntegrity(
         model: string,
@@ -397,7 +397,7 @@ export class RLSEngine {
         }
 
         // Enforce explicit data-field → context mappings. Needed for custom policies whose
-        // read filter field differs from the data field — e.g. organizations are filtered by
+        // read filter field differs from the data field, e.g. organizations are filtered by
         // ownerId, so { ownerId: 'userId' } pins the owner on create and blocks forging it.
         const enforceOnWrite = config.enforceOnWrite ?? {};
         for (const [dataField, contextKey] of Object.entries(enforceOnWrite)) {

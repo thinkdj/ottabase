@@ -1,4 +1,4 @@
-// Keep in sync with wrangler.jsonc (bindings, vars) — Always-On rule in AGENTS.MD.
+// Keep in sync with wrangler.jsonc (bindings, vars), Always-On rule in AGENTS.MD.
 export interface Env {
     /** R2 bucket holding artifacts under `{team}/{hash}`. */
     CACHE_R2: R2Bucket;

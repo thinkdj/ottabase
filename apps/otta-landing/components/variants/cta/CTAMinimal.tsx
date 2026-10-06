@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { CTAData } from './types';
 
 /**
- * Minimal CTA — compact inline text and small action buttons.
+ * Minimal CTA: compact inline text and small action buttons.
  */
 export function CTAMinimal({ title, description, actions }: CTAData) {
     return (

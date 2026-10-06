@@ -3,11 +3,11 @@
  *
  * Two surfaces, deliberately separate:
  *
- *  1. CONNECT — the package's drop-in settings component, with the organization scope
+ *  1. CONNECT: the package's drop-in settings component, with the organization scope
  *     enabled. Saving an org key needs the `ai:manage` permission (owner/admin hold it);
  *     the server enforces that, this page only offers the affordance.
  *
- *  2. RESOLUTION INSPECTOR — `explainResolution` per task. This is the honest answer to
+ *  2. RESOLUTION INSPECTOR: `explainResolution` per task. This is the honest answer to
  *     the asymmetry the design makes explicit: an RLS filter is single-dimension and
  *     cannot express `org = X OR user = Y`, so under a mixed strategy A USER CAN BE
  *     RUNNING ON A KEY THEY CANNOT SEE IN THE LIST ABOVE. The inspector reads the
@@ -61,7 +61,7 @@ function ResolutionInspector() {
         queryKey: ['ai_provider_credentials', 'explain', activeTask],
         enabled: Boolean(activeTask),
         // Through the SAME adapter as every other call: the handlers wrap their payload in
-        // { data }, and  returns the RAW body — reading fields off the envelope would
+        // { data }, and  returns the RAW body, reading fields off the envelope would
         // dereference undefined and crash the page on first render.
         queryFn: () => aiRequest<ExplainResponse>(`/explain?task=${encodeURIComponent(activeTask)}`),
     });
@@ -74,8 +74,8 @@ function ResolutionInspector() {
                     Resolution inspector
                 </CardTitle>
                 <CardDescription>
-                    What the resolver would pick for you, and why every other credential lost. Reads the resolver itself
-                    — not the list above — so it stays honest even when a key is out of your management scope.
+                    What the resolver would pick for you, and why every other credential lost. Reads the resolver
+                    itself, not the list above, so it stays honest even when a key is out of your management scope.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -112,7 +112,7 @@ function ResolutionInspector() {
                                     {explain.data.resolution.source ?? 'no client'}
                                 </Badge>
                                 <span className="text-muted-foreground">
-                                    {explain.data.resolution.provider ?? '—'}
+                                    {explain.data.resolution.provider ?? 'No provider'}
                                     {explain.data.resolution.model ? ` · ${explain.data.resolution.model}` : ''}
                                 </span>
                             </div>
@@ -192,7 +192,7 @@ export function AiProvidersPage() {
                         <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{OTTAAI_CONFIG.strategy}</code>
                         , mode{' '}
                         <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">{OTTAAI_CONFIG.mode}</code>
-                        {OTTAAI_CONFIG.byokEnabled ? '' : ' — BYOK is currently switched off platform-wide'}.
+                        {OTTAAI_CONFIG.byokEnabled ? '' : ': BYOK is currently switched off platform-wide'}.
                     </p>
                 </div>
 
@@ -229,12 +229,12 @@ export function AiProvidersPage() {
                 <AiProviderSettings
                     // Opt in and let SERVER TRUTH decide. The component ANDs this with
                     // `status.orgScopeManageable`, which now carries both the operator's
-                    // `allowOrgCredentials` dial and the strategy — so reading
+                    // `allowOrgCredentials` dial and the strategy, so reading
                     // `OTTAAI_CONFIG.allowOrgCredentials` here again would be a second,
                     // independently-fetched copy of an answer the server already gave.
                     allowOrgScope
                     title="Organization & personal keys"
-                    description="A personal key applies only to you. An organization key applies to everyone in this workspace — it is a spending instrument, so only owners and admins can change it."
+                    description="A personal key applies only to you. An organization key applies to everyone in this workspace, it is a spending instrument, so only owners and admins can change it."
                 />
 
                 <ResolutionInspector />
@@ -252,7 +252,7 @@ export function AiProvidersPage() {
  */
 const aiRequest = async <T,>(path: string, init?: { method?: string; body?: unknown }): Promise<T> => {
     // The api client returns undefined for a 204 or a non-JSON 2xx, so this must not assume
-    // an envelope is present — otherwise a legitimate empty success becomes a TypeError.
+    // an envelope is present, otherwise a legitimate empty success becomes a TypeError.
     const response = await api<{ data: T } | undefined>(path, { method: init?.method ?? 'GET', body: init?.body });
     return response?.data as T;
 };

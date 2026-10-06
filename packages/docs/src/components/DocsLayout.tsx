@@ -87,7 +87,7 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
                 })
                 .catch((err) => {
                     console.error('Failed to load markdown', err);
-                    setResolvedContent('# Error loading content. Please try again later.');
+                    setResolvedContent('This page could not be loaded. Refresh to try again.');
                     setIsLoadingContent(false);
                 });
         }
@@ -178,7 +178,8 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
                 type="button"
                 className="otta-docs-mobile-toggle"
                 onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                aria-label="Toggle navigation"
+                aria-expanded={mobileNavOpen}
+                aria-controls="otta-docs-sidebar"
             >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                     <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -252,7 +253,7 @@ export function DocsLayout({ config, activeSlug, onNavigate, className = '' }: D
                     </>
                 ) : (
                     <div className="otta-docs-empty">
-                        <p>Select a page from the sidebar to get started.</p>
+                        <p>There is no page at this address. Pick one from the sidebar.</p>
                     </div>
                 )}
             </main>

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Fetch layout templates and route mappings for app (v2: per-app)
+// Brand Engine, Fetch layout templates and route mappings for app (v2: per-app)
 // Route mappings include brandKitId per row.
 // ---------------------------------------------------------------------------
 

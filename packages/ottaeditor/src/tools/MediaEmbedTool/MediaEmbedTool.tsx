@@ -14,14 +14,14 @@ export interface MediaEmbedData {
 
 /**
  * EditorJS tool for non-image media embeds (video, audio, PDF, document, archive).
- * Inserted programmatically by MediaLibraryTool — not shown in the toolbox.
+ * Inserted programmatically by MediaLibraryTool, not shown in the toolbox.
  */
 export default class MediaEmbedTool {
     private data: MediaEmbedData;
     private wrapper: HTMLElement;
 
     static get toolbox() {
-        return undefined as any; // Hidden from toolbox — inserted via MediaLibraryTool only
+        return undefined as any; // Hidden from toolbox, inserted via MediaLibraryTool only
     }
 
     static get isReadOnlySupported() {

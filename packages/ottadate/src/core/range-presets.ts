@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Default range presets
+ * @ottabase/ottadate: Default range presets
  *
  * Built-in quick-select presets for the DateRangePicker sidebar.
  * All ranges compute relative to "now" each time they are called.

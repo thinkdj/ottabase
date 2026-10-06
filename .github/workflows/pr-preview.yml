@@ -15,7 +15,7 @@ concurrency:
     cancel-in-progress: true
 
 # cancel-in-progress (concurrency block above) is handled by the Actions runner
-# and does not require actions: write — contents: read is sufficient.
+# and does not require actions: write, contents: read is sufficient.
 permissions:
     contents: read
 
@@ -37,7 +37,7 @@ jobs:
                   # Closed PR events are cleanup-only; no preview deploy needed.
                   if [ "$EVENT_NAME" = "pull_request" ] && [ "$PR_ACTION" = "closed" ]; then
                     echo "preview_requested=false" >> $GITHUB_OUTPUT
-                    echo "🧹 PR closed event detected — deploy jobs disabled; cleanup job will handle teardown"
+                    echo "🧹 PR closed event detected, deploy jobs disabled; cleanup job will handle teardown"
                     exit 0
                   fi
 
@@ -56,7 +56,7 @@ jobs:
                     echo "⏭️  Skipping PR preview: add #deploy or #preview to PR title/description, or run manually"
                   fi
 
-    # Build and cache packages (reusable workflow) — only when the preview matrix has something to deploy
+    # Build and cache packages (reusable workflow), only when the preview matrix has something to deploy
     build-packages:
         needs: prepare-deployment
         if: needs.prepare-deployment.outputs.has-apps == 'true'
@@ -381,7 +381,7 @@ jobs:
 
                   echo "✅ Build tools verified"
 
-            # Same key build-packages saved under (as deploy.yml does) — no recomputation to drift.
+            # Same key build-packages saved under (as deploy.yml does), no recomputation to drift.
             - name: Restore cached packages
               uses: actions/cache/restore@v6
               with:
@@ -516,7 +516,7 @@ jobs:
             - name: Verify deployed worker name via Cloudflare API
               # Confirms the worker was registered under the exact --name we passed (not <name>-preview).
               # Wrangler docs: explicit --name overrides any env-derived suffix; this step makes that visible.
-              # Soft check only — a failed API call does not fail the deployment.
+              # Soft check only, a failed API call does not fail the deployment.
               if: success()
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -527,9 +527,9 @@ jobs:
                     -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
                     "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${PREVIEW_NAME}")
                   if [ "$HTTP" = "200" ]; then
-                    echo "✅ Worker '${PREVIEW_NAME}' confirmed in Cloudflare (HTTP 200) — no -preview suffix appended"
+                    echo "✅ Worker '${PREVIEW_NAME}' confirmed in Cloudflare (HTTP 200), no -preview suffix appended"
                   else
-                    echo "::warning::Worker '${PREVIEW_NAME}' not found via API (HTTP ${HTTP}) — verify manually in Cloudflare dashboard"
+                    echo "::warning::Worker '${PREVIEW_NAME}' not found via API (HTTP ${HTTP}), verify manually in Cloudflare dashboard"
                   fi
 
             - name: Preview deployment failure summary

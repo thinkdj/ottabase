@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – LayoutTemplate OttaORM Model (v2: per-app scoping)
+// Brand Engine, LayoutTemplate OttaORM Model (v2: per-app scoping)
 // ---------------------------------------------------------------------------
 
 import type { LayoutConfig } from '@ottabase/ottalayout';

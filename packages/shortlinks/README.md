@@ -1,6 +1,6 @@
 # @ottabase/shortlinks
 
-URL shortening system for Cloudflare D1 — redirect handling, interstitial pages, expiry, and click analytics.
+URL shortening system for Cloudflare D1: redirect handling, interstitial pages, expiry, and click analytics.
 
 ## Features
 
@@ -41,7 +41,7 @@ const link = await Shortlink.create({
     shortCode: 'gh',
     type: 'redirect', // redirect | tracking | internal | external
     interstitialEnabled: false,
-    interstitialSeconds: 5, // countdown duration when interstitial enabled
+    interstitialSeconds: 10, // countdown duration when interstitial enabled
 });
 
 // Find by short code
@@ -87,7 +87,7 @@ return renderExpiredShortlinkPage({ themeStorageKey: 'myapp.theme' });
 // Interstitial countdown page
 return renderShortlinkInterstitialPage({
     url: shortlink.fullUrl,
-    seconds: shortlink.interstitialSeconds ?? 5,
+    seconds: shortlink.interstitialSeconds ?? 10,
     themeStorageKey: 'ottabase.theme',
 });
 ```
@@ -108,13 +108,13 @@ destination, code, type, expiry and interstitial. Each row links to the analytic
 
 The admin API behind it:
 
-| Method   | Path                                      | Notes                                                  |
-| -------- | ----------------------------------------- | ------------------------------------------------------ | --------- | ------------------------- |
-| `GET`    | `/api/shortlinks?page=&per_page=&search=` | Paged list; `search` matches `shortCode` and `fullUrl` |
-| `POST`   | `/api/shortlinks`                         | `fullUrl` required; `shortCode` optional, generated    |
-| `PATCH`  | `/api/shortlinks/:id`                     | Any of the writable fields                             |
-| `DELETE` | `/api/shortlinks/:id`                     |                                                        |
-| `GET`    | `/api/shortlinks/analytics`               | `groupBy=country                                       | shortCode | day`, `days`, `shortCode` |
+| Method   | Path                                      | Notes                                                             |
+| -------- | ----------------------------------------- | ----------------------------------------------------------------- |
+| `GET`    | `/api/shortlinks?page=&per_page=&search=` | Paged list; `search` matches `shortCode` and `fullUrl`            |
+| `POST`   | `/api/shortlinks`                         | `fullUrl` required; `shortCode` optional, generated               |
+| `PATCH`  | `/api/shortlinks/:id`                     | Any of the writable fields                                        |
+| `DELETE` | `/api/shortlinks/:id`                     |                                                                   |
+| `GET`    | `/api/shortlinks/analytics`               | `groupBy` of `country`, `shortCode` or `day`; `days`; `shortCode` |
 
 ## Database Schema
 
@@ -128,7 +128,7 @@ The admin API behind it:
 | `type`                | `redirect`, `tracking`, `internal`, `external` |
 | `appId`               | Nullable app identifier (multi-app support)    |
 | `interstitialEnabled` | Show countdown page before redirect            |
-| `interstitialSeconds` | Countdown duration (1–60)                      |
+| `interstitialSeconds` | Countdown duration (1 to 60)                   |
 | `expiryDate`          | Optional expiry Unix timestamp (ms)            |
 | `createdAt`           | Creation timestamp                             |
 | `updatedAt`           | Last update timestamp                          |

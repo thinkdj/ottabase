@@ -431,7 +431,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             setLanguage(studioState.languageConfig.defaultLanguage);
     }, [initialData, studioState?.languageConfig.defaultLanguage]);
 
-    // When the content was originally written — a fuzzy date ("Late May 2010", "Summer 1998")
+    // When the content was originally written, a fuzzy date ("Late May 2010", "Summer 1998")
     const [originalDate, setOriginalDate] = useState<FuzzyDateTime | null>(
         (initialData?.originalDate as FuzzyDateTime | null) ?? null,
     );
@@ -897,7 +897,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         [slug, title, postId, initialData?.appId, queryClient, apiClient],
     );
 
-    // Initial slug (from server) – only run availability check when slug has changed from this
+    // Initial slug (from server): only run availability check when slug has changed from this
     const initialSlug = (initialData?.slug ?? '').trim();
 
     // Auto-generate slug from title only on Title blur (not on every keystroke)
@@ -990,7 +990,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         }
     };
 
-    // Update hero image max height (100–3000 px)
+    // Update hero image max height (100 to 3000 px)
     const handleHeroMaxHeightChange = (value: string) => {
         if (heroImage) {
             if (!value) {
@@ -1157,7 +1157,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
                 /*
                  * The post is saved by this point. Its tag and category links are separate writes,
-                 * and `Promise.all` used to throw the first failure straight to the catch below —
+                 * and `Promise.all` used to throw the first failure straight to the catch below,
                  * which skipped the refetches, skipped categories entirely, skipped version pruning,
                  * and told the author the post had not been saved when it had.
                  *
@@ -1200,7 +1200,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     setAlertDialog({
                         open: true,
                         title: 'Saved, but some links did not stick',
-                        message: `The post was saved. ${tagFailures + categoryFailures} tag or category change${tagFailures + categoryFailures === 1 ? '' : 's'} could not be applied — the selections below now show what the server holds. Adjust them and save again.`,
+                        message: `The post was saved. ${tagFailures + categoryFailures} tag or category change${tagFailures + categoryFailures === 1 ? '' : 's'} could not be applied, the selections below now show what the server holds. Adjust them and save again.`,
                     });
                 }
 
@@ -1215,7 +1215,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 const created = await createPost.mutateAsync(postData);
                 justSavedRef.current = true;
 
-                // Links for the new post, best-effort for the reason above — and it matters most
+                // Links for the new post, best-effort for the reason above, and it matters most
                 // here: the post EXISTS now, so letting a failed tag link reach the catch below
                 // reports "could not save" for a post that saved, and the retry creates a second one.
                 const newPostId = (created as { id?: string })?.id;
@@ -1235,7 +1235,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     setAlertDialog({
                         open: true,
                         title: 'Saved, but some links did not stick',
-                        message: `The post was created. ${linkFailures} tag or category change${linkFailures === 1 ? '' : 's'} could not be applied — check them on the editor and save again.`,
+                        message: `The post was created. ${linkFailures} tag or category change${linkFailures === 1 ? '' : 's'} could not be applied, check them on the editor and save again.`,
                     });
                 }
 
@@ -1312,7 +1312,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             try {
                 // Use OttaORM delete hook (same as list page) instead of non-existent /api/admin/blog/:id
                 await deletePost.mutateAsync(postId);
-                // Post is gone — no unsaved changes to warn about.
+                // Post is gone: no unsaved changes to warn about.
                 allowNavigateRef.current = true;
                 navigate({ to: surface.contentPath });
             } catch (error) {
@@ -1823,7 +1823,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     disabled={!heroImage?.url}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    100–3000 px. Leave blank to use natural height.
+                                    100 to 3000 px. Leave blank to use natural height.
                                 </p>
                             </div>
                         </div>
@@ -2353,7 +2353,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 onConfirm={handleDeletePost}
             />
 
-            {/* Unsaved changes — navigation blocker dialog */}
+            {/* Unsaved changes: navigation blocker dialog */}
             <UnsavedChangesDialog blocker={blocker} />
 
             {/* General Alert Dialog */}

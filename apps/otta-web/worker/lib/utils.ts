@@ -102,7 +102,7 @@ export function requireSignedIn(userId: string | null | undefined): Response | n
     return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
 }
 
-/** Constant-time string comparison — avoids leaking secret bytes via response-timing variance. */
+/** Constant-time string comparison: avoids leaking secret bytes via response-timing variance. */
 function timingSafeEqual(a: string, b: string): boolean {
     const encoder = new TextEncoder();
     const aBytes = encoder.encode(a);

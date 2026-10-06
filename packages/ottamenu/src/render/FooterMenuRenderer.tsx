@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Footer menu renderer
+// Ottamenu, Footer menu renderer
 // Flat horizontal/wrap layout. Renders only top-level items as links.
-// Children are ignored — footer menus are single-level by design.
+// Children are ignored: footer menus are single-level by design.
 // ---------------------------------------------------------------------------
 
 import { useMemo } from 'react';
@@ -15,7 +15,7 @@ export interface FooterMenuRendererProps {
 }
 
 /**
- * Renders a flat footer menu — top-level items only, no nesting.
+ * Renders a flat footer menu, top-level items only, no nesting.
  * Children/grandchildren are ignored; use sidebar or mega menu for hierarchy.
  */
 export function FooterMenuRenderer({ items, pathname }: FooterMenuRendererProps) {
@@ -23,7 +23,7 @@ export function FooterMenuRenderer({ items, pathname }: FooterMenuRendererProps)
     const tree = useMemo(() => buildItemTree(items), [items]);
 
     return (
-        <nav className="flex flex-wrap gap-4">
+        <nav aria-label="Footer" className="flex flex-wrap gap-4">
             {tree.map((node) => (
                 <MenuItemLink key={node.item.id} item={node.item} pathname={pathname} className="!px-0 !py-1 text-sm" />
             ))}

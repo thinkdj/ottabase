@@ -1,6 +1,6 @@
 # @ottabase/ottalayout
 
-Layout system for Ottabase — types, presets, path resolver, validators, utility classes, and React slots.
+Layout system for Ottabase: types, presets, path resolver, validators, utility classes, and React slots.
 
 ## Installation
 
@@ -99,7 +99,8 @@ sidebarWidthClass('wide'); // 'w-72'
 
 ### React: Slots
 
-Named slots let pages inject content into layout regions (header actions, sidebar widgets, etc.):
+Named slots let pages inject content into layout regions. The built-in names are `announcement`, `toolbar`,
+`breadcrumbs`, `sidebar-right` and `footer`:
 
 ```tsx
 import { LayoutSlotsProvider, LayoutSlot, SlotContent } from '@ottabase/ottalayout/react';
@@ -109,7 +110,7 @@ function AppLayout({ children }) {
     return (
         <LayoutSlotsProvider>
             <header>
-                <LayoutSlot name="header-actions" />
+                <LayoutSlot name="toolbar" />
             </header>
             <main>{children}</main>
         </LayoutSlotsProvider>
@@ -120,7 +121,7 @@ function AppLayout({ children }) {
 function DashboardPage() {
     return (
         <>
-            <SlotContent name="header-actions">
+            <SlotContent name="toolbar">
                 <button>Export</button>
             </SlotContent>
             <h1>Dashboard</h1>
@@ -131,23 +132,21 @@ function DashboardPage() {
 
 ### React: Layout Meta
 
-Pages can declare layout hints (title, breadcrumbs) via context:
+A page can override parts of the resolved layout for as long as it is mounted:
 
 ```tsx
-import { LayoutMetaProvider, useLayoutMeta } from '@ottabase/ottalayout/react';
+import { LayoutMetaProvider, useLayoutMeta, useResolvedLayoutMeta } from '@ottabase/ottalayout/react';
 
 // Wrap your app:
 <LayoutMetaProvider>
     <App />
 </LayoutMetaProvider>;
 
-// In a page — set meta:
-const { setMeta } = useLayoutMeta();
-setMeta({ title: 'Settings', breadcrumbs: ['Home', 'Settings'] });
+// In a page: a full-bleed, compact layout without the footer
+useLayoutMeta({ contentWidth: 'full', containerPadding: 'none', density: 'compact', footer: false });
 
-// In the layout shell — read meta:
-const { meta } = useLayoutMeta();
-// → { title: 'Settings', breadcrumbs: ['Home', 'Settings'] }
+// In the layout shell: the overrides of the page currently mounted, or null
+const meta = useResolvedLayoutMeta();
 ```
 
 ### Menu Slots
@@ -183,13 +182,13 @@ const config: MenuSlotConfig = {
 };
 ```
 
-To render menus in slots, use `<MenuSlotRenderer>` from `@ottabase/ottamenu` (see
+To render menus in slots, use `<MenuSlotRenderer>` from `@ottabase/ottamenu/render` (see
 [ottamenu README](../ottamenu/README.md#menu-slot-renderer)).
 
 ## Integration
 
 `@ottabase/ottalayout` provides the **pure logic**. For runtime layout rendering, use with:
 
-- **`@ottabase/brand-engine`** — stores route mappings, layout templates, and **menu slot assignments** per app/tenant
-- **`@ottabase/brand-engine-react`** — `<LayoutResolver>` component that reads mappings and renders the active layout
-- **`@ottabase/ottamenu`** — `<MenuSlotRenderer>` component that renders menus assigned to layout slots
+- **`@ottabase/brand-engine`**: stores route mappings, layout templates, and **menu slot assignments** per app/tenant
+- **`@ottabase/brand-engine-react`**: `<LayoutResolver>` component that reads mappings and renders the active layout
+- **`@ottabase/ottamenu`**: `<MenuSlotRenderer>` component that renders menus assigned to layout slots

@@ -6,7 +6,7 @@ import type { AboutData } from './types';
 import { DEFAULT_GITHUB_URL } from './types';
 
 /**
- * Minimal about page — concise single-section overview with a GitHub CTA.
+ * Minimal about page: concise single-section overview with a GitHub CTA.
  */
 export function AboutMinimal({ title, description, githubUrl = DEFAULT_GITHUB_URL }: AboutData) {
     return (
@@ -20,7 +20,7 @@ export function AboutMinimal({ title, description, githubUrl = DEFAULT_GITHUB_UR
             </h1>
             <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
                 {description ??
-                    'A Next.js homepage template for Cloudflare Workers. Brand Engine themes, dark mode, and edge deployment — all out of the box.'}
+                    'A Next.js homepage template for Cloudflare Workers. Brand Engine themes, dark mode, and edge deployment, all out of the box.'}
             </p>
             <div className="mt-8">
                 <Button asChild size="lg">

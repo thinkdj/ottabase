@@ -79,7 +79,7 @@ function harness(options: Record<string, unknown> = {}): Harness {
         verifyMembership: () => true,
         authorize: () => true,
         // Supplied so composition does not warn about unbounded platform spend in every
-        // unrelated test — this PLATFORM config genuinely has a usable route. The warning
+        // unrelated test, this PLATFORM config genuinely has a usable route. The warning
         // itself is covered explicitly in the `platformRouteUsable` suite, which overrides it.
         quota: () => true,
         eventSink: (event: string, payload: unknown) =>
@@ -175,7 +175,7 @@ describe('degradation', () => {
     it('builds the fallback client from the FULL model chain, not just platform.model', async () => {
         const { ai, store, transport } = harness({
             degradation: 'platform-on-auth-error',
-            // No platform.model — legal, since the boot coherence check needs both set.
+            // No platform.model, legal, since the boot coherence check needs both set.
             platform: { accountId: 'acct', gateway: 'gw', provider: 'openai', providerKey: 'k-0123456789' },
             tasks: [{ key: 'chat', defaultModel: 'gpt-4o-mini', degradation: 'platform-on-auth-error' }],
         });
@@ -185,7 +185,7 @@ describe('degradation', () => {
         await resolution.client!.complete({ messages: [{ role: 'user', content: 'hi' }] });
 
         // The fallback client's merged config must carry a model; without it the gateway
-        // adapter omits `model` from the body entirely and the provider 400s — while a
+        // adapter omits `model` from the body entirely and the provider 400s, while a
         // tenant with NO key at all succeeds on the same task.
         const fallbackConfig = transport.configs.at(-1)!;
         expect(fallbackConfig.model).toBe('openai/gpt-4o-mini');
@@ -198,7 +198,7 @@ describe('task-pinned eligibility filters unpinnable providers even with no requ
             key: 'translate',
             modelPolicy: 'task-pinned',
             pinnedModels: { openai: 'gpt-4o-mini' },
-            // deliberately NO requiredCapabilities — this is the case that slipped through
+            // deliberately NO requiredCapabilities: this is the case that slipped through
         });
         const context = { organizationId: 'org-a', userId: 'user-1', appId: 'app-1' };
 
@@ -340,7 +340,7 @@ describe('an UNBOUND credential is not a cross-app wildcard on the MANAGEMENT pl
             'unbound',
         );
         // The old check was `row.appId && row.appId !== scope.appId`, so this returned the
-        // row — and a manager in app B could then view, re-key or delete app A's credential.
+        // row, and a manager in app B could then view, re-key or delete app A's credential.
         expect(loaded).toBeNull();
     });
 
@@ -370,7 +370,7 @@ describe('allowOrgCredentials is a SERVER dial, not a UI prop', () => {
         expect((await ai.status(ai.contextFrom(CONTEXT))).orgScopeManageable).toBe(true);
     });
 
-    it('is ANDed with the strategy — a strategy that cannot score an org row still closes it', async () => {
+    it('is ANDed with the strategy, a strategy that cannot score an org row still closes it', async () => {
         const { ai } = harness({ strategy: 'user', allowOrgCredentials: true });
         expect((await ai.status(ai.contextFrom(CONTEXT))).orgScopeManageable).toBe(false);
     });
@@ -384,7 +384,7 @@ describe('the gate and the client come from ONE resolution', () => {
         const { gate, resolution } = await ai.resolveWithGate(ai.contextFrom(CONTEXT), 'chat');
         expect(gate.allowed).toBe(true);
         expect(resolution.client).not.toBeNull();
-        // `requireByok` then `resolve` emits `credential.resolved` TWICE — two candidate
+        // `requireByok` then `resolve` emits `credential.resolved` TWICE, two candidate
         // fan-outs and two envelope decryptions per inference, on the hot path.
         expect(events.filter((e) => e.event === 'credential.resolved')).toHaveLength(1);
     });
@@ -407,7 +407,7 @@ describe('platformRouteUsable asks the TRANSPORT, not whether a provider key exi
 
     it('is true for GATEWAY-BILLED inference, which has no provider key at all', async () => {
         // THE BLIND SPOT THIS CLOSES. A gateway holding the credential (a BYOK alias, unified
-        // billing) still spends the OPERATOR'S money — but `platform.providerKey` is unset, so
+        // billing) still spends the OPERATOR'S money, but `platform.providerKey` is unset, so
         // every warning derived from "is a key configured?" stayed silent on exactly the
         // deployment that needed it. The runtime limiter was always correct (it keys on
         // `source`); this is about the operator finding out at boot.
@@ -430,7 +430,7 @@ describe('platformRouteUsable asks the TRANSPORT, not whether a provider key exi
     it('is false when the platform path cannot serve a call', async () => {
         const summaries: Array<Record<string, unknown>> = [];
         harness({
-            // No provider — nothing for the transport to route to.
+            // No provider: nothing for the transport to route to.
             platform: { accountId: 'acct', gateway: 'gw' },
             transport: destinationTransport(),
             quota: undefined,
@@ -462,7 +462,7 @@ describe('platformRouteUsable asks the TRANSPORT, not whether a provider key exi
 });
 
 describe('the key-test endpoint enforces the same admission rules as the write path', () => {
-    it('refuses a dynamic/<route> model — operator namespace, reached with the operator gateway token', async () => {
+    it('refuses a dynamic/<route> model: operator namespace, reached with the operator gateway token', async () => {
         const { ai } = harness();
         const result = await verifyCredential(ai as never, ai.contextFrom(CONTEXT), {
             kind: 'inline',
@@ -514,7 +514,7 @@ describe('status picks the most informative task, not the first declared', () =>
     it('reports the tenant key even when a platform-only task is declared first', async () => {
         const { ai, store } = harness({
             tasks: [
-                // A cheap internal task deliberately kept off tenant keys — declared FIRST.
+                // A cheap internal task deliberately kept off tenant keys, declared FIRST.
                 { key: 'internal', mode: 'platform' },
                 { key: 'chat' },
             ],
@@ -523,7 +523,7 @@ describe('status picks the most informative task, not the first declared', () =>
 
         const status = await ai.status(ai.contextFrom(CONTEXT));
         // Taking tasks[0] would tell a paying tenant their key is unused while their other
-        // tasks are in fact running on it — and reordering the array would change the answer.
+        // tasks are in fact running on it, and reordering the array would change the answer.
         expect(status.source).toBe('byok');
         expect(status.hasSecret).toBe(true);
         expect(status.credentialId).not.toBeNull();

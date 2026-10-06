@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/cf-pdf/react — framework-agnostic rendered demo (TSX entrypoint)
+// @ottabase/cf-pdf/react, framework-agnostic rendered demo (TSX entrypoint)
 // ============================================================
 // This entrypoint intentionally uses plain HTML and Tailwind utility classes.
 // It does not import Ottabase UI, routing, or API packages. The host

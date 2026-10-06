@@ -1,12 +1,12 @@
 // ============================================================
-// @ottabase/ottaai — Specificity score + the TOTAL ranking order
+// @ottabase/ottaai, Specificity score + the TOTAL ranking order
 // ============================================================
 
 import type { AiStrategy, CredentialRecord } from '../types';
 import { dimensionMatch } from './verdict';
 
 /**
- * Specificity score — computed ONLY for `ELIGIBLE` candidates.
+ * Specificity score: computed ONLY for `ELIGIBLE` candidates.
  *
  * | match class      | `user` | `org` | `user-then-org` | `org-then-user` |
  * | ---------------- | ------ | ----- | --------------- | --------------- |
@@ -18,13 +18,13 @@ import { dimensionMatch } from './verdict';
  * A score of 0 means "does not apply to this scope" ⇒ verdict `NOT_IN_SCOPE`; the
  * selector skips everything ≤ 0.
  *
- * TRAP — THE COUNTER-INTUITIVE CELL: an exact user+org match ranks highest under EVERY
+ * TRAP: THE COUNTER-INTUITIVE CELL: an exact user+org match ranks highest under EVERY
  * strategy, INCLUDING `user`. `strategy: 'user'` means *must match the user*, not *must
  * have no org*. Prose saying "only the user's own credentials" contradicts this table;
  * the table wins.
  *
  * THE OTHER CLARIFIED CELL: a row with neither dimension set is eligible under the
- * conflict rules but scores 0 under all four strategies — PERMANENTLY UNSELECTABLE. That
+ * conflict rules but scores 0 under all four strategies, PERMANENTLY UNSELECTABLE. That
  * is intended: THERE IS NO SUCH THING AS A GLOBAL CREDENTIAL. The write layer rejects
  * such a row so unreachable data does not accumulate.
  *
@@ -71,7 +71,7 @@ export function specificityScore(
 }
 
 /**
- * Read a timestamp DEFENSIVELY — `Date` *or* epoch number, because ORM casts may not have
+ * Read a timestamp DEFENSIVELY: `Date` *or* epoch number, because ORM casts may not have
  * been applied on every path that produces a record.
  */
 export function readTimestamp(value: unknown): number {
@@ -95,16 +95,16 @@ export interface ScoredCandidate {
  *   1. score       descending (skip ≤ 0)
  *   2. isActive    `!== false` beats `=== false`; absent counts as active
  *   3. updatedAt   descending, read defensively
- *   4. id          ascending — REQUIRED
+ *   4. id          ascending, REQUIRED
  *
  * TRAP: without rung 4, two rows with equal score, activeness and timestamp are resolved
- * by map insertion order — i.e. the concatenation order of two database queries, which is
+ * by map insertion order, i.e. the concatenation order of two database queries, which is
  * not part of any contract. Equal timestamps are NOT exotic: bulk import, a seeded
  * fixture, a migration backfill, or two writes in the same millisecond all produce them.
  * The same request then resolves to different keys on different isolates, and the failure
  * presents as "it works for me".
  *
- * The database `ORDER BY` is a pre-sort convenience only — THIS COMPARATOR IS THE
+ * The database `ORDER BY` is a pre-sort convenience only, THIS COMPARATOR IS THE
  * CONTRACT, and a change in query ordering must not change the winner.
  */
 export function compareCandidates(a: ScoredCandidate, b: ScoredCandidate): number {

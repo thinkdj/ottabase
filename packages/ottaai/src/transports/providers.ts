@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai/transports — Cloudflare AI Gateway provider table
+// @ottabase/ottaai/transports, Cloudflare AI Gateway provider table
 // ============================================================
 // THE URL IS THE CONTRACT, AND IT IS NOT UNIFORM.
 //
@@ -22,7 +22,7 @@
 // with no verified entry is REFUSED rather than guessed at.
 //
 // This table lives in ottaai (not in a shared Cloudflare helper package) because it
-// is not a catalogue of AI Gateway — it is exactly the set of paths this transport
+// is not a catalogue of AI Gateway, it is exactly the set of paths this transport
 // is tested against. See `__tests__/gateway-wire.test.ts`, which asserts the literal
 // URL, headers and body for every entry here.
 //
@@ -42,7 +42,7 @@ export type GatewayWire = 'openai' | 'anthropic' | 'google';
  *
  * Separate from the dialect: Groq, DeepSeek and Mistral share OpenAI's wire but not its
  * image-count limit or its structured-output support. `null`/`false` means "not documented",
- * and the transport then refuses (images) or falls back to an instructed JSON reply (JSON) —
+ * and the transport then refuses (images) or falls back to an instructed JSON reply (JSON),
  * never an OpenAI-shaped guess.
  */
 export interface GatewayRouteSupport {
@@ -69,7 +69,7 @@ export const UNDOCUMENTED_ROUTE_SUPPORT: GatewayRouteSupport = Object.freeze({
 export type ModelPlacement = 'body' | 'path';
 
 export interface GatewayPathInput {
-    /** Bare model id (never a qualified ref) — needed by providers that put it in the path. */
+    /** Bare model id (never a qualified ref), needed by providers that put it in the path. */
     model: string | null;
     stream: boolean;
     /** The OPERATOR's merged transport bag. Tenant-writable keys are already filtered out. */
@@ -79,7 +79,7 @@ export interface GatewayPathInput {
 export type GatewayPathResult = { ok: true; path: string } | { ok: false; message: string };
 
 export interface GatewayProviderAdapter {
-    /** Registry id — the head of a qualified model ref. */
+    /** Registry id: the head of a qualified model ref. */
     id: string;
     /** Path segment AI Gateway routes on. Not always equal to `id` (`azure` → `azure-openai`). */
     slug: string;
@@ -95,14 +95,14 @@ export interface GatewayProviderAdapter {
      * Body field carrying the output budget on OpenAI-shaped wires. Default `max_tokens`.
      *
      * OpenAI's own API deprecated `max_tokens` for `max_completion_tokens`, and its reasoning
-     * models (o-series, GPT-5 class) REJECT `max_tokens` with a 400 — so a tenant whose default
+     * models (o-series, GPT-5 class) REJECT `max_tokens` with a 400, so a tenant whose default
      * model is one of them fails every call. `max_completion_tokens` is accepted by every
      * current OpenAI chat model. OpenAI-compatible providers keep `max_tokens`.
      */
     maxTokensField?: 'max_tokens' | 'max_completion_tokens';
     /** Everything after `/<slug>`, including a leading slash. */
     path(input: GatewayPathInput): GatewayPathResult;
-    /** The Cloudflare page this entry was transcribed from. Keep it — it is the review trail. */
+    /** The Cloudflare page this entry was transcribed from. Keep it, it is the review trail. */
     docs: string;
 }
 
@@ -118,7 +118,7 @@ function openAiCompatPath(): GatewayPathResult {
  *
  *  • `cohere` speaks its own `chat_history` / `message` dialect and returns `.text`, not
  *    `choices[]`. Sending it an OpenAI body "works" (HTTP 200) and returns an empty
- *    completion — the worst possible failure. It needs its own wire before it ships.
+ *    completion, the worst possible failure. It needs its own wire before it ships.
  *  • `hugging-face` has no single chat contract across its inference providers.
  *  • `workers-ai` is not reachable through this provider-native proxy shape at all; it is
  *    Cloudflare-billed inference via the REST API or a Worker binding, which is a different
@@ -155,7 +155,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         path: () => ({ ok: true, path: '/v1/messages' }),
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/anthropic/',
         // Base64 image blocks: platform.claude.com/docs/en/build-with-claude/vision. NO JSON
-        // MODE — only enforced `output_config.format` (GA, no beta header):
+        // MODE, only enforced `output_config.format` (GA, no beta header):
         // platform.claude.com/docs/en/build-with-claude/structured-outputs. Forced tool use is
         // NOT an alternative: `tool_choice: {type:'tool'}` 400s on the newest models.
         supports: { images: { max: 20 }, jsonObject: false, jsonSchema: true },
@@ -172,7 +172,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         auth: { header: 'x-goog-api-key', prefix: '' },
         path: ({ model, stream }) => {
             if (!model) {
-                return { ok: false, message: 'Google AI Studio requires a model — it is part of the request URL.' };
+                return { ok: false, message: 'Google AI Studio requires a model, it is part of the request URL.' };
             }
             const method = stream ? 'streamGenerateContent' : 'generateContent';
             // Encoded per segment: a model id reaches here from tenant input.
@@ -207,7 +207,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         wire: 'openai',
         modelPlacement: 'body',
         auth: { header: 'Authorization', prefix: 'Bearer ' },
-        // WITH `/v1` — the gateway proxies to api.mistral.ai, which is versionless.
+        // WITH `/v1`: the gateway proxies to api.mistral.ai, which is versionless.
         path: () => ({ ok: true, path: '/v1/chat/completions' }),
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/mistral/',
         // 8 images per request: docs.mistral.ai/capabilities/vision. `image_url` accepts the
@@ -237,7 +237,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         auth: { header: 'Authorization', prefix: 'Bearer ' },
         path: openAiCompatPath,
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/perplexity/',
-        // `response_format` is `text` or `json_schema` — NO `json_object`:
+        // `response_format` is `text` or `json_schema`: NO `json_object`:
         // docs.perplexity.ai/openapi.json.
         supports: { images: { max: 20 }, jsonObject: false, jsonSchema: true },
     },
@@ -251,7 +251,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         auth: { header: 'api-key', prefix: '' },
         path: ({ transportConfig }) => {
             // These three are `destinationKeys` on the registry entry, so they are
-            // OPERATOR-ONLY by construction — a tenant cannot point the request elsewhere.
+            // OPERATOR-ONLY by construction, a tenant cannot point the request elsewhere.
             const resource = asSegment(transportConfig.resourceName);
             const deployment = asSegment(transportConfig.deploymentName);
             const apiVersion = typeof transportConfig.apiVersion === 'string' ? transportConfig.apiVersion : null;
@@ -262,7 +262,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
                     // debugged as a key problem for hours.
                     message:
                         'Azure OpenAI needs operator transport config: resourceName, deploymentName and apiVersion. ' +
-                        'Set them in the platform transportConfig — they decide where the request goes, so they are ' +
+                        'Set them in the platform transportConfig, they decide where the request goes, so they are ' +
                         'never tenant-writable.',
                 };
             }
@@ -274,7 +274,7 @@ export const GATEWAY_PROVIDERS: Readonly<Record<string, GatewayProviderAdapter>>
         docs: 'https://developers.cloudflare.com/ai-gateway/usage/providers/azureopenai/',
         // 10 images per request: learn.microsoft.com/azure/ai-foundry/openai/how-to/gpt-with-vision.
         // `json_schema` depends on BOTH the operator's api-version (≥ 2024-08-01-preview) and
-        // the deployed model, neither of which a tenant controls — so strict falls back to
+        // the deployed model, neither of which a tenant controls, so strict falls back to
         // `json_object` (≥ 2023-12-01-preview) rather than 400 on an older deployment.
         supports: { images: { max: 10 }, jsonObject: true, jsonSchema: false },
     },

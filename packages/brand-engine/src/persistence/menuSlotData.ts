@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Load menu slot assignments with resolved menu data
+// Brand Engine, Load menu slot assignments with resolved menu data
 //
 // Fetches slot assignments for an app, then batch-loads referenced menus
 // and items using brand-engine's own Menu/MenuItem models (no DI needed).

@@ -77,9 +77,9 @@ Plugins register on these via `hooks` in their definition; only **active** plugi
 
 ## DB models
 
-- **OttablogTheme** – `themeId`, `name`, `isActive`, `config`, `appId`. One row per theme per app; at most one
-  `isActive` per app.
-- **OttablogPlugin** – `pluginId`, `name`, `enabled`, `config`, `appId`. One row per plugin per app. `config` = JSON
+- **OttablogTheme**: `themeId`, `name`, `isActive`, `config`, `appId`. One row per theme per app; at most one `isActive`
+  per app.
+- **OttablogPlugin**: `pluginId`, `name`, `enabled`, `config`, `appId`. One row per plugin per app. `config` = JSON
   (e.g. Content Injector: content, position, contentTypes, priority).
 
 ---
@@ -131,10 +131,10 @@ sitemap index endpoint so every paginated file is discoverable.
 
 Language endpoints:
 
-- `GET/POST /api/blog/studio/languages` — read or update the blog policy (admin).
-- `GET /api/blog/posts/{postId}/translations` — list translations (content editor).
-- `POST /api/blog/posts/{postId}/translations` — create a translation.
-- `PATCH/DELETE /api/blog/posts/{postId}/translations/{language}` — update or remove one translation.
+- `GET/POST /api/blog/studio/languages`: read or update the blog policy (admin).
+- `GET /api/blog/posts/{postId}/translations`: list translations (content editor).
+- `POST /api/blog/posts/{postId}/translations`: create a translation.
+- `PATCH/DELETE /api/blog/posts/{postId}/translations/{language}`: update or remove one translation.
 
 ## API (worker)
 
@@ -199,7 +199,7 @@ for (const p of state.plugins.filter((x) => x.enabled)) {
 
 ---
 
-## Content Injector – security (XSS)
+## Content Injector: security (XSS)
 
 Content is rendered as HTML in EditorJS paragraph blocks. Only allow input from trusted admins, or sanitize HTML (e.g.
 DOMPurify) in the admin UI before saving to prevent XSS.

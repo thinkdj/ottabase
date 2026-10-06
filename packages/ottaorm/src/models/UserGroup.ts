@@ -68,7 +68,7 @@ export class UserGroup extends BaseModel {
     /**
      * The authoritative set of group IDs a user can access: their ACTIVE memberships plus any
      * groups they created (so a creator never loses access). Use this to populate
-     * `SecurityContext.memberGroupIds` for membership-scoped RLS — it mirrors
+     * `SecurityContext.memberGroupIds` for membership-scoped RLS, it mirrors
      * `OrganizationMember.organizationIdsForUser`.
      */
     static async groupIdsForUser(userId: string, organizationId?: string): Promise<string[]> {

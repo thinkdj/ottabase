@@ -50,7 +50,7 @@ export interface AutoInitConfig {
 
     /**
      * Index names the ensure step must NOT (re)create even though the schema
-     * declares them — for indexes a tracked custom migration deliberately drops
+     * declares them, for indexes a tracked custom migration deliberately drops
      * (see runtime-generator suppressIndexes).
      */
     suppressIndexes?: string[];

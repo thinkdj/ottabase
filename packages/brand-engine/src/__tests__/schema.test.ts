@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Schema & Model structure tests
+// Brand Engine, Schema & Model structure tests
 // Validates table definitions, model metadata, and multitenancy fields
 // ---------------------------------------------------------------------------
 

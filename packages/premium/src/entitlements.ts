@@ -1,9 +1,9 @@
 // ============================================================
-// @ottabase/premium — entitlements
+// @ottabase/premium, entitlements
 // ============================================================
 // Two gate shapes cover every paid add-on we have needed: "is this feature in the
 // plan" and "how many of these may exist". Both resolve from the same pair of inputs
-// — the package's FREE tier, and whatever the verified license adds on top — so a
+//, the package's FREE tier, and whatever the verified license adds on top, so a
 // package with no license still has a defined, useful answer instead of an error.
 // ============================================================
 
@@ -19,7 +19,7 @@ export function isServingState(state: PremiumState): boolean {
  *
  * A NON-SERVING STATE COLLAPSES TO THE FREE TIER rather than to nothing. That is the
  * whole reason `freeFeatures` exists: when a license lapses, the customer's data stays
- * readable and the basic path keeps working — only the paid surface closes.
+ * readable and the basic path keeps working, only the paid surface closes.
  */
 export function resolveFeatures(pkg: PremiumPackage, claims: PremiumLicenseClaims | null, state: PremiumState) {
     const free = pkg.freeFeatures ?? [];
@@ -87,7 +87,7 @@ export function checkLimit(input: EntitlementInput, limitKey: string, current: n
         allowed,
         // A ceiling is always something a bigger plan could raise.
         upsell: !allowed && input.state !== 'disabled',
-        // LIMIT_REACHED, not the licence-level reason — unlike a feature, the ceiling IS
+        // LIMIT_REACHED, not the licence-level reason, unlike a feature, the ceiling IS
         // what denied this call: `limits` already collapsed to the free tier, so the caller
         // is at the limit that genuinely applies right now. The licence nuance ("…because it
         // expired") is carried by `state`, which the UI renders alongside.
@@ -103,7 +103,7 @@ export function checkLimit(input: EntitlementInput, limitKey: string, current: n
  *
  * "Not in your plan" when the licence has expired is a true statement that sends the
  * operator to the wrong page; there, the licence state is the actionable half. (Limits
- * are the opposite case — see `checkLimit`.)
+ * are the opposite case, see `checkLimit`.)
  */
 function gateReason(state: PremiumState, fallback: PremiumGateAnswer['reason']): PremiumGateAnswer['reason'] {
     switch (state) {

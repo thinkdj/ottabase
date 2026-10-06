@@ -334,7 +334,7 @@ Tests run in GitHub Actions (`.github/workflows/ci.yml`):
 - **Trigger**: pull requests to `main` / `develop`, and manual dispatch
 - **Platform**: `ubuntu-24.04`
 - **Node Version**: 24
-- **Command**: `pnpm run ci:check` (`turbo run lint type-check test build`) — a failing test fails the job
+- **Command**: `pnpm run ci:check` (`turbo run lint type-check test build`), a failing test fails the job
 
 Turbo silently skips a workspace that does not declare a `test` script, so every package and app must define one.
 

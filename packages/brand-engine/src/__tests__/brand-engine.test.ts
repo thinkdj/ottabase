@@ -451,7 +451,7 @@ describe('resolveTheme', () => {
                     light: DEFAULT_COLORS_LIGHT,
                     dark: DEFAULT_COLORS_DARK,
                     'high-contrast': {
-                        // Only override a few tokens – rest should come from light defaults
+                        // Only override a few tokens, rest should come from light defaults
                         background: '0 0% 0%',
                         foreground: '0 0% 100%',
                         primary: '60 100% 50%',
@@ -478,7 +478,7 @@ describe('resolveTheme', () => {
         });
         const resolved = resolveTheme({ base: theme, mode: 'high-contrast' });
         expect(resolved.colors.background).toBe('0 0% 0%');
-        // card not specified in high-contrast – should get light default as base
+        // card not specified in high-contrast, should get light default as base
         expect(resolved.colors.card).toBe(DEFAULT_COLORS_LIGHT.card);
     });
 });
@@ -909,7 +909,7 @@ describe('Theme Registry', () => {
 });
 
 // ===========================================================================
-// Inheritance diff – deepMerge with partial tokensJson
+// Inheritance diff, deepMerge with partial tokensJson
 // Simulates the resolveInheritanceChain behavior where child kits only
 // store overridden sections, not the full config.
 // ===========================================================================

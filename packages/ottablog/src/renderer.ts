@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottablog/renderer — UI quarantine barrel
+ * @ottabase/ottablog/renderer: UI quarantine barrel
  *
  * Every RENDERED React surface of the blog engine lives behind this single subpath. Importing it
  * pulls in `@ottabase/ottarenderer` AND `@ottabase/medialibrary` (both peer dependencies, the
@@ -8,7 +8,7 @@
  *
  * Both peers are marked `optional` in package.json, and that optionality is scoped to THIS
  * boundary: a consumer of the headless root needs neither, a consumer of this subpath needs both.
- * They are hard value-imports here, not guarded requires — skipping the install and then importing
+ * They are hard value-imports here, not guarded requires, skipping the install and then importing
  * `@ottabase/ottablog/renderer` is a module-resolution failure, by design.
  *
  * @example

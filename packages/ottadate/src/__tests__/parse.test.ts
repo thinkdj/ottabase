@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Tests for parseFuzzyInput
+ * @ottabase/ottadate: Tests for parseFuzzyInput
  *
  * Typed memories → FuzzyDateTime. Uses a fixed reference "now" (July 21 2026)
  * so relative words and 2-digit expansions are deterministic.
@@ -13,7 +13,7 @@ import type { DatePart } from '../core/types';
 const NOW = new Date(2026, 6, 21, 15, 0, 0); // July 21 2026, local
 const parse = (input: string) => parseFuzzyInput(input, { now: NOW });
 
-describe('parseFuzzyInput — the four memory shapes', () => {
+describe('parseFuzzyInput: the four memory shapes', () => {
     it('parses "early 90s" as a decade with a part', () => {
         const f = parse('early 90s')!;
         expect(f.resolution).toBe('decade');
@@ -40,7 +40,7 @@ describe('parseFuzzyInput — the four memory shapes', () => {
     });
 });
 
-describe('parseFuzzyInput — parts, seasons, decades', () => {
+describe('parseFuzzyInput: parts, seasons, decades', () => {
     it('parses seasons with 2-digit years', () => {
         const f = parse('summer 98')!;
         expect(f.resolution).toBe('year');
@@ -76,7 +76,7 @@ describe('parseFuzzyInput — parts, seasons, decades', () => {
     });
 });
 
-describe('parseFuzzyInput — approximate markers', () => {
+describe('parseFuzzyInput: approximate markers', () => {
     it.each(['around 1996', '~1996', '1996ish', 'about 1996', 'roughly 1996'])('parses %s', (input) => {
         const f = parse(input)!;
         expect(f.approximate).toBe(true);
@@ -90,7 +90,7 @@ describe('parseFuzzyInput — approximate markers', () => {
     });
 });
 
-describe('parseFuzzyInput — days and times', () => {
+describe('parseFuzzyInput: days and times', () => {
     it('handles ordinals and filler words', () => {
         const f = parse('sometime on the 21st of july 2026')!;
         expect(f.resolution).toBe('day');
@@ -116,7 +116,7 @@ describe('parseFuzzyInput — days and times', () => {
     });
 });
 
-describe('parseFuzzyInput — relative words', () => {
+describe('parseFuzzyInput: relative words', () => {
     it('parses today and yesterday at day resolution', () => {
         expect(parse('today')!.label).toBe('July 21, 2026');
         expect(parse('yesterday')!.label).toBe('July 20, 2026');
@@ -133,7 +133,7 @@ describe('parseFuzzyInput — relative words', () => {
     });
 });
 
-describe('parseFuzzyInput — strictness', () => {
+describe('parseFuzzyInput: strictness', () => {
     it('rejects empty, garbage, and unknown tokens', () => {
         expect(parse('')).toBeNull();
         expect(parse('banana')).toBeNull();

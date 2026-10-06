@@ -79,7 +79,6 @@ export function AppSpotlightProvider({ children }: { children: ReactNode }) {
                     label: item.label,
                     description: item.description,
                     group: 'Demos',
-                    keywords: [item.title],
                 })),
             );
         });

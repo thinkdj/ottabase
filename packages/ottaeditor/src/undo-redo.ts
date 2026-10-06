@@ -39,7 +39,7 @@ export class UndoRedoManager {
 
     /**
      * Push a new state with debouncing.
-     * Called on every editor change — batches rapid edits into a single history entry.
+     * Called on every editor change, batches rapid edits into a single history entry.
      */
     pushState(data: OutputData): void {
         if (this.debounceTimer) {

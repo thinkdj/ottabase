@@ -32,7 +32,7 @@ export class UserRole extends BaseModel {
     static entity = 'user_roles';
     static table = userRolesTable;
     // The REAL key is composite (userId + roleId + organizationId). BaseModel needs one column, but
-    // every single-key write would hit ALL of a user's grants — so destroy()/save() are overridden to
+    // every single-key write would hit ALL of a user's grants, so destroy()/save() are overridden to
     // use the full key and the static single-key mutators below are blocked.
     static primaryKey = 'userId';
     static packageName = '@ottabase/ottaorm';
@@ -202,7 +202,7 @@ export class UserRole extends BaseModel {
         );
     }
 
-    /** Delete exactly this grant — never the user's grants in other roles/orgs. */
+    /** Delete exactly this grant: never the user's grants in other roles/orgs. */
     async destroy(driver?: DbDriver): Promise<boolean> {
         const where = this.grantKey();
         await UserRole.getDriver(driver).getDb().delete(userRolesTable).where(where);
@@ -261,7 +261,7 @@ export class UserRole extends BaseModel {
      * Remove a role from a user in one organization
      * @param userId User ID
      * @param roleId Role ID
-     * @param organizationId Organization ID (REQUIRED — 'system' for platform grants)
+     * @param organizationId Organization ID (REQUIRED, 'system' for platform grants)
      * @param appId Optional app ID (null = remove from all apps)
      */
     static async removeRole(userId: string, roleId: string, organizationId: string, appId?: string | null) {
@@ -284,11 +284,11 @@ export class UserRole extends BaseModel {
      * sources: provisioning an org owner writes BOTH, but roster demotion/removal only rewrites the
      * membership row. Without this, a demoted or removed member keeps the org-scoped grant that
      * still carries their old permissions (media:*, comments:moderate, audit:read, org:admin, ...),
-     * and re-adding a removed user silently reactivates it. Revoking is the fail-safe direction —
+     * and re-adding a removed user silently reactivates it. Revoking is the fail-safe direction:
      * elevation must be an explicit, separate grant, never an implicit side effect of a roster edit.
      *
      * THROWS if any grant survives. Callers gate a privilege downgrade on this, so a partial
-     * delete (some rows removed, one failing mid-loop) must NOT look like success — the caller
+     * delete (some rows removed, one failing mid-loop) must NOT look like success, the caller
      * needs "all grants are gone" to be a guarantee, not a best effort.
      *
      * @returns the number of grants revoked
@@ -316,7 +316,7 @@ export class UserRole extends BaseModel {
      * Check if user has role in one organization
      * @param userId User ID
      * @param roleId Role ID
-     * @param organizationId Organization ID (REQUIRED — 'system' for platform grants)
+     * @param organizationId Organization ID (REQUIRED, 'system' for platform grants)
      * @param appId Optional app ID (if not provided, checks across all apps)
      */
     static async hasRole(

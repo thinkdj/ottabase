@@ -1,6 +1,6 @@
 /**
  * Analytics endpoints are system-admin only in every environment. Analytics Engine rows carry no
- * organization, so the totals are platform-wide — a tenant user must never read them. They used to
+ * organization, so the totals are platform-wide, a tenant user must never read them. They used to
  * be open when ENVIRONMENT was "development" (the top-level wrangler.jsonc default), and later open
  * to any signed-in user.
  */

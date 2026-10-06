@@ -1,5 +1,5 @@
 // ============================================================
-// The routes — tenancy and entitlements, which is where a Premium Package leaks or fails.
+// The routes, tenancy and entitlements, which is where a Premium Package leaks or fails.
 //
 // The package mounts with `gate: 'entitlements'`, so the license does NOT close the
 // namespace: the free tier has to work, and each paid path has to guard itself. Both
@@ -16,7 +16,7 @@ import { WEBHOOKS_PACKAGE_KEY } from '../constants';
 import { createWebhooksPackage } from '../manifest';
 import type { WebhookEndpointQuota } from '../types';
 
-// The models are the one thing these suites do not want to exercise for real — see
+// The models are the one thing these suites do not want to exercise for real, see
 // fake-models.ts. `vi.mock` is hoisted above the imports above, so the manifest built
 // below already sees the fakes.
 vi.mock('../ottaorm-models/WebhookEndpoint', async () => {
@@ -320,7 +320,7 @@ describe('input validation', () => {
 });
 
 describe('the signing secret', () => {
-    it('appears exactly once — at creation — and never in a list', async () => {
+    it('appears exactly once: at creation, and never in a list', async () => {
         const { app } = build();
         const created = (await (await app.handle(post('/', { url: 'https://example.com/h' }), FREE))?.json()) as {
             data: { secret?: string };

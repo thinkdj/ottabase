@@ -10,7 +10,7 @@
  *
  * SQLite treats NULLs as distinct in unique indexes, so a single
  * (organization_id, app_id, slug) index would silently stop constraining
- * platform-owned rows — hence the IS NULL / IS NOT NULL pairs.
+ * platform-owned rows, hence the IS NULL / IS NOT NULL pairs.
  *
  * Statements are idempotent (IF EXISTS / IF NOT EXISTS): safe on fresh
  * installs (running right after auto-init created tables and columns) and on
@@ -94,7 +94,7 @@ export const ottablogOrgModeMigrations = [
                 await exec(db, sql);
             }
         },
-        // Pure idempotent DDL (DROP IF EXISTS / CREATE IF NOT EXISTS) — safe to re-run.
+        // Pure idempotent DDL (DROP IF EXISTS / CREATE IF NOT EXISTS), safe to re-run.
         // Declared so autoMigrate re-applies it if a destructive column-removal rebuild
         // (DROP + RENAME) on any of these tables wipes the indexes it created, even
         // though this migration is already recorded as run.
@@ -104,7 +104,7 @@ export const ottablogOrgModeMigrations = [
 
 /**
  * Schema-declared indexes the migration above DROPS. In org mode these MUST be
- * passed to autoInit's `suppressIndexes` — the ensure step re-creates schema
+ * passed to autoInit's `suppressIndexes`: the ensure step re-creates schema
  * indexes with IF NOT EXISTS on EVERY init run, while the drop-migration is
  * tracked and runs once, so without suppression a later re-init silently
  * restores app-wide slug uniqueness and breaks per-org slug namespaces.

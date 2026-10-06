@@ -60,7 +60,7 @@ describe('BlogImportExport', () => {
         render(<BlogImportExport />);
         await chooseFiles(Array.from({ length: 12 }, (_, i) => markdownFile(`post-${i}`)));
 
-        expect(screen.getByText(/12 post\(s\) ready — 0 published, 12 not published/)).toBeTruthy();
+        expect(screen.getByText(/12 post\(s\) ready, 0 published, 12 not published/)).toBeTruthy();
         expect(apiClient).not.toHaveBeenCalled();
 
         await act(async () => {

@@ -5,7 +5,7 @@
 @import './ottaeditor-common.css';
 @import './editorjs-reader.css';
 
-/* Plus (+) Button — background chip with hairline ring; hover = tint deepen */
+/* Plus (+) Button: background chip with hairline ring; hover = tint deepen */
 .ce-toolbar__plus {
     background: hsl(var(--background)) !important;
     color: hsl(var(--muted-foreground)) !important;
@@ -53,14 +53,14 @@
     z-index: 60 !important;
 }
 
-/* Floating menus — the only surfaces that carry a drop shadow */
+/* Floating menus: the only surfaces that carry a drop shadow */
 .ce-popover__container,
 .ce-inline-toolbar {
     border-radius: var(--radius) !important;
     box-shadow: var(--shadow-lg) !important;
 }
 
-/* Popover item hover — canonical menu-item tint deepen */
+/* Popover item hover: canonical menu-item tint deepen */
 .ce-popover__item:hover,
 .ce-popover-item:hover {
     background: hsl(var(--muted) / 0.7) !important;

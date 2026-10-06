@@ -1,94 +1,30 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
+import { DemoCard } from '../DemoCard';
+import { DEMO_ITEMS } from '../demoItems';
 import { DemoPageHeader } from '../DemoPageHeader';
 
+/** The Cloudflare section of the gallery, as its own page: the same entries as the index */
 export function CloudflareDemoIndexPage() {
-    const demos = [
-        {
-            name: 'D1 Database',
-            description: 'SQLite database with CRUD operations',
-            href: '/demo/cloudflare/d1',
-        },
-        {
-            name: 'KV Storage',
-            description: 'Key-value storage with TTL support',
-            href: '/demo/cloudflare/kv',
-        },
-        {
-            name: 'R2 Storage',
-            description: 'Object storage for file uploads',
-            href: '/demo/cloudflare/r2',
-        },
-        {
-            name: 'File Upload Package',
-            description: 'Drag-and-drop file uploader with progress tracking',
-            href: '/demo/cloudflare/file-upload',
-        },
-        {
-            name: 'Images',
-            description: 'Image upload and transformation (docs)',
-            href: '/demo/cloudflare/images',
-        },
-        {
-            name: 'Hyperdrive',
-            description: 'Database connection pooling and acceleration (docs)',
-            href: '/demo/cloudflare/hyperdrive',
-        },
-        {
-            name: 'Queues',
-            description: 'Message queue processing',
-            href: '/demo/cloudflare/queues',
-        },
-        {
-            name: 'Rate Limiting',
-            description: 'Request throttling and protection',
-            href: '/demo/cloudflare/rate-limiting',
-        },
-        {
-            name: 'Realtime Pub/Sub',
-            description: 'WebSocket-based real-time messaging with offline support',
-            href: '/demo/cloudflare/realtime',
-        },
-        {
-            name: 'OttaAI Playground',
-            description:
-                'Tenant-aware chat and embeddings via AI Gateway — tenant key → platform floor, gated server-side',
-            href: '/demo/cloudflare/ai',
-        },
-        {
-            name: 'PDF Rendering',
-            description: 'Secure static DOM capture and Cloudflare Browser Rendering',
-            href: '/demo/cloudflare/pdf',
-        },
-    ];
+    const demos = DEMO_ITEMS.filter((item) => item.group === 'cloudflare');
 
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Cloudflare Services"
-                description="Explore working examples of Cloudflare bindings with @ottabase/cf."
+                title="Cloudflare"
+                description="Every binding the worker uses, exercised through @ottabase/cf and the app's own routes."
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
-                {demos.map((demo) => (
-                    <Card key={demo.href} className="transition-colors duration-normal hover:bg-muted/70">
-                        <CardHeader>
-                            <CardTitle className="text-[0.9375rem] font-semibold">{demo.name}</CardTitle>
-                            <CardDescription className="leading-relaxed">{demo.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button asChild variant="outline" className="w-full bg-background">
-                                <Link to={demo.href}>Open</Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {demos.map((item) => (
+                    <DemoCard key={item.to} item={item} />
                 ))}
             </div>
 
             <div className="rounded-xl bg-muted/40 p-4">
-                <h3 className="mb-1.5 text-[0.9375rem] font-semibold">Setup Required</h3>
+                <h3 className="mb-1.5 text-[0.9375rem] font-semibold">Before you start</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                    Configure bindings in <code>wrangler.jsonc</code> for the Worker.
+                    The bindings are declared in <code>wrangler.jsonc</code>, and the live pages (D1, KV, R2, Queues,
+                    Rate limiting, Realtime) only answer a signed-in platform admin. Images and Hyperdrive are setup
+                    guides.
                 </p>
             </div>
         </div>

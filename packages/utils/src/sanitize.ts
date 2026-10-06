@@ -240,14 +240,14 @@ export function sanitizeUrl(url: string | null | undefined): string {
         return trimmed;
     }
 
-    // Parse protocol — must be in the allowlist
+    // Parse protocol: must be in the allowlist
     try {
         const parsed = new URL(trimmed);
         if (!SAFE_URL_SCHEME_SET.has(parsed.protocol.toLowerCase())) {
             return '#';
         }
     } catch {
-        // Unparseable URL (e.g. bare hostname) — block it
+        // Unparseable URL (e.g. bare hostname), block it
         return '#';
     }
 

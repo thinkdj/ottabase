@@ -137,7 +137,7 @@ describe('replaceDocumentTitle', () => {
 
     it('does not expand $-sequences in titles', () => {
         const { html } = replaceDocumentTitle('<head><title>App</title>REST</head>', `$' $\` $$`);
-        // `$'` would splice trailing content, `` $` `` leading content, `$$` a literal $ —
+        // `$'` would splice trailing content, `` $` `` leading content, `$$` a literal $,
         // the replacer function must pass them through verbatim (escaped).
         expect(html).toContain('REST');
         expect(html).toContain(`<title>$&#39; $\` $$</title>`);

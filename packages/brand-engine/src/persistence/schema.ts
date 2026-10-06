@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Persistence Schema (D1) – v2: Per-App scoping
+// Brand Engine, Persistence Schema (D1), v2: Per-App scoping
 // Brand Kit: scoped to appId (not org). One app = one brand/theme/layout.
 // When users switch orgs, the app's brand stays the same.
 // ---------------------------------------------------------------------------
@@ -7,7 +7,7 @@
 import { foreignKey, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // ═══════════════════════════════════════════════════════════════════
-// BRAND KITS – Self-contained: identity, logos, colors, fonts, theme
+// BRAND KITS: Self-contained: identity, logos, colors, fonts, theme
 // Scoped by appId. System default has appId=null.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -39,7 +39,7 @@ export const brandKitsTable = sqliteTable('brand_kits', {
     defaultColorScheme: text('default_color_scheme').default('system'),
     allowDarkModeToggle: integer('allow_dark_mode_toggle', { mode: 'boolean' }).default(true),
 
-    /** Parent Brand Kit for inheritance – child inherits all tokens/settings, overrides selectively */
+    /** Parent Brand Kit for inheritance, child inherits all tokens/settings, overrides selectively */
     parentBrandKitId: text('parent_brand_kit_id'),
 
     customCss: text('custom_css'),
@@ -61,7 +61,7 @@ export type BrandKitType = typeof brandKitsTable.$inferSelect;
 export type NewBrandKitType = typeof brandKitsTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// LAYOUT TEMPLATES – Scoped by appId only
+// LAYOUT TEMPLATES, Scoped by appId only
 // ═══════════════════════════════════════════════════════════════════
 
 export const layoutTemplatesTable = sqliteTable('layout_templates', {
@@ -91,7 +91,7 @@ export type LayoutTemplateType = typeof layoutTemplatesTable.$inferSelect;
 export type NewLayoutTemplateType = typeof layoutTemplatesTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// ROUTE MAPPINGS – path → layout + brandKit per row, scoped by appId
+// ROUTE MAPPINGS, path → layout + brandKit per row, scoped by appId
 // ═══════════════════════════════════════════════════════════════════
 
 export const layoutRouteMappingsTable = sqliteTable('layout_route_mappings', {
@@ -105,7 +105,7 @@ export const layoutRouteMappingsTable = sqliteTable('layout_route_mappings', {
     layoutTemplateId: text('layout_template_id').notNull(),
     brandKitId: text('brand_kit_id').notNull(),
 
-    /** Optional per-route token overrides – partial JSON applied on top of the brand kit's tokens */
+    /** Optional per-route token overrides: partial JSON applied on top of the brand kit's tokens */
     tokenOverridesJson: text('token_overrides_json'),
 
     createdBy: text('created_by'),
@@ -119,7 +119,7 @@ export type LayoutRouteMappingType = typeof layoutRouteMappingsTable.$inferSelec
 export type NewLayoutRouteMappingType = typeof layoutRouteMappingsTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// MENU SLOT ASSIGNMENTS – Bind menus to named layout slots per app
+// MENU SLOT ASSIGNMENTS, Bind menus to named layout slots per app
 // Slot names: 'header-nav', 'sidebar-nav', 'footer-nav', 'mobile-nav', etc.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -156,7 +156,7 @@ export type MenuSlotAssignmentType = typeof menuSlotAssignmentsTable.$inferSelec
 export type NewMenuSlotAssignmentType = typeof menuSlotAssignmentsTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// MENUS – Container for menu items (e.g. sidebar, header, footer)
+// MENUS, Container for menu items (e.g. sidebar, header, footer)
 // slug identifies usage: 'sidebar', 'header', 'main-nav', etc.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -193,7 +193,7 @@ export type MenuType = typeof menusTable.$inferSelect;
 export type NewMenuType = typeof menusTable.$inferInsert;
 
 // ═══════════════════════════════════════════════════════════════════
-// MENU ITEMS – Strongly typed per-item fields
+// MENU ITEMS, Strongly typed per-item fields
 // ═══════════════════════════════════════════════════════════════════
 
 export const menuItemsTable = sqliteTable(

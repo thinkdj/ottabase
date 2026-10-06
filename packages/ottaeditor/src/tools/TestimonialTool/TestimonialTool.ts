@@ -91,7 +91,7 @@ export default class TestimonialTool implements BlockTool {
         const form = document.createElement('div');
         form.classList.add('cdx-testimonial__form', 'ob-form');
 
-        // Quote textarea (most important — shown first)
+        // Quote textarea (most important: shown first)
         form.appendChild(this.createTextarea('quote', 'Quote *', 'What the customer said...', 4));
 
         // Author info row

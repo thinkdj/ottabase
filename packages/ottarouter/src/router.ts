@@ -1,5 +1,5 @@
 // ============================================================
-// ottarouter — the simplest opinionated router for Cloudflare Workers
+// ottarouter, the simplest opinionated router for Cloudflare Workers
 // ============================================================
 //
 // The rules (in full):
@@ -7,17 +7,17 @@
 //      code layout: static > :param > *, leftmost segment first; exact
 //      method > ALL. Identical shapes with overlapping methods throw at
 //      registration.
-//   2. A handler returns a Response or null. null means "not mine — keep
+//   2. A handler returns a Response or null. null means "not mine, keep
 //      matching".
 //   3. Unmatched is a value: handle() resolves null so the app can compose
 //      (`?? fallback ?? assets`). fetch() turns null into a 404.
 //   4. One middleware model: prefix-scoped onion functions that run once per
-//      request — even when no route matches. A finalizer is just code after
+//      request, even when no route matches. A finalizer is just code after
 //      `await next()`.
 //   5. The grammar is closed: static, :param (one segment), final * (rest,
 //      one or more segments). Anything fancier is an `if` inside a handler.
 //
-// Zero runtime dependencies. No Node APIs — only Request, Response and URL.
+// Zero runtime dependencies. No Node APIs, only Request, Response and URL.
 // ============================================================
 
 export type Awaitable<T> = T | Promise<T>;
@@ -64,7 +64,7 @@ export interface Ctx<Env = unknown, P = Params> {
     data: Record<string, unknown>;
 }
 
-/** A `Response` means handled — stop. `null` means "not mine — keep matching". */
+/** A `Response` means handled: stop. `null` means "not mine, keep matching". */
 export type Handler<Env = unknown, P = Params> = (c: Ctx<Env, P>) => Awaitable<Response | null>;
 
 /** Resolves to the downstream result: a Response, or null when nothing matched. */
@@ -86,7 +86,7 @@ export class RouteConflictError extends Error {
 
     constructor(a: string, b: string) {
         super(
-            `Route conflict: "${a}" and "${b}" have the same shape and overlapping methods — ` +
+            `Route conflict: "${a}" and "${b}" have the same shape and overlapping methods, ` +
                 `no request could ever distinguish them. Remove one, or give them different methods.`,
         );
         this.name = 'RouteConflictError';
@@ -106,7 +106,7 @@ export function withHeaders(res: Response, headers: HeadersInit): Response {
     if (res.status === 101 || (res as Response & { webSocket?: unknown }).webSocket) {
         return res;
     }
-    // Replace each incoming header name once, then append — so a repeated name
+    // Replace each incoming header name once, then append, so a repeated name
     // (most notably Set-Cookie, which Headers deliberately never combines)
     // keeps every value instead of the last write clobbering the rest.
     const apply = (target: Headers): void => {
@@ -181,7 +181,7 @@ function parsePattern(pattern: string): Seg[] {
                 throw new Error(`Invalid pattern "${pattern}": ":" must be followed by a parameter name.`);
             }
             if (name === '*') {
-                throw new Error(`Invalid pattern "${pattern}": ":*" is reserved — "*" is the wildcard capture key.`);
+                throw new Error(`Invalid pattern "${pattern}": ":*" is reserved, "*" is the wildcard capture key.`);
             }
             if (names.has(name)) {
                 throw new Error(`Invalid pattern "${pattern}": duplicate parameter name ":${name}".`);
@@ -242,7 +242,7 @@ function matchSegments(segs: Seg[], pathSegs: string[]): Params | null {
             }
             const tail = pathSegs.slice(i);
             // An empty segment (from "//") never matches anything, including the
-            // wildcard — "one or more remaining segments" means real segments.
+            // wildcard, "one or more remaining segments" means real segments.
             if (tail.some((s) => s === '')) {
                 return null;
             }
@@ -297,7 +297,7 @@ interface MiddlewareEntry<Env> {
 
 /**
  * Total precedence order. Compare shapes position by position; at the first
- * position where kinds differ, static > param > wild — that position decides.
+ * position where kinds differ, static > param > wild, that position decides.
  * Same shape: exact method > ALL. Everything else is disjoint (or threw at
  * registration), so the remaining tie-breaks are for sort stability only.
  */
@@ -324,12 +324,12 @@ const NOOP_EXECUTION_CONTEXT: ExecutionContextLike = {
     passThroughOnException: () => undefined,
 };
 
-/** Internal marker: onError itself threw. Propagates untouched — one safety net, not two. */
+/** Internal marker: onError itself threw. Propagates untouched, one safety net, not two. */
 class OnErrorFailure {
     constructor(readonly cause: unknown) {}
 }
 
-/** RFC 9110 token characters (tchar), checked after uppercasing — accepts any valid HTTP method token. */
+/** RFC 9110 token characters (tchar), checked after uppercasing, accepts any valid HTTP method token. */
 const HTTP_METHOD_RE = /^[A-Z0-9!#$%&'*+\-.^_`|~]+$/;
 
 export class Router<Env = unknown> {
@@ -359,7 +359,7 @@ export class Router<Env = unknown> {
         const segs = parsePattern(pattern);
         const upper = methods.map((m) => m.toUpperCase());
 
-        // Validate every method against a disposable snapshot first — a
+        // Validate every method against a disposable snapshot first, a
         // conflict (including a duplicate within this same call) must leave
         // the router untouched rather than half-registering the pattern.
         const shape = shapeKey(segs);
@@ -417,7 +417,7 @@ export class Router<Env = unknown> {
     /**
      * Register middleware. `use(mw)` is global; `use(prefix, mw)` scopes by
      * segment-boundary prefix (`/api` covers `/api` and `/api/...`, never `/apifoo`).
-     * Middleware runs once per request, in registration order, outermost first —
+     * Middleware runs once per request, in registration order, outermost first,
      * even when no route matches.
      */
     use(mw: Middleware<Env>): this;
@@ -445,11 +445,11 @@ export class Router<Env = unknown> {
             throw new Error('Cannot mount a router into itself.');
         }
         if (sub.errorHandler || sub.customNotFound) {
-            throw new Error('onError/notFound belong to the root router only — remove them from the mounted router.');
+            throw new Error('onError/notFound belong to the root router only, remove them from the mounted router.');
         }
         if (sub.frozen) {
             throw new Error(
-                'This router has already been mounted (or already served a request) — mount a fresh Router instance instead.',
+                'This router has already been mounted (or already served a request), mount a fresh Router instance instead.',
             );
         }
         const prefixSegs = parseStaticPrefix(prefix, 'mount prefix');
@@ -463,7 +463,7 @@ export class Router<Env = unknown> {
             return { method: route.method, pattern, segs, gates, handler: route.handler };
         });
 
-        // Validate every new route against a disposable snapshot first — a
+        // Validate every new route against a disposable snapshot first, a
         // conflicting mount must leave both routers completely untouched.
         const snapshot = new Map<string, Map<string, string>>();
         for (const [shape, methods] of this.shapes) {
@@ -483,7 +483,7 @@ export class Router<Env = unknown> {
             methods.set(route.method, route.pattern);
         }
 
-        // Validated — commit for real, then freeze the sub last.
+        // Validated: commit for real, then freeze the sub last.
         for (const route of newRoutes) {
             this.addRoute(route.method, route.pattern, route.segs, route.gates, route.handler, route.pattern);
         }
@@ -578,7 +578,7 @@ export class Router<Env = unknown> {
         };
 
         // A handler-path error (route handler throw, gate throw, :param decode
-        // URIError — from either the dispatch loop or a mounted middleware's
+        // URIError, from either the dispatch loop or a mounted middleware's
         // gate) is replaced by onError's Response, which unwinds through the
         // onion like any other matched response. If onError itself throws, that
         // failure is wrapped so the outer boundary below rethrows it untouched
@@ -705,7 +705,7 @@ export class Router<Env = unknown> {
     private assertOpen(action: string): void {
         if (this.frozen) {
             throw new Error(
-                `Router is frozen (it already served a request or was mounted) — cannot ${action}. ` +
+                `Router is frozen (it already served a request or was mounted), cannot ${action}. ` +
                     `Register everything before the first request.`,
             );
         }

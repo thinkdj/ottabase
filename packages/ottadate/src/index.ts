@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Main entry point
+ * @ottabase/ottadate: Main entry point
  *
  * Framework-agnostic date picker library with support for:
  * - Single date selection
@@ -23,7 +23,7 @@
  * ```
  */
 
-// Core types — re-export everything
+// Core types: re-export everything
 export type {
     DatePart,
     DatePickerInstance,
@@ -45,7 +45,7 @@ export type {
     TimestampFormat,
 } from './core/types';
 
-// Core utilities — re-export key ones
+// Core utilities: re-export key ones
 export { detectTimezone, formatDate, fromDate, resolveTimezone, toDate } from './core/utils';
 
 // FuzzyDateTime utilities
@@ -87,7 +87,7 @@ export { createFuzzyDateTimeCompact } from './pickers/FuzzyDateTimeCompact';
 export { createFuzzyDateTimePicker } from './pickers/FuzzyDateTimePicker';
 
 // ---------------------------------------------------------------------------
-// OttaDate namespace — convenient single import
+// OttaDate namespace, convenient single import
 // ---------------------------------------------------------------------------
 
 import {
@@ -111,7 +111,7 @@ import { createFuzzyDateTimeCompact } from './pickers/FuzzyDateTimeCompact';
 import { createFuzzyDateTimePicker } from './pickers/FuzzyDateTimePicker';
 
 /**
- * OttaDate — namespace object for all picker factory methods and utilities.
+ * OttaDate: namespace object for all picker factory methods and utilities.
  *
  * @example
  * ```typescript

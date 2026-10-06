@@ -14,7 +14,7 @@ const DEMO_ITEMS: MenuItemDto[] = [
     { id: 'advanced', menuId: 'demo-menu', parentId: 'products', name: 'Advanced', link: '#', sortOrder: 3 },
     { id: 'renderer', menuId: 'demo-menu', parentId: 'advanced', name: 'Renderer', link: '/demo/renderer' },
     { id: 'menus', menuId: 'demo-menu', parentId: 'advanced', name: 'Menus', link: '/demo/menus' },
-    { id: 'pricing', menuId: 'demo-menu', name: 'Pricing', link: '/pricing' },
+    { id: 'blog', menuId: 'demo-menu', name: 'Blog', link: '/blog' },
     { id: 'admin', menuId: 'demo-menu', name: 'Admin', link: '/admin', authRequired: true },
 ];
 
@@ -31,7 +31,7 @@ export function MenusDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Menus"
+                title="OttaMenu"
                 description={
                     <>
                         Interactive renderer playground for <code>@ottabase/ottamenu</code>. Uses mock menu data so it

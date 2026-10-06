@@ -71,7 +71,7 @@ export class WebhookEndpoint extends BaseModel {
         return this.save();
     }
 
-    /** The client-safe view. The signing secret is never in it — see `WebhookEndpointView`. */
+    /** The client-safe view. The signing secret is never in it, see `WebhookEndpointView`. */
     toView(): WebhookEndpointView {
         return {
             id: String(this.get('id')),

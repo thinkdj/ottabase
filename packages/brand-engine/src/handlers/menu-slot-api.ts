@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Menu Slot API handlers
-// GET /api/brand/menu-slots – List slot assignments for app (with resolved menus)
-// PUT /api/brand/menu-slots – Replace all slot assignments for app
+// Brand Engine, Menu Slot API handlers
+// GET /api/brand/menu-slots, List slot assignments for app (with resolved menus)
+// PUT /api/brand/menu-slots: Replace all slot assignments for app
 // ---------------------------------------------------------------------------
 
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -16,7 +16,7 @@ import { warmBrandCache } from './warm-cache';
 const VALID_RENDER_TYPES = ['sidebar', 'flyout', 'mega', 'navbar', 'dropdown', 'footer'] as const;
 
 /**
- * GET /api/brand/menu-slots – List menu slot assignments with resolved menu data.
+ * GET /api/brand/menu-slots: List menu slot assignments with resolved menu data.
  * Returns a map of slot name → array of resolved menu slots.
  */
 export async function handleGetMenuSlots(
@@ -29,7 +29,7 @@ export async function handleGetMenuSlots(
 }
 
 /**
- * GET /api/brand/menu-slots/raw – List raw slot assignments (for admin editing).
+ * GET /api/brand/menu-slots/raw: List raw slot assignments (for admin editing).
  * Returns flat array of assignment items without resolved menu data.
  */
 export async function handleGetMenuSlotsRaw(
@@ -54,7 +54,7 @@ export async function handleGetMenuSlotsRaw(
 }
 
 /**
- * PUT /api/brand/menu-slots – Replace all menu slot assignments for app.
+ * PUT /api/brand/menu-slots: Replace all menu slot assignments for app.
  * Accepts array of { slotName, menuId, renderType, sortOrder? }.
  * Deletes existing assignments and re-creates them (like PUT /api/brand/mappings).
  */

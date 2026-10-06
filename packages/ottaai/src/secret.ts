@@ -1,10 +1,10 @@
 // ============================================================
-// @ottabase/ottaai — Secret union + redacting holder + key hint
+// @ottabase/ottaai, Secret union + redacting holder + key hint
 // ============================================================
 // The secret is a UNION WITH A STORED DISCRIMINATOR, not two nullable columns
 // resolved by truthiness. Truthiness resolution ships two live bugs:
 //   1. an alias-only credential silently keeps the platform's provider key
-//      alongside the tenant's alias — two auth mechanisms on one request;
+//      alongside the tenant's alias, two auth mechanisms on one request;
 //   2. the UI infers "has a key" from the hint, so an alias-only credential
 //      WORKS at call time but reads as keyless and keeps the gate closed.
 // ============================================================
@@ -37,7 +37,7 @@ const REDACTED = '[redacted:ottaai-secret]';
  *
  * `JSON.stringify`, template interpolation, `String()`, `console.log` and `util.inspect`
  * all yield `[redacted:ottaai-secret]`. The value is reachable only through the explicit,
- * greppable `.expose()` call — so every place a plaintext key is read is one grep away.
+ * greppable `.expose()` call, so every place a plaintext key is read is one grep away.
  *
  * A JS string cannot be zeroed, so the mitigation is scope minimisation, not erasure:
  * construct it as late as possible and never store it beyond the request.
@@ -56,7 +56,7 @@ export class SecretValue {
         return this[PLAINTEXT];
     }
 
-    /** Length of the underlying secret — safe to log, useful for "did we get an empty string?". */
+    /** Length of the underlying secret, safe to log, useful for "did we get an empty string?". */
     get length(): number {
         return this[PLAINTEXT].length;
     }
@@ -79,7 +79,7 @@ export class SecretValue {
     }
 }
 
-/** Type guard — useful at transport boundaries that accept `string | SecretValue`. */
+/** Type guard: useful at transport boundaries that accept `string | SecretValue`. */
 export function isSecretValue(value: unknown): value is SecretValue {
     return value instanceof SecretValue;
 }
@@ -88,30 +88,30 @@ export function isSecretValue(value: unknown): value is SecretValue {
 // Key hint
 // ---------------------------------------------------------------------------
 
-/** The mask used for the display hint. Exactly four bullets — the LENGTH is load-bearing. */
+/** The mask used for the display hint. Exactly four bullets, the LENGTH is load-bearing. */
 export const KEY_HINT_MASK = '••••';
 
 /**
  * How the display hint is derived for a provider.
- * - `tail`   — last four characters of the trimmed secret (the default)
- * - `none`   — never reveal anything (the mask alone)
- * - `{ path }` — a dot path into a JSON secret document, e.g. `client_email`
+ * - `tail`: last four characters of the trimmed secret (the default)
+ * - `none`: never reveal anything (the mask alone)
+ * - `{ path }`: a dot path into a JSON secret document, e.g. `client_email`
  *   (the last four characters of a service-account document are meaningless)
  */
 export type HintSource = 'tail' | 'none' | { path: string };
 
 /**
  * Derive the tenant-visible hint from PLAINTEXT, at write time, from the SAME trimmed
- * string that gets encrypted. It cannot be recomputed from ciphertext — a write path
+ * string that gets encrypted. It cannot be recomputed from ciphertext, a write path
  * that forgets it leaves that row hintless forever.
  *
- * Encoding (a cross-package contract the frontend gate keys off — do NOT normalise
+ * Encoding (a cross-package contract the frontend gate keys off, do NOT normalise
  * the second and third rows together, and do NOT vary the mask width):
  *
  * | value                          | means                                             |
  * | ------------------------------ | ------------------------------------------------- |
  * | `''`                           | no secret                                         |
- * | `'••••'` exactly (4 chars)     | secret set, shorter than 12 chars — nothing shown |
+ * | `'••••'` exactly (4 chars)     | secret set, shorter than 12 chars, nothing shown |
  * | `'••••' + last4` (8 chars)     | secret set, last four revealed                    |
  */
 /** Shortest secret whose last four characters may be shown (4 shown, 8+ hidden). */
@@ -159,7 +159,7 @@ function readJsonPath(document: string, path: string): string | null {
  *
  * Provider 4xx bodies and SDK error objects routinely echo the `Authorization` header,
  * the request URL with query parameters, and sometimes the whole serialised request
- * config — so the `ERROR` arm of the taxonomy must not re-open the leak that the
+ * config, so the `ERROR` arm of the taxonomy must not re-open the leak that the
  * resolution return shape closes.
  *
  * @param message   the raw upstream text
@@ -185,7 +185,7 @@ export function redactSecrets(message: string, sentinels: Array<string | SecretV
     return output;
 }
 
-/** Cap for any secret accepted on the write path — stops a multi-megabyte paste reaching D1. */
+/** Cap for any secret accepted on the write path, stops a multi-megabyte paste reaching D1. */
 export const MAX_SECRET_LENGTH = 8192;
 
 /** Validate + normalise a submitted plaintext secret. Throws on the write path by design. */

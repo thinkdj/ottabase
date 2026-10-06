@@ -208,7 +208,7 @@ export function ShadcnDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Complete Component Showcase"
+                title="shadcn/ui"
                 description={
                     <>
                         shadcn/ui components from <code>@ottabase/ui-shadcn</code> organized by category.
@@ -1200,11 +1200,12 @@ export function ShadcnDemoPage() {
                                     Warning Toast
                                 </Button>
                                 <Button
-                                    onClick={() =>
-                                        toast.loading('Loading...', {
+                                    onClick={() => {
+                                        const id = toast.loading('Loading…', {
                                             description: 'Processing your request',
-                                        })
-                                    }
+                                        });
+                                        setTimeout(() => toast.dismiss(id), 2000);
+                                    }}
                                     variant="outline"
                                 >
                                     Loading Toast

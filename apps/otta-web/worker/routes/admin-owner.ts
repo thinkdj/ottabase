@@ -33,9 +33,9 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     initDbConnection(env);
 
     // Rate-limit by IP before the secret compare, so this grant-of-ultimate-privilege endpoint can't
-    // be brute-forced — matching the throttling on register/reset. Throttled BEFORE reading the body.
+    // be brute-forced, matching the throttling on register/reset. Throttled BEFORE reading the body.
     // enforceBruteForceThrottle fails OPEN with a logged warning if the limiter binding is missing (a
-    // real 429 still blocks) — the secret compare below is the authoritative gate, and this shares the
+    // real 429 still blocks), the secret compare below is the authoritative gate, and this shares the
     // exact policy the bootstrap secret check uses so break-glass recovery isn't bricked by a missing
     // limiter binding.
     const ip = getClientIpAddress(request);
@@ -62,7 +62,7 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
         const body = await readJson<{ secret?: string; userId?: string; email?: string }>(request);
         bodySecret = clean(body.secret || null);
         userId = body.userId || undefined;
-        // Normalize like every other account path (login/register/reset) — a plain unique email
+        // Normalize like every other account path (login/register/reset), a plain unique email
         // column is case-sensitive, so a correct-but-miscased address must not 404 this break-glass tool.
         email = typeof body.email === 'string' && body.email.trim() ? normalizeEmail(body.email) : undefined;
     } catch {
@@ -144,7 +144,7 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
 
     // Make the grant take effect on the target's live session. Without this the endpoint returns
     // success while the promoted user's cached session snapshot keeps platformAdmin=false (and the
-    // RBAC cache omits the grant) until the ~30-day JWT expires — so they stay blocked from the
+    // RBAC cache omits the grant) until the ~30-day JWT expires, so they stay blocked from the
     // control plane. reconcileSystemRoleSessions drops the 'rbac:' cache and bumps every
     // platform_owner holder's profile version (now including this user), the same refresh contract
     // the bootstrap seed path uses. Best-effort: no-ops without OBCF_KV and swallows errors, so it

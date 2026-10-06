@@ -1,5 +1,5 @@
 // ============================================================
-// Config Resolution — ENV >> config file >> default
+// Config Resolution, ENV >> config file >> default
 // ============================================================
 // Non-secret values: env var overrides config, config overrides default.
 // Secrets (AUTH_SECRET, OAuth keys, API keys) must come from env only.
@@ -131,7 +131,7 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                     bool(env, ENV_KEYS.OTTAAI_ALLOW_ORG_CREDENTIALS) ?? config.features.ottaai.allowOrgCredentials,
                 rateLimit: {
                     // Env-overridable so an operator can tighten a live deployment WITHOUT a
-                    // redeploy — which is what you want at 2am when one account is looping.
+                    // redeploy, which is what you want at 2am when one account is looping.
                     //
                     // NORMALISED THROUGH THE SAME FUNCTION as the config path: `num()` returns
                     // whatever `parseInt` produced, including negatives, and a negative limit

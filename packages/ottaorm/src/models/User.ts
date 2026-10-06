@@ -346,7 +346,7 @@ export class User extends BaseModel {
 
     /**
      * Assign a role to the user in one organization (idempotent on the full grant key).
-     * `organizationId` is REQUIRED — use `SYSTEM_ORGANIZATION_ID` ('system') for platform grants.
+     * `organizationId` is REQUIRED: use `SYSTEM_ORGANIZATION_ID` ('system') for platform grants.
      * Bumps the org's RBAC cache version when a cache is provided.
      */
     async assignRole(
@@ -424,7 +424,7 @@ export class User extends BaseModel {
 
     /**
      * Get all permissions the user holds in one organization (from its roles there).
-     * `organizationId` is REQUIRED — see `roles()`.
+     * `organizationId` is REQUIRED: see `roles()`.
      */
     async getPermissions(options: { cache?: any; organizationId: string }): Promise<string[]> {
         const userId = this.get('id') as string;
@@ -498,13 +498,13 @@ export class User extends BaseModel {
     }
 
     /**
-     * Check if the user is an admin WITHIN a specific organization — PERMISSION-based, never
+     * Check if the user is an admin WITHIN a specific organization, PERMISSION-based, never
      * role-NAME based. True when their grants in `organizationId` carry `org:admin` or
      * `platform:admin` (or the `*:*` wildcard). Pass the system org id to test platform-admin.
      *
      * `organizationId` is REQUIRED by design. There is deliberately no org-less "admin somewhere"
      * mode: since every self-registered user is `org:admin` of their own personal org, an aggregate
-     * check returns true for nearly everyone — reproducing the role-name-trust bug in a new form.
+     * check returns true for nearly everyone, reproducing the role-name-trust bug in a new form.
      * For the platform-vs-org boundary on a request, prefer the guards in @ottabase/rbac
      * (assertAdmin / the session `platformAdmin` flag), which read SYSTEM-scoped grants.
      */

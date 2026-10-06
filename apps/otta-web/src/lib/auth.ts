@@ -38,7 +38,7 @@ export { type Session, type SessionClientOptions, type SessionState, type User }
 type AdminUserLike = { permissions?: string[]; platformAdmin?: boolean } | null | undefined;
 
 /**
- * PLATFORM administrator — the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
+ * PLATFORM administrator: the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
  * appearance/content). Trust ONLY the server-derived, scope-aware `user.platformAdmin` flag (set from
  * a SYSTEM-scoped grant). Deliberately NO `*:*` fallback: the session's merged permission list is
  * scope-blind, so an ORG-scoped `*:*` (e.g. a legacy/stale `owner=['*:*']` row on an un-migrated DB)
@@ -51,7 +51,7 @@ export function isPlatformAdmin(user: AdminUserLike): boolean {
 }
 
 /**
- * ORGANIZATION administrator — can administer their own tenant. True for `org:admin` (which a
+ * ORGANIZATION administrator: can administer their own tenant. True for `org:admin` (which a
  * legacy org-scoped `*:*` also matches, correctly: such a user IS an org owner) or a platform owner.
  */
 export function isOrgAdmin(user: AdminUserLike): boolean {
@@ -72,7 +72,7 @@ export function isAdminUser(user: AdminUserLike): boolean {
  * X-Org-Id header) for a given session snapshot + the locally-remembered value.
  *
  * The platform-scope sentinel (organizationId NULL) has no way to persist server-side
- * as distinct from "no preference set" — PATCH activeOrganizationId=null clears the
+ * as distinct from "no preference set", PATCH activeOrganizationId=null clears the
  * column, and the session then falls back to the user's earliest membership, same as
  * an unset preference. Without special-casing it, that fallback org would silently
  * overwrite the sentinel the instant a platform admin selects Platform (refreshSession()

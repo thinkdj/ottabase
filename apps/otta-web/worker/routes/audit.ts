@@ -32,7 +32,7 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
     const userOrgId = sessionUser?.organizationId as string | undefined;
 
     // Admin status is validated against the live RBAC context, not the session snapshot's
-    // role names — role names alone are ambiguous ('owner' exists in every personal org).
+    // role names, role names alone are ambiguous ('owner' exists in every personal org).
     // Non-admins fall through to seeing their own rows only. No dev bypass: wrangler.jsonc's
     // top-level ENVIRONMENT is 'development', so a deploy without --env would otherwise hand
     // every signed-in user every tenant's audit rows.
@@ -40,7 +40,7 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
     const adminContext = adminAuth && !(adminAuth instanceof Response) ? adminAuth : null;
     const isAdmin = adminContext !== null;
 
-    // Audit rows are tenant data: admins — the platform owner included — only see rows for
+    // Audit rows are tenant data: admins, the platform owner included, only see rows for
     // organizations they are an active member of. A system-scope admin additionally sees
     // platform-level rows (organization_id 'system' or NULL, e.g. migrations), but never
     // another tenant's rows.

@@ -4,7 +4,7 @@ import { Github, Palette, Rocket } from 'lucide-react';
 import { SlotRenderer } from '../components/SlotRenderer';
 
 /**
- * Homepage content data — single source of truth.
+ * Homepage content data: single source of truth.
  * Each section defines its data once; the active variant determines how it renders.
  */
 

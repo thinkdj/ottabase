@@ -48,7 +48,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Labels — micro-label scale
+   Labels, micro-label scale
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-label {
     font-size: 0.6875rem;
@@ -77,7 +77,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Inputs, selects, textareas — h-9 (2.25rem) control rhythm
+   Inputs, selects, textareas, h-9 (2.25rem) control rhythm
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-input,
 .ob-plugin .ob-select,
@@ -134,7 +134,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Focus ring — every custom interactive control inside a plugin
+   Focus ring, every custom interactive control inside a plugin
    --------------------------------------------------------------------------- */
 .ob-plugin button:focus-visible,
 .ob-plugin [role='button']:focus-visible,
@@ -153,13 +153,13 @@
     border-radius: calc(var(--radius) - 2px);
 }
 
-/* Inline label — sits beside a control instead of above it */
+/* Inline label: sits beside a control instead of above it */
 .ob-plugin .ob-label--inline {
     margin-bottom: 0;
 }
 
 /* ---------------------------------------------------------------------------
-   Toolbar — label/actions row above a repeatable item list
+   Toolbar, label/actions row above a repeatable item list
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-toolbar {
     display: flex;
@@ -172,7 +172,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Item card — a single row inside a repeatable list (FAQ / reference / etc.)
+   Item card, a single row inside a repeatable list (FAQ / reference / etc.)
    Soft tint carries the separation; border stays for layout stability only.
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-item-card {
@@ -201,7 +201,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Add-item button — dashed ghost button that appends a row to a list
+   Add-item button, dashed ghost button that appends a row to a list
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-add-button {
     display: inline-flex;
@@ -231,7 +231,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Icon button — single-purpose icon-only action, standalone or in a row
+   Icon button, single-purpose icon-only action, standalone or in a row
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-icon-button {
     display: inline-flex;
@@ -261,7 +261,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Dropzone — empty-state "click or drop to add media" affordance
+   Dropzone, empty-state "click or drop to add media" affordance
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-dropzone {
     border: 1px dashed hsl(var(--border));
@@ -278,7 +278,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Segmented control — tinted toggle group (fit / orientation / align);
+   Segmented control, tinted toggle group (fit / orientation / align);
    active segment lifts out of the tint as a background chip with hairline ring
    --------------------------------------------------------------------------- */
 .ob-plugin .ob-segment {

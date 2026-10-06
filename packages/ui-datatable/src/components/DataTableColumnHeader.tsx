@@ -15,7 +15,7 @@ interface DataTableColumnHeaderProps<TData, TValue> {
 }
 
 /**
- * Sortable column header — renders sort direction indicators and handles
+ * Sortable column header: renders sort direction indicators and handles
  * click-to-sort. Reads sortable state from the column definition.
  */
 export function DataTableColumnHeader<TData, TValue>({

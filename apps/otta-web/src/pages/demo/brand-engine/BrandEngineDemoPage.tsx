@@ -18,7 +18,7 @@ export function BrandEngineDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Brand Engine"
+                title="Brand engine"
                 description={
                     <>
                         Runtime brand/layout resolution from <code>@ottabase/brand-engine-react</code>, no login

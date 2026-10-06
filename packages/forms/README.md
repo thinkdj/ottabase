@@ -10,14 +10,14 @@ UI dependencies):
 
 | Import                  | Contents                                                                                     | Deps pulled in                                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI — only `@ottabase/ottaorm` + `zod`                                                     |
+| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI: only `@ottabase/ottaorm` + `zod`                                                      |
 | `@ottabase/forms/react` | **Rendered UI.** `ModelForm`, `ModelCrud`, `ModelTable`, `ModelDetail`, `FormField`          | React + the UI packages (`@ottabase/ui-components`, `-datatable`, `ottaselect`, `lucide-react`, `clsx`) |
 
 The UI packages are declared as **optional peer dependencies**, so installing `@ottabase/forms` for headless use does
 not force them into your dependency tree. Install them only when you import from `@ottabase/forms/react`.
 
 ```tsx
-// Headless — config + schema only, no UI
+// Headless: config + schema only, no UI
 import { createModelConfig, defineModelConfig } from '@ottabase/forms';
 import type { ModelConfig } from '@ottabase/forms';
 
@@ -29,7 +29,7 @@ import { ModelCrud, ModelForm } from '@ottabase/forms/react';
 
 - **Auto-generated Forms**: Create/edit forms instantly from OttaORM model field metadata.
 - **Auto-generated Tables**: Display model data in sortable, paginated tables (powered by `@ottabase/ui-datatable`).
-- **CRUD Views**: Full `ModelCrud` component for List, Create, Update, and Detail views.
+- **CRUD Views**: Full `ModelCrud` component: a list, with create and edit in a side panel.
 - **Zod Validation**: Real-time client-side validation (on blur + on submit) built from field metadata.
 - **OttaORM Validation**: Server-side validation via `Model.validate()` before create/update.
 - **Standalone Forms**: Use `action` prop to POST/PATCH directly to any endpoint.
@@ -284,20 +284,20 @@ const config = defineModelConfig({
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed):
+- **Accessibility**: rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed):
   every field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
   `aria-describedby`. Keyboard and focus behavior come from those primitives; you don't re-implement them.
-- **SSR** — components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema
+- **SSR**: components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema
   (`buildZodSchema`) runs client-side for UX and server-side as the trust boundary (see
   [Server-side validation](#server-side-validation)). No special hydration handling is required.
-- **Performance** — the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config
+- **Performance**: the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config
   builders never pulls in React components. **Caveat:** the generated `ModelForm` currently holds field state in
-  `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
+  `useState` and re-renders on each keystroke, fine for typical forms; for a very large administrative form prefer the
   ui-shadcn react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
 
 ## Exports
 
-`@ottabase/forms` (headless — no rendered UI in its import graph):
+`@ottabase/forms` (headless: no rendered UI in its import graph):
 
 - **Utilities**: `createModelConfig`, `defineModelConfig`
 - **Types**: `ModelConfig`, `ModelCrudProps`, `ModelFormProps`, `ModelTableProps`, `ModelDetailProps`, `FormFieldProps`,

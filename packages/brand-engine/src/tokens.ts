@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Design Token Types
+// BrandEngine, Design Token Types
 //
 // Two families of token categories:
 //   • DEFAULTED categories (color, typography, spacing, radius, shadow, motion)
-//     always resolve with engine defaults merged in — they existed pre-v2 and
+//     always resolve with engine defaults merged in, they existed pre-v2 and
 //     the whole UI depends on their vars being present.
 //   • SPARSE categories (palette, typeScale, border, focus, interaction, links,
 //     selection, scrollbar, native, zIndex, textStyles, fontFaces, effects,
@@ -12,7 +12,7 @@
 //     that defines none of them renders pixel-identical to the pre-v2 app.
 // ---------------------------------------------------------------------------
 
-/** Typography token – fontFamily + optional web-font URL */
+/** Typography token: fontFamily + optional web-font URL */
 export interface TokenTypography {
     fontFamily: string;
     url?: string;
@@ -24,7 +24,7 @@ export interface TokenTypography {
 }
 
 /**
- * Typography roles – open-ended map. `heading`, `body`, `handwriting` and
+ * Typography roles: open-ended map. `heading`, `body`, `handwriting` and
  * `mono` are always present after resolution (engine defaults); themes may add
  * arbitrary extra roles (`display`, `ticker`, …) emitted as `--font-{role}`.
  */
@@ -78,7 +78,7 @@ export interface TokenColors {
     'chart-4'?: string;
     'chart-5'?: string;
 
-    /** Extensible – additional custom colour tokens */
+    /** Extensible: additional custom colour tokens */
     [custom: string]: string | undefined;
 }
 
@@ -86,7 +86,7 @@ export interface TokenColors {
  * Raw / derived color values emitted VERBATIM as `--{name}: value`.
  * Unlike `color` (HSL channel triplets), palette values are complete CSS color
  * expressions: hex, oklch(), and crucially `color-mix()` chains referencing
- * other vars — one brand knob deriving a whole ramp in pure CSS:
+ * other vars, one brand knob deriving a whole ramp in pure CSS:
  *
  *   "palette": {
  *     "upp-glow": "color-mix(in srgb, hsl(var(--primary)) 36%, transparent)",
@@ -99,7 +99,7 @@ export interface TokenColors {
 export type TokenPalette = Record<string, string>;
 
 /**
- * Shadow scale – open record. `xs..xl` are engine-defaulted; themes may add
+ * Shadow scale: open record. `xs..xl` are engine-defaulted; themes may add
  * named extras (`glow`, `lift`, …) emitted as `--shadow-{name}` and consumed
  * via `shadow-[var(--shadow-glow)]` or component hook vars.
  */
@@ -125,9 +125,9 @@ export interface TokenMotion {
     easingEnter?: string;
     /** Easing curve for exit animations */
     easingExit?: string;
-    /** Spring/bounce easing – emitted as --ease-spring (+ --motion-ease-bouncy alias) */
+    /** Spring/bounce easing: emitted as --ease-spring (+ --motion-ease-bouncy alias) */
     easingSpring?: string;
-    /** Disable all animations – sets animation: none, transition: 0s */
+    /** Disable all animations: sets animation: none, transition: 0s */
     disableAnimations?: boolean;
     /** Extra named durations → --duration-{name} (e.g. { press: '120ms' }) */
     durations?: Record<string, string>;
@@ -170,14 +170,14 @@ export interface TokenCursors {
 }
 
 /**
- * Spacing tokens – semantic keys mapped to CSS length values.
+ * Spacing tokens: semantic keys mapped to CSS length values.
  * Keys are semantic (section, card, element, …) rather than t-shirt sizes
  * so each theme can redefine spatial rhythm independently.
  */
 export type TokenSpacing = Record<string, string>;
 
 /**
- * Type-scale step – either a bare size string or size + paired metrics.
+ * Type-scale step: either a bare size string or size + paired metrics.
  * Emitted as --text-{step} (+ --text-{step}-lh / -ls / -weight when given).
  * Tailwind's text-{step} utilities consume them with stock-value fallbacks,
  * so existing `text-sm` call sites become themeable without edits.
@@ -195,17 +195,17 @@ export type TypeScaleStep =
 export type TokenTypeScale = Record<string, TypeScaleStep>;
 
 /**
- * Radius – a single scalar (pre-v2 behaviour: sizes derive via calc) or a
+ * Radius: a single scalar (pre-v2 behaviour: sizes derive via calc) or a
  * per-size record. Record keys emit --radius-{size}; `base` (or `lg`) also
  * emits the scalar --radius for the calc-chain fallbacks.
- * `full` controls pill/circle shapes (--radius-full, default 9999px) — set it
+ * `full` controls pill/circle shapes (--radius-full, default 9999px), set it
  * to e.g. `2px` to ban pills across the whole app.
  */
 export type TokenRadius = string | Partial<Record<'base' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full', string>>;
 
 /** Border chrome tokens */
 export interface TokenBorder {
-    /** Default border width – backs Tailwind's bare `border` utility */
+    /** Default border width: backs Tailwind's bare `border` utility */
     width?: string;
     /** Strong/structural border width (--border-width-strong) */
     widthStrong?: string;
@@ -213,7 +213,7 @@ export interface TokenBorder {
     style?: string;
 }
 
-/** Focus-visible ring tokens – consumed by the global focus rule in shadcn.css */
+/** Focus-visible ring tokens: consumed by the global focus rule in shadcn.css */
 export interface TokenFocus {
     /** Ring thickness (default 2px) */
     width?: string;
@@ -226,7 +226,7 @@ export interface TokenFocus {
 }
 
 /**
- * Interaction physics – global hover/press feel applied to interactive
+ * Interaction physics: global hover/press feel applied to interactive
  * data-slot elements. All values default to identity (no visual change).
  */
 export interface TokenInteraction {
@@ -247,7 +247,7 @@ export interface TokenInteraction {
 }
 
 /**
- * Link contract – colors + underline policy for CONTENT anchors.
+ * Link contract: colors + underline policy for CONTENT anchors.
  * Rules are generated (zero-specificity :where) only when set, so app chrome
  * anchors styled via utility classes keep their look.
  */
@@ -255,7 +255,7 @@ export interface TokenLinks {
     /** Full CSS color for links (e.g. `var(--link)` or `#2323E8`) */
     color?: string;
     hoverColor?: string;
-    /** :visited color – the web's founding contract (pin it, never retint) */
+    /** :visited color, the web's founding contract (pin it, never retint) */
     visitedColor?: string;
     /** :active flash color */
     activeColor?: string;
@@ -348,7 +348,7 @@ export interface TokenEffects {
     /**
      * Theme-owned raw CSS appended to the effects stylesheet verbatim
      * (sanitized at injection). This makes a design system's bespoke recipes
-     * (press-state chrome, bracket controls, counters) PRESET-portable —
+     * (press-state chrome, bracket controls, counters) PRESET-portable,
      * unlike kit customCss, it travels inside the theme JSON.
      */
     css?: string;
@@ -357,7 +357,7 @@ export interface TokenEffects {
 /** Page-level surface hooks */
 export interface TokenSurface {
     /**
-     * body background-image layer(s) — gradients/textures behind all content.
+     * body background-image layer(s): gradients/textures behind all content.
      * Emitted as --bg-backdrop, consumed by a static body rule.
      */
     backdrop?: string;
@@ -377,10 +377,10 @@ export interface TokenDisabledFlags {
 }
 
 // ---------------------------------------------------------------------------
-// Token aliases – allow one token to reference another by name
+// Token aliases, allow one token to reference another by name
 // ---------------------------------------------------------------------------
 
-/** Alias map – e.g. `{ "brand": "primary", "bgSurface": "card" }` */
+/** Alias map: e.g. `{ "brand": "primary", "bgSurface": "card" }` */
 export type TokenAliases = Record<string, string>;
 
 // ---------------------------------------------------------------------------
@@ -420,10 +420,10 @@ export type ColorPalettes = {
 };
 
 /**
- * Scoped token "room" – re-binds a subset of tokens for a DOM subtree via
+ * Scoped token "room": re-binds a subset of tokens for a DOM subtree via
  * `[data-brand-scope="name"] { --var: … }` (a dark hero chrome inside a light
  * page, the90s.page's `afterdark`, a cinema `screen` room, …).
- * Categories carry their own light/dark split (ModeValue) — a room is often
+ * Categories carry their own light/dark split (ModeValue), a room is often
  * mode-independent (always-dark chrome), which a flat value expresses.
  */
 export interface ScopeTokens {
@@ -467,7 +467,7 @@ export interface DesignTokens {
     effects?: TokenEffects;
     scopes?: TokenScopes;
     surface?: ModeValue<TokenSurface>;
-    /** Token aliases – remap semantic names to other token keys */
+    /** Token aliases: remap semantic names to other token keys */
     aliases?: TokenAliases;
     /** Kit-level kill switches for fonts / motion / cursors (never mode-split) */
     disabled?: TokenDisabledFlags;
@@ -475,9 +475,9 @@ export interface DesignTokens {
 
 /**
  * Single source of truth for every category key on DesignTokens.
- * Consumed by expandPresetToTokens (admin save passthrough — anything missing
+ * Consumed by expandPresetToTokens (admin save passthrough, anything missing
  * here is silently DROPPED on preset apply), the legacy adapter, and preview.
- * `cursors` is intentionally absent — it lives at the tokensJson ROOT, not
+ * `cursors` is intentionally absent: it lives at the tokensJson ROOT, not
  * inside DesignTokens (pre-existing convention).
  */
 export const TOKEN_CATEGORY_KEYS = [

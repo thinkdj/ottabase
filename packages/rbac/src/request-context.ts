@@ -138,7 +138,7 @@ export async function getRequestContext(
     });
 
     // The requested org is only a request: a tenant org needs active membership, and the
-    // 'system' scope needs at least one system-scope grant — otherwise any caller could send
+    // 'system' scope needs at least one system-scope grant, otherwise any caller could send
     // `x-org-id: system` and be reported as isSystemScope.
     const resolvedOrg = resolveOrganizationId(request, session, allowNullTenant);
     const requestedOrganizationId =

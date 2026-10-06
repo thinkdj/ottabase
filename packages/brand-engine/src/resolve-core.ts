@@ -1,14 +1,14 @@
 // ---------------------------------------------------------------------------
-// BrandEngine – Shared token-resolution core
+// BrandEngine, Shared token-resolution core
 //
 // Single implementation of per-category token resolution used by all three
 // resolution entry points (resolver.ts registry path, persistence
-// brandKitToConfig.ts kit path, previewTheme.ts admin preview) — previously
+// brandKitToConfig.ts kit path, previewTheme.ts admin preview), previously
 // three hand-rolled copies that drifted.
 //
 // Category families:
 //   • DEFAULTED (color, typography, spacing, radius, shadow, motion): engine
-//     defaults merged under the theme values — vars are always emitted.
+//     defaults merged under the theme values, vars are always emitted.
 //   • SPARSE (palette, typeScale, border, focus, interaction, links,
 //     selection, scrollbar, native, zIndex, textStyles, fontFaces, effects,
 //     scopes, surface): resolved only when the theme defines them; consumers
@@ -58,7 +58,7 @@ import { isReservedVarName } from './tokens';
 // Mode-split detection
 // ---------------------------------------------------------------------------
 
-/** Type guard – is `val` a plain object (not array, null, etc.)? */
+/** Type guard: is `val` a plain object (not array, null, etc.)? */
 export function isPlainObject(val: unknown): val is Record<string, unknown> {
     return typeof val === 'object' && val !== null && !Array.isArray(val);
 }
@@ -111,7 +111,7 @@ export function resolveAliases(palette: TokenColors, aliases?: TokenAliases): To
 
 /**
  * Resolve typography roles: default roles merged per-field, extra roles passed
- * through. `disabled.fonts` swaps in system stacks and ignores theme values —
+ * through. `disabled.fonts` swaps in system stacks and ignores theme values,
  * no web-font URLs are emitted.
  */
 export function resolveTypography(tokens: Partial<DesignTokens> | undefined, mode: ColorScheme): TokenTypographyRoles {
@@ -177,7 +177,7 @@ export function resolveShadows(tokens: Partial<DesignTokens> | undefined, mode: 
 
 /**
  * Resolve motion presets (base fields defaulted; named extras pass through).
- * `disabled.motion` forces disableAnimations — every duration var emits 0s.
+ * `disabled.motion` forces disableAnimations, every duration var emits 0s.
  */
 export function resolveMotion(tokens: Partial<DesignTokens> | undefined, mode: ColorScheme): ResolvedMotion {
     const raw = pickMode(tokens?.motion, mode);
@@ -206,7 +206,7 @@ export function resolvePalette(
     for (const [name, val] of Object.entries(raw)) {
         if (typeof val !== 'string') continue;
         if (isReservedVarName(name) || (colors && name in colors)) {
-            console.warn(`[Brand Engine] palette key "${name}" shadows an engine variable — dropped.`);
+            console.warn(`[Brand Engine] palette key "${name}" shadows an engine variable, dropped.`);
             continue;
         }
         clean[name] = val;
@@ -283,7 +283,7 @@ export function resolveSurface(tokens: Partial<DesignTokens> | undefined, mode: 
     return pickMode(tokens?.surface, mode);
 }
 
-/** fontFaces / effects / scopes are never mode-split — verbatim passthrough. */
+/** fontFaces / effects / scopes are never mode-split, verbatim passthrough. */
 export function resolveFontFaces(tokens: Partial<DesignTokens> | undefined): TokenFontFace[] | undefined {
     if (tokens?.disabled?.fonts === true) return undefined;
     const raw = tokens?.fontFaces;
@@ -292,7 +292,7 @@ export function resolveFontFaces(tokens: Partial<DesignTokens> | undefined): Tok
 
 /**
  * Resolve cursors (they live at the tokensJson/BrandTheme ROOT, not inside
- * DesignTokens — `tokens` is passed only for the `disabled.cursors` flag).
+ * DesignTokens, `tokens` is passed only for the `disabled.cursors` flag).
  * Disabled → empty map → no --cursor-* vars → native browser cursors.
  */
 export function resolveCursors(
@@ -319,7 +319,7 @@ export function resolveScopes(tokens: Partial<DesignTokens> | undefined): TokenS
 // Aggregate: every token category resolved for one mode
 // ---------------------------------------------------------------------------
 
-/** All DesignTokens categories resolved for a single mode (layout/cursors excluded — they live outside DesignTokens). */
+/** All DesignTokens categories resolved for a single mode (layout/cursors excluded, they live outside DesignTokens). */
 export interface ResolvedTokenSet {
     colors: TokenColors;
     typography: TokenTypographyRoles;
@@ -393,7 +393,7 @@ export function resolveTokenSet(tokens: Partial<DesignTokens> | undefined, mode:
  * Used by the kit pipeline to build the minimal dark DELTA: colors and shadows
  * are ALWAYS included (their dark defaults differ from light); every other
  * category is included only when explicitly split. fontFaces/effects/scopes
- * are never mode-split — they ride the light theme object.
+ * are never mode-split, they ride the light theme object.
  */
 export function darkSplitCategories(tokens: Partial<DesignTokens> | undefined): Set<string> {
     const split = new Set<string>();

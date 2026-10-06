@@ -14,7 +14,7 @@ const baseStyles: Record<string, CSSProperties> = {
         position: 'relative',
     },
     resizer: {
-        // Quiet hairline gutter — a single centered token-driven divider, no fill.
+        // Quiet hairline gutter: a single centered token-driven divider, no fill.
         backgroundColor: 'hsl(var(--border) / 0.6)',
         zIndex: 1,
         boxSizing: 'border-box',

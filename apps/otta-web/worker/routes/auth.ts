@@ -674,7 +674,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 email,
                 name,
                 organizationRole: 'owner',
-                // The new user owns this brand-new org (organizationRole: 'owner') — their RBAC
+                // The new user owns this brand-new org (organizationRole: 'owner'), their RBAC
                 // role must match so they can actually administer it (invite teammates, manage
                 // settings) via /admin/*, not just read it. Mirrors bootstrap/routes.ts's first-user flow.
                 roleFallbacks: ['owner'],

@@ -139,7 +139,7 @@ describe('ensureDbConnection', () => {
         // Asserted as "unchanged by the second call", NOT as a fixed number: the policy
         // count is a function of which packages are enabled (media, plus ottaai's credential
         // policy, plus the ottablog org-mode overrides), so a hard-coded 1 would break every
-        // time a package is added — while saying nothing about the invariant under test.
+        // time a package is added, while saying nothing about the invariant under test.
         expect(mockRegisterPolicy.mock.calls.length).toBe(policyCallsAfterFirst);
         expect(policyCallsAfterFirst).toBeGreaterThan(0);
     });

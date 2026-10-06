@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Navbar (horizontal) menu renderer
+// Ottamenu, Navbar (horizontal) menu renderer
 // Horizontal nav bar with simple single-column dropdowns for nested items.
 // Common pattern for site headers / top navigation.
 // ---------------------------------------------------------------------------
@@ -69,6 +69,8 @@ function NavbarItem({
                     isOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={isOpen ? onClose : handleOpen}
+                aria-expanded={isOpen}
+                aria-haspopup="true"
             >
                 {node.item.image && (
                     <img src={node.item.image} alt="" className="mr-1.5 h-4 w-4 shrink-0 rounded object-cover" />
@@ -117,7 +119,7 @@ export function NavbarMenuRenderer({ items, pathname, expanded = false }: Navbar
     // Expanded / static mode: render all dropdowns inline (for preview panels)
     if (expanded) {
         return (
-            <nav className="flex flex-col gap-2">
+            <nav aria-label="Main" className="flex flex-col gap-2">
                 {tree.map((node) => (
                     <div key={node.item.id}>
                         <MenuItemLink item={node.item} pathname={pathname} className="font-medium" />
@@ -135,7 +137,7 @@ export function NavbarMenuRenderer({ items, pathname, expanded = false }: Navbar
     }
 
     return (
-        <nav className="flex items-center gap-1">
+        <nav aria-label="Main" className="flex items-center gap-1">
             {tree.map((node) => (
                 <NavbarItem
                     key={node.item.id}

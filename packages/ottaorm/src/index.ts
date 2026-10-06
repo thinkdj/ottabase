@@ -111,7 +111,7 @@ export {
     AuditLog,
     // Auth SQL models (Edge-safe)
     Authenticator,
-    // Media (core — tracks all uploaded files)
+    // Media (core: tracks all uploaded files)
     Media,
     // Multi-tenant/RBAC models and tables
     Organization,

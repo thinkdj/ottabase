@@ -27,10 +27,10 @@ function defaultRenderResult(result: SpotlightResult, index: number, isSelected:
 export function Spotlight({
     open: openProp,
     onOpenChange,
-    placeholder = 'Search...',
+    placeholder = 'Search…',
     emptyMessage = 'No results found',
     idleMessage = 'Type to search',
-    loadingMessage = 'Searching...',
+    loadingMessage = 'Searching…',
     errorMessage = 'An error occurred while searching',
     onSearch,
     renderResult = defaultRenderResult,

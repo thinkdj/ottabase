@@ -24,21 +24,21 @@ description:
    `/api/ottaorm/*` CRUD is default-deny: add the entity to `GENERIC_CRUD_ALLOWLIST` (`worker/routes/ottaorm-crud.ts`)
    only if it should be reachable there, with an RLS policy registered.
 5. App exports the table from `ottabase/db/schema.ts` and adds it to `db/schemas-helper.ts`. _(Premium packages bypass
-   all of this — one registration in `config.premium.ts`. See `docs/PREMIUM_PACKAGES.md`.)_
+   all of this, one registration in `config.premium.ts`. See `docs/PREMIUM_PACKAGES.md`.)_
 
 ## Headless vs rendered (required when both exist)
 
-- Root entry `@ottabase/<pkg>` stays **headless**: types, pure utils, models, schemas, hooks — **zero rendered UI**.
+- Root entry `@ottabase/<pkg>` stays **headless**: types, pure utils, models, schemas, hooks, **zero rendered UI**.
 - Rendered React behind an explicit subpath: `@ottabase/<pkg>/react` (or `/server` for server-only). Declare each in
   `package.json` `exports`; add a boundary test asserting the root exports no UI.
 
 ## Wire into the gates (or CI silently skips the package)
 
 6. Declare **all four** scripts: `lint` (`"eslint src"`, no `--ext`, no package-local eslint config), `type-check`,
-   `test`, `build`. Turbo skips undeclared tasks without reporting — a missing script is invisible to CI, not passing.
+   `test`, `build`. Turbo skips undeclared tasks without reporting, a missing script is invisible to CI, not passing.
     - **Carve-out**: a package whose `exports` point at `./src` (no build output) defines lint/type-check/test and
-      deliberately **no** `build` — adding one emits a `dist/` nothing imports (and for module-level singletons, a
-      second registry copy = a correctness bug).
+      deliberately **no** `build`: adding one emits a `dist/` nothing imports (and for module-level singletons, a second
+      registry copy = a correctness bug).
 7. Deps: internal → `workspace:*`; shared external → `catalog:`; framework/runtime dep for a shared package →
    `peerDependency`.
 8. README.md + tests are mandatory.

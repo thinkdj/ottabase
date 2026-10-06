@@ -1,7 +1,7 @@
 # @ottabase/auth
 
 Lightweight, dependency-free authentication for Ottabase apps on Cloudflare Workers + D1. Signed session cookies, PBKDF2
-credentials, generic OAuth2/OIDC, and magic-link email sign-in — all built on the Web Crypto API (`crypto.subtle`) that
+credentials, generic OAuth2/OIDC, and magic-link email sign-in, all built on the Web Crypto API (`crypto.subtle`) that
 Workers implements natively. No Auth.js, no Node crypto, no third-party crypto or JWT library.
 
 ## Features
@@ -100,7 +100,7 @@ same owner's next sign-in repairs the missing organization; another user cannot 
 ## Session Model
 
 The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained
-JWT carrying only **identity** claims — `sub`, `jti`, `email`, `name`, `image`, `emailVerified`, `organizationId`,
+JWT carrying only **identity** claims: `sub`, `jti`, `email`, `name`, `image`, `emailVerified`, `organizationId`,
 `createdAt`, `cms` (creation time in ms), `profileVersion`, `iat`, `exp`. The potentially large / frequently-changing
 **authorization snapshot** (`roles`, `permissions`) is deliberately kept **out of the cookie** and stored in the
 per-session KV registry record instead, so the cookie can never approach the ~4KB browser limit no matter how many
@@ -192,24 +192,24 @@ await signInWithCredentials({ email, password });
 ## OAuth Providers
 
 One generic OAuth2 Authorization-Code + PKCE (S256) client (`src/providers/oauth-client.ts`) drives all five presets;
-each preset is just endpoint/scope/claim-mapping data. Providers are enabled purely by which env vars are set —
+each preset is just endpoint/scope/claim-mapping data. Providers are enabled purely by which env vars are set:
 `autoConfigureProviders(env)` returns every configured provider, `getConfiguredProvider(id, env)` looks up one by id
 (used internally by `handleAuthRequest`).
 
 ### Enabling a provider (Google & GitHub in 3 steps)
 
-Enabling OAuth is **env-var only — no code changes**. The login page auto-renders a button for every provider whose
+Enabling OAuth is **env-var only, no code changes**. The login page auto-renders a button for every provider whose
 credentials are present (`getLoginConfig` / `GET /api/auth/config` detect them).
 
 1. **Create an OAuth app** in the provider's console and copy its client id + secret:
-    - **Google** — Google Cloud Console → APIs & Services → Credentials → _OAuth client ID_ (Web application).
-    - **GitHub** — Settings → Developer settings → OAuth Apps → _New OAuth App_.
+    - **Google**: Google Cloud Console → APIs & Services → Credentials → _OAuth client ID_ (Web application).
+    - **GitHub**: Settings → Developer settings → OAuth Apps → _New OAuth App_.
 2. **Set the callback / redirect URI** in that console (must match exactly, including scheme + host):
     ```
     https://your-domain.com/api/auth/callback/google     # or /github, /discord, /azure-ad, /auth0
     ```
     Also set `AUTH_URL` (your public origin, used to build this redirect URI) and `AUTH_SECRET`.
-3. **Set the credential env vars** (Cloudflare secrets / `.dev.vars`) — the button then appears automatically:
+3. **Set the credential env vars** (Cloudflare secrets / `.dev.vars`), the button then appears automatically:
     ```
     GOOGLE_CLIENT_ID=...      GOOGLE_CLIENT_SECRET=...
     GITHUB_CLIENT_ID=...      GITHUB_CLIENT_SECRET=...
@@ -266,7 +266,7 @@ matching email hijack an existing account).
 `POST /api/auth/signin/email` sends a short-lived (15 minute) sign-in link, distinct from the app's own 24-hour
 email-verification links. `GET /api/auth/callback/email` verifies the token, creates a session, and redirects.
 
-Tokens are stored **hashed** (SHA-256) at rest — only the plaintext lives in the emailed link — so a database read leak
+Tokens are stored **hashed** (SHA-256) at rest, only the plaintext lives in the emailed link, so a database read leak
 can't be replayed to mint a session. Consumption is a single atomic `DELETE ... RETURNING`, so a link is strictly
 single-use even under concurrent clicks, and the link origin is derived from the configured `AUTH_URL` rather than the
 request `Host` (no host-header poisoning). Sending a new link invalidates any prior outstanding one for that address.
@@ -428,7 +428,7 @@ checkPassword('abc'); // [{ rule: { id: 'length', label: '8+ characters', … },
 
 Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). This is the package's
 **only** rendered-UI subpath: `@ottabase/ui-shadcn` and `lucide-react` are declared as **optional** peer dependencies
-and are pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
+and are pulled in **only** when you import from here, the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
 stay free of them. The components never depended on Auth.js and take plain callback props, so you wire them to
 `@ottabase/auth/client` yourself.
 
@@ -437,7 +437,7 @@ import { LoginForm } from '@ottabase/auth/components';
 import { getLoginConfig } from '@ottabase/auth/config';
 import { signInWithCredentials, signInWithProvider, sendMagicLink } from '@ottabase/auth/client';
 
-// Auto-detect configured providers/methods from env vars (pure helper — no UI deps)
+// Auto-detect configured providers/methods from env vars (pure helper, no UI deps)
 const config = getLoginConfig(process.env);
 
 <LoginForm
@@ -475,7 +475,7 @@ inside this monorepo, or `node_modules/@ottabase/auth/dist/**/*.{js,mjs}` from n
 | Variable                                                | Required                                      | Purpose                                                                                               |
 | ------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `AUTH_SECRET`                                           | Yes (fails closed without it)                 | HMAC secret (>= 16 chars, 32+ recommended) for session JWTs, CSRF tokens, OAuth state/PKCE cookies    |
-| `AUTH_ALLOW_INSECURE_DEV_SECRET`                        | No (local dev only)                           | `"true"` permits the built-in insecure dev secret — only honored when `ENVIRONMENT` is a dev value    |
+| `AUTH_ALLOW_INSECURE_DEV_SECRET`                        | No (local dev only)                           | `"true"` permits the built-in insecure dev secret, only honored when `ENVIRONMENT` is a dev value     |
 | `CORS_ALLOWED_ORIGINS`                                  | No                                            | Comma-separated extra origins allowed for credentialed CORS (same-origin + `AUTH_URL` always allowed) |
 | `AUTH_URL`                                              | No                                            | Frontend origin used for redirects + OAuth `redirect_uri` (defaults to `http://127.0.0.1:3003`)       |
 | `AUTH_COOKIE_NAME`                                      | No                                            | Overrides the session cookie name (default `ottabase.session-token`)                                  |
@@ -502,12 +502,12 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 - **Accessibility**: the bundled UI components build on `@ottabase/ui-shadcn` primitives. Ids come from `useId`, so
   several forms can share a page; errors use `role="alert"` and are tied to their fields; success states use
   `role="status"`.
-- **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
+- **SSR**: server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
   `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly
   flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to
-  avoid FOUC), there is **no edge-injected session yet** — gate on `isAuthenticated` and render a stable loading state
+  avoid FOUC), there is **no edge-injected session yet**: gate on `isAuthenticated` and render a stable loading state
   rather than assuming the first paint is correct.
-- **Performance** — session reads prefer the mutable KV registry snapshot over re-hitting D1; a per-user
+- **Performance**: session reads prefer the mutable KV registry snapshot over re-hitting D1; a per-user
   `profile:version` bump is what forces a re-read (see [Session Model](#session-model)), so a profile edit reflects on
   the next request without re-issuing the cookie. Password hashing is PBKDF2 via Web Crypto (no native deps, edge-safe).
 
@@ -530,13 +530,13 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 │   └── types.ts           Shared provider types
 ├── client-api.ts          fetch-based frontend client
 ├── react-hooks.ts         useSession + useSessionBootstrap (Jotai-backed)
-└── components/            Framework-agnostic login/register UI (shadcn/ui) — the `./components` subpath
-    └── helpers.ts         Pure, type-only env→login-config helpers — the `./config` subpath (no UI deps)
+└── components/            Framework-agnostic login/register UI (shadcn/ui), the `./components` subpath
+    └── helpers.ts         Pure, type-only env→login-config helpers, the `./config` subpath (no UI deps)
 ```
 
 ### Subpath purity
 
-Every subpath is strictly pure **or** UI-only — never mixed. `@ottabase/ui-shadcn` and `lucide-react` are optional peer
+Every subpath is strictly pure **or** UI-only, never mixed. `@ottabase/ui-shadcn` and `lucide-react` are optional peer
 dependencies that only `@ottabase/auth/components` pulls in:
 
 | Subpath                                                                         | Rendered UI? | Notable deps                                           |
@@ -545,7 +545,7 @@ dependencies that only `@ottabase/auth/components` pulls in:
 | `./components`                                                                  | Yes          | `@ottabase/ui-shadcn`, `lucide-react` (optional peers) |
 
 DB access goes through the existing OttaORM models (`User`, `Account`, `VerificationToken`, `OrganizationMember` from
-`@ottabase/ottaorm/models`) — there is no hand-rolled adapter layer. Every cryptographic primitive runs on
+`@ottabase/ottaorm/models`), there is no hand-rolled adapter layer. Every cryptographic primitive runs on
 `crypto.subtle`, which Cloudflare Workers implements natively, so the package has no runtime dependency on Node crypto
 or any third-party crypto/JWT library.
 

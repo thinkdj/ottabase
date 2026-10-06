@@ -49,7 +49,7 @@ export function createColumns<TData extends object>(defs: DataTableColumnDef<TDa
 
                 // Null values
                 if (value === null || value === undefined) {
-                    return React.createElement('span', { className: 'text-muted-foreground' }, '—');
+                    return React.createElement('span', { className: 'text-muted-foreground' }, '-');
                 }
 
                 // Truncate long strings
@@ -289,7 +289,7 @@ function ActionsDropdown<TData>({ actions, data }: { actions: DataTableAction<TD
                 React.createElement('circle', { cx: 12, cy: 19, r: 1 }),
             ),
         ),
-        // Dropdown menu — rendered with fixed positioning to escape overflow-hidden ancestors
+        // Dropdown menu: rendered with fixed positioning to escape overflow-hidden ancestors
         open &&
             React.createElement(
                 'div',

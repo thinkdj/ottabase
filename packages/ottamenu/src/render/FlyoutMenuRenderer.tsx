@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Flyout menu renderer
+// Ottamenu, Flyout menu renderer
 // Modern flyout menu: top-level horizontal nav with nested flyout panels.
 // ---------------------------------------------------------------------------
 
@@ -67,6 +67,8 @@ function FlyoutNode({
                             : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                     }`}
                     onClick={() => (isOpen ? onCloseFromDepth(depth) : onOpenAtDepth(depth, node.item.id))}
+                    aria-expanded={isOpen}
+                    aria-haspopup="true"
                 >
                     <span className="truncate">{node.item.name}</span>
                     <FlyoutChevron isOpen={isOpen} />
@@ -121,7 +123,7 @@ export function FlyoutMenuRenderer({ items, pathname }: FlyoutMenuRendererProps)
     };
 
     return (
-        <nav className="flex items-center gap-1 rounded-lg">
+        <nav aria-label="Main" className="flex items-center gap-1 rounded-lg">
             {tree.map((node) => (
                 <FlyoutNode
                     key={node.item.id}

@@ -121,7 +121,7 @@ Use markers so PR preview or production deploy do not run when not needed, such 
 | `requiresSecrets`    | string[] | `[]`                               | _(Optional)_ Extra secrets not in wrangler.jsonc (e.g. build-time) |
 
 > **SSOT:** `wrangler.jsonc` is the single source of truth for resource secrets. Placeholders in `env.production` /
-> `env.preview` are auto-detected by the substitution script. `requiresSecrets` is optional and additive — only needed
+> `env.preview` are auto-detected by the substitution script. `requiresSecrets` is optional and additive, only needed
 > for secrets that don't appear in wrangler (e.g. build-time env vars). Base secrets (`CLOUDFLARE_API_TOKEN`,
 > `CLOUDFLARE_ACCOUNT_ID`) are always verified automatically.
 
@@ -267,7 +267,7 @@ node .github/scripts/discover-deployable-apps.mjs
 
 ### Job 1: Prepare deployment (5 min timeout)
 
-1. Checkout code (full history — needed for `github.event.before..github.sha` push-range diff)
+1. Checkout code (full history: needed for `github.event.before..github.sha` push-range diff)
 2. Setup Node.js
 3. Read `APPS_TO_DEPLOY` secret (or use default)
 4. Detect changed files using the full push range; `PACKAGES_CHANGED=true` if `packages/`, root config files
@@ -275,8 +275,8 @@ node .github/scripts/discover-deployable-apps.mjs
 5. Resolve each app’s folder + load its `cloudflare-config.json`
 
     > **Manual deploy (`workflow_dispatch`) note:** `FORCE_DEPLOY` defaults to `true`, so a manual run always deploys
-    > all apps in `APPS_TO_DEPLOY`. This is intentional — manual triggers are typically used when you need everything
-    > out now. To deploy a single app manually, set `FORCE_DEPLOY` to `false` and ensure only that app is listed in
+    > all apps in `APPS_TO_DEPLOY`. This is intentional, manual triggers are typically used when you need everything out
+    > now. To deploy a single app manually, set `FORCE_DEPLOY` to `false` and ensure only that app is listed in
     > `APPS_TO_DEPLOY` (or pass a scoped override via the input field).
 
 6. Build and output matrix JSON for the deploy job
@@ -341,9 +341,9 @@ table.
 Prefixing (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement.
 
 To add a new resource placeholder: set the GitHub Secret name as the value in `wrangler.jsonc` env section, add the
-secret to GitHub. That's it — the script auto-detects and substitutes.
+secret to GitHub. That's it, the script auto-detects and substitutes.
 
-`requiresSecrets` / `requiresPreviewSecrets` in `cloudflare-config.json` are **optional** and **additive** — used only
+`requiresSecrets` / `requiresPreviewSecrets` in `cloudflare-config.json` are **optional** and **additive**: used only
 for early fail-fast verification. The Verify step **derives** placeholders from `wrangler.jsonc` (single source of
 truth), then merges with base secrets (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID) and any extra from
 `requiresSecrets`. No drift: wrangler placeholders are always correct. Add `requiresSecrets` only for secrets not in
@@ -495,7 +495,7 @@ are only **2 places** to update:
 
 #### Example: Adding `APP_1` with its own isolated D1 database
 
-**1. `wrangler.jsonc`** — use the secret name as the placeholder value:
+**1. `wrangler.jsonc`**, use the secret name as the placeholder value:
 
 ```jsonc
 // apps/app-1/wrangler.jsonc → env.production
@@ -506,7 +506,7 @@ are only **2 places** to update:
 }]
 ```
 
-**2. GitHub repo → Settings → Secrets** — add `APP_1_D1_DATABASE_ID` with the actual D1 UUID.
+**2. GitHub repo → Settings → Secrets**, add `APP_1_D1_DATABASE_ID` with the actual D1 UUID.
 
 Done. No workflow edits, no `cloudflare-config.json` edits, no Python script edits.
 
@@ -516,7 +516,7 @@ Done. No workflow edits, no `cloudflare-config.json` edits, no Python script edi
 #### Optional: Early verification
 
 Add secret names to `requiresSecrets` in `cloudflare-config.json` for fail-fast checking **before** the build runs. This
-is optional — if omitted, missing secrets are caught later at substitution time.
+is optional, if omitted, missing secrets are caught later at substitution time.
 
 ### Add New App Type
 

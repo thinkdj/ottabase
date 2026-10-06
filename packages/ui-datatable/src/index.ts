@@ -5,7 +5,7 @@
 // Supports server-side sort/filter/pagination (via OttaORM),
 // column visibility, row selection, and bulk actions.
 //
-// This `.` barrel is PURE: hooks, types, and string helpers only —
+// This `.` barrel is PURE: hooks, types, and string helpers only,
 // ZERO rendered UI. The rendered DataTable components and the
 // column factories live behind `@ottabase/ui-datatable/react`.
 // ============================================================

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – renderMenu(menu, type) + MenuRenderer component
+// Ottamenu, renderMenu(menu, type) + MenuRenderer component
 // ---------------------------------------------------------------------------
 
 import { useMemo } from 'react';

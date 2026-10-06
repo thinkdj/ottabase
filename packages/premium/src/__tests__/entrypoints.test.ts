@@ -26,7 +26,7 @@ describe('root entrypoint', () => {
         expect(rendered).toEqual([]);
     });
 
-    it('does not leak the license MINTING helpers — those belong to the vendor', () => {
+    it('does not leak the license MINTING helpers, those belong to the vendor', () => {
         expect('issueLicense' in root).toBe(false);
         expect('generateLicenseKeypair' in root).toBe(false);
         expect(typeof licenseTools.issueLicense).toBe('function');

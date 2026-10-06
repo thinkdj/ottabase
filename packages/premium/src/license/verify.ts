@@ -1,9 +1,9 @@
 // ============================================================
-// @ottabase/premium — license verdict
+// @ottabase/premium, license verdict
 // ============================================================
 // One function turns "a string an operator pasted" into a state the rest of the
 // framework can act on. Every branch fails CLOSED, and every closed branch still
-// leaves the host app running — a Premium Package that cannot prove its licence simply
+// leaves the host app running, a Premium Package that cannot prove its licence simply
 // contributes nothing.
 // ============================================================
 
@@ -65,7 +65,7 @@ function hasValidClaims(claims: PremiumLicenseClaims): boolean {
  *
  * Order matters and is deliberate: SIGNATURE FIRST, then package binding, then app
  * binding, then time. Checking expiry before the signature would let an unsigned
- * token's `exp` field decide which error an operator sees — small, but it is the kind
+ * token's `exp` field decide which error an operator sees, small, but it is the kind
  * of detail that turns a forged token into a support ticket about "clock skew".
  */
 export async function verifyLicense(

@@ -199,7 +199,7 @@ export function InviteMemberForm({ organizationId, editingMember, onSubmit, onCa
                 return;
             }
             setEmailError(null);
-            // No status: the server decides — 'active' if this email already has an account
+            // No status: the server decides, 'active' if this email already has an account
             // and is added immediately, 'invited' (pending signup) otherwise.
             payload = { email, role: formData.role };
         } else {

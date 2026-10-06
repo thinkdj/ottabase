@@ -37,7 +37,7 @@ describe('RLSPolicies', () => {
         const policy = RLSPolicies.AdminOnly();
         expect(policy.level).toBe('custom');
         expect(policy.requirePlatformAdmin).toBe(true);
-        // Must NOT gate on scope-blind role names — that was the escalation vector.
+        // Must NOT gate on scope-blind role names, that was the escalation vector.
         expect(policy.requiredRoles).toBeUndefined();
     });
 

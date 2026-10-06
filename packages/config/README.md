@@ -85,7 +85,7 @@ APP_COPYRIGHT_TEXT="© 2024 Your Company"
 APP_COMPANY_NAME="Your Company"
 
 # UI Framework
-UI_FRAMEWORK="shadcn"    # shadcn | mantine | chakra | mui | tremor
+UI_FRAMEWORK="shadcn"    # shadcn ships; mantine is an optional adapter
 
 # Storage
 STORAGE_PREFIX="my-app"
@@ -142,7 +142,7 @@ interface AppConfig {
         /** Short line beside the app name in headers, e.g. 'Beta'; omit to hide */
         tagline?: string;
     };
-    uiFramework: 'mantine' | 'shadcn' | 'chakra' | 'mui';
+    uiFramework: 'shadcn' | 'mantine' | 'chakra' | 'mui' | 'tremor'; // only shadcn ships
     features: {
         darkMode: boolean;
         analytics: boolean;

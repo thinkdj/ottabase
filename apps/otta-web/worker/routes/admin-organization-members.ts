@@ -35,7 +35,7 @@ function isValidStatus(status: unknown): status is 'active' | 'invited' | 'suspe
 
 /**
  * Tenant-data boundary for roster access. The caller must hold an OWNER/ADMIN organization_members
- * row in the TARGET org — an active membership of ANY role is NOT enough. This is the authority for
+ * row in the TARGET org, an active membership of ANY role is NOT enough. This is the authority for
  * both reading and mutating an org's roster.
  *
  * Why owner/admin, not any-member: `requireAdminAccess({ scope: 'either' })` in the roster handlers
@@ -48,7 +48,7 @@ function isValidStatus(status: unknown): status is 'active' | 'invited' | 'suspe
  * We deliberately do NOT trust `auth.organizationId` as proof of access. When the caller has no
  * session org it is resolved from the client-supplied `x-org-id` header / `?organizationId`
  * query with no membership validation (packages/rbac resolveOrganizationId), and a platform
- * owner's system-scope `*:*` role satisfies assertAdmin for ANY org — so trusting that value
+ * owner's system-scope `*:*` role satisfies assertAdmin for ANY org, so trusting that value
  * would let a non-member inject the target org and pass. Mirrors the audit-log boundary, which
  * likewise derives the allowed orgs from membership rather than the request-supplied org.
  */
@@ -98,7 +98,7 @@ export async function handleAdminOrganizationMembersList(
 
 /**
  * Best-effort notification email for a new org invite. Failure to send must never block the
- * invite itself — the membership row is the source of truth, the email is just a nudge.
+ * invite itself, the membership row is the source of truth, the email is just a nudge.
  */
 async function sendOrgInviteEmail(
     context: ApiRouteContext,
@@ -217,7 +217,7 @@ export async function handleAdminOrganizationInviteMember(
 
     // Check by userId AND by email so a still-pending email invite for this person (row with
     // userId: null) is found even when this request resolved a userId (e.g. they've since
-    // registered) — otherwise a duplicate row could be created instead of being caught here.
+    // registered), otherwise a duplicate row could be created instead of being caught here.
     const existingMember = await OrganizationMember.findExistingInvite({
         organizationId,
         userId: resolvedUserId ?? null,
@@ -231,7 +231,7 @@ export async function handleAdminOrganizationInviteMember(
     }
 
     // body.status is already validated above (undefined or a valid status), and the fallback
-    // literals are valid by construction — no re-check needed here.
+    // literals are valid by construction, no re-check needed here.
     const status = body.status ?? (resolvedUserId ? 'active' : 'invited');
 
     try {
@@ -246,9 +246,9 @@ export async function handleAdminOrganizationInviteMember(
         } as any);
 
         if (resolvedUserId) {
-            // Membership granted — drop the user's cached security-context lookups.
+            // Membership granted: drop the user's cached security-context lookups.
             await invalidateMembershipCache(context.env.OBCF_KV, resolvedUserId);
-            // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
+            // Membership change alters the user's active org (and thus org-scoped roles/permissions),
             // refresh their live session so it isn't served the stale snapshot until the JWT expires.
             await bumpProfileVersion(context.env, resolvedUserId);
 
@@ -332,7 +332,7 @@ export async function handleAdminOrganizationUpdateMember(
 
     // Role-hierarchy guard: only an OWNER may grant owner or modify an existing owner. assertRosterAccess
     // above admits owner AND admin, but an admin must not be able to self-promote to owner (nothing else
-    // guards GRANTING owner) or demote/suspend an owner — either would let an admin take the org from its
+    // guards GRANTING owner) or demote/suspend an owner, either would let an admin take the org from its
     // owner, the same end state as the original roster-takeover bug one tier up.
     const touchesOwner = body.role === 'owner' || (existingMember.toJson() as { role?: string }).role === 'owner';
     if (touchesOwner && auth.user?.id && !(await OrganizationMember.hasRole(auth.user.id, organizationId, 'owner'))) {
@@ -373,7 +373,7 @@ export async function handleAdminOrganizationUpdateMember(
         }
 
         if (result.status === 'updated') {
-            // Role/status changed (incl. suspension) — revocation must not wait out the
+            // Role/status changed (incl. suspension), revocation must not wait out the
             // membership-cache TTL.
             await invalidateMembershipCache(context.env.OBCF_KV, userId);
             // Refresh the mutable session snapshot on the next request.
@@ -438,7 +438,7 @@ export async function handleAdminOrganizationRemoveMember(
         return errorResponse('Member not found', 404, { code: 'MEMBER_NOT_FOUND' });
     }
 
-    // Role-hierarchy guard: only an OWNER may remove an OWNER — an admin must not be able to evict an
+    // Role-hierarchy guard: only an OWNER may remove an OWNER, an admin must not be able to evict an
     // owner (which, combined with the last-owner guard, is how the roster-takeover attack completes).
     if (
         (existingMember.toJson() as { role?: string }).role === 'owner' &&
@@ -498,9 +498,9 @@ export async function handleAdminOrganizationRemoveMember(
             });
         }
 
-        // Membership revoked — drop the cached lookups so access ends now, not at TTL expiry.
+        // Membership revoked: drop the cached lookups so access ends now, not at TTL expiry.
         await invalidateMembershipCache(context.env.OBCF_KV, userId);
-        // Membership change alters the user's active org (and thus org-scoped roles/permissions) —
+        // Membership change alters the user's active org (and thus org-scoped roles/permissions),
         // refresh their live session so it isn't served the stale snapshot until the JWT expires.
         await bumpProfileVersion(context.env, userId);
 

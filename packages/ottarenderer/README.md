@@ -95,10 +95,10 @@ Header, Paragraph, List, Quote, Code, Table, Delimiter, Attaches.
 EditorJS stores lists in two shapes and `List` renders both, so stored content never has to be migrated:
 
 ```typescript
-// @editorjs/nested-list (preferred — author new content this way)
+// @editorjs/nested-list (preferred: author new content this way)
 { type: 'list', data: { style: 'ordered', items: [{ content: 'Parent', items: [{ content: 'Child', items: [] }] }] } }
 
-// @editorjs/list (legacy — plain strings, rendered as a flat list)
+// @editorjs/list (legacy: plain strings, rendered as a flat list)
 { type: 'list', data: { style: 'unordered', items: ['First', 'Second'] } }
 ```
 
@@ -122,7 +122,7 @@ const myRenderers = {
 The `Disclosure` component renders a styled notice that can include:
 
 - **AI Disclosure**: Communicates how much AI was involved in producing the content.
-    - Presets: `slight`, `mid`, `high` — each with standardised wording
+    - Presets: `slight`, `mid`, `high`: each with standardised wording
     - Custom: percentage value (e.g. "Approximately 60% of this content was created with AI assistance.")
 - **Sponsored Disclosure**: Notes commercial relationships.
     - Preset standard wording or author-supplied custom text.

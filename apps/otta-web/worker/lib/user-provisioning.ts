@@ -21,11 +21,11 @@ function logProvisioningFailure(event: string, error: unknown): void {
 
 /**
  * Ensure brand defaults exist for the given app.
- * Uses BrandKit + DEFAULT_ROUTE_MAPPINGS — saves to DB via ORM.
+ * Uses BrandKit + DEFAULT_ROUTE_MAPPINGS: saves to DB via ORM.
  * Call after tables exist and ORM connection is registered.
  *
- * @param fallbackBrandName — Used when creating a new kit
- * @param appId — App to seed. When provided, creates app-scoped kit + mappings.
+ * @param fallbackBrandName: Used when creating a new kit
+ * @param appId, App to seed. When provided, creates app-scoped kit + mappings.
  *               When null, creates system fallback (appId=null). Pass env.APP_ID for current app.
  */
 export async function ensureAppBrandDefaults(fallbackBrandName: string, appId: string | null = null): Promise<void> {
@@ -77,7 +77,7 @@ export async function provisionDefaultOrganizationForUser(params: {
     organizationRole?: 'owner' | 'member';
     assignedBy?: string;
     roleFallbacks?: ProvisionRoleName[];
-    /** App ID for brand kit seeding — when provided, ensures app-scoped default kit exists */
+    /** App ID for brand kit seeding, when provided, ensures app-scoped default kit exists */
     appId?: string | null;
 }): Promise<{
     organizationId: string;
@@ -169,7 +169,7 @@ export async function provisionDefaultOrganizationForUser(params: {
         } catch (err) {
             // The tenant boundary is membership-only (organizationIdsForUser no longer trusts the
             // never-cleared Organization.ownerId), so an org without an owner membership is ORPHANED
-            // — unreachable even by its creator. Roll the org back so provisioning is all-or-nothing.
+            //, unreachable even by its creator. Roll the org back so provisioning is all-or-nothing.
             try {
                 await Organization.delete(organizationId);
             } catch (rollbackErr) {

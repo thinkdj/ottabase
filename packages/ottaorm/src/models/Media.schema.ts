@@ -10,7 +10,7 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * Media table — single source of truth for all uploaded files.
+ * Media table: single source of truth for all uploaded files.
  */
 export const mediaTable = sqliteTable('media', {
     id: text('id')

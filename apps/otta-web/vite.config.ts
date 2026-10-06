@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BYPASS_PATHS = ['/api', '/shortlinks/go', '/__bootstrap__'];
 
 /**
- * SPA fallback plugin – ensures that any non‑API request that expects HTML
+ * SPA fallback plugin: ensures that any non‑API request that expects HTML
  * serves `index.html`. This enables proper client‑side routing on page reloads
  * (F5) or direct navigation to nested routes.
  */
@@ -36,7 +36,7 @@ function spaFallback(): Plugin {
 }
 
 export default defineConfig(({ command }) => ({
-    // Base URL – keep it relative for most deployments
+    // Base URL: keep it relative for most deployments
     base: '/',
     plugins: [
         tsconfigPaths({
@@ -93,7 +93,7 @@ export default defineConfig(({ command }) => ({
         target: 'esnext',
         // Smaller chunks improve caching and initial load
         chunkSizeWarningLimit: 1500,
-        assetsInlineLimit: 96 * 1024, // 96 KB – keep small assets inlined
+        assetsInlineLimit: 96 * 1024, // 96 KB, keep small assets inlined
         cssCodeSplit: true,
         // Enable module preload polyfill for better HTTP/2 performance
         modulePreload: { polyfill: true },

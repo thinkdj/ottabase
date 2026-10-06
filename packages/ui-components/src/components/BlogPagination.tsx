@@ -31,12 +31,12 @@ export default function BlogPagination({
         } else {
             // Always show first page
             pages.push(1);
-            if (page > 3) pages.push('...');
+            if (page > 3) pages.push('…');
             // Show pages around current page
             for (let i = Math.max(2, page - 1); i <= Math.min(lastPage - 1, page + 1); i++) {
                 pages.push(i);
             }
-            if (page < lastPage - 2) pages.push('...');
+            if (page < lastPage - 2) pages.push('…');
             // Always show last page
             pages.push(lastPage);
         }
@@ -61,18 +61,19 @@ export default function BlogPagination({
             <div className="hidden md:-mt-px md:flex">
                 {showPageNumbers &&
                     getPageNumbers().map((pageNum, index) =>
-                        pageNum === '...' ? (
+                        pageNum === '…' ? (
                             <span
                                 key={`ellipsis-${index}`}
                                 className="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-muted-foreground"
                             >
-                                ...
+                                …
                             </span>
                         ) : (
                             <button
                                 key={pageNum}
                                 onClick={() => typeof pageNum === 'number' && onPageChange(pageNum)}
                                 disabled={isLoading}
+                                aria-current={pageNum === page ? 'page' : undefined}
                                 className={`inline-flex items-center border-t-2 px-4 pt-4 text-sm font-medium ${
                                     pageNum === page
                                         ? 'border-primary text-primary'

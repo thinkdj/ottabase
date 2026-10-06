@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium — gates over a resolved status
+// @ottabase/premium, gates over a resolved status
 // ============================================================
 // The browser never sees a manifest, only the `PremiumPackageStatus` the server
 // resolved. These evaluate the same two gate shapes against that view, so the client's
@@ -7,8 +7,8 @@
 // computed opinions about the customer's plan.
 //
 // THEY DO NOT RE-CHECK `enabled`. The server already collapsed `features` and `limits`
-// to whatever applies right now — the free tier for a lapsed licence, the paid tier for
-// a live one — so re-gating on `enabled` here would disagree with the server and disable
+// to whatever applies right now, the free tier for a lapsed licence, the paid tier for
+// a live one, so re-gating on `enabled` here would disagree with the server and disable
 // the button for a free-tier action the server would happily accept.
 // ============================================================
 
@@ -21,14 +21,14 @@ export function checkFeatureFromStatus(status: PremiumPackageStatus, feature: st
     return {
         allowed,
         upsell: !allowed && status.state !== 'disabled',
-        // Prefer the licence-level cause when the licence is the problem — see `checkFeature`.
+        // Prefer the licence-level cause when the licence is the problem, see `checkFeature`.
         reason: allowed ? 'OK' : status.enabled ? 'FEATURE_NOT_IN_PLAN' : status.reason,
         state: status.state,
         purchaseUrl: status.purchaseUrl,
     };
 }
 
-/** Is there room for one more? An undeclared limit is unlimited — see `checkLimit`. */
+/** Is there room for one more? An undeclared limit is unlimited, see `checkLimit`. */
 export function checkLimitFromStatus(
     status: PremiumPackageStatus,
     limitKey: string,

@@ -5,7 +5,7 @@
 All core auth logic lives in the `@ottabase/auth` package, making it reusable across all apps in the monorepo. It is a
 lightweight, dependency-free (Web Crypto only) implementation: signed session JWTs in an HttpOnly cookie, PBKDF2
 password hashing, a generic OAuth2 + PKCE client, and magic-link email sign-in. There is no third-party auth framework
-involved (no Auth.js/NextAuth) — sessions, CSRF, and OAuth state are all custom-built on `crypto.subtle`. Apps only
+involved (no Auth.js/NextAuth): sessions, CSRF, and OAuth state are all custom-built on `crypto.subtle`. Apps only
 contain minimal glue code and app-specific overrides.
 
 ## Package Structure
@@ -43,7 +43,7 @@ packages/auth/src/
 
 **Package Exports** (subpaths in `packages/auth/package.json`):
 
-- `@ottabase/auth` - Main exports (providers, session utils, backend handler, client API, react hooks — re-exported)
+- `@ottabase/auth` - Main exports (providers, session utils, backend handler, client API, react hooks, re-exported)
 - `@ottabase/auth/backend` - `handleAuthRequest`, `getSession`, `hashPassword`, `verifyPassword`,
   `createSessionCookieForUser`, `revokeSession`, `revokeAllUserSessions`, plus types `AuthEnv`,
   `CreateAuthConfigOptions`, `CredentialsAuthorizeOptions`, `AuthorizedUser`
@@ -62,7 +62,7 @@ packages/auth/src/
   senders (`resolveMagicLinkSender`, `createDevEmailTrapMagicLinkSender`, `createNodemailerMagicLinkSender`,
   `createResendMagicLinkSender`)
 
-There is no `./adapter` or `./adapters/drizzle` subpath — DB access goes through the existing OttaORM models (`User`,
+There is no `./adapter` or `./adapters/drizzle` subpath, DB access goes through the existing OttaORM models (`User`,
 `Account`, `VerificationToken`, `OrganizationMember`) directly, and there is no NextAuth-style config object.
 
 ### App (Minimal Glue Code)
@@ -265,7 +265,7 @@ handleAuthRequest(request, env, {
 });
 ```
 
-`authConfig.pages` is the entire shape — just an `error` path used for OAuth error redirects. There is no broader
+`authConfig.pages` is the entire shape, just an `error` path used for OAuth error redirects. There is no broader
 Auth.js-style config object.
 
 ## Features
@@ -373,7 +373,7 @@ provider is just endpoint/scope/claim-mapping data in `providers/presets.ts`.
     - Visit `/login`
     - See auto-configured providers
     - (Development only) Use the built-in credentials login to verify the flow locally. **Do not use the default
-      credentials handler in production** — you must implement a real `authorize` callback backed by your user store
+      credentials handler in production**, you must implement a real `authorize` callback backed by your user store
       before deploying.
 
 ## Summary

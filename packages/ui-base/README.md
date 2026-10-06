@@ -8,13 +8,12 @@ and base styles.
 - **CSS Reset**: Modern CSS reset for consistent cross-browser styling
 - **Animations**: Reusable animation utilities
 - **Base Styles**: Foundation styles for Ottabase applications
-- **Framework-Agnostic**: No React, Mantine, or other framework dependencies
+- **CSS first**: the stylesheets need no framework; `ProviderUIBase` is a thin React wrapper that sets the font
+  variables
 
 ## Installation
 
 ```bash
-pnpm add @ottabase/ui-base
-# or
 pnpm add @ottabase/ui-base
 ```
 
@@ -26,7 +25,12 @@ pnpm add @ottabase/ui-base
 import { ProviderUIBase } from '@ottabase/ui-base';
 
 function App({ children }) {
-    return <ProviderUIBase>{children}</ProviderUIBase>;
+    // fontFamilies is optional: primary, heading and monospace stacks, else the built-in defaults
+    return (
+        <ProviderUIBase fontFamilies={{ primary: 'Inter', heading: 'Work Sans', monospace: 'JetBrains Mono' }}>
+            {children}
+        </ProviderUIBase>
+    );
 }
 ```
 
@@ -63,7 +67,7 @@ pnpm clean
 ui-base/
 ├── src/
 │   ├── index.ts       # Main entry point
-│   └── styles.ts      # Style exports
+│   └── ProviderBase.tsx  # ProviderUIBase (font variables, base styles import)
 ├── styles/
 │   ├── index.css      # Main styles aggregator
 │   ├── reset.css      # CSS reset

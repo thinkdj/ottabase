@@ -1,13 +1,13 @@
 # Ottabase agent skills
 
-Opinionated, repo-specific skills that describe **the Ottabase way** to accomplish a task — the conventions and common
-failure modes — so an AI agent working in this repo does not invent an alternate architecture (Ottabase design principle
+Opinionated, repo-specific skills that describe **the Ottabase way** to accomplish a task, the conventions and common
+failure modes, so an AI agent working in this repo does not invent an alternate architecture (Ottabase design principle
 #26).
 
 Each skill is a directory with a `SKILL.md` (YAML frontmatter `name` + `description`, then the body). They are
 intentionally short: when-to-use → the Ottabase-specific steps → gotchas → pointers to the authoritative docs
 (`AGENTS.MD`, `docs/`, package READMEs, and the generated `/llms-full.txt`). They encode _conventions_, not a full API
-dump — the API lives in the docs they link to.
+dump, the API lives in the docs they link to.
 
 ## Available
 
@@ -33,5 +33,5 @@ All 14 skills from design principle #26 are authored.
 ## Keeping them honest
 
 These describe code that changes. A skill that names a file, flag, or API is a claim to verify against current code
-before acting on it — especially anything in the "Gotchas" sections. When a convention changes, update the skill in the
+before acting on it, especially anything in the "Gotchas" sections. When a convention changes, update the skill in the
 same PR.

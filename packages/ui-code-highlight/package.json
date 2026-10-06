@@ -2,7 +2,7 @@
     "name": "@ottabase/ui-code-highlight",
     "version": "1.0.0",
     "private": true,
-    "description": "Core UI components, theming and providers",
+    "description": "Syntax-highlighted code blocks with highlight.js",
     "author": "Ottabase",
     "license": "MIT",
     "type": "module",

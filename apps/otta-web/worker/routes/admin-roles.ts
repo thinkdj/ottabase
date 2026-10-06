@@ -71,7 +71,7 @@ export async function handleAdminRoleUpdate(context: ApiRouteContext, roleId: st
     if (!role) return errorResponse('Role not found', 404, { code: 'NOT_FOUND' });
     // System roles are framework-owned: their permissions are defined in code and are reconciled by
     // Role.ensureDefaultRoles() (the seed self-heal), so an edit here would be silently reverted on
-    // the next seed. Reject it (mirrors DELETE) — customize by creating a NEW role instead.
+    // the next seed. Reject it (mirrors DELETE), customize by creating a NEW role instead.
     if (role.get('isSystem')) {
         return errorResponse('Cannot edit system roles (create a custom role instead)', 403, { code: 'FORBIDDEN' });
     }

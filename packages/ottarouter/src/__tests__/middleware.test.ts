@@ -168,7 +168,7 @@ describe('middleware: short-circuit and the forgotten-return footgun', () => {
         expect(await result?.text()).toBe('short');
     });
 
-    it('FOOTGUN: forgetting to return the awaited next() drops the matched Response — handle() resolves null', async () => {
+    it('FOOTGUN: forgetting to return the awaited next() drops the matched Response, handle() resolves null', async () => {
         const router = new Router();
         const handler = vi.fn(() => new Response('real'));
         router.use(async (_c, next) => {

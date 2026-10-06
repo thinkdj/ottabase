@@ -28,7 +28,7 @@ import { type ComponentType, type ReactNode } from 'react';
 /**
  * Admin page scope. `platform` = SaaS control plane (system-scoped platform admin only);
  * `org` = own-tenant administration (org:admin, which a platform owner also satisfies). Gates
- * are permission + scope based — a role merely NAMED 'owner'/'admin' grants nothing on its own.
+ * are permission + scope based, a role merely NAMED 'owner'/'admin' grants nothing on its own.
  */
 type AdminRouteScope = 'platform' | 'org';
 
@@ -68,7 +68,7 @@ function StudioPrivilegeFallback() {
 /** Wraps an admin page in: ProtectedRoute(scope) → AdminLayout(sidebar) → page. */
 function renderAdminRoute(scope: AdminRouteScope, children: ReactNode) {
     // Platform pages require a system-scoped platform admin; org pages require org:admin (a platform
-    // owner also satisfies org:admin via '*:*'). The worker APIs enforce the same boundary — this
+    // owner also satisfies org:admin via '*:*'). The worker APIs enforce the same boundary, this
     // client gate only avoids showing an org owner a page whose data would 403.
     const guarded =
         scope === 'platform' ? (
@@ -141,7 +141,7 @@ function protectedRoute<const TPath extends string>(
 }
 
 /**
- * Admin-protected lazy route — wraps page in AdminLayout sidebar.
+ * Admin-protected lazy route: wraps page in AdminLayout sidebar.
  * `scope` defaults to 'platform' (most restrictive): a page must OPT IN to org-level access, so a
  * forgotten scope fails safe (platform-only) rather than exposing a control-plane page to org admins.
  */
@@ -167,10 +167,10 @@ function makeAdminRoute<const TPath extends string, TSearch = Record<string, unk
 
 /**
  * Studio route: the writing-first editorial surface at /studio. Gated by CONTENT
- * permissions (posts:update — held by author/editor roles, org admins via *:update,
+ * permissions (posts:update: held by author/editor roles, org admins via *:update,
  * and the platform owner via *:*), never by org:admin or platform admin (unless a
  * sub-route opts into `extraPermissions`, e.g. theme/plugin management, whose
- * mutations require studio admin server-side — see requireStudioAdminForScope).
+ * mutations require studio admin server-side, see requireStudioAdminForScope).
  * Reuses the blog admin pages inside the StudioShell chrome; the pages resolve
  * their internal links against the active surface (see blogAdminPaths.ts).
  */
@@ -295,7 +295,7 @@ const referralsRoute = publicRoute('/referrals', () =>
  * Public blog page inside the blog token "room": wraps the component in
  * `<BrandScope name="blog">` so the active blog theme's CSS-variable overrides
  * ([data-brand-scope="blog"], edge-injected and client-applied) re-bind the
- * semantic brand vars for blog subtrees only — never the app shell.
+ * semantic brand vars for blog subtrees only, never the app shell.
  */
 function blogPublicRoute<const TPath extends string, TSearch = Record<string, unknown>>(
     path: TPath,
@@ -445,7 +445,7 @@ const adminBlogSeriesRoute = makeAdminRoute(
     'AdminBlogSeriesPage',
     { scope: 'org', validateSearch: editSearch },
 );
-// ─── /studio — writing-first editorial surface (content-permission gated) ────
+// ─── /studio: writing-first editorial surface (content-permission gated) ────
 
 const studioRoute = makeStudioRoute(
     '/studio',
@@ -487,7 +487,7 @@ const studioThemesRoute = makeStudioRoute(
     () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
     'AdminBlogStudioPage',
     // Theme/plugin management is studio-ADMIN only server-side (requireStudioAdminForScope:
-    // platform admin, or org:admin of the target org) — a plain author/editor otherwise gets a
+    // platform admin, or org:admin of the target org), a plain author/editor otherwise gets a
     // page that silently degrades to a read-only skeleton and 403s on every action.
     { extraPermissions: ['org:admin'] },
 );
@@ -649,7 +649,7 @@ const adminReferralsRoute = makeAdminRoute(
 
 // AI providers: an ORG admin manages the workspace key, and any admin manages their own.
 // The server re-checks ` ai:manage ` on every org-scoped mutation, so this scope is a UX
-// affordance only — a route gate is not an authorization boundary.
+// affordance only, a route gate is not an authorization boundary.
 const adminAiProvidersRoute = makeAdminRoute(
     '/admin/growth/ai-providers',
     () => import('@/pages/admin/growth/AiProvidersPage'),
@@ -657,7 +657,7 @@ const adminAiProvidersRoute = makeAdminRoute(
     { scope: 'org' },
 );
 
-// Premium Packages (@ottabase/premium). The control plane is core — an operator handed a
+// Premium Packages (@ottabase/premium). The control plane is core, an operator handed a
 // license key needs somewhere to put it even before anything is installed.
 const adminPremiumRoute = makeAdminRoute(
     '/admin/growth/premium',
@@ -816,7 +816,7 @@ const coreRoutes = [
 ];
 
 // Routes that depend on an installed Premium Package. A Premium Package's page is gated on being
-// INSTALLED, never on being LICENSED — an unlicensed page still renders, with its upsell,
+// INSTALLED, never on being LICENSED: an unlicensed page still renders, with its upsell,
 // because a bookmarked link that 404s the day a license lapses explains nothing and the
 // operator needs a route to the screen that fixes it. The server refuses the underlying data
 // either way. Derived from `PREMIUM_ADMIN_PAGES` (ottabase/config/premium.ts) so registering a

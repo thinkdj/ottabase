@@ -195,6 +195,7 @@ export function EditorClient() {
             />
 
             <DemoEditor
+                key={`editor-1-${uploadProvider}`}
                 id={`editor-1-${uploadProvider}`}
                 title="Editor 1: Full-Featured"
                 description={

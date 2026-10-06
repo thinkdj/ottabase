@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/premium — install-record persistence
+// @ottabase/premium, install-record persistence
 // ============================================================
 // Two adapters, one interface. KV is the deployment default; the in-memory adapter is
 // what makes a KV-less boot (tests, `wrangler dev` without a namespace, a CI type
 // check) behave IDENTICALLY rather than throwing on the first status read.
 //
-// What lives here is bookkeeping — installed version, activation timestamps, an
+// What lives here is bookkeeping: installed version, activation timestamps, an
 // operator-pasted license. None of it is an authorization input: the license is
 // re-verified cryptographically on every resolve, so a tampered KV value buys nothing.
 // ============================================================

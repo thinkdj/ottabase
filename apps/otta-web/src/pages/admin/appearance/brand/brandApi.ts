@@ -1,5 +1,5 @@
 /**
- * Brand API helpers – Brand Kits, layouts, route mappings
+ * Brand API helpers: Brand Kits, layouts, route mappings
  *
  * Uses the configured `api` client from `@/lib/api` (X-App-Id, auth, error handling).
  * brandConfigApi.get uses raw fetch (for SSR/prefetch outside api context).
@@ -110,7 +110,7 @@ function buildBrandConfigUrl(params?: Record<string, string>): string {
     return url.toString();
 }
 
-/** GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally. */
+/** GET /api/brand: full config (route mappings, layouts, all brand kits). Client resolves path locally. */
 export const brandConfigApi = {
     get: async (params?: { appId?: string | null }) => {
         const effectiveParams = params as Record<string, string> | undefined;
@@ -148,7 +148,7 @@ export const layoutApi = {
 };
 
 // ---------------------------------------------------------------------------
-// Menu Slots API – Assign menus to layout slots (sidebar-nav, header-nav, etc.)
+// Menu Slots API: Assign menus to layout slots (sidebar-nav, header-nav, etc.)
 // ---------------------------------------------------------------------------
 
 export type MenuSlotRenderType = 'sidebar' | 'flyout' | 'mega' | 'navbar' | 'dropdown' | 'footer';

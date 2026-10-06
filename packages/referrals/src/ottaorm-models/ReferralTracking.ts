@@ -62,7 +62,7 @@ export class ReferralTracking extends BaseModel {
             editable: false,
             searchable: true,
             uiConfig: {
-                label: 'Referral Code',
+                label: 'Referral username',
             },
             tableConfig: {
                 visible: true,
@@ -116,7 +116,7 @@ export class ReferralTracking extends BaseModel {
             type: 'string',
             editable: false,
             uiConfig: {
-                label: 'Referer',
+                label: 'Referrer',
             },
             tableConfig: {
                 visible: false,

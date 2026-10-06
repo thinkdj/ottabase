@@ -130,7 +130,7 @@ export function AdminDevMailPage() {
 
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dev Mail Trap</h1>
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dev mail</h1>
                         <p className="max-w-3xl text-muted-foreground">
                             Captured local emails for magic links, verification, password reset, and queued sends.
                         </p>
@@ -175,7 +175,7 @@ export function AdminDevMailPage() {
                 </Alert>
             )}
 
-            {/* Mailbox layout — fixed height, two-pane like an email client */}
+            {/* Mailbox layout: fixed height, two-pane like an email client */}
             <div className="flex h-[calc(100vh-13rem)] overflow-hidden rounded-xl border border-border/60">
                 {/* Left: inbox list */}
                 <div className="flex w-72 shrink-0 flex-col overflow-x-hidden border-r border-border/60 bg-muted/40">
@@ -207,7 +207,7 @@ export function AdminDevMailPage() {
                                         </NativeSelectOption>
                                     ))}
                                 </NativeSelect>
-                                {/* Clear button — only shown when a filter is active */}
+                                {/* Clear button: only shown when a filter is active */}
                                 {toFilter && (
                                     <button
                                         type="button"
@@ -275,7 +275,7 @@ export function AdminDevMailPage() {
                                                 <p className="mb-1 truncate text-xs text-muted-foreground">
                                                     {message.to.map(formatAddress).join(', ')}
                                                 </p>
-                                                {/* One-line preview — strip HTML tags for clean text */}
+                                                {/* One-line preview: strip HTML tags for clean text */}
                                                 <p className="truncate text-xs text-muted-foreground">
                                                     {stripHtml(message.previewText)}
                                                 </p>
@@ -328,7 +328,7 @@ export function AdminDevMailPage() {
                                     </div>
                                 </div>
 
-                                {/* From / To / CC as email-style headers — not blocks */}
+                                {/* From / To / CC as email-style headers, not blocks */}
                                 <div className="space-y-0.5 text-sm">
                                     <MetaRow label="From" value={formatAddress(selectedMessage.from)} />
                                     <MetaRow label="To" value={selectedMessage.to.map(formatAddress).join(', ')} />
@@ -360,7 +360,7 @@ export function AdminDevMailPage() {
                                 )}
                             </div>
 
-                            {/* Body — tabs for rendered HTML vs plain text */}
+                            {/* Body: tabs for rendered HTML vs plain text */}
                             <div className="flex flex-1 flex-col overflow-hidden">
                                 <Tabs defaultValue="html" className="flex flex-1 flex-col overflow-hidden">
                                     <div className="shrink-0 border-b border-border/60 px-6 pt-3">

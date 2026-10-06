@@ -1,5 +1,5 @@
 /**
- * @ottabase/ottadate — Core type definitions
+ * @ottabase/ottadate: Core type definitions
  *
  * All types are framework-agnostic. Timestamps are UTC unix seconds by default.
  */
@@ -12,7 +12,7 @@
 export type DateResolution = 'decade' | 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second';
 
 /**
- * Part-of-period refinement — the coarse human answer to "when in X?".
+ * Part-of-period refinement: the coarse human answer to "when in X?".
  * A part is TERMINAL: it refines the deepest named level instead of naming the
  * next one ("early 1996" instead of picking a month).
  *
@@ -36,29 +36,29 @@ export type DatePart =
 /** Which hemisphere season months map to (affects spring/summer/autumn/winter) */
 export type Hemisphere = 'north' | 'south';
 
-/** Override hook for label generation — receives everything except the label itself */
+/** Override hook for label generation, receives everything except the label itself */
 export type FuzzyLabelFormatter = (fuzzy: Omit<FuzzyDateTime, 'label'>) => string;
 
 /**
- * FuzzyDateTime — a date with known precision, stored as a queryable interval.
+ * FuzzyDateTime: a date with known precision, stored as a queryable interval.
  *
  * Example: "Late May 2010"
  *   → { resolution: 'month', part: 'late', timestamp: <May 21>, earliest: <May 21>, latest: <May 31 23:59:59> }
  *
- * `timestamp` is the start of the (part-narrowed) core window — a stable sort
+ * `timestamp` is the start of the (part-narrowed) core window, a stable sort
  * anchor. `earliest`/`latest` are the inclusive uncertainty bounds; `approximate`
  * widens them beyond the named period ("Around 1996" → 1995…1997).
  */
 export interface FuzzyDateTime {
-    /** UTC unix seconds — start of the core window (period start, narrowed by `part`) */
+    /** UTC unix seconds: start of the core window (period start, narrowed by `part`) */
     timestamp: number;
     /** The finest unit the user actually specified */
     resolution: DateResolution;
     /** Terminal part-of-period refinement ("early", "summer", "night"), if any */
     part?: DatePart;
-    /** "~ish" — the boundary itself is soft; widens earliest/latest by ~1 unit */
+    /** "~ish": the boundary itself is soft; widens earliest/latest by ~1 unit */
     approximate?: boolean;
-    /** Inclusive window start (UTC unix seconds) — the machine-usable truth */
+    /** Inclusive window start (UTC unix seconds), the machine-usable truth */
     earliest: number;
     /** Inclusive window end (UTC unix seconds) */
     latest: number;
@@ -90,7 +90,7 @@ export interface OttaDateConfig {
     displayFormat?: string;
     /** Whether the picker opens inline (true) or as a popover (false). Default: false */
     inline?: boolean;
-    /** Placeholder text for the input trigger. Default: 'Select date...' */
+    /** Placeholder text for the input trigger. Default: 'Select date…' */
     placeholder?: string;
     /** Whether the field is disabled */
     disabled?: boolean;
@@ -106,7 +106,7 @@ export interface OttaDateConfig {
 // ---------------------------------------------------------------------------
 
 export interface DatePickerOptions extends OttaDateConfig {
-    /** Current value — UTC unix timestamp in seconds (or ISO string / Date depending on timestampFormat) */
+    /** Current value: UTC unix timestamp in seconds (or ISO string / Date depending on timestampFormat) */
     value?: number | string | Date | null;
     /** Called when the user selects a date */
     onChange?: (value: number | string | Date | null) => void;
@@ -130,7 +130,7 @@ export interface DateRangePreset {
 }
 
 export interface DateRangePickerOptions extends OttaDateConfig {
-    /** Current value — start/end pair */
+    /** Current value: start/end pair */
     value?: DateRange;
     /** Called when a whole range is stored (never with only a first day) */
     onChange?: (value: DateRange) => void;
@@ -146,7 +146,7 @@ export interface DateRangePickerOptions extends OttaDateConfig {
 // ---------------------------------------------------------------------------
 
 export interface DateTimePickerOptions extends OttaDateConfig {
-    /** Current value — UTC unix timestamp in seconds */
+    /** Current value: UTC unix timestamp in seconds */
     value?: number | string | Date | null;
     /** Called when the user selects a datetime */
     onChange?: (value: number | string | Date | null) => void;
@@ -165,12 +165,12 @@ export interface DateTimePickerOptions extends OttaDateConfig {
 export interface FuzzyDateTimePickerOptions extends OttaDateConfig {
     /** Current fuzzy date value */
     value?: FuzzyDateTime | null;
-    /** Called when the user selects/changes a fuzzy date (fires on every change — pickers auto-apply) */
+    /** Called when the user selects/changes a fuzzy date (fires on every change, pickers auto-apply) */
     onChange?: (value: FuzzyDateTime | null) => void;
     /**
      * Bounds for the drill-down. The coarsest entry is the required baseline
      * (always filled), the finest entry caps how deep the picker goes.
-     * Default: year baseline down to second — `decade` is opt-in.
+     * Default: year baseline down to second, `decade` is opt-in.
      */
     resolutions?: DateResolution[];
     /** Offer part-of-period chips (early/mid/late, seasons, day-parts). Default: true */

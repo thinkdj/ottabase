@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – Built-in themes (default, neo, crisp, funky, artisan, midnight, rose, verdant)
+// Brand Engine: Built-in themes (default, neo, crisp, funky, artisan, midnight, rose, verdant)
 // Call registerBuiltInThemes() at app startup to make them available.
 // ---------------------------------------------------------------------------
 

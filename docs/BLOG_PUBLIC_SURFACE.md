@@ -5,7 +5,7 @@ Prepared: 2026-08-14
 Purpose: preserve the full architectural context for implementing an optional blog-only Ottabase deployment/public
 surface (`publicSurface: 'app' | 'blog'`), so the decision does not have to be re-derived.
 
-This is a design document, not a task list — it describes a feature that does not exist yet. Nothing in the codebase
+This is a design document, not a task list, it describes a feature that does not exist yet. Nothing in the codebase
 depends on it. Delete it if the blog-only surface is dropped as a product direction.
 
 ## Executive recommendation
@@ -65,35 +65,35 @@ tools, and administrative infrastructure are different concerns.
 Ottabase already has most of the necessary foundation:
 
 1. Public blog HTTP surface
-    - Canonical package router: [`packages/ottablog/src/router/router.ts`](packages/ottablog/src/router/router.ts)
-    - Mounted at `/api/blog` in [`apps/otta-web/worker/routes/router.ts`](apps/otta-web/worker/routes/router.ts)
+    - Canonical package router: [`packages/ottablog/src/router/router.ts`](../packages/ottablog/src/router/router.ts)
+    - Mounted at `/api/blog` in [`apps/otta-web/worker/routes/router.ts`](../apps/otta-web/worker/routes/router.ts)
     - Includes public post list/detail, tags, categories, series, RSS, sitemap, related posts, password unlock, preview
       tokens, Studio state, and scheduled publishing.
 
 2. Public React pages
-    - [`apps/otta-web/src/pages/blog/BlogListPage.tsx`](apps/otta-web/src/pages/blog/BlogListPage.tsx)
-    - [`apps/otta-web/src/pages/blog/BlogDetailPage.tsx`](apps/otta-web/src/pages/blog/BlogDetailPage.tsx)
-    - Tag, category, and series archive pages in the same directory.
+    - [`apps/otta-web/src/pages/blog/BlogListPage.tsx`](../apps/otta-web/src/pages/blog/BlogListPage.tsx)
+    - [`apps/otta-web/src/pages/blog/BlogDetailPage.tsx`](../apps/otta-web/src/pages/blog/BlogDetailPage.tsx)
+    - Tag, category, series, author and date archives are views of the one feed (`BlogFeed.tsx`).
 
 3. Blog theme room
     - Public blog routes are wrapped in `<BrandScope name="blog">` in
-      [`apps/otta-web/src/router.tsx`](apps/otta-web/src/router.tsx).
+      [`apps/otta-web/src/router.tsx`](../apps/otta-web/src/router.tsx).
     - Edge-injected scoped theme CSS is implemented in
-      [`apps/otta-web/worker/lib/blog-theme-inject.ts`](apps/otta-web/worker/lib/blog-theme-inject.ts).
+      [`apps/otta-web/worker/lib/blog-theme-inject.ts`](../apps/otta-web/worker/lib/blog-theme-inject.ts).
 
 4. Edge SEO
     - Article title, description, canonical, Open Graph, Twitter, and JSON-LD injection lives in
-      [`apps/otta-web/worker/lib/blog-seo-inject.ts`](apps/otta-web/worker/lib/blog-seo-inject.ts).
-    - Pure SEO builders live in [`packages/ottablog/src/seo.ts`](packages/ottablog/src/seo.ts).
+      [`apps/otta-web/worker/lib/blog-seo-inject.ts`](../apps/otta-web/worker/lib/blog-seo-inject.ts).
+    - Pure SEO builders live in [`packages/ottablog/src/seo.ts`](../packages/ottablog/src/seo.ts).
 
 5. Focused editorial surface
     - `/studio` is already separate from the generic admin mental model.
-    - [`apps/otta-web/src/pages/studio/StudioShell.tsx`](apps/otta-web/src/pages/studio/StudioShell.tsx) reuses the
+    - [`apps/otta-web/src/pages/studio/StudioShell.tsx`](../apps/otta-web/src/pages/studio/StudioShell.tsx) reuses the
       existing blog admin pages and permission gates.
 
 6. Layout and menu infrastructure
     - Brand Engine resolves layout templates from route mappings through
-      [`packages/brand-engine-react/src/LayoutResolver.tsx`](packages/brand-engine-react/src/LayoutResolver.tsx).
+      [`packages/brand-engine-react/src/LayoutResolver.tsx`](../packages/brand-engine-react/src/LayoutResolver.tsx).
     - Layout route mappings and menu slots already exist in the Brand Engine persistence layer.
     - This can provide a blog-specific public shell without creating a second theming system.
 
@@ -110,7 +110,7 @@ The current client router declares:
 - `/blog/category/$slug`.
 - `/blog/series/$slug`.
 
-See [`apps/otta-web/src/router.tsx`](apps/otta-web/src/router.tsx).
+See [`apps/otta-web/src/router.tsx`](../apps/otta-web/src/router.tsx).
 
 ### `/blog` is hardcoded in multiple layers
 
@@ -131,7 +131,7 @@ The implementation should introduce one central blog public-path contract rather
 
 ### Client config is static while Worker config is env-aware
 
-[`apps/otta-web/ottabase/config.loader.ts`](apps/otta-web/ottabase/config.loader.ts) explicitly documents:
+[`apps/otta-web/ottabase/config.loader.ts`](../apps/otta-web/ottabase/config.loader.ts) explicitly documents:
 
 - Static exports are based on the config file at module load.
 - Worker calls can apply environment overrides per request.
@@ -141,14 +141,14 @@ Therefore a first-phase build-time config setting is straightforward and safe. A
 override would require a server-to-client bootstrap payload before the client router is built.
 
 Brand Engine already injects a runtime hydration payload into HTML in
-[`apps/otta-web/worker/lib/brand-html-inject.ts`](apps/otta-web/worker/lib/brand-html-inject.ts), but public-surface
+[`apps/otta-web/worker/lib/brand-html-inject.ts`](../apps/otta-web/worker/lib/brand-html-inject.ts), but public-surface
 configuration should ideally use a small generic runtime-config payload rather than becoming semantically coupled to
 Brand Engine.
 
 ### Static asset routing matters for `/`
 
 The current Wrangler asset binding does not declare `assets.run_worker_first` in
-[`apps/otta-web/wrangler.jsonc`](apps/otta-web/wrangler.jsonc).
+[`apps/otta-web/wrangler.jsonc`](../apps/otta-web/wrangler.jsonc).
 
 Cloudflare normally serves a matching static asset before invoking Worker code. The root `/` commonly matches the SPA
 index asset. If runtime configuration or root-level edge SEO must be injected into `/`, selective Worker-first handling
@@ -164,15 +164,15 @@ Cloudflare reference:
 ### Generic navigation is inappropriate in blog mode
 
 The current fallback nav in
-[`apps/otta-web/src/ottabase/components/layout/layout.constants.ts`](apps/otta-web/src/ottabase/components/layout/layout.constants.ts)
-includes Home, Demo, Docs, Blog, Changelog, Shortlinks, Profile Information, Referrals, Analytics, and Admin.
+[`apps/otta-web/src/ottabase/components/layout/layout.constants.ts`](../apps/otta-web/src/ottabase/components/layout/layout.constants.ts)
+includes Home, Demos, Docs, Blog, What's new, Shortlinks, Dashboard, Referrals, Analytics, and Admin.
 
 Blog mode needs a seeded blog-oriented header/footer menu and a safe fallback when no database menu has been configured.
 It should not depend on every adopter manually removing template navigation before launch.
 
 ### Root article slugs conflict with shortlinks and reserved paths
 
-[`apps/otta-web/worker/routes/shortlinks.ts`](apps/otta-web/worker/routes/shortlinks.ts) implements a fallback that
+[`apps/otta-web/worker/routes/shortlinks.ts`](../apps/otta-web/worker/routes/shortlinks.ts) implements a fallback that
 treats almost every non-file root path as a potential short code before the request reaches SPA assets.
 
 In blog mode, `/:slug` would collide with:
@@ -213,8 +213,8 @@ Before host-aware org blogs are supported:
 
 ### Existing subdomain-to-organization behavior is insufficient for custom domains
 
-[`apps/otta-web/worker/routes/blog.ts`](apps/otta-web/worker/routes/blog.ts) resolves org-mode public requests in this
-order:
+[`apps/otta-web/worker/routes/blog.ts`](../apps/otta-web/worker/routes/blog.ts) resolves org-mode public requests in
+this order:
 
 1. `?org=`.
 2. `x-org-id`.
@@ -229,8 +229,8 @@ configured hostname instead of falling back to another tenant or platform conten
 
 ### Brand Engine is app-scoped, not organization/hostname-scoped
 
-[`packages/brand-engine/src/persistence/schema.ts`](packages/brand-engine/src/persistence/schema.ts) explicitly scopes
-Brand Kits, layout templates, and route mappings by `appId`, not organization.
+[`packages/brand-engine/src/persistence/schema.ts`](../packages/brand-engine/src/persistence/schema.ts) explicitly
+scopes Brand Kits, layout templates, and route mappings by `appId`, not organization.
 
 Ottablog themes can vary by organization, but the outer app header/footer brand cannot currently vary by organization or
 hostname. A per-customer fully branded blog domain would need either:
@@ -244,7 +244,7 @@ Do not accidentally describe current Brand Engine behavior as per-org white labe
 ### Session cookies are deliberately host-bound
 
 Production auth uses `__Host-` cookies without a Domain attribute in
-[`packages/auth/src/session-store.ts`](packages/auth/src/session-store.ts). This prevents subdomain cookie
+[`packages/auth/src/session-store.ts`](../packages/auth/src/session-store.ts). This prevents subdomain cookie
 tossing/fixation and is a security property worth preserving.
 
 For a dual-host setup:
@@ -673,33 +673,25 @@ Recommended defaults are shown in parentheses.
 
 ## High-value files to reopen first
 
-- [`packages/config/src/ottabase-types.ts`](packages/config/src/ottabase-types.ts)
-- [`packages/config/src/defineOttabaseConfig.ts`](packages/config/src/defineOttabaseConfig.ts)
-- [`packages/config/src/resolveConfigWithEnv.ts`](packages/config/src/resolveConfigWithEnv.ts)
-- [`apps/otta-web/ottabase/ottabase.config.ts`](apps/otta-web/ottabase/ottabase.config.ts)
-- [`apps/otta-web/ottabase/config.loader.ts`](apps/otta-web/ottabase/config.loader.ts)
-- [`apps/otta-web/src/router.tsx`](apps/otta-web/src/router.tsx)
-- [`apps/otta-web/cloudflare-worker.ts`](apps/otta-web/cloudflare-worker.ts)
-- [`apps/otta-web/worker/routes/blog.ts`](apps/otta-web/worker/routes/blog.ts)
-- [`packages/ottablog/src/router/router.ts`](packages/ottablog/src/router/router.ts)
-- [`packages/ottablog/src/router/handlers.ts`](packages/ottablog/src/router/handlers.ts)
-- [`packages/ottablog/src/seo.ts`](packages/ottablog/src/seo.ts)
-- [`apps/otta-web/worker/lib/blog-seo-inject.ts`](apps/otta-web/worker/lib/blog-seo-inject.ts)
-- [`apps/otta-web/worker/lib/blog-theme-inject.ts`](apps/otta-web/worker/lib/blog-theme-inject.ts)
-- [`apps/otta-web/worker/routes/shortlinks.ts`](apps/otta-web/worker/routes/shortlinks.ts)
-- [`apps/otta-web/src/pages/blog/BlogListPage.tsx`](apps/otta-web/src/pages/blog/BlogListPage.tsx)
-- [`apps/otta-web/src/pages/blog/BlogDetailPage.tsx`](apps/otta-web/src/pages/blog/BlogDetailPage.tsx)
-- [`apps/otta-web/src/pages/studio/StudioShell.tsx`](apps/otta-web/src/pages/studio/StudioShell.tsx)
-- [`apps/otta-web/src/ottabase/components/layout/layout.constants.ts`](apps/otta-web/src/ottabase/components/layout/layout.constants.ts)
-- [`packages/brand-engine-react/src/LayoutResolver.tsx`](packages/brand-engine-react/src/LayoutResolver.tsx)
-- [`packages/brand-engine/src/persistence/schema.ts`](packages/brand-engine/src/persistence/schema.ts)
-- [`packages/auth/src/session-store.ts`](packages/auth/src/session-store.ts)
-- [`apps/otta-web/wrangler.jsonc`](apps/otta-web/wrangler.jsonc)
-
-## Worktree note
-
-The repository was already dirty during exploration, with unrelated ongoing changes including Otta-Web
-home/demo/PDF/premium work and a new `packages/cf-pdf` package. No existing file was edited as part of the exploration.
-Preserve all pre-existing changes and run `git status --short` before implementation.
-
-This handoff document is the only file intentionally added for the blog-separation exploration.
+- [`packages/config/src/ottabase-types.ts`](../packages/config/src/ottabase-types.ts)
+- [`packages/config/src/defineOttabaseConfig.ts`](../packages/config/src/defineOttabaseConfig.ts)
+- [`packages/config/src/resolveConfigWithEnv.ts`](../packages/config/src/resolveConfigWithEnv.ts)
+- [`apps/otta-web/ottabase/ottabase.config.ts`](../apps/otta-web/ottabase/ottabase.config.ts)
+- [`apps/otta-web/ottabase/config.loader.ts`](../apps/otta-web/ottabase/config.loader.ts)
+- [`apps/otta-web/src/router.tsx`](../apps/otta-web/src/router.tsx)
+- [`apps/otta-web/cloudflare-worker.ts`](../apps/otta-web/cloudflare-worker.ts)
+- [`apps/otta-web/worker/routes/blog.ts`](../apps/otta-web/worker/routes/blog.ts)
+- [`packages/ottablog/src/router/router.ts`](../packages/ottablog/src/router/router.ts)
+- [`packages/ottablog/src/router/handlers.ts`](../packages/ottablog/src/router/handlers.ts)
+- [`packages/ottablog/src/seo.ts`](../packages/ottablog/src/seo.ts)
+- [`apps/otta-web/worker/lib/blog-seo-inject.ts`](../apps/otta-web/worker/lib/blog-seo-inject.ts)
+- [`apps/otta-web/worker/lib/blog-theme-inject.ts`](../apps/otta-web/worker/lib/blog-theme-inject.ts)
+- [`apps/otta-web/worker/routes/shortlinks.ts`](../apps/otta-web/worker/routes/shortlinks.ts)
+- [`apps/otta-web/src/pages/blog/BlogListPage.tsx`](../apps/otta-web/src/pages/blog/BlogListPage.tsx)
+- [`apps/otta-web/src/pages/blog/BlogDetailPage.tsx`](../apps/otta-web/src/pages/blog/BlogDetailPage.tsx)
+- [`apps/otta-web/src/pages/studio/StudioShell.tsx`](../apps/otta-web/src/pages/studio/StudioShell.tsx)
+- [`apps/otta-web/src/ottabase/components/layout/layout.constants.ts`](../apps/otta-web/src/ottabase/components/layout/layout.constants.ts)
+- [`packages/brand-engine-react/src/LayoutResolver.tsx`](../packages/brand-engine-react/src/LayoutResolver.tsx)
+- [`packages/brand-engine/src/persistence/schema.ts`](../packages/brand-engine/src/persistence/schema.ts)
+- [`packages/auth/src/session-store.ts`](../packages/auth/src/session-store.ts)
+- [`apps/otta-web/wrangler.jsonc`](../apps/otta-web/wrangler.jsonc)

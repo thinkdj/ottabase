@@ -21,8 +21,8 @@ flowchart TB
     Root --> Packages[packages]
     Root --> Tooling[tooling and CI]
 
-    Apps --> Web App Template[otta-web]
-    Apps --> Homepage Template[otta-landing]
+    Apps --> WebApp["otta-web: web app template"]
+    Apps --> Landing["otta-landing: homepage template"]
 
     Packages --> Core[core platform packages]
     Packages --> UI[UI and editor packages]
@@ -54,21 +54,21 @@ Packages follow a strict layering model. Lower layers must never depend on highe
 
 ```mermaid
 flowchart TD
-    subgraph L5 [Layer 5 — App]
+    subgraph L5 [Layer 5, App]
         App["otta-web"]
     end
 
-    subgraph L4 [Layer 4 — UI Composition]
+    subgraph L4 [Layer 4: UI Composition]
         forms
     end
 
-    subgraph L3 [Layer 3 — Higher Domain]
+    subgraph L3 [Layer 3: Higher Domain]
         rbac
         ottablog
         brandEngine["brand-engine"]
     end
 
-    subgraph L2 [Layer 2 — Domain + Auth]
+    subgraph L2 [Layer 2: Domain + Auth]
         auth
         queue
         audit
@@ -76,12 +76,12 @@ flowchart TD
         referrals
     end
 
-    subgraph L1 [Layer 1 — Infrastructure]
+    subgraph L1 [Layer 1: Infrastructure]
         cf
         ottaorm
     end
 
-    subgraph L0 [Layer 0 — Leaf]
+    subgraph L0 [Layer 0: Leaf]
         db
         cfRealtime["cf-realtime"]
         ottarouter
@@ -110,7 +110,7 @@ lower layer.
 **Rules:**
 
 - Circular dependencies between packages are forbidden.
-- UI packages (`ui-shadcn`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies — they are leaf packages.
+- UI packages (`ui-shadcn`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies, they are leaf packages.
 - `@ottabase/ui-mantine` is an optional adapter: the app depends neither on it nor on Mantine.
 - `@ottabase/db` is the lowest data layer; `@ottabase/ottaorm` depends on it, not the reverse.
 - Feature packages (`shortlinks`, `referrals`, `ottablog`) depend on `ottaorm` for persistence but not on each other.
@@ -153,13 +153,13 @@ flowchart LR
     Client[Browser] -->|HTTPS| Edge[Cloudflare Edge]
 
     Edge --> Worker[Workers Runtime]
-    Worker --> D1[(D1 — SQLite)]
-    Worker --> KV[(KV — Cache + State)]
-    Worker --> R2[(R2 — Object Storage)]
-    Worker --> Queue[Queues — Async Jobs]
-    Worker --> DO[Durable Objects — Realtime]
-    Worker --> WAE[Analytics Engine — Events]
-    Worker --> Assets[Static Assets — SPA]
+    Worker --> D1[(D1, SQLite)]
+    Worker --> KV[(KV, Cache + State)]
+    Worker --> R2[(R2, Object Storage)]
+    Worker --> Queue[Queues, Async Jobs]
+    Worker --> DO[Durable Objects, Realtime]
+    Worker --> WAE[Analytics Engine, Events]
+    Worker --> Assets[Static Assets, SPA]
 ```
 
 All infrastructure is Cloudflare-native. There are no external databases, Redis instances, or third-party services
@@ -216,17 +216,17 @@ sequenceDiagram
 
 Every request passes through two gates before reaching application logic:
 
-1. **Kill switches** — checked first via `checkKillSwitches(request, env)`:
+1. **Kill switches**: checked first via `checkKillSwitches(request, env)`:
     - `KILLSWITCH_LOCKDOWN`: returns `503` for all requests (full lockdown).
     - `KILLSWITCH_READONLY_MODE`: blocks `POST`, `PUT`, `PATCH`, `DELETE` with `503` (read-only mode).
 
-2. **Bootstrap gate** — `resolvePlatformState(env)` determines if the platform is `READY`:
+2. **Bootstrap gate**: `resolvePlatformState(env)` determines if the platform is `READY`:
     - `/__bootstrap__/*` paths are always handled (init, seed, create-owner, finalize).
     - All other requests are intercepted with a "not ready" response until bootstrap completes.
     - **READY fast path:** once READY, the result is memoized per isolate (60s soft TTL) and re-verified with a single
-      KV read — steady-state requests pay zero bookkeeping I/O instead of a KV read + D1 probe each. State writers drop
+      KV read, steady-state requests pay zero bookkeeping I/O instead of a KV read + D1 probe each. State writers drop
       the memo on any transition away from READY; other isolates converge via KV within ~TTL + KV propagation (≈2
-      minutes worst case after a re-init). Trade-off: a dead D1 no longer triggers a preemptive maintenance page —
+      minutes worst case after a re-init). Trade-off: a dead D1 no longer triggers a preemptive maintenance page,
       failures surface in the actual queries.
 
 ### CORS
@@ -237,8 +237,8 @@ CORS is centralized in the worker entry. The `Origin` header is read (defaulting
 
 ### Auth Flow
 
-Authentication is a custom, dependency-free implementation (`@ottabase/auth`, Web Crypto only — no Auth.js): sessions
-are a signed HS256 JWT stored in an HttpOnly/Secure cookie, paired with a lightweight KV registry record per session so
+Authentication is a custom, dependency-free implementation (`@ottabase/auth`, Web Crypto only, no Auth.js): sessions are
+a signed HS256 JWT stored in an HttpOnly/Secure cookie, paired with a lightweight KV registry record per session so
 sign-out can revoke a single session immediately. Session resolution happens **per route**, not globally:
 
 ```mermaid
@@ -284,7 +284,7 @@ automatically filtered by security context (`userId`, `organizationId`, `appId`)
 | `accounts`, `sessions`        | User-scoped               | `userId`         |
 | `posts`, `tags`, `shortlinks` | App-scoped                | `appId`          |
 | `audit_logs`                  | Tenant-scoped (read-only) | `organizationId` |
-| `system_config`               | Admin-only                | —                |
+| `system_config`               | Admin-only                | -                |
 
 Cross-tenant writes are blocked and logged automatically. See
 [RBAC_MULTI_TENANT_GUIDE.md](./docs/RBAC_MULTI_TENANT_GUIDE.md) for the full policy list and configuration.
@@ -487,7 +487,7 @@ merging upstream changes. Trade-off: higher coupling, but version skew is elimin
 ### ADR-2: OttaORM as the domain center (fat models over services)
 
 **Context:** SaaS apps accumulate business logic. The common MVC pattern scatters logic across controllers, services,
-and repositories — making it hard to find and maintain.
+and repositories, making it hard to find and maintain.
 
 **Decision:** All domain logic lives in `BaseModel` subclasses (Active Record pattern). Route handlers stay thin (auth +
 validation + orchestration). There is no service layer.
@@ -526,9 +526,9 @@ every query is error-prone and easy to forget.
 **Decision:** Implement RLS as an OttaORM middleware that automatically injects tenant/user/app filters into all queries
 based on a `SecurityContext`. Policies are registered per model via `registerPolicy()` and activated by `initRLS()`.
 
-**Consequences:** Data isolation is enforced by default — developers cannot accidentally query across tenants.
-Violations are blocked and logged. Trade-off: every query incurs a small overhead for policy evaluation. Custom queries
-that bypass OttaORM (raw SQL) are not protected by RLS.
+**Consequences:** Data isolation is enforced by default, developers cannot accidentally query across tenants. Violations
+are blocked and logged. Trade-off: every query incurs a small overhead for policy evaluation. Custom queries that bypass
+OttaORM (raw SQL) are not protected by RLS.
 
 ## Limits and Future Evolution
 
@@ -538,7 +538,7 @@ Current constraints to keep in mind:
 - Some package domains are tightly coupled to Cloudflare bindings.
 - Cross-package release management is simpler in-monorepo but requires strong CI discipline.
 - D1 is SQLite-based: no stored procedures, limited concurrent write throughput, no native full-text search.
-- Raw Drizzle queries bypass RLS — use BaseModel methods for all tenant-scoped data access.
+- Raw Drizzle queries bypass RLS, use BaseModel methods for all tenant-scoped data access.
 
 Potential evolutions:
 

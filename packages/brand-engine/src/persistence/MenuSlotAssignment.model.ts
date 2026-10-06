@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Engine – MenuSlotAssignment OttaORM Model
+// Brand Engine, MenuSlotAssignment OttaORM Model
 // Maps named layout slots to menus with a specific render type.
 // ---------------------------------------------------------------------------
 

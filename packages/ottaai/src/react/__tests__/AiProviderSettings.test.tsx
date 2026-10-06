@@ -118,7 +118,7 @@ function Wrapper({
 /**
  * Click "Connect a provider" only once it is actually enabled.
  *
- * The button is disabled while the provider registry loads (correctly — the form cannot
+ * The button is disabled while the provider registry loads (correctly, the form cannot
  * pick a default provider before then), and fireEvent on a disabled button is a silent
  * no-op that shows up as a confusing "element not found" three assertions later.
  */
@@ -134,8 +134,8 @@ beforeEach(() => vi.clearAllMocks());
 describe('the write-only secret field', () => {
     it('does NOT send `secret` when the user edits without typing a key', async () => {
         // "Leave blank to keep the existing key" is the whole UX of a write-only secret.
-        // Sending an empty string here would reach the model's rule 1 as a blank — which
-        // KEEPS the key — but sending the field at all on a provider change would trip the
+        // Sending an empty string here would reach the model's rule 1 as a blank, which
+        // KEEPS the key, but sending the field at all on a provider change would trip the
         // re-enter-the-key guard, and any future handler that treated '' as "clear" would
         // destroy a credential the user only meant to rename.
         const { request, calls, client } = setup({ credentials: [credential()] });

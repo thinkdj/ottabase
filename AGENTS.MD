@@ -24,7 +24,7 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
 2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
    come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `config.migrations.ts`
-   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1 — the only ORM/backend
+   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1, the only ORM/backend
    (Prisma and MongoDB were removed).
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
@@ -46,11 +46,11 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
   RLS behavior.
 - **Controller/service anti-pattern**: keep business logic in models, not controllers/services.
 - **Relationship safety**: use dynamic imports inside `BaseModel` relationship methods when the related model (directly
-  or transitively) imports this one — that is a real cycle. When it does not, import statically: a dynamic import of a
+  or transitively) imports this one, that is a real cycle. When it does not, import statically: a dynamic import of a
   module that is already statically imported elsewhere buys nothing and makes Vite warn.
 - **Cloudflare binding parity**: when bindings change, keep `wrangler.jsonc` and `cloudflare-env.d.ts` in sync.
 - **Error response consistency**: for API failures, use `errorResponse(...)` from `@ottabase/utils/http-errors`
-  (lint-enforced — see "Enforced by Lint").
+  (lint-enforced, see "Enforced by Lint").
 - **Every app declares its dev ports in `package.json#ottabase.start`**: that block is the single source of truth for
   dev URLs/ports. `otta start` launches from it and `pnpm dev:kill` (`--app=<name>`) frees ports from it. Never keep a
   parallel port list anywhere else; an app without the block cannot be started or cleaned up by the tooling. Format: see
@@ -59,7 +59,7 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
   `comments`, `shortlinks`) has no build output, so it defines `lint`/`type-check`/`test` and deliberately NO `build`.
-  Adding one there emits a `dist/` nothing imports — and for any package with module-level singletons that dist becomes
+  Adding one there emits a `dist/` nothing imports, and for any package with module-level singletons that dist becomes
   a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its source is still compiled (and
   therefore CI-covered) by the app build.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
@@ -71,7 +71,7 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 ## Enforced by Lint (do not work around)
 
 `eslint.config.mjs` at the repo root is the single config for every workspace; ESLint finds it by walking up from each
-package. These rules exist because the prose above was not enough on its own — `errorResponse(...)` was an Always-On
+package. These rules exist because the prose above was not enough on its own, `errorResponse(...)` was an Always-On
 Rule for months while hand-rolled JSON error responses kept shipping.
 
 | Rule                                 | What it blocks                                 | Do this instead                                                          |
@@ -89,8 +89,8 @@ Rules of engagement:
   invariant above. Rules live in one file on purpose.
 - **Never silence one of these with an inline `eslint-disable`.** If a rule looks wrong for your case, that is a
   discussion, not a directive to suppress.
-- The `RATCHET` block at the bottom of `eslint.config.mjs` lists pre-existing violations. It may **shrink, never grow**
-  — adding a new file to it is a visible config diff and must be justified in review. New code does not belong there.
+- The `RATCHET` block at the bottom of `eslint.config.mjs` lists pre-existing violations. It may **shrink, never grow**,
+  adding a new file to it is a visible config diff and must be justified in review. New code does not belong there.
 
 ## High-Impact Nuances (Agent Checklist)
 
@@ -119,7 +119,7 @@ Use this as the default decision tree when shipping new work.
       Boundaries".
 6. **Fetch through the framework client, never `fetch()`**
     - Reads: `useApiQuery` / `createModelHooks` / `useEntityQuery`. Writes: `useApiMutation` or a model mutation hook.
-    - Do not add retry, backoff, or request deduplication yourself — the cache owns all three. See "Client Data Layer".
+    - Do not add retry, backoff, or request deduplication yourself, the cache owns all three. See "Client Data Layer".
 7. **Docs + tests are required**
     - Every new feature must create/update its respective `README.MD` and include/update tests.
 
@@ -153,7 +153,7 @@ Use this as the default decision tree when shipping new work.
 5. **Wire it into the gates**
     - Declare `lint`, `type-check`, `test`, and `build` scripts. Turbo skips undeclared tasks without reporting
       anything, so a package missing them is not covered by CI at all.
-    - Use `"lint": "eslint src"`. Do NOT add a package-local `eslint.config.*` — it shadows the root config and drops
+    - Use `"lint": "eslint src"`. Do NOT add a package-local `eslint.config.*`: it shadows the root config and drops
       every framework invariant. Do NOT pass `--ext` (removed in ESLint 9 flat config).
 6. **Docs + tests are required**
     - Every new package must create/update its own `README.MD` and include/update tests.
@@ -164,7 +164,7 @@ Paid add-ons use `@ottabase/premium` and deliberately bypass the free-package wi
 
 1. **One server registration point.** Add the manifest to `apps/*/ottabase/config.premium.ts` (`PREMIUM_PACKAGES`). Its
    runtime tables, migrations, models, routes, nav and gates are derived from there. Do NOT add it to
-   `config.migrations.ts` PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`, or `db-utils.ts` — those are for
+   `config.migrations.ts` PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`, or `db-utils.ts`: those are for
    free packages. Drizzle-kit requires each table as a static export in `ottabase/db/schema.ts`; rendered admin pages
    also need the explicit client adapter in `src/ottabase/config/premium.ts`. Keep those two unavoidable build-time
    adapters covered by the premium-registration test.
@@ -206,8 +206,9 @@ export class Todo extends BaseModel {
 ```text
 ottabase/
 ├── apps/
-│   └── otta-web/  # Primary app (Vite + Workers)
-└── packages/      # Shared code
+│   ├── otta-web/      # Primary app (Vite + Workers)
+│   └── otta-landing/  # Next.js homepage template
+└── packages/          # Shared code
 ```
 
 ## Local Development
@@ -286,7 +287,7 @@ export class Post extends BaseModel {
 - **Reading a deferred column off a collection-loaded record throws.** That is the point: silence turns
   `if (!post.get('content'))` into a no-op and read-then-write into data loss. Use `find`/`first`, or
   `{ withDeferred: true }`, when a collection read genuinely needs the field.
-- **Check the UI before deferring.** If any screen reads the column out of a _list_ response it cannot be deferred —
+- **Check the UI before deferring.** If any screen reads the column out of a _list_ response it cannot be deferred,
   `PostVersion.content` stays loaded because version restore/compare read it from the version list.
 - **Not a privacy control.** Single-record reads still load and serialize it. Privacy is `hidden`, or a strip in the
   route's own serializer.
@@ -307,19 +308,19 @@ leak, not a bug report.
 - **Derive it server-side from a verified session.** OttaORM deliberately has no header-to-context helper; a previous
   `extractSecurityContext(request)` was removed because request headers are trivially spoofable by any client.
 - **`appId` comes from server configuration** (`getOttabaseConfig(env)`), never from a browser `x-app-id` header. The
-  same applies to ownership fields on uploads and any other row-scoping column — take them from the resolved context,
+  same applies to ownership fields on uploads and any other row-scoping column, take them from the resolved context,
   never from request/upload metadata.
 - **`x-org-id` is a request, not an answer.** Validate it against authoritative active membership before it becomes the
   RLS organization; drop it to `null` if the membership list does not contain it.
 - **Fail closed, never open.** If membership cannot be resolved, return `503 SECURITY_CONTEXT_UNAVAILABLE`. An unknown
-  membership list must never be treated as "no restrictions" — that silently disables enforcement. Caches (KV) are an
+  membership list must never be treated as "no restrictions", that silently disables enforcement. Caches (KV) are an
   optimization only: a cache miss, malformed value, or failed write must never change the authorization outcome.
 
 ### Error & Logging Boundaries
 
 - **5xx responses are opaque.** `errorResponse()` strips messages, details, hints, field errors, and metadata for any
   status >= 500 and returns a stable `code` plus `requestId`. Only pass `exposure: 'public'` for a message deliberately
-  written as public API copy — never for an exception message.
+  written as public API copy, never for an exception message.
 - **Authorization denials say nothing.** Unauthenticated → generic 401, authenticated → generic 403. Never return policy
   text, security context, attempted request data, or the model registry.
 - **Redact before logging.** Wrap any thrown value in `redactErrorForLog()`; raw errors carry tokens, cookies, and
@@ -332,11 +333,11 @@ leak, not a bug report.
 
 Tables are collected from 3 sources for auto-migrations. `getAllSchemas()` in `ottabase/db/schemas-helper.ts` combines:
 
-1. **CORE** — from @ottabase/ottaorm (users, auth tables, etc.)
-2. **APP** — app-specific tables (add to schemas-helper.ts appTables)
-3. **PACKAGES** — from `getEnabledPackageTables()` in config.migrations.ts
+1. **CORE**: from @ottabase/ottaorm (users, auth tables, etc.)
+2. **APP**: app-specific tables (add to schemas-helper.ts appTables)
+3. **PACKAGES**: from `getEnabledPackageTables()` in config.migrations.ts
 
-Package tables are driven by `ottabase.config.ts` `packages` and `customPackages`. **brandEngine is core** — always
+Package tables are driven by `ottabase.config.ts` `packages` and `customPackages`. **brandEngine is core**: always
 enabled, not in ottabase.config packages. `schema.ts` exports for drizzle-kit (db:push, db:studio); schemas-helper feeds
 runtime migrations (api/ottaorm/init).
 
@@ -394,20 +395,20 @@ export const {
 
 ### Client Data Layer (mandatory rules)
 
-There is exactly **one** request path in the browser. It is not optional, and it is not a style preference — it is the
+There is exactly **one** request path in the browser. It is not optional, and it is not a style preference, it is the
 boundary that keeps one tenant's cached rows from being read by another.
 
 1. **One client, built once.** `createApiClient()` is called in `apps/*/src/lib/api.ts` and passed to
    `OttaQueryProvider`. A second client gets its own auth/tenant headers and sits outside the scope boundary.
 2. **`OttaQueryProvider` requires a `visibilityScope`** (`appId`, `organizationId`, `principalId`,
    `authorizationVersion`). Each distinct scope gets its own `QueryClient`; when the scope changes, in-flight queries
-   are cancelled and the old cache is destroyed before it can be observed. Never pass a pre-built `QueryClient` — the
+   are cancelled and the old cache is destroyed before it can be observed. Never pass a pre-built `QueryClient`: the
    provider does not accept one, precisely so cache ownership stays unambiguous.
 3. **The transport does one HTTP attempt.** It does not retry and does not coalesce. Retry/backoff belongs to TanStack
    Query and is framework-owned (`retry`, `retryDelay`, and the `refetchOn*` options are `Omit`ted from hook option
-   types — if you are reaching for them, you are working against the design).
+   types, if you are reaching for them, you are working against the design).
 4. **Reads go through a query hook. Writes go through a mutation hook.** For an imperative read inside React, go through
-   the cache (`queryClient.fetchQuery`), not the transport — that is what preserves dedup and caching.
+   the cache (`queryClient.fetchQuery`), not the transport, that is what preserves dedup and caching.
 5. **Never retry a mutation.** Repeat protection for writes is a server-side idempotency key, never a client retry.
 6. **Errors are presented once, at the query boundary.** The provider's `errorReporter` fires for terminal failures. Use
    `meta: { errorPresentation: 'local' | 'silent' }` when a component owns its own error UI. The transport itself never
@@ -455,14 +456,14 @@ object to build.
 
 **Session data model (MUST understand before touching sessions):** a session is TWO parts.
 
-1. **Signed JWT cookie** (`getSession` verifies it) — carries immutable identity + a display snapshot at issue time. It
+1. **Signed JWT cookie** (`getSession` verifies it), carries immutable identity + a display snapshot at issue time. It
    is NOT re-signed until the user logs in again, so its `name`/`image` copies go stale after a profile edit.
-2. **KV registry snapshot** (`ottabase.session-token` → KV, per `jti`) — the MUTABLE half. It holds
+2. **KV registry snapshot** (`ottabase.session-token` → KV, per `jti`), the MUTABLE half. It holds
    org/roles/permissions AND the mutable display fields (name/image/emailVerified), and is re-read from D1 whenever the
    per-user `profile:version` KV counter is bumped. `getSession` prefers the snapshot over the JWT for these fields (see
    `buildUser`), so mutations reflect on the next request without re-issuing the cookie.
 
-**Backend — `getSession(request, env)` is globally usable** from any worker route (import from
+**Backend: `getSession(request, env)` is globally usable** from any worker route (import from
 `@ottabase/auth/backend`); it fails closed without KV. Read identity via
 `session.user.{id,email, name,image,organizationId,roles,permissions}`.
 
@@ -472,22 +473,22 @@ const session = await getSession(request, env);
 if (!session) return errorResponse('Unauthorized', 401);
 ```
 
-**Client — `useSession()` is the single global source of truth** (module-level Jotai atoms, shared by every caller; the
+**Client: `useSession()` is the single global source of truth** (module-level Jotai atoms, shared by every caller; the
 app wraps it in `@/lib/auth` to also sync `@ottabase/state`). Import `useSession` from `@/lib/auth` in app code. Never
-keep a private copy of `user` — read it from the hook so the header (`UserSection`), guards, and every consumer
+keep a private copy of `user`: read it from the hook so the header (`UserSection`), guards, and every consumer
 re-render together.
 
 ```typescript
 const { user, isAuthenticated, updateUser, refreshSession, logout } = useSession();
 ```
 
-**METHODOLOGY — making a mutated user field reflect everywhere (do ALL of these):**
+**METHODOLOGY: making a mutated user field reflect everywhere (do ALL of these):**
 
-1. **Server field plumbing:** the field must live in the KV snapshot path — add it to `RegistrySnapshot`, `UserContext`,
+1. **Server field plumbing:** the field must live in the KV snapshot path: add it to `RegistrySnapshot`, `UserContext`,
    `loadUserContext`, `parseSnapshot`, and `buildUser` in `packages/auth/src/session-store.ts`
    (org/roles/perms/name/image/emailVerified already are). JWT-only fields will NOT refresh.
 2. **Bump the version on write:** the mutating endpoint MUST bump the TARGET user's profile version so `getSession`
-   re-reads the snapshot — call the shared helper `bumpProfileVersion(env, userId)` from `worker/lib/auth-utils.ts` (do
+   re-reads the snapshot, call the shared helper `bumpProfileVersion(env, userId)` from `worker/lib/auth-utils.ts` (do
    NOT hand-roll the KV write). A DB write WITHOUT a version bump is invisible to live sessions until the cookie JWT
    expires (up to `AUTH_SESSION_MAX_AGE`, ~30 days). Examples: `PATCH /api/users/me`, email verification, and admin
    membership changes all bump it. Role-DEFINITION changes affect MANY users: enumerate holders
@@ -498,7 +499,7 @@ const { user, isAuthenticated, updateUser, refreshSession, logout } = useSession
    server, so a client-only field not in the snapshot (e.g. `timezone`) must be re-applied via `updateUser` after the
    refresh.
 4. **Membership/permission changes** additionally invalidate the RBAC + membership caches (`invalidateMembershipCache`,
-   `rbac:` prefix) — see `worker/lib/auth-utils.ts`. Do BOTH the cache invalidation AND the profile-version bump: the
+   `rbac:` prefix), see `worker/lib/auth-utils.ts`. Do BOTH the cache invalidation AND the profile-version bump: the
    caches gate the request-context path, the version bump gates the session-snapshot path.
 
 ### @ottabase/state
@@ -538,14 +539,14 @@ Advanced data table built on TanStack Table v8. Server-side sort/filter/paginati
 bulk actions. Powers the list view in `@ottabase/forms` ModelCrud.
 
 ```typescript
-import { useDataTable, useServerTable } from '@ottabase/ui-datatable'; // headless hooks (OttaORM server-side)
+import { useDataTable, useListState } from '@ottabase/ui-datatable'; // headless hooks (server-backed lists)
 import { DataTable, createColumns, actionsColumn, selectColumn } from '@ottabase/ui-datatable/react'; // rendered UI
 ```
 
 ### @ottabase/premium
 
 Premium Packages framework: manifests, offline license verification, entitlements, lifecycle hooks, gated route mounting
-and a drop-in admin surface. Inert until a package is registered — an app that sells nothing pays nothing.
+and a drop-in admin surface. Inert until a package is registered, an app that sells nothing pays nothing.
 
 ```typescript
 // Install (the whole job): apps/*/ottabase/config.premium.ts
@@ -556,7 +557,7 @@ import { requirePremiumFeature } from '@ottabase/premium/server';
 const denied = await requirePremiumFeature(premium, env, 'webhooks', 'deliveries.log');
 if (denied) return denied; // 402 PREMIUM_REQUIRED
 
-// Gate (browser) — a UX affordance; the server guard above is the boundary
+// Gate (browser): a UX affordance; the server guard above is the boundary
 import { PremiumGate } from '@ottabase/premium/react';
 ```
 
@@ -805,7 +806,7 @@ otta clean otta-web              # Clean build artifacts
 
 `pnpm commands` prints every root script as a grouped table (filter with `pnpm commands <text>`). It is generated from
 `package.json`, so prefer it over guessing a script name. When you add a root script, add its description to
-`COMMAND_REGISTRY` in `packages/scripts/src/cli/help.ts` — a test fails otherwise.
+`COMMAND_REGISTRY` in `packages/scripts/src/cli/help.ts`: a test fails otherwise.
 
 ```bash
 # Discovery
@@ -847,9 +848,9 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 - **Create/Edit README.MD and Tests** - whenever you make changes to the codebase, update the appropriate README.MD and
   tests accordingly. Keep `README.MD` concise and focused on the task at hand, with examples. Do not add Possible Issues
   or Troubleshooting sections unless they are directly relevant to the task.
-- Use consistent formatting and indentation in code snippets (check `.prettierrc` — 4 spaces, single quotes, LF).
+- Use consistent formatting and indentation in code snippets (check `.prettierrc`: 4 spaces, single quotes, LF).
 - When adding new packages, ensure they follow the same structure and conventions as existing ones for consistency.
-- **Type Safety** — TypeScript only.
+- **Type Safety**: TypeScript only.
 - UI must follow minimal design, and use components from `@ottabase/ui-shadcn` where possible to maintain a cohesive
   look and feel across the app. If a new Component that requires design is to be made, add tailwind classes in the
   component, and avoid adding new CSS files unless absolutely necessary.
@@ -903,7 +904,7 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 
 - **Node.js 24+** is required (`.nvmrc` says `24`). Use `nvm install 24 && nvm use 24` if needed.
 - **pnpm 10.27.0** is the package manager. Install via `corepack enable pnpm`.
-- **No Docker** required — all infrastructure is Cloudflare-native and emulated locally by Wrangler.
+- **No Docker** required: all infrastructure is Cloudflare-native and emulated locally by Wrangler.
 
 ### Starting the dev servers
 
@@ -927,7 +928,7 @@ After both servers are running, the platform requires bootstrap (creates DB tabl
 owner account, which holds the system-scoped `platform_owner` role). Use the `/__bootstrap__` API:
 
 `POST /__bootstrap__/api/init` clears the entire **OBCF_KV** namespace first (platform state cache, RBAC, queue, rate
-limits), then runs migrations — use this for a clean fresh install when KV may contain stale keys.
+limits), then runs migrations, use this for a clean fresh install when KV may contain stale keys.
 
 ```bash
 BOOTSTRAP_SECRET=$(grep BOOTSTRAP_OWNER_SECRET apps/otta-web/.env.local | cut -d= -f2)
@@ -941,10 +942,10 @@ curl -s -X POST http://localhost:3004/__bootstrap__/api/finalize -H "X-Bootstrap
 
 See `README.md` and `AGENTS.MD` above for full command reference. Key commands:
 
-- `pnpm build:pkg` — build shared packages (required before first dev run)
-- `pnpm lint` — lint all packages (note: `@ottabase/ottalayout` has a pre-existing lint failure)
-- `pnpm test` — run all tests via Vitest + Turborepo
-- `pnpm type-check` — TypeScript validation
+- `pnpm build:pkg`: build shared packages (required before first dev run)
+- `pnpm lint`: lint all packages (note: `@ottabase/ottalayout` has a pre-existing lint failure)
+- `pnpm test`: run all tests via Vitest + Turborepo
+- `pnpm type-check`: TypeScript validation
 
 #### Misc
 

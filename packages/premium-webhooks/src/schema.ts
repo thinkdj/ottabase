@@ -1,8 +1,8 @@
 // ============================================================
-// @ottabase/premium-webhooks — table schemas
+// @ottabase/premium-webhooks, table schemas
 // ============================================================
 // UPGRADE CONTRACT (the same one every Ottabase package follows): migrations are
-// ADDITIVE-ONLY across minors, and every new column is nullable or carries a default —
+// ADDITIVE-ONLY across minors, and every new column is nullable or carries a default,
 // the auto-init migrator cannot backfill, and a NOT NULL column with no default fails
 // initialisation outright in every app that has already installed this package.
 // ============================================================
@@ -23,7 +23,7 @@ export const webhookEndpointsTable = sqliteTable(
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
 
-        /** Destination URL. HTTPS is enforced on write — see `assertDeliverableUrl`. */
+        /** Destination URL. HTTPS is enforced on write, see `assertDeliverableUrl`. */
         url: text('url').notNull(),
         /** Operator-facing label. */
         description: text('description'),
@@ -31,7 +31,7 @@ export const webhookEndpointsTable = sqliteTable(
         /**
          * Subscribed event names, JSON array. `['*']` means every event.
          * Stored as JSON rather than a link table: the list is short, always read whole,
-         * and never queried by member — a join table would be three tables of ceremony.
+         * and never queried by member, a join table would be three tables of ceremony.
          */
         events: text('events', { mode: 'json' }).$type<string[]>().notNull(),
 
@@ -76,7 +76,7 @@ export const webhookEndpointsTable = sqliteTable(
 );
 
 /**
- * One delivery attempt. Written only when the `deliveries.log` entitlement is present —
+ * One delivery attempt. Written only when the `deliveries.log` entitlement is present,
  * retention is the thing being sold, so an unlicensed install keeps `lastStatus` on the
  * endpoint and nothing more.
  */
@@ -92,7 +92,7 @@ export const webhookDeliveriesTable = sqliteTable(
         /** 'success' | 'failed'. Text, not a boolean, so 'skipped'/'retrying' can be added additively. */
         status: text('status').notNull(),
         statusCode: integer('status_code'),
-        /** Bounded failure summary. Never the raw thrown value — see `summarizeDeliveryError`. */
+        /** Bounded failure summary. Never the raw thrown value, see `summarizeDeliveryError`. */
         error: text('error'),
         durationMs: integer('duration_ms'),
 

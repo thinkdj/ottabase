@@ -119,7 +119,7 @@ describe('method matching', () => {
 });
 
 describe('RouteConflictError at registration', () => {
-    it('same shape + same method throws — param names do not distinguish shapes', () => {
+    it('same shape + same method throws, param names do not distinguish shapes', () => {
         const router = new Router();
         router.get('/u/:id', tag('a'));
         let caught: unknown;

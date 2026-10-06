@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/ottaai — Master-secret rotation (the package owns it)
+// @ottabase/ottaai, Master-secret rotation (the package owns it)
 // ============================================================
 // "Rotation invalidates every stored key; build a re-wrap path if you need one"
 // is an acceptable deferral for one app and an ABDICATION for a package: every
@@ -11,7 +11,7 @@
 //
 //   single → dual  (new secret in the ring, old still primary, both readable)
 //          → drain (new secret primary, background re-wrap running, old readable)
-//          → retire(old removed — PERMITTED ONLY at the zero-rows ENVELOPE scan)
+//          → retire(old removed: PERMITTED ONLY at the zero-rows ENVELOPE scan)
 // ============================================================
 
 import { decryptSecret, encryptSecret, parseEnvelopeOrNull, type DecryptorRegistry, type Keyring } from '../crypto';
@@ -39,7 +39,7 @@ export interface RewrapProgress {
 /**
  * Re-wrap every credential still on `fromKeyId` under the keyring's current primary.
  *
- * RESUMABLE AND IDEMPOTENT. Drive it from `@ottabase/queue` or `@ottabase/cron` — the
+ * RESUMABLE AND IDEMPOTENT. Drive it from `@ottabase/queue` or `@ottabase/cron`: the
  * package ships the iteration, the app owns the schedule.
  *
  * THIS IS THE ONLY PROCESS THAT HOLDS EVERY TENANT'S PLAINTEXT AT ONCE. Therefore it:
@@ -47,7 +47,7 @@ export interface RewrapProgress {
  *  • writes no intermediate state containing plaintext or ciphertext outside the table;
  *  • records `{credentialId, errorCode}` and nothing more on batch failure;
  *  • holds each plaintext for the span of ONE row.
- * There is no log level at which it emits a secret — the verbose mode operators reach for
+ * There is no log level at which it emits a secret, the verbose mode operators reach for
  * under incident pressure is exactly when that matters.
  */
 export async function rewrapCredentials(options: RewrapOptions): Promise<RewrapProgress> {
@@ -93,7 +93,7 @@ export async function rewrapCredentials(options: RewrapOptions): Promise<RewrapP
 
             try {
                 // AAD binding means this RE-DERIVES the binding rather than treating the
-                // blob as opaque — one plaintext, held for the span of one row.
+                // blob as opaque, one plaintext, held for the span of one row.
                 const plaintext = await decryptSecret({
                     envelope: record.secret.ciphertext,
                     keyring: options.keyring,
@@ -119,7 +119,7 @@ export async function rewrapCredentials(options: RewrapOptions): Promise<RewrapP
                         formatVersion: wrapped.formatVersion,
                     });
                 } else {
-                    // A concurrent tenant edit moved the row — it is already on a newer key.
+                    // A concurrent tenant edit moved the row, it is already on a newer key.
                     progress.skipped += 1;
                 }
             } catch (error) {
@@ -140,8 +140,8 @@ export async function rewrapCredentials(options: RewrapOptions): Promise<RewrapP
  * NEVER GATE AN IRREVERSIBLE OPERATION ON THE INDEX COLUMN. The completion criterion is a
  * scan asserting zero rows whose ENVELOPE begins with the retiring key id.
  *
- * Additionally — because there is no reveal path, an over-eager retirement is
- * unrecoverable — KEEP THE RETIRED SECRET IN COLD ESCROW for one full backup-retention
+ * Additionally, because there is no reveal path, an over-eager retirement is
+ * unrecoverable, KEEP THE RETIRED SECRET IN COLD ESCROW for one full backup-retention
  * period.
  */
 export async function canRetireKey(

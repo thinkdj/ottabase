@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Slot renderer — resolves the active variant for a given slot name and renders
+ * Slot renderer: resolves the active variant for a given slot name and renders
  * the matching component. Data props are forwarded to the resolved component
  * unchanged, implementing the "write once, render any way" pattern.
  *

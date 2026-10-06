@@ -19,7 +19,7 @@ export function ReferralsPage() {
     );
 }
 
-/** Quiet placeholder shown while the session user resolves — mirrors the dashboard's stat-card + list shape. */
+/** Quiet placeholder shown while the session user resolves, mirrors the dashboard's stat-card + list shape. */
 function ReferralsLoadingSkeleton() {
     return (
         <div className="space-y-8" aria-busy="true">

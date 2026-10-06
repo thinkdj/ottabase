@@ -91,7 +91,7 @@ export default function KillSwitchesPage() {
     return (
         <div className="space-y-8">
             <div className="space-y-1.5">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Platform Kill Switches</h1>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Kill switches</h1>
                 <p className="max-w-3xl text-muted-foreground">
                     Environment-driven global overrides. Set variables in Cloudflare env:
                     <code className={`mx-1 ${CODE_CLASS}`}>KILLSWITCH_READONLY_MODE</code> and

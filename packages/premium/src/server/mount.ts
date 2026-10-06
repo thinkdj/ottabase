@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium/server — mounting paid routes
+// @ottabase/premium/server, mounting paid routes
 // ============================================================
 // One call wires every registered package's routes into the host router, each behind
 // its own license gate:
@@ -28,7 +28,7 @@ export interface MountPremiumOptions<Env> {
  * Mount every registered package that contributes routes.
  *
  * Returns the base paths that were mounted, so a host can log or assert on them. Packages
- * without a `routes` contribution are skipped silently — plenty of paid add-ons are pure
+ * without a `routes` contribution are skipped silently, plenty of paid add-ons are pure
  * UI or pure model code.
  */
 export function mountPremiumPackages<Env>(

@@ -291,7 +291,7 @@ describe('RLS Engine', () => {
             expect(() => engine.applyReadFilter('menus', ctx)).toThrow(/requires permissions/);
         });
 
-        it('requiredPermissions: 3+ segment required—brand:edit does NOT satisfy brand:edit:admin', () => {
+        it('requiredPermissions: 3+ segment required, brand:edit does NOT satisfy brand:edit:admin', () => {
             engine.register({
                 model: 'admin_menus',
                 policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit:admin'] },
@@ -300,7 +300,7 @@ describe('RLS Engine', () => {
             expect(() => engine.applyReadFilter('admin_menus', ctx)).toThrow(RLSError);
         });
 
-        it('requiredPermissions: 3+ segment required—exact match still works', () => {
+        it('requiredPermissions: 3+ segment required, exact match still works', () => {
             engine.register({
                 model: 'admin_menus',
                 policy: { ...RLSPolicies.AppScoped(), requiredPermissions: ['brand:edit:admin'] },
@@ -444,7 +444,7 @@ describe('org membership enforcement', () => {
     });
 
     it('denies read when memberOrganizationIds is empty (user belongs to no orgs)', () => {
-        // Empty array is a resolved "zero memberships" — it must fail closed, NOT be treated
+        // Empty array is a resolved "zero memberships", it must fail closed, NOT be treated
         // like an absent list. Otherwise a freshly-registered / invited-only / suspended user
         // could read any org by supplying its id via X-Org-Id / subdomain / query.
         const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-x', memberOrganizationIds: [] };

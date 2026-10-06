@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Theme tab – Preset picker + color palette override (merged view)
+// Theme tab, Preset picker + color palette override (merged view)
 // ---------------------------------------------------------------------------
 
 import {
@@ -595,7 +595,7 @@ export function BrandKitThemeTab({
                     className="w-full"
                 />
 
-                {/* Full resolved palette – all semantic tokens as swatches */}
+                {/* Full resolved palette: all semantic tokens as swatches */}
                 <div className="space-y-2 pt-2">
                     <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Resolved palette
@@ -627,7 +627,7 @@ export function BrandKitThemeTab({
                 {primaryGradient && (
                     <div className="space-y-2 pt-1">
                         <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Primary scale (50–950)
+                            Primary scale (50 to 950)
                         </p>
                         <div className="flex rounded-md overflow-hidden border border-border/60">
                             {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => (

@@ -1,7 +1,7 @@
 # Bootstrap
 
 First-run setup for a fresh Ottabase deployment. Everything under `/__bootstrap__` is served directly by the worker
-before the database exists, so these pages are **fully self-contained** — inline CSS and JS, no asset pipeline, no
+before the database exists, so these pages are **fully self-contained**: inline CSS and JS, no asset pipeline, no
 network requests.
 
 ## Routes
@@ -21,7 +21,7 @@ Every endpoint is gated by `BOOTSTRAP_OWNER_SECRET` via the `X-Bootstrap-Secret`
 `?secret=`, which the wizard reads into its token field. Failed attempts are rate-limited (`enforceBruteForceThrottle`).
 
 Environment checks all go through `isDevEnvironment()` in `types.ts`, which allowlists `development`, `dev`, `test` and
-`local`. Anything else — including an **unset** `ENVIRONMENT` — is treated as production: without a valid token those
+`local`. Anything else, including an **unset** `ENVIRONMENT`: is treated as production: without a valid token those
 deployments get the "setup token required" page instead of the wizard, and `/api/status` returns state only.
 
 `POST /api/init` clears the entire KV namespace and drops the platform back to `BOOTSTRAPPING`. On a platform that is
@@ -51,13 +51,13 @@ curl -s -X POST http://localhost:3004/__bootstrap__/api/init -H "X-Bootstrap-Sec
 
 Four steps, one action each, driven by a left rail that doubles as the progress indicator:
 
-1. **Database** — probe bindings, then create tables and run migrations
-2. **Roles** — seed the six built-in roles and their permissions
-3. **Owner** — create the platform owner account (auto-signs the browser in)
-4. **Launch** — pre-flight checks, then mark the platform `READY`
+1. **Database**: probe bindings, then create tables and run migrations
+2. **Roles**: seed the six built-in roles and their permissions
+3. **Owner**: create the platform owner account (auto-signs the browser in)
+4. **Launch**: pre-flight checks, then mark the platform `READY`
 
 Reloading is safe. On load the wizard reads `/api/status` and lands on the first step that still has work, marking
-completed steps done — it does not restart from step one. Reference material (Cloudflare CLI variables, production
+completed steps done, it does not restart from step one. Reference material (Cloudflare CLI variables, production
 environment variables) lives in disclosures next to the step it belongs to rather than occupying a step of its own.
 
 ## Writing for two audiences
@@ -74,7 +74,7 @@ gives you (`Decide who can do what`) rather than naming the mechanism, and each 
 
 ## Design constraints
 
-These are the rules that make the pages work at all — break them and setup breaks.
+These are the rules that make the pages work at all, break them and setup breaks.
 
 - **No external references.** No `<link rel="stylesheet">`, no `<script src>`, no webfonts, no remote images. The brand
   engine and asset pipeline do not exist yet. Tests assert this.

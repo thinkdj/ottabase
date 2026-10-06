@@ -30,24 +30,24 @@ describe('BrandKitCursorsTab preview', () => {
     it('renders one tile per affordance, titled with its resolved cursor source', () => {
         renderTab();
         // Two surfaces, so every tile appears twice
-        expect(screen.getAllByTitle('pointer — registry:hand-azure')).toHaveLength(2);
-        expect(screen.getAllByTitle('help — native help')).toHaveLength(2);
-        expect(screen.getAllByTitle('default — registry:arrow-azure')).toHaveLength(2);
+        expect(screen.getAllByTitle('pointer: registry:hand-azure')).toHaveLength(2);
+        expect(screen.getAllByTitle('help: native help')).toHaveLength(2);
+        expect(screen.getAllByTitle('default: registry:arrow-azure')).toHaveLength(2);
     });
 
     it('reports the hovered cursor in the surface readout', () => {
         renderTab();
-        const surface = screen.getAllByTitle('pointer — registry:hand-azure')[0].closest('.rounded-xl')!;
+        const surface = screen.getAllByTitle('pointer: registry:hand-azure')[0].closest('.rounded-xl')!;
         expect(within(surface as HTMLElement).getByText('Hover to test')).toBeInTheDocument();
 
-        fireEvent.mouseOver(screen.getAllByTitle('pointer — registry:hand-azure')[0]);
+        fireEvent.mouseOver(screen.getAllByTitle('pointer: registry:hand-azure')[0]);
         expect(within(surface as HTMLElement).getByText('pointer')).toBeInTheDocument();
         expect(within(surface as HTMLElement).getByText('registry:hand-azure')).toBeInTheDocument();
     });
 
     it('swaps grab for grabbing while the drag tile is held down', () => {
         renderTab();
-        const tile = screen.getAllByTitle('grab — registry:hand-emerald')[0];
+        const tile = screen.getAllByTitle('grab: registry:hand-emerald')[0];
         const surface = tile.closest('.rounded-xl') as HTMLElement;
         const grabCursor = tile.style.cursor;
 
@@ -62,7 +62,7 @@ describe('BrandKitCursorsTab preview', () => {
 
     it('clears the readout when the pointer leaves the surface', () => {
         renderTab();
-        const tile = screen.getAllByTitle('move — native move')[0];
+        const tile = screen.getAllByTitle('move: native move')[0];
         const surface = tile.closest('.rounded-xl') as HTMLElement;
 
         fireEvent.mouseOver(tile);
@@ -75,6 +75,6 @@ describe('BrandKitCursorsTab preview', () => {
     it('falls back to native cursors when no cursors are configured', () => {
         renderTab('{}');
         expect(screen.getAllByText('0/10 themed')).toHaveLength(2);
-        expect(screen.getAllByTitle('default — native default')).toHaveLength(2);
+        expect(screen.getAllByTitle('default: native default')).toHaveLength(2);
     });
 });

@@ -1,7 +1,7 @@
 /**
- * @ottabase/ui-cropper – Advanced vanilla image cropper with smooth transitions.
+ * @ottabase/ui-cropper: Advanced vanilla image cropper with smooth transitions.
  * Crop, flip, rotate, zoom with drag handles and animations.
- * Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~3–4 KB gzipped.
+ * Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~3 to 4 KB gzipped.
  */
 export { Cropper } from './cropper';
 export type { CropperOptions, CropShape, AspectPreset } from './types';

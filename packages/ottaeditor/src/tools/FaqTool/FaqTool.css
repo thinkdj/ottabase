@@ -57,7 +57,7 @@
     cursor: grabbing;
 }
 
-/* Card body — soft tint carries the separation */
+/* Card body: soft tint carries the separation */
 .cdx-faq__card {
     flex: 1;
     background: hsl(var(--muted) / 0.4);
@@ -70,7 +70,7 @@
     position: relative;
 }
 
-/* Numbered chip — background chip lifted out of the tint */
+/* Numbered chip: background chip lifted out of the tint */
 .cdx-faq__badge {
     position: absolute;
     top: -0.625rem;

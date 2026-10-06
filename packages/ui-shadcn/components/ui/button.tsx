@@ -66,7 +66,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             'data-size': size ?? 'default',
         } as const;
 
-        // Slot requires EXACTLY one child — no decor carrier on asChild
+        // Slot requires EXACTLY one child, no decor carrier on asChild
         // (even a falsy conditional child breaks React.Children.only).
         if (asChild) {
             return (

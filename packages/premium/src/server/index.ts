@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium/server — worker-side entrypoint
+// @ottabase/premium/server, worker-side entrypoint
 // ============================================================
 // Everything a Cloudflare Worker needs: the request-path gates, the route mounting
 // helper, and the `/api/premium` control-plane router.

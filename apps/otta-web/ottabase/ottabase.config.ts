@@ -1,5 +1,5 @@
 // ============================================================
-// OTTABASE USER CONFIG  —  Single source for per-app settings
+// OTTABASE USER CONFIG, Single source for per-app settings
 // ============================================================
 //
 // Precedence: ENV VAR >> this file >> default
@@ -20,9 +20,10 @@ export default defineOttabaseConfig({
 
     // ── App Metadata (SEO, copyright, social) ─────────────────
     meta: {
-        // Short line beside the app name in the header — say what the app IS, not what it is built with
+        // Short line beside the app name in the header, say what the app IS, not what it is built with
         tagline: 'Cloudflare-native',
-        description: 'A minimal Vite + Cloudflare Workers template app in the Ottabase monorepo',
+        description:
+            'Production-grade apps, SaaS and sites on Cloudflare Workers: auth, a multi-tenant ORM, runtime theming, a CMS and 50+ packages wired together.',
         author: '@thinkdj',
         keywords:
             'Ottabase, TanStack Router, TanStack Query, Vite, Tailwind, Shadcn, Cloudflare Workers, TypeScript, React',
@@ -37,13 +38,13 @@ export default defineOttabaseConfig({
     // ── Built-in Package Toggles ──────────────────────────────
     // Set a package to `false` (or remove it) to exclude its
     // database tables and API routes from your app.
-    // brandEngine is core — always enabled, not configurable.
+    // brandEngine is core: always enabled, not configurable.
     packages: {
         comments: true,
         ottablog: true,
         shortlinks: true,
         referrals: true,
-        // AI provisioning / BYOK. Dormant until AI_CREDENTIAL_SECRET is set — the routes,
+        // AI provisioning / BYOK. Dormant until AI_CREDENTIAL_SECRET is set, the routes,
         // the table and the settings UI all stay off, so the app boots and serves fine
         // without any AI configuration at all.
         ottaai: true,
@@ -90,10 +91,10 @@ export default defineOttabaseConfig({
         // ── AI provisioning / BYOK (non-secret dials) ──────────
         // Secrets stay in env: AI_CREDENTIAL_SECRET (or AI_CREDENTIAL_KEYRING +
         // AI_CREDENTIAL_KEY_ID for rotation), CFAI_GATEWAY_TOKEN, CFAI_<PROVIDER>_API_KEY.
-        // These dials are FROZEN AT MAJOR and logged once at boot — changing mode or
+        // These dials are FROZEN AT MAJOR and logged once at boot, changing mode or
         // strategy silently re-points which key a tenant's calls use.
         ottaai: {
-            // 'auto' = platform floor with a tenant upgrade — what makes a free tier viable.
+            // 'auto' = platform floor with a tenant upgrade, what makes a free tier viable.
             mode: 'auto',
             // B2C default. Use 'org-then-user' for a shared-workspace/B2B product.
             strategy: 'user-then-org',
@@ -106,13 +107,13 @@ export default defineOttabaseConfig({
             // Org-wide keys need the ai:manage permission (owner/admin hold it).
             allowOrgCredentials: true,
             // Inference calls per minute, checked on ALL THREE dimensions before any is
-            // charged. Best-effort burst control, NOT a billing quota — the counters are
+            // charged. Best-effort burst control, NOT a billing quota, the counters are
             // eventually consistent, so the effective ceiling is roughly the limit plus the
             // in-flight concurrency count.
             //
             // It matters most when `platformProvider` is set below: without it, any
             // authenticated user can loop `/api/ai/complete` on the operator's key.
-            // `perUser`/`perOrganization` may be 0 to disable them. `perApp` may NOT — it is
+            // `perUser`/`perOrganization` may be 0 to disable them. `perApp` may NOT, it is
             // the only AGGREGATE limit, so a deployment that can bill the operator and sets
             // it to 0 has its platform calls refused. Use a large number for a high cap.
             rateLimit: { perUser: 20, perOrganization: 120, perApp: 600 },

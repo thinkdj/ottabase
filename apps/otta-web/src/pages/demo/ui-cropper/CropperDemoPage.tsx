@@ -1,6 +1,6 @@
 /**
- * Cropper Demo Page – @ottabase/ui-cropper
- * Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder.
+ * Cropper Demo Page: @ottabase/ui-cropper
+ * Vanilla image cropper: crop, flip, rotate. Rectangle or circle viewfinder.
  * All capabilities exposed via realtime config.
  */
 import type { CropShape } from '@ottabase/ui-cropper';
@@ -126,7 +126,7 @@ export function CropperDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Image Cropper"
+                title="Image cropper"
                 description="Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drop or click to load, drag to move, resize with handles. Zero React dependency."
             />
 
@@ -151,7 +151,7 @@ export function CropperDemoPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Realtime Config</CardTitle>
-                        <CardDescription>All capabilities – change and see effect immediately</CardDescription>
+                        <CardDescription>All capabilities: change and see effect immediately</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-2">

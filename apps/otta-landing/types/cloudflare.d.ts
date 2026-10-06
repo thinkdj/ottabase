@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker bindings type definitions
- * These types match the bindings configured in wrangler.jsonc — keep the two in sync.
+ * These types match the bindings configured in wrangler.jsonc, keep the two in sync.
  */
 
 import type { Fetcher } from '@cloudflare/workers-types';

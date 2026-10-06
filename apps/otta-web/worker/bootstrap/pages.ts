@@ -6,14 +6,14 @@
 // platform has no database, no brand engine and no asset pipeline, so every
 // style and script is inline and the page makes no outbound request.
 //
-// DESIGN — the palette, radius, shadow and motion tokens below are transcribed
+// DESIGN: the palette, radius, shadow and motion tokens below are transcribed
 // from the app's default brand theme (packages/brand-engine/src/themes/default.json)
 // and the component recipes mirror @ottabase/ui-shadcn (button h-10/rounded-md,
 // input h-10, card rounded-lg + border, the global 2px focus ring). First-run
 // setup should look like the product it is installing. Light and dark come from
-// prefers-color-scheme — there is no theme store to read yet.
+// prefers-color-scheme, there is no theme store to read yet.
 //
-// IMPORTANT — the inline <script> lives inside a TS template literal, so it must
+// IMPORTANT: the inline <script> lives inside a TS template literal, so it must
 // never contain a backtick or a ${...} sequence; use string concatenation there.
 // `__tests__/pages.test.ts` asserts no '${' survives into the rendered HTML.
 // ============================================================
@@ -593,7 +593,7 @@ const THEME_SCRIPT = `<script>
 
 /**
  * Shared page chrome. `chip` is the small status pill on the right of the
- * masthead — it carries the real platform state rather than decoration.
+ * masthead, it carries the real platform state rather than decoration.
  */
 function baseLayout(title: string, chip: string, body: string): string {
     return `<!DOCTYPE html>
@@ -649,7 +649,7 @@ function tokenField(id: string, describedBy: string): string {
 }
 
 // ============================================================
-// Re-seed page — focused maintenance UI over POST /api/seed
+// Re-seed page, focused maintenance UI over POST /api/seed
 // ============================================================
 //
 // A one-click affordance to re-run RBAC seeding after a framework upgrade that
@@ -793,11 +793,11 @@ export function renderReseedPage(state: PlatformStateResult): string {
 }
 
 // ============================================================
-// Promote-owner page — focused UI over POST /api/admin/platform-owner/promote
+// Promote-owner page, focused UI over POST /api/admin/platform-owner/promote
 // ============================================================
 //
 // Grants the SYSTEM-scoped platform_owner role to an EXISTING account. Secret-gated (same
-// BOOTSTRAP_OWNER_SECRET) so it works without a session — useful for granting/transferring
+// BOOTSTRAP_OWNER_SECRET) so it works without a session, useful for granting/transferring
 // platform ownership or recovering when no owner can sign in.
 export function renderPromoteOwnerPage(state: PlatformStateResult): string {
     const isReady = state.state === 'READY';
@@ -953,7 +953,7 @@ export function renderPromoteOwnerPage(state: PlatformStateResult): string {
 }
 
 // ============================================================
-// Wizard page — the main setup flow
+// Wizard page, the main setup flow
 // ============================================================
 //
 // Four steps, each one action: Database -> Roles -> Owner -> Launch.
@@ -1882,7 +1882,7 @@ wrangler secret put MIGRATION_SECRET</code>
 }
 
 // ============================================================
-// Maintenance page — panic mode
+// Maintenance page, panic mode
 // ============================================================
 
 export function renderMaintenancePage(state: PlatformStateResult): string {
@@ -1939,7 +1939,7 @@ export function renderMaintenancePage(state: PlatformStateResult): string {
 }
 
 // ============================================================
-// Locked page — ENV override
+// Locked page, ENV override
 // ============================================================
 
 export function renderLockedPage(_state: PlatformStateResult): string {
@@ -1967,7 +1967,7 @@ export function renderLockedPage(_state: PlatformStateResult): string {
 }
 
 // ============================================================
-// Unauthorized page — no valid setup token outside a dev environment
+// Unauthorized page, no valid setup token outside a dev environment
 // ============================================================
 //
 // Deliberately says nothing about bindings, environment variables or platform

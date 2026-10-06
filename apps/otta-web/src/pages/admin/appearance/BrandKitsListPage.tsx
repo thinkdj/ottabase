@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Brand Kits list – live theme-specimen gallery. Each card renders inside the
+// Brand Kits list, live theme-specimen gallery. Each card renders inside the
 // kit's own resolved theme (background, fonts, radius, shadows, colors) so the
 // gallery reads like a brand board, not a data table. Create, clone, delete,
 // navigate to detail.
@@ -35,7 +35,7 @@ import { brandKitApi, type BrandKitItem } from './brand/brandApi';
 /**
  * Mini brand specimen rendered in the kit's OWN theme. The wrapper carries the
  * kit's resolved CSS variables, so every var() below (colors, fonts, radius,
- * shadows) resolves against the kit – the truthful preview is the design.
+ * shadows) resolves against the kit, the truthful preview is the design.
  */
 function KitSpecimen({ kit, logoBaseUrl }: { kit: BrandKitItem; logoBaseUrl: string }) {
     // Honor the kit's default scheme so dark-first kits show as they ship
@@ -69,7 +69,7 @@ function KitSpecimen({ kit, logoBaseUrl }: { kit: BrandKitItem; logoBaseUrl: str
                 } as React.CSSProperties
             }
         >
-            {/* Soft primary wash – gives flat palettes some depth without lying */}
+            {/* Soft primary wash: gives flat palettes some depth without lying */}
             <div
                 className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl"
                 style={{ backgroundColor: 'hsl(var(--primary) / 0.14)' }}
@@ -161,7 +161,7 @@ function KitCard({
 
     return (
         <div className="group relative overflow-hidden rounded-xl ring-1 ring-border transition-shadow duration-normal hover:shadow-md has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
-            {/* Stretched link – the whole card navigates; menu sits above it */}
+            {/* Stretched link: the whole card navigates; menu sits above it */}
             <Link
                 to="/admin/appearance/brand-kits/$kitId"
                 params={{ kitId: kit.id }}
@@ -171,7 +171,7 @@ function KitCard({
 
             <KitSpecimen kit={kit} logoBaseUrl={logoBaseUrl} />
 
-            {/* Meta strip – rendered in the ADMIN theme, on purpose */}
+            {/* Meta strip: rendered in the ADMIN theme, on purpose */}
             <div className="flex items-center justify-between gap-2 border-t bg-card p-3">
                 <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
@@ -253,7 +253,7 @@ function KitCard({
     );
 }
 
-/** Dashed tile at the end of the gallery – spatial "add" affordance */
+/** Dashed tile at the end of the gallery, spatial "add" affordance */
 function NewKitTile() {
     return (
         <Link
@@ -323,9 +323,9 @@ export function AdminBrandKitsListPage() {
         <div className="space-y-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Brand Kits</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Brand kits</h1>
                     <p className="max-w-3xl text-muted-foreground">
-                        Each kit is a complete identity — logo, colors, type, and motion. Click a kit to edit it, or
+                        Each kit is a complete identity: logo, colors, type, and motion. Click a kit to edit it, or
                         clone one for variants.
                     </p>
                 </div>
@@ -362,7 +362,7 @@ export function AdminBrandKitsListPage() {
                             key={kit.id}
                             kit={kit}
                             logoBaseUrl={logoBaseUrl}
-                            onClone={() => cloneMutation.mutate({ id: kit.id, name: `${kit.name} – Copy` })}
+                            onClone={() => cloneMutation.mutate({ id: kit.id, name: `${kit.name}, Copy` })}
                             onDelete={() => deleteMutation.mutate(kit.id)}
                             cloning={cloneMutation.isPending}
                             deleting={deleteMutation.isPending}

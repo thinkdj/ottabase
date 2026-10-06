@@ -29,27 +29,27 @@ export interface OttaormCrudContext {
 }
 
 /**
- * Resolve the authoritative organizationId for a comment from its TARGET entity — never from
+ * Resolve the authoritative organizationId for a comment from its TARGET entity, never from
  * the caller's own ambient/header-supplied org context. This closes two problems:
  *
  * 1. getSecurityContext only validates a caller-supplied organizationId against real membership
- *    when there IS a session (the check is gated on `userId &&`) — an anonymous request's
+ *    when there IS a session (the check is gated on `userId &&`), an anonymous request's
  *    x-org-id header flows through completely unverified. Deriving the org from the target
  *    instead means an anonymous caller's header value is simply never consulted.
  * 2. Even for an authenticated caller, comments were previously tagged with the COMMENTER's own
- *    active org rather than the TARGET's org — wrong for public content (an Org-Y member
+ *    active org rather than the TARGET's org, wrong for public content (an Org-Y member
  *    commenting on an Org-X blog post should produce a comment belonging to Org X, the post's
  *    own org, not Org Y).
  *
  * For 'post' targets (the only target type this app currently defines), the post's own
- * organizationId is authoritative regardless of the caller's own org membership — a comment on
+ * organizationId is authoritative regardless of the caller's own org membership, a comment on
  * a post is exactly as visible/commentable as the post itself; requiring the commenter to also
  * be a *member* of the post's org would break ordinary public blog commenting. The caller's
  * memberOrganizationIds is extended (in a local copy only, never persisted) to include the
  * resolved org so the RLS engine's enforceOrgMembership defense-in-depth doesn't spuriously
  * reject a legitimate cross-org public comment.
  *
- * Unknown/custom target types have no registered resolver — for those we fall back to requiring
+ * Unknown/custom target types have no registered resolver, for those we fall back to requiring
  * authentication and trusting only the caller's own already-membership-validated organizationId
  * (which getSecurityContext only sets from session state, not from an unverified header, once a
  * session exists). This closes the anonymous-spoofing gap for the general case, at the cost of
@@ -101,13 +101,13 @@ async function resolveCommentSecurityContext(
 
 /**
  * Comments are considered PUBLIC content scoped to their target (matching the target's own
- * visibility — a published blog post's comments are readable by anyone). Write actions that
+ * visibility, a published blog post's comments are readable by anyone). Write actions that
  * mutate someone else's comment (edit body/status, moderate) require either authorship or a
- * moderation permission — plain tenant-membership is not authorship.
+ * moderation permission, plain tenant-membership is not authorship.
  *
  * `ambient` is the caller's ORIGINAL (pre-org-swap) security context, and `commentOrgId` is the
  * comment's resolved org. Moderation is ORG-scoped, so `comments:moderate`/`*:*` is honored only
- * when the caller is acting within the comment's own org (or is a platform admin) — otherwise a
+ * when the caller is acting within the comment's own org (or is a platform admin), otherwise a
  * moderator in org Y could edit/soft-delete a comment on a PUBLIC post belonging to org X.
  * Authorship stays identity-based and works across orgs.
  */
@@ -129,7 +129,7 @@ function isCommentOwnerOrModerator(
 /**
  * App-global blog taxonomy: one shared vocabulary per app (no organizationId column), referenced
  * by every tenant's posts. Its RLS is AppScoped with NO role/permission requirement, so generic
- * CRUD would let ANY caller — even unauthenticated — create/rename/delete every tenant's tags,
+ * CRUD would let ANY caller, even unauthenticated, create/rename/delete every tenant's tags,
  * categories, and series, and attach them to any post via the public-writable link tables.
  * Reads stay open (the editor lists them); WRITES require org:admin, i.e. an authenticated content
  * administrator (a platform owner satisfies this via '*:*'). Deeper per-post-ownership scoping of
@@ -256,9 +256,9 @@ const ORG_MUTATING_METHODS = new Set(['PATCH', 'PUT', 'DELETE']);
  * DEFAULT-DENY allowlist for the generic `/api/ottaorm/*` route. ONLY these app-data models may be
  * read/written through generic CRUD; every other model is refused. That deliberately closes:
  *  - grant/auth/system tables (user_roles, user_group_members, sessions, accounts, authenticators,
- *    audit_logs, kill switches, …) — accessed server-side or via dedicated admin endpoints, never here,
+ *    audit_logs, kill switches, …): accessed server-side or via dedicated admin endpoints, never here,
  *  - app-global control-plane data (menus, menu_items, menu_slot_assignments, ottablog_themes/plugins,
- *    shortlinks, scheduled_tasks, …) — managed through their own scope-gated routes.
+ *    shortlinks, scheduled_tasks, …), managed through their own scope-gated routes.
  *
  * This replaces the old DENYLIST, which repeatedly missed sensitive tables (first `user_roles`, then
  * `user_group_members`): a newly-added model is now closed by default until it is explicitly listed
@@ -300,7 +300,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     const session = await getSession(request, env as any, getAuthOptions(env));
     const securityContext = await getSecurityContext(request, session, env);
     // Comments override this per-request below (organizationId must come from the comment's
-    // TARGET, never the caller's own ambient/header-supplied org) — every other model uses the
+    // TARGET, never the caller's own ambient/header-supplied org), every other model uses the
     // ambient securityContext unchanged.
     let effectiveSecurityContext: typeof securityContext = securityContext;
     let commentReactionsToDeleteId: string | null = null;
@@ -336,13 +336,13 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     if (crudRequest.model === 'comments' && crudRequest.method === 'DELETE') {
-        // parentId has no FK/cascade — hard-deleting a comment would leave any replies as
+        // parentId has no FK/cascade: hard-deleting a comment would leave any replies as
         // permanently unreachable orphans (still in the table, but never reachable from a
         // parentId===null root walk). Moderation must go through PATCH status:'deleted'
         // (soft-delete), which preserves the row and thread structure.
         return errorResponse('Comments cannot be hard-deleted via OttaORM', 403, {
             code: 'CRUD_DISABLED',
-            hint: "PATCH status to 'deleted' instead — soft-delete preserves thread structure for replies",
+            hint: "PATCH status to 'deleted' instead, soft-delete preserves thread structure for replies",
         });
     }
 
@@ -354,21 +354,21 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     // RBAC grant + definition tables. These GRANT the very roles/permissions the whole auth layer
-    // reads from, so generic CRUD on them is a privilege-escalation vector — `user_roles` in
+    // reads from, so generic CRUD on them is a privilege-escalation vector, `user_roles` in
     // particular is org-scoped (its TenantScoped RLS FUNCTIONS but carries no permission gate), so
     // without this block an anonymous `POST /api/ottaorm/user_roles {roleId:<platform_owner>,
     // organizationId:'system'}` mints a real platform_owner grant, and `GET` dumps every grant.
     // (`roles`/`permissions` are additionally fail-closed today only by an RLS-field/column mismatch
-    // — do NOT rely on that; this block is the real gate.) Manage roles via /api/admin/roles and
+    //, do NOT rely on that; this block is the real gate.) Manage roles via /api/admin/roles and
     // grants via the org-members / promote endpoints, all of which are properly scope-gated.
     //
-    // NOTE: this hard-block list is a DENYLIST — every sensitive model must be remembered here. That
+    // NOTE: this hard-block list is a DENYLIST, every sensitive model must be remembered here. That
     // is fragile (this table was the miss that motivated the block). Treat any new grant-bearing or
     // system table as internal until it has an explicit permission gate.
     if (crudRequest.model === 'user_roles' || crudRequest.model === 'roles' || crudRequest.model === 'permissions') {
         return errorResponse('RBAC role/permission CRUD is disabled via OttaORM', 403, {
             code: 'CRUD_DISABLED',
-            hint: 'Use /api/admin/roles (role definitions) and the org-members / platform-owner promote endpoints (grants) — all platform-admin scoped.',
+            hint: 'Use /api/admin/roles (role definitions) and the org-members / platform-owner promote endpoints (grants), all platform-admin scoped.',
         });
     }
 
@@ -384,10 +384,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     if (crudRequest.model === 'verification_tokens') {
-        // PRE-EXISTING, UNRELATED TO PLATFORM_OWNER — surfaced during the platform_owner audit.
+        // PRE-EXISTING, UNRELATED TO PLATFORM_OWNER, surfaced during the platform_owner audit.
         // verification_tokens carries a PublicReadOnly RLS policy (packages/ottaorm rls/registry),
         // which yields an empty filter and no role check, and this generic CRUD route has no auth
-        // gate — so anyone could `GET /api/ottaorm/verification_tokens` and read every live
+        // gate, so anyone could `GET /api/ottaorm/verification_tokens` and read every live
         // password-reset / magic-link / email-verification token (stored in plaintext) and take
         // over accounts. Nothing legitimate reaches these through generic CRUD (they are consumed
         // server-side by the auth flows), so hard-block the model here. The deeper fix is to give
@@ -398,7 +398,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     if (crudRequest.model === 'referral_tracking') {
-        // PRE-EXISTING, UNRELATED TO PLATFORM_OWNER — surfaced during the platform_owner audit.
+        // PRE-EXISTING, UNRELATED TO PLATFORM_OWNER, surfaced during the platform_owner audit.
         // referral_tracking uses an app-scoped RLS policy that filters on appId only (no user/org
         // row filter), so any caller could read every user's referral rows (IP, user-agent,
         // referrer graph) and forge/delete them via this unauthenticated generic CRUD route. These
@@ -424,7 +424,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // DEFAULT-DENY: anything not explicitly allow-listed for generic CRUD is refused. This closes
     // grant/auth/system + app-global control-plane tables (e.g. user_group_members,
     // menu_slot_assignments, ottablog_themes/plugins, audit_logs) by default, instead of relying on
-    // the denylist above to remember every one — see GENERIC_CRUD_ALLOWLIST.
+    // the denylist above to remember every one, see GENERIC_CRUD_ALLOWLIST.
     if (!GENERIC_CRUD_ALLOWLIST.has(crudRequest.model)) {
         return errorResponse(`Generic CRUD is not enabled for '${crudRequest.model}'`, 403, {
             code: 'CRUD_NOT_ALLOWED',
@@ -442,7 +442,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
-    // App-global taxonomy writes require an authenticated content administrator — see
+    // App-global taxonomy writes require an authenticated content administrator, see
     // APP_TAXONOMY_MODELS. Reads (GET) fall through unchanged so the blog editor can list them.
     // taxonomy:manage is the named editorial capability; org:admin keeps passing (owners/admins).
     if (APP_TAXONOMY_MODELS.has(crudRequest.model) && CRUD_WRITE_METHODS.has(crudRequest.method)) {
@@ -458,10 +458,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // organizations RLS policy only scopes rows to the caller's memberships (ANY role) with no
     // permission/role gate, so without this a plain member could rewrite name/slug/metadata/settings
     // or DELETE the org outright (orphaning every other member + all org-scoped posts/media/comments).
-    // Stripping plan/status below is not enough. POST (create) stays open — the creator isn't a
+    // Stripping plan/status below is not enough. POST (create) stays open, the creator isn't a
     // member until membership is provisioned right after insert (see the organizations POST block
     // below). Gate on the target org id (crudRequest.id), never the caller's ambient active org.
-    // NOTE: PUT must be included — secure CRUD treats PUT as a full update just like PATCH, so
+    // NOTE: PUT must be included, secure CRUD treats PUT as a full update just like PATCH, so
     // listing only PATCH/DELETE here would leave PUT as an unguarded bypass.
     if (
         crudRequest.model === 'organizations' &&
@@ -494,7 +494,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     }
 
     // Post.prepareForDatabase runs the content validators on every write, so this route-level pass
-    // is NOT what makes the caps hold — it makes failures return a 400 naming the offending field
+    // is NOT what makes the caps hold, it makes failures return a 400 naming the offending field
     // instead of surfacing from inside the ORM. Keep both: delete this and the rules still bind,
     // but the editor stops being able to tell the author what went wrong.
     // Publication authorization cannot run here: it needs the RLS-authorized stored status as well
@@ -525,7 +525,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         (crudRequest.method === 'POST' || crudRequest.method === 'PATCH')
     ) {
         // A null organizationId means "platform-owned" (see the posts RLS policy in
-        // registry.ts) — only a platform admin may author those rows. The custom
+        // registry.ts), only a platform admin may author those rows. The custom
         // policy's platformAdmin gate is READ-only (generateFilter), so without this
         // check anyone with no active org (e.g. after clearing activeOrganizationId)
         // could stamp an author-invisible, admin-only draft onto the platform blog.
@@ -565,7 +565,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
             body.userId = user?.id ?? null;
             body.organizationId = orgResolution.organizationId;
-            // Never trust a client-supplied depth — always the server-computed value from the
+            // Never trust a client-supplied depth, always the server-computed value from the
             // validated parent (0 for a top-level comment).
             body.depth = replyContext.depth;
             effectiveSecurityContext = orgResolution.securityContext;
@@ -595,7 +595,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             if (!orgResolution.ok) return orgResolution.response;
             if ((comment.get('organizationId') ?? null) !== orgResolution.organizationId) {
                 // The row's org doesn't match its own target's real org (or the caller can't
-                // establish that org) — fail closed as not-found rather than leaking existence.
+                // establish that org), fail closed as not-found rather than leaking existence.
                 return errorResponse('Comment not found', 404, { code: 'NOT_FOUND' });
             }
             effectiveSecurityContext = orgResolution.securityContext;
@@ -631,7 +631,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 }
 
                 // Any other PATCH (body edit and/or moderation status change) requires the
-                // caller to be the comment's author or hold a moderation permission — plain
+                // caller to be the comment's author or hold a moderation permission, plain
                 // tenant scoping is not authorship. Pass the AMBIENT (pre-swap) context and the
                 // comment's org so moderation authority is scoped to the comment's own org and
                 // can't be exercised cross-tenant via the caller's other-org permissions.
@@ -649,7 +649,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 }
 
                 // A transition to 'deleted' must blank the body and clear reactions
-                // server-side, regardless of what the client sent — this is the same guarantee
+                // server-side, regardless of what the client sent, this is the same guarantee
                 // Comment.softDelete() provides, applied uniformly so every consumer gets it
                 // even if they only PATCH {status: 'deleted'} without reimplementing the
                 // side-effects client-side.
@@ -663,7 +663,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
 
         if (crudRequest.method === 'GET' && !crudRequest.id) {
-            // Comments are always fetched scoped to a target — requiring targetType/targetId
+            // Comments are always fetched scoped to a target, requiring targetType/targetId
             // here (rather than allowing a bare, unscoped list) means the org-derivation-from-
             // target logic always has a target to resolve against, and prevents "browse every
             // comment across every target in some org" as an unintended side channel.
@@ -697,7 +697,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
     // Group-membership mutations flow through this generic endpoint (org membership
     // is blocked above in favour of the admin routes, which invalidate directly).
-    // Resolve whose membership caches are affected BEFORE executing — a DELETE
+    // Resolve whose membership caches are affected BEFORE executing, a DELETE
     // target row is gone afterwards.
     const affectedMembershipUserIds = await resolveAffectedMembershipUsers(crudRequest, securityContext);
 
@@ -768,12 +768,12 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                     joinedAt: Date.now(),
                 } as any);
                 // getSecurityContext cached this user's PRE-creation membership list
-                // earlier in this very request — drop it, or the creator can't use
+                // earlier in this very request, drop it, or the creator can't use
                 // their new org until the cache TTL expires.
                 await invalidateMembershipCache(env.OBCF_KV, userId);
             } catch (err) {
                 // The org row was inserted but its owner membership was not. Since the tenant
-                // boundary (organizationIdsForUser) is membership-only, that would ORPHAN the org —
+                // boundary (organizationIdsForUser) is membership-only, that would ORPHAN the org,
                 // the creator couldn't even reach the org they just made. Compensating-delete the
                 // org so creation is all-or-nothing (best-effort atomicity without a cross-table txn).
                 try {
@@ -876,9 +876,9 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  *
  * - user_group_members: the target user (from the body, or read from the row
  *   before an id-based update/delete removes it).
- * - user_groups: the acting user — their created-groups set feeds
+ * - user_groups: the acting user, their created-groups set feeds
  *   groupIdsForUser. Other members of a mutated/deleted group converge via the
- *   cache TTL (their cached group id points at a gone/renamed group — benign).
+ *   cache TTL (their cached group id points at a gone/renamed group, benign).
  *
  * Best-effort: failures return what was resolved so far; the TTL bounds staleness.
  */
@@ -905,7 +905,7 @@ async function resolveAffectedMembershipUsers(
                 const uid = record?.get('userId');
                 if (uid) affected.add(String(uid));
             } catch {
-                // Row unreadable — TTL bounds the residual staleness.
+                // Row unreadable: TTL bounds the residual staleness.
             }
         }
     }

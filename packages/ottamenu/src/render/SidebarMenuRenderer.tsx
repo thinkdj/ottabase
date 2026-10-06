@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Sidebar menu renderer
+// Ottamenu, Sidebar menu renderer
 // Link list matching SidebarNav styling. Supports nested items.
 // ---------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ export function SidebarMenuRenderer({ items, pathname }: SidebarMenuRendererProp
     const tree = useMemo(() => buildItemTree(items), [items]);
 
     return (
-        <nav className="flex flex-col gap-0.5">
+        <nav aria-label="Sidebar" className="flex flex-col gap-0.5">
             {tree.map((node) => (
                 <SidebarNode key={node.item.id} node={node} depth={0} pathname={pathname} />
             ))}

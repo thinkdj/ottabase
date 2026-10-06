@@ -3,7 +3,7 @@
  * guards the app-owned fixture itself: if a block type is dropped from the
  * fixture, plugin/renderer coverage silently shrinks. The fixture is seeded as
  * the first entry of `DEMO_POSTS`. (Handler behavior is tested in
- * packages/ottablog router-seed-demo.test.ts — the handlers live in the
+ * packages/ottablog router-seed-demo.test.ts, the handlers live in the
  * package since the router extraction.)
  */
 import { describe, expect, it } from 'vitest';

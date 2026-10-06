@@ -16,7 +16,7 @@ export interface SessionUser {
     roles?: string[];
     permissions?: string[];
     /**
-     * True when the user is a PLATFORM administrator — derived server-side from a SYSTEM-scoped
+     * True when the user is a PLATFORM administrator, derived server-side from a SYSTEM-scoped
      * `platform:admin`/'*:*' grant, never from a role name or an org-scoped grant. Drives the
      * platform-only sections of the admin UI; the server enforces the same boundary independently.
      */
@@ -99,6 +99,8 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
             error?: string;
         };
     };
+    /** Shown in the emails the package sends (magic link); defaults to "Ottabase". */
+    appName?: string;
     /** Called after a user signs out (session revoked). Use to clear app-level caches. */
     onSignOut?: (userId: string) => Promise<void> | void;
     /** Called right after a session is created (sign-in, register+auto-login, magic link, OAuth). */

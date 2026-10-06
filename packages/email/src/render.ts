@@ -78,7 +78,7 @@ function resolveTemplate(template: string | EmailTemplate) {
 export function renderEmail(options: RenderEmailOptions): RenderedEmail {
     const template = resolveTemplate(options.template);
     const variables = options.variables ?? {};
-    // No `content` means "use the template's own sections" — never an empty body override.
+    // No `content` means "use the template's own sections", never an empty body override.
     const content: TemplateContent = options.content ?? {};
 
     const headerSource = content.header ?? template.header ?? '';

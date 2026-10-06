@@ -4,7 +4,7 @@ import { createProviderRegistry } from '../registry';
 
 const registry = createProviderRegistry();
 
-describe('model-ref grammar — three forms, one column', () => {
+describe('model-ref grammar: three forms, one column', () => {
     it('parses a bare id to a NULL provider, never an empty string or a default', () => {
         const parsed = parseModelRef('gpt-4o-mini', registry);
         expect(parsed).toMatchObject({ form: 'bare', provider: null, model: 'gpt-4o-mini' });
@@ -15,7 +15,7 @@ describe('model-ref grammar — three forms, one column', () => {
         expect(parsed).toMatchObject({ form: 'qualified', provider: 'openai', model: 'some/nested/id' });
     });
 
-    it('TRAP 1 — a head beginning with `@` is NEVER a provider', () => {
+    it('TRAP 1: a head beginning with `@` is NEVER a provider', () => {
         // Cloudflare edge-inference ids are slash paths that begin with `@`; naive splitting
         // turns `@cf` into a provider and corrupts the id silently. It affects only one
         // provider family, so it survives testing until someone picks that family.
@@ -24,7 +24,7 @@ describe('model-ref grammar — three forms, one column', () => {
         expect(parsed.model).toBe('@cf/meta/llama-3.1-8b-instruct');
     });
 
-    it('TRAP 2 — an UNREGISTERED lowercase head is part of the model id, not a provider', () => {
+    it('TRAP 2: an UNREGISTERED lowercase head is part of the model id, not a provider', () => {
         // Open-weights registries publish `<org>/<Model-Name>`; treating any
         // lowercase-alnum-hyphen head as a provider discards the credential's real provider.
         const parsed = parseModelRef('meta-llama/Llama-3.3-70B-Instruct', registry);
@@ -39,7 +39,7 @@ describe('model-ref grammar — three forms, one column', () => {
     });
 });
 
-describe('qualification is IDEMPOTENT — that is what lets one column hold three forms', () => {
+describe('qualification is IDEMPOTENT: that is what lets one column hold three forms', () => {
     it('qualifies a bare id with the credential provider', () => {
         expect(qualifyModelRef('openai', 'gpt-4o', registry)).toBe('openai/gpt-4o');
     });
@@ -76,7 +76,7 @@ describe('a qualified model ref may not cross providers', () => {
 });
 
 describe('provider registry is per-instance and composable', () => {
-    it('SUBSETS as well as extends — the half that gets forgotten', () => {
+    it('SUBSETS as well as extends, the half that gets forgotten', () => {
         const restricted = createProviderRegistry({ only: ['openai', 'anthropic'] });
         expect(
             restricted

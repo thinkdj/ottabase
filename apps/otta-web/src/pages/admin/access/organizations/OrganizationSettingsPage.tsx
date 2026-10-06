@@ -152,7 +152,7 @@ export function OrganizationSettingsPage() {
                     </Link>
                 </Button>
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Organization Settings</h1>
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Organization settings</h1>
                     <p className="max-w-3xl text-muted-foreground">Manage your organization profile and preferences</p>
                 </div>
             </div>

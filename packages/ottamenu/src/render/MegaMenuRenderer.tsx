@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Ottamenu – Mega menu renderer
+// Ottamenu, Mega menu renderer
 // Multi-column dropdown panel. Top-level items become column headers;
 // children are links beneath. Supports images + descriptions on items.
 // Inspired by Anthropic / GitHub / Notion style mega-menus.
@@ -66,7 +66,7 @@ function MegaMenuColumn({ node, pathname }: { node: MenuItemTreeNode; pathname: 
 
     return (
         <div className="flex flex-col gap-1">
-            {/* Column header – optionally with image */}
+            {/* Column header: optionally with image */}
             <div className="flex items-center gap-2 px-3 pb-1">
                 {hasImage && <img src={node.item.image!} alt="" className="h-5 w-5 shrink-0 rounded object-cover" />}
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -128,7 +128,7 @@ function MegaMenuTrigger({
 
     const hasChildren = node.children.length > 0;
 
-    // Leaf item (no children) – render as plain link
+    // Leaf item (no children): render as plain link
     if (!hasChildren) {
         return (
             <div className="relative">
@@ -146,6 +146,8 @@ function MegaMenuTrigger({
                     isOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 onClick={isOpen ? onClose : handleOpen}
+                aria-expanded={isOpen}
+                aria-haspopup="true"
             >
                 {node.item.name}
                 <svg
@@ -162,7 +164,7 @@ function MegaMenuTrigger({
                 </svg>
             </button>
 
-            {/* Dropdown panel – absolutely positioned */}
+            {/* Dropdown panel: absolutely positioned */}
             {isOpen && (
                 <div className="absolute left-0 top-full z-50 pt-2">
                     <MegaMenuPanel columns={node.children} pathname={pathname} />
@@ -176,9 +178,9 @@ function MegaMenuTrigger({
  * Renders a mega menu: horizontal top-level items with multi-column dropdown panels.
  *
  * Data shape:
- * - Level 0: top bar items (triggers) — e.g. "Platform", "Solutions"
- * - Level 1: column headers within dropdown — e.g. "Products", "Features"
- * - Level 2: links within columns — e.g. "Claude", "Claude Code"
+ * - Level 0: top bar items (triggers), e.g. "Platform", "Solutions"
+ * - Level 1: column headers within dropdown, e.g. "Products", "Features"
+ * - Level 2: links within columns, e.g. "Claude", "Claude Code"
  *
  * Items with images show them as thumbnails. Items with `newTab` get an external-link icon.
  */
@@ -192,7 +194,7 @@ export function MegaMenuRenderer({ items, pathname, expanded = false }: MegaMenu
     // Expanded / static mode: render all panels inline (for preview panels)
     if (expanded) {
         return (
-            <nav className="flex flex-col gap-4">
+            <nav aria-label="Main" className="flex flex-col gap-4">
                 {tree.map((node) =>
                     node.children.length > 0 ? (
                         <div key={node.item.id}>
@@ -208,7 +210,7 @@ export function MegaMenuRenderer({ items, pathname, expanded = false }: MegaMenu
     }
 
     return (
-        <nav className="flex items-center gap-1">
+        <nav aria-label="Main" className="flex items-center gap-1">
             {tree.map((node) => (
                 <MegaMenuTrigger
                     key={node.item.id}
