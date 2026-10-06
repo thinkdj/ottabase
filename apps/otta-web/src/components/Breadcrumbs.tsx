@@ -40,7 +40,6 @@ const ROUTE_LABELS: Record<string, string> = {
     '/': 'Home',
     '/changelog': "What's New",
     '/demo': 'Demos',
-    '/demo/mantine': 'Mantine UI',
     '/demo/shadcn': 'shadcn/ui',
     '/demo/ottaeditor': 'OttaEditor',
     '/demo/ottaorm': 'OttaORM',

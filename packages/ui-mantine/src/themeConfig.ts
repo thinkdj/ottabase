@@ -1,7 +1,6 @@
 import type { MantineThemeOverride } from '@mantine/core';
 
-// ── Mantine demo theme (showcase only — not in core config; core uses BrandEngine) ──
-// Used by the /demo/mantine route. Mantine has its own provider, added only in demo.
+// A starter palette for the README example. App theming itself comes from BrandEngine.
 export const MANTINE_DEMO_COLOR_DEFAULT = 'tremorBlue' as const;
 
 export const MANTINE_DEMO_THEME_COLORS: Record<

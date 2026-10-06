@@ -48,7 +48,7 @@ const APP_META: AppMeta = {
 export const appConfig: AppConfig = {
     appId: baseCfg.appId,
     meta: APP_META,
-    uiFramework: 'mantine',
+    uiFramework: 'shadcn',
     ui: {
         preventFOUC: baseCfg.ui?.preventFOUC ?? false,
         preventFOUCInsideIframe: baseCfg.ui?.preventFOUCInsideIframe ?? false,

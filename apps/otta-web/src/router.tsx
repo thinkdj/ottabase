@@ -684,7 +684,6 @@ function demoChild<const TPath extends string>(path: TPath, loader: () => Promis
 
 const demoChildren = [
     demoChild('/', () => import('@/pages/demo/DemoIndexPage'), 'DemoIndexPage'),
-    demoChild('mantine', () => import('@/pages/demo/mantine/MantineDemoRoute'), 'MantineDemoRoute'),
     demoChild('shadcn', () => import('@/pages/demo/shadcn/ShadcnDemoPage'), 'ShadcnDemoPage'),
     demoChild('ottaeditor', () => import('@/pages/demo/ottaeditor/OttaEditorDemoPage'), 'OttaEditorDemoPage'),
     demoChild('ottaorm', () => import('@/pages/demo/ottaorm/OttaORMDemoPage'), 'OttaORMDemoPage'),

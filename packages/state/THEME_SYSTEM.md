@@ -57,8 +57,8 @@ function MyComponent() {
 
 ## Syncing UI Frameworks
 
-UI frameworks (like Tailwind via `next-themes`, and Mantine) are synchronized with the global `themeAtom` via a
-centralized hook and controlled provider components.
+UI frameworks (Tailwind via `next-themes`, and Mantine through the optional `@ottabase/ui-mantine` adapter) are
+synchronized with the global `themeAtom` via a centralized hook and controlled provider components.
 
 ### The `useThemeManager` Hook
 
@@ -95,8 +95,8 @@ export function useThemeManager() {
 
 ### Mantine Integration
 
-The Mantine provider (`@ottabase/ui-mantine`) is configured as a **controlled component**. It accepts the current theme
-via a prop (`colorScheme`) and does not manage the state itself.
+The template app does not ship Mantine. When an app opts into the `@ottabase/ui-mantine` adapter, its provider is a
+**controlled component**: it accepts the current theme via a prop (`colorScheme`) and does not manage the state itself.
 
 ```tsx
 // Example usage in an app layout
@@ -329,4 +329,4 @@ To verify the system works:
 
 - **State package**: `packages/state/src/createAppState.ts`
 - **next-themes sync**: Example in app's `ProviderNextThemes.tsx`
-- **Mantine sync**: Example in app's `MantineThemeSync.tsx`
+- **Mantine adapter**: `packages/ui-mantine/provider/ProviderUI.tsx` (optional; takes `colorScheme` as a prop)

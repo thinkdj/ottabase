@@ -42,7 +42,6 @@ Declare these in the consuming app (versions are usually taken from the monorepo
 - `postcss`
 - `@tailwindcss/forms`
 - `@tailwindcss/typography`
-- `postcss-preset-mantine`
 
 The package also depends on `tailwind-merge` for class merging when used from TS/React layers that consume it.
 

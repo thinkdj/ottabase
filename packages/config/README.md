@@ -8,7 +8,7 @@ Shared configuration utilities for Ottabase applications with environment variab
 - **Type-Safe Configuration**: Full TypeScript support with strict typing
 - **Flexible Defaults**: Override defaults per app or use global defaults
 - **Storage Utilities**: Helper functions for consistent storage key naming
-- **Multiple UI Framework Support**: Built-in support for Mantine, Shadcn, Chakra, and MUI
+- **UI Framework Setting**: `uiFramework` names the component library an app runs on (shadcn by default)
 
 ## Installation
 
@@ -85,7 +85,7 @@ APP_COPYRIGHT_TEXT="© 2024 Your Company"
 APP_COMPANY_NAME="Your Company"
 
 # UI Framework
-UI_FRAMEWORK="mantine"    # mantine | shadcn | chakra | mui
+UI_FRAMEWORK="shadcn"    # shadcn | mantine | chakra | mui | tremor
 
 # Storage
 STORAGE_PREFIX="my-app"
@@ -122,7 +122,7 @@ function useAppConfig(): AppConfig {
 }
 
 // Type-safe UI framework
-const framework: SupportedUIFramework = 'mantine';
+const framework: SupportedUIFramework = 'shadcn';
 ```
 
 ## Configuration Structure

@@ -373,15 +373,6 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
-        to: '/demo/mantine',
-        group: 'design',
-        icon: Layout,
-        label: 'Mantine UI',
-        title: 'Mantine Demo',
-        description: 'Full-featured demo showcasing Mantine components, theme switching, state management, and more',
-        buttonVariant: 'outline',
-    },
-    {
         to: '/demo/shadcn',
         group: 'design',
         icon: Palette,

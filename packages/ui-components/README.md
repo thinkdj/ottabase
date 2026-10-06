@@ -129,8 +129,8 @@ JSON editor dependency.
 
 ### DarkModeToggle
 
-A versatile component that provides both toggle switch and button interfaces for switching between light and dark
-themes. It integrates with both Mantine's color scheme and next-themes for Tailwind CSS.
+A versatile component that provides both toggle switch and button interfaces for switching between light and dark themes
+through next-themes.
 
 #### Props
 
@@ -157,7 +157,6 @@ import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
 
 This component requires:
 
-- `@mantine/core` - For UI components and color scheme management
 - `@tabler/icons-react` - For sun and moon icons
 - `next-themes` - For Tailwind CSS theme synchronization
 
@@ -215,7 +214,6 @@ const config = createAppConfig({
 
 This component requires:
 
-- `@mantine/core` - For UI components and layout
 - `@ottabase/config` - For configuration management
 - `next/link` - For optional link functionality (**Next.js only**; if using TanStack Router or another framework, wrap
   the Logo in your router's `<Link>` component instead and omit `linkUrl`)

@@ -96,7 +96,7 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
     const config: AppConfig = {
         appId: getEnv('APP_ID', appId),
         meta,
-        uiFramework: getEnv('UI_FRAMEWORK', defaults.uiFramework ?? 'mantine') as SupportedUIFramework,
+        uiFramework: getEnv('UI_FRAMEWORK', defaults.uiFramework ?? 'shadcn') as SupportedUIFramework,
 
         ui: {
             preventFOUC: getBoolEnv('PREVENT_FOUC', defaults.ui?.preventFOUC ?? false),

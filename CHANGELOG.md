@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Mantine is an optional adapter, not an app dependency.** `apps/otta-web` no longer depends on `@mantine/*`,
+  `@ottabase/ui-mantine`, `postcss-preset-mantine` or `postcss-simple-vars`; the Mantine demo page, its route and the
+  app's Mantine theme config are gone, and PostCSS (app and Storybook) no longer runs the Mantine preset.
+  `@ottabase/ui-mantine` stays as a self-contained adapter with its own dev dependencies and a README that shows how an
+  app opts in. `ui-components` and `ui-tailwind` drop their stale Mantine peer dependencies, and the config package's
+  default `uiFramework` is `shadcn`.
 - **The audit log reads as a timeline.** `/admin/security/audit` groups entries by day (Today, Yesterday, then dates)
   with a status dot, who did what to which resource, and a one-line summary that opens into the full record. The filters
   live in the URL, so a view can be shared: search, action, resource and status, plus a person or an organization you

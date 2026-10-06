@@ -34,7 +34,7 @@ flowchart TB
     Core --> Auth["@ottabase/auth"]
 
     UI --> Shadcn["@ottabase/ui-shadcn"]
-    UI --> Mantine["@ottabase/ui-mantine"]
+    UI --> Mantine["@ottabase/ui-mantine (optional adapter)"]
     UI --> Forms["@ottabase/forms"]
 
     Feature --> Blog["@ottabase/ottablog"]
@@ -111,6 +111,7 @@ lower layer.
 
 - Circular dependencies between packages are forbidden.
 - UI packages (`ui-shadcn`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies — they are leaf packages.
+- `@ottabase/ui-mantine` is an optional adapter: the app depends neither on it nor on Mantine.
 - `@ottabase/db` is the lowest data layer; `@ottabase/ottaorm` depends on it, not the reverse.
 - Feature packages (`shortlinks`, `referrals`, `ottablog`) depend on `ottaorm` for persistence but not on each other.
 

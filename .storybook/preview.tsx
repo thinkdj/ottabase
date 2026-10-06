@@ -63,7 +63,6 @@ const withOttabaseShell = (Story: any, context: any) => {
 
             // Also set data attribute for additional CSS targeting
             document.documentElement.setAttribute('data-theme', theme);
-            document.documentElement.setAttribute('data-mantine-color-scheme', theme);
         }
     }, [theme]);
 
