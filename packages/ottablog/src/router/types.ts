@@ -8,7 +8,7 @@
  * Ottabase app (or a bare Worker) unchanged.
  */
 
-import type { BlogLanguageConfig, ContentType, EditorJSData, HeroImage, SeoMeta } from '../types';
+import type { BlogLanguageConfig, ContentType, EditorJSData, HeroImage, PhotoJournalItem, SeoMeta } from '../types';
 import type { SecurityContext } from '@ottabase/ottaorm';
 
 /** The minimal request context every blog handler receives. */
@@ -46,21 +46,54 @@ export interface BlogEditorialWriteResult extends BlogAdminResult {
 }
 
 /** A static, trusted post used to populate an empty demo deployment. */
-export interface BlogDemoPostSeed {
-    title: string;
+/** A photograph in a seeded photo journal; `id` keys the tile and the lightbox */
+export type BlogDemoPhotoSeed = Pick<PhotoJournalItem, 'id' | 'url'> &
+    Partial<Pick<PhotoJournalItem, 'alt' | 'caption' | 'location' | 'takenAt' | 'title' | 'width' | 'height'>>;
+
+interface BlogDemoPostSeedBase {
     slug: string;
-    excerpt: string;
-    content: EditorJSData;
-    contentType: ContentType;
+    /** Blurbs and photo journals derive one from their text when omitted */
+    excerpt?: string;
     isFeatured?: boolean;
+    allowComments?: boolean;
     /**
      * Optional hero/featured image, matching the `heroImage` column shape on Post.
      * Seeds are trusted, static app fixtures, so the URL must be a public absolute
-     * URL (or an app-served path) that resolves on a fresh deployment — a demo
+     * URL (or an app-served path) that resolves on a fresh deployment: a demo
      * install has no uploaded media to point at.
      */
     heroImage?: { url: string; alt?: string; caption?: string };
+    /** ISO date. Spread seeds over time so a fresh feed reads like a real one. Default: now */
+    publishedAt?: string;
+    /** Resolved through the app's `resolveAuthorId`; the caller authors the post when unknown */
+    authorEmail?: string;
+    /** Names; a missing term is created and every one is linked to the post */
+    tags?: readonly string[];
+    categories?: readonly string[];
+    series?: { title: string; order: number; description?: string; coverImage?: { url: string; alt?: string } };
+    seoMeta?: { title?: string; description?: string; keywords?: string[] };
 }
+
+/** One seeded post. The content type decides which body it carries. */
+export type BlogDemoPostSeed =
+    | (BlogDemoPostSeedBase & {
+          contentType: Exclude<ContentType, 'blurb' | 'photo'>;
+          title: string;
+          content: EditorJSData;
+      })
+    | (BlogDemoPostSeedBase & {
+          contentType: 'blurb';
+          /** Derived from the text when omitted */
+          title?: string;
+          blurbText: string;
+          crossposts?: readonly string[];
+      })
+    | (BlogDemoPostSeedBase & {
+          contentType: 'photo';
+          title: string;
+          photoAlbum: readonly BlogDemoPhotoSeed[];
+          photoNote?: string;
+      });
 
 export interface BlogTranslationBody {
     language?: unknown;
@@ -178,6 +211,12 @@ export interface BlogRouterConfig<Env = unknown> {
      * creates only missing rows, so running it again never overwrites edits.
      */
     demoPosts?: readonly BlogDemoPostSeed[];
+
+    /**
+     * A user id for a demo seed's `authorEmail`, or null when no such user exists (the caller
+     * then authors the post). Without it every seeded post belongs to the caller.
+     */
+    resolveAuthorId?: (ctx: BlogRequestContext<Env>, email: string) => Promise<string | null> | string | null;
 }
 
 /**

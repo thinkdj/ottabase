@@ -1022,17 +1022,29 @@ when scheduled invocations overlap.
 POST /api/blog/seed-demo
 ```
 
-The single seeding entry point — sample articles, release notes, and the block kitchensink that exercises every
-renderer. Apps opt in by providing `demoPosts` in `BlogRouterConfig`; without it the route responds 404.
+Publishes an app's sample posts. Apps opt in by providing `demoPosts` in `BlogRouterConfig`; without it the route
+responds 404. Gated by `requireAdmin`, which apps should wire at **system scope** so only the platform owner can seed.
 
-Gated by `requireAdmin`, which apps should wire at **system scope** so only the platform owner can seed. The handler
-creates only missing rows in the resolved app/organization scope and leaves existing content unchanged, so it is safe
-for a fresh deployment and safe to repeat after an administrator edits the seeded content.
+A seed is one `BlogDemoPostSeed` per post, discriminated by `contentType`: articles and release notes carry `content`, a
+blurb carries `blurbText` (and optional `crossposts`), a photo journal carries `photoAlbum` and `photoNote`. Every seed
+may set `publishedAt` (an ISO date, so a fresh feed spans months instead of one minute), `authorEmail` (resolved through
+the app's `resolveAuthorId`; the caller authors the post when no such user exists), `tags`, `categories`, a `series`
+with its `order`, `seoMeta`, `isFeatured` and `allowComments`. Missing tags, categories and series are created in the
+app's vocabulary and linked to the post; reading time and word count are computed.
+
+The handler creates only missing rows (probing by the binding `(app_id, slug)` index) in the caller's organization and
+leaves existing content unchanged, so it is safe for a fresh deployment and safe to repeat after an administrator edits
+the seeded content.
 
 ```jsonc
 // 200 response
 { "created": [{ "id": "...", "slug": "welcome", "contentType": "blog" }], "existing": ["kitchensink"], "total": 2 }
 ```
+
+An app that seeds more than posts (people, media, comments, menus) can call the same logic directly and keep one entry
+point of its own: `seedDemoPosts(seeds, scope)` from `@ottabase/ottablog/router` takes the resolved
+`{ appId, organizationId, userId, tenantOrganizationId?, authorIdFor? }` and returns the same result shape. The template
+app does exactly that from `POST /api/admin/demo-seed`.
 
 ## Benefits
 

@@ -12,11 +12,11 @@ vi.mock('../ottaorm-models', () => ({
         first: vi.fn(async () => null),
         create: vi.fn(),
     },
-    PostCategory: { findBySlug: vi.fn(async () => null) },
-    PostCategoryLink: { where: vi.fn(async () => []) },
-    PostSeries: { findBySlug: vi.fn(async () => null) },
-    PostTag: { findBySlug: vi.fn(async () => null) },
-    PostTagLink: { where: vi.fn(async () => []) },
+    PostCategory: { findBySlug: vi.fn(async () => null), first: vi.fn(async () => null), create: vi.fn() },
+    PostCategoryLink: { where: vi.fn(async () => []), create: vi.fn() },
+    PostSeries: { findBySlug: vi.fn(async () => null), first: vi.fn(async () => null), create: vi.fn() },
+    PostTag: { findBySlug: vi.fn(async () => null), first: vi.fn(async () => null), create: vi.fn() },
+    PostTagLink: { where: vi.fn(async () => []), create: vi.fn() },
     OttablogSettings: { forScope: vi.fn(async () => null), forScopeOrPlatform: vi.fn(async () => null) },
     PostTranslation: {
         forPost: vi.fn(async () => []),
@@ -29,7 +29,7 @@ vi.mock('../ottaorm-models', () => ({
 
 vi.mock('../studio', () => ({ StudioManager: { getState: vi.fn(async () => ({ themes: [], plugins: [] })) } }));
 
-import { Post, PostCategory, PostSeries, PostTag } from '../ottaorm-models';
+import { Post, PostCategory, PostCategoryLink, PostSeries, PostTag, PostTagLink } from '../ottaorm-models';
 
 type Env = { marker?: string };
 const env: Env = {};
@@ -171,6 +171,137 @@ describe('handleBlogDemoSeed', () => {
         expect(body.created).toEqual([]);
         expect(body.existing).toEqual(['sample-article', 'sample-release-note']);
         expect(Post.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('handleBlogDemoSeed with authors, dates and taxonomy', () => {
+    const term = (id: string) => postRow({ id });
+    const created = () => vi.mocked(Post.create).mock.calls.map(([data]) => data as Record<string, any>);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(Post.first).mockResolvedValue(null as any);
+        vi.mocked(Post.create)
+            .mockReset()
+            .mockImplementation(async (data: any) => postRow({ id: `id-${data.slug}` }) as any);
+        for (const Model of [PostTag, PostCategory, PostSeries]) {
+            vi.mocked(Model.first).mockResolvedValue(null as any);
+            vi.mocked(Model.create)
+                .mockReset()
+                .mockImplementation(async (data: any) => term(`${data.name ?? data.title}-id`) as any);
+        }
+    });
+
+    const seeds = [
+        {
+            title: 'Edge, part one',
+            slug: 'edge-one',
+            excerpt: 'Why the edge.',
+            content: {
+                blocks: [{ type: 'paragraph', data: { text: 'one two three four five six seven eight nine ten' } }],
+            },
+            contentType: 'blog' as const,
+            publishedAt: '2026-04-02T09:00:00.000Z',
+            authorEmail: 'tomas@example.com',
+            tags: ['Cloudflare', 'cloudflare', 'Workers'],
+            categories: ['Engineering'],
+            series: { title: 'Building on the edge', order: 1, description: 'Four parts.' },
+        },
+        {
+            slug: 'blurb-one',
+            contentType: 'blurb' as const,
+            blurbText: 'Shipped the audit timeline today. Grouping by day did more for readability than any column.',
+            crossposts: ['https://social.example/p/1'],
+            authorEmail: 'nobody@example.com',
+        },
+        {
+            title: 'Two days in Lisbon',
+            slug: 'two-days-in-lisbon',
+            contentType: 'photo' as const,
+            photoNote: 'Trams, tiles and one very long lunch.',
+            photoAlbum: [
+                {
+                    id: 'lisbon-1',
+                    url: 'https://images.test/lisbon-1.jpg',
+                    caption: 'Tram 28 at dawn',
+                    location: 'Alfama',
+                },
+                { id: 'lisbon-2', url: 'https://images.test/lisbon-2.jpg', alt: 'Tiled facade' },
+            ],
+        },
+    ];
+
+    const handlersFor = () =>
+        createBlogHandlers<Env>({
+            ...baseConfig,
+            requireAdmin: async () => ({ session: { user: { id: 'owner', organizationId: 'org-1' } } }),
+            resolveAuthorId: async (_ctx, email) => (email === 'tomas@example.com' ? 'user-tomas' : null),
+            demoPosts: seeds,
+        });
+
+    it('publishes each seed on its own date, by its own author, with reading time', async () => {
+        const response = await handlersFor().handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
+        const body = (await response.json()) as { created: Array<{ slug: string; contentType: string }> };
+        expect(body.created.map((c) => [c.slug, c.contentType])).toEqual([
+            ['edge-one', 'blog'],
+            ['blurb-one', 'blurb'],
+            ['two-days-in-lisbon', 'photo'],
+        ]);
+
+        const [article, blurb, journal] = created();
+        expect(article).toEqual(
+            expect.objectContaining({
+                authorId: 'user-tomas',
+                userId: 'user-tomas',
+                publishedAt: '2026-04-02T09:00:00.000Z',
+                postedAt: '2026-04-02T09:00:00.000Z',
+                readingTimeMinutes: 1,
+                wordCount: 10,
+                seriesId: 'Building on the edge-id',
+                seriesOrder: 1,
+            }),
+        );
+        // An unknown author email falls back to the caller
+        expect(blurb).toEqual(expect.objectContaining({ authorId: 'owner', userId: 'owner', contentType: 'blurb' }));
+        expect(journal).toEqual(expect.objectContaining({ authorId: 'owner', contentType: 'photo' }));
+    });
+
+    it('creates missing terms once and links tags and categories to the post', async () => {
+        await handlersFor().handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
+
+        // "Cloudflare" and "cloudflare" are one tag; Workers is the other
+        expect(vi.mocked(PostTag.create).mock.calls.map(([d]) => (d as any).name)).toEqual(['Cloudflare', 'Workers']);
+        expect(vi.mocked(PostTagLink.create).mock.calls.map(([d]) => d)).toEqual([
+            { postId: 'id-edge-one', tagId: 'Cloudflare-id' },
+            { postId: 'id-edge-one', tagId: 'Workers-id' },
+        ]);
+        expect(vi.mocked(PostCategoryLink.create)).toHaveBeenCalledWith({
+            postId: 'id-edge-one',
+            categoryId: 'Engineering-id',
+        });
+        expect(vi.mocked(PostSeries.create)).toHaveBeenCalledWith(
+            expect.objectContaining({ title: 'Building on the edge', description: 'Four parts.', appId: 'test-app' }),
+        );
+    });
+
+    it('derives a blurb title and excerpt from its text, and a journal hero from its lead photo', async () => {
+        await handlersFor().handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
+        const [, blurb, journal] = created();
+
+        expect(blurb.title).toMatch(/^Shipped the audit timeline today/);
+        expect(blurb.blurbText).toBe(seeds[1].blurbText);
+        expect(blurb.crossposts).toEqual([{ url: 'https://social.example/p/1' }]);
+        expect(blurb).not.toHaveProperty('content');
+
+        expect(journal.photoAlbum).toHaveLength(2);
+        expect(journal.photoNote).toBe('Trams, tiles and one very long lunch.');
+        expect(journal.excerpt).toBe('Trams, tiles and one very long lunch.');
+        expect(journal.heroImage).toEqual({
+            url: 'https://images.test/lisbon-1.jpg',
+            alt: 'Tram 28 at dawn',
+            caption: 'Tram 28 at dawn',
+        });
+        expect(journal).not.toHaveProperty('content');
     });
 });
 

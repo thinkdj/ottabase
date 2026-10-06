@@ -2,12 +2,12 @@
  * The kitchensink demo post exists to exercise EVERY renderer block. This
  * guards the app-owned fixture itself: if a block type is dropped from the
  * fixture, plugin/renderer coverage silently shrinks. The fixture is seeded as
- * the first entry of `demoBlogPosts`. (Handler behavior is tested in
+ * the first entry of `DEMO_POSTS`. (Handler behavior is tested in
  * packages/ottablog router-seed-demo.test.ts — the handlers live in the
  * package since the router extraction.)
  */
 import { describe, expect, it } from 'vitest';
-import { demoBlogPosts } from '../worker/fixtures/demo-blog-content';
+import { DEMO_POSTS } from '../worker/fixtures/demo';
 import kitchensinkContent from '../worker/fixtures/kitchensink-content.json';
 
 type Block = { type: string; data: Record<string, any> };
@@ -64,7 +64,7 @@ describe('kitchensink fixture', () => {
             blockOfType('beforeAfter').data.afterUrl,
             blockOfType('imageHotspots').data.imageUrl,
             ...blockOfType('mediaGallery').data.items.map((item: { url: string }) => item.url),
-            demoBlogPosts[0].heroImage!.url,
+            DEMO_POSTS[0]!.heroImage!.url,
         ];
 
         for (const url of urls) expect(url).toMatch(/^https:\/\//);

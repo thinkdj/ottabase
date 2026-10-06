@@ -6,6 +6,15 @@
  * the bundle graph.
  */
 export { createBlogHandlers } from './handlers';
+export { seedDemoPosts } from './demo-seed';
+export type { BlogDemoSeedResult, BlogDemoSeedScope } from './demo-seed';
 export { buildBlogRouter, createBlogRouter } from './router';
 export type { BuildBlogRouterOptions } from './router';
-export type { BlogAdminResult, BlogDemoPostSeed, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';
+export type {
+    BlogAdminResult,
+    BlogDemoPhotoSeed,
+    BlogDemoPostSeed,
+    BlogHandlers,
+    BlogRequestContext,
+    BlogRouterConfig,
+} from './types';

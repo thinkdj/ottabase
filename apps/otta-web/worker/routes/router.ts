@@ -81,6 +81,7 @@ import {
     handleAiVision,
 } from './ai';
 import { handleAuditLogs } from './audit';
+import { handleDemoSeed } from './demo-seed';
 import {
     handleAuthConfig,
     handleUserAccountUnlink,
@@ -327,6 +328,7 @@ apiRouter.get('/api/admin/users/:userId', (c) => handleAdminUserById(ctxOf(c), c
 apiRouter.get('/api/admin/comments/flagged', h(handleAdminFlaggedComments));
 apiRouter.get('/api/admin/roles', h(handleAdminRolesList));
 apiRouter.post('/api/admin/roles', h(handleAdminRoleCreate));
+apiRouter.post('/api/admin/demo-seed', h(handleDemoSeed));
 apiRouter.patch('/api/admin/roles/:roleId', (c) => handleAdminRoleUpdate(ctxOf(c), c.params.roleId));
 apiRouter.delete('/api/admin/roles/:roleId', (c) => handleAdminRoleDelete(ctxOf(c), c.params.roleId));
 apiRouter.post('/api/admin/platform-owner/promote', h(handleAdminPromotePlatformOwner));

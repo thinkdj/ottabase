@@ -16,7 +16,6 @@ import { createBlogHandlers } from '@ottabase/ottablog/router';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { demoBlogPosts } from '../fixtures/demo-blog-content';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { canManagePostInOrg, requireContentPermission, requireStudioAdminForScope } from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
@@ -127,8 +126,8 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     },
     checkCronAuth,
     verifyPassword: (password, hash) => verifyPassword(password, hash),
-    // Demo seeding is platform-owner-only via the system-scoped requireAdmin above.
-    demoPosts: demoBlogPosts,
+    // Demo content is seeded by the app's own POST /api/admin/demo-seed (worker/routes/demo-seed.ts),
+    // which covers people, media, comments and menus as well as posts; the package route stays unset.
 });
 
 export const {

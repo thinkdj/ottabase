@@ -34,82 +34,56 @@ import {
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
+import { notificationPreferencesTable, notificationsTable } from '@ottabase/notifications';
 import { getEnabledPackageTables } from '../config.migrations';
 import { todosTable } from '../models/Todo';
+
+/** Core tables every app has: auth, tenancy, RBAC, media, and the in-app inbox */
+const coreTables = {
+    accountsTable,
+    authenticatorsTable,
+    mediaTable,
+    sessionsTable,
+    tagsTable,
+    usersTable,
+    verificationTokensTable,
+    scheduledTasksTable,
+    // Multi-tenant/RBAC tables
+    organizationsTable,
+    organizationMembersTable,
+    rolesTable,
+    permissionsTable,
+    userRolesTable,
+    auditLogsTable,
+    userGroupsTable,
+    userGroupMembersTable,
+    // The inbox behind the bell, and its per-person preferences
+    notificationsTable,
+    notificationPreferencesTable,
+};
+
+/** App-specific tables */
+const appTables = {
+    todosTable,
+};
 
 /**
  * Get all table schemas organized by source
  */
 export function getAllSchemas() {
-    // 1. Core schemas from @ottabase/ottaorm (users, auth tables, etc.)
-    const coreTables = {
-        accountsTable,
-        authenticatorsTable,
-        mediaTable,
-        sessionsTable,
-        tagsTable,
-        usersTable,
-        verificationTokensTable,
-        scheduledTasksTable,
-        // Multi-tenant/RBAC tables
-        organizationsTable,
-        organizationMembersTable,
-        rolesTable,
-        permissionsTable,
-        userRolesTable,
-        auditLogsTable,
-        userGroupsTable,
-        userGroupMembersTable,
-    };
-
-    // 2. App-specific schemas
-    const appTables = {
-        todosTable,
-    };
-
-    // 3. Package schemas from enabled packages (ottablog, shortlinks, referrals, etc.)
-    // This includes blog tables (posts, categories, series, etc.) from ottablog package
-    const packageTables = getEnabledPackageTables();
-
-    // Combine all schemas
-    // Note: Later entries override earlier ones if there are duplicates
-    const allSchemas = {
+    // Package schemas come from the enabled packages (ottablog, shortlinks, referrals, etc.).
+    // Later entries override earlier ones if there are duplicates.
+    return {
         ...coreTables,
         ...appTables,
-        ...packageTables,
+        ...getEnabledPackageTables(),
     };
-
-    return allSchemas;
 }
 
 /**
  * Get schema breakdown for debugging/status
  */
 export function getSchemaSummary() {
-    const coreTables = {
-        accountsTable,
-        authenticatorsTable,
-        mediaTable,
-        sessionsTable,
-        tagsTable,
-        usersTable,
-        verificationTokensTable,
-        scheduledTasksTable,
-        // Multi-tenant/RBAC tables
-        organizationsTable,
-        organizationMembersTable,
-        rolesTable,
-        permissionsTable,
-        userRolesTable,
-        auditLogsTable,
-        userGroupsTable,
-        userGroupMembersTable,
-    };
-
-    const appTables = {
-        todosTable,
-    };
-
     const packageTables = getEnabledPackageTables();
 
     return {

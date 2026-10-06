@@ -54,11 +54,19 @@ interface StudioStateResponse {
     languageConfig: BlogLanguageConfig;
 }
 
-/** POST /api/blog/seed-demo — create-only, so `existing` lists slugs it skipped. */
-interface DemoSeedResponse {
-    created: Array<{ id: string; slug: string; contentType: string }>;
-    existing: string[];
-    total: number;
+/** POST /api/admin/demo-seed: create-only, so `existing` counts what it left alone. */
+type SeedCount = { created: number; existing: number };
+type DemoSeedResponse = Record<
+    'people' | 'media' | 'posts' | 'comments' | 'shortlinks' | 'menus' | 'notifications',
+    SeedCount
+>;
+
+/** "12 posts, 4 people" for what a seed run created, or null when it created nothing */
+function seededSummary(result: DemoSeedResponse): string | null {
+    const parts = (Object.keys(result) as Array<keyof DemoSeedResponse>)
+        .filter((key) => result[key].created > 0)
+        .map((key) => `${result[key].created} ${key === 'people' && result[key].created === 1 ? 'person' : key}`);
+    return parts.length ? parts.join(', ') : null;
 }
 
 /** Content Injector plugin config form shape (enable/disable is on the plugin row, not in config modal) */
@@ -153,10 +161,10 @@ export function AdminBlogStudioPage() {
     const [demoSeedResult, setDemoSeedResult] = useState<DemoSeedResponse | null>(null);
 
     const seedDemoMutation = useApiMutation<DemoSeedResponse, Record<string, never>>({
-        endpoint: '/api/blog/seed-demo',
+        endpoint: '/api/admin/demo-seed',
         method: 'POST',
-        // Refresh the content list behind us so the seeded posts show up there.
-        invalidateEntities: ['posts'],
+        // Refresh what the seed filled so it shows up without a reload.
+        invalidateEntities: ['posts', 'media', 'comments', 'shortlinks', 'menus', 'users', 'notifications'],
         mutationOptions: {
             onSuccess: (result) => setDemoSeedResult(result),
             onError: () => {
@@ -384,9 +392,10 @@ export function AdminBlogStudioPage() {
                             Demo Content
                         </CardTitle>
                         <CardDescription>
-                            Publishes a small set of sample posts so a fresh install has something real to look at — two
-                            articles, two release notes, and a “kitchensink” post that renders every block type the
-                            editor supports. The kitchensink is the quickest way to check a theme end to end.
+                            Fills a fresh install with a believable site: four people with roles, a media library, six
+                            months of articles, release notes, short notes and photo journals with their tags and
+                            series, comment threads, shortlinks and navigation. The kitchensink post renders every block
+                            the editor supports, which is the quickest way to check a theme end to end.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -406,14 +415,15 @@ export function AdminBlogStudioPage() {
                             )}
                         </Button>
                         {demoSeedResult ? (
-                            <span className="inline-flex items-center whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
-                                {demoSeedResult.created.length > 0
-                                    ? `Seeded ${demoSeedResult.created.length} of ${demoSeedResult.total}`
+                            <span className="inline-flex items-center rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                                {seededSummary(demoSeedResult)
+                                    ? `Seeded ${seededSummary(demoSeedResult)}`
                                     : 'Already seeded'}
                             </span>
                         ) : (
                             <p className="text-sm text-muted-foreground">
-                                Runs once. Existing posts are never overwritten, so it is safe to repeat.
+                                Creates only what is missing. Nothing you edited is overwritten, so it is safe to
+                                repeat.
                             </p>
                         )}
                     </CardContent>

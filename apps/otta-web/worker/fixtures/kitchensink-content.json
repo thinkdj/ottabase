@@ -13,7 +13,7 @@
             "id": "P8cvY45gey",
             "type": "paragraph",
             "data": {
-                "text": "Every block OttaEditor can write, on one page, in the order you would meet them. Scroll through it once to see how your theme handles text, media, and the interactive bits — then <b>edit it, break it, or delete it</b>. Nothing here is precious."
+                "text": "Every block OttaEditor can write, on one page, in the order you would meet them. Scroll through it once to see how your theme handles text, media, and the interactive bits, then <b>edit it, break it, or delete it</b>. Nothing here is precious."
             }
         },
         {
@@ -202,7 +202,7 @@
             "data": {
                 "url": "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
                 "title": "Five seconds of sample video",
-                "caption": "MediaEmbed handles the assets that are not photos — video, audio, and files.",
+                "caption": "MediaEmbed handles the assets that are not photos: video, audio, and files.",
                 "mediaId": "",
                 "mimeType": "video/mp4",
                 "mediaKind": "video",
@@ -260,7 +260,7 @@
                                     "id": "U5ZnhWppnN",
                                     "type": "paragraph",
                                     "data": {
-                                        "text": "Layout splits a row into columns, and each column holds real blocks — not just text. This one takes two thirds of the width and is where the main argument goes."
+                                        "text": "Layout splits a row into columns, and each column holds real blocks, not just text. This one takes two thirds of the width and is where the main argument goes."
                                     }
                                 }
                             ],
@@ -283,7 +283,7 @@
                                     "id": "ftH1FwUQHJ",
                                     "type": "paragraph",
                                     "data": {
-                                        "text": "The remaining third — handy for a sidebar, a caption, or a short checklist:"
+                                        "text": "The remaining third, handy for a sidebar, a caption, or a short checklist:"
                                     }
                                 },
                                 {
@@ -387,7 +387,7 @@
                     },
                     {
                         "question": "Do these answers help my SEO?",
-                        "answer": "Yes — FAQ blocks render as structured data, so search engines can read the questions too."
+                        "answer": "Yes. FAQ blocks render as structured data, so search engines can read the questions too."
                     }
                 ]
             }

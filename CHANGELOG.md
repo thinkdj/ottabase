@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The demo seed builds a whole site.** Seed demo content (Admin > Content > Content Theme, platform owner only) now
+  calls `POST /api/admin/demo-seed`, which creates a team of four people with roles and portraits, a media library of
+  Unsplash photographs, six months of posts across articles, a four-part series, release notes, short notes and photo
+  journals with tags, categories and spread dates, comment threads, shortlinks, navigation menus in their slots, and a
+  few inbox notifications. Every entity is create-only on a stable key, so running it again after edits changes nothing.
+  The blog package's seed contract learned `publishedAt`, `authorEmail`, `tags`, `categories`, `series`, blurbs and
+  photo journals, and exports `seedDemoPosts` for apps that orchestrate their own seed. The copy is written without long
+  dashes, and a test keeps it that way. Each run is recorded in the audit log. Fresh installs now also get the inbox
+  tables (`notifications`, `notification_preferences`), which the schema helper had left out.
 - **Mantine is an optional adapter, not an app dependency.** `apps/otta-web` no longer depends on `@mantine/*`,
   `@ottabase/ui-mantine`, `postcss-preset-mantine` or `postcss-simple-vars`; the Mantine demo page, its route and the
   app's Mantine theme config are gone, and PostCSS (app and Storybook) no longer runs the Mantine preset.

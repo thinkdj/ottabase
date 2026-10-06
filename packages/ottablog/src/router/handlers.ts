@@ -37,6 +37,8 @@ import {
 } from '../import-export';
 import { signPreviewToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
+import { seedDemoPosts } from './demo-seed';
+import { createTermResolver } from './terms';
 import {
     ContentValidationError,
     generateSlug,
@@ -2507,64 +2509,22 @@ ${urls}
         const connectError = config.connect(context.env);
         if (connectError) return connectError;
 
-        const appId = resolveAppId(context);
         // Seed into the CALLER's own organization, not the public-read tenant.
-        // resolveTenant() answers "which tenant does a visitor read?" — in platform
+        // resolveTenant() answers "which tenant does a visitor read?"; in platform
         // mode that is undefined, i.e. a NULL organizationId. Seeding NULL puts the
         // rows outside every admin's scope, so the editor's own lookup
         // (GET /api/ottaorm/posts/:id, tenant-filtered) 404s on content the seed
         // just created. Tagging the caller's org makes seeded posts behave exactly
         // like posts that admin creates by hand.
         const organizationId = resolveOrgId(context.request, auth.session?.user?.organizationId ?? null);
-        const userId = auth.session?.user?.id ?? null;
-        const publishedAt = new Date().toISOString();
-        const created: Array<{ id: unknown; slug: string; contentType: string }> = [];
-        const existing: string[] = [];
-
-        for (const seed of seeds) {
-            // Mirror the UNIQUE index that actually binds — (app_id, slug) — rather
-            // than the org-aware one. An org-filtered probe would miss a same-slug
-            // row owned by another tenant and turn the insert into a hard constraint
-            // failure instead of a clean "already exists".
-            const where: Record<string, unknown> = { slug: seed.slug, appId };
-
-            if (await Post.first(where)) {
-                existing.push(seed.slug);
-                continue;
-            }
-
-            try {
-                const post = await Post.create({
-                    title: seed.title,
-                    slug: seed.slug,
-                    excerpt: seed.excerpt,
-                    content: { ...seed.content, time: Date.now() },
-                    contentType: seed.contentType,
-                    status: 'published',
-                    isFeatured: seed.isFeatured ?? false,
-                    // Omitted rather than nulled when a seed has no hero, so the
-                    // column keeps its own default instead of being force-cleared.
-                    ...(seed.heroImage ? { heroImage: seed.heroImage } : {}),
-                    publishedAt,
-                    postedAt: publishedAt,
-                    userId,
-                    authorId: userId,
-                    appId,
-                    organizationId,
-                });
-                created.push({ id: post.get('id'), slug: seed.slug, contentType: seed.contentType });
-            } catch (error) {
-                // A concurrent seed request may win after our lookup. Re-check
-                // only for a uniqueness conflict; all other failures must remain visible.
-                const message = error instanceof Error ? error.message : String(error);
-                if (!/unique|constraint|duplicate/i.test(message) || !(await Post.first(where))) {
-                    throw error;
-                }
-                existing.push(seed.slug);
-            }
-        }
-
-        return jsonResponse({ created, existing, total: seeds.length });
+        const result = await seedDemoPosts(seeds, {
+            appId: resolveAppId(context),
+            organizationId,
+            userId: auth.session?.user?.id ?? null,
+            tenantOrganizationId: resolveMode(context.env) === 'org' ? organizationId : undefined,
+            authorIdFor: config.resolveAuthorId ? (email) => config.resolveAuthorId!(context, email) : undefined,
+        });
+        return jsonResponse(result);
     }
 
     /**
@@ -2793,29 +2753,7 @@ ${urls}
         const tenantOrg = resolveMode(context.env) === 'org' ? scope.organizationId : undefined;
         const languageConfig = await languageConfigFor(context, scope.appId, tenantOrg);
 
-        const termIds = new Map<string, string>();
-        const ensureTerm = async (kind: 'tag' | 'category' | 'series', name: string): Promise<string> => {
-            const key = `${kind}:${name.toLowerCase()}`;
-            const cached = termIds.get(key);
-            if (cached) return cached;
-            const Model = (
-                kind === 'tag' ? PostTag : kind === 'category' ? PostCategory : PostSeries
-            ) as typeof PostTag;
-            const nameField = kind === 'series' ? 'title' : 'name';
-            const where: Record<string, unknown> = { appId: scope.appId };
-            if (kind !== 'series') where.type = 'post';
-            if (tenantOrg !== undefined) where.organizationId = tenantOrg;
-            const slug = generateSlug(name);
-            let term = await Model.first(slug ? { ...where, slug } : { ...where, [nameField]: name });
-            if (!term) {
-                const data = { ...where, organizationId: tenantOrg ?? null, [nameField]: name };
-                globalRLS.validateWrite(Model.entity, securityContext, data, 'create');
-                term = await Model.create(data);
-            }
-            const id = term.get('id') as string;
-            termIds.set(key, id);
-            return id;
-        };
+        const ensureTerm = createTermResolver({ appId: scope.appId, tenantOrganizationId: tenantOrg, securityContext });
 
         const result: BlogImportResult = { created: [], skipped: [], warnings: [] };
         for (const raw of body.posts) {

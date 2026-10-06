@@ -609,7 +609,29 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
 
-## Deleting Demo Content
+## Demo Content
+
+A fresh install is empty. Admin > Content > Content Theme has a **Seed demo content** button (platform owner only) that
+calls `POST /api/admin/demo-seed` and fills the site with a believable demo, written as real content rather than
+placeholders:
+
+- Four people on the team (Maya, Tomás, Priya and Jonas), created as users without a password, members of your
+  organization with editor and author roles, with Unsplash portraits
+- A media library of public Unsplash photographs, each with a title, alt text and caption
+- Six months of posts: a four-part engineering series, six standalone articles, four monthly release notes, five short
+  notes and three photo journals, with tags, categories, a series, hero images and spread publish dates, plus the
+  kitchensink post that renders every block the editor supports
+- Comment threads on four articles, six shortlinks, a main navigation and a footer menu assigned to their slots, and a
+  few inbox notifications for you
+
+Everything lives in `worker/fixtures/demo/` and is keyed on something stable (email, storage key, slug, short code, menu
+slug), so the seed creates only what is missing. Run it again after editing and nothing you changed is touched. The
+images are hotlinked from Unsplash, so the demo needs outbound network access to show them.
+
+To delete the demo afterwards, remove the seeded posts, people, media, shortlinks and menus from their admin pages; the
+seed never recreates something you deleted on purpose unless you run it again.
+
+## Deleting Demo Pages
 
 In production apps, you can safely delete:
 

@@ -1,6 +1,6 @@
 /**
  * Demo seeding writes sample content into the app, so it is a platform-owner
- * setup step. The server gate (POST /api/blog/seed-demo → system-scoped
+ * setup step. The server gate (POST /api/admin/demo-seed, system-scoped
  * platform:admin) is authoritative; these tests lock the matching client
  * behaviour so an org admin never sees a control they cannot use.
  */
@@ -32,7 +32,7 @@ vi.mock('@ottabase/ottaorm/client', () => ({
     // theme/plugin mutations the page also registers.
     useApiMutation: (options: any) => {
         mutationOptionsFor.set(options.endpoint, options);
-        if (options.endpoint === '/api/blog/seed-demo') {
+        if (options.endpoint === '/api/admin/demo-seed') {
             return { mutate: seedMutate, isPending: false };
         }
         return { mutate: vi.fn(), isPending: false };
@@ -93,6 +93,17 @@ vi.mock('@ottabase/ui-shadcn', () => {
 import { AdminBlogStudioPage } from '../AdminBlogStudioPage';
 
 const seedButton = () => screen.queryByRole('button', { name: /seed demo content/i });
+const none = { created: 0, existing: 4 };
+/** A run that found everything in place */
+const NOTHING = {
+    people: none,
+    media: none,
+    posts: none,
+    comments: none,
+    shortlinks: none,
+    menus: none,
+    notifications: none,
+};
 
 describe('Content Studio demo seeding', () => {
     beforeEach(() => {
@@ -117,7 +128,7 @@ describe('Content Studio demo seeding', () => {
 
         expect(screen.getByText('Demo Content')).toBeTruthy();
         expect(screen.getByText(/kitchensink/i)).toBeTruthy();
-        expect(screen.getByText(/never overwritten/i)).toBeTruthy();
+        expect(screen.getByText(/safe to repeat/i)).toBeTruthy();
         expect(seedButton()).toBeTruthy();
     });
 
@@ -128,9 +139,9 @@ describe('Content Studio demo seeding', () => {
         fireEvent.click(seedButton()!);
 
         expect(seedMutate).toHaveBeenCalledTimes(1);
-        const options = mutationOptionsFor.get('/api/blog/seed-demo');
+        const options = mutationOptionsFor.get('/api/admin/demo-seed');
         expect(options.method).toBe('POST');
-        expect(options.invalidateEntities).toEqual(['posts']);
+        expect(options.invalidateEntities).toEqual(expect.arrayContaining(['posts', 'media', 'menus']));
     });
 
     it('reports how many rows a run created', () => {
@@ -138,27 +149,21 @@ describe('Content Studio demo seeding', () => {
 
         render(<AdminBlogStudioPage />);
         act(() =>
-            mutationOptionsFor.get('/api/blog/seed-demo').mutationOptions.onSuccess({
-                created: [{ id: 'p1', slug: 'welcome', contentType: 'blog' }],
-                existing: [],
-                total: 4,
+            mutationOptionsFor.get('/api/admin/demo-seed').mutationOptions.onSuccess({
+                ...NOTHING,
+                people: { created: 1, existing: 3 },
+                posts: { created: 12, existing: 8 },
             }),
         );
 
-        expect(screen.getByText('Seeded 1 of 4')).toBeTruthy();
+        expect(screen.getByText('Seeded 1 person, 12 posts')).toBeTruthy();
     });
 
     it('reports an already-seeded run without claiming new rows', () => {
         isPlatformAdminMock.mockReturnValue(true);
 
         render(<AdminBlogStudioPage />);
-        act(() =>
-            mutationOptionsFor.get('/api/blog/seed-demo').mutationOptions.onSuccess({
-                created: [],
-                existing: ['welcome'],
-                total: 4,
-            }),
-        );
+        act(() => mutationOptionsFor.get('/api/admin/demo-seed').mutationOptions.onSuccess(NOTHING));
 
         expect(screen.getByText('Already seeded')).toBeTruthy();
     });
