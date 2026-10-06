@@ -196,8 +196,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: Shield,
         items: [
             {
-                title: 'Audit Logs',
-                description: 'Search audit logs for security and compliance tracking.',
+                title: 'Audit log',
+                description: 'Who did what and when, as a timeline you can filter, follow and export.',
                 href: '/admin/security/audit',
                 icon: FileText,
                 scope: 'org',

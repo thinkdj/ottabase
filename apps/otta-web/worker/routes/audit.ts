@@ -1,6 +1,7 @@
 import { getSession } from '@ottabase/auth/backend';
 import { errorResponse } from '@ottabase/utils/http-errors';
-import { paginatedJsonResponse, parsePaginationParams } from '@ottabase/utils/pagination';
+import { jsonResponse } from '@ottabase/utils/http-response';
+import { createPaginatedResponse, parsePaginationParams } from '@ottabase/utils/pagination';
 import { requireAdminAccess, SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { requireSignedIn } from '../lib/utils';
@@ -61,11 +62,13 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
     const search = (url.searchParams.get('search') || '').trim().toLowerCase();
     const action = url.searchParams.get('action') || '';
     const resourceType = url.searchParams.get('entityType') || '';
+    const status = url.searchParams.get('status') || '';
     const requestedUserId = url.searchParams.get('userId') || '';
     const requestedOrgId = url.searchParams.get('organizationId') || '';
 
     const effectiveUserId = isAdmin ? requestedUserId || null : userId;
 
+    // What the caller may see at all; the facets are counted over this, the rows over this plus the filters
     const conditions: string[] = [];
     const values: any[] = [];
 
@@ -97,6 +100,9 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
         conditions.push(orgClauses.length > 0 ? `(${orgClauses.join(' OR ')})` : '0 = 1');
     }
 
+    const scopeWhere = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const scopeValues = [...values];
+
     if (action) {
         conditions.push('action = ?');
         values.push(action);
@@ -105,6 +111,11 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
     if (resourceType) {
         conditions.push('resource_type = ?');
         values.push(resourceType);
+    }
+
+    if (status === 'success' || status === 'failure' || status === 'error') {
+        conditions.push('status = ?');
+        values.push(status);
     }
 
     if (search) {
@@ -117,24 +128,31 @@ export async function handleAuditLogs(context: AuditRouteContext): Promise<Respo
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * perPage;
+    const facet = (column: 'action' | 'resource_type') =>
+        env.OBCF_D1.prepare(
+            `SELECT ${column} AS value, count(*) AS count FROM audit_logs ${scopeWhere} GROUP BY ${column} ORDER BY count DESC`,
+        ).bind(...scopeValues);
 
-    const countResult = await env.OBCF_D1.prepare(`SELECT count(*) as total FROM audit_logs ${whereClause}`)
-        .bind(...values)
-        .first<any>();
+    const [count, rows, actions, resourceTypes] = await env.OBCF_D1.batch<Record<string, unknown>>([
+        env.OBCF_D1.prepare(`SELECT count(*) as total FROM audit_logs ${whereClause}`).bind(...values),
+        env.OBCF_D1.prepare(`SELECT * FROM audit_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`).bind(
+            ...values,
+            perPage,
+            offset,
+        ),
+        facet('action'),
+        facet('resource_type'),
+    ]);
 
-    const total = Number(countResult?.total || 0);
-
-    const results = await env.OBCF_D1.prepare(
-        `SELECT * FROM audit_logs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    )
-        .bind(...values, perPage, offset)
-        .all<any>();
-
-    return paginatedJsonResponse({
-        data: results.results || [],
-        total,
-        page,
-        perPage,
-        path: '/api/audit/logs',
+    return jsonResponse({
+        ...createPaginatedResponse({
+            data: rows.results || [],
+            total: Number(count.results?.[0]?.total || 0),
+            page,
+            perPage,
+            path: '/api/audit/logs',
+        }),
+        // Which actions and resource types exist in what the caller can see, for the filters
+        facets: { actions: actions.results || [], resourceTypes: resourceTypes.results || [] },
     });
 }

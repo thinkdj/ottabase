@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { blogFeedSearch } from '@/pages/blog/blogLinks';
+import { auditSearch } from '@/pages/admin/security/audit/auditTimeline';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES } from '@/ottabase/config/premium';
@@ -582,7 +583,7 @@ const adminAuditRoute = makeAdminRoute(
     '/admin/security/audit',
     () => import('@/pages/admin/security/audit/AuditLogViewerPage'),
     'AuditLogViewerPage',
-    { scope: 'org' },
+    { scope: 'org', validateSearch: auditSearch },
 );
 const adminSecurityRLSRoute = makeAdminRoute(
     '/admin/security/rls',

@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The audit log reads as a timeline.** `/admin/security/audit` groups entries by day (Today, Yesterday, then dates)
+  with a status dot, who did what to which resource, and a one-line summary that opens into the full record. The filters
+  live in the URL, so a view can be shared: search, action, resource and status, plus a person or an organization you
+  follow by clicking them in an entry. The action and resource lists come from the data itself: `GET /api/audit/logs`
+  now returns `facets` with counts over the caller's scope and accepts a `status` filter. The CSV export stays.
 - **The lightbox is a real modal dialog.** Both variants open a native `<dialog>` with `showModal()`: the page behind is
   inert, focus moves into the viewer and returns to the opener on close, Escape and the arrow keys work from anywhere
   inside while a focused video keeps its own arrow keys, the counter is announced, the current thumbnail is marked, and

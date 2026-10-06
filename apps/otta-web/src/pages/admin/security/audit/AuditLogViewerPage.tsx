@@ -1,795 +1,450 @@
+/**
+ * Audit log (admin): who did what and when, as a timeline grouped by day. The filters live in the
+ * URL, so a view can be shared, and the action and resource lists come from the rows themselves.
+ */
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
-import { timeAgo } from '@/hooks/useLastRefreshed';
 import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
-import type { PaginatedResponse, Pagination } from '@/lib/api-types';
 import type { AuditLogRecord } from '@/types/rbac';
-import { downloadTextFile, toCsv } from '@ottabase/utils/browser';
+import { useApiQuery } from '@ottabase/ottaorm/client';
+import { Chip, EmptyState, LoadingState } from '@ottabase/ui-components';
+import { Button, Input, NativeSelect, NativeSelectOption } from '@ottabase/ui-shadcn';
+import { downloadTextFile } from '@ottabase/utils/browser';
+import { keepPreviousData } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { ChevronDown, Download, ScrollText, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Badge,
-    Button,
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-    Input,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@ottabase/ui-shadcn';
-import { Link } from '@tanstack/react-router';
-import {
-    AlertTriangle,
-    ArrowLeft,
-    CheckCircle2,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
-    Clock,
-    Copy,
-    Download,
-    FileText,
-    Filter,
-    Search,
-    XCircle,
-} from 'lucide-react';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { LoadingState, EmptyState } from '@ottabase/ui-components';
+    auditCsv,
+    auditQuery,
+    auditSearch,
+    clock,
+    dayGroups,
+    fullDate,
+    humanizeAction,
+    isDestructive,
+    parseJson,
+    shortId,
+    summarize,
+    type AuditLogsResponse,
+    type AuditSearch,
+    type AuditStatus,
+} from './auditTimeline';
 
-type AuditLogsResponse = PaginatedResponse<AuditLogRecord>;
-
+const PER_PAGE = 50;
 /** Export pages through the API at its max page size, up to a sane cap */
 const EXPORT_PAGE_SIZE = 100;
 const EXPORT_MAX_ROWS = 5000;
+const NO_LOGS: AuditLogRecord[] = [];
+const MICRO = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
+const STATUS: Record<AuditStatus, { label: string; dot: string }> = {
+    success: { label: 'Succeeded', dot: 'bg-success' },
+    failure: { label: 'Failed', dot: 'bg-destructive' },
+    error: { label: 'Errored', dot: 'bg-warning' },
+};
 
-const CHIP_CLASS =
-    'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
-const TH_CLASS = 'px-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-const MICRO_LABEL_CLASS = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-
-// ============================================================
-// Helpers
-// ============================================================
-
-/** Format Unix ms to full readable date */
-function fullDate(ms: number): string {
-    return new Date(ms).toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+export function AuditLogViewerPage() {
+    const search = useSearch({ strict: false }) as AuditSearch;
+    const navigate = useNavigate();
+    const toast = useRBACToast();
+    const page = search.page ?? 1;
+    const query = auditQuery(search, page, PER_PAGE);
+    const logs = useApiQuery<AuditLogsResponse>({
+        entity: 'audit',
+        queryKey: [query],
+        endpoint: `/api/audit/logs?${query}`,
+        queryOptions: { placeholderData: keepPreviousData, meta: { errorPresentation: 'local' } },
     });
-}
 
-/** Truncate a UUID to first 8 chars */
-function truncateId(id: string | null | undefined): string {
-    if (!id) return '-';
-    return id.length > 12 ? id.slice(0, 8) + '…' : id;
-}
+    /** Changes the URL; a change of filter starts again at page 1 */
+    const update = useCallback(
+        (patch: Partial<AuditSearch>, replace = false) =>
+            void navigate({
+                search: (prev: AuditSearch) => auditSearch({ ...prev, page: undefined, ...patch }),
+                replace,
+            } as never),
+        [navigate],
+    );
 
-/** Parse metadata JSON string safely, returns parsed object or null */
-function parseMetadata(raw: string | null | undefined): Record<string, unknown> | null {
-    if (!raw) return null;
-    try {
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        return typeof parsed === 'object' && parsed !== null ? parsed : null;
-    } catch {
-        return null;
-    }
-}
+    // The box follows the URL and the URL follows the box once typing pauses
+    const q = search.q ?? '';
+    const [draft, setDraft] = useState(q);
+    useEffect(() => setDraft(q), [q]);
+    useEffect(() => {
+        if (draft === q) return;
+        const timer = setTimeout(() => update({ q: draft || undefined }, true), 300);
+        return () => clearTimeout(timer);
+    }, [draft, q, update]);
 
-/** Get a short summary of metadata for display */
-function metadataSummary(raw: string | null | undefined): string {
-    const parsed = parseMetadata(raw);
-    if (!parsed) return '-';
-    const keys = Object.keys(parsed);
-    if (keys.length === 0) return '-';
+    const [open, setOpen] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
+    const rows = logs.data?.data ?? NO_LOGS;
+    const pagination = logs.data?.pagination;
+    const facets = logs.data?.facets;
+    const groups = useMemo(() => dayGroups(rows), [rows]);
+    const filtered = Boolean(search.q || search.action || search.type || search.status || search.user || search.org);
 
-    // Pick the most informative fields to show
-    const priorityKeys = ['violationType', 'method', 'logoType', 'url', 'reason', 'error', 'kitId'];
-    const parts: string[] = [];
-    for (const key of priorityKeys) {
-        if (key in parsed && parsed[key] != null) {
-            const val = parsed[key];
-            const strVal = typeof val === 'string' ? val : JSON.stringify(val);
-            parts.push(`${key}: ${strVal.length > 40 ? strVal.slice(0, 40) + '…' : strVal}`);
+    /** Every row matching the filters as CSV, newest first, capped */
+    const exportCsv = async () => {
+        setExporting(true);
+        try {
+            const all: AuditLogRecord[] = [];
+            for (let p = 1; all.length < EXPORT_MAX_ROWS; p++) {
+                const res = await api<AuditLogsResponse>(`/api/audit/logs?${auditQuery(search, p, EXPORT_PAGE_SIZE)}`);
+                all.push(...(res.data ?? []));
+                if (!res.pagination || p >= res.pagination.totalPages) break;
+            }
+            if (!all.length) {
+                toast.info('Nothing to export', 'No entries match the current filters');
+                return;
+            }
+            const exported = all.slice(0, EXPORT_MAX_ROWS);
+            downloadTextFile(
+                auditCsv(exported),
+                `audit-log-${new Date().toISOString().slice(0, 10)}.csv`,
+                'text/csv;charset=utf-8',
+            );
+            toast.success(
+                'Export ready',
+                `${exported.length} entr${exported.length === 1 ? 'y' : 'ies'} saved as CSV${all.length >= EXPORT_MAX_ROWS ? ` (first ${EXPORT_MAX_ROWS})` : ''}`,
+            );
+        } catch {
+            toast.error('Export failed', 'Could not load the audit log. Try again.');
+        } finally {
+            setExporting(false);
         }
-        if (parts.length >= 2) break;
-    }
-
-    // If nothing from priority, take first 2 keys
-    if (parts.length === 0) {
-        for (const key of keys.slice(0, 2)) {
-            const val = parsed[key];
-            if (val == null) continue;
-            const strVal = typeof val === 'string' ? val : JSON.stringify(val);
-            parts.push(`${key}: ${strVal.length > 30 ? strVal.slice(0, 30) + '…' : strVal}`);
-        }
-    }
-
-    return parts.join(' · ') || '-';
-}
-
-/** Destructive-leaning actions get destructive chip accents; everything else stays neutral */
-function getActionChipClass(action: string): string {
-    if (
-        action.includes('delete') ||
-        action.includes('remove') ||
-        action.includes('revoke') ||
-        action.includes('security') ||
-        action.includes('violation')
-    ) {
-        return 'text-destructive ring-destructive/30';
-    }
-    return 'text-muted-foreground ring-border';
-}
-
-/** Humanize action name: "brand.kit.update" -> "Brand Kit Update" */
-function humanizeAction(action: string): string {
-    return action.replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// ============================================================
-// Sub-components
-// ============================================================
-
-/** Copyable ID cell — shows truncated ID, copies full on click */
-function CopyableId({ id, label }: { id: string | null | undefined; label?: string }) {
-    const [copied, setCopied] = useState(false);
-    if (!id) return <span className="text-muted-foreground">-</span>;
-
-    const handleCopy = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        await navigator.clipboard.writeText(id);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
     };
 
     return (
-        <TooltipProvider delayDuration={200}>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <button
-                        onClick={handleCopy}
-                        className="group inline-flex items-center gap-1 text-left font-mono text-xs text-muted-foreground transition-colors duration-normal hover:text-foreground"
-                    >
-                        <span>{truncateId(id)}</span>
-                        <Copy className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
-                    </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                    <p className="break-all font-mono text-xs">
-                        {copied ? 'Copied!' : (label ? `${label}: ` : '') + id}
+        <div className="space-y-8">
+            <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <ScrollText className="h-7 w-7 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Audit log</h1>
+                    </div>
+                    <p className="max-w-3xl text-muted-foreground">
+                        Who did what and when, across the organizations you belong to. Click a person or an organization
+                        to follow them.
                     </p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    );
-}
-
-/** Status indicator icon */
-function StatusIcon({ status }: { status: string }) {
-    switch (status) {
-        case 'success':
-            return <CheckCircle2 className="h-4 w-4 text-success" />;
-        case 'failure':
-            return <XCircle className="h-4 w-4 text-destructive" />;
-        case 'error':
-            return <AlertTriangle className="h-4 w-4 text-warning" />;
-        default:
-            return <span className="h-4 w-4" />;
-    }
-}
-
-/** Expanded detail row showing full log metadata */
-function LogDetailRow({ log, colSpan }: { log: AuditLogRecord; colSpan: number }) {
-    const metadata = useMemo(() => parseMetadata(log.metadata), [log.metadata]);
-    const changes = useMemo(() => parseMetadata(log.changes), [log.changes]);
-
-    return (
-        <TableRow className="border-border/60 bg-muted/40 hover:bg-muted/40">
-            <TableCell colSpan={colSpan} className="p-4">
-                <div className="grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-                    {/* IDs */}
-                    <div className="space-y-1.5">
-                        <p className={MICRO_LABEL_CLASS}>Identifiers</p>
-                        <div className="space-y-1">
-                            <DetailRow label="Log ID" value={log.id} mono />
-                            <DetailRow label="User ID" value={log.user_id} mono />
-                            {log.user_email && <DetailRow label="Email" value={log.user_email} />}
-                            {log.organization_id && <DetailRow label="Org ID" value={log.organization_id} mono />}
-                            {log.app_id && <DetailRow label="App ID" value={log.app_id} mono />}
-                            {log.resource_id && <DetailRow label="Resource ID" value={log.resource_id} mono />}
-                        </div>
-                    </div>
-
-                    {/* Request context */}
-                    <div className="space-y-1.5">
-                        <p className={MICRO_LABEL_CLASS}>Context</p>
-                        <div className="space-y-1">
-                            <DetailRow label="Status" value={log.status} />
-                            {log.error_message && (
-                                <DetailRow label="Error" value={log.error_message} className="text-destructive" />
-                            )}
-                            {log.ip_address && <DetailRow label="IP" value={log.ip_address} mono />}
-                            {log.user_agent && (
-                                <DetailRow label="User Agent" value={log.user_agent} className="break-all text-xs" />
-                            )}
-                            <DetailRow label="Time" value={fullDate(log.created_at)} />
-                        </div>
-                    </div>
-
-                    {/* Metadata / Changes */}
-                    <div className="space-y-1.5">
-                        {metadata && Object.keys(metadata).length > 0 && (
-                            <>
-                                <p className={MICRO_LABEL_CLASS}>Metadata</p>
-                                <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-background p-2 text-xs ring-1 ring-border">
-                                    {JSON.stringify(metadata, null, 2)}
-                                </pre>
-                            </>
-                        )}
-                        {changes && Object.keys(changes).length > 0 && (
-                            <>
-                                <p className={`mt-2 ${MICRO_LABEL_CLASS}`}>Changes</p>
-                                <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-background p-2 text-xs ring-1 ring-border">
-                                    {JSON.stringify(changes, null, 2)}
-                                </pre>
-                            </>
-                        )}
-                    </div>
                 </div>
-            </TableCell>
-        </TableRow>
+                <Button variant="outline" onClick={exportCsv} disabled={exporting} className="w-fit gap-2">
+                    <Download className="h-4 w-4" />
+                    {exporting ? 'Exporting' : 'Export CSV'}
+                </Button>
+            </header>
+
+            <div className="flex flex-wrap items-center gap-2">
+                <Input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Search email, action or resource"
+                    aria-label="Search"
+                    className="h-9 w-full bg-background text-sm sm:w-64"
+                />
+                <NativeSelect
+                    size="sm"
+                    aria-label="Action"
+                    value={search.action ?? ''}
+                    onChange={(e) => update({ action: e.target.value || undefined })}
+                >
+                    <NativeSelectOption value="">Any action</NativeSelectOption>
+                    {facets?.actions.map((f) => (
+                        <NativeSelectOption key={f.value} value={f.value}>
+                            {humanizeAction(f.value)} ({f.count})
+                        </NativeSelectOption>
+                    ))}
+                </NativeSelect>
+                <NativeSelect
+                    size="sm"
+                    aria-label="Resource"
+                    value={search.type ?? ''}
+                    onChange={(e) => update({ type: e.target.value || undefined })}
+                >
+                    <NativeSelectOption value="">Any resource</NativeSelectOption>
+                    {facets?.resourceTypes.map((f) => (
+                        <NativeSelectOption key={f.value} value={f.value}>
+                            {f.value} ({f.count})
+                        </NativeSelectOption>
+                    ))}
+                </NativeSelect>
+                <NativeSelect
+                    size="sm"
+                    aria-label="Status"
+                    value={search.status ?? ''}
+                    onChange={(e) => update({ status: (e.target.value || undefined) as AuditStatus | undefined })}
+                >
+                    <NativeSelectOption value="">Any status</NativeSelectOption>
+                    {(Object.keys(STATUS) as AuditStatus[]).map((s) => (
+                        <NativeSelectOption key={s} value={s}>
+                            {STATUS[s].label}
+                        </NativeSelectOption>
+                    ))}
+                </NativeSelect>
+                {search.user && (
+                    <FilterChip label={`User ${shortId(search.user)}`} onRemove={() => update({ user: undefined })} />
+                )}
+                {search.org && (
+                    <FilterChip label={`Org ${shortId(search.org)}`} onRemove={() => update({ org: undefined })} />
+                )}
+                {filtered && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={() =>
+                            update({
+                                q: undefined,
+                                action: undefined,
+                                type: undefined,
+                                status: undefined,
+                                user: undefined,
+                                org: undefined,
+                            })
+                        }
+                    >
+                        Clear
+                    </Button>
+                )}
+                {pagination && (
+                    <span className={`ml-auto ${MICRO}`}>
+                        {pagination.total} {pagination.total === 1 ? 'entry' : 'entries'}
+                    </span>
+                )}
+            </div>
+
+            {logs.isError && <ApiErrorDisplay error={logs.error} onRetry={() => void logs.refetch()} />}
+
+            {logs.isPending ? (
+                <LoadingState count={8} height="h-12" />
+            ) : rows.length === 0 ? (
+                <EmptyState
+                    icon={<ScrollText />}
+                    title={filtered ? 'Nothing matches these filters' : 'No activity yet'}
+                    description={
+                        filtered
+                            ? 'Loosen the filters, or clear them.'
+                            : 'What people do here will show up as it happens.'
+                    }
+                />
+            ) : (
+                <div className="space-y-6">
+                    {groups.map((group) => (
+                        <section key={group.key} aria-label={group.label}>
+                            <h2 className="mb-2 flex items-baseline gap-2 text-sm font-semibold">
+                                {group.label}
+                                <span className={MICRO}>{group.logs.length}</span>
+                            </h2>
+                            <ol>
+                                {group.logs.map((log) => (
+                                    <Entry
+                                        key={log.id}
+                                        log={log}
+                                        open={open === log.id}
+                                        onToggle={() => setOpen(open === log.id ? null : log.id)}
+                                        onUser={search.user ? undefined : () => update({ user: log.user_id })}
+                                        onOrg={
+                                            search.org
+                                                ? undefined
+                                                : () => update({ org: log.organization_id ?? undefined })
+                                        }
+                                    />
+                                ))}
+                            </ol>
+                        </section>
+                    ))}
+                    {pagination && pagination.totalPages > 1 && (
+                        <nav className="flex items-center justify-between" aria-label="Pages">
+                            <span className={MICRO}>
+                                Page {pagination.page} of {pagination.totalPages}
+                            </span>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    onClick={() => update({ page: page - 1 })}
+                                >
+                                    Newer
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page >= pagination.totalPages}
+                                    onClick={() => update({ page: page + 1 })}
+                                >
+                                    Older
+                                </Button>
+                            </div>
+                        </nav>
+                    )}
+                </div>
+            )}
+        </div>
     );
 }
 
-/** Simple label:value row for the detail panel */
-function DetailRow({
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+    return (
+        <Chip className="gap-1 normal-case tracking-normal">
+            {label}
+            <button
+                type="button"
+                onClick={onRemove}
+                aria-label={`Remove ${label} filter`}
+                className="rounded-full hover:text-foreground"
+            >
+                <X className="h-3 w-3" />
+            </button>
+        </Chip>
+    );
+}
+
+/** One row of the timeline: when, who, what, on which resource, and the details on demand */
+function Entry({
+    log,
+    open,
+    onToggle,
+    onUser,
+    onOrg,
+}: {
+    log: AuditLogRecord;
+    open: boolean;
+    onToggle: () => void;
+    onUser?: () => void;
+    onOrg?: () => void;
+}) {
+    const status = STATUS[log.status] ?? STATUS.error;
+    const who = log.user_email || (log.user_id ? shortId(log.user_id) : '');
+    const summary = summarize(log);
+    const detailsId = `audit-${log.id}`;
+    return (
+        <li className="group flex gap-3">
+            <time
+                dateTime={new Date(log.created_at).toISOString()}
+                title={fullDate(log.created_at)}
+                className="w-[5.5rem] shrink-0 whitespace-nowrap pt-0.5 text-right font-mono text-xs tabular-nums text-muted-foreground"
+            >
+                {clock(log.created_at)}
+            </time>
+            <div className="flex flex-col items-center">
+                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${status.dot}`} title={status.label} />
+                <span className="w-px flex-1 bg-border/60 group-last:hidden" />
+            </div>
+            <div className="min-w-0 flex-1 pb-4">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <span className="sr-only">{status.label}.</span>
+                    {who ? (
+                        onUser ? (
+                            <button
+                                type="button"
+                                onClick={onUser}
+                                title={`Only ${who}`}
+                                className="max-w-[16rem] truncate font-medium hover:underline"
+                            >
+                                {who}
+                            </button>
+                        ) : (
+                            <span className="max-w-[16rem] truncate font-medium">{who}</span>
+                        )
+                    ) : (
+                        <span className="text-muted-foreground">System</span>
+                    )}
+                    <Chip className={isDestructive(log.action) ? 'text-destructive ring-destructive/30' : undefined}>
+                        {humanizeAction(log.action)}
+                    </Chip>
+                    <code className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-xs">{log.resource_type}</code>
+                    {log.resource_id && (
+                        <span className="font-mono text-xs text-muted-foreground" title={log.resource_id}>
+                            {shortId(log.resource_id)}
+                        </span>
+                    )}
+                    {log.organization_id && onOrg && (
+                        <button
+                            type="button"
+                            onClick={onOrg}
+                            title={`Only organization ${log.organization_id}`}
+                            className="font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                            org {shortId(log.organization_id)}
+                        </button>
+                    )}
+                </div>
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    aria-expanded={open}
+                    aria-controls={detailsId}
+                    className="mt-0.5 flex max-w-full items-center gap-1 text-left text-xs text-muted-foreground hover:text-foreground"
+                >
+                    <span className={`truncate ${log.status === 'success' ? '' : 'text-destructive'}`}>
+                        {summary || 'Details'}
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </button>
+                {open && <Details id={detailsId} log={log} />}
+            </div>
+        </li>
+    );
+}
+
+function Details({ id, log }: { id: string; log: AuditLogRecord }) {
+    const metadata = parseJson(log.metadata);
+    const changes = parseJson(log.changes);
+    return (
+        <div id={id} className="mt-3 grid gap-4 rounded-xl bg-muted/40 p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-1.5">
+                <p className={MICRO}>Identifiers</p>
+                <Field label="Log" value={log.id} mono />
+                <Field label="User" value={log.user_id} mono />
+                <Field label="Email" value={log.user_email} />
+                <Field label="Org" value={log.organization_id} mono />
+                <Field label="App" value={log.app_id} mono />
+                <Field label="Resource" value={log.resource_id} mono />
+            </div>
+            <div className="space-y-1.5">
+                <p className={MICRO}>Context</p>
+                <Field label="Status" value={STATUS[log.status]?.label ?? log.status} />
+                <Field label="Error" value={log.error_message} className="text-destructive" />
+                <Field label="IP" value={log.ip_address} mono />
+                <Field label="Agent" value={log.user_agent} className="text-xs" />
+                <Field label="Time" value={fullDate(log.created_at)} />
+            </div>
+            <div className="space-y-1.5">
+                {metadata && <Json label="Metadata" value={metadata} />}
+                {changes && <Json label="Changes" value={changes} />}
+            </div>
+        </div>
+    );
+}
+
+function Field({
     label,
     value,
     mono,
     className,
 }: {
     label: string;
-    value: string | null | undefined;
+    value?: string | null;
     mono?: boolean;
     className?: string;
 }) {
     if (!value) return null;
     return (
         <div className="flex gap-2 text-xs">
-            <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
-            <span className={`${mono ? 'font-mono' : ''} ${className ?? ''} break-all`}>{value}</span>
+            <span className="w-16 shrink-0 text-muted-foreground">{label}</span>
+            <span className={`break-all ${mono ? 'font-mono' : ''} ${className ?? ''}`}>{value}</span>
         </div>
     );
 }
 
-// ============================================================
-// Main page
-// ============================================================
-
-export function AuditLogViewerPage() {
-    const toast = useRBACToast();
-    const [logs, setLogs] = useState<AuditLogRecord[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [filtersOpen, setFiltersOpen] = useState(true);
-
-    // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const [perPage, setPerPage] = useState(25);
-    const [pagination, setPagination] = useState<Pagination | null>(null);
-
-    // Filters
-    const [searchTerm, setSearchTerm] = useState('');
-    const [actionFilter, setActionFilter] = useState<string>('all');
-    const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all');
-    const [userIdFilter, setUserIdFilter] = useState('');
-    const [organizationIdFilter, setOrganizationIdFilter] = useState('');
-
-    /** Query for the current filters; shared by the table and the export */
-    const buildParams = useCallback(
-        (page: number, itemsPerPage: number) => {
-            const params = new URLSearchParams({ page: page.toString(), per_page: itemsPerPage.toString() });
-            if (searchTerm) params.append('search', searchTerm);
-            if (actionFilter !== 'all') params.append('action', actionFilter);
-            if (entityTypeFilter !== 'all') params.append('entityType', entityTypeFilter);
-            if (userIdFilter) params.append('userId', userIdFilter);
-            if (organizationIdFilter) params.append('organizationId', organizationIdFilter);
-            return params.toString();
-        },
-        [searchTerm, actionFilter, entityTypeFilter, userIdFilter, organizationIdFilter],
-    );
-
-    const fetchLogs = useCallback(
-        async (page: number = 1, itemsPerPage: number = 25) => {
-            try {
-                setLoading(true);
-                setError(null);
-
-                const response = await api<AuditLogsResponse>(`/api/audit/logs?${buildParams(page, itemsPerPage)}`);
-                if (response.data) {
-                    setLogs(response.data);
-                    setPagination(response.pagination);
-                    setCurrentPage(response.pagination.page);
-                }
-            } catch (err) {
-                const apiError = err instanceof Error ? err : new Error('Failed to load audit logs');
-                setError(apiError);
-            } finally {
-                setLoading(false);
-            }
-        },
-        [buildParams],
-    );
-
-    useEffect(() => {
-        fetchLogs(currentPage, perPage);
-    }, [fetchLogs, currentPage, perPage]);
-
-    const handleSearch = () => {
-        setCurrentPage(1);
-        fetchLogs(1, perPage);
-    };
-
-    const handleClearFilters = () => {
-        setSearchTerm('');
-        setActionFilter('all');
-        setEntityTypeFilter('all');
-        setUserIdFilter('');
-        setOrganizationIdFilter('');
-        setCurrentPage(1);
-    };
-
-    const [exporting, setExporting] = useState(false);
-
-    /** Download every log matching the current filters as CSV (capped, newest first) */
-    const handleExport = async () => {
-        setExporting(true);
-        try {
-            const rows: AuditLogRecord[] = [];
-            for (let page = 1; rows.length < EXPORT_MAX_ROWS; page++) {
-                const res = await api<AuditLogsResponse>(`/api/audit/logs?${buildParams(page, EXPORT_PAGE_SIZE)}`);
-                rows.push(...(res.data ?? []));
-                if (!res.pagination || page >= res.pagination.totalPages) break;
-            }
-            const exported = rows.slice(0, EXPORT_MAX_ROWS);
-            if (!exported.length) {
-                toast.info('Nothing to export', 'No audit logs match the current filters');
-                return;
-            }
-            const csv = toCsv(
-                [
-                    'time',
-                    'status',
-                    'action',
-                    'resource_type',
-                    'resource_id',
-                    'user_email',
-                    'user_id',
-                    'organization_id',
-                    'ip_address',
-                    'error_message',
-                ],
-                exported.map((l) => [
-                    new Date(l.created_at).toISOString(),
-                    l.status,
-                    l.action,
-                    l.resource_type,
-                    l.resource_id,
-                    l.user_email,
-                    l.user_id,
-                    l.organization_id,
-                    l.ip_address,
-                    l.error_message,
-                ]),
-            );
-            downloadTextFile(csv, `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8');
-            toast.success(
-                'Export ready',
-                `${exported.length} log${exported.length === 1 ? '' : 's'} saved as CSV${rows.length >= EXPORT_MAX_ROWS ? ` (first ${EXPORT_MAX_ROWS})` : ''}`,
-            );
-        } catch {
-            toast.error('Export failed', 'Could not load the audit logs. Try again.');
-        } finally {
-            setExporting(false);
-        }
-    };
-
-    const toggleRow = (id: string) => {
-        setExpandedId((prev) => (prev === id ? null : id));
-    };
-
-    const hasActiveFilters =
-        searchTerm || actionFilter !== 'all' || entityTypeFilter !== 'all' || userIdFilter || organizationIdFilter;
-
-    const colCount = 7;
-
+function Json({ label, value }: { label: string; value: Record<string, unknown> }) {
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="space-y-4">
-                <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                    <Link to="/admin">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Admin
-                    </Link>
-                </Button>
-
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Audit Log Viewer</h1>
-                        <p className="max-w-3xl text-muted-foreground">
-                            View and search audit logs across all organizations and apps
-                        </p>
-                    </div>
-                    <Button variant="outline" onClick={handleExport} disabled={exporting} className="h-9 w-fit gap-2">
-                        <Download className="h-4 w-4" />
-                        {exporting ? 'Exporting…' : 'Export CSV'}
-                    </Button>
-                </div>
-            </div>
-
-            <section className="space-y-4">
-                {/* Collapsible Filters */}
-                <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
-                            <Filter className="h-4 w-4" />
-                            Filters
-                            {hasActiveFilters && (
-                                <Badge variant="outline" className={`ml-1 ${CHIP_CLASS}`}>
-                                    Active
-                                </Badge>
-                            )}
-                            <ChevronDown
-                                className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
-                            />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                        <div className="mt-3 grid gap-3 rounded-xl bg-muted/40 p-4 md:grid-cols-2 lg:grid-cols-3">
-                            {/* Search */}
-                            <div className="space-y-1.5">
-                                <label className={MICRO_LABEL_CLASS}>Search</label>
-                                <div className="flex gap-1.5">
-                                    <Input
-                                        placeholder="Search logs..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                        className="h-9 text-sm"
-                                    />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleSearch}
-                                        className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-                                    >
-                                        <Search className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Action */}
-                            <div className="space-y-1.5">
-                                <label className={MICRO_LABEL_CLASS}>Action</label>
-                                <Select value={actionFilter} onValueChange={setActionFilter}>
-                                    <SelectTrigger className="h-9 bg-background text-sm">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Actions</SelectItem>
-                                        <SelectItem value="create">Create</SelectItem>
-                                        <SelectItem value="update">Update</SelectItem>
-                                        <SelectItem value="delete">Delete</SelectItem>
-                                        <SelectItem value="login">Login</SelectItem>
-                                        <SelectItem value="logout">Logout</SelectItem>
-                                        <SelectItem value="security_violation">Security Violation</SelectItem>
-                                        <SelectItem value="brand.kit.update">Brand Kit Update</SelectItem>
-                                        <SelectItem value="brand.kit.logo.upload">Logo Upload</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Entity Type */}
-                            <div className="space-y-1.5">
-                                <label className={MICRO_LABEL_CLASS}>Resource Type</label>
-                                <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
-                                    <SelectTrigger className="h-9 bg-background text-sm">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Types</SelectItem>
-                                        <SelectItem value="organization">Organization</SelectItem>
-                                        <SelectItem value="organization_member">Member</SelectItem>
-                                        <SelectItem value="role">Role</SelectItem>
-                                        <SelectItem value="permission">Permission</SelectItem>
-                                        <SelectItem value="user">User</SelectItem>
-                                        <SelectItem value="brand">Brand</SelectItem>
-                                        <SelectItem value="rls_security">RLS Security</SelectItem>
-                                        <SelectItem value="shortlinks">Shortlinks</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* User ID */}
-                            <div className="space-y-1.5">
-                                <label className={MICRO_LABEL_CLASS}>User ID</label>
-                                <Input
-                                    placeholder="Filter by user ID..."
-                                    value={userIdFilter}
-                                    onChange={(e) => setUserIdFilter(e.target.value)}
-                                    className="h-9 text-sm"
-                                />
-                            </div>
-
-                            {/* Organization ID */}
-                            <div className="space-y-1.5">
-                                <label className={MICRO_LABEL_CLASS}>Organization ID</label>
-                                <Input
-                                    placeholder="Filter by org ID..."
-                                    value={organizationIdFilter}
-                                    onChange={(e) => setOrganizationIdFilter(e.target.value)}
-                                    className="h-9 text-sm"
-                                />
-                            </div>
-
-                            {/* Clear */}
-                            <div className="flex items-end">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleClearFilters}
-                                    disabled={!hasActiveFilters}
-                                    className="h-9 w-full text-muted-foreground hover:text-foreground"
-                                >
-                                    Clear Filters
-                                </Button>
-                            </div>
-                        </div>
-                    </CollapsibleContent>
-                </Collapsible>
-
-                {/* Error */}
-                {error && (
-                    <ApiErrorDisplay
-                        error={error}
-                        onRetry={() => fetchLogs(currentPage, perPage)}
-                        onDismiss={() => setError(null)}
-                    />
-                )}
-
-                {/* Table */}
-                {loading && logs.length === 0 ? (
-                    <div className="space-y-3" aria-busy="true">
-                        <span className="sr-only">Loading audit logs…</span>
-                        <LoadingState count={10} height="h-10" />
-                    </div>
-                ) : logs.length === 0 ? (
-                    <EmptyState
-                        icon={<FileText />}
-                        title="No audit logs found"
-                        description="Try adjusting your filters or search criteria"
-                    />
-                ) : (
-                    <>
-                        <div className="overflow-hidden rounded-xl border border-border/60">
-                            <Table>
-                                <TableHeader className="bg-muted/40">
-                                    <TableRow className="border-border/60 hover:bg-transparent">
-                                        <TableHead className={`w-[100px] ${TH_CLASS}`}>Time</TableHead>
-                                        <TableHead className={`w-[50px] ${TH_CLASS}`}>Status</TableHead>
-                                        <TableHead className={TH_CLASS}>Action</TableHead>
-                                        <TableHead className={TH_CLASS}>Resource</TableHead>
-                                        <TableHead className={TH_CLASS}>User</TableHead>
-                                        <TableHead className={TH_CLASS}>Org</TableHead>
-                                        <TableHead className={TH_CLASS}>Details</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {logs.map((log) => (
-                                        <Fragment key={log.id}>
-                                            <TableRow
-                                                className={`cursor-pointer border-border/60 transition-colors duration-normal hover:bg-muted/40 ${expandedId === log.id ? 'bg-muted/40' : ''}`}
-                                                onClick={() => toggleRow(log.id)}
-                                            >
-                                                {/* Timestamp — relative with full date tooltip */}
-                                                <TableCell className="px-4 py-3">
-                                                    <TooltipProvider delayDuration={200}>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <span
-                                                                    className={`inline-flex items-center gap-1 whitespace-nowrap ${MICRO_LABEL_CLASS}`}
-                                                                >
-                                                                    <Clock className="h-3 w-3" />
-                                                                    {timeAgo(log.created_at)}
-                                                                </span>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="right">
-                                                                <p className="text-xs">{fullDate(log.created_at)}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </TableCell>
-
-                                                {/* Status */}
-                                                <TableCell className="px-4 py-3">
-                                                    <TooltipProvider delayDuration={200}>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <span className="inline-flex">
-                                                                    <StatusIcon status={log.status} />
-                                                                </span>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent side="top">
-                                                                <p className="text-xs capitalize">
-                                                                    {log.status}
-                                                                    {log.error_message ? `: ${log.error_message}` : ''}
-                                                                </p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </TableCell>
-
-                                                {/* Action */}
-                                                <TableCell className="px-4 py-3">
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={`rounded-full border-transparent bg-background text-[0.6875rem] font-medium ring-1 ${getActionChipClass(log.action)}`}
-                                                    >
-                                                        {humanizeAction(log.action)}
-                                                    </Badge>
-                                                </TableCell>
-
-                                                {/* Resource type + ID */}
-                                                <TableCell className="px-4 py-3">
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <code className="w-fit rounded bg-background px-1.5 py-0.5 font-mono text-xs ring-1 ring-border">
-                                                            {log.resource_type}
-                                                        </code>
-                                                        {log.resource_id && (
-                                                            <span className="font-mono text-xs text-muted-foreground">
-                                                                {truncateId(log.resource_id)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-
-                                                {/* User — show email if available, else truncated ID */}
-                                                <TableCell className="px-4 py-3">
-                                                    <div
-                                                        className="flex flex-col gap-0.5"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        {log.user_email ? (
-                                                            <>
-                                                                <span className="max-w-[160px] truncate text-sm">
-                                                                    {log.user_email}
-                                                                </span>
-                                                                <CopyableId id={log.user_id} label="User ID" />
-                                                            </>
-                                                        ) : (
-                                                            <CopyableId id={log.user_id} label="User ID" />
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-
-                                                {/* Org */}
-                                                <TableCell className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                                    <CopyableId id={log.organization_id} label="Org ID" />
-                                                </TableCell>
-
-                                                {/* Details summary */}
-                                                <TableCell className="max-w-[260px] px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="truncate text-xs text-muted-foreground">
-                                                            {log.error_message || metadataSummary(log.metadata)}
-                                                        </span>
-                                                        <ChevronDown
-                                                            className={`h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-transform ${expandedId === log.id ? 'rotate-180' : ''}`}
-                                                        />
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-
-                                            {/* Expanded detail */}
-                                            {expandedId === log.id && <LogDetailRow log={log} colSpan={colCount} />}
-                                        </Fragment>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        {/* Pagination */}
-                        {pagination && (
-                            <div className="flex items-center justify-between pt-2">
-                                <div className="flex items-center gap-2">
-                                    <span className={MICRO_LABEL_CLASS}>Rows per page:</span>
-                                    <Select
-                                        value={perPage.toString()}
-                                        onValueChange={(v) => {
-                                            setPerPage(parseInt(v));
-                                            setCurrentPage(1);
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-9 w-16 text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                            <SelectItem value="100">100</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <span className={MICRO_LABEL_CLASS}>
-                                        Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
-                                    </span>
-                                    <div className="flex gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                            onClick={() => setCurrentPage(1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronsLeft className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronLeft className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                            disabled={currentPage === pagination.totalPages}
-                                        >
-                                            <ChevronRight className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                            onClick={() => setCurrentPage(pagination.totalPages)}
-                                            disabled={currentPage === pagination.totalPages}
-                                        >
-                                            <ChevronsRight className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </section>
-        </div>
+        <>
+            <p className={MICRO}>{label}</p>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-background p-2 text-xs ring-1 ring-border">
+                {JSON.stringify(value, null, 2)}
+            </pre>
+        </>
     );
 }
