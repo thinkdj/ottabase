@@ -41,6 +41,7 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
+import { LandingPage, LandingSite } from '@ottabase/ottalanding';
 import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -133,6 +134,7 @@ function registerAppModels(env: CloudflareEnv): void {
         : [];
     const packageModels = [
         ...(packages.comments ? [Comment, CommentReaction] : []),
+        ...(packages.ottalanding ? [LandingSite, LandingPage] : []),
         ...(packages.shortlinks ? [Shortlink] : []),
         ...(packages.referrals ? [ReferralTracking] : []),
         ...(packages.ottaai ? [AiProviderCredential] : []),
@@ -161,6 +163,20 @@ function registerAppModels(env: CloudflareEnv): void {
     // are registered after initRLS so the package's explicit policy wins over a
     // built-in policy with the same model name.
     for (const policy of premiumPolicies) registerPolicy(policy as ModelRLSConfig);
+
+    // Landing-site content is app-global and platform-owned, like brand data. It is edited
+    // through /api/landing (platform-admin gated) and generic CRUD default-denies it; this
+    // policy is defense in depth should either of those ever change.
+    if (packages.ottalanding) {
+        for (const model of ['landing_sites', 'landing_pages']) {
+            registerPolicy({
+                model,
+                policy: { ...RLSPolicies.AppScoped(), requirePlatformAdmin: true },
+                contextFields: ['appId'],
+                auditEnabled: true,
+            });
+        }
+    }
 
     // AI provider credentials — registered AFTER initRLS() for the same reason as the
     // ottablog overrides below: the RLS registry is last-write-wins, so a policy registered

@@ -66,3 +66,19 @@ describe('comments package schema adapters stay in lockstep', () => {
         }
     });
 });
+
+describe('landing package schema adapters stay in lockstep', () => {
+    const tableKeys = ['landingSitesTable', 'landingPagesTable'] as const;
+
+    it('exports every landing table through the runtime and drizzle-kit adapters', () => {
+        const packageTables = getEnabledPackageTables() as Record<string, unknown>;
+        const runtimeTables = getAllSchemas() as Record<string, unknown>;
+        const staticTables = drizzleSchema as Record<string, unknown>;
+
+        for (const tableKey of tableKeys) {
+            expect(packageTables[tableKey], `PACKAGE_REGISTRY.${tableKey}`).toBeDefined();
+            expect(runtimeTables[tableKey], `getAllSchemas().${tableKey}`).toBe(packageTables[tableKey]);
+            expect(staticTables[tableKey], `db/schema.${tableKey}`).toBe(packageTables[tableKey]);
+        }
+    });
+});

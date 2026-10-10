@@ -22,6 +22,7 @@ import {
     Gem,
     Image as ImageIcon,
     Inbox,
+    LayoutTemplate,
     Layers,
     Layout,
     Mail,
@@ -131,6 +132,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Content',
         icon: BookOpen,
         items: [
+            {
+                title: 'Landing site',
+                description: 'Edit the public marketing site: its theme, pages and sections.',
+                href: '/admin/content/landing',
+                icon: LayoutTemplate,
+                requiresPackage: 'ottalanding',
+            },
             {
                 title: 'Posts',
                 description: 'Create and manage blog posts, changelogs, docs, and announcements.',

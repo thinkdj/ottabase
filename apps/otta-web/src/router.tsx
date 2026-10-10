@@ -401,6 +401,17 @@ const adminBlogEditRoute = makeAdminRoute(
     'AdminBlogEditorPage',
     { scope: 'org' },
 );
+// Landing site content is APP-GLOBAL (platform-owned, like brand) → platform scope (default).
+const adminLandingRoute = makeAdminRoute(
+    '/admin/content/landing',
+    () => import('@/pages/admin/content/landing/AdminLandingSitePage'),
+    'AdminLandingSitePage',
+);
+const adminLandingPageRoute = makeAdminRoute(
+    '/admin/content/landing/$pageId',
+    () => import('@/pages/admin/content/landing/AdminLandingPageEditorPage'),
+    'AdminLandingPageEditorPage',
+);
 // Blog Studio manages APP-GLOBAL theme + renderer plugins → platform scope (default).
 const adminBlogStudioRoute = makeAdminRoute(
     '/admin/content/blog/studio',
@@ -843,6 +854,8 @@ const packageRoutes = [
     { route: studioCategoriesRoute, pkg: 'ottablog' as const },
     { route: studioSeriesRoute, pkg: 'ottablog' as const },
     { route: studioThemesRoute, pkg: 'ottablog' as const },
+    { route: adminLandingRoute, pkg: 'ottalanding' as const },
+    { route: adminLandingPageRoute, pkg: 'ottalanding' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
     { route: adminAiProvidersRoute, pkg: 'ottaai' as const },
     { route: adminAiGatewayRoute, pkg: 'ottaai' as const },

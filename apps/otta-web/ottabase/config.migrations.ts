@@ -50,6 +50,7 @@ import {
 import { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 import type { Migration } from '@ottabase/ottaorm';
 import { collectPremiumMigrations, collectPremiumTables } from '@ottabase/premium';
+import { landingPagesTable, landingSitesTable } from '@ottabase/ottalanding/schema';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 import { getOttabaseConfig } from './config.loader';
@@ -84,6 +85,10 @@ const PACKAGE_REGISTRY = {
     },
     ottaai: {
         tables: { aiProviderCredentialsTable },
+        migrations: [] as Migration[],
+    },
+    ottalanding: {
+        tables: { landingSitesTable, landingPagesTable },
         migrations: [] as Migration[],
     },
     shortlinks: {

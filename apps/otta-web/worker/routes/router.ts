@@ -147,6 +147,13 @@ import {
     handleReferralsAnalytics,
 } from './referrals';
 import {
+    handleLandingGet,
+    handleLandingPageCreate,
+    handleLandingPageDelete,
+    handleLandingPageUpdate,
+    handleLandingSiteUpdate,
+} from './landing';
+import {
     handleShortlinkById,
     handleShortlinkExplicitGo,
     handleShortlinksAnalytics,
@@ -487,6 +494,18 @@ apiRouter.mount(
     ),
     { when: (c) => packages(c).ottablog },
 );
+
+// -------------------------------------------------------
+// Landing site package (request-time gate) — platform-admin editing only;
+// the public site reads the shared D1 directly (apps/otta-landing)
+// -------------------------------------------------------
+const landingRouter = new Router<CloudflareEnv>();
+landingRouter.get('/', h(handleLandingGet));
+landingRouter.put('/site', h(handleLandingSiteUpdate));
+landingRouter.post('/pages', h(handleLandingPageCreate));
+landingRouter.put('/pages/:id', (c) => handleLandingPageUpdate(ctxOf(c), c.params.id));
+landingRouter.delete('/pages/:id', (c) => handleLandingPageDelete(ctxOf(c), c.params.id));
+apiRouter.mount('/api/landing', landingRouter, { when: (c) => packages(c).ottalanding });
 
 // -------------------------------------------------------
 // Shortlinks package (request-time gate) — mounted at '/'

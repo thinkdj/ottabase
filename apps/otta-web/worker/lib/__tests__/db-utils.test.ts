@@ -60,6 +60,7 @@ vi.mock('@ottabase/ottaorm', () => ({
     registerConnection: mockRegisterConnection,
     registerModels: mockRegisterModels,
     registerPolicy: mockRegisterPolicy,
+    RLSPolicies: { AppScoped: () => ({ appScoped: true }), TenantScoped: () => ({ tenantScoped: true }) },
 }));
 
 vi.mock('@ottabase/ottaorm/models', () => ({
@@ -82,6 +83,11 @@ vi.mock('@ottabase/referrals', () => ({
     ReferralTracking: class ReferralTracking {},
 }));
 
+vi.mock('@ottabase/ottalanding', () => ({
+    LandingSite: class LandingSite {},
+    LandingPage: class LandingPage {},
+}));
+
 vi.mock('@ottabase/shortlinks', () => ({
     Shortlink: class Shortlink {},
 }));
@@ -91,6 +97,7 @@ vi.mock('../../ottabase/config.loader', () => ({
         packages: {
             ottablog: true,
             comments: true,
+            ottalanding: true,
             shortlinks: true,
             referrals: true,
         },
@@ -178,5 +185,26 @@ describe('initAdminCron', () => {
         expect(response?.headers.get('cache-control')).toBe('no-store');
         await expect(response?.json()).resolves.toMatchObject({ code: 'CONFIG_ERROR' });
         expect(mockConfigureOttaORM).not.toHaveBeenCalled();
+    });
+});
+
+describe('landing-site RLS', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockHasConnection.mockReturnValue(false);
+        resetDbConnectionForTests();
+    });
+
+    it('registers platform-admin, app-scoped policies for both landing tables', () => {
+        ensureDbConnection({ OBCF_D1: { id: 'binding-landing' } } as any);
+        for (const model of ['landing_sites', 'landing_pages']) {
+            expect(mockRegisterPolicy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    model,
+                    policy: expect.objectContaining({ appScoped: true, requirePlatformAdmin: true }),
+                    contextFields: ['appId'],
+                }),
+            );
+        }
     });
 });

@@ -3,6 +3,7 @@ import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
+import { LandingSite } from '@ottabase/ottalanding';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { buildAppMigrations } from '../../ottabase/migrations';
@@ -91,6 +92,8 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         initDbConnection(env);
         const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
         await ensureAppBrandDefaults('Ottabase', appId);
+        // Starter landing site, so the public site has content the moment the tables exist
+        if (ottabaseConfig.packages.ottalanding) await LandingSite.ensureForApp(ottabaseConfig.appId);
     }
 
     return jsonResponse(result);

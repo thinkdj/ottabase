@@ -25,6 +25,8 @@
             "@ottabase/ottablog": ["../../packages/ottablog/src/index.ts"],
             "@ottabase/ottaai": ["../../packages/ottaai/src/index.ts"],
             "@ottabase/ottaai/*": ["../../packages/ottaai/src/*"],
+            "@ottabase/ottalanding": ["../../packages/ottalanding/src/index.ts"],
+            "@ottabase/ottalanding/*": ["../../packages/ottalanding/src/*"],
             /*
              * ottaorm subpaths MUST be mapped explicitly.
              *

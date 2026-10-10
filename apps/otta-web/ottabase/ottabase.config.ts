@@ -41,6 +41,7 @@ export default defineOttabaseConfig({
     packages: {
         comments: true,
         ottablog: true,
+        ottalanding: true,
         shortlinks: true,
         referrals: true,
         // AI provisioning / BYOK. Dormant until AI_CREDENTIAL_SECRET is set — the routes,

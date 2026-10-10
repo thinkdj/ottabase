@@ -83,6 +83,7 @@
         "@ottabase/notifications": "workspace:*",
         "@ottabase/ottaai": "workspace:*",
         "@ottabase/ottablog": "workspace:*",
+        "@ottabase/ottalanding": "workspace:*",
         "@ottabase/ottadate": "workspace:*",
         "@ottabase/ottaeditor": "workspace:*",
         "@ottabase/ottalayout": "workspace:*",

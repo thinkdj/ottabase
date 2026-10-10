@@ -48,6 +48,9 @@ export default defineConfig({
             ),
             '@ottabase/ottaai/react': path.resolve(__dirname, '../../packages/ottaai/src/react/index.ts'),
             '@ottabase/ottaai': path.resolve(__dirname, '../../packages/ottaai/src/index.ts'),
+            '@ottabase/ottalanding/react': path.resolve(__dirname, '../../packages/ottalanding/src/react/index.tsx'),
+            '@ottabase/ottalanding/schema': path.resolve(__dirname, '../../packages/ottalanding/src/schema.ts'),
+            '@ottabase/ottalanding': path.resolve(__dirname, '../../packages/ottalanding/src/index.ts'),
             // Headless-decoupling subpaths (see apps/otta-web/tsconfig.json) — dist-only exports
             // aliased to source so tests resolve them without a prior `pnpm build:pkg`.
             '@ottabase/auth/config': path.resolve(__dirname, '../../packages/auth/src/components/helpers.ts'),
