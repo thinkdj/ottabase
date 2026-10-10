@@ -29,6 +29,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
     - server-renders theme tokens on first paint, including a visitor light/dark switch in every theme (choice
       remembered and applied before paint; the admin preview can show either mode)
     - renders a themed 404 and a setup notice before the first migration
+    - only production is indexable (`noindex` elsewhere); canonical and Open Graph URLs come from the site's public URL
+    - exactly one `<h1>` per page, and hero images take an image description for `alt`
+
+    Stored site settings are read field by field, so one value that no longer fits falls back on its own instead of
+    reverting the whole site; the public URL accepts only a full `http(s)://` address. The admin asks before leaving the
+    page editor or site settings with unsaved changes. Housekeeping: `cloudflare-env.d.ts` (now declares `IMAGES`), the
+    landing app's `app/` and `lib/` are under the server lint rules, and the stale `.env.example`, `.eslintrc.json` and
+    Mantine PostCSS plugins are removed.
 
     The slot/variant configurator, per-visitor localStorage choices, preview routes, legacy components and
     `config/brand.config.ts` are removed. So is the orphaned `packages/homepage-contract` README (that package had no

@@ -17991,7 +17991,7 @@ button, footer links and a footer note.
 
 | Type           | Fields                                                                                              |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| `hero`         | eyebrow, headline\*, subheadline, buttons, image URL                                                |
+| `hero`         | eyebrow, headline\*, subheadline, buttons, image URL, image description                             |
 | `logos`        | heading, logos (name\*, image URL)                                                                  |
 | `features`     | heading, intro, features (title\*, description\*)                                                   |
 | `testimonials` | heading, quotes (quote\*, name\*, role, photo URL)                                                  |
@@ -18012,8 +18012,18 @@ declaration:
 
 Adding a field is a one-line change, and the type, the validation and the admin form all follow.
 
-Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor`, `mailto:` and `tel:`. Every rendered
-href and image `src` also goes through `sanitizeUrl`.
+Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor`, `mailto:` and `tel:`. A field marked
+`absolute` (the site's public URL) accepts only a full `http(s)://host` address. Every rendered href and image `src`
+also goes through `sanitizeUrl`.
+
+**Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
+setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
+One bad field can never revert the whole site. Stored sections work the same way: `parseSections()` drops only the
+invalid section.
+
+**Accessibility:** every page has exactly one `<h1>`: the first hero's headline (later heroes render `<h2>`), or a
+visually hidden title (`<LandingView title>`) when a page has no hero. Hero images use their **image description** as
+`alt`, and are treated as decorative when it's empty.
 
 ## Models
 
@@ -18023,7 +18033,7 @@ import { LandingPage, LandingSite } from '@ottabase/ottalanding';
 await LandingSite.findForApp(appId); // public read; null until set up, never writes
 await LandingSite.ensureForApp(appId); // admin/init: seeds starter settings + pages once (idempotent)
 await LandingSite.saveSettings(appId, input); // validates; throws DomainValidationError with fieldErrors
-site.getSettings(); // validated settings
+site.getSettings(); // validated settings, field by field (see above)
 
 await LandingPage.findPublished(appId, '/pricing'); // public read
 await LandingPage.forApp(appId);

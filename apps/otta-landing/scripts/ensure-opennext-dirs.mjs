@@ -24,7 +24,6 @@ function main() {
         ensureDir(dir);
     }
 
-    // eslint-disable-next-line no-console
     console.log(`[ensure-opennext-dirs] ensured: ${dirsToEnsure.length} directories`);
 }
 

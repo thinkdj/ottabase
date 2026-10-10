@@ -1,11 +1,11 @@
 /**
- * Cloudflare Worker bindings — keep in sync with wrangler.jsonc.
+ * Cloudflare Worker bindings — keep in sync with wrangler.jsonc (`pnpm cf-typegen` regenerates this file).
  *
  * Declared as the global `CloudflareEnv` interface that @opennextjs/cloudflare's
  * getCloudflareContext() returns.
  */
 
-import type { D1Database, Fetcher } from '@cloudflare/workers-types';
+import type { D1Database, Fetcher, ImagesBinding } from '@cloudflare/workers-types';
 
 declare global {
     interface CloudflareEnv {
@@ -16,6 +16,8 @@ declare global {
         /** The D1 database shared with otta-web (it writes, this app reads). */
         OBCF_D1?: D1Database;
         OBCF_ASSETS?: Fetcher;
+        /** Cloudflare Images, required by the OpenNext worker bundle. */
+        IMAGES?: ImagesBinding;
     }
 }
 

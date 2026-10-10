@@ -34,6 +34,9 @@ const SERVER_GLOBS = [
     'apps/*/worker/**/*.ts',
     'apps/*/ottabase/**/*.{ts,tsx}',
     'apps/*/cloudflare-worker.ts',
+    // Next.js (OpenNext) apps: the App Router and its server helpers run on the Worker.
+    'apps/*/app/**/*.{ts,tsx}',
+    'apps/*/lib/**/*.{ts,tsx}',
     'packages/*/src/**/*.{ts,tsx}',
 ];
 

@@ -60,7 +60,6 @@
         "@types/react-dom": "catalog:",
         "autoprefixer": "catalog:",
         "eslint": "catalog:",
-        "eslint-config-next": "^16.1.1",
         "postcss": "catalog:",
         "postcss-preset-env": "catalog:",
         "tailwindcss": "catalog:",

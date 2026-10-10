@@ -47,6 +47,16 @@ Both apps bind `OBCF_D1` to the same database. Keep the `d1_databases` blocks in
 
 Schema changes go through otta-web's migrations (`/api/ottaorm/init`). This app never migrates.
 
+Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes). Keep it in step with `wrangler.jsonc`.
+
+## SEO
+
+- **Indexing:** only the deployment whose `ENVIRONMENT` var is `production` sends `index, follow`. Preview, staging and
+  local deployments send `noindex, nofollow`, so copies never compete with the real site.
+- **Canonical and Open Graph:** the site's **Public URL** (admin → Landing site → Site settings) becomes `metadataBase`,
+  and each page gets a canonical URL plus Open Graph tags (`title`, `description`, `siteName`, `url`). Without a public
+  URL the absolute URLs are omitted rather than guessed.
+
 ## Scripts
 
 | Command              | Description                          |
