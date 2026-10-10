@@ -124,6 +124,7 @@ const DEFAULT_PACKAGES: Record<BuiltInPackageName, boolean> = {
     // Dormant by default: a deployment with no keys at all must boot, serve, and simply
     // not show the AI affordances. Enable it explicitly in ottabase.config.ts.
     ottaai: false,
+    ottalanding: true,
     shortlinks: true,
     referrals: true,
 };

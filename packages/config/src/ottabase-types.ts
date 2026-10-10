@@ -228,7 +228,7 @@ export interface OttabaseUIConfig {
 export const PLATFORM_ORG_SENTINEL = 'platform';
 
 /** Built-in package keys. Extend when adding new built-in packages. brandEngine is core, not a package. */
-export const BUILT_IN_PACKAGES = ['comments', 'ottablog', 'ottaai', 'referrals', 'shortlinks'] as const;
+export const BUILT_IN_PACKAGES = ['comments', 'ottablog', 'ottaai', 'ottalanding', 'referrals', 'shortlinks'] as const;
 
 export type BuiltInPackageName = (typeof BUILT_IN_PACKAGES)[number];
 

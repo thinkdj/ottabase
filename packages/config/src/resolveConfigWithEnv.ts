@@ -19,6 +19,7 @@ const PACKAGE_ENV_KEYS: Record<BuiltInPackageName, string> = {
     comments: ENV_KEYS.OTTABASE_PKG_COMMENTS,
     ottablog: ENV_KEYS.OTTABASE_PKG_OTTABLOG,
     ottaai: ENV_KEYS.OTTABASE_PKG_OTTAAI,
+    ottalanding: ENV_KEYS.OTTABASE_PKG_OTTALANDING,
     shortlinks: ENV_KEYS.OTTABASE_PKG_SHORTLINKS,
     referrals: ENV_KEYS.OTTABASE_PKG_REFERRALS,
 };
