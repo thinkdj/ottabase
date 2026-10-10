@@ -27,7 +27,7 @@ vi.mock('@ottabase/ottalanding', async (importOriginal) => {
 // React's per-request cache() is a no-op outside a server render; keep it transparent here.
 vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<object>()), cache: <T,>(fn: T) => fn }));
 
-import LandingRoute from '../app/[[...slug]]/page';
+import LandingRoute, { generateMetadata } from '../app/[[...slug]]/page';
 import RootLayout from '../app/layout';
 import NotFound from '../app/not-found';
 import { getSite, toPath } from '../lib/content';
@@ -89,6 +89,13 @@ describe('pages', () => {
             /NEXT_HTTP_ERROR_FALLBACK;404|NEXT_NOT_FOUND/,
         );
         expect(store.findPage).toHaveBeenCalledWith('acme', '/secret-draft');
+    });
+
+    it('does not touch pages in metadata before the tables exist (no error page instead of setup steps)', async () => {
+        store.findSite.mockResolvedValue(null);
+        store.findPage.mockRejectedValue(new Error('D1_ERROR: no such table: landing_pages'));
+        expect(await generateMetadata(params())).toEqual({});
+        expect(store.findPage).not.toHaveBeenCalled();
     });
 
     it('shows setup steps until the site exists', async () => {

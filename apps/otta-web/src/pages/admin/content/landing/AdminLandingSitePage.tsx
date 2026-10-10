@@ -323,15 +323,17 @@ function NewPageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 
 function SettingsSection({ site }: { site: SiteSettings }) {
     const queryClient = useQueryClient();
-    const [draft, setDraft] = useState<SiteSettings>(site);
+    const [edits, setDraft] = useState<SiteSettings>(site);
     const [errors, setErrors] = useState<FieldErrors>({});
-    useEffect(() => setDraft(site), [site]);
+    // The theme belongs to the picker above: switching it must not discard edits made here.
+    const draft = { ...edits, theme: site.theme };
     const dirty = JSON.stringify(draft) !== JSON.stringify(site);
 
     const save = useMutation({
         mutationFn: (next: SiteSettings) => landingApi.saveSite(next),
         onSuccess: ({ site: saved }) => {
             queryClient.setQueryData<LandingState>(LANDING_QUERY_KEY, (old) => old && { ...old, site: saved });
+            setDraft(saved);
             setErrors({});
             toast.success('Site settings saved');
         },

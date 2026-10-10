@@ -12,6 +12,24 @@ export function validated<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, input:
     throw new DomainValidationError('Please fix the highlighted fields.', { fieldErrors: fieldErrors(result.error) });
 }
 
+function pathError(message: string, code: string): DomainValidationError {
+    return new DomainValidationError(message, { code, fieldErrors: { path: [message] } });
+}
+
+/** A concurrent write can still hit the unique (app_id, path) index after the pre-check; report it the same way. */
+async function uniquePath<T>(write: () => Promise<T>): Promise<T> {
+    try {
+        return await write();
+    } catch (error) {
+        for (let e: unknown = error; e; e = (e as { cause?: unknown }).cause) {
+            if (/UNIQUE constraint failed/i.test(String((e as Error).message ?? e))) {
+                throw pathError('Another page already uses this path.', 'PATH_TAKEN');
+            }
+        }
+        throw error;
+    }
+}
+
 export class LandingPage extends BaseModel {
     static entity = 'landing_pages';
     static table = landingPagesTable;
@@ -61,15 +79,19 @@ export class LandingPage extends BaseModel {
     static async createFor(appId: string, input: unknown): Promise<LandingPage> {
         const data = validated(PageInputSchema, input);
         await this.assertPathFree(appId, data.path);
-        return (await this.create({ ...data, appId })) as LandingPage;
+        return (await uniquePath(() => this.create({ ...data, appId }))) as LandingPage;
     }
 
     static async updateFor(appId: string, id: string, input: unknown): Promise<LandingPage | null> {
         const page = await this.findForApp(appId, id);
         if (!page) return null;
         const data = validated(PageInputSchema, input);
-        if (data.path !== page.get('path')) await this.assertPathFree(appId, data.path);
-        await this.update(id, data);
+        if (data.path !== page.get('path')) {
+            // The home page is the site's front door: it can be unpublished, never moved.
+            if (page.get('path') === '/') throw pathError('The home page always lives at /.', 'HOME_PAGE_REQUIRED');
+            await this.assertPathFree(appId, data.path);
+        }
+        await uniquePath(() => this.update(id, data));
         return this.findForApp(appId, id);
     }
 
@@ -88,12 +110,7 @@ export class LandingPage extends BaseModel {
     }
 
     private static async assertPathFree(appId: string, path: string): Promise<void> {
-        if (await this.first({ appId, path })) {
-            throw new DomainValidationError('Another page already uses this path.', {
-                code: 'PATH_TAKEN',
-                fieldErrors: { path: ['Another page already uses this path.'] },
-            });
-        }
+        if (await this.first({ appId, path })) throw pathError('Another page already uses this path.', 'PATH_TAKEN');
     }
 
     /** Plain, validated view for renderers and the admin API. */

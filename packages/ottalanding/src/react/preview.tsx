@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getTheme, themeStyles, type ColorScheme } from '../themes';
 import { LandingView, type LandingViewProps } from './view';
 
@@ -21,7 +21,12 @@ export function LandingPreview({ width = 1280, className, scheme, ...view }: Lan
     const inner = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
     const [height, setHeight] = useState(0);
-    const { css, fonts } = useMemo(() => themeStyles(view.site.theme, '[data-landing-preview]'), [view.site.theme]);
+    // Each preview scopes its theme to itself: several previews (e.g. the theme picker) share one page.
+    const scope = useId();
+    const { css, fonts } = useMemo(
+        () => themeStyles(view.site.theme, `[data-landing-preview="${scope}"]`),
+        [view.site.theme, scope],
+    );
 
     useLayoutEffect(() => {
         if (!outer.current || !inner.current) return;
@@ -44,7 +49,7 @@ export function LandingPreview({ width = 1280, className, scheme, ...view }: Lan
             ))}
             <div
                 ref={inner}
-                data-landing-preview=""
+                data-landing-preview={scope}
                 data-scheme={scheme ?? getTheme(view.site.theme).scheme}
                 inert
                 style={{ width, transform: `scale(${scale})`, transformOrigin: 'top left' }}

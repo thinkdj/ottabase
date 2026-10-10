@@ -53,6 +53,50 @@ describe('content contracts', () => {
         }
     });
 
+    it('rejects pages D1 could not store, duplicate section ids and absurd paths, with readable errors', () => {
+        const answer = 'x'.repeat(4000);
+        const faq = (i: number) => ({
+            id: `s${i}`,
+            type: 'faq',
+            data: { items: Array.from({ length: 20 }, () => ({ question: 'q', answer })) },
+        });
+        const huge = PageInputSchema.safeParse({
+            path: '/big',
+            title: 't',
+            sections: Array.from({ length: 10 }, (_, i) => faq(i)),
+        });
+        expect(huge.success).toBe(false);
+        expect(huge.error!.issues[0]).toMatchObject({
+            path: ['sections'],
+            message: expect.stringMatching(/too much content/),
+        });
+
+        const text = { type: 'text', data: { body: 'x' } };
+        const dup = PageInputSchema.safeParse({
+            path: '/a',
+            title: 't',
+            sections: [
+                { id: 'same', ...text },
+                { id: 'same', ...text },
+            ],
+        });
+        expect(dup.success).toBe(false);
+
+        expect(PageInputSchema.safeParse({ path: '/' + 'a'.repeat(300), title: 't' }).success).toBe(false);
+    });
+
+    it('creates section ids even where crypto.randomUUID is unavailable (admin over plain http)', () => {
+        const original = globalThis.crypto;
+        Object.defineProperty(globalThis, 'crypto', { value: {}, configurable: true });
+        try {
+            const [a, b] = [newSection('hero'), newSection('hero')];
+            expect(a.id).toMatch(/^s-/);
+            expect(a.id).not.toBe(b.id);
+        } finally {
+            Object.defineProperty(globalThis, 'crypto', { value: original, configurable: true });
+        }
+    });
+
     it('derives precise types from the descriptors', () => {
         const ok: SectionData<'pricing'> = { plans: [{ name: 'Pro', price: '$9', featured: true, features: ['a'] }] };
         // @ts-expect-error — a plan needs a price

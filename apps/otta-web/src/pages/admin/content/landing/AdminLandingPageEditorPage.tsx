@@ -83,6 +83,8 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                 LANDING_QUERY_KEY,
                 (old) => old && { ...old, pages: old.pages.map((p) => (p.id === updated.id ? updated : p)) },
             );
+            // Adopt the server's normalised copy (trimmed text, schema key order) so the page is clean again.
+            setDraft(toDraft(updated));
             setErrors({});
             toast.success(updated.published && !page.published ? 'Page published' : 'Page saved');
         },
@@ -224,6 +226,15 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                             </h2>
                             <AddSectionMenu onAdd={addSection} />
                         </div>
+                        {/* Page-level problems (e.g. too much content) that belong to no single field */}
+                        {errors.sections?.[0] && (
+                            <p
+                                role="alert"
+                                className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                            >
+                                {errors.sections[0]}
+                            </p>
+                        )}
                         {draft.sections.length === 0 && (
                             <div className="rounded-xl border border-dashed border-border p-8 text-center">
                                 <p className="font-medium">This page is empty</p>

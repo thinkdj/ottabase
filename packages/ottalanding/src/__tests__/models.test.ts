@@ -41,6 +41,20 @@ describe('LandingSite', () => {
         expect(await LandingPage.count({ appId: 'app-a' })).toBe(DEFAULT_PAGES.length);
     });
 
+    it('seeds safely when two first requests race', async () => {
+        await Promise.all([LandingSite.ensureForApp('app-race'), LandingSite.ensureForApp('app-race')]);
+        expect(await LandingSite.count({ appId: 'app-race' })).toBe(1);
+        expect(await LandingPage.count({ appId: 'app-race' })).toBe(DEFAULT_PAGES.length);
+    });
+
+    it('finishes an interrupted seed instead of leaving the site half-built', async () => {
+        // A previous first run created one starter page, then failed before the site row existed.
+        await LandingPage.createFor('app-partial', DEFAULT_PAGES[1]);
+        await LandingSite.ensureForApp('app-partial');
+        expect(await LandingPage.count({ appId: 'app-partial' })).toBe(DEFAULT_PAGES.length);
+        expect(await LandingPage.findPublished('app-partial', '/')).not.toBeNull();
+    });
+
     it('validates settings and reports per-field errors', async () => {
         const error = await rejection(LandingSite.saveSettings('app-a', { ...DEFAULT_SITE, theme: 'nope', name: '' }));
         expect(Object.keys(error.fieldErrors).sort()).toEqual(['name', 'theme']);
@@ -99,6 +113,28 @@ describe('LandingPage', () => {
         });
         const reread = await LandingPage.findPublished('app-a', '/contact');
         expect(reread?.toPage().sections.map((s) => s.type)).toEqual(['hero']);
+    });
+
+    it('keeps the home page at / on the server, not just in the UI', async () => {
+        const home = await LandingPage.findPublished('app-a', '/');
+        const moved = await rejection(
+            LandingPage.updateFor('app-a', home!.get('id') as string, { ...home!.toPage(), path: '/old-home' }),
+        );
+        expect(moved.code).toBe('HOME_PAGE_REQUIRED');
+        expect(moved.fieldErrors.path).toBeDefined();
+        expect(await LandingPage.findPublished('app-a', '/')).not.toBeNull();
+    });
+
+    it('reports a path collision from concurrent creates as PATH_TAKEN, not a raw database error', async () => {
+        const results = await Promise.allSettled([
+            LandingPage.createFor('app-a', { path: '/race', title: 'One' }),
+            LandingPage.createFor('app-a', { path: '/race', title: 'Two' }),
+        ]);
+        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+        expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+        expect(failures).toHaveLength(1);
+        expect(failures[0].reason).toBeInstanceOf(DomainValidationError);
+        expect((failures[0].reason as DomainValidationError).code).toBe('PATH_TAKEN');
     });
 
     it('refuses to delete the home page but deletes others', async () => {

@@ -69,9 +69,9 @@ export function MobileMenu({ site, className = '' }: { site: SiteSettings; class
                 <span className="hidden group-open:inline">Close</span>
             </summary>
             <nav className="absolute right-0 z-50 mt-2 flex w-56 flex-col rounded-lg border border-border bg-background p-2 shadow-lg">
-                {site.nav?.map((l) => (
+                {site.nav?.map((l, i) => (
                     <SiteLink
-                        key={l.href + l.label}
+                        key={i}
                         href={l.href}
                         className={`rounded-md px-3 py-2 text-sm hover:bg-muted ${focusRing}`}
                     >

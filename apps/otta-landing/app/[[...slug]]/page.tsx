@@ -7,8 +7,11 @@ import { SetupNotice } from '../setup-notice';
 type Props = { params: Promise<{ slug?: string[] }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const [site, page] = await Promise.all([getSite(), getPublishedPage(toPath((await params).slug))]);
-    if (!site || !page) return {};
+    // Site first: before otta-web's first migration there are no tables, and the page shows setup steps.
+    const site = await getSite();
+    if (!site) return {};
+    const page = await getPublishedPage(toPath((await params).slug));
+    if (!page) return {};
     return { title: page.title, description: page.description || site.tagline };
 }
 

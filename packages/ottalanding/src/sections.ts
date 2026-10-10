@@ -173,5 +173,10 @@ export function parseSections(value: unknown): Section[] {
 
 /** A fresh, empty section of the given type. */
 export function newSection(type: SectionType): Section {
-    return { id: crypto.randomUUID(), type, data: {} } as Section;
+    // crypto.randomUUID only exists on secure origins; an admin opened over plain http on a LAN IP lacks it.
+    const id =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    return { id, type, data: {} } as Section;
 }

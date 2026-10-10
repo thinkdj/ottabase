@@ -10,7 +10,7 @@ export { defineFields, fieldErrors, toZod } from './fields';
 export type { Data, Field, Fields, ListField, ScalarField } from './fields';
 export { newSection, parseSections, SECTION_TYPES, SECTIONS, SectionSchema } from './sections';
 export type { Section, SectionData, SectionType } from './sections';
-export { PAGE_PATH, PageInputSchema, SITE_FIELDS, SiteSettingsSchema } from './site';
+export { PAGE_CONTENT_BUDGET_BYTES, PAGE_PATH, PageInputSchema, SITE_FIELDS, SiteSettingsSchema } from './site';
 export type { LandingPageData, PageInput, SiteSettings } from './site';
 export { getTheme, THEMES, themeStyles } from './themes';
 export { schemeInitScript, SCHEME_STORAGE_KEY } from './scheme';

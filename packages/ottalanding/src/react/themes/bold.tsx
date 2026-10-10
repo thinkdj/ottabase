@@ -24,7 +24,7 @@ function Actions({ actions }: { actions?: Action[] }) {
         <div className="flex flex-wrap gap-3">
             {actions.map((a, i) => (
                 <SiteLink
-                    key={a.href + a.label}
+                    key={i}
                     href={a.href}
                     className={`${btn} ${i === 0 ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'border-2 border-border hover:border-foreground'}`}
                 >
@@ -63,9 +63,9 @@ export const bold: ThemeComponents = {
                         {site.name}
                     </SiteLink>
                     <nav className="hidden items-center gap-8 md:flex">
-                        {site.nav?.map((l) => (
+                        {site.nav?.map((l, i) => (
                             <SiteLink
-                                key={l.href + l.label}
+                                key={i}
                                 href={l.href}
                                 aria-current={isCurrent(l.href, currentPath) ? 'page' : undefined}
                                 className={`text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:text-primary ${focusRing}`}
@@ -97,12 +97,8 @@ export const bold: ThemeComponents = {
                     </div>
                     <div className="md:text-right">
                         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium md:justify-end">
-                            {site.footerLinks?.map((l) => (
-                                <SiteLink
-                                    key={l.href + l.label}
-                                    href={l.href}
-                                    className={`hover:text-primary ${focusRing}`}
-                                >
+                            {site.footerLinks?.map((l, i) => (
+                                <SiteLink key={i} href={l.href} className={`hover:text-primary ${focusRing}`}>
                                     {l.label}
                                 </SiteLink>
                             ))}
@@ -190,8 +186,8 @@ export const bold: ThemeComponents = {
                                 </h3>
                                 <p className="mt-3 max-w-md text-lg opacity-90">{lead.description}</p>
                             </div>
-                            {rest.map((f) => (
-                                <div key={f.title} className="rounded-3xl border border-border bg-muted/40 p-7">
+                            {rest.map((f, i) => (
+                                <div key={i} className="rounded-3xl border border-border bg-muted/40 p-7">
                                     <h3 className="font-heading text-xl font-bold">{f.title}</h3>
                                     <p className="mt-2 text-muted-foreground">{f.description}</p>
                                 </div>
@@ -207,11 +203,11 @@ export const bold: ThemeComponents = {
                 <div className={`${wrap} py-20`}>
                     <Heading title={title} />
                     <div className="mt-12 gap-4 [column-fill:_balance] sm:columns-2 lg:columns-3">
-                        {items?.map((t) => {
+                        {items?.map((t, i) => {
                             const src = safeSrc(t.avatarUrl);
                             return (
                                 <figure
-                                    key={t.quote}
+                                    key={i}
                                     className="mb-4 break-inside-avoid rounded-3xl border border-border p-7"
                                 >
                                     <blockquote className="text-lg leading-relaxed">{t.quote}</blockquote>
@@ -243,9 +239,9 @@ export const bold: ThemeComponents = {
                     <div
                         className={`mt-12 grid gap-4 ${(plans?.length ?? 0) >= 3 ? 'lg:grid-cols-3' : 'md:grid-cols-2'}`}
                     >
-                        {plans?.map((p) => (
+                        {plans?.map((p, i) => (
                             <div
-                                key={p.name}
+                                key={i}
                                 className={`flex flex-col rounded-3xl p-8 ${p.featured ? 'bg-foreground text-background' : 'border border-border'}`}
                             >
                                 <h3 className="font-heading text-xl font-bold">{p.name}</h3>
@@ -259,8 +255,8 @@ export const bold: ThemeComponents = {
                                     )}
                                 </p>
                                 <ul className="mt-8 flex-1 space-y-2.5">
-                                    {p.features?.map((f) => (
-                                        <li key={f} className="flex gap-3">
+                                    {p.features?.map((f, i) => (
+                                        <li key={i} className="flex gap-3">
                                             <span className="text-primary" aria-hidden>
                                                 ✓
                                             </span>
@@ -288,9 +284,9 @@ export const bold: ThemeComponents = {
                 <div className={`${wrap} grid gap-10 py-20 lg:grid-cols-[1fr_1.5fr]`}>
                     <Heading title={title} />
                     <div className="space-y-3">
-                        {items?.map((q) => (
+                        {items?.map((q, i) => (
                             <details
-                                key={q.question}
+                                key={i}
                                 className="group rounded-2xl border border-border px-6 py-5 open:bg-muted/40"
                             >
                                 <summary
@@ -324,7 +320,7 @@ export const bold: ThemeComponents = {
                             <div className="mt-10 flex flex-wrap gap-3">
                                 {actions.map((a, i) => (
                                     <SiteLink
-                                        key={a.href + a.label}
+                                        key={i}
                                         href={a.href}
                                         className={`${btn} ${i === 0 ? 'bg-primary-foreground text-primary' : 'border-2 border-primary-foreground/50'}`}
                                     >
@@ -347,8 +343,8 @@ export const bold: ThemeComponents = {
                         <span />
                     )}
                     <div className="max-w-2xl space-y-5 text-lg leading-relaxed text-muted-foreground">
-                        {paragraphs(body).map((p) => (
-                            <p key={p}>{p}</p>
+                        {paragraphs(body).map((p, i) => (
+                            <p key={i}>{p}</p>
                         ))}
                     </div>
                 </div>

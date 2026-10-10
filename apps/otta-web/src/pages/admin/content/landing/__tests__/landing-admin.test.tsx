@@ -111,6 +111,33 @@ describe('page editor', () => {
         expect(init.body.sections[1].data.title).toBe('Hello there');
     });
 
+    it('is clean again after a save, even when the server normalises the text', async () => {
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        // Server echoes the Zod-normalised page (trimmed), like the real API.
+        api.mockImplementation(async (_url: string, init?: { method?: string; body?: { title: string } }) =>
+            init?.method ? { page: { ...about, ...init.body, title: init.body!.title.trim() } } : state(),
+        );
+        fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'About us   ' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(toast.success).toHaveBeenCalled());
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'Discard' })).toBeNull();
+    });
+
+    it('shows page-level problems that belong to no single field', async () => {
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        api.mockImplementationOnce(async () => {
+            throw new ApiError({
+                error: 'Please fix the highlighted fields.',
+                status: 422,
+                fieldErrors: { sections: ['This page has too much content. Split it into more pages.'] },
+            });
+        });
+        fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'About' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('too much content');
+    });
+
     it('shows server-side field errors (e.g. a taken path) on the field', async () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
         api.mockImplementationOnce(async () => {
@@ -163,6 +190,15 @@ describe('site page', () => {
             method: 'PUT',
             body: expect.objectContaining({ theme: 'bold' }),
         });
+    });
+
+    it('keeps unsaved site-settings edits when the theme is switched', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        fireEvent.change(await screen.findByLabelText(/Site name/), { target: { value: 'Acme Rockets' } });
+        fireEvent.click(screen.getByRole('radio', { name: /Bold/ }));
+        await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Theme changed to Bold'));
+        expect(screen.getByLabelText(/Site name/)).toHaveValue('Acme Rockets');
+        expect(screen.getByRole('button', { name: 'Save settings' })).toBeEnabled();
     });
 
     it('lists pages with their status and keeps the home page undeletable', async () => {

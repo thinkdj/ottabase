@@ -22,7 +22,7 @@ function Actions({ actions }: { actions?: Action[] }) {
     return (
         <p className="flex flex-wrap gap-x-8 gap-y-3 text-lg font-semibold">
             {actions.map((a, i) => (
-                <SiteLink key={a.href + a.label} href={a.href} className={i === 0 ? `${link} text-primary` : link}>
+                <SiteLink key={i} href={a.href} className={i === 0 ? `${link} text-primary` : link}>
                     {a.label}
                 </SiteLink>
             ))}
@@ -56,9 +56,9 @@ export const editorial: ThemeComponents = {
                             </p>
                         )}
                         <nav className="mt-12 hidden flex-col gap-3 md:flex">
-                            {site.nav?.map((l) => (
+                            {site.nav?.map((l, i) => (
                                 <SiteLink
-                                    key={l.href + l.label}
+                                    key={i}
                                     href={l.href}
                                     aria-current={isCurrent(l.href, currentPath) ? 'page' : undefined}
                                     className={`w-fit text-[0.95rem] text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground ${focusRing}`}
@@ -85,12 +85,8 @@ export const editorial: ThemeComponents = {
                     <main className="pb-16">{children}</main>
                     <footer className={`${column} border-t border-border py-10 text-sm text-muted-foreground`}>
                         <nav className="flex flex-wrap gap-x-6 gap-y-2">
-                            {site.footerLinks?.map((l) => (
-                                <SiteLink
-                                    key={l.href + l.label}
-                                    href={l.href}
-                                    className={`hover:text-foreground ${focusRing}`}
-                                >
+                            {site.footerLinks?.map((l, i) => (
+                                <SiteLink key={i} href={l.href} className={`hover:text-foreground ${focusRing}`}>
                                     {l.label}
                                 </SiteLink>
                             ))}
@@ -135,9 +131,9 @@ export const editorial: ThemeComponents = {
                     </p>
                     {withImages.length > 0 && (
                         <div className="mt-6 flex flex-wrap items-center gap-8 pl-6">
-                            {withImages.map((l) => (
+                            {withImages.map((l, i) => (
                                 <img
-                                    key={l.name}
+                                    key={i}
                                     src={safeSrc(l.logoUrl)}
                                     alt={l.name}
                                     className="h-6 w-auto opacity-60 grayscale"
@@ -155,8 +151,8 @@ export const editorial: ThemeComponents = {
                     <Title>{title}</Title>
                     {subtitle && <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{subtitle}</p>}
                     <dl className="mt-10 space-y-8">
-                        {items?.map((f) => (
-                            <div key={f.title} className="grid gap-2 sm:grid-cols-[12rem_1fr] sm:gap-8">
+                        {items?.map((f, i) => (
+                            <div key={i} className="grid gap-2 sm:grid-cols-[12rem_1fr] sm:gap-8">
                                 <dt className="font-heading text-lg font-semibold">{f.title}</dt>
                                 <dd className="leading-relaxed text-muted-foreground">{f.description}</dd>
                             </div>
@@ -171,8 +167,8 @@ export const editorial: ThemeComponents = {
                 <div className={`${column} py-14`}>
                     <Title>{title}</Title>
                     <div className="mt-10 space-y-14">
-                        {items?.map((t) => (
-                            <figure key={t.quote} className="relative pl-10">
+                        {items?.map((t, i) => (
+                            <figure key={i} className="relative pl-10">
                                 <span
                                     className="absolute -left-1 -top-4 font-heading text-7xl leading-none text-primary/30"
                                     aria-hidden
@@ -199,9 +195,9 @@ export const editorial: ThemeComponents = {
                     <Title>{title}</Title>
                     {subtitle && <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{subtitle}</p>}
                     <div className="mt-10 border-t-2 border-foreground">
-                        {plans?.map((p) => (
+                        {plans?.map((p, i) => (
                             <div
-                                key={p.name}
+                                key={i}
                                 className={`grid gap-4 border-b border-border py-8 sm:grid-cols-[1fr_auto] sm:gap-10 ${p.featured ? 'bg-primary/[0.05] px-5 sm:-mx-5' : ''}`}
                             >
                                 <div>
@@ -247,8 +243,8 @@ export const editorial: ThemeComponents = {
                 <div className={`${column} py-14`}>
                     <Title>{title}</Title>
                     <dl className="mt-10 space-y-8">
-                        {items?.map((q) => (
-                            <div key={q.question}>
+                        {items?.map((q, i) => (
+                            <div key={i}>
                                 <dt className="font-heading text-xl font-semibold">{q.question}</dt>
                                 <dd className="mt-2 leading-relaxed text-muted-foreground">{q.answer}</dd>
                             </div>
@@ -279,8 +275,8 @@ export const editorial: ThemeComponents = {
                 <article className={`${column} py-12`}>
                     <Title>{title}</Title>
                     <div className="mt-6 space-y-6 font-heading text-lg leading-[1.8] first-letter:float-left first-letter:mr-3 first-letter:font-heading first-letter:text-7xl first-letter:font-semibold first-letter:leading-[0.8] first-letter:text-primary">
-                        {paragraphs(body).map((p) => (
-                            <p key={p}>{p}</p>
+                        {paragraphs(body).map((p, i) => (
+                            <p key={i}>{p}</p>
                         ))}
                     </div>
                 </article>

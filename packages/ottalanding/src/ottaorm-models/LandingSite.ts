@@ -1,4 +1,4 @@
-import { BaseModel, type ModelFields } from '@ottabase/ottaorm';
+import { BaseModel, DomainValidationError, type ModelFields } from '@ottabase/ottaorm';
 import { DEFAULT_PAGES, DEFAULT_SITE } from '../defaults';
 import { SiteSettingsSchema, type SiteSettings } from '../site';
 import { LandingPage, validated } from './LandingPage';
@@ -36,18 +36,26 @@ export class LandingSite extends BaseModel {
         return (await this.first({ appId })) as LandingSite | null;
     }
 
-    /** The app's site, seeding starter settings and pages the first time. Idempotent. */
+    /**
+     * The app's site, seeding starter settings and pages the first time. Idempotent and safe to
+     * run concurrently: pages are seeded BEFORE the site row, so the row only exists once seeding
+     * finished — a failed or racing first run is simply retried on the next call.
+     */
     static async ensureForApp(appId: string): Promise<LandingSite> {
         const existing = await this.findForApp(appId);
         if (existing) return existing;
-        try {
-            const site = (await this.create({ appId, settings: DEFAULT_SITE })) as LandingSite;
-            if ((await LandingPage.count({ appId })) === 0) {
-                for (const page of DEFAULT_PAGES) await LandingPage.createFor(appId, page);
+        for (const page of DEFAULT_PAGES) {
+            try {
+                await LandingPage.createFor(appId, page);
+            } catch (error) {
+                // Already there (an earlier partial run, or a concurrent first request).
+                if (!(error instanceof DomainValidationError && error.code === 'PATH_TAKEN')) throw error;
             }
-            return site;
+        }
+        try {
+            return (await this.create({ appId, settings: DEFAULT_SITE })) as LandingSite;
         } catch (error) {
-            // A concurrent first request may have won the unique(app_id) race; use its row.
+            // A concurrent first request won the unique(app_id) race; use its row.
             const winner = await this.findForApp(appId);
             if (winner) return winner;
             throw error;

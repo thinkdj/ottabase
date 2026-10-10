@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PAGES, DEFAULT_SITE } from '../defaults';
-import { THEME_COMPONENTS, LandingView } from '../react';
+import { LandingPreview, LandingView, THEME_COMPONENTS } from '../react';
 import { parseSections } from '../sections';
 import { THEMES } from '../themes';
 
@@ -60,7 +60,41 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
         expect(html).toMatch(/<button[^>]*aria-label="Dark mode"[^>]*aria-pressed="false"/);
     });
 
+    it('renders items that share a title (or are still empty) instead of collapsing them', () => {
+        const out = render(theme, [
+            {
+                id: 'f',
+                type: 'features',
+                data: {
+                    items: [
+                        { title: 'Same', description: 'one' },
+                        { title: 'Same', description: 'two' },
+                    ],
+                },
+            },
+        ]);
+        expect(out).toContain('one');
+        expect(out).toContain('two');
+    });
+
     it('renders an empty page without crashing', () => {
         expect(render(theme, [])).toContain(DEFAULT_SITE.name);
+    });
+});
+
+describe('LandingPreview', () => {
+    it('scopes each preview to itself, so several previews on one page keep their own themes', () => {
+        const out = renderToStaticMarkup(
+            <>
+                <LandingPreview site={{ ...DEFAULT_SITE, theme: 'launch' }} sections={home} />
+                <LandingPreview site={{ ...DEFAULT_SITE, theme: 'bold' }} sections={home} />
+            </>,
+        );
+        const scopes = [...out.matchAll(/data-landing-preview="([^"]+)"/g)].map((m) => m[1]);
+        expect(new Set(scopes).size).toBe(2);
+        // Each preview's stylesheet targets exactly its own scope (quotes may be HTML-escaped in markup).
+        const css = out.replaceAll('&quot;', '"');
+        for (const scope of scopes)
+            expect(css).toContain(`[data-landing-preview="${scope}"][data-scheme="dark"]{color-scheme:dark;`);
     });
 });
