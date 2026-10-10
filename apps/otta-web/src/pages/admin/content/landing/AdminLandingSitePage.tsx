@@ -31,6 +31,7 @@ import { Check, ChevronRight, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
+import { UnsavedChangesGuard } from './UnsavedChangesGuard';
 import { LANDING_QUERY_KEY, landingApi, publicUrl, slugPath, useLanding, type LandingState } from './landingApi';
 
 export function AdminLandingSitePage() {
@@ -363,6 +364,7 @@ function SettingsSection({ site }: { site: SiteSettings }) {
                 <p className="text-sm text-muted-foreground">Name, navigation and footer, shared by every page.</p>
             </div>
             <form onSubmit={submit} className="space-y-6 rounded-xl border border-border p-5 sm:p-6">
+                <UnsavedChangesGuard when={dirty} />
                 <FieldsForm
                     fields={SITE_FIELDS}
                     value={draft}

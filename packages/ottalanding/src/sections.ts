@@ -29,6 +29,11 @@ export const SECTIONS = {
             subtitle: { kind: 'textarea', label: 'Subheadline' },
             actions,
             imageUrl: { kind: 'url', label: 'Image URL', help: 'Optional product shot or illustration.' },
+            imageAlt: {
+                kind: 'text',
+                label: 'Image description',
+                help: 'What the image shows, for screen readers. Leave empty if it is purely decorative.',
+            },
         }),
     },
     logos: {

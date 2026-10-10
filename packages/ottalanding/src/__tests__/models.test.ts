@@ -63,6 +63,28 @@ describe('LandingSite', () => {
         expect(saved.getSettings()).toMatchObject({ theme: 'bold', name: 'Acme' });
     });
 
+    it('keeps every valid stored setting when one no longer fits, instead of reverting the whole site', async () => {
+        const site = await LandingSite.ensureForApp('app-lenient');
+        // Stored before a rule was tightened (or edited by hand): written raw, bypassing validation.
+        await LandingSite.update(site.get('id') as string, {
+            settings: {
+                ...DEFAULT_SITE,
+                name: 'Acme Rockets',
+                theme: 'retired-theme',
+                siteUrl: '/relative',
+                nav: [
+                    { label: 'Pricing', href: '/pricing' },
+                    { label: 'Bad', href: 'javascript:alert(1)' },
+                ],
+            },
+        });
+        const settings = (await LandingSite.findForApp('app-lenient'))!.getSettings();
+        expect(settings.name).toBe('Acme Rockets'); // kept, not the starter "Ottabase"
+        expect(settings.theme).toBe(DEFAULT_SITE.theme); // only the invalid field falls back
+        expect(settings.siteUrl).toBeUndefined(); // invalid optional field is dropped
+        expect(settings.nav).toEqual([{ label: 'Pricing', href: '/pricing' }]); // only the bad item goes
+    });
+
     it('rejects unsafe link schemes', async () => {
         const nav = [{ label: 'x', href: 'javascript:alert(1)' }];
         const error = await rejection(LandingSite.saveSettings('app-a', { ...DEFAULT_SITE, nav }));

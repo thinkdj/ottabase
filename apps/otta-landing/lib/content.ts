@@ -48,3 +48,9 @@ export const getPublishedPage = cache(async (path: string): Promise<LandingPageD
 export function toPath(slug: string[] = []): string {
     return '/' + slug.join('/');
 }
+
+/** True only on the production deployment (wrangler `ENVIRONMENT`); preview, staging and local are not. */
+export async function isProduction(): Promise<boolean> {
+    const { env } = await getCloudflareContext({ async: true });
+    return env.ENVIRONMENT === 'production';
+}

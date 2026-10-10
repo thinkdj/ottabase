@@ -85,6 +85,14 @@ describe('content contracts', () => {
         expect(PageInputSchema.safeParse({ path: '/' + 'a'.repeat(300), title: 't' }).success).toBe(false);
     });
 
+    it('only accepts a full http(s) address as the public site URL', () => {
+        const withUrl = (siteUrl: string) => SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, siteUrl }).success;
+        for (const ok of ['', 'https://acme.dev', 'http://localhost:3000']) expect(withUrl(ok), ok).toBe(true);
+        for (const bad of ['/about', '#top', 'mailto:a@b.co', 'tel:+1', 'https://', 'javascript:alert(1)']) {
+            expect(withUrl(bad), bad).toBe(false);
+        }
+    });
+
     it('creates section ids even where crypto.randomUUID is unavailable (admin over plain http)', () => {
         const original = globalThis.crypto;
         Object.defineProperty(globalThis, 'crypto', { value: {}, configurable: true });

@@ -12,7 +12,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!site) return {};
     const page = await getPublishedPage(toPath((await params).slug));
     if (!page) return {};
-    return { title: page.title, description: page.description || site.tagline };
+    const description = page.description || site.tagline;
+    return {
+        title: page.title,
+        description,
+        // Absolute URLs need the site's public address (metadataBase, set in the layout).
+        ...(site.siteUrl ? { alternates: { canonical: page.path } } : {}),
+        openGraph: {
+            type: 'website',
+            siteName: site.name,
+            title: page.title,
+            description,
+            ...(site.siteUrl ? { url: page.path } : {}),
+        },
+    };
 }
 
 export default async function LandingRoute({ params }: Props) {
@@ -23,5 +36,5 @@ export default async function LandingRoute({ params }: Props) {
     const page = await getPublishedPage(path);
     if (!page) notFound();
 
-    return <LandingView site={site} sections={page.sections} currentPath={path} />;
+    return <LandingView site={site} sections={page.sections} currentPath={path} title={page.title} />;
 }

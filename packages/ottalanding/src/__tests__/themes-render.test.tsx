@@ -77,6 +77,35 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
         expect(out).toContain('two');
     });
 
+    it('gives every page exactly one <h1>: the first hero, or a hidden title when there is no hero', () => {
+        const h1s = (html: string) => (html.match(/<h1[\s>]/g) ?? []).length;
+        const hero = (id: string, title: string) => ({ id, type: 'hero' as const, data: { title } });
+        expect(h1s(html)).toBe(1);
+
+        const twoHeroes = render(theme, [hero('a', 'First'), hero('b', 'Second')]);
+        expect(h1s(twoHeroes)).toBe(1);
+        expect(twoHeroes).toMatch(/<h1[^>]*>First<\/h1>/);
+        expect(twoHeroes).toMatch(/<h2[^>]*>Second<\/h2>/);
+
+        const noHero = renderToStaticMarkup(
+            <LandingView
+                site={{ ...DEFAULT_SITE, theme: theme as never }}
+                sections={[{ id: 't', type: 'text', data: { body: 'x' } }]}
+                title="Legal"
+            />,
+        );
+        expect(noHero).toMatch(/<h1 class="sr-only">Legal<\/h1>/);
+    });
+
+    it('describes the hero image for screen readers when given, and treats it as decorative otherwise', () => {
+        const withImage = (data: object) =>
+            render(theme, [
+                { id: 'h', type: 'hero', data: { title: 'T', imageUrl: 'https://x.dev/shot.png', ...data } },
+            ]);
+        expect(withImage({ imageAlt: 'Dashboard with three charts' })).toContain('alt="Dashboard with three charts"');
+        expect(withImage({})).toMatch(/<img src="https:\/\/x\.dev\/shot\.png" alt=""/);
+    });
+
     it('renders an empty page without crashing', () => {
         expect(render(theme, [])).toContain(DEFAULT_SITE.name);
     });

@@ -30,9 +30,10 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ExternalLink, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
+import { UnsavedChangesGuard } from './UnsavedChangesGuard';
 import { LANDING_QUERY_KEY, landingApi, publicUrl, useLanding, type LandingState, type PageDraft } from './landingApi';
 
 const toDraft = ({ id: _id, updatedAt: _u, ...draft }: LandingPageData): PageDraft => draft;
@@ -67,14 +68,6 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
     const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
     const isHome = page.path === '/';
     const liveUrl = page.published ? publicUrl(state.site, page.path) : undefined;
-
-    // Leaving with unsaved edits asks first.
-    useEffect(() => {
-        if (!dirty) return;
-        const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-        window.addEventListener('beforeunload', warn);
-        return () => window.removeEventListener('beforeunload', warn);
-    }, [dirty]);
 
     const save = useMutation({
         mutationFn: (next: PageDraft) => landingApi.savePage(page.id, next),
@@ -134,6 +127,7 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
 
     return (
         <form onSubmit={submit} className="space-y-6">
+            <UnsavedChangesGuard when={dirty} />
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0 space-y-1">
@@ -355,6 +349,7 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                             site={state.site}
                             sections={draft.sections}
                             currentPath={draft.path}
+                            title={draft.title}
                             scheme={previewScheme}
                         />
                     </div>

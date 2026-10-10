@@ -1,6 +1,7 @@
 import { BaseModel, DomainValidationError, type ModelFields } from '@ottabase/ottaorm';
 import { DEFAULT_PAGES, DEFAULT_SITE } from '../defaults';
-import { SiteSettingsSchema, type SiteSettings } from '../site';
+import { parseLenient } from '../fields';
+import { SITE_FIELDS, SiteSettingsSchema, type SiteSettings } from '../site';
 import { LandingPage, validated } from './LandingPage';
 import { landingSitesTable } from './landing.schema';
 
@@ -69,9 +70,11 @@ export class LandingSite extends BaseModel {
         return (await this.findForApp(appId)) as LandingSite;
     }
 
-    /** Validated settings; falls back to the starter settings if the stored JSON no longer fits. */
+    /**
+     * Validated settings. Field by field: a value that no longer fits (e.g. after a rule was
+     * tightened) falls back on its own, so one bad field can never replace the whole site.
+     */
     getSettings(): SiteSettings {
-        const result = SiteSettingsSchema.safeParse(this.get('settings'));
-        return result.success ? result.data : DEFAULT_SITE;
+        return parseLenient(SITE_FIELDS, this.get('settings'), DEFAULT_SITE);
     }
 }

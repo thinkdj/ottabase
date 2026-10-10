@@ -9,10 +9,13 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { api, toast } = vi.hoisted(() => ({
+const { api, toast, blockers } = vi.hoisted(() => ({
     api: vi.fn(),
     toast: { success: vi.fn(), error: vi.fn() },
+    // Every useBlocker registration, so tests can ask "would leaving be blocked right now?"
+    blockers: [] as Array<{ shouldBlockFn: () => boolean; enableBeforeUnload: () => boolean }>,
 }));
+const resolver = vi.hoisted(() => ({ status: 'idle' as 'idle' | 'blocked', proceed: vi.fn(), reset: vi.fn() }));
 vi.mock('@/lib/api', async () => {
     const real = await import('@ottabase/api');
     return { api, isApiError: real.isApiError, getErrorMessage: real.getErrorMessage };
@@ -22,7 +25,12 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
     useNavigate: () => vi.fn(),
     useParams: () => ({ pageId: 'p1' }),
+    useBlocker: (opts: (typeof blockers)[number]) => {
+        blockers.push(opts);
+        return resolver.status === 'blocked' ? resolver : { status: 'idle' };
+    },
 }));
+const wouldBlock = () => blockers.at(-1)!.shouldBlockFn() && blockers.at(-1)!.enableBeforeUnload();
 // The scaled live preview needs layout (ResizeObserver); here it just reports what it would draw.
 vi.mock('@ottabase/ottalanding/react', () => ({
     LandingPreview: ({ site, sections, scheme }: { site: { theme: string }; sections: unknown[]; scheme?: string }) => (
@@ -49,6 +57,7 @@ vi.mock('@ottabase/ui-shadcn', async (importOriginal) => {
 
 import { AdminLandingPageEditorPage } from '../AdminLandingPageEditorPage';
 import { AdminLandingSitePage } from '../AdminLandingSitePage';
+import { UnsavedChangesGuard } from '../UnsavedChangesGuard';
 
 const about: LandingPageData = {
     id: 'p1',
@@ -167,6 +176,37 @@ describe('page editor', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Remove text section' }));
         expect(order()).toEqual(['FAQ']);
         expect(screen.getByTestId('preview')).toHaveTextContent('launch:1');
+    });
+});
+
+describe('unsaved changes', () => {
+    it('guards in-app navigation and reloads only while the page has unsaved edits', async () => {
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        await screen.findByRole('button', { name: 'Save' });
+        expect(wouldBlock()).toBe(false);
+        fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'About the team' } });
+        expect(wouldBlock()).toBe(true);
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(toast.success).toHaveBeenCalled());
+        expect(wouldBlock()).toBe(false);
+    });
+
+    it('guards the site settings form too', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        fireEvent.change(await screen.findByLabelText(/Site name/), { target: { value: 'Acme' } });
+        expect(wouldBlock()).toBe(true);
+    });
+
+    it('asks before leaving, and only leaves when confirmed', () => {
+        resolver.status = 'blocked';
+        try {
+            render(<UnsavedChangesGuard when />);
+            expect(screen.getByText('Leave without saving?')).toBeInTheDocument();
+            fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+            expect(resolver.proceed).toHaveBeenCalled();
+        } finally {
+            resolver.status = 'idle';
+        }
     });
 });
 

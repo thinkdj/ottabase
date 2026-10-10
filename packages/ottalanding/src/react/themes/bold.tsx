@@ -111,7 +111,9 @@ export const bold: ThemeComponents = {
     },
 
     sections: {
-        hero({ eyebrow, title, subtitle, actions, imageUrl }) {
+        hero({ eyebrow, title, subtitle, actions, imageUrl, imageAlt, lead }) {
+            // The page's first hero carries its one <h1>; any later hero is a section heading.
+            const HeroTag = lead === false ? 'h2' : 'h1';
             const src = safeSrc(imageUrl);
             return (
                 <div className={`${wrap} pb-20 pt-14 sm:pt-24`}>
@@ -120,9 +122,9 @@ export const bold: ThemeComponents = {
                             {eyebrow}
                         </p>
                     )}
-                    <h1 className="max-w-5xl font-heading text-6xl font-bold leading-[0.9] tracking-tighter sm:text-7xl lg:text-[7.5rem]">
+                    <HeroTag className="max-w-5xl font-heading text-6xl font-bold leading-[0.9] tracking-tighter sm:text-7xl lg:text-[7.5rem]">
                         {title}
-                    </h1>
+                    </HeroTag>
                     <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
                         {subtitle && (
                             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
@@ -131,7 +133,9 @@ export const bold: ThemeComponents = {
                         )}
                         <Actions actions={actions} />
                     </div>
-                    {src && <img src={src} alt="" className="mt-16 w-full rounded-3xl border border-border" />}
+                    {src && (
+                        <img src={src} alt={imageAlt ?? ''} className="mt-16 w-full rounded-3xl border border-border" />
+                    )}
                 </div>
             );
         },

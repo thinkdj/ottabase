@@ -28,7 +28,7 @@ vi.mock('@ottabase/ottalanding', async (importOriginal) => {
 vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<object>()), cache: <T,>(fn: T) => fn }));
 
 import LandingRoute, { generateMetadata } from '../app/[[...slug]]/page';
-import RootLayout from '../app/layout';
+import RootLayout, { generateMetadata as layoutMetadata } from '../app/layout';
 import NotFound from '../app/not-found';
 import { getSite, toPath } from '../lib/content';
 
@@ -109,6 +109,34 @@ describe('pages', () => {
         const out = html(await NotFound());
         expect(out).toContain('This page doesn’t exist');
         expect(out).toContain('href="/about"');
+    });
+});
+
+describe('metadata', () => {
+    it('lets only the production deployment be indexed', async () => {
+        env.value = { ...env.value, ENVIRONMENT: 'preview' };
+        expect((await layoutMetadata()).robots).toBe('noindex, nofollow');
+        env.value = { ...env.value, ENVIRONMENT: 'production' };
+        expect((await layoutMetadata()).robots).toBe('index, follow');
+    });
+
+    it('builds canonical and Open Graph URLs from the public site URL', async () => {
+        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, siteUrl: 'https://acme.dev' }) });
+        store.findPage.mockResolvedValue(home);
+        expect((await layoutMetadata()).metadataBase?.toString()).toBe('https://acme.dev/');
+        const meta = await generateMetadata(params());
+        expect(meta.alternates).toEqual({ canonical: '/' });
+        expect(meta.openGraph).toMatchObject({ siteName: 'Ottabase', url: '/', title: DEFAULT_PAGES[0].title });
+    });
+
+    it('omits URLs (rather than guessing) when no public URL is set, and never throws on a bad one', async () => {
+        store.findPage.mockResolvedValue(home);
+        const meta = await generateMetadata(params());
+        expect(meta.alternates).toBeUndefined();
+        expect(meta.openGraph).not.toHaveProperty('url');
+
+        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, siteUrl: 'https://[bad' }) });
+        expect((await layoutMetadata()).metadataBase).toBeUndefined();
     });
 });
 

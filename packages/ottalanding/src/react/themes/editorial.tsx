@@ -99,14 +99,16 @@ export const editorial: ThemeComponents = {
     },
 
     sections: {
-        hero({ eyebrow, title, subtitle, actions, imageUrl }) {
+        hero({ eyebrow, title, subtitle, actions, imageUrl, imageAlt, lead }) {
+            // The page's first hero carries its one <h1>; any later hero is a section heading.
+            const HeroTag = lead === false ? 'h2' : 'h1';
             const src = safeSrc(imageUrl);
             return (
                 <header className={`${column} pb-14 pt-16 sm:pt-24`}>
                     {eyebrow && <p className="mb-6 font-heading text-lg italic text-primary">{eyebrow}</p>}
-                    <h1 className="font-heading text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+                    <HeroTag className="font-heading text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
                         {title}
-                    </h1>
+                    </HeroTag>
                     {subtitle && (
                         <p className="mt-8 max-w-2xl font-heading text-xl leading-relaxed text-muted-foreground sm:text-2xl">
                             {subtitle}
@@ -115,7 +117,7 @@ export const editorial: ThemeComponents = {
                     <div className="mt-10">
                         <Actions actions={actions} />
                     </div>
-                    {src && <img src={src} alt="" className="mt-14 w-full rounded-sm" />}
+                    {src && <img src={src} alt={imageAlt ?? ''} className="mt-14 w-full rounded-sm" />}
                 </header>
             );
         },

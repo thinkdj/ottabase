@@ -24,6 +24,7 @@ export const SITE_FIELDS = defineFields({
     tagline: { kind: 'text', label: 'Tagline', help: 'Shown in the footer and as the default description.' },
     siteUrl: {
         kind: 'url',
+        absolute: true,
         label: 'Public URL',
         placeholder: 'https://example.com',
         help: 'Where the landing site is deployed. Turns on “View” links in the admin.',

@@ -10,7 +10,9 @@ import { z } from 'zod';
 type Base = { label: string; help?: string; placeholder?: string };
 
 export type ScalarField =
-    | (Base & { kind: 'text' | 'textarea' | 'url'; required?: boolean })
+    | (Base & { kind: 'text' | 'textarea'; required?: boolean })
+    /** `absolute`: only a full http(s) address (e.g. a site's public URL), not a path or mailto:. */
+    | (Base & { kind: 'url'; required?: boolean; absolute?: boolean })
     | (Base & { kind: 'lines' })
     | (Base & { kind: 'boolean' })
     | (Base & { kind: 'select'; options: readonly { value: string; label: string }[] });
@@ -44,6 +46,8 @@ export function defineFields<const S extends Fields>(fields: S): S {
 
 /** Hrefs may be absolute http(s), site-relative (not protocol-relative), in-page anchors, mailto: or tel:. */
 const HREF_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\])|#|mailto:|tel:)/i;
+/** A full site address: http(s) scheme plus a host. */
+const ABSOLUTE_OR_EMPTY = /^$|^https?:\/\/[^/\s]+/i;
 
 function scalarToZod(field: ScalarField): z.ZodTypeAny {
     switch (field.kind) {
@@ -62,7 +66,11 @@ function scalarToZod(field: ScalarField): z.ZodTypeAny {
                 .string()
                 .trim()
                 .max(field.kind === 'textarea' ? 4000 : field.kind === 'url' ? 2048 : 200);
-            if (field.kind === 'url') s = s.regex(HREF_OR_EMPTY, 'Use https://…, /path, #anchor, mailto: or tel:');
+            if (field.kind === 'url') {
+                s = field.absolute
+                    ? s.regex(ABSOLUTE_OR_EMPTY, 'Use a full address starting with https://')
+                    : s.regex(HREF_OR_EMPTY, 'Use https://…, /path, #anchor, mailto: or tel:');
+            }
             return field.required ? s.min(1, 'Required') : s.optional();
         }
     }
@@ -76,6 +84,33 @@ export function toZod<S extends Fields>(fields: S): z.ZodType<Data<S>> {
             field.kind === 'list' ? z.array(toZod(field.fields)).max(field.max).optional() : scalarToZod(field);
     }
     return z.object(shape) as unknown as z.ZodType<Data<S>>;
+}
+
+/**
+ * Parse stored data without letting one bad value take the rest down: every valid field is
+ * kept, invalid list items are dropped, and only an invalid (or missing required) field falls
+ * back to `fallback`. Use for data read back from storage after the schema may have evolved.
+ */
+export function parseLenient<S extends Fields>(fields: S, value: unknown, fallback: Data<S>): Data<S> {
+    const input = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+    const defaults = fallback as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(fields)) {
+        if (field.kind === 'list' && Array.isArray(input[key])) {
+            const item = toZod(field.fields);
+            out[key] = (input[key] as unknown[])
+                .flatMap((v) => {
+                    const r = item.safeParse(v);
+                    return r.success ? [r.data] : [];
+                })
+                .slice(0, field.max);
+            continue;
+        }
+        const r = toZod({ [key]: field } as Fields).safeParse({ [key]: input[key] });
+        const kept = r.success ? (r.data as Record<string, unknown>)[key] : defaults[key];
+        if (kept !== undefined) out[key] = kept;
+    }
+    return out as Data<S>;
 }
 
 /** Flatten a ZodError into `{ 'items.0.title': ['Required'] }` for form display. */

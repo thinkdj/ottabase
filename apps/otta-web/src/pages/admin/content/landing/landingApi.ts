@@ -2,6 +2,7 @@
 
 import { api } from '@/lib/api';
 import type { LandingPageData, SiteSettings } from '@ottabase/ottalanding';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { useQuery } from '@tanstack/react-query';
 
 export type LandingState = { site: SiteSettings; pages: LandingPageData[] };
@@ -23,9 +24,11 @@ export function useLanding() {
     return useQuery({ queryKey: LANDING_QUERY_KEY, queryFn: landingApi.get, meta: { errorPresentation: 'local' } });
 }
 
-/** The public URL of a page, when the site's public URL is configured. */
+/** The public URL of a page, when the site's public URL is configured (and safe to link to). */
 export function publicUrl(site: SiteSettings, path: string): string | undefined {
-    return site.siteUrl ? site.siteUrl.replace(/\/+$/, '') + path : undefined;
+    if (!site.siteUrl) return undefined;
+    const url = sanitizeUrl(site.siteUrl.replace(/\/+$/, '') + path);
+    return url === '#' ? undefined : url;
 }
 
 /** "Pricing & plans" → "/pricing-plans" */

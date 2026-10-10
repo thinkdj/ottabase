@@ -6,7 +6,7 @@ export { LandingSite } from './ottaorm-models/LandingSite';
 export { landingPagesTable, landingSitesTable } from './schema';
 export type { LandingPageRecord, LandingSiteRecord } from './schema';
 
-export { defineFields, fieldErrors, toZod } from './fields';
+export { defineFields, fieldErrors, parseLenient, toZod } from './fields';
 export type { Data, Field, Fields, ListField, ScalarField } from './fields';
 export { newSection, parseSections, SECTION_TYPES, SECTIONS, SectionSchema } from './sections';
 export type { Section, SectionData, SectionType } from './sections';

@@ -5,9 +5,14 @@ import type { SiteSettings } from '../site';
 
 /** What a theme must provide: a page shell and one component per section type. */
 export type ShellProps = { site: SiteSettings; currentPath?: string; children: ReactNode };
+/**
+ * What every section component receives: its content, plus `lead` — true only for the page's
+ * first hero, which owns the page's single <h1>.
+ */
+export type SectionProps<T extends SectionType> = SectionData<T> & { lead?: boolean };
 export type ThemeComponents = {
     Shell: FC<ShellProps>;
-    sections: { [T in SectionType]: FC<SectionData<T>> };
+    sections: { [T in SectionType]: FC<SectionProps<T>> };
 };
 
 export type Action = { label: string; href: string };

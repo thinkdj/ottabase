@@ -1,15 +1,31 @@
 import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import type { Metadata } from 'next';
-import { getSite } from '../lib/content';
+import { getSite, isProduction } from '../lib/content';
 import './globals.css';
 
 // Content is edited live in otta-web's admin, so every request reads the current site.
 export const dynamic = 'force-dynamic';
 
+/** A URL, or undefined for empty/unparseable input (metadata must never throw). */
+function toUrl(value?: string): URL | undefined {
+    try {
+        return value ? new URL(value) : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
-    const site = await getSite();
-    return { title: site?.name ?? 'Landing site', description: site?.tagline, robots: 'index, follow' };
+    const [site, production] = await Promise.all([getSite(), isProduction()]);
+    return {
+        title: site?.name ?? 'Landing site',
+        description: site?.tagline,
+        // Only the production deployment may be indexed; preview/staging copies must not compete with it.
+        robots: production ? 'index, follow' : 'noindex, nofollow',
+        // Resolves canonical and Open Graph URLs against the configured public address.
+        metadataBase: toUrl(site?.siteUrl),
+    };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
