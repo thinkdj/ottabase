@@ -1,6 +1,2 @@
-/* Import: Tailwind */
+/* Tailwind base (design tokens come from the landing theme, injected in app/layout.tsx) */
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
-/* Import: ShadCN */
-@import '@ottabase/ui-shadcn/styles.css';
-
-/* App-specific styles */

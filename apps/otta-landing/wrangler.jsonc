@@ -24,6 +24,18 @@
         "enabled": true,
     },
 
+    // The SAME D1 database as apps/otta-web: otta-web's admin writes the landing content,
+    // this app reads it. Locally the D1 is keyed by `preview_database_id` ("preview"), and
+    // next.config.js points the dev proxy at otta-web's .wrangler state, so both apps open
+    // the same SQLite file. Keep these blocks identical to otta-web/wrangler.jsonc.
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1",
+            "database_name": "ottabase-db",
+            "database_id": "YOUR_D1_DATABASE_ID",
+            "preview_database_id": "preview",
+        },
+    ],
     // Asset bindings
     "assets": {
         "directory": ".open-next/assets",
@@ -32,6 +44,8 @@
 
     // Environment variables
     "vars": {
+        // Which app's landing content to show (otta-web's config.appId)
+        "APP_ID": "otta-web",
         "ENVIRONMENT": "development",
         "NODE_ENV": "production",
     },
@@ -56,8 +70,11 @@
     // Environment-specific overrides
     "env": {
         "production": {
+            // Same D1 as otta-web's production environment (same placeholder → same database)
+            "d1_databases": [{ "binding": "OBCF_D1", "database_name": "ottabase-db", "database_id": "D1_DATABASE_ID" }],
             "vars": {
                 "ENVIRONMENT": "production",
+                "APP_ID": "otta-web",
                 "NODE_ENV": "production",
             },
             // Asset bindings for Production
@@ -71,8 +88,17 @@
         },
         // Local staging lifecycle. Deployment remains separately CI-controlled.
         "staging": {
+            // Same D1 as otta-web's staging environment (same placeholder → same database)
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db-staging",
+                    "database_id": "YOUR_STAGING_D1_DATABASE_ID",
+                },
+            ],
             "vars": {
                 "ENVIRONMENT": "staging",
+                "APP_ID": "otta-web",
                 "NODE_ENV": "production",
             },
             "assets": {
@@ -86,8 +112,17 @@
         // Preview environment for PR deployments
         // The deploy workflow reads this block to verify secrets and generate wrangler.preview.jsonc
         "preview": {
+            // Same D1 as otta-web's preview environment (same placeholder → same database)
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db-preview",
+                    "database_id": "D1_PREVIEW_DATABASE_ID",
+                },
+            ],
             "vars": {
                 "ENVIRONMENT": "preview",
+                "APP_ID": "otta-web",
                 "NODE_ENV": "production",
             },
             // Asset bindings for Preview

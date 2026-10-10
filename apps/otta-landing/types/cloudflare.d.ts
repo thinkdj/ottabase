@@ -1,43 +1,21 @@
 /**
- * Cloudflare Worker bindings type definitions
- * These types match the bindings configured in wrangler.jsonc — keep the two in sync.
+ * Cloudflare Worker bindings — keep in sync with wrangler.jsonc.
+ *
+ * Declared as the global `CloudflareEnv` interface that @opennextjs/cloudflare's
+ * getCloudflareContext() returns.
  */
 
-import type { Fetcher } from '@cloudflare/workers-types';
+import type { D1Database, Fetcher } from '@cloudflare/workers-types';
 
-/**
- * Cloudflare environment bindings with OBCF_* naming convention
- * OBCF = Ottabase Cloudflare
- *
- * Only bindings that wrangler.jsonc actually configures are declared here. To add one
- * (e.g. OBCF_D1, OBCF_KV), configure it in wrangler.jsonc first, then declare it here.
- *
- * Note: All bindings are optional to support local development builds.
- * At runtime on Cloudflare, these will be available.
- */
-export interface CloudflareEnv {
-    // Environment Variables
-    ENVIRONMENT?: string;
-    NODE_ENV?: string;
-
-    // Static assets binding (OBCF = Ottabase Cloudflare)
-    OBCF_ASSETS?: Fetcher;
-}
-
-/**
- * Get Cloudflare bindings in Next.js App Router
- *
- * Usage in Server Components or Route Handlers:
- * ```typescript
- * import { getCloudflareContext } from '@opennextjs/cloudflare';
- *
- * const { env } = await getCloudflareContext();
- * const environment = env.ENVIRONMENT;
- * ```
- */
 declare global {
-    namespace NodeJS {
-        interface ProcessEnv extends CloudflareEnv {}
+    interface CloudflareEnv {
+        ENVIRONMENT?: string;
+        NODE_ENV?: string;
+        /** Which app's landing content to render — must match otta-web's config.appId. */
+        APP_ID?: string;
+        /** The D1 database shared with otta-web (it writes, this app reads). */
+        OBCF_D1?: D1Database;
+        OBCF_ASSETS?: Fetcher;
     }
 }
 

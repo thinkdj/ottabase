@@ -108,7 +108,7 @@ Workers.
 ottabase/
 ├── apps/
 │   ├── otta-web/       # TanStack Router + Vite + Workers (primary)
-│   ├── otta-landing/   # Next.js + OpenNext (homepage/landing)
+│   ├── otta-landing/   # Next.js + OpenNext public landing site (content edited in otta-web admin)
 │   └── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
 ├── packages/
 │   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
@@ -123,6 +123,7 @@ ottabase/
 │   ├── analytics/        # Cloudflare Analytics Engine (WAE)
 │   ├── notifications/    # Multi-channel notifications (email, WebSocket)
 │   ├── shortlinks/       # URL shortener with interstitial + WAE tracking
+│   ├── ottalanding/      # DB-backed landing sites: typed sections + 3 themes
 │   ├── referrals/        # Referral tracking (first-touch, WAE)
 │   ├── brand-engine/     # Design tokens, preset expansion, CSS injection
 │   ├── brand-engine-react/ # BrandProvider, LayoutResolver, useBrand()
@@ -389,6 +390,7 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 | ------------------------- | ------------------------------------------------------------ |
 | `@ottabase/cf-realtime`   | WebSocket pub/sub via Durable Objects (Pusher alternative)   |
 | `@ottabase/shortlinks`    | URL shortener: short codes, interstitial, expiry, WAE clicks |
+| `@ottabase/ottalanding`   | Landing sites in D1: typed sections, admin editor, 3 themes  |
 | `@ottabase/referrals`     | Referral tracking - first-touch attribution, WAE clicks      |
 | `@ottabase/notifications` | Multi-channel notifications (email, WebSocket, system)       |
 
@@ -453,15 +455,9 @@ cd apps/my-new-app
 # Delete src/pages/demo/  (optional - remove demo pages)
 ```
 
-**Marketing homepage** (Next.js, OpenNext, Brand Engine):
-
-```bash
-# Unix/macOS: cp -r apps/otta-landing apps/my-new-homepage
-# Windows:    xcopy /E /I apps\otta-landing apps\my-new-homepage
-cd apps/my-new-homepage
-# Update package.json name
-# Edit config/brand.config.ts to customize theme
-```
+**Marketing site** (Next.js, OpenNext): `apps/otta-landing` renders the landing content you edit at
+`/admin/content/landing` in otta-web, from the shared D1 database. Pick a theme and edit pages there, with no code
+changes. See [apps/otta-landing/README.md](apps/otta-landing/README.md).
 
 ## Package Fat Model Pattern
 

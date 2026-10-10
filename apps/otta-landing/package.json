@@ -40,24 +40,14 @@
         "localflare": "localflare"
     },
     "dependencies": {
-        "@ottabase/brand-engine": "workspace:*",
-        "@ottabase/brand-engine-react": "workspace:*",
         "@ottabase/config": "workspace:*",
-        "@ottabase/ottalayout": "workspace:*",
+        "@ottabase/db": "workspace:*",
+        "@ottabase/ottalanding": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*",
-        "@ottabase/ui-components": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
-        "@radix-ui/react-slot": "^1.1.1",
-        "@tabler/icons-react": "catalog:",
-        "class-variance-authority": "catalog:",
-        "clsx": "catalog:",
-        "lucide-react": "catalog:",
         "next": "^16.1.1",
-        "next-themes": "catalog:",
         "react": "catalog:",
-        "react-dom": "catalog:",
-        "sonner": "catalog:",
-        "tailwind-merge": "catalog:"
+        "react-dom": "catalog:"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",

@@ -4,13 +4,8 @@ module.exports = {
     presets: [sharedPreset],
     content: [
         './app/**/*.{js,ts,jsx,tsx}',
-        './components/**/*.{js,ts,jsx,tsx}',
-        // include specific package sources for UI components
-        '../../packages/ui-base/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-code-highlight/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}',
+        // The landing themes live in the package; Tailwind must see their class names
+        '../../packages/ottalanding/src/**/*.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {

@@ -58,7 +58,7 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
-  `comments`, `shortlinks`) has no build output, so it defines `lint`/`type-check`/`test` and deliberately NO `build`.
+  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and deliberately NO `build`.
   Adding one there emits a `dist/` nothing imports — and for any package with module-level singletons that dist becomes
   a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its source is still compiled (and
   therefore CI-covered) by the app build.

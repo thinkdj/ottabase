@@ -1,14 +1,25 @@
-import { Button } from '@ottabase/ui-shadcn';
-import Link from 'next/link';
+import { LandingView } from '@ottabase/ottalanding/react';
+import { getSite } from '../lib/content';
+import { SetupNotice } from './setup-notice';
 
-export default function NotFound() {
+/** A 404 in the site's own theme, with its navigation, so visitors can find their way back. */
+export default async function NotFound() {
+    const site = await getSite();
+    if (!site) return <SetupNotice />;
     return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
-            <h1 className="font-heading text-6xl font-bold text-foreground">404</h1>
-            <p className="text-lg text-muted-foreground">The page you&apos;re looking for doesn&apos;t exist.</p>
-            <Button asChild className="mt-4">
-                <Link href="/">Go Home</Link>
-            </Button>
-        </div>
+        <LandingView
+            site={site}
+            sections={[
+                {
+                    id: 'not-found',
+                    type: 'hero',
+                    data: {
+                        title: 'This page doesn’t exist',
+                        subtitle: 'It may have moved, or it hasn’t been published yet.',
+                        actions: [{ label: 'Go to the home page', href: '/' }],
+                    },
+                },
+            ]}
+        />
     );
 }

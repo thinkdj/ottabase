@@ -9,6 +9,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Landing site is now database-backed and edited in the admin.** New built-in package `@ottabase/ottalanding`:
+    - Typed landing content in D1: `landing_sites` (one row per app) and `landing_pages` (path, metadata, ordered
+      sections).
+    - A section catalog: hero, logos, features, testimonials, pricing, FAQ, CTA and text.
+    - Three themes (Launch, Editorial, Bold), each a Brand Engine preset plus its own layout. Switching theme never
+      touches content.
+    - Each section shape is declared once as field descriptors. These derive its TypeScript type, its Zod validation
+      (shared by server and browser) and the admin form.
+
+    otta-web:
+    - Platform admins edit the site at `/admin/content/landing`: a theme picker with live previews, a pages list, site
+      settings, and a page editor with add/reorder/remove sections, field-level errors and a live preview of the draft.
+    - Admin API at `/api/landing` (platform admin only). Generic CRUD stays default-denied, with a defensive RLS policy.
+    - `/api/ottaorm/init` seeds a starter site.
+
+    `apps/otta-landing` is now a read-only renderer of the same D1:
+    - binds `OBCF_D1`, shares otta-web's local wrangler state in dev, and selects content by `APP_ID`
+    - server-renders theme tokens on first paint, including a visitor light/dark switch in every theme (choice
+      remembered and applied before paint; the admin preview can show either mode)
+    - renders a themed 404 and a setup notice before the first migration
+
+    The slot/variant configurator, per-visitor localStorage choices, preview routes, legacy components and
+    `config/brand.config.ts` are removed. So is the orphaned `packages/homepage-contract` README (that package had no
+    source).
+
 - **RBAC: authorization is permission + scope, never role NAME.** Admin gates no longer trust the role names
   `owner`/`admin`/`platform_owner`. A role is now purely a bundle of permissions; every gate asks "does a grant **at the
   required scope** carry the required permission." Two capabilities:

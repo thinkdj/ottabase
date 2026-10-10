@@ -1,15 +1,17 @@
 'use client';
 
-import { Button } from '@ottabase/ui-shadcn';
-
 export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
     return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
-            <h1 className="font-heading text-4xl font-bold text-foreground">Something went wrong</h1>
-            <p className="text-lg text-muted-foreground">An unexpected error occurred.</p>
-            <Button onClick={reset} className="mt-4">
+        <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 px-6 py-20 font-sans">
+            <h1 className="font-heading text-3xl font-semibold">This page didn’t load</h1>
+            <p className="text-muted-foreground">Something went wrong on our side. Try again in a moment.</p>
+            <button
+                type="button"
+                onClick={reset}
+                className="mt-2 w-fit rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
                 Try again
-            </Button>
-        </div>
+            </button>
+        </main>
     );
 }

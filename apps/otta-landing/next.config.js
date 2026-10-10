@@ -4,8 +4,12 @@ const path = require('path');
 
 const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
 
-// Initialize OpenNext Cloudflare for local development
-initOpenNextCloudflareForDev();
+// Local dev: bindings come from wrangler.jsonc, with state read from otta-web's .wrangler
+// directory, so `next dev` here and `wrangler dev` in otta-web share ONE local D1 (otta-web's
+// admin writes the landing content, this app reads it). getPlatformProxy treats `path` as the v3 root.
+initOpenNextCloudflareForDev({
+    persist: { path: path.resolve(__dirname, '../otta-web/.wrangler/state/v3') },
+});
 
 const isWindows = process.platform === 'win32';
 const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
@@ -28,13 +32,8 @@ const nextConfig = {
     outputFileTracingRoot: path.resolve(__dirname, '../../'),
 
     // Enable transpilation of packages
-    transpilePackages: [
-        '@ottabase/brand-engine',
-        '@ottabase/brand-engine-react',
-        '@ottabase/ui-components',
-        '@ottabase/ui-shadcn',
-        '@ottabase/ui-tailwind',
-    ],
+    // @ottabase/ottalanding ships TypeScript source (no build step)
+    transpilePackages: ['@ottabase/ottalanding', '@ottabase/ui-tailwind'],
 
     // Enable React strict mode
     reactStrictMode: true,
@@ -48,12 +47,7 @@ const nextConfig = {
     experimental: {
         cssChunking: true,
         optimizeCss: true,
-        optimizePackageImports: [
-            '@ottabase/brand-engine',
-            '@ottabase/brand-engine-react',
-            '@ottabase/ui-components',
-            '@ottabase/ui-shadcn',
-        ],
+        optimizePackageImports: ['@ottabase/brand-engine'],
     },
     compiler: {
         styledComponents: false,

@@ -1,43 +1,34 @@
-import { buildCriticalCSS } from '@ottabase/brand-engine';
+import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import type { Metadata } from 'next';
-import { generateBrandConfig } from '../lib/brand-server';
+import { getSite } from '../lib/content';
 import './globals.css';
-import { LayoutShell } from './layout-shell';
-import { Providers } from './providers';
 
-export const metadata: Metadata = {
-    title: 'Ottabase Next.js Homepage Template',
-    description: 'A barebone Next.js homepage template with OpenNext and Cloudflare Workers deployment',
-    keywords: ['nextjs', 'cloudflare', 'workers', 'opennext', 'homepage', 'template', 'brand-engine'],
-    robots: 'index, follow',
-    authors: [{ name: 'Ottabase' }],
-};
+// Content is edited live in otta-web's admin, so every request reads the current site.
+export const dynamic = 'force-dynamic';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-    // Generate brand config server-side (SSR)
-    // Note: Using 'light' for initial SSR. BrandProvider will handle dynamic theme switching on client.
-    const brandConfig = generateBrandConfig('light');
-    const theme = brandConfig.brandKitsMap.default.theme;
+export async function generateMetadata(): Promise<Metadata> {
+    const site = await getSite();
+    return { title: site?.name ?? 'Landing site', description: site?.tagline, robots: 'index, follow' };
+}
 
-    // Generate critical CSS for SSR (prevents FOUC)
-    const criticalCSS = buildCriticalCSS(theme);
-
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    const site = await getSite();
+    // The theme's design tokens on :root, rendered server-side so the first paint is already on-brand.
+    const theme = getTheme(site?.theme ?? 'launch');
+    const { css, fonts } = themeStyles(theme.id);
     return (
-        <html lang="en" suppressHydrationWarning>
+        // data-scheme starts as the theme's default; the inline script swaps in the visitor's
+        // saved light/dark choice before first paint (hence suppressHydrationWarning).
+        <html lang="en" data-scheme={theme.scheme} suppressHydrationWarning>
             <head>
-                {/* Inject critical CSS for theme variables */}
-                <style id="brand-critical" dangerouslySetInnerHTML={{ __html: sanitizeCssForStyleTag(criticalCSS) }} />
-                {/* Load fonts - only if URLs are defined */}
-                {theme.typography.heading.url && <link rel="stylesheet" href={theme.typography.heading.url} />}
-                {theme.typography.body.url && <link rel="stylesheet" href={theme.typography.body.url} />}
-                {theme.typography.handwriting.url && <link rel="stylesheet" href={theme.typography.handwriting.url} />}
+                <script dangerouslySetInnerHTML={{ __html: schemeInitScript() }} />
+                <style id="landing-theme" dangerouslySetInnerHTML={{ __html: sanitizeCssForStyleTag(css) }} />
+                {fonts.map((href) => (
+                    <link key={href} rel="stylesheet" href={href} />
+                ))}
             </head>
-            <body className="flex min-h-screen flex-col bg-background text-foreground">
-                <Providers initialBrandConfig={brandConfig}>
-                    <LayoutShell>{children}</LayoutShell>
-                </Providers>
-            </body>
+            <body className="bg-background text-foreground">{children}</body>
         </html>
     );
 }

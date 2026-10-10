@@ -17,10 +17,10 @@
 - [Cache Key Prefixing System](docs/CACHE_KEYS.md): The Ottabase cache layer uses a systematic, type-safe approach to building cache keys for Cloudflare KV storage. This ensures cache integrity and prevents accidental overwrites across different…
 - [Cloudflare Configuration Guide for Ottabase](docs/CLOUDFLARE_CONFIGURATION_GUIDE.md): Complete guide for configuring your Ottabase application to work 100% with Cloudflare Workers using OBCF_ binding names.
 - [Deploy Ottabase to Cloudflare Workers](docs/CLOUDFLARE_DEPLOY.md): Complete guide for deploying otta-web to Cloudflare Workers with automated CI/CD.
-- [Package Creation Guide](docs/PACKAGE_CREATION_GUIDE.md): Quick reference for creating packages in the Ottabase Turborepo monorepo.
+- [Package Creation Guide](docs/PACKAGE_CREATION_GUIDE.md): Quick reference for creating packages in the Ottabase Turborepo monorepo. The authoritative checklist (DB tables, migrations registry, headless vs rendered entrypoints) is AGENTS.MD → "If adding a…
 - [Premium Packages](docs/PREMIUM_PACKAGES.md): How to install, build, license and operate commercial add-ons in an Ottabase app.
-- [Multi-Tenant RBAC System - Complete Guide](docs/RBAC_MULTI_TENANT_GUIDE.md): Last Updated: 2026-02-03 Status: Production Ready ✅ Architecture: Tenant > App > User (RBAC)
-- [Recommended · Supported · Possible](docs/RECOMMENDED_SUPPORTED_POSSIBLE.md): Ottabase is opinionated on purpose (design principle #29: "prefer one obvious Ottabase way"). Most subsystems allow more than one approach, but there is always one canonical path. This table names…
+- [Multi-Tenant RBAC System - Complete Guide](docs/RBAC_MULTI_TENANT_GUIDE.md): Last Updated: 2026-10-02 Status: Production Ready ✅ Architecture: Tenant > App > User (RBAC)
+- [Recommended · Supported · Possible](docs/RECOMMENDED_SUPPORTED_POSSIBLE.md): Ottabase is opinionated on purpose (design principle: "prefer one obvious Ottabase way"). Most subsystems allow more than one approach, but there is always one canonical path. This table names it, so…
 - [Referral system](docs/REFERRAL_SYSTEM.md): Documentation for inbound referral tracking, first-touch attribution, and signup conversion in the Ottabase monorepo.
 - [Releases](docs/RELEASES.md)
 - [Testing Guide - Ottabase Monorepo](docs/TESTING.md): This document describes the comprehensive automated testing setup for the Ottabase monorepo using Vitest, with support for all packages and applications.
@@ -47,7 +47,6 @@
 - [@ottabase/email](packages/email/README.md): Edge-friendly email templating + mailer helpers for Ottabase.
 - [@ottabase/forms](packages/forms/README.md): Auto-generated CRUD Forms for OttaORM fat models. Zero config, real-time Zod validation, works standalone or with ModelCrud.
 - [@ottabase/hello-world](packages/hello-world/README.md): A simple, customizable React component that displays a friendly greeting message with beautiful default styling.
-- [@ottabase/homepage-contract](packages/homepage-contract/README.md): Shared Zod contract package for homepage, marketing page, and navigation payloads.
 - [@ottabase/i18n](packages/i18n/README.md): Internationalization (i18n) package for the Ottabase monorepo, built with i18next and react-i18next.
 - [@ottabase/logger](packages/logger/README.md): Extensible logger for Ottabase with support for multiple transports and formatters.
 - [@ottabase/medialibrary](packages/medialibrary/README.md): Shared media-library primitives for Ottabase apps.
@@ -56,6 +55,7 @@
 - [@ottabase/ottablog](packages/ottablog/README.md): A comprehensive blog and content management system for Ottabase apps. Built on the fat model pattern with OttaORM.
 - [@ottabase/ottadate](packages/ottadate/README.md): Framework-agnostic date picker library with range, datetime, and fuzzy date support. Works with any framework or vanilla JS — no React, Vue, or Angular required.
 - [@ottabase/ottaeditor](packages/ottaeditor/README.md): EditorJS wrapper with 30 plugins (13 EditorJS + 17 custom blocks), type-safe plugin selection, undo/redo, and JSON/Markdown export.
+- [@ottabase/ottalanding](packages/ottalanding/README.md): Database-backed landing sites for Ottabase apps. The whole marketing site is typed content in D1: site settings, navigation, footer and every page's sections. It is edited in otta-web's admin and…
 - [@ottabase/ottalayout](packages/ottalayout/README.md): Layout system for Ottabase — types, presets, path resolver, validators, utility classes, and React slots.
 - [@ottabase/ottamenu](packages/ottamenu/README.md): Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in render types, zero persistence.
 - [@ottabase/ottaorm](packages/ottaorm/README.md): An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one place.
