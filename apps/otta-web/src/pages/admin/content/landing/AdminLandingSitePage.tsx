@@ -241,7 +241,7 @@ function SiteAdmin({ state }: { state: LandingState }) {
                 <div
                     role="region"
                     aria-label="Unsaved changes"
-                    className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur"
+                    className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm"
                 >
                     <p className="text-sm">
                         <span className="font-medium">Unsaved changes</span>
@@ -446,7 +446,7 @@ function ThemePicker({ state, draft: liveDraft }: { state: LandingState; draft: 
                                 aria-describedby={`theme-${theme.id}-desc`}
                                 disabled={save.isPending}
                                 onClick={() => !selected && save.mutate(theme.id)}
-                                className="absolute inset-0 focus-visible:outline-none"
+                                className="absolute inset-0 focus-visible:outline-hidden"
                             />
                         </div>
                     );
@@ -494,7 +494,7 @@ function PagesTab({ state }: { state: LandingState }) {
                             <Link
                                 to="/admin/content/landing/$pageId"
                                 params={{ pageId: page.id }}
-                                className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                                className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate font-medium">{page.title}</p>

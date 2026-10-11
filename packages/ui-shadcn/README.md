@@ -51,13 +51,22 @@ export function Example() {
 
 Finally, ensure Tailwind scans the package and that the shared CSS variables are loaded:
 
-1. Add "../../packages/ui-shadcn/components/\*_/_.{ts,tsx}" to the consuming app's <code>tailwind.config</code> content
-   list.
-2. Import the shared stylesheet in the app's global CSS file:
+1. Import the Tailwind entry and this package's token stylesheet in the app's root CSS file, and add an `@source` for
+   the components (Tailwind v4 only auto-detects the app's own directory). See `@ottabase/ui-tailwind`.
 
     ```css
+    @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
     @import '@ottabase/ui-shadcn/styles.css';
+    @source '<path-to>/packages/ui-shadcn/components';
     ```
+
+2. `styles.css` is plain CSS (no Tailwind directives); its `@layer base` rules join Tailwind's cascade layers, so
+   utilities still override the global focus ring, interaction physics and decor carriers.
+
+Primitives come from the unified [`radix-ui`](https://www.radix-ui.com/primitives) package
+(`import { Dialog as DialogPrimitive } from 'radix-ui'`). This is Ottabase's own shadcn variant: components carry
+`data-slot` hooks, token-driven styling and brand overrides, so they are maintained here rather than re-synced from the
+shadcn registry.
 
 ## Theming hooks (BrandEngine)
 

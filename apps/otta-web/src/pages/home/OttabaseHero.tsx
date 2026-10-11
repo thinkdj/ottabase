@@ -343,7 +343,7 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
 
             <div className="relative z-10 flex min-h-[40rem] flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:min-h-[42rem] lg:px-14 lg:py-14">
                 <div className="max-w-2xl">
-                    <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/75 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-primary shadow-sm backdrop-blur">
+                    <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/75 px-3 py-1.5 text-xs font-semibold tracking-[0.16em] text-primary shadow-sm backdrop-blur-sm">
                         <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_hsl(var(--primary))]" />
                         {appName} / EDGE-NATIVE FOUNDATION
                     </div>
@@ -372,7 +372,7 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                             asChild
                             size="lg"
                             variant="outline"
-                            className="rounded-full border-border/80 bg-background/65 px-6 backdrop-blur hover:bg-background hover:text-primary"
+                            className="rounded-full border-border/80 bg-background/65 px-6 backdrop-blur-sm hover:bg-background hover:text-primary"
                         >
                             <Link to="/demo">Explore live demos</Link>
                         </Button>

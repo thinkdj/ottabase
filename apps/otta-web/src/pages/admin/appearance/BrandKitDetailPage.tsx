@@ -557,7 +557,7 @@ export function AdminBrandKitDetailPage() {
                         {!isNew ? (
                             <Link
                                 to="/admin/appearance/layouts"
-                                className="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 Configure layouts & route mappings
                                 <IconArrowRight className="h-3.5 w-3.5 transition-transform duration-normal group-hover:translate-x-0.5" />
@@ -725,7 +725,7 @@ export function AdminBrandKitDetailPage() {
                                     type="button"
                                     onClick={() => setPreviewMode(m)}
                                     aria-pressed={previewMode === m}
-                                    className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium capitalize transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium capitalize transition-colors duration-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                                         previewMode === m
                                             ? 'bg-background text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground'

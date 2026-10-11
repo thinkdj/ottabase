@@ -155,7 +155,7 @@ export function MediaLightbox({
                             href={currentItem.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Open media in new tab"
                         >
                             <IconExternalLink className="h-5 w-5" />
@@ -165,7 +165,7 @@ export function MediaLightbox({
                             download={currentItem.originalName ?? undefined}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Download media"
                         >
                             <IconArrowBarToDown className="h-5 w-5" />
@@ -173,7 +173,7 @@ export function MediaLightbox({
                         <button
                             type="button"
                             onClick={toggleFullscreen}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                         >
                             {isFullscreen ? <IconMinimize className="h-5 w-5" /> : <IconMaximize className="h-5 w-5" />}
@@ -181,7 +181,7 @@ export function MediaLightbox({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Close media viewer"
                         >
                             <IconX className="h-5 w-5" />
@@ -200,7 +200,7 @@ export function MediaLightbox({
                                     type="button"
                                     onClick={onPrevious}
                                     disabled={!canGoPrevious}
-                                    className="absolute left-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="absolute left-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
                                     aria-label="Previous media item"
                                 >
                                     <IconChevronLeft className="h-6 w-6" />
@@ -209,7 +209,7 @@ export function MediaLightbox({
                                     type="button"
                                     onClick={onNext}
                                     disabled={!canGoNext}
-                                    className="absolute right-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
+                                    className="absolute right-3 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
                                     aria-label="Next media item"
                                 >
                                     <IconChevronRight className="h-6 w-6" />
@@ -304,7 +304,7 @@ export function MediaLightbox({
                                         key={item.id}
                                         type="button"
                                         onClick={() => onSelectIndex(index)}
-                                        className={`h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted/40 transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                        className={`h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted/40 transition-all duration-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                                             index === activeIndex
                                                 ? 'ring-2 ring-primary'
                                                 : 'opacity-70 ring-1 ring-border hover:opacity-100'

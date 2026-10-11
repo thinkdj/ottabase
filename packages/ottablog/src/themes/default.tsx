@@ -114,7 +114,7 @@ export const defaultTheme: Theme = {
                             {props.onAuthorClick && post.authorId ? (
                                 <button
                                     type="button"
-                                    className="rounded-sm text-sm font-medium normal-case tracking-normal text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="rounded-sm text-sm font-medium normal-case tracking-normal text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                     onClick={() => props.onAuthorClick!(post.authorId!)}
                                 >
                                     {post.author.name}

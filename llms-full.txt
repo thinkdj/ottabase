@@ -5828,13 +5828,12 @@ import { ComponentName } from '@ottabase/package-name';
 
 ## Tailwind Integration
 
-Consumer apps must include package source in Tailwind config:
+Tailwind v4 only auto-detects the consuming app's own directory, so the app's root stylesheet must add the package
+source:
 
-```javascript
-// tailwind.config.cjs
-module.exports = {
-    content: ['./app/**/*.{js,ts,jsx,tsx}', '../../packages/package-name/src/**/*.{js,ts,jsx,tsx}'],
-};
+```css
+/* e.g. apps/otta-web/src/styles/globals.css */
+@source '../../../../packages/package-name/src';
 ```
 
 ## Dependencies
@@ -5878,7 +5877,7 @@ import { ComponentName } from '@ottabase/package-name/component-name';
 - Use `skipLibCheck: true` in tsconfig
 - Declare `lint`, `type-check`, `test` and `build` scripts (exception: `./src`-exported packages omit `build`, see
   AGENTS.MD)
-- Include package sources in consumer app Tailwind config
+- Add an `@source` for the package to the consumer app's root stylesheet
 
 
 ---
@@ -10867,7 +10866,7 @@ Two families of categories:
 - **Defaulted** (`color`, `typography`, `spacing`, `radius`, `shadow`, `motion`) — engine defaults are merged under
   theme values; their vars are always emitted.
 - **Sparse** (everything below) — emitted **only when the theme defines them**. Fallbacks live in the consumers
-  (`tailwind.base.cjs` utilities + static rules in `ui-shadcn/styles/shadcn.css`), so a theme that defines none of them
+  (`ui-tailwind/styles/tailwind.base.css` utilities + static rules in `ui-shadcn/styles/shadcn.css`), so a theme that defines none of them
   renders pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
   `var(--specific, var(--global, <today's literal>))`.
 
@@ -17981,8 +17980,8 @@ it must transpile it and include `packages/ottalanding/src/**` in their Tailwind
 
 ## Content model
 
-**Site** (`landing_sites`, one row per app, `settings` JSON): name, tagline, public URL, theme, navigation links, a nav
-button, footer links and a footer note.
+**Site** (`landing_sites`, one row per app, `settings` JSON): name, tagline, theme, logo, favicon, brand color, public
+URL, navigation links, a nav button, footer links and a footer note.
 
 **Page** (`landing_pages`, unique per `(app_id, path)`): path, title, description, published flag, and an ordered
 `sections` JSON array.
@@ -17991,13 +17990,15 @@ button, footer links and a footer note.
 
 | Type           | Fields                                                                                              |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| `hero`         | eyebrow, headline\*, subheadline, buttons, image URL, image description                             |
-| `logos`        | heading, logos (name\*, image URL)                                                                  |
+| `hero`         | eyebrow, headline\*, subheadline, buttons, image, image description                                 |
+| `logos`        | heading, logos (name\*, logo image)                                                                 |
 | `features`     | heading, intro, features (title\*, description\*)                                                   |
-| `testimonials` | heading, quotes (quote\*, name\*, role, photo URL)                                                  |
+| `testimonials` | heading, quotes (quote\*, name\*, role, photo)                                                      |
 | `pricing`      | heading, intro, plans (name\*, price\*, period, description, included lines, button, featured flag) |
 | `faq`          | heading, questions (question\*, answer\*)                                                           |
 | `cta`          | heading\*, supporting line, buttons                                                                 |
+| `contact`      | heading, intro, button label, thank-you message (the form asks for name, email and message)         |
+| `signup`       | heading, intro, button label, thank-you message (one email field: a waitlist or newsletter)         |
 | `text`         | heading, body\* (paragraphs separated by blank lines)                                               |
 
 ### One descriptor, three jobs
@@ -18015,6 +18016,11 @@ Adding a field is a one-line change, and the type, the validation and the admin 
 Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor`, `mailto:` and `tel:`. A field marked
 `absolute` (the site's public URL) accepts only a full `http(s)://host` address. Every rendered href and image `src`
 also goes through `sanitizeUrl`.
+
+**Images** (`kind: 'image'`) are picked from, or uploaded to, the media library in the admin. Uploads are stored as
+`/api/upload/file/<key>` URLs. The landing app binds the same R2 bucket and serves that path too, so one URL works in
+both apps. An image field may name an `altKey`: picking a library image fills that description field from the image's
+alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
 
 **Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
 setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
@@ -18036,10 +18042,13 @@ await LandingSite.saveSettings(appId, input); // validates; throws DomainValidat
 site.getSettings(); // validated settings, field by field (see above)
 
 await LandingPage.findPublished(appId, '/pricing'); // public read
+await LandingPage.publishedPaths(appId); // [{ path, updatedAt }] for the sitemap
 await LandingPage.forApp(appId);
 await LandingPage.createFor(appId, input); // validates, unique path → PATH_TAKEN
 await LandingPage.updateFor(appId, id, input); // null if the page is not in this app
 await LandingPage.deleteFor(appId, id); // the home page can't be deleted (HOME_PAGE_REQUIRED)
+await LandingPage.previewTokenFor(appId, id, reset?); // draft preview-link token; reset retires old links
+await LandingPage.findForPreview(appId, path, token); // the page whose token matches, published or not
 page.toPage(); // plain data; stored sections that no longer match the catalog are dropped
 ```
 
@@ -18048,6 +18057,56 @@ which the admin shows on the exact input.
 
 **Scoping:** content is app-global and platform-owned, like brand data, so it's keyed by `appId` only. The app always
 comes from server configuration, never from the request.
+
+## Leads (contact and signup forms)
+
+The `contact` and `signup` sections render `LeadForm` (`@ottabase/ottalanding/react`, a client component each theme
+styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which calls
+`LandingLead.submit(appId, body, { ipHash })` and stores a `landing_leads` row in the shared D1.
+
+```ts
+await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored' | 'rate-limited'; field errors throw (422)
+await LandingLead.inbox(appId, { kind, limit, offset }); // { leads, total, unread }, newest first
+await LandingLead.setRead(appId, id, read);
+await LandingLead.deleteFor(appId, id);
+await LandingLead.pendingNotification(appId); // not yet emailed, oldest first
+await LandingLead.markNotified(appId, ids);
+leadsToCsv(leads); // spreadsheet export; formula-like cells are defused
+leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the notification email, all escaped
+```
+
+**Spam.** Two cheap bot checks: a hidden `website` field people never fill in, and the time spent on the form (under
+`LEAD_MIN_FILL_MS`, a person can't have typed it). Either one makes `submit` return `ignored`. The visitor still sees
+the thank-you, so a bot learns nothing. On top of that, each network (a salted SHA-256 of app + IP, never the IP itself)
+is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
+for the same email is accepted but stored once.
+
+**Notifications** live in otta-web, where the mail provider is configured. Setting **Email new form entries to**
+(`leadEmail`) in the site settings creates an every-minute DB-scheduler task (`landing:notify-leads`, visible and
+pausable in Admin › Cron). Each run emails one digest of everything new through `resolveAppMailer`, then marks those
+entries notified. With no address set, pending entries are retired without a send, so a later address isn't flooded.
+With no working mail provider, the task fails visibly and the entries stay pending until mail works.
+
+The admin inbox is at `/admin/content/landing/leads`: filter by messages or signups, read (opening an entry marks it
+read), reply by email, mark unread, delete, and export CSV.
+
+## Social images
+
+The picture link previews show (X, LinkedIn, Slack, iMessage…) is typed content like everything else: `SHARE_FIELDS`
+holds the heading, supporting text, color, background image and the rendered `imageUrl`. The site has a default card
+(`settings.share`), and any page may have its own (`landing_pages.share`, null means "use the site's").
+
+The admin draws the card in the browser with `drawShareCard(ctx, scene)`, a pure function. The editor's live canvas and
+the uploaded PNG come from the same call, so what you see is exactly what gets shared:
+
+- 1200×630; the heading uses the theme's heading font (`themeFonts()`) at the largest size that fits three lines;
+- the color defaults to the brand color, else the theme's accent (`themeAccent()`), with ink chosen by contrast;
+- a background image is drawn cover-fit under a dark shade, with white text on top;
+- the logo and domain sit in the top row, and the site name is left out when the heading already is the name.
+
+otta-web stores the PNG at one fixed key per site or page (`POST /api/landing/share-image`, PNG-signature checked) and
+returns it cache-busted with `?v=`, so re-renders never pile up. A deleted page's image is removed with it. The site's
+card is re-rendered on every settings save and theme switch; a page's on every save of that page.
 
 ## Themes
 
@@ -18058,8 +18117,13 @@ comes from server configuration, never from the request.
 | `bold`      | `midnight` | Dark and loud: oversized type, logo ticker (respects reduced motion), bento features, inverted featured plan |
 
 A theme is a Brand Engine preset for colours, type and radius, plus its own React components: a `Shell` (navigation and
-footer) and one component per section type. `themeStyles(themeId, selector)` returns the preset's tokens for **both**
-colour schemes. Use `:root` on the live site and a scoping selector for previews.
+footer) and one component per section type. `themeStyles(themeId, selector, brandColor?)` returns the preset's tokens
+for **both** colour schemes. Use `:root` on the live site and a scoping selector for previews.
+
+A **brand color** replaces the preset's accent (`--primary`, `--ring`) through Brand Engine overrides.
+`--primary-foreground` becomes whichever of white or near-black has the higher WCAG contrast on it (`readableOn()`). The
+site's **logo** appears in every theme's navigation (`SiteBrand`), next to the name unless "the logo already shows the
+site name" is on, in which case the name becomes the logo's alt text.
 
 ```tsx
 import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
@@ -18118,7 +18182,7 @@ Registered as a built-in package (`packages.ottalanding`):
 - tables in `config.migrations.ts`
 - `db/schema.ts`
 - models in `db-utils.ts`, with a defensive app-scoped, platform-admin RLS policy (generic CRUD default-denies them)
-- `/api/landing` routes, platform admin only
+- `/api/landing` routes, platform admin only (including `POST /share-image` for rendered social images)
 - admin pages at `/admin/content/landing`
 - starter content seeded by `/api/ottaorm/init`
 
@@ -21200,14 +21264,13 @@ const items4 = [
 
 ## Dark Mode
 
-The component fully supports dark mode via Tailwind's `dark:` variant:
+The component fully supports dark mode via Tailwind's `dark:` variant. `@ottabase/ui-tailwind` already sets class-based
+dark mode; the app only needs Tailwind to scan the package:
 
-```javascript
-// tailwind.config.js
-module.exports = {
-    darkMode: 'class',
-    content: ['../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}'],
-};
+```css
+/* app root stylesheet */
+@import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+@source '<path-to>/packages/ottaselect/src';
 ```
 
 ## License
@@ -21407,6 +21470,20 @@ await deleteFileFromR2(key, r2Client);
 // List
 import { listFilesFromR2 } from '@ottabase/ottaupload/server';
 const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
+```
+
+### Serving uploads
+
+`serveR2Object(bucket, key, { cacheControl? })` streams an object from an R2 binding with the headers that make serving
+user uploads safe: `X-Content-Type-Options: nosniff`, a sandboxing `Content-Security-Policy`, and
+`Content-Disposition: inline` only for known-safe images (everything else, SVG and HTML included, downloads). It returns
+`null` for a missing key. Every app that serves `/api/upload/file/*` should use it, so the rules can't drift.
+
+```typescript
+import { serveR2Object } from '@ottabase/ottaupload/server';
+
+const response = await serveR2Object(env.OBCF_R2, key, { cacheControl: 'public, max-age=31536000, immutable' });
+return response ?? errorResponse('File not found', 404);
 ```
 
 ## React Hooks
@@ -23319,12 +23396,12 @@ The package ships two entry points so consumers only pull in UI dependencies whe
 - `@ottabase/spotlight` — **pure**. Context, hooks and API helpers (`useSpotlight`, `useSpotlightSearch`,
   `createApiSearchHandler`, `createApiSearchHandlerWithSignal`) plus all types. No UI dependencies.
 - `@ottabase/spotlight/react` — the **rendered** components (`SpotlightProvider`, `Spotlight`). These pull in the
-  optional peer dependencies `@ottabase/ui-shadcn`, `@radix-ui/react-dialog` and `@tabler/icons-react`.
+  optional peer dependencies `@ottabase/ui-shadcn`, `radix-ui` and `@tabler/icons-react`.
 
 Install the UI peers alongside the package when you render components:
 
 ```bash
-pnpm add @ottabase/spotlight @ottabase/ui-shadcn @radix-ui/react-dialog @tabler/icons-react
+pnpm add @ottabase/spotlight @ottabase/ui-shadcn radix-ui @tabler/icons-react
 ```
 
 ## Usage
@@ -25184,13 +25261,22 @@ export function Example() {
 
 Finally, ensure Tailwind scans the package and that the shared CSS variables are loaded:
 
-1. Add "../../packages/ui-shadcn/components/\*_/_.{ts,tsx}" to the consuming app's <code>tailwind.config</code> content
-   list.
-2. Import the shared stylesheet in the app's global CSS file:
+1. Import the Tailwind entry and this package's token stylesheet in the app's root CSS file, and add an `@source` for
+   the components (Tailwind v4 only auto-detects the app's own directory). See `@ottabase/ui-tailwind`.
 
     ```css
+    @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
     @import '@ottabase/ui-shadcn/styles.css';
+    @source '<path-to>/packages/ui-shadcn/components';
     ```
+
+2. `styles.css` is plain CSS (no Tailwind directives); its `@layer base` rules join Tailwind's cascade layers, so
+   utilities still override the global focus ring, interaction physics and decor carriers.
+
+Primitives come from the unified [`radix-ui`](https://www.radix-ui.com/primitives) package
+(`import { Dialog as DialogPrimitive } from 'radix-ui'`). This is Ottabase's own shadcn variant: components carry
+`data-slot` hooks, token-driven styling and brand overrides, so they are maintained here rather than re-synced from the
+shadcn registry.
 
 ## Theming hooks (BrandEngine)
 
@@ -25338,53 +25424,92 @@ MIT
 
 # @ottabase/ui-tailwind
 
-Shared **Tailwind CSS preset** and base styles for Ottabase apps. The preset maps theme CSS variables (shadcn-style HSL
-tokens, radii, fonts, charts, sidebar, etc.) to Tailwind utilities and registers common plugins so Vite/Next apps stay
-aligned.
+Shared **Tailwind CSS v4** entry stylesheet for Ottabase apps. One `@import` loads Tailwind, the forms/typography
+plugins and `tw-animate-css`, and maps every theme CSS variable (shadcn-style HSL colour tokens, radii, type scale,
+fonts, shadows, motion, z-index, sidebar, charts) onto Tailwind utilities, so Vite/Next apps stay aligned with the Brand
+Engine.
+
+There is no JavaScript config: Tailwind v4 is configured in CSS (`styles/tailwind.base.css`).
 
 ## Usage
 
-**1. Tailwind config** — use the preset as the single source for `theme.extend`, `darkMode`, and plugins:
+**1. PostCSS** — use the v4 plugin (it handles imports, nesting and vendor prefixes; no autoprefixer needed):
 
 ```js
-// tailwind.config.cjs
-const sharedPreset = require('@ottabase/ui-tailwind/tailwind.base.cjs');
-
+// postcss.config.cjs
 module.exports = {
-    darkMode: sharedPreset.darkMode,
-    presets: [sharedPreset],
-    content: [
-        './src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
-        // …other workspace paths that use Tailwind classes
-    ],
+    plugins: { '@tailwindcss/postcss': {} },
 };
 ```
 
-**2. Global CSS** — pull in the base `@tailwind` layers (adjust path if your bundler resolves the package differently):
+**2. Root stylesheet** — import the entry first, then point Tailwind at any workspace packages whose class names it must
+see (the app's own directory is detected automatically):
 
 ```css
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+@import '@ottabase/ui-shadcn/styles.css'; /* token defaults + light/dark */
+
+@source '../../../../packages/ui-shadcn/components';
+@source '../../../../packages/ui-components/src';
+/* …other workspace paths that use Tailwind classes */
 ```
 
-**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + `theme.loader` overrides) _before_ or alongside the
-above so the preset’s `hsl(var(--…))` references resolve.
+**3. App-specific tokens** — extend in CSS with the same `@theme inline reference` block the shared sheet uses:
 
-## Peer dependencies
+```css
+@theme inline reference {
+    --spacing-theme-section: var(--spacing-section); /* p-theme-section, gap-theme-section … */
+}
+```
 
-Declare these in the consuming app (versions are usually taken from the monorepo `catalog:`):
+## How the token mapping works
 
-- `tailwindcss`
-- `tailwindcss-animate`
-- `postcss`
-- `@tailwindcss/forms`
-- `@tailwindcss/typography`
-- `postcss-preset-mantine`
+The shared sheet declares its tokens with `@theme inline reference`:
 
-The package also depends on `tailwind-merge` for class merging when used from TS/React layers that consume it.
+- **`inline`** — utilities embed the `var()` expression itself (`bg-primary` → `hsl(var(--primary))`), so a token
+  resolves on the element that uses it and scoped overrides (`.dark`, a `.otta-demo` wrapper) keep working.
+- **`reference`** — the keys are not emitted as `:root` variables. Several Brand Engine tokens share Tailwind's own
+  names (`--radius-sm`, `--shadow-md`, `--text-base`, `--font-mono`, `--ease-spring` …); emitting them would shadow or
+  self-reference the runtime values. Utilities read the engine variable directly, with the stock value as the fallback
+  where a theme may omit it (`text-base` → `var(--text-base, 1rem)`).
+
+Colour tokens stay raw HSL channels (`--primary: 222 47% 11%`), so opacity modifiers work: `bg-primary/50` →
+`color-mix(in oklab, hsl(var(--primary)) 50%, transparent)`.
+
+| Utility                                                                                | Reads                                                     |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `bg-*` / `text-*` / `border-*` semantic colours                                        | `--primary`, `--muted-foreground`, `--sidebar-*`, …       |
+| `rounded`, `rounded-sm` … `rounded-2xl`, `rounded-full`                                | `--radius-{size}`, falling back to a calc over `--radius` |
+| `shadow` (= sm), `shadow-xs` … `shadow-xl`                                             | `--shadow-{size}`                                         |
+| `text-xs` … `text-9xl`                                                                 | `--text-{step}`, `--text-{step}-lh`, `--text-{step}-ls`   |
+| `font-sans` / `font-heading` / `font-mono` / `font-handwriting`                        | `--font-body`, `--font-heading`, `--font-mono`, …         |
+| `border`, `border-x/y/t/r/b/l`, `divide-x/y`, `border-strong`                          | `--border-width`, `--border-width-strong`                 |
+| `transition` defaults, `duration-fast/normal/slow/press`, `ease-theme*`, `ease-spring` | `--duration-*`, `--ease*`                                 |
+| `z-header`, `z-sticky`, `z-dropdown`, `z-overlay`, `z-modal`, `z-popover`, `z-toast`   | `--z-{name}`                                              |
+| `p-section`, `gap-card`, `m-element`, …                                                | `--spacing-section/card/element`                          |
+| `prose`                                                                                | token colours (light/dark adaptive)                       |
+
+Dark mode is class based (`dark:` matches descendants of `.dark`).
+
+The sheet also keeps three v3 preflight defaults that v4 changed: borders default to `gray-200` (not `currentColor`),
+input placeholders to `gray-400`, and buttons get `cursor: pointer`. `ui-shadcn/styles.css` then re-points borders at
+the `--border` token.
+
+## Cascade layers
+
+Tailwind v4 emits native cascade layers (`theme, base, components, utilities`). **Unlayered CSS beats every utility**
+regardless of specificity, so global element rules that utilities should be able to override (cursors, focus ring,
+interaction physics) belong in `@layer base`. Runtime theme CSS is injected unlayered on purpose — it overrides
+everything.
+
+## Dependencies
+
+Apps bring `tailwindcss` and `@tailwindcss/postcss` (from the monorepo `catalog:`). This package owns what its
+stylesheet loads: `@tailwindcss/forms`, `@tailwindcss/typography` and `tw-animate-css`.
 
 ## Tests
+
+The suite compiles the real stylesheet through `@tailwindcss/postcss` and asserts the generated utilities.
 
 ```bash
 pnpm test --filter=@ottabase/ui-tailwind

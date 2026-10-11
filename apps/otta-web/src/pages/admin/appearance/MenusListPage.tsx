@@ -147,7 +147,7 @@ function MenuCard({
         <Link
             to="/admin/appearance/menus/$menuId"
             params={{ menuId: menu.id }}
-            className="group flex h-full flex-col rounded-xl bg-muted/40 p-4 outline-none transition-colors duration-normal hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="group flex h-full flex-col rounded-xl bg-muted/40 p-4 outline-hidden transition-colors duration-normal hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1 space-y-1.5">

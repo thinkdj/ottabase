@@ -60,7 +60,7 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "@inquirer/checkbox": "^5.0.7",
+        "@inquirer/checkbox": "^5.2.6",
         "jsonc-parser": "^3.3.1"
     },
     "devDependencies": {

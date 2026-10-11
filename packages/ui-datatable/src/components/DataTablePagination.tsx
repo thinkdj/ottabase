@@ -72,7 +72,7 @@ export function DataTablePagination<TData>({
     const btnBase = clsx(
         'inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors duration-normal',
         'hover:bg-muted/70 hover:text-foreground',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:pointer-events-none disabled:opacity-50',
     );
 
@@ -102,7 +102,7 @@ export function DataTablePagination<TData>({
                             aria-label="Rows per page"
                             value={pageSize}
                             onChange={(e) => setPageSize(Number(e.target.value))}
-                            className="h-9 appearance-none rounded-md bg-background py-0 pl-2.5 pr-7 text-sm text-foreground ring-1 ring-border transition-colors duration-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="h-9 appearance-none rounded-md bg-background py-0 pl-2.5 pr-7 text-sm text-foreground ring-1 ring-border transition-colors duration-normal focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             {pageSizeOptions.map((size) => (
                                 <option key={size} value={size}>

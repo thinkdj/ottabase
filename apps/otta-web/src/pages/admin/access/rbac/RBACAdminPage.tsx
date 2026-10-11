@@ -84,7 +84,7 @@ export function RBACAdminPage() {
                         <Link
                             key={item.title}
                             to={item.href}
-                            className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="group block rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {content}
                         </Link>

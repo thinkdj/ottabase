@@ -365,7 +365,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                             'h-9 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                             'bg-background text-foreground ring-1 ring-border',
                             'hover:bg-muted/70',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                             'disabled:cursor-not-allowed disabled:opacity-50',
                         )}
                     >
@@ -379,7 +379,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                         'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                         'bg-primary text-primary-foreground',
                         'hover:bg-primary/90',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         'disabled:cursor-not-allowed disabled:opacity-50',
                     )}
                 >

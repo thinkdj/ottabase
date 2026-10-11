@@ -115,7 +115,7 @@ function MediaGalleryItemCard({ item, index, layout }: MediaGalleryItemCardProps
 
     return (
         <div
-            className={`overflow-hidden rounded-lg bg-background ring-1 ring-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layoutItemClass} ${hasLightbox ? 'cursor-pointer' : ''}`}
+            className={`overflow-hidden rounded-lg bg-background ring-1 ring-border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${layoutItemClass} ${hasLightbox ? 'cursor-pointer' : ''}`}
             role={hasLightbox ? 'button' : 'presentation'}
             tabIndex={hasLightbox ? 0 : -1}
             onClick={() => {

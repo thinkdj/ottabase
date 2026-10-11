@@ -428,7 +428,7 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
                             'h-9 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                             'bg-background text-foreground ring-1 ring-border',
                             'hover:bg-muted/70',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                             'disabled:opacity-50',
                         )}
                     >
@@ -441,7 +441,7 @@ function DeleteConfirmModal({ entityName, recordId, isLoading, onConfirm, onCanc
                             'h-9 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                             'bg-destructive text-destructive-foreground',
                             'hover:bg-destructive/90',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                             'disabled:opacity-50',
                         )}
                     >

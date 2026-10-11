@@ -44,8 +44,8 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "i18next": "^24.2.1",
-        "i18next-browser-languagedetector": "^8.0.2"
+        "i18next": "^24.2.3",
+        "i18next-browser-languagedetector": "^8.2.1"
     },
     "devDependencies": {
         "@types/node": "catalog:",
@@ -53,7 +53,7 @@
         "eslint": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "react-i18next": "^15.2.0",
+        "react-i18next": "^15.7.4",
         "rimraf": "catalog:",
         "tsup": "catalog:",
         "typescript": "catalog:"

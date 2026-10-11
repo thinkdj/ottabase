@@ -15,8 +15,7 @@
         "skipLibCheck": true,
         "strict": false,
         "isolatedModules": false,
-        "noImplicitAny": false,
-        "preserveSymlinks": true
+        "noImplicitAny": false
     },
     "include": ["src/**/*", "components/**/*", "providers/**/*"],
     "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*"]

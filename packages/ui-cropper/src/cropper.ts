@@ -450,7 +450,9 @@ export class Cropper {
 
         this.canvas.width = cw;
         this.canvas.height = ch;
-        const ctx = this.canvas.getContext('2d')!;
+        // null when the browser has no 2D context to give (context loss, canvas-less DOMs)
+        const ctx = this.canvas.getContext('2d');
+        if (!ctx) return;
 
         // Clear canvas
         ctx.clearRect(0, 0, cw, ch);

@@ -124,13 +124,12 @@ import { ComponentName } from '@ottabase/package-name';
 
 ## Tailwind Integration
 
-Consumer apps must include package source in Tailwind config:
+Tailwind v4 only auto-detects the consuming app's own directory, so the app's root stylesheet must add the package
+source:
 
-```javascript
-// tailwind.config.cjs
-module.exports = {
-    content: ['./app/**/*.{js,ts,jsx,tsx}', '../../packages/package-name/src/**/*.{js,ts,jsx,tsx}'],
-};
+```css
+/* e.g. apps/otta-web/src/styles/globals.css */
+@source '../../../../packages/package-name/src';
 ```
 
 ## Dependencies
@@ -174,4 +173,4 @@ import { ComponentName } from '@ottabase/package-name/component-name';
 - Use `skipLibCheck: true` in tsconfig
 - Declare `lint`, `type-check`, `test` and `build` scripts (exception: `./src`-exported packages omit `build`, see
   AGENTS.MD)
-- Include package sources in consumer app Tailwind config
+- Add an `@source` for the package to the consumer app's root stylesheet

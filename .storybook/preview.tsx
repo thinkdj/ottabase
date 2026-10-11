@@ -1,8 +1,7 @@
 import type { Preview } from '@storybook/react-webpack5';
 import React from 'react';
 /* Import CSS files */
-import '../packages/ui-tailwind/styles/tailwind.base.css';
-import '../packages/ui-shadcn/styles/shadcn.css';
+import './tailwind.css';
 import { StoryShell } from './StoryShell';
 
 export const parameters: Preview['parameters'] = {

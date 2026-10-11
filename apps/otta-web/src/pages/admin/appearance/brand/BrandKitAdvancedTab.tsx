@@ -74,7 +74,7 @@ export function BrandKitAdvancedTab({
                 <p className="text-xs text-muted-foreground mb-2">Injected into the document. Use for overrides.</p>
                 <textarea
                     id="customCss"
-                    className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     value={customCss}
                     onChange={(e) =>
                         onChange({
@@ -115,7 +115,7 @@ export function BrandKitAdvancedTab({
                     </p>
                     <textarea
                         id="tokensJson"
-                        className="w-full min-h-[180px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="w-full min-h-[180px] rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         value={tokensJson ?? '{}'}
                         onChange={(e) => onTokensChange(e.target.value)}
                         spellCheck={false}

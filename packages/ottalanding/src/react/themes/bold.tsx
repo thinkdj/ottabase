@@ -50,7 +50,7 @@ function Heading({ title, subtitle }: { title?: string; subtitle?: string }) {
 }
 
 const form: LeadFormClasses = {
-    input: 'w-full rounded-xl border-2 border-border bg-muted/30 px-5 py-3.5 text-lg placeholder:text-muted-foreground focus:border-primary focus:outline-none',
+    input: 'w-full rounded-xl border-2 border-border bg-muted/30 px-5 py-3.5 text-lg placeholder:text-muted-foreground focus:border-primary focus:outline-hidden',
     button: `${btn} h-[3.6rem] bg-primary text-primary-foreground disabled:opacity-60`,
     label: 'text-sm font-semibold uppercase tracking-wider text-muted-foreground',
     note: 'rounded-2xl border-2 border-primary p-6 font-heading text-2xl font-bold',

@@ -86,7 +86,7 @@ export function AdminLandingLeadsPage() {
                         role="radio"
                         aria-checked={kind === f.kind}
                         onClick={() => setKind(f.kind)}
-                        className={`rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${kind === f.kind ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${kind === f.kind ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                         {f.label}
                     </button>
@@ -169,7 +169,7 @@ function LeadRow({ lead }: { lead: LeadData }) {
                     type="button"
                     onClick={toggle}
                     aria-expanded={open}
-                    className="min-w-0 flex-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="min-w-0 flex-1 rounded-md text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className={`truncate ${lead.read ? '' : 'font-semibold'}`}>

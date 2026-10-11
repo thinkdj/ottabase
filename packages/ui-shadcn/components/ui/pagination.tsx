@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot as SlotPrimitive } from 'radix-ui';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { ButtonProps, buttonVariants } from './button';
@@ -41,7 +41,7 @@ type PaginationLinkProps = {
 
 const PaginationLink = React.forwardRef<HTMLAnchorElement, PaginationLinkProps>(
     ({ className, isActive, size = 'icon', asChild, ...props }, ref) => {
-        const Comp = asChild ? Slot : 'a';
+        const Comp = asChild ? SlotPrimitive.Slot : 'a';
         return (
             <Comp
                 ref={ref}

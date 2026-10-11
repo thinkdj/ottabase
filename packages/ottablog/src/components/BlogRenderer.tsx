@@ -383,7 +383,7 @@ export function BlogExcerptCard({
         );
         if (LinkComponent) {
             return (
-                <LinkComponent href={cardHref} className="block rounded-xl outline-none">
+                <LinkComponent href={cardHref} className="block rounded-xl outline-hidden">
                     {blurb}
                 </LinkComponent>
             );
@@ -412,7 +412,7 @@ export function BlogExcerptCard({
         );
         if (LinkComponent) {
             return (
-                <LinkComponent href={cardHref} className="block rounded-2xl outline-none">
+                <LinkComponent href={cardHref} className="block rounded-2xl outline-hidden">
                     {journal}
                 </LinkComponent>
             );

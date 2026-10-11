@@ -418,7 +418,7 @@ apps/otta-web/
 ├── index.html             # HTML template
 ├── vite.config.ts         # Vite configuration
 ├── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
-└── tailwind.config.cjs    # Tailwind CSS config
+└── postcss.config.cjs     # PostCSS (Tailwind v4 + Mantine); Tailwind is configured in src/styles/globals.css
 ```
 
 ## Routes

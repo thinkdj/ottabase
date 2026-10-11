@@ -37,20 +37,20 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
-        "@editorjs/editorjs": "^2.30.7",
         "@editorjs/checklist": "^1.6.0",
         "@editorjs/delimiter": "^1.4.2",
-        "@editorjs/embed": "^2.7.6",
-        "@editorjs/header": "^2.8.8",
-        "@editorjs/inline-code": "^1.5.1",
+        "@editorjs/editorjs": "^2.31.7",
+        "@editorjs/embed": "^2.8.0",
+        "@editorjs/header": "^2.8.9",
+        "@editorjs/inline-code": "^1.5.2",
         "@editorjs/link": "^2.6.2",
         "@editorjs/marker": "^1.4.0",
         "@editorjs/nested-list": "^1.4.3",
-        "@editorjs/paragraph": "^2.11.6",
-        "@editorjs/quote": "^2.7.4",
-        "@editorjs/table": "^2.4.1",
-        "@editorjs/underline": "^1.1.0",
-        "@editorjs/warning": "^1.4.0",
+        "@editorjs/paragraph": "^2.11.7",
+        "@editorjs/quote": "^2.7.6",
+        "@editorjs/table": "^2.4.6",
+        "@editorjs/underline": "^1.2.1",
+        "@editorjs/warning": "^1.4.1",
         "@ottabase/ottaupload": "workspace:*"
     },
     "peerDependencies": {
@@ -58,15 +58,15 @@
         "react-dom": "catalog:"
     },
     "devDependencies": {
+        "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
-        "@types/node": "catalog:",
+        "eslint": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
-        "typescript": "catalog:",
-        "tsup": "catalog:",
         "rimraf": "catalog:",
-        "eslint": "catalog:"
+        "tsup": "catalog:",
+        "typescript": "catalog:"
     },
     "repository": {
         "type": "git",

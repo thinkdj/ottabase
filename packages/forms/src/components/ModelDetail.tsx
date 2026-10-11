@@ -75,7 +75,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
                         <button
                             onClick={onBack}
                             aria-label="Back"
-                            className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <ArrowLeft className="h-4 w-4" />
                         </button>
@@ -99,7 +99,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
                                 className={clsx(
                                     'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                                     'bg-primary text-primary-foreground hover:bg-primary/90',
-                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                                 )}
                             >
                                 <Edit2 className="h-4 w-4" />
@@ -112,7 +112,7 @@ export function ModelDetail<T extends Record<string, unknown>>({
                                 className={clsx(
                                     'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                                     'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                                 )}
                             >
                                 <Trash2 className="h-4 w-4" />

@@ -569,7 +569,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                                 <button
                                     type="button"
                                     onClick={() => setLibraryOpen(true)}
-                                    className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/60 px-6 py-16 text-center outline-none transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/60 px-6 py-16 text-center outline-hidden transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     <Images className="mb-4 h-10 w-10 text-muted-foreground" />
                                     <span className="font-medium">Choose the photographs</span>

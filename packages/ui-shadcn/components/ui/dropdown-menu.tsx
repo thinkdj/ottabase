@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
@@ -40,7 +40,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-sub-trigger"
         className={cn(
-            'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus-visible:outline-none focus:bg-accent data-[state=open]:bg-accent',
+            'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus-visible:outline-hidden focus:bg-accent data-[state=open]:bg-accent',
             inset && 'pl-8',
             className,
         )}
@@ -97,7 +97,7 @@ const DropdownMenuItem = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-item"
         className={cn(
-            'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus-visible:outline-none transition duration-fast ease-theme focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus-visible:outline-hidden transition duration-fast ease-theme focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
             inset && 'pl-8',
             className,
         )}
@@ -114,7 +114,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-checkbox-item"
         className={cn(
-            'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus-visible:outline-none transition duration-fast ease-theme focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus-visible:outline-hidden transition duration-fast ease-theme focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
             className,
         )}
         checked={checked}
@@ -141,7 +141,7 @@ const DropdownMenuRadioItem = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-radio-item"
         className={cn(
-            'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus-visible:outline-none transition duration-fast ease-theme focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus-visible:outline-hidden transition duration-fast ease-theme focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
             className,
         )}
         {...props}

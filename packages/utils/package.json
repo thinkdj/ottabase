@@ -134,10 +134,10 @@
     "dependencies": {
         "date-fns": "catalog:",
         "date-fns-tz": "catalog:",
-        "dompurify": "^3.4.0"
+        "dompurify": "^3.4.16"
     },
     "devDependencies": {
-        "@types/jsdom": "^28.0.1",
+        "@types/jsdom": "^28.0.3",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "eslint": "catalog:",

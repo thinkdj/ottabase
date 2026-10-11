@@ -324,7 +324,7 @@ export function BlogListPage() {
                                     search={localizedPostSearch(post, requestedLanguage)}
                                     aria-label={`Open thought from ${post.author?.name || 'author'}`}
                                     // Matches the blurb card's bound edge so the focus ring traces the card, not a rounded box around it.
-                                    className="group block rounded-l-sm rounded-r-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="group block rounded-l-sm rounded-r-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <BlurbRenderer post={post} variant="timeline" formatDate={formatDate} />
                                 </Link>
@@ -335,7 +335,7 @@ export function BlogListPage() {
                                     params={{ slug: post.slug }}
                                     search={localizedPostSearch(post, requestedLanguage)}
                                     aria-label={`Open photo journal ${post.title}`}
-                                    className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="group block rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <PhotoJournalRenderer post={post} variant="timeline" formatDate={formatDate} />
                                 </Link>
@@ -468,7 +468,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
                     to="/blog/$slug"
                     params={{ slug: post.slug }}
                     search={localizedPostSearch(post, activeLanguage)}
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     {post.contentType === 'photo' ? 'Open journal' : 'Read post'}
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -571,7 +571,7 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                     to="/blog/$slug"
                     params={{ slug: post.slug }}
                     search={localizedPostSearch(post, activeLanguage)}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     Read post
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />

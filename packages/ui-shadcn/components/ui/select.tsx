@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import * as SelectPrimitive from '@radix-ui/react-select';
+import { Select as SelectPrimitive } from 'radix-ui';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
@@ -131,7 +131,7 @@ const SelectItem = React.forwardRef<
         ref={ref}
         data-slot="select-item"
         className={cn(
-            'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus-visible:outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm focus-visible:outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
             className,
         )}
         {...props}

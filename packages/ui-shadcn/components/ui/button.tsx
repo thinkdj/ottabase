@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot as SlotPrimitive } from 'radix-ui';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
@@ -70,9 +70,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         // (even a falsy conditional child breaks React.Children.only).
         if (asChild) {
             return (
-                <Slot {...stamps} className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+                <SlotPrimitive.Slot
+                    {...stamps}
+                    className={cn(buttonVariants({ variant, size, className }))}
+                    ref={ref}
+                    {...props}
+                >
                     {children}
-                </Slot>
+                </SlotPrimitive.Slot>
             );
         }
 

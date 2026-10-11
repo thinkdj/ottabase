@@ -80,5 +80,5 @@
 - [@ottabase/ui-mantine](packages/ui-mantine/README.md): Mantine UI components and providers for Ottabase applications. This package provides a comprehensive Mantine integration with pre-built themes and configuration utilities.
 - [@ottabase/ui-shadcn](packages/ui-shadcn/README.md): Shared shadcn/ui components and helpers used across Ottabase applications. The package provides:
 - [@ottabase/ui-split-pane](packages/ui-split-pane/README.md): Minimal, clean split-pane component for React applications with no frills.
-- [@ottabase/ui-tailwind](packages/ui-tailwind/README.md): Shared Tailwind CSS preset and base styles for Ottabase apps. The preset maps theme CSS variables (shadcn-style HSL tokens, radii, fonts, charts, sidebar, etc.) to Tailwind utilities and registers…
+- [@ottabase/ui-tailwind](packages/ui-tailwind/README.md): Shared Tailwind CSS v4 entry stylesheet for Ottabase apps. One @import loads Tailwind, the forms/typography plugins and tw-animate-css, and maps every theme CSS variable (shadcn-style HSL colour…
 - [@ottabase/utils](packages/utils/README.md): A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency formatting, email parsing, JSON handling, git operations, and more.

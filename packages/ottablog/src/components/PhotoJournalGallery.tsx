@@ -143,7 +143,7 @@ function PhotoTile({
             {interactive ? (
                 <button
                     type="button"
-                    className={`${frameClass} cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                    className={`${frameClass} cursor-zoom-in outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
                     onClick={isEnabled ? open : undefined}
                     aria-label={`Open photograph ${index + 1}${item.caption ? `: ${item.caption}` : ''}`}
                 >

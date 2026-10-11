@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot as SlotPrimitive } from 'radix-ui';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
@@ -29,7 +29,7 @@ function ItemSeparator({ className, ...props }: React.ComponentProps<typeof Sepa
  * (no per-component ring recipe).
  */
 const itemVariants = cva(
-    'group/item flex items-center border border-transparent text-sm rounded-md transition duration-fast ease-theme [&:is(a)]:hover:bg-accent/50 [&:is(a)]:transition [&:is(a)]:duration-fast flex-wrap outline-none',
+    'group/item flex items-center border border-transparent text-sm rounded-md transition duration-fast ease-theme [&:is(a)]:hover:bg-accent/50 [&:is(a)]:transition [&:is(a)]:duration-fast flex-wrap outline-hidden',
     {
         variants: {
             variant: {
@@ -56,7 +56,7 @@ function Item({
     asChild = false,
     ...props
 }: React.ComponentProps<'div'> & VariantProps<typeof itemVariants> & { asChild?: boolean }) {
-    const Comp = asChild ? Slot : 'div';
+    const Comp = asChild ? SlotPrimitive.Slot : 'div';
     return (
         <Comp
             data-slot="item"

@@ -176,7 +176,7 @@ export function CfPdfDemoPage({
                             onChange={(event) => setFileName(event.target.value)}
                             placeholder="cf-pdf-demo"
                             disabled={isPending}
-                            className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-400/30 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:placeholder:text-slate-500 sm:max-w-md"
+                            className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-400/30 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:placeholder:text-slate-500 sm:max-w-md"
                         />
                     </div>
                     <button

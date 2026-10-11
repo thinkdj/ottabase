@@ -700,7 +700,7 @@ export function BlogDetailPage() {
                                                     to="/blog/$slug"
                                                     params={{ slug: prevPost.slug }}
                                                     search={localizedPostSearch(prevPost, requestedLanguage)}
-                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 >
                                                     <ArrowLeft className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:-translate-x-0.5" />
                                                     <div className="min-w-0">
@@ -718,7 +718,7 @@ export function BlogDetailPage() {
                                                     to="/blog/$slug"
                                                     params={{ slug: nextPost.slug }}
                                                     search={localizedPostSearch(nextPost, requestedLanguage)}
-                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
+                                                    className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
                                                 >
                                                     <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
                                                     <div className="min-w-0">

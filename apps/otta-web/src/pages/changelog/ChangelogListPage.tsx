@@ -154,7 +154,7 @@ export function ChangelogListPage() {
                                 <Link
                                     to="/changelog/$slug"
                                     params={{ slug: entry.slug }}
-                                    className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="group block rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     <h2 className="text-xl font-semibold text-foreground transition-colors group-hover:text-primary dark:text-foreground dark:group-hover:text-primary sm:text-2xl">
                                         {entry.title}
@@ -172,7 +172,7 @@ export function ChangelogListPage() {
                                 <Link
                                     to="/changelog/$slug"
                                     params={{ slug: entry.slug }}
-                                    className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="group block rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     {entry.heroImage?.url && (
                                         <div className="mt-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">

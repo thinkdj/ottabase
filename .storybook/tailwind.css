@@ -1,0 +1,11 @@
+/* Storybook stylesheet: Tailwind v4 + shared token theme + shadcn tokens */
+@import '../packages/ui-tailwind/styles/tailwind.base.css';
+@import '../packages/ui-shadcn/styles/shadcn.css';
+
+/* Class sources for every story (this directory is scanned automatically) */
+@source '../packages/*/src';
+@source '../packages/*/provider';
+@source '../packages/ui-shadcn/components';
+@source '../apps/*/app';
+@source '../apps/*/components';
+@source '../apps/*/ottabase';

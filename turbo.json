@@ -1,6 +1,8 @@
 {
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
+    // turbo >=2.10 otherwise rewrites a guidance block into AGENTS.MD whenever it detects an agent
+    "agentGuidance": false,
     "globalPassThroughEnv": ["PATH"],
     // Self-hosted remote cache (apps/otta-cache). apiUrl/team/token come from TURBO_API / TURBO_TEAM / TURBO_TOKEN
     // env vars (CI secrets or a developer's shell), never from this file, so forks work untouched.

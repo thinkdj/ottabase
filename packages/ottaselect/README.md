@@ -311,14 +311,13 @@ const items4 = [
 
 ## Dark Mode
 
-The component fully supports dark mode via Tailwind's `dark:` variant:
+The component fully supports dark mode via Tailwind's `dark:` variant. `@ottabase/ui-tailwind` already sets class-based
+dark mode; the app only needs Tailwind to scan the package:
 
-```javascript
-// tailwind.config.js
-module.exports = {
-    darkMode: 'class',
-    content: ['../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}'],
-};
+```css
+/* app root stylesheet */
+@import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+@source '<path-to>/packages/ottaselect/src';
 ```
 
 ## License

@@ -120,15 +120,14 @@ export function DataTable<TData extends Record<string, unknown>>({
                         <thead
                             className={clsx(
                                 'bg-muted/40 [&_tr]:border-b [&_tr]:border-border/60',
-                                stickyHeader && 'sticky top-0 z-10 bg-muted/95 backdrop-blur-sm',
+                                stickyHeader && 'sticky top-0 z-10 bg-muted/95 backdrop-blur-xs',
                             )}
                         >
                             {headerGroups.map((headerGroup) => (
                                 <tr key={headerGroup.id} className="border-b border-border/60 transition-colors">
                                     {headerGroup.headers.map((header) => {
                                         const meta = header.column.columnDef.meta as
-                                            | Record<string, unknown>
-                                            | undefined;
+                                            Record<string, unknown> | undefined;
                                         const align = (meta?.align as string) ?? 'left';
 
                                         return (
@@ -210,8 +209,7 @@ export function DataTable<TData extends Record<string, unknown>>({
                                         >
                                             {row.getVisibleCells().map((cell) => {
                                                 const meta = cell.column.columnDef.meta as
-                                                    | Record<string, unknown>
-                                                    | undefined;
+                                                    Record<string, unknown> | undefined;
                                                 const align = (meta?.align as string) ?? 'left';
                                                 const cellClassName = (meta?.className as string) ?? '';
 

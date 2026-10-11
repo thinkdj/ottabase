@@ -65,7 +65,7 @@ export const TopbarHeader = memo(function TopbarHeader({
 
     return (
         <header
-            className={`border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
+            className={`border-b border-border/60 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
         >
             <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-3 ${containerClass}`}>
                 {/* min-w-0 lets the app name ellipsize instead of wrapping the header onto extra lines */}
@@ -149,7 +149,7 @@ export const MinimalHeader = memo(function MinimalHeader({
         ) : null;
 
     return (
-        <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
+        <header className="border-b border-border/60 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
             <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-2 ${containerClass}`}>
                 <div className="flex min-w-0 items-center gap-2.5">
                     {leading}

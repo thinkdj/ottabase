@@ -41,7 +41,7 @@ export function AdminIndexPage() {
                                 key={item.href}
                                 to={item.href}
                                 target={item.external ? '_blank' : undefined}
-                                className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                className="group rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <Card className="h-full rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal group-hover:bg-muted/70">
                                     <CardHeader className="gap-2">

@@ -15,7 +15,7 @@ export default defineConfig({
         '@ottabase/ui-shadcn',
         '@ottabase/config',
         '@ottabase/api',
-        '@radix-ui/react-dialog',
+        'radix-ui',
         '@tabler/icons-react',
         'react',
         'react-dom',

@@ -1,12 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /*
  * Ottabase Design Tokens
  *
- * All colour values use space-separated HSL channels so Tailwind can
- * inject an alpha via the  `/ <alpha-value>` syntax.
+ * All colour values use space-separated HSL channels so Tailwind opacity
+ * modifiers work (bg-primary/50 → color-mix over hsl(var(--primary))).
+ * Plain CSS (no Tailwind directives): apps import it after
+ * @ottabase/ui-tailwind, and the `@layer base` blocks join that cascade.
  * The theme loader (theme.loader.ts) overrides these at runtime when
  * a user selects a different theme or toggles light/dark mode.
  */
@@ -185,7 +183,7 @@
 
 @layer base {
     * {
-        @apply border-border;
+        border-color: hsl(var(--border));
     }
 
     /* Global default border-style — themes may set e.g. `dashed`/`ridge`.
@@ -197,7 +195,8 @@
     }
 
     body {
-        @apply bg-background text-foreground;
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         /* Theme backdrop layer (gradients/textures behind all content) */
         background-image: var(--bg-backdrop, none);
         /* No fallback on purpose: unset var → invalid → UA default tap flash */
@@ -226,45 +225,50 @@
     }
 }
 
-/* ── Unified focus ring ─────────────────────────────────────────────────────
+/* Everything below lives in the base layer: Tailwind v4 utilities sit in a
+   cascade layer, so unlayered rules would beat every utility. Runtime theme
+   CSS (unlayered) still overrides these. */
+@layer base {
+    /* ── Unified focus ring ─────────────────────────────────────────────────────
    One global focus-visible treatment driven by --focus-ring-* tokens. Zero
    specificity (:where) so any component utility (focus-visible:ring-*,
-   focus-visible:outline-none) still wins — components migrating off their
+   focus-visible:outline-hidden) still wins — components migrating off their
    per-component ring recipes simply drop those classes. */
-:where(
-    a,
-    button,
-    input,
-    select,
-    textarea,
-    summary,
-    [tabindex],
-    [role='button'],
-    [role='link'],
-    [contenteditable]
-):focus-visible {
-    outline: var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, hsl(var(--ring)));
-    outline-offset: var(--focus-ring-offset, 2px);
-}
+    :where(
+        a,
+        button,
+        input,
+        select,
+        textarea,
+        summary,
+        [tabindex],
+        [role='button'],
+        [role='link'],
+        [contenteditable]
+    ):focus-visible {
+        outline: var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, hsl(var(--ring)));
+        outline-offset: var(--focus-ring-offset, 2px);
+    }
 
-/* ── Interaction physics (hover lift / press) ───────────────────────────────
+    /* ── Interaction physics (hover lift / press) ───────────────────────────────
    Identity by default (`none`), so nothing moves until a theme defines
    --hover-transform / --press-transform. Pressed elements inherit the hover
    transform unless the theme sets a distinct press transform. Extra press
    properties that have no safe static default (box-shadow, durations) are
    emitted per-theme in the generated effects stylesheet. */
-:where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):hover {
-    transform: var(--hover-transform, none);
-    filter: var(--hover-filter, none);
-}
+    :where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):hover {
+        transform: var(--hover-transform, none);
+        filter: var(--hover-filter, none);
+    }
 
-:where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):active {
-    transform: var(--press-transform, var(--hover-transform, none));
-}
+    :where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):active {
+        transform: var(--press-transform, var(--hover-transform, none));
+    }
 
-/* ── Effect decor carriers ──────────────────────────────────────────────────
+    /* ── Effect decor carriers ──────────────────────────────────────────────────
    Empty aria-hidden spans components ship for theme effects (shine sweeps,
    corner ornaments). Invisible until a theme's CSS turns them on. */
-[data-decor] {
-    display: none;
+    [data-decor] {
+        display: none;
+    }
 }
