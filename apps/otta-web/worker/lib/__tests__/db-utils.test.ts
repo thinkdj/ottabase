@@ -86,6 +86,7 @@ vi.mock('@ottabase/referrals', () => ({
 vi.mock('@ottabase/ottalanding', () => ({
     LandingSite: class LandingSite {},
     LandingPage: class LandingPage {},
+    LandingLead: class LandingLead {},
 }));
 
 vi.mock('@ottabase/shortlinks', () => ({
@@ -195,9 +196,9 @@ describe('landing-site RLS', () => {
         resetDbConnectionForTests();
     });
 
-    it('registers platform-admin, app-scoped policies for both landing tables', () => {
+    it('registers platform-admin, app-scoped policies for every landing table', () => {
         ensureDbConnection({ OBCF_D1: { id: 'binding-landing' } } as any);
-        for (const model of ['landing_sites', 'landing_pages']) {
+        for (const model of ['landing_sites', 'landing_pages', 'landing_leads']) {
             expect(mockRegisterPolicy).toHaveBeenCalledWith(
                 expect.objectContaining({
                     model,

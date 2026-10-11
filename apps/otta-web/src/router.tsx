@@ -407,6 +407,11 @@ const adminLandingRoute = makeAdminRoute(
     () => import('@/pages/admin/content/landing/AdminLandingSitePage'),
     'AdminLandingSitePage',
 );
+const adminLandingLeadsRoute = makeAdminRoute(
+    '/admin/content/landing/leads',
+    () => import('@/pages/admin/content/landing/AdminLandingLeadsPage'),
+    'AdminLandingLeadsPage',
+);
 const adminLandingPageRoute = makeAdminRoute(
     '/admin/content/landing/$pageId',
     () => import('@/pages/admin/content/landing/AdminLandingPageEditorPage'),
@@ -855,6 +860,7 @@ const packageRoutes = [
     { route: studioSeriesRoute, pkg: 'ottablog' as const },
     { route: studioThemesRoute, pkg: 'ottablog' as const },
     { route: adminLandingRoute, pkg: 'ottalanding' as const },
+    { route: adminLandingLeadsRoute, pkg: 'ottalanding' as const },
     { route: adminLandingPageRoute, pkg: 'ottalanding' as const },
     { route: adminReferralsRoute, pkg: 'referrals' as const },
     { route: adminAiProvidersRoute, pkg: 'ottaai' as const },

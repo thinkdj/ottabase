@@ -1,10 +1,12 @@
 // Headless entry: models, tables, content contracts and theme metadata. No rendered UI —
 // the themes' React components live behind `@ottabase/ottalanding/react`.
 
+export { LandingLead } from './ottaorm-models/LandingLead';
+export type { LeadOutcome } from './ottaorm-models/LandingLead';
 export { LandingPage } from './ottaorm-models/LandingPage';
 export { LandingSite } from './ottaorm-models/LandingSite';
-export { landingPagesTable, landingSitesTable } from './schema';
-export type { LandingPageRecord, LandingSiteRecord } from './schema';
+export { landingLeadsTable, landingPagesTable, landingSitesTable } from './schema';
+export type { LandingLeadRecord, LandingPageRecord, LandingSiteRecord } from './schema';
 
 export { defineFields, fieldErrors, parseLenient, toZod } from './fields';
 export type { Data, Field, Fields, GroupField, ListField, ScalarField } from './fields';
@@ -18,3 +20,13 @@ export type { ColorScheme, LandingTheme, ThemeId } from './themes';
 export { DEFAULT_PAGES, DEFAULT_SITE } from './defaults';
 export { drawShareCard, SHARE_CARD_SIZE, SHARE_FIELDS, wrapLines } from './share-card';
 export type { ShareCard, ShareCardScene } from './share-card';
+export {
+    LEAD_ENDPOINT,
+    LEAD_KINDS,
+    LEAD_MIN_FILL_MS,
+    LEAD_RATE_LIMIT,
+    LeadInputSchema,
+    leadDigest,
+    leadsToCsv,
+} from './leads';
+export type { LeadData, LeadInput, LeadKind } from './leads';

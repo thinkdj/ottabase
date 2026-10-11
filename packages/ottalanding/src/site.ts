@@ -47,6 +47,12 @@ export const SITE_FIELDS = defineFields({
         placeholder: 'https://example.com',
         help: 'Where the landing site is deployed. Turns on “View” links in the admin.',
     },
+    leadEmail: {
+        kind: 'email',
+        label: 'Email new form entries to',
+        placeholder: 'you@example.com',
+        help: 'A short digest of new messages and signups, within a minute or so. Leave empty to only collect them in the inbox.',
+    },
     nav: links('Navigation', 'Link', 8),
     navCtaLabel: { kind: 'text', label: 'Nav button label', placeholder: 'Get started' },
     navCtaHref: { kind: 'url', label: 'Nav button link' },

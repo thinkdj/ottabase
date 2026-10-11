@@ -77,6 +77,15 @@ A draft page's **Share preview** button (otta-web page editor) makes a private l
 doesn't exist. An old link to a page that has since been published just shows the public page. **Reset link** replaces
 the token, so every link shared before stops working.
 
+## Contact and signup forms
+
+`POST /api/leads` (`app/api/leads/route.ts`) receives the contact and signup sections' forms and stores the entry in the
+shared D1 (`LandingLead.submit`). This is the one place this app writes. It accepts JSON only: a browser can't send JSON
+cross-site without a CORS preflight, which this route never allows. Bodies over 32 KB are refused with 413. The
+visitor's network is passed as a salted SHA-256 hash (from `cf-connecting-ip`), so rate limiting never stores an IP.
+Answers are `{ ok: true }` (stored, or quietly dropped as a likely bot), per-field 422 errors, or 429 when one network
+sends too much. otta-web reads the entries in its admin inbox and emails the digest. See the package README, "Leads".
+
 ## Scripts
 
 | Command              | Description                          |

@@ -85,6 +85,7 @@ describe('application Cron registry', () => {
             'queue:generate-report',
             'queue:sync-data',
             'queue:batch-task',
+            'landing:notify-leads',
         ]);
 
         const result = await appCronScheduler.runTask('task-1', env, repository([task()]));

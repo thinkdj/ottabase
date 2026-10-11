@@ -159,6 +159,12 @@ export const DEFAULT_PAGES: PageInput[] = [
                     },
                 ],
             }),
+            s('signup', {
+                title: 'Get the release notes',
+                subtitle: 'One short email when something worth shipping lands. No spam.',
+                buttonLabel: 'Subscribe',
+                successMessage: 'Thanks! You’ll hear from us when the next release lands.',
+            }),
             s('cta', {
                 title: 'Your weekend project, production-ready.',
                 subtitle: 'Clone it, name it, ship it.',
@@ -196,8 +202,12 @@ export const DEFAULT_PAGES: PageInput[] = [
             s('hero', {
                 eyebrow: 'Contact',
                 title: 'Get in touch',
-                subtitle: 'Questions, bugs and ideas all go through GitHub — we read everything.',
+                subtitle: 'Bugs and feature ideas go through GitHub, where everyone can follow along.',
                 actions: [{ label: 'Open an issue', href: `${GITHUB}/issues` }],
+            }),
+            s('contact', {
+                title: 'Or write to us',
+                subtitle: 'Questions about using Ottabase for your product? We reply within a couple of days.',
             }),
         ],
     },

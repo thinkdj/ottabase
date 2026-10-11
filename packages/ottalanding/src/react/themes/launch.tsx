@@ -13,6 +13,7 @@ import {
     type Action,
     type ThemeComponents,
 } from '../shared';
+import { LeadForm, type LeadFormClasses } from '../lead-form';
 import { SchemeToggle } from '../scheme-toggle';
 
 const wrap = 'mx-auto w-full max-w-6xl px-5 sm:px-8';
@@ -21,6 +22,13 @@ const btn = `inline-flex h-11 items-center justify-center rounded-full px-6 text
 const btnSmall = `inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 ${focusRing}`;
 const btnPrimary = `${btn} bg-primary text-primary-foreground hover:bg-primary/90`;
 const btnSecondary = `${btn} border border-border bg-background text-foreground hover:bg-muted`;
+const form: LeadFormClasses = {
+    input: 'w-full rounded-xl border border-input bg-background px-4 py-2.5 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    button: `${btnPrimary} disabled:opacity-60`,
+    label: 'text-sm font-medium',
+    note: 'rounded-xl bg-muted/60 p-4 text-center font-medium',
+    error: 'text-sm text-destructive',
+};
 
 function Actions({ actions, center }: { actions?: Action[]; center?: boolean }) {
     if (!actions?.length) return null;
@@ -318,6 +326,38 @@ export const launch: ThemeComponents = {
                                 ))}
                             </div>
                         ) : null}
+                    </div>
+                </div>
+            );
+        },
+
+        contact({ title, subtitle, buttonLabel, successMessage }) {
+            return (
+                <div className={`${narrow} py-16`}>
+                    <Heading title={title} subtitle={subtitle} center />
+                    <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-border bg-background p-6 shadow-sm sm:p-8">
+                        <LeadForm
+                            kind="contact"
+                            buttonLabel={buttonLabel}
+                            successMessage={successMessage}
+                            classes={form}
+                        />
+                    </div>
+                </div>
+            );
+        },
+
+        signup({ title, subtitle, buttonLabel, successMessage }) {
+            return (
+                <div className={`${narrow} py-16`}>
+                    <Heading title={title} subtitle={subtitle} center />
+                    <div className="mx-auto mt-8 max-w-md">
+                        <LeadForm
+                            kind="signup"
+                            buttonLabel={buttonLabel}
+                            successMessage={successMessage}
+                            classes={form}
+                        />
                     </div>
                 </div>
             );

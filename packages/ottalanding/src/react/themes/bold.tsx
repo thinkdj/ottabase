@@ -14,6 +14,7 @@ import {
     type Action,
     type ThemeComponents,
 } from '../shared';
+import { LeadForm, type LeadFormClasses } from '../lead-form';
 import { SchemeToggle } from '../scheme-toggle';
 
 const wrap = 'mx-auto w-full max-w-7xl px-5 sm:px-8';
@@ -47,6 +48,14 @@ function Heading({ title, subtitle }: { title?: string; subtitle?: string }) {
         </div>
     );
 }
+
+const form: LeadFormClasses = {
+    input: 'w-full rounded-xl border-2 border-border bg-muted/30 px-5 py-3.5 text-lg placeholder:text-muted-foreground focus:border-primary focus:outline-none',
+    button: `${btn} h-[3.6rem] bg-primary text-primary-foreground disabled:opacity-60`,
+    label: 'text-sm font-semibold uppercase tracking-wider text-muted-foreground',
+    note: 'rounded-2xl border-2 border-primary p-6 font-heading text-2xl font-bold',
+    error: 'text-sm text-destructive',
+};
 
 const TICKER_CSS = `
 @keyframes otl-ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
@@ -334,6 +343,43 @@ export const bold: ThemeComponents = {
                                 ))}
                             </div>
                         ) : null}
+                    </div>
+                </div>
+            );
+        },
+
+        contact({ title, subtitle, buttonLabel, successMessage }) {
+            return (
+                <div className={`${wrap} grid gap-10 py-20 lg:grid-cols-2`}>
+                    <div>
+                        <h2 className="font-heading text-5xl font-bold leading-[0.95] tracking-tighter sm:text-6xl">
+                            {title || 'Get in touch'}
+                        </h2>
+                        {subtitle && <p className="mt-6 max-w-md text-xl text-muted-foreground">{subtitle}</p>}
+                    </div>
+                    <LeadForm kind="contact" buttonLabel={buttonLabel} successMessage={successMessage} classes={form} />
+                </div>
+            );
+        },
+
+        signup({ title, subtitle, buttonLabel, successMessage }) {
+            return (
+                <div className={`${wrap} py-20`}>
+                    <div className="rounded-[2rem] border-2 border-border p-8 sm:p-12">
+                        {title && (
+                            <h2 className="max-w-3xl font-heading text-4xl font-bold leading-[0.95] tracking-tighter sm:text-6xl">
+                                {title}
+                            </h2>
+                        )}
+                        {subtitle && <p className="mt-5 max-w-xl text-xl text-muted-foreground">{subtitle}</p>}
+                        <div className="mt-8 max-w-2xl">
+                            <LeadForm
+                                kind="signup"
+                                buttonLabel={buttonLabel}
+                                successMessage={successMessage}
+                                classes={form}
+                            />
+                        </div>
                     </div>
                 </div>
             );

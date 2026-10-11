@@ -20,6 +20,7 @@ export type ScalarField =
     | (Base & { kind: 'image'; required?: boolean; altKey?: string })
     /** `#rrggbb`, or empty for "the theme's own". */
     | (Base & { kind: 'color' })
+    | (Base & { kind: 'email'; required?: boolean })
     | (Base & { kind: 'lines' })
     | (Base & { kind: 'boolean' })
     | (Base & { kind: 'select'; options: readonly { value: string; label: string }[] });
@@ -62,6 +63,9 @@ const ABSOLUTE_OR_EMPTY = /^$|^https?:\/\/[^/\s]+/i;
 /** Image sources: absolute http(s) or site-relative (uploads are served at /api/upload/file/…). */
 const IMAGE_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\]))/i;
 const COLOR_OR_EMPTY = /^$|^#[0-9a-f]{6}$/i;
+/** Deliberately simple (something@something.tld): delivery is the real test of an address. */
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_OR_EMPTY = /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function scalarToZod(field: ScalarField): z.ZodTypeAny {
     switch (field.kind) {
@@ -82,7 +86,9 @@ function scalarToZod(field: ScalarField): z.ZodTypeAny {
                 .string()
                 .trim()
                 .max(field.kind === 'textarea' ? 4000 : field.kind === 'text' ? 200 : 2048);
-            if (field.kind === 'image') {
+            if (field.kind === 'email') {
+                s = s.max(254).regex(EMAIL_OR_EMPTY, 'Enter an email address like name@example.com');
+            } else if (field.kind === 'image') {
                 s = s.regex(IMAGE_OR_EMPTY, 'Upload an image, or use an https:// or /path address');
             } else if (field.kind === 'url') {
                 s = field.absolute

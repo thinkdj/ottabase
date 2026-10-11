@@ -145,6 +145,30 @@ export const SECTIONS = {
             actions,
         }),
     },
+    contact: {
+        label: 'Contact form',
+        description: 'Name, email and a message. Entries land in the admin inbox.',
+        fields: defineFields({
+            title: { kind: 'text', label: 'Heading', placeholder: 'Get in touch' },
+            subtitle: { kind: 'textarea', label: 'Intro' },
+            buttonLabel: { kind: 'text', label: 'Button label', placeholder: 'Send message' },
+            successMessage: {
+                kind: 'text',
+                label: 'Thank-you message',
+                placeholder: 'Thanks! We’ll get back to you soon.',
+            },
+        }),
+    },
+    signup: {
+        label: 'Email signup',
+        description: 'One email field: a waitlist or newsletter. Signups land in the admin inbox.',
+        fields: defineFields({
+            title: { kind: 'text', label: 'Heading', placeholder: 'Be first to know' },
+            subtitle: { kind: 'textarea', label: 'Intro' },
+            buttonLabel: { kind: 'text', label: 'Button label', placeholder: 'Join the waitlist' },
+            successMessage: { kind: 'text', label: 'Thank-you message', placeholder: 'You’re on the list!' },
+        }),
+    },
     text: {
         label: 'Text',
         description: 'Plain prose for about, legal or story pages.',

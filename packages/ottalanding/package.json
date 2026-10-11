@@ -29,6 +29,7 @@
         "react": "catalog:"
     },
     "dependencies": {
+        "@ottabase/api": "workspace:*",
         "@ottabase/brand-engine": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*",

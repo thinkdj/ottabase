@@ -23,6 +23,7 @@ const store = vi.hoisted(() => ({
     findPage: vi.fn(),
     findPreview: vi.fn(),
     publishedPaths: vi.fn(),
+    submitLead: vi.fn(),
 }));
 vi.mock('@ottabase/ottalanding', async (importOriginal) => {
     const real = await importOriginal<typeof import('@ottabase/ottalanding')>();
@@ -34,6 +35,7 @@ vi.mock('@ottabase/ottalanding', async (importOriginal) => {
             findForPreview: store.findPreview,
             publishedPaths: store.publishedPaths,
         },
+        LandingLead: { submit: store.submitLead },
     };
 });
 // React's per-request cache() is a no-op outside a server render; keep it transparent here.
@@ -41,9 +43,11 @@ vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<object>()
 
 import LandingRoute, { generateMetadata } from '../app/[[...slug]]/page';
 import RootLayout, { generateMetadata as layoutMetadata } from '../app/layout';
+import { POST as postLead } from '../app/api/leads/route';
 import NotFound from '../app/not-found';
 import robots from '../app/robots';
 import sitemap from '../app/sitemap';
+import { DomainValidationError } from '@ottabase/ottaorm';
 import { getSite, toPath } from '../lib/content';
 
 const site = { getSettings: () => ({ ...DEFAULT_SITE, theme: 'editorial' }) };
@@ -261,5 +265,49 @@ describe('layout', () => {
         const out = html(await RootLayout({ children: null }));
         expect(out.indexOf('<script>try{var s=localStorage.getItem("ottalanding.scheme")')).toBeGreaterThan(-1);
         expect(out.indexOf('<script>')).toBeLessThan(out.indexOf('<style id="landing-theme">'));
+    });
+});
+
+describe('POST /api/leads', () => {
+    const post = (body: string, headers: Record<string, string> = { 'content-type': 'application/json' }) =>
+        postLead(new Request('http://localhost/api/leads', { method: 'POST', body, headers }));
+    const entry = JSON.stringify({ kind: 'signup', email: 'a@b.co', elapsedMs: 5000 });
+
+    it('stores an entry for the configured app, keyed by a hash of the network rather than the IP', async () => {
+        store.submitLead.mockResolvedValue('stored');
+        const res = await post(entry, { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.7' });
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ ok: true });
+        const [appId, body, { ipHash }] = store.submitLead.mock.calls[0];
+        expect(appId).toBe('acme');
+        expect(body).toEqual(JSON.parse(entry));
+        expect(ipHash).toMatch(/^[0-9a-f]{32}$/);
+        expect(ipHash).not.toContain('203.0.113.7');
+    });
+
+    it('answers a likely bot exactly like a person', async () => {
+        store.submitLead.mockResolvedValue('ignored');
+        expect(await (await post(entry)).json()).toEqual({ ok: true });
+    });
+
+    it('turns validation failures into field errors and floods into 429', async () => {
+        store.submitLead.mockRejectedValueOnce(
+            new DomainValidationError('Please fix the highlighted fields.', {
+                fieldErrors: { email: ['Enter an email'] },
+            }),
+        );
+        const invalid = await post(entry);
+        expect(invalid.status).toBe(422);
+        expect(await invalid.json()).toMatchObject({ fieldErrors: { email: ['Enter an email'] } });
+
+        store.submitLead.mockResolvedValueOnce('rate-limited');
+        expect((await post(entry)).status).toBe(429);
+    });
+
+    it('accepts JSON only, of a sane size, and never reaches the database otherwise', async () => {
+        expect((await post('email=a@b.co', { 'content-type': 'application/x-www-form-urlencoded' })).status).toBe(415);
+        expect((await post('{nope')).status).toBe(400);
+        expect((await post(JSON.stringify({ message: 'x'.repeat(40_000) }))).status).toBe(413);
+        expect(store.submitLead).not.toHaveBeenCalled();
     });
 });

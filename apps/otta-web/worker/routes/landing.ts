@@ -6,12 +6,13 @@
 // directly through the package's models, so there are no public routes here.
 
 import { createR2Client } from '@ottabase/cf/r2';
-import { LandingPage, LandingSite } from '@ottabase/ottalanding';
+import { LandingLead, LandingPage, LandingSite, LEAD_KINDS, leadsToCsv, type LeadKind } from '@ottabase/ottalanding';
 import { deleteFileFromR2, uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { DomainValidationError } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { ensureLeadNotifyTask } from '../lib/landing-notify';
 import { readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
@@ -31,6 +32,12 @@ async function asAdmin(context: ApiRouteContext, action: (appId: string) => Prom
 
 const notFound = () => errorResponse('Page not found', 404, { code: 'NOT_FOUND' });
 
+/** Where the admin is served: the browser's Origin (behind a dev proxy), else this request's. */
+function adminOrigin({ request, url }: ApiRouteContext): string {
+    const origin = request.headers.get('origin');
+    return origin && /^https?:\/\/[^/\s]+$/.test(origin) ? origin : url.origin;
+}
+
 /** GET /api/landing — the site settings and every page (seeds starter content on first use). */
 export function handleLandingGet(context: ApiRouteContext): Promise<Response> {
     return asAdmin(context, async (appId) => {
@@ -44,7 +51,11 @@ export function handleLandingGet(context: ApiRouteContext): Promise<Response> {
 export function handleLandingSiteUpdate(context: ApiRouteContext): Promise<Response> {
     return asAdmin(context, async (appId) => {
         const site = await LandingSite.saveSettings(appId, await readJson(context.request));
-        return jsonResponse({ site: site.getSettings() });
+        const settings = site.getSettings();
+        // A notification address turns on the every-minute digest task (see landing-notify).
+        if (settings.leadEmail)
+            await ensureLeadNotifyTask(appId, `${adminOrigin(context)}/admin/content/landing/leads`);
+        return jsonResponse({ site: settings });
     });
 }
 
@@ -137,4 +148,53 @@ export function handleLandingShareImage(context: ApiRouteContext): Promise<Respo
         }
         return jsonResponse({ url: result.url }, 201);
     });
+}
+
+// ── Form entries (inbox) ────────────────────────────────────────────────────
+
+const INBOX_PAGE = 50;
+/** A spreadsheet export is everything, within reason. */
+const EXPORT_LIMIT = 10_000;
+
+/**
+ * GET /api/landing/leads?kind=contact|signup&offset=0 — a page of the inbox, newest first.
+ * With `format=csv`, every matching entry as a CSV download.
+ */
+export function handleLandingLeadsList(context: ApiRouteContext): Promise<Response> {
+    return asAdmin(context, async (appId) => {
+        const params = context.url.searchParams;
+        const kind = LEAD_KINDS.find((k) => k === params.get('kind')) as LeadKind | undefined;
+        if (params.get('format') === 'csv') {
+            const { leads } = await LandingLead.inbox(appId, { kind, limit: EXPORT_LIMIT });
+            return new Response(leadsToCsv(leads), {
+                headers: {
+                    'Content-Type': 'text/csv; charset=utf-8',
+                    'Content-Disposition': `attachment; filename="form-entries-${new Date().toISOString().slice(0, 10)}.csv"`,
+                    'Cache-Control': 'no-store',
+                },
+            });
+        }
+        const offset = Math.max(0, Number.parseInt(params.get('offset') ?? '0', 10) || 0);
+        return jsonResponse(await LandingLead.inbox(appId, { kind, limit: INBOX_PAGE, offset }));
+    });
+}
+
+/** PATCH /api/landing/leads/:id — `{ read: boolean }` */
+export function handleLandingLeadUpdate(context: ApiRouteContext, id: string): Promise<Response> {
+    return asAdmin(context, async (appId) => {
+        const { read } = await readJson<{ read?: unknown }>(context.request);
+        if (typeof read !== 'boolean') return errorResponse('Expected { read: boolean }', 400, { code: 'BAD_REQUEST' });
+        return (await LandingLead.setRead(appId, id, read))
+            ? jsonResponse({ success: true })
+            : errorResponse('Entry not found', 404, { code: 'NOT_FOUND' });
+    });
+}
+
+/** DELETE /api/landing/leads/:id */
+export function handleLandingLeadDelete(context: ApiRouteContext, id: string): Promise<Response> {
+    return asAdmin(context, async (appId) =>
+        (await LandingLead.deleteFor(appId, id))
+            ? jsonResponse({ success: true })
+            : errorResponse('Entry not found', 404, { code: 'NOT_FOUND' }),
+    );
 }

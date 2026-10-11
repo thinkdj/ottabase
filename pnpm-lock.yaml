@@ -1706,6 +1706,9 @@ importers:
 
   packages/ottalanding:
     dependencies:
+      '@ottabase/api':
+        specifier: workspace:*
+        version: link:../api
       '@ottabase/brand-engine':
         specifier: workspace:*
         version: link:../brand-engine

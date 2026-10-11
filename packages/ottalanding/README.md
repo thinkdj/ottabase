@@ -40,6 +40,8 @@ URL, navigation links, a nav button, footer links and a footer note.
 | `pricing`      | heading, intro, plans (name\*, price\*, period, description, included lines, button, featured flag) |
 | `faq`          | heading, questions (question\*, answer\*)                                                           |
 | `cta`          | heading\*, supporting line, buttons                                                                 |
+| `contact`      | heading, intro, button label, thank-you message (the form asks for name, email and message)         |
+| `signup`       | heading, intro, button label, thank-you message (one email field: a waitlist or newsletter)         |
 | `text`         | heading, body\* (paragraphs separated by blank lines)                                               |
 
 ### One descriptor, three jobs
@@ -98,6 +100,38 @@ which the admin shows on the exact input.
 
 **Scoping:** content is app-global and platform-owned, like brand data, so it's keyed by `appId` only. The app always
 comes from server configuration, never from the request.
+
+## Leads (contact and signup forms)
+
+The `contact` and `signup` sections render `LeadForm` (`@ottabase/ottalanding/react`, a client component each theme
+styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which calls
+`LandingLead.submit(appId, body, { ipHash })` and stores a `landing_leads` row in the shared D1.
+
+```ts
+await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored' | 'rate-limited'; field errors throw (422)
+await LandingLead.inbox(appId, { kind, limit, offset }); // { leads, total, unread }, newest first
+await LandingLead.setRead(appId, id, read);
+await LandingLead.deleteFor(appId, id);
+await LandingLead.pendingNotification(appId); // not yet emailed, oldest first
+await LandingLead.markNotified(appId, ids);
+leadsToCsv(leads); // spreadsheet export; formula-like cells are defused
+leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the notification email, all escaped
+```
+
+**Spam.** Two cheap bot checks: a hidden `website` field people never fill in, and the time spent on the form (under
+`LEAD_MIN_FILL_MS`, a person can't have typed it). Either one makes `submit` return `ignored`. The visitor still sees
+the thank-you, so a bot learns nothing. On top of that, each network (a salted SHA-256 of app + IP, never the IP itself)
+is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
+for the same email is accepted but stored once.
+
+**Notifications** live in otta-web, where the mail provider is configured. Setting **Email new form entries to**
+(`leadEmail`) in the site settings creates an every-minute DB-scheduler task (`landing:notify-leads`, visible and
+pausable in Admin › Cron). Each run emails one digest of everything new through `resolveAppMailer`, then marks those
+entries notified. With no address set, pending entries are retired without a send, so a later address isn't flooded.
+With no working mail provider, the task fails visibly and the entries stay pending until mail works.
+
+The admin inbox is at `/admin/content/landing/leads`: filter by messages or signups, read (opening an entry marks it
+read), reply by email, mark unread, delete, and export CSV.
 
 ## Social images
 

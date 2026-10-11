@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_PAGES, DEFAULT_SITE } from '../defaults';
 import { LandingPage } from '../ottaorm-models/LandingPage';
 import { LandingSite } from '../ottaorm-models/LandingSite';
-import { landingPagesTable, landingSitesTable } from '../schema';
+import { LandingLead } from '../ottaorm-models/LandingLead';
+import { landingLeadsTable, landingPagesTable, landingSitesTable } from '../schema';
 import { createSqliteD1 } from './sqlite-d1';
 
 async function rejection(promise: Promise<unknown>): Promise<DomainValidationError> {
@@ -19,9 +20,10 @@ async function rejection(promise: Promise<unknown>): Promise<DomainValidationErr
 
 beforeAll(async () => {
     const driver = createD1Driver(createSqliteD1());
-    const result = await autoInit({ driver, schema: { landingSitesTable, landingPagesTable }, verbose: false });
+    const schema = { landingSitesTable, landingPagesTable, landingLeadsTable };
+    const result = await autoInit({ driver, schema, verbose: false });
     expect(result.details.errors).toEqual([]);
-    expect(result.details.tablesCreated.sort()).toEqual(['landing_pages', 'landing_sites']);
+    expect(result.details.tablesCreated.sort()).toEqual(['landing_leads', 'landing_pages', 'landing_sites']);
     registerConnection('default', driver);
 });
 
@@ -134,7 +136,7 @@ describe('LandingPage', () => {
             sections: [{ id: 'x', type: 'retired-widget', data: {} }, ...page!.toPage().sections],
         });
         const reread = await LandingPage.findPublished('app-a', '/contact');
-        expect(reread?.toPage().sections.map((s) => s.type)).toEqual(['hero']);
+        expect(reread?.toPage().sections.map((s) => s.type)).toEqual(['hero', 'contact']);
     });
 
     it('keeps the home page at / on the server, not just in the UI', async () => {
@@ -223,5 +225,86 @@ describe('LandingPage preview links', () => {
         await LandingPage.previewTokenFor('app-preview', page.get('id') as string);
         const reloaded = await LandingPage.findForApp('app-preview', page.get('id') as string);
         expect(JSON.stringify(reloaded!.toPage())).not.toMatch(/preview/i);
+    });
+});
+
+describe('LandingLead', () => {
+    const contact = {
+        kind: 'contact',
+        name: 'Ada',
+        email: 'Ada@Example.com ',
+        message: 'Hello!',
+        pagePath: '/contact',
+        elapsedMs: 8000,
+    };
+
+    it('stores a valid entry, normalising the email', async () => {
+        expect(await LandingLead.submit('app-leads', contact, { ipHash: 'net-1' })).toBe('stored');
+        const { leads, total, unread } = await LandingLead.inbox('app-leads');
+        expect(total).toBe(1);
+        expect(unread).toBe(1);
+        expect(leads[0]).toMatchObject({
+            kind: 'contact',
+            name: 'Ada',
+            email: 'ada@example.com',
+            message: 'Hello!',
+            read: false,
+        });
+    });
+
+    it('rejects an incomplete contact entry field by field', async () => {
+        const error = await rejection(
+            LandingLead.submit('app-leads', { ...contact, name: '', message: ' ', email: 'nope' }),
+        );
+        expect(Object.keys(error.fieldErrors).sort()).toEqual(['email', 'message', 'name']);
+    });
+
+    it('quietly drops likely bots: a filled hidden field, or a form sent too fast', async () => {
+        expect(await LandingLead.submit('app-bots', { ...contact, website: 'http://spam.example' })).toBe('ignored');
+        expect(await LandingLead.submit('app-bots', { ...contact, elapsedMs: 300 })).toBe('ignored');
+        expect(await LandingLead.submit('app-bots', { ...contact, elapsedMs: undefined })).toBe('ignored');
+        expect(await LandingLead.count({ appId: 'app-bots' })).toBe(0);
+    });
+
+    it('limits how often one network can post, without affecting others', async () => {
+        for (let i = 0; i < 5; i++)
+            expect(await LandingLead.submit('app-flood', contact, { ipHash: 'net-x' })).toBe('stored');
+        expect(await LandingLead.submit('app-flood', contact, { ipHash: 'net-x' })).toBe('rate-limited');
+        expect(await LandingLead.submit('app-flood', contact, { ipHash: 'net-y' })).toBe('stored');
+    });
+
+    it('keeps one signup per email', async () => {
+        const signup = { kind: 'signup', email: 'fan@example.com', elapsedMs: 4000 };
+        expect(await LandingLead.submit('app-list', signup)).toBe('stored');
+        expect(await LandingLead.submit('app-list', { ...signup, email: 'FAN@example.com' })).toBe('ignored');
+        expect(await LandingLead.count({ appId: 'app-list', kind: 'signup' })).toBe(1);
+    });
+
+    it('reads, filters, marks read and deletes within one app only', async () => {
+        await LandingLead.submit('app-inbox', contact);
+        await LandingLead.submit('app-inbox', { kind: 'signup', email: 'x@example.com', elapsedMs: 4000 });
+        const all = await LandingLead.inbox('app-inbox');
+        expect(all.leads.map((l) => l.kind).sort()).toEqual(['contact', 'signup']);
+        expect((await LandingLead.inbox('app-inbox', { kind: 'signup' })).total).toBe(1);
+
+        const id = all.leads.find((l) => l.kind === 'contact')!.id;
+        expect(await LandingLead.setRead('app-other', id, true)).toBe(false);
+        expect(await LandingLead.setRead('app-inbox', id, true)).toBe(true);
+        expect((await LandingLead.inbox('app-inbox')).unread).toBe(1);
+        expect(await LandingLead.deleteFor('app-other', id)).toBe(false);
+        expect(await LandingLead.deleteFor('app-inbox', id)).toBe(true);
+        expect((await LandingLead.inbox('app-inbox')).total).toBe(1);
+    });
+
+    it('hands out each entry for notification once', async () => {
+        await LandingLead.submit('app-notify', contact);
+        await LandingLead.submit('app-notify', { ...contact, name: 'Grace' });
+        const pending = await LandingLead.pendingNotification('app-notify');
+        expect(pending.map((l) => l.toLead().name).sort()).toEqual(['Ada', 'Grace']);
+        await LandingLead.markNotified(
+            'app-notify',
+            pending.map((l) => l.get('id') as string),
+        );
+        expect(await LandingLead.pendingNotification('app-notify')).toEqual([]);
     });
 });

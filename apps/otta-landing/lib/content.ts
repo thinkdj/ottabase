@@ -10,7 +10,7 @@ import { headers } from 'next/headers';
 import { cache } from 'react';
 
 /** Point the models at the shared D1 and return the app whose landing site to show. */
-async function connect(): Promise<string> {
+export async function connect(): Promise<string> {
     const { env } = await getCloudflareContext({ async: true });
     if (!env.OBCF_D1) throw new Error('OBCF_D1 is not bound. See apps/otta-landing/README.md → Database.');
     registerConnection('default', createD1Driver(env.OBCF_D1));

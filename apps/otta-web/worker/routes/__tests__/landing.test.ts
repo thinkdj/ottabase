@@ -20,21 +20,35 @@ const models = vi.hoisted(() => ({
     deleteFor: vi.fn(),
     findForApp: vi.fn(),
     previewTokenFor: vi.fn(),
+    inbox: vi.fn(),
+    setRead: vi.fn(),
+    deleteLead: vi.fn(),
 }));
-vi.mock('@ottabase/ottalanding', () => ({
-    LandingSite: { ensureForApp: models.ensureForApp, saveSettings: models.saveSettings },
-    LandingPage: {
-        forApp: models.forApp,
-        createFor: models.createFor,
-        updateFor: models.updateFor,
-        deleteFor: models.deleteFor,
-        findForApp: models.findForApp,
-        previewTokenFor: models.previewTokenFor,
-    },
-}));
+vi.mock('@ottabase/ottalanding', async (importOriginal) => {
+    const { LEAD_KINDS, leadsToCsv } = await importOriginal<typeof import('@ottabase/ottalanding')>();
+    return {
+        LEAD_KINDS,
+        leadsToCsv,
+        LandingSite: { ensureForApp: models.ensureForApp, saveSettings: models.saveSettings },
+        LandingPage: {
+            forApp: models.forApp,
+            createFor: models.createFor,
+            updateFor: models.updateFor,
+            deleteFor: models.deleteFor,
+            findForApp: models.findForApp,
+            previewTokenFor: models.previewTokenFor,
+        },
+        LandingLead: { inbox: models.inbox, setRead: models.setRead, deleteFor: models.deleteLead },
+    };
+});
+const ensureLeadNotifyTask = vi.hoisted(() => vi.fn());
+vi.mock('../../lib/landing-notify', () => ({ ensureLeadNotifyTask }));
 
 import {
     handleLandingGet,
+    handleLandingLeadDelete,
+    handleLandingLeadsList,
+    handleLandingLeadUpdate,
     handleLandingPageCreate,
     handleLandingPageDelete,
     handleLandingPagePreview,
@@ -85,6 +99,9 @@ describe('/api/landing', () => {
         ['DELETE /pages/:id', () => handleLandingPageDelete(ctx('DELETE', '/api/landing/pages/p1'), 'p1')],
         ['POST /pages/:id/preview', () => handleLandingPagePreview(ctx('POST', '/x', {}), 'p1')],
         ['POST /share-image', () => handleLandingShareImage(formCtx({ target: 'site', file: new Blob([PNG]) }))],
+        ['GET /leads', () => handleLandingLeadsList(ctx('GET', '/api/landing/leads'))],
+        ['PATCH /leads/:id', () => handleLandingLeadUpdate(ctx('PATCH', '/x', { read: true }), 'l1')],
+        ['DELETE /leads/:id', () => handleLandingLeadDelete(ctx('DELETE', '/x'), 'l1')],
     ])('%s refuses anyone who is not a platform admin and touches no data', async (_name, call) => {
         requireAdminAccess.mockResolvedValue(new Response(null, { status: 403 }));
         expect((await call()).status).toBe(403);
@@ -210,6 +227,69 @@ describe('/api/landing', () => {
             const context = { request, env: { OBCF_R2: bucket }, url: new URL(request.url) } as never;
             expect((await handleLandingPageDelete(context, 'p1')).status).toBe(200);
             expect(bucket.delete).toHaveBeenCalledWith('landing/otta-web/share/p1.png');
+        });
+    });
+
+    describe('form entries', () => {
+        const lead = {
+            id: 'l1',
+            kind: 'contact',
+            email: 'a@b.co',
+            name: '=cmd',
+            message: 'Hi',
+            pagePath: '/',
+            read: false,
+            createdAt: '2026-10-11T00:00:00.000Z',
+        };
+
+        it('lists a page of the inbox, filtered by a known kind only', async () => {
+            models.inbox.mockResolvedValue({ leads: [lead], total: 1, unread: 1 });
+            const res = await handleLandingLeadsList(ctx('GET', '/api/landing/leads?kind=signup&offset=50'));
+            expect(await res.json()).toEqual({ leads: [lead], total: 1, unread: 1 });
+            expect(models.inbox).toHaveBeenLastCalledWith('otta-web', { kind: 'signup', limit: 50, offset: 50 });
+            await handleLandingLeadsList(ctx('GET', '/api/landing/leads?kind=everything&offset=-3'));
+            expect(models.inbox).toHaveBeenLastCalledWith('otta-web', { kind: undefined, limit: 50, offset: 0 });
+        });
+
+        it('exports CSV as an uncached download, with formula cells defused', async () => {
+            models.inbox.mockResolvedValue({ leads: [lead], total: 1, unread: 1 });
+            const res = await handleLandingLeadsList(ctx('GET', '/api/landing/leads?format=csv'));
+            expect(res.headers.get('content-type')).toBe('text/csv; charset=utf-8');
+            expect(res.headers.get('content-disposition')).toMatch(
+                /^attachment; filename="form-entries-\d{4}-\d{2}-\d{2}\.csv"$/,
+            );
+            expect(res.headers.get('cache-control')).toBe('no-store');
+            expect(await res.text()).toContain(`"'=cmd"`);
+        });
+
+        it('marks read or unread, and deletes, only entries of this app', async () => {
+            models.setRead.mockResolvedValue(true);
+            expect((await handleLandingLeadUpdate(ctx('PATCH', '/x', { read: false }), 'l1')).status).toBe(200);
+            expect(models.setRead).toHaveBeenCalledWith('otta-web', 'l1', false);
+            expect((await handleLandingLeadUpdate(ctx('PATCH', '/x', { read: 'yes' }), 'l1')).status).toBe(400);
+            models.setRead.mockResolvedValue(false);
+            expect((await handleLandingLeadUpdate(ctx('PATCH', '/x', { read: true }), 'other')).status).toBe(404);
+            models.deleteLead.mockResolvedValue(false);
+            expect((await handleLandingLeadDelete(ctx('DELETE', '/x'), 'other')).status).toBe(404);
+        });
+
+        it('turns on the notification task, linking to the admin it was set from, once an address is saved', async () => {
+            models.saveSettings.mockResolvedValue({ getSettings: () => ({ name: 'Acme', leadEmail: 'me@acme.dev' }) });
+            const request = new Request('http://127.0.0.1:3004/api/landing/site', {
+                method: 'PUT',
+                headers: { 'content-type': 'application/json', origin: 'http://localhost:3003' },
+                body: '{}',
+            });
+            await handleLandingSiteUpdate({ request, env: {}, url: new URL(request.url) } as never);
+            expect(ensureLeadNotifyTask).toHaveBeenCalledWith(
+                'otta-web',
+                'http://localhost:3003/admin/content/landing/leads',
+            );
+
+            ensureLeadNotifyTask.mockClear();
+            models.saveSettings.mockResolvedValue({ getSettings: () => ({ name: 'Acme' }) });
+            await handleLandingSiteUpdate(ctx('PUT', '/api/landing/site', {}));
+            expect(ensureLeadNotifyTask).not.toHaveBeenCalled();
         });
     });
 });

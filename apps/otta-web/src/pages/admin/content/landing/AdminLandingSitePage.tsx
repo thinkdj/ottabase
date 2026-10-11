@@ -27,14 +27,22 @@ import {
 } from '@ottabase/ui-shadcn';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Check, ChevronRight, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronRight, ExternalLink, Inbox, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
 import { ShareCardEditor } from './ShareCardEditor';
 import { withSiteShareImage } from './shareImage';
 import { UnsavedChangesGuard } from './UnsavedChangesGuard';
-import { LANDING_QUERY_KEY, landingApi, publicUrl, slugPath, useLanding, type LandingState } from './landingApi';
+import {
+    LANDING_QUERY_KEY,
+    landingApi,
+    publicUrl,
+    slugPath,
+    useLanding,
+    useLeads,
+    type LandingState,
+} from './landingApi';
 
 export function AdminLandingSitePage() {
     const { data, isLoading, error, refetch } = useLanding();
@@ -76,20 +84,41 @@ export function AdminLandingSitePage() {
                         time. Saved changes are live immediately.
                     </p>
                 </div>
-                {homeUrl && (
-                    <Button asChild variant="outline">
-                        <a href={homeUrl} target="_blank" rel="noopener noreferrer">
-                            View site
-                            <ExternalLink className="ml-2 h-4 w-4" />
-                        </a>
-                    </Button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                    <InboxButton />
+                    {homeUrl && (
+                        <Button asChild variant="outline">
+                            <a href={homeUrl} target="_blank" rel="noopener noreferrer">
+                                View site
+                                <ExternalLink className="ml-2 h-4 w-4" />
+                            </a>
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <ThemePicker state={data} />
             <PagesSection state={data} />
             <SettingsSection site={data.site} />
         </div>
+    );
+}
+
+/** The way into the form-entries inbox, with how many are new. */
+function InboxButton() {
+    const unread = useLeads().data?.pages[0]?.unread ?? 0;
+    return (
+        <Button asChild variant="outline">
+            <Link to="/admin/content/landing/leads">
+                <Inbox className="mr-2 h-4 w-4" aria-hidden />
+                Form entries
+                {unread > 0 && (
+                    <Badge className="ml-2" aria-label={`${unread} new`}>
+                        {unread}
+                    </Badge>
+                )}
+            </Link>
+        </Button>
     );
 }
 

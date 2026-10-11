@@ -148,6 +148,9 @@ import {
 } from './referrals';
 import {
     handleLandingGet,
+    handleLandingLeadDelete,
+    handleLandingLeadsList,
+    handleLandingLeadUpdate,
     handleLandingPageCreate,
     handleLandingPageDelete,
     handleLandingPagePreview,
@@ -505,6 +508,9 @@ const landingRouter = new Router<CloudflareEnv>();
 landingRouter.get('/', h(handleLandingGet));
 landingRouter.put('/site', h(handleLandingSiteUpdate));
 landingRouter.post('/share-image', h(handleLandingShareImage));
+landingRouter.get('/leads', h(handleLandingLeadsList));
+landingRouter.patch('/leads/:id', (c) => handleLandingLeadUpdate(ctxOf(c), c.params.id));
+landingRouter.delete('/leads/:id', (c) => handleLandingLeadDelete(ctxOf(c), c.params.id));
 landingRouter.post('/pages', h(handleLandingPageCreate));
 landingRouter.put('/pages/:id', (c) => handleLandingPageUpdate(ctxOf(c), c.params.id));
 landingRouter.delete('/pages/:id', (c) => handleLandingPageDelete(ctxOf(c), c.params.id));

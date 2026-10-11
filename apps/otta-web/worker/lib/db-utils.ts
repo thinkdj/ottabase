@@ -41,7 +41,7 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
-import { LandingPage, LandingSite } from '@ottabase/ottalanding';
+import { LandingLead, LandingPage, LandingSite } from '@ottabase/ottalanding';
 import { ReferralTracking } from '@ottabase/referrals';
 import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
@@ -134,7 +134,7 @@ function registerAppModels(env: CloudflareEnv): void {
         : [];
     const packageModels = [
         ...(packages.comments ? [Comment, CommentReaction] : []),
-        ...(packages.ottalanding ? [LandingSite, LandingPage] : []),
+        ...(packages.ottalanding ? [LandingSite, LandingPage, LandingLead] : []),
         ...(packages.shortlinks ? [Shortlink] : []),
         ...(packages.referrals ? [ReferralTracking] : []),
         ...(packages.ottaai ? [AiProviderCredential] : []),
@@ -164,11 +164,11 @@ function registerAppModels(env: CloudflareEnv): void {
     // built-in policy with the same model name.
     for (const policy of premiumPolicies) registerPolicy(policy as ModelRLSConfig);
 
-    // Landing-site content is app-global and platform-owned, like brand data. It is edited
-    // through /api/landing (platform-admin gated) and generic CRUD default-denies it; this
-    // policy is defense in depth should either of those ever change.
+    // Landing-site content (and the form entries it collects) is app-global and platform-owned,
+    // like brand data. It is read and edited through /api/landing (platform-admin gated) and
+    // generic CRUD default-denies it; this policy is defense in depth should either change.
     if (packages.ottalanding) {
-        for (const model of ['landing_sites', 'landing_pages']) {
+        for (const model of ['landing_sites', 'landing_pages', 'landing_leads']) {
             registerPolicy({
                 model,
                 policy: { ...RLSPolicies.AppScoped(), requirePlatformAdmin: true },

@@ -73,6 +73,7 @@ vi.mock('@ottabase/ui-shadcn', async (importOriginal) => {
     };
 });
 
+import { AdminLandingLeadsPage } from '../AdminLandingLeadsPage';
 import { AdminLandingPageEditorPage } from '../AdminLandingPageEditorPage';
 import { AdminLandingSitePage } from '../AdminLandingSitePage';
 import { UnsavedChangesGuard } from '../UnsavedChangesGuard';
@@ -95,6 +96,7 @@ function renderWithQuery(ui: React.ReactElement) {
 beforeEach(() => {
     vi.clearAllMocks();
     api.mockImplementation(async (url: string, init?: { method?: string; body?: unknown }) => {
+        if (url.startsWith('/api/landing/leads')) return { leads: [], total: 0, unread: 0 };
         if (!init?.method) return state();
         if (url === '/api/landing/site') return { site: init.body };
         return { page: { ...about, ...(init.body as object) } };
@@ -407,5 +409,83 @@ describe('preview links', () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
         await screen.findByRole('button', { name: 'Save' });
         expect(screen.queryByRole('button', { name: 'Share preview' })).toBeNull();
+    });
+});
+
+describe('form entries inbox', () => {
+    const entry = (over: object) => ({
+        id: 'l1',
+        kind: 'contact',
+        email: 'ada@example.com',
+        name: 'Ada',
+        message: 'Can I use this for my startup?',
+        pagePath: '/contact',
+        read: false,
+        createdAt: '2026-10-11T09:00:00.000Z',
+        ...over,
+    });
+    const inbox = (url: string, init?: { method?: string; responseType?: string }) => {
+        if (url === '/api/landing') return state();
+        if (init?.responseType === 'blob') return new Blob(['csv']);
+        if (init?.method) return { success: true };
+        const signups = url.includes('kind=signup');
+        const leads = signups
+            ? [entry({ id: 'l2', kind: 'signup', name: '', message: '', email: 'fan@example.com' })]
+            : [entry({}), entry({ id: 'l3', name: 'Grace', email: 'grace@example.com', read: true })];
+        return { leads, total: leads.length, unread: leads.filter((l) => !l.read).length };
+    };
+
+    beforeEach(() => {
+        api.mockImplementation(async (url: string, init?: { method?: string; responseType?: string }) =>
+            inbox(url, init),
+        );
+    });
+
+    it('lists entries with what is new, and reads one when it is opened', async () => {
+        renderWithQuery(<AdminLandingLeadsPage />);
+        expect(await screen.findByText('1 new')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /^Ada/ }));
+        await waitFor(() =>
+            expect(api).toHaveBeenCalledWith('/api/landing/leads/l1', { method: 'PATCH', body: { read: true } }),
+        );
+        expect(screen.getAllByRole('link', { name: /Reply/ })[0]).toHaveAttribute(
+            'href',
+            'mailto:ada%40example.com?subject=Re%3A%20your%20message',
+        );
+    });
+
+    it('filters to signups', async () => {
+        renderWithQuery(<AdminLandingLeadsPage />);
+        await screen.findByText('1 new');
+        fireEvent.click(screen.getByRole('radio', { name: 'Signups' }));
+        expect(await screen.findByText('fan@example.com')).toBeInTheDocument();
+        expect(api).toHaveBeenCalledWith('/api/landing/leads?kind=signup&offset=0');
+    });
+
+    it('deletes only after confirming', async () => {
+        renderWithQuery(<AdminLandingLeadsPage />);
+        fireEvent.click(await screen.findByRole('button', { name: 'Delete entry from ada@example.com' }));
+        expect(api).not.toHaveBeenCalledWith('/api/landing/leads/l1', { method: 'DELETE' });
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+        await waitFor(() => expect(api).toHaveBeenCalledWith('/api/landing/leads/l1', { method: 'DELETE' }));
+    });
+
+    it('exports a CSV download and suggests turning on email notifications', async () => {
+        const createObjectURL = vi.fn(() => 'blob:csv');
+        Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+        renderWithQuery(<AdminLandingLeadsPage />);
+        expect(await screen.findByText(/Want an email when someone writes/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+        await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+        expect(api).toHaveBeenCalledWith('/api/landing/leads?format=csv', { responseType: 'blob' });
+    });
+
+    it('shows the count of new entries on the landing site page', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        expect(await screen.findByRole('link', { name: /Form entries/ })).toHaveAttribute(
+            'href',
+            '/admin/content/landing/leads',
+        );
+        expect(await screen.findByLabelText('1 new')).toBeInTheDocument();
     });
 });

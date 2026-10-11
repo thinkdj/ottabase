@@ -68,7 +68,7 @@ describe('comments package schema adapters stay in lockstep', () => {
 });
 
 describe('landing package schema adapters stay in lockstep', () => {
-    const tableKeys = ['landingSitesTable', 'landingPagesTable'] as const;
+    const tableKeys = ['landingSitesTable', 'landingPagesTable', 'landingLeadsTable'] as const;
 
     it('exports every landing table through the runtime and drizzle-kit adapters', () => {
         const packageTables = getEnabledPackageTables() as Record<string, unknown>;

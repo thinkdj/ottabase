@@ -171,7 +171,8 @@ function ScalarInput({
         control = (
             <Input
                 {...common}
-                inputMode={field.kind === 'url' ? 'url' : undefined}
+                type={field.kind === 'email' ? 'email' : undefined}
+                inputMode={field.kind === 'url' ? 'url' : field.kind === 'email' ? 'email' : undefined}
                 placeholder={field.placeholder}
                 value={(value as string) ?? ''}
                 onChange={(e) => onChange(e.target.value)}

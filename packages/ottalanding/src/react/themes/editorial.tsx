@@ -13,6 +13,7 @@ import {
     type Action,
     type ThemeComponents,
 } from '../shared';
+import { LeadForm, type LeadFormClasses } from '../lead-form';
 import { SchemeToggle } from '../scheme-toggle';
 
 const column = 'w-full max-w-3xl px-6 sm:px-10';
@@ -30,6 +31,14 @@ function Actions({ actions }: { actions?: Action[] }) {
         </p>
     );
 }
+
+const form: LeadFormClasses = {
+    input: 'w-full border-0 border-b-2 border-border bg-transparent px-0 py-3 font-heading text-xl placeholder:text-muted-foreground/70 focus:border-foreground focus:outline-none',
+    button: `inline-flex items-center justify-center bg-foreground px-7 py-3 font-heading text-lg font-semibold text-background transition-opacity hover:opacity-85 disabled:opacity-60 ${focusRing}`,
+    label: 'text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground',
+    note: 'border-l-4 border-primary py-2 pl-5 font-heading text-2xl italic',
+    error: 'text-sm text-destructive',
+};
 
 function Title({ children }: { children?: string }) {
     if (!children) return null;
@@ -267,6 +276,44 @@ export const editorial: ThemeComponents = {
                         )}
                         <div className="mt-8">
                             <Actions actions={actions} />
+                        </div>
+                    </div>
+                </div>
+            );
+        },
+
+        contact({ title, subtitle, buttonLabel, successMessage }) {
+            return (
+                <div className={`${column} py-12`}>
+                    <Title>{title}</Title>
+                    {subtitle && <p className="mt-3 font-heading text-xl italic text-muted-foreground">{subtitle}</p>}
+                    <div className="mt-8">
+                        <LeadForm
+                            kind="contact"
+                            buttonLabel={buttonLabel}
+                            successMessage={successMessage}
+                            classes={form}
+                        />
+                    </div>
+                </div>
+            );
+        },
+
+        signup({ title, subtitle, buttonLabel, successMessage }) {
+            return (
+                <div className={`${column} py-12`}>
+                    <div className="border-y border-border py-10">
+                        <Title>{title}</Title>
+                        {subtitle && (
+                            <p className="mt-3 font-heading text-xl italic text-muted-foreground">{subtitle}</p>
+                        )}
+                        <div className="mt-6">
+                            <LeadForm
+                                kind="signup"
+                                buttonLabel={buttonLabel}
+                                successMessage={successMessage}
+                                classes={form}
+                            />
                         </div>
                     </div>
                 </div>

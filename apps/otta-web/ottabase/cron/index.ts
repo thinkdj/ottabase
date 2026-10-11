@@ -20,6 +20,7 @@ import type {
 import { incrementDispatchStats } from '../queue';
 import { resolvePlatformState } from '../../worker/bootstrap';
 import { ensureDbConnection } from '../../worker/lib/db-utils';
+import { LEAD_NOTIFY_HANDLER, notifyNewLeads } from '../../worker/lib/landing-notify';
 
 export const APP_CRON_TICK = '* * * * *';
 
@@ -29,6 +30,7 @@ export interface AppCronPayloads {
     'queue:generate-report': GenerateReportPayload;
     'queue:sync-data': SyncDataPayload;
     'queue:batch-task': BatchTaskPayload;
+    'landing:notify-leads': { inboxUrl?: string } | null;
 }
 
 export type AppCronHandlerName = keyof AppCronPayloads;
@@ -161,6 +163,13 @@ export const appCronHandlerRegistry = {
                 data: input.data,
             };
             await dispatchQueuedCronJob(env, 'batch-task', data);
+        },
+    },
+    [LEAD_NOTIFY_HANDLER]: {
+        description: 'Email new landing-site messages and signups to the address in the site settings.',
+        handler: async ({ env, payload }) => {
+            const inboxUrl = payload && typeof payload === 'object' ? optionalString(payload, 'inboxUrl') : undefined;
+            await notifyNewLeads(env, inboxUrl);
         },
     },
 } satisfies TaskHandlerDefinitions<CloudflareEnv, AppCronPayloads>;

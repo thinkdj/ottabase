@@ -24,9 +24,9 @@ describe('content contracts', () => {
         for (const page of DEFAULT_PAGES) expect(PageInputSchema.safeParse(page).success, page.path).toBe(true);
     });
 
-    it('the starter home page shows off every section type', () => {
-        const used = new Set(DEFAULT_PAGES[0].sections?.map((s) => s.type));
-        for (const type of SECTION_TYPES.filter((t) => t !== 'text')) expect(used.has(type), type).toBe(true);
+    it('the starter pages show off every section type', () => {
+        const used = new Set(DEFAULT_PAGES.flatMap((p) => p.sections?.map((s) => s.type) ?? []));
+        for (const type of SECTION_TYPES) expect(used.has(type), type).toBe(true);
     });
 
     it('a new section is a draft: valid shape, required fields still empty', () => {
@@ -186,7 +186,7 @@ describe('package boundary', () => {
     it('the root entry exports no React components', () => {
         for (const [name, value] of Object.entries(root)) {
             const looksLikeComponent =
-                typeof value === 'function' && /^[A-Z]/.test(name) && !/^Landing(Site|Page)$/.test(name);
+                typeof value === 'function' && /^[A-Z]/.test(name) && !/^Landing(Site|Page|Lead)$/.test(name);
             expect(looksLikeComponent, name).toBe(false);
         }
     });

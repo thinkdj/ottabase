@@ -38,7 +38,7 @@ import {
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
-import { landingPagesTable, landingSitesTable } from '@ottabase/ottalanding/schema';
+import { landingLeadsTable, landingPagesTable, landingSitesTable } from '@ottabase/ottalanding/schema';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
@@ -58,6 +58,7 @@ export {
     categoriesTable,
     commentsTable,
     commentReactionsTable,
+    landingLeadsTable,
     landingPagesTable,
     landingSitesTable,
     ottablogPluginsTable,

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PAGES, DEFAULT_SITE } from '../defaults';
 import { LandingPreview, LandingView, THEME_COMPONENTS } from '../react';
-import { parseSections } from '../sections';
+import { parseSections, SECTION_TYPES } from '../sections';
 import { THEMES } from '../themes';
 
 const home = parseSections(DEFAULT_PAGES[0].sections);
@@ -15,9 +15,7 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
     const html = render(theme);
 
     it('implements every section type', () => {
-        expect(Object.keys(THEME_COMPONENTS[theme].sections).sort()).toEqual(
-            ['cta', 'faq', 'features', 'hero', 'logos', 'pricing', 'testimonials', 'text'].sort(),
-        );
+        expect(Object.keys(THEME_COMPONENTS[theme].sections).sort()).toEqual([...SECTION_TYPES].sort());
     });
 
     it('renders the site chrome and every section of the starter home page', () => {
