@@ -112,18 +112,27 @@ describe('pages', () => {
         expect(store.findPage).toHaveBeenCalledWith('acme', '/secret-draft');
     });
 
-    it('does not touch pages in metadata before the tables exist (no error page instead of setup steps)', async () => {
+    it('shows setup steps, not an error page, before the tables exist', async () => {
         store.findSite.mockResolvedValue(null);
         store.findPage.mockRejectedValue(new Error('D1_ERROR: no such table: landing_pages'));
         expect(await generateMetadata(params())).toEqual({});
-        expect(store.findPage).not.toHaveBeenCalled();
+        expect(html(await LandingRoute(params()))).toContain('has no content yet');
+    });
+
+    it('reads the site and the page in parallel (one database round trip, not two)', async () => {
+        let releaseSite!: (value: unknown) => void;
+        store.findSite.mockReturnValue(new Promise((resolve) => (releaseSite = resolve)));
+        store.findPage.mockResolvedValue(home);
+        const rendering = LandingRoute(params());
+        await vi.waitFor(() => expect(store.findPage).toHaveBeenCalled()); // before the site has answered
+        releaseSite(site);
+        expect(html(await rendering)).toContain('<h1');
     });
 
     it('shows setup steps until the site exists', async () => {
         store.findSite.mockResolvedValue(null);
         const out = html(await LandingRoute(params()));
         expect(out).toContain('has no content yet');
-        expect(store.findPage).not.toHaveBeenCalled();
     });
 
     it('renders the 404 inside the site’s own theme and navigation', async () => {

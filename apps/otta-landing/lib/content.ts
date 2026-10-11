@@ -25,8 +25,10 @@ function isMissingTable(error: unknown): boolean {
     return false;
 }
 
-// ponytail: one D1 read per request (two with the page). Add a KV/edge cache keyed by appId,
-// invalidated by /api/landing writes, if traffic ever makes that matter.
+// ponytail: no cache. A page view is one D1 round trip (site and page read in parallel, see the
+// page route), and saved edits are live at once. If visitors far from the D1 primary ever feel
+// it, enable D1 read replication and read through env.OBCF_D1.withSession() before reaching
+// for an invalidated KV/edge cache.
 
 /** The site's settings, or null until otta-web has created the tables and starter content. */
 export const getSite = cache(async (): Promise<SiteSettings | null> => {
@@ -45,11 +47,17 @@ export const getSite = cache(async (): Promise<SiteSettings | null> => {
  */
 export const getPage = cache(async (path: string, previewToken?: string): Promise<LandingPageData | null> => {
     const appId = await connect();
-    // A stale token on a page that has since been published still shows the public page.
-    const page =
-        (previewToken ? await LandingPage.findForPreview(appId, path, previewToken) : null) ??
-        (await LandingPage.findPublished(appId, path));
-    return page?.toPage() ?? null;
+    try {
+        // A stale token on a page that has since been published still shows the public page.
+        const page =
+            (previewToken ? await LandingPage.findForPreview(appId, path, previewToken) : null) ??
+            (await LandingPage.findPublished(appId, path));
+        return page?.toPage() ?? null;
+    } catch (error) {
+        // Read alongside the site, so it may run before otta-web's first migration too.
+        if (isMissingTable(error)) return null;
+        throw error;
+    }
 });
 
 /** `[[...slug]]` segments → `/`, `/about`, `/docs/intro`. Pages only use [a-z0-9-], so odd input just 404s. */

@@ -15,12 +15,20 @@ const previewToken = async (searchParams: Props['searchParams']) => {
     return typeof preview === 'string' ? preview : undefined;
 };
 
+/**
+ * The site and the page, read in parallel: one D1 round trip instead of two. React's cache()
+ * shares the results between generateMetadata, the page and the layout within a request.
+ */
+async function load(params: Props['params'], searchParams: Props['searchParams']) {
+    const path = toPath((await params).slug);
+    const [site, page] = await Promise.all([getSite(), getPage(path, await previewToken(searchParams))]);
+    return [site, page, path] as const;
+}
+
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-    // Site first: before otta-web's first migration there are no tables, and the page shows setup steps.
-    const site = await getSite();
-    if (!site) return {};
-    const page = await getPage(toPath((await params).slug), await previewToken(searchParams));
-    if (!page) return {};
+    // Before otta-web's first migration there are no tables: both read as null, and the page shows setup steps.
+    const [site, page] = await load(params, searchParams);
+    if (!site || !page) return {};
     // A draft preview is for the people it was shared with: never indexed, never canonical.
     if (!page.published) return { title: page.title, robots: 'noindex, nofollow' };
     const description = page.description || site.tagline;
@@ -50,11 +58,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 }
 
 export default async function LandingRoute({ params, searchParams }: Props) {
-    const path = toPath((await params).slug);
-    const site = await getSite();
+    const [site, page, path] = await load(params, searchParams);
     if (!site) return <SetupNotice />;
-
-    const page = await getPage(path, await previewToken(searchParams));
     if (!page) notFound();
 
     const view = <LandingView site={site} sections={page.sections} currentPath={path} title={page.title} />;
