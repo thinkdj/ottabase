@@ -6,6 +6,7 @@ import { DEFAULT_APP_ID } from '@ottabase/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { LandingPage, LandingSite, type LandingPageData, type SiteSettings } from '@ottabase/ottalanding';
 import { registerConnection } from '@ottabase/ottaorm';
+import { headers } from 'next/headers';
 import { cache } from 'react';
 
 /** Point the models at the shared D1 and return the app whose landing site to show. */
@@ -53,4 +54,28 @@ export function toPath(slug: string[] = []): string {
 export async function isProduction(): Promise<boolean> {
     const { env } = await getCloudflareContext({ async: true });
     return env.ENVIRONMENT === 'production';
+}
+
+/** Every published page's path and last change, for the sitemap. */
+export async function getPublishedPaths(): Promise<{ path: string; updatedAt?: Date }[]> {
+    const appId = await connect();
+    try {
+        return await LandingPage.publishedPaths(appId);
+    } catch (error) {
+        if (isMissingTable(error)) return [];
+        throw error;
+    }
+}
+
+/**
+ * The site's public origin: its configured Public URL, else the address this request came in on
+ * (crawlers need absolute URLs for the sitemap and social images, even before one is set).
+ */
+export async function siteOrigin(site: SiteSettings | null): Promise<string> {
+    const configured = site?.siteUrl?.replace(/\/+$/, '');
+    if (configured && URL.canParse(configured)) return configured;
+    const h = await headers();
+    const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost';
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host);
+    return `${h.get('x-forwarded-proto') ?? (local ? 'http' : 'https')}://${host}`;
 }

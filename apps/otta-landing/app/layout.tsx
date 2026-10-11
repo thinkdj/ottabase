@@ -1,7 +1,7 @@
 import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import type { Metadata } from 'next';
-import { getSite, isProduction } from '../lib/content';
+import { getSite, isProduction, siteOrigin } from '../lib/content';
 import './globals.css';
 
 // Content is edited live in otta-web's admin, so every request reads the current site.
@@ -23,8 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
         description: site?.tagline,
         // Only the production deployment may be indexed; preview/staging copies must not compete with it.
         robots: production ? 'index, follow' : 'noindex, nofollow',
-        // Resolves canonical and Open Graph URLs against the configured public address.
-        metadataBase: toUrl(site?.siteUrl),
+        // Resolves canonical, Open Graph and social-image URLs: the Public URL, else this request's origin.
+        metadataBase: toUrl(await siteOrigin(site)),
         // The uploaded favicon; without one, browsers fall back to /favicon.ico.
         ...(site?.faviconUrl ? { icons: { icon: site.faviconUrl } } : {}),
     };

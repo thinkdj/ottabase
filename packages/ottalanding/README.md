@@ -83,6 +83,7 @@ await LandingSite.saveSettings(appId, input); // validates; throws DomainValidat
 site.getSettings(); // validated settings, field by field (see above)
 
 await LandingPage.findPublished(appId, '/pricing'); // public read
+await LandingPage.publishedPaths(appId); // [{ path, updatedAt }] for the sitemap
 await LandingPage.forApp(appId);
 await LandingPage.createFor(appId, input); // validates, unique path → PATH_TAKEN
 await LandingPage.updateFor(appId, id, input); // null if the page is not in this app
@@ -95,6 +96,24 @@ which the admin shows on the exact input.
 
 **Scoping:** content is app-global and platform-owned, like brand data, so it's keyed by `appId` only. The app always
 comes from server configuration, never from the request.
+
+## Social images
+
+The picture link previews show (X, LinkedIn, Slack, iMessage…) is typed content like everything else: `SHARE_FIELDS`
+holds the heading, supporting text, color, background image and the rendered `imageUrl`. The site has a default card
+(`settings.share`), and any page may have its own (`landing_pages.share`, null means "use the site's").
+
+The admin draws the card in the browser with `drawShareCard(ctx, scene)`, a pure function. The editor's live canvas and
+the uploaded PNG come from the same call, so what you see is exactly what gets shared:
+
+- 1200×630; the heading uses the theme's heading font (`themeFonts()`) at the largest size that fits three lines;
+- the color defaults to the brand color, else the theme's accent (`themeAccent()`), with ink chosen by contrast;
+- a background image is drawn cover-fit under a dark shade, with white text on top;
+- the logo and domain sit in the top row, and the site name is left out when the heading already is the name.
+
+otta-web stores the PNG at one fixed key per site or page (`POST /api/landing/share-image`, PNG-signature checked) and
+returns it cache-busted with `?v=`, so re-renders never pile up. A deleted page's image is removed with it. The site's
+card is re-rendered on every settings save and theme switch; a page's on every save of that page.
 
 ## Themes
 
@@ -170,7 +189,7 @@ Registered as a built-in package (`packages.ottalanding`):
 - tables in `config.migrations.ts`
 - `db/schema.ts`
 - models in `db-utils.ts`, with a defensive app-scoped, platform-admin RLS policy (generic CRUD default-denies them)
-- `/api/landing` routes, platform admin only
+- `/api/landing` routes, platform admin only (including `POST /share-image` for rendered social images)
 - admin pages at `/admin/content/landing`
 - starter content seeded by `/api/ottaorm/init`
 

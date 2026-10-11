@@ -15,13 +15,16 @@ vi.mock('@ottabase/ottaorm', async (importOriginal) => ({
     registerConnection: vi.fn(),
 }));
 
-const store = vi.hoisted(() => ({ findSite: vi.fn(), findPage: vi.fn() }));
+const request = vi.hoisted(() => ({ headers: new Headers({ host: 'landing.acme.test' }) }));
+vi.mock('next/headers', () => ({ headers: async () => request.headers }));
+
+const store = vi.hoisted(() => ({ findSite: vi.fn(), findPage: vi.fn(), publishedPaths: vi.fn() }));
 vi.mock('@ottabase/ottalanding', async (importOriginal) => {
     const real = await importOriginal<typeof import('@ottabase/ottalanding')>();
     return {
         ...real,
         LandingSite: { findForApp: store.findSite },
-        LandingPage: { findPublished: store.findPage },
+        LandingPage: { findPublished: store.findPage, publishedPaths: store.publishedPaths },
     };
 });
 // React's per-request cache() is a no-op outside a server render; keep it transparent here.
@@ -30,6 +33,8 @@ vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<object>()
 import LandingRoute, { generateMetadata } from '../app/[[...slug]]/page';
 import RootLayout, { generateMetadata as layoutMetadata } from '../app/layout';
 import NotFound from '../app/not-found';
+import robots from '../app/robots';
+import sitemap from '../app/sitemap';
 import { getSite, toPath } from '../lib/content';
 
 const site = { getSettings: () => ({ ...DEFAULT_SITE, theme: 'editorial' }) };
@@ -129,14 +134,68 @@ describe('metadata', () => {
         expect(meta.openGraph).toMatchObject({ siteName: 'Ottabase', url: '/', title: DEFAULT_PAGES[0].title });
     });
 
-    it('omits URLs (rather than guessing) when no public URL is set, and never throws on a bad one', async () => {
+    it('omits canonical URLs without a public URL, but resolves images against the request origin', async () => {
         store.findPage.mockResolvedValue(home);
         const meta = await generateMetadata(params());
         expect(meta.alternates).toBeUndefined();
         expect(meta.openGraph).not.toHaveProperty('url');
+        expect((await layoutMetadata()).metadataBase?.toString()).toBe('https://landing.acme.test/');
 
+        // A stored address that doesn't parse never throws; the request origin stands in.
         store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, siteUrl: 'https://[bad' }) });
-        expect((await layoutMetadata()).metadataBase).toBeUndefined();
+        expect((await layoutMetadata()).metadataBase?.toString()).toBe('https://landing.acme.test/');
+    });
+
+    it('shares the page’s own social image, else the site’s, as a large card', async () => {
+        const siteImage = '/api/upload/file/landing/acme/share/site.png?v=1';
+        store.findSite.mockResolvedValue({
+            getSettings: () => ({ ...DEFAULT_SITE, share: { imageUrl: siteImage } }),
+        });
+        store.findPage.mockResolvedValue(home);
+        let meta = await generateMetadata(params());
+        expect(meta.openGraph).toMatchObject({
+            images: [{ url: siteImage, width: 1200, height: 630, alt: 'Ottabase' }],
+        });
+        expect(meta.twitter).toMatchObject({ card: 'summary_large_image', images: [{ url: siteImage }] });
+
+        const own = { imageUrl: '/api/upload/file/landing/acme/share/home.png?v=2', heading: 'Ship it' };
+        store.findPage.mockResolvedValue({ toPage: () => ({ ...home.toPage(), share: own }) });
+        meta = await generateMetadata(params());
+        expect(meta.openGraph).toMatchObject({ images: [{ url: own.imageUrl, alt: 'Ship it' }] });
+
+        store.findSite.mockResolvedValue(site);
+        store.findPage.mockResolvedValue(home);
+        meta = await generateMetadata(params());
+        expect(meta.openGraph).not.toHaveProperty('images');
+        expect(meta.twitter).toMatchObject({ card: 'summary' });
+    });
+});
+
+describe('sitemap and robots', () => {
+    it('lists every published page at the public URL, with when it changed', async () => {
+        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, siteUrl: 'https://acme.dev/' }) });
+        const changed = new Date('2026-10-01T00:00:00Z');
+        store.publishedPaths.mockResolvedValue([{ path: '/', updatedAt: changed }, { path: '/about' }]);
+        expect(await sitemap()).toEqual([
+            { url: 'https://acme.dev/', lastModified: changed },
+            { url: 'https://acme.dev/about' },
+        ]);
+        expect(store.publishedPaths).toHaveBeenCalledWith('acme');
+    });
+
+    it('is empty before the site exists', async () => {
+        store.findSite.mockResolvedValue(null);
+        expect(await sitemap()).toEqual([]);
+    });
+
+    it('invites crawlers only in production, pointing them at the sitemap', async () => {
+        env.value = { ...env.value, ENVIRONMENT: 'preview' };
+        expect(await robots()).toEqual({ rules: { userAgent: '*', disallow: '/' } });
+        env.value = { ...env.value, ENVIRONMENT: 'production' };
+        expect(await robots()).toEqual({
+            rules: { userAgent: '*', allow: '/' },
+            sitemap: 'https://landing.acme.test/sitemap.xml',
+        });
     });
 });
 

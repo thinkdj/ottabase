@@ -13,10 +13,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const page = await getPublishedPage(toPath((await params).slug));
     if (!page) return {};
     const description = page.description || site.tagline;
+    // The page's own social image, else the site's (relative upload URLs resolve via metadataBase).
+    const image = page.share?.imageUrl || site.share?.imageUrl;
+    const alt = page.share?.heading || (page.share ? page.title : site.share?.heading || site.name);
     return {
         title: page.title,
         description,
-        // Absolute URLs need the site's public address (metadataBase, set in the layout).
+        // A canonical URL must name the real site, so it needs the configured Public URL.
         ...(site.siteUrl ? { alternates: { canonical: page.path } } : {}),
         openGraph: {
             type: 'website',
@@ -24,6 +27,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             title: page.title,
             description,
             ...(site.siteUrl ? { url: page.path } : {}),
+            ...(image ? { images: [{ url: image, width: 1200, height: 630, alt }] } : {}),
+        },
+        twitter: {
+            card: image ? 'summary_large_image' : 'summary',
+            title: page.title,
+            description,
+            ...(image ? { images: [{ url: image, alt }] } : {}),
         },
     };
 }

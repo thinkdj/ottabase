@@ -8,6 +8,7 @@ import {
     schemeInitScript,
     PageInputSchema,
     readableOn,
+    themeAccent,
     SECTION_TYPES,
     SectionSchema,
     SiteSettingsSchema,
@@ -167,6 +168,8 @@ describe('themes', () => {
         expect(fonts.heading).toBe('Outfit');
         expect(fonts.body).toBe('Inter');
         expect(fonts.urls.every((u) => u.startsWith('https://fonts.googleapis.com/'))).toBe(true);
+        expect(themeAccent('launch')).toBe('#3c83f6'); // neo's 217 91% 60%
+        expect(themeAccent('nope')).toBe(themeAccent('launch'));
         expect(readableOn('#ffffff')).toBe('#111111');
         expect(readableOn('#000000')).toBe('#ffffff');
     });

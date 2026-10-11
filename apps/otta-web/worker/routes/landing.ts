@@ -5,7 +5,9 @@
 // never from the request. The public site (apps/otta-landing) reads the same D1 rows
 // directly through the package's models, so there are no public routes here.
 
+import { createR2Client } from '@ottabase/cf/r2';
 import { LandingPage, LandingSite } from '@ottabase/ottalanding';
+import { deleteFileFromR2, uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { DomainValidationError } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -62,9 +64,65 @@ export function handleLandingPageUpdate(context: ApiRouteContext, id: string): P
     });
 }
 
-/** DELETE /api/landing/pages/:id */
+/** DELETE /api/landing/pages/:id — the page and its social image. */
 export function handleLandingPageDelete(context: ApiRouteContext, id: string): Promise<Response> {
-    return asAdmin(context, async (appId) =>
-        (await LandingPage.deleteFor(appId, id)) ? jsonResponse({ success: true }) : notFound(),
-    );
+    return asAdmin(context, async (appId) => {
+        if (!(await LandingPage.deleteFor(appId, id))) return notFound();
+        const r2 = r2Client(context.env);
+        // Best effort: a leftover image is harmless, a failed delete must not fail the request.
+        if (r2) await deleteFileFromR2(shareImageKey(appId, id), r2).catch(() => undefined);
+        return jsonResponse({ success: true });
+    });
+}
+
+// ── Social images ───────────────────────────────────────────────────────────
+
+/** Rendered in the admin's browser (the editor's own canvas), so the server only stores it. */
+const SHARE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/** One fixed key per site or page, overwritten on each save, so old renders never pile up. */
+function shareImageKey(appId: string, target: string): string {
+    return `landing/${appId}/share/${target}.png`;
+}
+
+function r2Client(env: CloudflareEnv) {
+    // The env's R2Bucket and @ottabase/cf's come from different workers-types copies (DOM vs Workers Headers).
+    return env.OBCF_R2 ? createR2Client({ bucket: env.OBCF_R2 as never }) : null;
+}
+
+async function isPng(file: File): Promise<boolean> {
+    const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    return PNG_SIGNATURE.every((byte, i) => head[i] === byte);
+}
+
+/**
+ * POST /api/landing/share-image — store the social image (multipart `file`, PNG) for `target`:
+ * `site`, or the id of one of this app's pages. Returns its URL, cache-busted with `?v=`.
+ */
+export function handleLandingShareImage(context: ApiRouteContext): Promise<Response> {
+    return asAdmin(context, async (appId) => {
+        const r2 = r2Client(context.env);
+        if (!r2) return errorResponse('Uploads are not configured', 500, { code: 'CONFIG_ERROR' });
+        const form = await context.request.formData().catch(() => null);
+        const file = form?.get('file');
+        const target = String(form?.get('target') ?? '');
+        if (!(file instanceof File)) return errorResponse('Expected an image file', 400, { code: 'BAD_REQUEST' });
+        if (target !== 'site' && !(await LandingPage.findForApp(appId, target))) return notFound();
+        if (file.size > SHARE_IMAGE_MAX_BYTES || !(await isPng(file))) {
+            return errorResponse('The social image must be a PNG under 2 MB', 400, { code: 'INVALID_IMAGE' });
+        }
+        const key = shareImageKey(appId, target);
+        // Stored as image/png whatever the browser labelled it: the bytes were just checked.
+        const png = new File([file], 'share.png', { type: 'image/png' });
+        const result = await uploadFileToR2(png, r2, {
+            maxFileSize: SHARE_IMAGE_MAX_BYTES,
+            generateKey: () => key,
+            getUrl: (k) => `/api/upload/file/${k}?v=${Date.now()}`,
+        });
+        if (!result.success || !result.url) {
+            return errorResponse('The social image could not be stored', 500, { code: 'UPLOAD_FAILED' });
+        }
+        return jsonResponse({ url: result.url }, 201);
+    });
 }

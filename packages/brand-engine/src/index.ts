@@ -81,6 +81,7 @@ export {
     generateSemanticDefaults,
     generateSemanticDefaultsDark,
     hexToHsl,
+    hslToHex,
 } from './colors';
 export type { SemanticPalette } from './colors';
 export {

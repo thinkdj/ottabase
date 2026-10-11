@@ -1,7 +1,8 @@
 import { BaseModel, DomainValidationError, type ModelFields } from '@ottabase/ottaorm';
 import type { z } from 'zod';
-import { fieldErrors } from '../fields';
+import { fieldErrors, parseLenient } from '../fields';
 import { parseSections } from '../sections';
+import { SHARE_FIELDS } from '../share-card';
 import { PageInputSchema, type LandingPageData } from '../site';
 import { landingPagesTable } from './landing.schema';
 
@@ -42,13 +43,14 @@ export class LandingPage extends BaseModel {
     static casts = {
         published: 'boolean' as const,
         sections: 'json' as const,
+        share: 'json' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
 
     static writable = {
-        create: ['appId', 'path', 'title', 'description', 'published', 'sections'],
-        update: ['path', 'title', 'description', 'published', 'sections'],
+        create: ['appId', 'path', 'title', 'description', 'published', 'sections', 'share'],
+        update: ['path', 'title', 'description', 'published', 'sections', 'share'],
     };
 
     protected static fields: ModelFields = {
@@ -72,6 +74,15 @@ export class LandingPage extends BaseModel {
         return (await this.first({ appId, path, published: true })) as LandingPage | null;
     }
 
+    /** Path and last change of every published page, for the sitemap. */
+    static async publishedPaths(appId: string): Promise<{ path: string; updatedAt?: Date }[]> {
+        const pages = (await this.where(
+            { appId, published: true },
+            { orderBy: 'path', orderDirection: 'asc' },
+        )) as LandingPage[];
+        return pages.map((p) => ({ path: p.get('path') as string, updatedAt: p.get('updatedAt') as Date | undefined }));
+    }
+
     static async findForApp(appId: string, id: string): Promise<LandingPage | null> {
         return (await this.first({ appId, id })) as LandingPage | null;
     }
@@ -91,7 +102,8 @@ export class LandingPage extends BaseModel {
             if (page.get('path') === '/') throw pathError('The home page always lives at /.', 'HOME_PAGE_REQUIRED');
             await this.assertPathFree(appId, data.path);
         }
-        await uniquePath(() => this.update(id, data));
+        // A page without its own social image stores null, so it goes back to using the site's.
+        await uniquePath(() => this.update(id, { ...data, share: data.share ?? null }));
         return this.findForApp(appId, id);
     }
 
@@ -116,12 +128,14 @@ export class LandingPage extends BaseModel {
     /** Plain, validated view for renderers and the admin API. */
     toPage(): LandingPageData {
         const updatedAt = this.get('updatedAt') as Date | undefined;
+        const share = this.get('share');
         return {
             id: this.get('id') as string,
             path: this.get('path') as string,
             title: this.get('title') as string,
             description: (this.get('description') as string) ?? '',
             published: Boolean(this.get('published')),
+            ...(share && typeof share === 'object' ? { share: parseLenient(SHARE_FIELDS, share, {}) } : {}),
             sections: parseSections(this.get('sections')),
             updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : undefined,
         };

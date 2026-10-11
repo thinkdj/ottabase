@@ -28,9 +28,11 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
+import { ShareCardEditor } from './ShareCardEditor';
+import { withSiteShareImage } from './shareImage';
 import { UnsavedChangesGuard } from './UnsavedChangesGuard';
 import { LANDING_QUERY_KEY, landingApi, publicUrl, slugPath, useLanding, type LandingState } from './landingApi';
 
@@ -97,10 +99,15 @@ function ThemePicker({ state }: { state: LandingState }) {
     const queryClient = useQueryClient();
     const home = state.pages.find((p) => p.path === '/') ?? state.pages[0];
     const save = useMutation({
-        mutationFn: (theme: ThemeId) => landingApi.saveSite({ ...state.site, theme }),
-        onSuccess: ({ site }) => {
+        // The social image is drawn in the theme's fonts, so it is re-rendered with the switch.
+        mutationFn: async (theme: ThemeId) => {
+            const { site, warning } = await withSiteShareImage({ ...state.site, theme });
+            return { ...(await landingApi.saveSite(site)), warning };
+        },
+        onSuccess: ({ site, warning }) => {
             queryClient.setQueryData<LandingState>(LANDING_QUERY_KEY, (old) => old && { ...old, site });
             toast.success(`Theme changed to ${THEMES.find((t) => t.id === site.theme)?.label}`);
+            if (warning) toast.warning(warning);
         },
         onError: (err) => toast.error(getErrorMessage(err)),
     });
@@ -338,16 +345,20 @@ function SettingsSection({ site }: { site: SiteSettings }) {
     const [edits, setDraft] = useState<SiteSettings>(site);
     const [errors, setErrors] = useState<FieldErrors>({});
     // The theme belongs to the picker above: switching it must not discard edits made here.
-    const draft = { ...edits, theme: site.theme };
+    const draft = useMemo(() => ({ ...edits, theme: site.theme }), [edits, site.theme]);
     const dirty = JSON.stringify(draft) !== JSON.stringify(site);
 
     const save = useMutation({
-        mutationFn: (next: SiteSettings) => landingApi.saveSite(next),
-        onSuccess: ({ site: saved }) => {
+        mutationFn: async (next: SiteSettings) => {
+            const { site: withImage, warning } = await withSiteShareImage(next);
+            return { ...(await landingApi.saveSite(withImage)), warning };
+        },
+        onSuccess: ({ site: saved, warning }) => {
             queryClient.setQueryData<LandingState>(LANDING_QUERY_KEY, (old) => old && { ...old, site: saved });
             setDraft(saved);
             setErrors({});
             toast.success('Site settings saved');
+            if (warning) toast.warning(warning);
         },
         onError: (err) => {
             if (isApiError(err) && err.fieldErrors) setErrors(err.fieldErrors);
@@ -381,8 +392,24 @@ function SettingsSection({ site }: { site: SiteSettings }) {
                     value={draft}
                     onChange={(next) => setDraft(next as SiteSettings)}
                     errors={errors}
-                    omit={['theme']}
+                    omit={['theme', 'share']}
                 />
+                <div className="space-y-4 border-t border-border pt-6">
+                    <div className="space-y-1">
+                        <h3 className="font-semibold">Social image</h3>
+                        <p className="text-sm text-muted-foreground">
+                            The picture link previews show for every page that doesn’t have its own.
+                        </p>
+                    </div>
+                    <ShareCardEditor
+                        value={draft.share}
+                        onChange={(share) => setDraft({ ...draft, share })}
+                        site={draft}
+                        defaults={{ heading: draft.name, subtext: draft.tagline }}
+                        errors={errors}
+                        path="share."
+                    />
+                </div>
                 <div className="flex items-center justify-end gap-2 border-t border-border pt-5">
                     {dirty && (
                         <Button type="button" variant="ghost" onClick={() => setDraft(site)}>

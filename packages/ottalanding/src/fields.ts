@@ -25,19 +25,23 @@ export type ScalarField =
     | (Base & { kind: 'select'; options: readonly { value: string; label: string }[] });
 
 export type ListField = Base & { kind: 'list'; itemLabel: string; max: number; fields: Record<string, ScalarField> };
+/** A named set of fields stored together as one object, e.g. the site's social image. Always optional. */
+export type GroupField = Base & { kind: 'group'; fields: Record<string, ScalarField> };
 
-export type Field = ScalarField | ListField;
+export type Field = ScalarField | ListField | GroupField;
 export type Fields = Record<string, Field>;
 
 type Value<F> = F extends { kind: 'list'; fields: infer S extends Fields }
     ? Data<S>[]
-    : F extends { kind: 'lines' }
-      ? string[]
-      : F extends { kind: 'boolean' }
-        ? boolean
-        : F extends { kind: 'select'; options: readonly { value: infer V }[] }
-          ? V
-          : string;
+    : F extends { kind: 'group'; fields: infer S extends Fields }
+      ? Data<S>
+      : F extends { kind: 'lines' }
+        ? string[]
+        : F extends { kind: 'boolean' }
+          ? boolean
+          : F extends { kind: 'select'; options: readonly { value: infer V }[] }
+            ? V
+            : string;
 
 type RequiredKeys<S> = { [K in keyof S]: S[K] extends { required: true } | { kind: 'select' } ? K : never }[keyof S];
 
@@ -95,7 +99,11 @@ export function toZod<S extends Fields>(fields: S): z.ZodType<Data<S>> {
     const shape: Record<string, z.ZodTypeAny> = {};
     for (const [key, field] of Object.entries(fields)) {
         shape[key] =
-            field.kind === 'list' ? z.array(toZod(field.fields)).max(field.max).optional() : scalarToZod(field);
+            field.kind === 'list'
+                ? z.array(toZod(field.fields)).max(field.max).optional()
+                : field.kind === 'group'
+                  ? toZod(field.fields).optional()
+                  : scalarToZod(field);
     }
     return z.object(shape) as unknown as z.ZodType<Data<S>>;
 }
@@ -118,6 +126,13 @@ export function parseLenient<S extends Fields>(fields: S, value: unknown, fallba
                     return r.success ? [r.data] : [];
                 })
                 .slice(0, field.max);
+            continue;
+        }
+        if (field.kind === 'group') {
+            // Field by field inside the group too: one stale value must not drop its siblings.
+            if (input[key] && typeof input[key] === 'object') {
+                out[key] = parseLenient(field.fields, input[key], (defaults[key] ?? {}) as Data<Fields>);
+            } else if (defaults[key] !== undefined) out[key] = defaults[key];
             continue;
         }
         const r = toZod({ [key]: field } as Fields).safeParse({ [key]: input[key] });

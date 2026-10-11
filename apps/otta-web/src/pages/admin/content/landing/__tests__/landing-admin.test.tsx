@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { api, toast, blockers } = vi.hoisted(() => ({
     api: vi.fn(),
-    toast: { success: vi.fn(), error: vi.fn() },
+    toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
     // Every useBlocker registration, so tests can ask "would leaving be blocked right now?"
     blockers: [] as Array<{ shouldBlockFn: () => boolean; enableBeforeUnload: () => boolean }>,
 }));
@@ -38,6 +38,16 @@ vi.mock('@ottabase/ottalanding/react', () => ({
             {site.theme}:{sections.length}
         </div>
     ),
+}));
+// jsdom has no canvas: drawing is covered in the package; here the save wiring is what counts.
+const share = vi.hoisted(() => ({
+    withSiteShareImage: vi.fn(async (site: object) => ({ site })),
+    withPageShareImage: vi.fn(async (_id: string, page: object) => ({ page })),
+}));
+vi.mock('../shareImage', async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    paintShareCard: async () => [],
+    ...share,
 }));
 // The media library is its own feature; here it hands back one image, as a pick would.
 vi.mock('@/components/media-library/MediaLibraryBrowser', () => ({
@@ -302,5 +312,61 @@ describe('images and colors', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
         fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
         expect(screen.getByLabelText('Image description')).toHaveValue('Mine');
+    });
+});
+
+describe('social image', () => {
+    it('renders the site image on save and keeps the card the editor shows', async () => {
+        share.withSiteShareImage.mockImplementationOnce(async (site: object) => ({
+            site: { ...site, share: { ...(site as { share?: object }).share, imageUrl: '/api/upload/file/s.png?v=1' } },
+        }));
+        renderWithQuery(<AdminLandingSitePage />);
+        expect(await screen.findByRole('img', { name: 'Social image: Ottabase' })).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Heading'), { target: { value: 'Ship faster' } });
+        expect(screen.getByRole('img', { name: 'Social image: Ship faster' })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        await waitFor(() =>
+            expect(api).toHaveBeenCalledWith('/api/landing/site', {
+                method: 'PUT',
+                body: expect.objectContaining({
+                    share: { heading: 'Ship faster', imageUrl: '/api/upload/file/s.png?v=1' },
+                }),
+            }),
+        );
+    });
+
+    it('still saves when the image can’t be updated, and says so', async () => {
+        share.withSiteShareImage.mockImplementationOnce(async (site: object) => ({ site, warning: 'Saved, but…' }));
+        renderWithQuery(<AdminLandingSitePage />);
+        fireEvent.change(await screen.findByLabelText(/Site name/), { target: { value: 'Acme' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        await waitFor(() => expect(toast.warning).toHaveBeenCalledWith('Saved, but…'));
+        expect(toast.success).toHaveBeenCalledWith('Site settings saved');
+    });
+
+    it('re-renders the image in the new theme’s fonts when the theme changes', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        fireEvent.click(await screen.findByRole('radio', { name: /Bold/ }));
+        await waitFor(() =>
+            expect(share.withSiteShareImage).toHaveBeenCalledWith(expect.objectContaining({ theme: 'bold' })),
+        );
+    });
+
+    it('gives a page its own image on request, defaulting to its title, and can go back to the site’s', async () => {
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        fireEvent.click(await screen.findByLabelText('Use a custom image for this page'));
+        expect(screen.getByRole('img', { name: 'Social image: About us' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Heading')).toHaveAttribute('placeholder', 'About us');
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await waitFor(() =>
+            expect(share.withPageShareImage).toHaveBeenCalledWith(
+                'p1',
+                expect.objectContaining({ share: {} }),
+                expect.anything(),
+            ),
+        );
+
+        fireEvent.click(screen.getByLabelText('Use a custom image for this page'));
+        expect(screen.queryByRole('img', { name: /Social image:/ })).toBeNull();
     });
 });

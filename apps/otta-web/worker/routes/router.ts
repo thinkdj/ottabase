@@ -151,6 +151,7 @@ import {
     handleLandingPageCreate,
     handleLandingPageDelete,
     handleLandingPageUpdate,
+    handleLandingShareImage,
     handleLandingSiteUpdate,
 } from './landing';
 import {
@@ -502,6 +503,7 @@ apiRouter.mount(
 const landingRouter = new Router<CloudflareEnv>();
 landingRouter.get('/', h(handleLandingGet));
 landingRouter.put('/site', h(handleLandingSiteUpdate));
+landingRouter.post('/share-image', h(handleLandingShareImage));
 landingRouter.post('/pages', h(handleLandingPageCreate));
 landingRouter.put('/pages/:id', (c) => handleLandingPageUpdate(ctxOf(c), c.params.id));
 landingRouter.delete('/pages/:id', (c) => handleLandingPageDelete(ctxOf(c), c.params.id));

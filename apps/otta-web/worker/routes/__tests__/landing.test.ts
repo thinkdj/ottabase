@@ -5,7 +5,8 @@
  * real SQLite database in packages/ottalanding.
  */
 import { DomainValidationError } from '@ottabase/ottaorm';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Blob as NodeBlob, File as NodeFile } from 'node:buffer';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireAdminAccess = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/admin-guard', () => ({ requireAdminAccess }));
@@ -17,6 +18,7 @@ const models = vi.hoisted(() => ({
     createFor: vi.fn(),
     updateFor: vi.fn(),
     deleteFor: vi.fn(),
+    findForApp: vi.fn(),
 }));
 vi.mock('@ottabase/ottalanding', () => ({
     LandingSite: { ensureForApp: models.ensureForApp, saveSettings: models.saveSettings },
@@ -25,6 +27,7 @@ vi.mock('@ottabase/ottalanding', () => ({
         createFor: models.createFor,
         updateFor: models.updateFor,
         deleteFor: models.deleteFor,
+        findForApp: models.findForApp,
     },
 }));
 
@@ -33,6 +36,7 @@ import {
     handleLandingPageCreate,
     handleLandingPageDelete,
     handleLandingPageUpdate,
+    handleLandingShareImage,
     handleLandingSiteUpdate,
 } from '../landing';
 
@@ -44,6 +48,23 @@ function ctx(method: string, path: string, body?: unknown) {
     });
     return { request, env: {} as CloudflareEnv, url: new URL(request.url) } as never;
 }
+
+/** A multipart POST, with an in-memory R2 bucket in env. */
+function formCtx(fields: Record<string, string | Blob>, bucket = fakeBucket()) {
+    // The handler only reads formData().get(); jsdom can't round-trip a real multipart body.
+    const request = { formData: async () => ({ get: (key: string) => fields[key] ?? null }) };
+    return { request, env: { OBCF_R2: bucket } as unknown as CloudflareEnv } as never;
+}
+function fakeBucket() {
+    return {
+        put: vi.fn(async (key: string, _body: unknown, opts: { httpMetadata?: { contentType?: string } }) => ({
+            key,
+            opts,
+        })),
+        delete: vi.fn(async () => undefined),
+    };
+}
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 
 const page = (id: string) => ({ toPage: () => ({ id, path: '/x' }) });
 
@@ -59,6 +80,7 @@ describe('/api/landing', () => {
         ['POST /pages', () => handleLandingPageCreate(ctx('POST', '/api/landing/pages', {}))],
         ['PUT /pages/:id', () => handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1')],
         ['DELETE /pages/:id', () => handleLandingPageDelete(ctx('DELETE', '/api/landing/pages/p1'), 'p1')],
+        ['POST /share-image', () => handleLandingShareImage(formCtx({ target: 'site', file: new Blob([PNG]) }))],
     ])('%s refuses anyone who is not a platform admin and touches no data', async (_name, call) => {
         requireAdminAccess.mockResolvedValue(new Response(null, { status: 403 }));
         expect((await call()).status).toBe(403);
@@ -106,5 +128,70 @@ describe('/api/landing', () => {
     it('lets unexpected failures reach the error boundary instead of leaking them', async () => {
         models.saveSettings.mockRejectedValue(new Error('D1 exploded'));
         await expect(handleLandingSiteUpdate(ctx('PUT', '/api/landing/site', {}))).rejects.toThrow('D1 exploded');
+    });
+
+    describe('social images', () => {
+        // Files as the Worker runtime has them (jsdom's lack arrayBuffer/stream).
+        beforeEach(() => {
+            vi.stubGlobal('File', NodeFile);
+            vi.stubGlobal('Blob', NodeBlob);
+        });
+        afterEach(() => vi.unstubAllGlobals());
+
+        it('stores the site’s PNG at one fixed key per app, as image/png, and returns a cache-busted URL', async () => {
+            const bucket = fakeBucket();
+            const file = new File([PNG], 'card.bin', { type: 'application/octet-stream' });
+            const res = await handleLandingShareImage(formCtx({ target: 'site', file }, bucket));
+            expect(res.status).toBe(201);
+            const { url } = (await res.json()) as { url: string };
+            expect(url).toMatch(/^\/api\/upload\/file\/landing\/otta-web\/share\/site\.png\?v=\d+$/);
+            expect(bucket.put).toHaveBeenCalledWith(
+                'landing/otta-web/share/site.png',
+                expect.anything(),
+                expect.objectContaining({ httpMetadata: expect.objectContaining({ contentType: 'image/png' }) }),
+            );
+        });
+
+        it('only accepts a real PNG under 2 MB', async () => {
+            const bucket = fakeBucket();
+            const notPng = new File(['<svg onload=alert(1)>'], 'x.png', { type: 'image/png' });
+            const res = await handleLandingShareImage(formCtx({ target: 'site', file: notPng }, bucket));
+            expect(res.status).toBe(400);
+            expect(await res.json()).toMatchObject({ code: 'INVALID_IMAGE' });
+            const huge = new File([PNG, new Uint8Array(2 * 1024 * 1024)], 'x.png', { type: 'image/png' });
+            expect((await handleLandingShareImage(formCtx({ target: 'site', file: huge }, bucket))).status).toBe(400);
+            expect(bucket.put).not.toHaveBeenCalled();
+        });
+
+        it('stores a page’s image only for a page of this app', async () => {
+            const bucket = fakeBucket();
+            models.findForApp.mockResolvedValue(null);
+            const res = await handleLandingShareImage(
+                formCtx({ target: 'p-other', file: new File([PNG], 'card.png') }, bucket),
+            );
+            expect(res.status).toBe(404);
+            expect(models.findForApp).toHaveBeenCalledWith('otta-web', 'p-other');
+            expect(bucket.put).not.toHaveBeenCalled();
+
+            models.findForApp.mockResolvedValue(page('p1'));
+            expect(
+                (await handleLandingShareImage(formCtx({ target: 'p1', file: new File([PNG], 'card.png') }, bucket)))
+                    .status,
+            ).toBe(201);
+            expect(bucket.put).toHaveBeenCalledWith(
+                'landing/otta-web/share/p1.png',
+                expect.anything(),
+                expect.anything(),
+            );
+        });
+
+        it('removes a deleted page’s image too', async () => {
+            const bucket = fakeBucket();
+            models.deleteFor.mockResolvedValue(true);
+            const request = new Request('http://localhost/api/landing/pages/p1', { method: 'DELETE' });
+            const context = { request, env: { OBCF_R2: bucket }, url: new URL(request.url) } as never;
+            expect((await handleLandingPageDelete(context, 'p1')).status).toBe(200);
+            expect(bucket.delete).toHaveBeenCalledWith('landing/otta-web/share/p1.png');
+        });
     });
 });

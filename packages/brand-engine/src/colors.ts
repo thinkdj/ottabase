@@ -46,7 +46,7 @@ export function calculateContrastRatio(foreground: string, background: string): 
 /**
  * Converts HSL to Hex
  */
-function hslToHex(h: number, s: number, l: number): string {
+export function hslToHex(h: number, s: number, l: number): string {
     l /= 100;
     const a = (s * Math.min(l, 1 - l)) / 100;
     const f = (n: number) => {

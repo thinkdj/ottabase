@@ -33,6 +33,8 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ExternalLink, Plus, Trash
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
+import { ShareCardEditor } from './ShareCardEditor';
+import { withPageShareImage } from './shareImage';
 import { UnsavedChangesGuard } from './UnsavedChangesGuard';
 import { LANDING_QUERY_KEY, landingApi, publicUrl, useLanding, type LandingState, type PageDraft } from './landingApi';
 
@@ -70,8 +72,11 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
     const liveUrl = page.published ? publicUrl(state.site, page.path) : undefined;
 
     const save = useMutation({
-        mutationFn: (next: PageDraft) => landingApi.savePage(page.id, next),
-        onSuccess: ({ page: updated }) => {
+        mutationFn: async (next: PageDraft) => {
+            const { page: withImage, warning } = await withPageShareImage(page.id, next, state.site);
+            return { ...(await landingApi.savePage(page.id, withImage)), warning };
+        },
+        onSuccess: ({ page: updated, warning }) => {
             queryClient.setQueryData<LandingState>(
                 LANDING_QUERY_KEY,
                 (old) => old && { ...old, pages: old.pages.map((p) => (p.id === updated.id ? updated : p)) },
@@ -80,6 +85,7 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
             setDraft(toDraft(updated));
             setErrors({});
             toast.success(updated.published && !page.published ? 'Page published' : 'Page saved');
+            if (warning) toast.warning(warning);
         },
         onError: (err) => {
             if (isApiError(err) && err.fieldErrors) showErrors(err.fieldErrors);
@@ -211,6 +217,56 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                                 One or two sentences for search engines and link previews.
                             </p>
                         </div>
+                    </fieldset>
+
+                    <fieldset className="space-y-4 rounded-xl border border-border p-5">
+                        <legend className="px-1 text-sm font-semibold">Social image</legend>
+                        <div className="flex items-start gap-3">
+                            <Switch
+                                id="page-share"
+                                checked={Boolean(draft.share)}
+                                // A new card starts from the site's look, with this page's title.
+                                onCheckedChange={(on) =>
+                                    setDraft((d) => ({
+                                        ...d,
+                                        share: on
+                                            ? {
+                                                  color: state.site.share?.color,
+                                                  backgroundUrl: state.site.share?.backgroundUrl,
+                                              }
+                                            : undefined,
+                                    }))
+                                }
+                            />
+                            <div className="space-y-0.5">
+                                <Label htmlFor="page-share">Use a custom image for this page</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    {draft.share
+                                        ? 'Shows this page’s title and description unless you write something else.'
+                                        : 'Link previews of this page use the site’s social image.'}
+                                </p>
+                            </div>
+                        </div>
+                        {draft.share ? (
+                            <ShareCardEditor
+                                value={draft.share}
+                                onChange={(share) => setDraft((d) => ({ ...d, share }))}
+                                site={state.site}
+                                defaults={{ heading: draft.title, subtext: draft.description }}
+                                errors={errors}
+                                path="share."
+                            />
+                        ) : state.site.share?.imageUrl ? (
+                            <img
+                                src={state.site.share.imageUrl}
+                                alt="The site’s social image"
+                                className="aspect-[1200/630] w-full max-w-sm rounded-md border border-border"
+                            />
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                The site’s social image is created the next time you save the site settings.
+                            </p>
+                        )}
                     </fieldset>
 
                     <section className="space-y-3" aria-labelledby="page-sections">

@@ -61,7 +61,12 @@ Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes).
   local deployments send `noindex, nofollow`, so copies never compete with the real site.
 - **Canonical and Open Graph:** the site's **Public URL** (admin → Landing site → Site settings) becomes `metadataBase`,
   and each page gets a canonical URL plus Open Graph tags (`title`, `description`, `siteName`, `url`). Without a public
-  URL the absolute URLs are omitted rather than guessed.
+  URL, the canonical and `og:url` are omitted rather than guessed, and `metadataBase` falls back to the request's own
+  origin (`siteOrigin()` in `lib/content.ts`) so image URLs are still absolute.
+- **Social images:** each page shares its own social image, or else the site's, as `og:image` (1200×630, with alt text)
+  and a `summary_large_image` Twitter card. The images are drawn and uploaded by the admin; see the package README.
+- **Sitemap and robots:** `/sitemap.xml` lists every published page with its last change. `/robots.txt` allows crawling
+  and points at the sitemap in production only. Every other deployment disallows everything, matching its `noindex`.
 
 ## Scripts
 

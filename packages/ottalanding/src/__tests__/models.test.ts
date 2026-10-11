@@ -169,3 +169,23 @@ describe('LandingPage', () => {
         expect(await LandingPage.findPublished('app-a', '/contact')).toBeNull();
     });
 });
+
+describe('LandingPage social image and sitemap', () => {
+    it('stores a page’s own social image, and clears it when the page goes back to the site’s', async () => {
+        const share = { heading: 'Pricing that scales', imageUrl: '/api/upload/file/landing/a/share/p.png?v=1' };
+        const page = await LandingPage.createFor('app-share', { path: '/pricing', title: 'Pricing', share });
+        const id = page.get('id') as string;
+        expect((await LandingPage.findForApp('app-share', id))!.toPage().share).toEqual(share);
+
+        await LandingPage.updateFor('app-share', id, { path: '/pricing', title: 'Pricing' });
+        expect((await LandingPage.findForApp('app-share', id))!.toPage()).not.toHaveProperty('share');
+    });
+
+    it('lists only published pages for the sitemap, with when they last changed', async () => {
+        await LandingPage.createFor('app-map', { path: '/', title: 'Home', published: true });
+        await LandingPage.createFor('app-map', { path: '/draft', title: 'Draft' });
+        const paths = await LandingPage.publishedPaths('app-map');
+        expect(paths.map((p) => p.path)).toEqual(['/']);
+        expect(paths[0].updatedAt).toBeInstanceOf(Date);
+    });
+});

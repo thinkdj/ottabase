@@ -11,6 +11,7 @@ import {
     calculateContrastRatio,
     getThemeByName,
     hexToHsl,
+    hslToHex,
     registerBuiltInThemes,
     resolveTheme,
     type BrandTheme,
@@ -62,6 +63,14 @@ function brandOverrides(brandColor?: string): Partial<BrandTheme> {
     const fg = readableOn(brandColor) === '#ffffff' ? '0 0% 100%' : '0 0% 7%';
     const color = { primary, 'primary-foreground': fg, ring: primary };
     return { tokens: { color: { light: color, dark: color } } } as unknown as Partial<BrandTheme>;
+}
+
+/** The theme's own accent as `#rrggbb` (light scheme): what a brand color replaces, and the card default. */
+export function themeAccent(id: string): string {
+    registerBuiltInThemes();
+    const primary = getThemeByName(getTheme(id).preset)?.tokens.color.light.primary ?? '';
+    const [h, s, l] = primary.match(/[\d.]+/g)?.map(Number) ?? [];
+    return l === undefined ? '#2563eb' : hslToHex(h, s, l);
 }
 
 /** The fonts a theme sets headings and body text in (CSS family names), for drawing outside the DOM. */

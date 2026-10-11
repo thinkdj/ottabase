@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import { defineFields, toZod, type Data } from './fields';
 import { SectionSchema, type Section } from './sections';
+import { SHARE_FIELDS, type ShareCard } from './share-card';
 import { THEMES } from './themes';
 
 const links = (label: string, itemLabel: string, max: number) =>
@@ -51,6 +52,8 @@ export const SITE_FIELDS = defineFields({
     navCtaHref: { kind: 'url', label: 'Nav button link' },
     footerLinks: links('Footer links', 'Link', 12),
     footerNote: { kind: 'text', label: 'Footer note', placeholder: '© 2026 Acme Inc.' },
+    /** The default social image, used by every page without its own. */
+    share: { kind: 'group', label: 'Social image', fields: SHARE_FIELDS },
 });
 
 export type SiteSettings = Data<typeof SITE_FIELDS>;
@@ -67,6 +70,8 @@ export const PageInputSchema = z.object({
     title: z.string().trim().min(1, 'Required').max(120),
     description: z.string().trim().max(300).optional().default(''),
     published: z.boolean().optional().default(false),
+    /** This page's own social image; without one, the site's is used. */
+    share: toZod(SHARE_FIELDS).optional(),
     sections: z
         .array(SectionSchema)
         .max(40)
@@ -96,6 +101,7 @@ export type LandingPageData = {
     title: string;
     description: string;
     published: boolean;
+    share?: ShareCard;
     sections: Section[];
     updatedAt?: string;
 };

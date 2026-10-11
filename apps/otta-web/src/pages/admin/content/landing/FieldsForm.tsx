@@ -19,9 +19,19 @@ type FieldsFormProps = {
     /** Prefix of this form's keys within `errors`. */
     path?: string;
     omit?: string[];
+    /** Per-key placeholders that override the descriptor's, e.g. the value an empty field falls back to. */
+    placeholders?: Record<string, string | undefined>;
 };
 
-export function FieldsForm({ fields, value, onChange, errors = {}, path = '', omit = [] }: FieldsFormProps) {
+export function FieldsForm({
+    fields,
+    value,
+    onChange,
+    errors = {},
+    path = '',
+    omit = [],
+    placeholders = {},
+}: FieldsFormProps) {
     const id = useId();
     const set = (key: string, next: unknown) => onChange({ ...value, [key]: next });
     return (
@@ -38,11 +48,22 @@ export function FieldsForm({ fields, value, onChange, errors = {}, path = '', om
                             errors={errors}
                             path={`${path}${key}`}
                         />
+                    ) : field.kind === 'group' ? (
+                        <fieldset key={key} className="space-y-3 sm:col-span-2">
+                            <legend className="mb-1.5 text-sm font-medium">{field.label}</legend>
+                            <FieldsForm
+                                fields={field.fields}
+                                value={(value[key] as Value | undefined) ?? {}}
+                                onChange={(next) => set(key, next)}
+                                errors={errors}
+                                path={`${path}${key}.`}
+                            />
+                        </fieldset>
                     ) : (
                         <ScalarInput
                             key={key}
                             id={`${id}-${key}`}
-                            field={field}
+                            field={placeholders[key] ? { ...field, placeholder: placeholders[key] } : field}
                             value={value[key]}
                             onChange={(next, alt) => {
                                 // A picked image brings its library description; use it if none was written yet.

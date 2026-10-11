@@ -33,6 +33,8 @@ export const landingPagesTable = sqliteTable(
         description: text('description').notNull().default(''),
         published: integer('published', { mode: 'boolean' }).notNull().default(false),
         sections: text('sections').notNull().default('[]'),
+        /** The page's own social image (JSON), or null to use the site's. */
+        share: text('share'),
         createdAt: integer('created_at')
             .notNull()
             .$defaultFn(() => Date.now()),
