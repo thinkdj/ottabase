@@ -24,8 +24,8 @@ export function LandingPreview({ width = 1280, className, scheme, ...view }: Lan
     // Each preview scopes its theme to itself: several previews (e.g. the theme picker) share one page.
     const scope = useId();
     const { css, fonts } = useMemo(
-        () => themeStyles(view.site.theme, `[data-landing-preview="${scope}"]`),
-        [view.site.theme, scope],
+        () => themeStyles(view.site.theme, `[data-landing-preview="${scope}"]`, view.site.brandColor),
+        [view.site.theme, view.site.brandColor, scope],
     );
 
     useLayoutEffect(() => {

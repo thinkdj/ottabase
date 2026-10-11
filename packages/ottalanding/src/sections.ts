@@ -28,7 +28,12 @@ export const SECTIONS = {
             title: { kind: 'text', label: 'Headline', required: true },
             subtitle: { kind: 'textarea', label: 'Subheadline' },
             actions,
-            imageUrl: { kind: 'url', label: 'Image URL', help: 'Optional product shot or illustration.' },
+            imageUrl: {
+                kind: 'image',
+                label: 'Image',
+                help: 'Optional product shot or illustration.',
+                altKey: 'imageAlt',
+            },
             imageAlt: {
                 kind: 'text',
                 label: 'Image description',
@@ -48,7 +53,7 @@ export const SECTIONS = {
                 max: 12,
                 fields: {
                     name: { kind: 'text', label: 'Name', required: true },
-                    logoUrl: { kind: 'url', label: 'Logo image URL', help: 'Leave empty to show the name.' },
+                    logoUrl: { kind: 'image', label: 'Logo', help: 'Leave empty to show the name.' },
                 },
             },
         }),
@@ -85,7 +90,7 @@ export const SECTIONS = {
                     quote: { kind: 'textarea', label: 'Quote', required: true },
                     author: { kind: 'text', label: 'Name', required: true },
                     role: { kind: 'text', label: 'Role / company' },
-                    avatarUrl: { kind: 'url', label: 'Photo URL' },
+                    avatarUrl: { kind: 'image', label: 'Photo' },
                 },
             },
         }),

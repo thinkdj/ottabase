@@ -95,3 +95,22 @@ export function MobileMenu({ site, className = '' }: { site: SiteSettings; class
         </details>
     );
 }
+
+/**
+ * The home link's content: the site's logo and/or name. The name is always what the link is
+ * called — as the logo's alt text when the logo shows it, as visible text otherwise.
+ */
+export function SiteBrand({ site, logoClassName = 'h-8' }: { site: SiteSettings; logoClassName?: string }) {
+    const logo = safeSrc(site.logoUrl);
+    if (!logo) return <>{site.name}</>;
+    return (
+        <span className="inline-flex items-center gap-2.5">
+            <img
+                src={logo}
+                alt={site.logoIncludesName ? site.name : ''}
+                className={`${logoClassName} w-auto max-w-[12rem] object-contain`}
+            />
+            {!site.logoIncludesName && <span>{site.name}</span>}
+        </span>
+    );
+}

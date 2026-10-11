@@ -6,7 +6,15 @@
  * never touches content.
  */
 
-import { buildCSSVarMap, getThemeByName, registerBuiltInThemes, resolveTheme } from '@ottabase/brand-engine';
+import {
+    buildCSSVarMap,
+    calculateContrastRatio,
+    getThemeByName,
+    hexToHsl,
+    registerBuiltInThemes,
+    resolveTheme,
+    type BrandTheme,
+} from '@ottabase/brand-engine';
 
 export const THEMES = [
     {
@@ -41,22 +49,50 @@ export function getTheme(id: string): LandingTheme {
 
 export type ColorScheme = 'light' | 'dark';
 
+/** Text color for a brand-colored surface: whichever of white or near-black reads better on it. */
+export function readableOn(hex: string): '#ffffff' | '#111111' {
+    return calculateContrastRatio('#ffffff', hex) >= calculateContrastRatio('#111111', hex) ? '#ffffff' : '#111111';
+}
+
+/** Brand Engine overrides that swap the theme's accent for `brandColor` (`#rrggbb`), in both schemes. */
+function brandOverrides(brandColor?: string): Partial<BrandTheme> {
+    const hsl = brandColor ? hexToHsl(brandColor) : null;
+    if (!brandColor || !hsl) return {};
+    const primary = `${hsl.h} ${hsl.s}% ${hsl.l}%`;
+    const fg = readableOn(brandColor) === '#ffffff' ? '0 0% 100%' : '0 0% 7%';
+    const color = { primary, 'primary-foreground': fg, ring: primary };
+    return { tokens: { color: { light: color, dark: color } } } as unknown as Partial<BrandTheme>;
+}
+
+/** The fonts a theme sets headings and body text in (CSS family names), for drawing outside the DOM. */
+export function themeFonts(id: string): { heading: string; body: string; urls: string[] } {
+    registerBuiltInThemes();
+    const base = getThemeByName(getTheme(id).preset);
+    const typography = base ? resolveTheme({ base, mode: 'light' }).typography : undefined;
+    return {
+        heading: typography?.heading?.fontFamily ?? 'system-ui',
+        body: typography?.body?.fontFamily ?? 'system-ui',
+        urls: [typography?.heading?.url, typography?.body?.url].filter((u): u is string => Boolean(u)),
+    };
+}
+
 /**
  * The theme's design tokens for both color schemes, plus the font stylesheets it needs.
  *
  * `selector` gets the theme's default scheme; `selector[data-scheme="light|dark"]` pins
  * either one (the visitor's toggle sets that attribute). Use `:root` for the live site and
- * a scoping selector for previews.
+ * a scoping selector for previews. `brandColor` replaces the theme's accent.
  */
-export function themeStyles(id: string, selector = ':root'): { css: string; fonts: string[] } {
+export function themeStyles(id: string, selector = ':root', brandColor?: string): { css: string; fonts: string[] } {
     const theme = getTheme(id);
     registerBuiltInThemes();
     const base = getThemeByName(theme.preset);
     if (!base) return { css: '', fonts: [] };
 
+    const tenantOverrides = brandOverrides(brandColor);
     const fonts = new Set<string>();
     const rule = (mode: ColorScheme, selectors: string) => {
-        const resolved = resolveTheme({ base, tenantOverrides: {}, mode });
+        const resolved = resolveTheme({ base, tenantOverrides, mode });
         for (const role of Object.values(resolved.typography ?? {})) if (role?.url) fonts.add(role.url);
         const declarations = Object.entries(buildCSSVarMap(resolved, mode))
             .map(([prop, value]) => `${prop}:${value}`)

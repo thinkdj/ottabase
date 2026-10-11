@@ -44,6 +44,7 @@
         "@ottabase/db": "workspace:*",
         "@ottabase/ottalanding": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottaupload": "workspace:*",
         "@ottabase/utils": "workspace:*",
         "next": "^16.1.1",
         "react": "catalog:",

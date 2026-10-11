@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createFileMetadata, createUploadFormData, parseFormDataFiles, uploadFileToR2 } from '../server';
+import { createFileMetadata, createUploadFormData, parseFormDataFiles, serveR2Object, uploadFileToR2 } from '../server';
 
 describe('Server Utilities', () => {
     describe('uploadFileToR2', () => {
@@ -128,6 +128,41 @@ describe('Server Utilities', () => {
                 count++;
             }
             expect(count).toBe(1);
+        });
+    });
+
+    describe('serveR2Object', () => {
+        const bucket = (contentType: string) => ({
+            get: vi.fn(async (key: string) =>
+                key === 'missing'
+                    ? null
+                    : {
+                          body: new ReadableStream(),
+                          httpEtag: '"e1"',
+                          writeHttpMetadata: (h: Headers) => h.set('Content-Type', contentType),
+                      },
+            ),
+        });
+
+        it('returns null for a missing object', async () => {
+            expect(await serveR2Object(bucket('image/png'), 'missing')).toBeNull();
+        });
+
+        it('shows safe images inline, sandboxed and unsniffed, with opt-in caching', async () => {
+            const res = (await serveR2Object(bucket('image/png'), 'a/logo.png', {
+                cacheControl: 'public, max-age=60',
+            }))!;
+            expect(res.headers.get('Content-Disposition')).toBe('inline; filename="logo.png"');
+            expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+            expect(res.headers.get('Content-Security-Policy')).toContain('sandbox');
+            expect(res.headers.get('Cache-Control')).toBe('public, max-age=60');
+            expect(res.headers.get('etag')).toBe('"e1"');
+        });
+
+        it('forces anything that could run script (SVG, HTML) to download', async () => {
+            const res = (await serveR2Object(bucket('image/svg+xml'), 'evil.svg'))!;
+            expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="evil.svg"');
+            expect(res.headers.get('Cache-Control')).toBeNull();
         });
     });
 });

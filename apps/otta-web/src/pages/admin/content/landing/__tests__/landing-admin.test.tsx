@@ -39,6 +39,14 @@ vi.mock('@ottabase/ottalanding/react', () => ({
         </div>
     ),
 }));
+// The media library is its own feature; here it hands back one image, as a pick would.
+vi.mock('@/components/media-library/MediaLibraryBrowser', () => ({
+    MediaLibraryBrowser: ({ onSelectItem }: { onSelectItem: (item: { url: string; alt: string }) => void }) => (
+        <button type="button" onClick={() => onSelectItem({ url: '/api/upload/file/shot.png', alt: 'Dashboard' })}>
+            Pick sample
+        </button>
+    ),
+}));
 vi.mock('@ottabase/ui-shadcn', async (importOriginal) => {
     const real = await importOriginal<object>();
     const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
@@ -253,5 +261,46 @@ describe('site page', () => {
         expect(await screen.findByText('Draft')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Delete Home' })).toBeNull();
         expect(screen.getByRole('button', { name: 'Delete About us' })).toBeInTheDocument();
+    });
+});
+
+describe('images and colors', () => {
+    it('picks a logo from the media library and saves it with a brand color', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        fireEvent.click((await screen.findAllByRole('button', { name: 'Choose image' }))[0]);
+        fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
+        expect(screen.getByLabelText('Logo')).toHaveValue('/api/upload/file/shot.png');
+        fireEvent.change(screen.getByLabelText('Brand color'), { target: { value: '#2563eb' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        await waitFor(() =>
+            expect(api).toHaveBeenCalledWith('/api/landing/site', {
+                method: 'PUT',
+                body: expect.objectContaining({ logoUrl: '/api/upload/file/shot.png', brandColor: '#2563eb' }),
+            }),
+        );
+    });
+
+    it('rejects a color that is not #rrggbb, and can go back to the theme’s own', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        fireEvent.change(await screen.findByLabelText('Brand color'), { target: { value: 'blue' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        expect(await screen.findByText('Use a hex color like #2563eb')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+        expect(screen.getByLabelText('Brand color')).toHaveValue('');
+    });
+
+    it('fills an empty image description from the library, but never overwrites one', async () => {
+        const hero = { id: 'h1', type: 'hero', data: { title: 'Hi' } };
+        api.mockImplementation(async () => ({ site: DEFAULT_SITE, pages: [{ ...about, sections: [hero] }] }));
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        fireEvent.click(await screen.findByRole('button', { name: /Hero/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Choose image' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
+        expect(screen.getByLabelText('Image description')).toHaveValue('Dashboard');
+
+        fireEvent.change(screen.getByLabelText('Image description'), { target: { value: 'Mine' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
+        expect(screen.getByLabelText('Image description')).toHaveValue('Mine');
     });
 });

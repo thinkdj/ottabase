@@ -13,6 +13,13 @@ export type ScalarField =
     | (Base & { kind: 'text' | 'textarea'; required?: boolean })
     /** `absolute`: only a full http(s) address (e.g. a site's public URL), not a path or mailto:. */
     | (Base & { kind: 'url'; required?: boolean; absolute?: boolean })
+    /**
+     * An uploaded (media library) or linked image. `altKey` names a sibling text field that
+     * describes it; picking from the library fills that in from the image's alt text.
+     */
+    | (Base & { kind: 'image'; required?: boolean; altKey?: string })
+    /** `#rrggbb`, or empty for "the theme's own". */
+    | (Base & { kind: 'color' })
     | (Base & { kind: 'lines' })
     | (Base & { kind: 'boolean' })
     | (Base & { kind: 'select'; options: readonly { value: string; label: string }[] });
@@ -48,6 +55,9 @@ export function defineFields<const S extends Fields>(fields: S): S {
 const HREF_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\])|#|mailto:|tel:)/i;
 /** A full site address: http(s) scheme plus a host. */
 const ABSOLUTE_OR_EMPTY = /^$|^https?:\/\/[^/\s]+/i;
+/** Image sources: absolute http(s) or site-relative (uploads are served at /api/upload/file/…). */
+const IMAGE_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\]))/i;
+const COLOR_OR_EMPTY = /^$|^#[0-9a-f]{6}$/i;
 
 function scalarToZod(field: ScalarField): z.ZodTypeAny {
     switch (field.kind) {
@@ -61,12 +71,16 @@ function scalarToZod(field: ScalarField): z.ZodTypeAny {
             return z.boolean().optional();
         case 'select':
             return z.enum(field.options.map((o) => o.value) as [string, ...string[]]);
+        case 'color':
+            return z.string().trim().regex(COLOR_OR_EMPTY, 'Use a hex color like #2563eb').optional();
         default: {
             let s = z
                 .string()
                 .trim()
-                .max(field.kind === 'textarea' ? 4000 : field.kind === 'url' ? 2048 : 200);
-            if (field.kind === 'url') {
+                .max(field.kind === 'textarea' ? 4000 : field.kind === 'text' ? 200 : 2048);
+            if (field.kind === 'image') {
+                s = s.regex(IMAGE_OR_EMPTY, 'Upload an image, or use an https:// or /path address');
+            } else if (field.kind === 'url') {
                 s = field.absolute
                     ? s.regex(ABSOLUTE_OR_EMPTY, 'Use a full address starting with https://')
                     : s.regex(HREF_OR_EMPTY, 'Use https://…, /path, #anchor, mailto: or tel:');

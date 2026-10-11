@@ -410,6 +410,9 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../../packages/ottaorm
+      '@ottabase/ottaupload':
+        specifier: workspace:*
+        version: link:../../packages/ottaupload
       '@ottabase/utils':
         specifier: workspace:*
         version: link:../../packages/utils

@@ -9,6 +9,7 @@ import {
     MobileMenu,
     paragraphs,
     safeSrc,
+    SiteBrand,
     SiteLink,
     type Action,
     type ThemeComponents,
@@ -60,7 +61,7 @@ export const bold: ThemeComponents = {
             <>
                 <header className={`${wrap} flex h-20 items-center justify-between gap-6`}>
                     <SiteLink href="/" className={`font-heading text-xl font-bold tracking-tight ${focusRing}`}>
-                        {site.name}
+                        <SiteBrand site={site} />
                     </SiteLink>
                     <nav className="hidden items-center gap-8 md:flex">
                         {site.nav?.map((l, i) => (

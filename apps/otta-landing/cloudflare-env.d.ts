@@ -5,7 +5,7 @@
  * getCloudflareContext() returns.
  */
 
-import type { D1Database, Fetcher, ImagesBinding } from '@cloudflare/workers-types';
+import type { D1Database, Fetcher, ImagesBinding, R2Bucket } from '@cloudflare/workers-types';
 
 declare global {
     interface CloudflareEnv {
@@ -15,6 +15,8 @@ declare global {
         APP_ID?: string;
         /** The D1 database shared with otta-web (it writes, this app reads). */
         OBCF_D1?: D1Database;
+        /** The R2 bucket shared with otta-web: serves images uploaded in its admin. */
+        OBCF_R2?: R2Bucket;
         OBCF_ASSETS?: Fetcher;
         /** Cloudflare Images, required by the OpenNext worker bundle. */
         IMAGES?: ImagesBinding;

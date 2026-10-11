@@ -188,6 +188,20 @@ import { listFilesFromR2 } from '@ottabase/ottaupload/server';
 const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
 ```
 
+### Serving uploads
+
+`serveR2Object(bucket, key, { cacheControl? })` streams an object from an R2 binding with the headers that make serving
+user uploads safe: `X-Content-Type-Options: nosniff`, a sandboxing `Content-Security-Policy`, and
+`Content-Disposition: inline` only for known-safe images (everything else, SVG and HTML included, downloads). It returns
+`null` for a missing key. Every app that serves `/api/upload/file/*` should use it, so the rules can't drift.
+
+```typescript
+import { serveR2Object } from '@ottabase/ottaupload/server';
+
+const response = await serveR2Object(env.OBCF_R2, key, { cacheControl: 'public, max-age=31536000, immutable' });
+return response ?? errorResponse('File not found', 404);
+```
+
 ## React Hooks
 
 ### useFileUpload

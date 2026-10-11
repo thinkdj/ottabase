@@ -106,6 +106,18 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
         expect(withImage({})).toMatch(/<img src="https:\/\/x\.dev\/shot\.png" alt=""/);
     });
 
+    it('shows the logo with the name, or the logo alone (named by its alt) when it already shows it', () => {
+        const brand = (site: object) =>
+            renderToStaticMarkup(
+                <LandingView site={{ ...DEFAULT_SITE, theme: theme as never, ...site }} sections={[]} />,
+            );
+        const withName = brand({ logoUrl: '/api/upload/file/logo.png' });
+        expect(withName).toMatch(/<img src="\/api\/upload\/file\/logo\.png" alt=""[^>]*><span>Ottabase<\/span>/);
+        const logoOnly = brand({ logoUrl: '/api/upload/file/logo.png', logoIncludesName: true });
+        expect(logoOnly).toContain('<img src="/api/upload/file/logo.png" alt="Ottabase"');
+        expect(logoOnly).not.toContain('<span>Ottabase</span>');
+    });
+
     it('renders an empty page without crashing', () => {
         expect(render(theme, [])).toContain(DEFAULT_SITE.name);
     });

@@ -5,6 +5,7 @@ import type { Fields, ListField, ScalarField } from '@ottabase/ottalanding';
 import { Button, Input, Label, NativeSelect, NativeSelectOption, Switch, Textarea } from '@ottabase/ui-shadcn';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { useId } from 'react';
+import { ImageField } from './ImageField';
 
 type Value = Record<string, unknown>;
 export type FieldErrors = Record<string, string[] | undefined>;
@@ -43,7 +44,15 @@ export function FieldsForm({ fields, value, onChange, errors = {}, path = '', om
                             id={`${id}-${key}`}
                             field={field}
                             value={value[key]}
-                            onChange={(next) => set(key, next)}
+                            onChange={(next, alt) => {
+                                // A picked image brings its library description; use it if none was written yet.
+                                const altKey = field.kind === 'image' ? field.altKey : undefined;
+                                onChange({
+                                    ...value,
+                                    [key]: next,
+                                    ...(altKey && alt && !value[altKey] ? { [altKey]: alt } : {}),
+                                });
+                            }}
                             error={errors[`${path}${key}`]?.[0]}
                         />
                     ),
@@ -62,7 +71,7 @@ function ScalarInput({
     id: string;
     field: ScalarField;
     value: unknown;
-    onChange: (next: unknown) => void;
+    onChange: (next: unknown, alt?: string) => void;
     error?: string;
 }) {
     const wide = field.kind === 'textarea' || field.kind === 'lines';
@@ -71,15 +80,49 @@ function ScalarInput({
 
     if (field.kind === 'boolean') {
         return (
-            <div className="flex items-center gap-3 sm:col-span-2">
+            <div className="flex items-start gap-3 sm:col-span-2">
                 <Switch {...common} checked={Boolean(value)} onCheckedChange={onChange} />
-                <Label htmlFor={id}>{field.label}</Label>
+                <div className="space-y-0.5">
+                    <Label htmlFor={id}>{field.label}</Label>
+                    {field.help && (
+                        <p id={`${id}-help`} className="text-xs text-muted-foreground">
+                            {field.help}
+                        </p>
+                    )}
+                </div>
             </div>
         );
     }
 
     let control;
-    if (field.kind === 'textarea' || field.kind === 'lines') {
+    if (field.kind === 'image') {
+        control = <ImageField {...common} label={field.label} value={(value as string) ?? ''} onChange={onChange} />;
+    } else if (field.kind === 'color') {
+        const hex = (value as string) ?? '';
+        control = (
+            <div className="flex items-center gap-2">
+                <input
+                    type="color"
+                    aria-label={`${field.label} picker`}
+                    value={/^#[0-9a-f]{6}$/i.test(hex) ? hex : '#000000'}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-1"
+                />
+                <Input
+                    {...common}
+                    className="w-32 font-mono"
+                    placeholder="Theme’s own"
+                    value={hex}
+                    onChange={(e) => onChange(e.target.value)}
+                />
+                {hex && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onChange('')}>
+                        Reset
+                    </Button>
+                )}
+            </div>
+        );
+    } else if (field.kind === 'textarea' || field.kind === 'lines') {
         control = (
             <Textarea
                 {...common}

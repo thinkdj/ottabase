@@ -7,9 +7,11 @@ import {
     SCHEME_STORAGE_KEY,
     schemeInitScript,
     PageInputSchema,
+    readableOn,
     SECTION_TYPES,
     SectionSchema,
     SiteSettingsSchema,
+    themeFonts,
     THEMES,
     themeStyles,
 } from '../index';
@@ -93,6 +95,22 @@ describe('content contracts', () => {
         }
     });
 
+    it('accepts uploaded and linked images, nothing script-like or protocol-relative', () => {
+        const withLogo = (logoUrl: string) => SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, logoUrl }).success;
+        for (const ok of ['', '/api/upload/file/logo-1.png', 'https://cdn.acme.dev/logo.svg']) {
+            expect(withLogo(ok), ok).toBe(true);
+        }
+        for (const bad of ['javascript:alert(1)', '//evil.dev/x.png', 'data:image/png;base64,AAA', 'logo.png']) {
+            expect(withLogo(bad), bad).toBe(false);
+        }
+    });
+
+    it('takes a brand color as #rrggbb or empty', () => {
+        const withColor = (brandColor: string) => SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, brandColor }).success;
+        for (const ok of ['', '#2563EB', '#0f0f0f']) expect(withColor(ok), ok).toBe(true);
+        for (const bad of ['red', '#fff', '2563eb', '#2563eb;}body{']) expect(withColor(bad), bad).toBe(false);
+    });
+
     it('creates section ids even where crypto.randomUUID is unavailable (admin over plain http)', () => {
         const original = globalThis.crypto;
         Object.defineProperty(globalThis, 'crypto', { value: {}, configurable: true });
@@ -130,6 +148,27 @@ describe('themes', () => {
         expect(themeStyles('unknown').css.startsWith(':root,:root[data-scheme="light"]{color-scheme:light;')).toBe(
             true,
         );
+    });
+
+    it('swaps in a brand color in both schemes, with readable text on it', () => {
+        const { css } = themeStyles('launch', ':root', '#facc15'); // a light yellow → dark text
+        const primaries = [...css.matchAll(/--primary:([^;]+);/g)].map((m) => m[1]);
+        expect(primaries).toHaveLength(2);
+        expect(new Set(primaries)).toEqual(new Set(['48 96% 53%']));
+        expect([...css.matchAll(/--primary-foreground:([^;]+);/g)].map((m) => m[1])).toEqual(['0 0% 7%', '0 0% 7%']);
+        expect(themeStyles('launch', ':root', '#1e3a8a').css).toContain('--primary-foreground:0 0% 100%');
+        // Empty or invalid input keeps the theme's own accent.
+        expect(themeStyles('launch', ':root', '').css).toBe(themeStyles('launch').css);
+        expect(themeStyles('launch', ':root', 'nope').css).toBe(themeStyles('launch').css);
+    });
+
+    it('knows each theme’s heading and body fonts, for drawing the social image', () => {
+        const fonts = themeFonts('launch');
+        expect(fonts.heading).toBe('Outfit');
+        expect(fonts.body).toBe('Inter');
+        expect(fonts.urls.every((u) => u.startsWith('https://fonts.googleapis.com/'))).toBe(true);
+        expect(readableOn('#ffffff')).toBe('#111111');
+        expect(readableOn('#000000')).toBe('#ffffff');
     });
 
     it('applies a saved choice before paint, accepting only light or dark', () => {

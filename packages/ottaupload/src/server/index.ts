@@ -418,3 +418,56 @@ export async function deleteFileFromCloudflareImages(
         };
     }
 }
+
+/** Image types safe to show inline; everything else downloads as an attachment. */
+const INLINE_SAFE_MIME_TYPES = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp']);
+
+/** The slice of an R2 bucket binding `serveR2Object` needs. */
+export interface R2ObjectSource {
+    get(key: string): Promise<{
+        // Typed loosely on purpose: Workers and the DOM each declare their own ReadableStream and
+        // Headers, and an app's R2Bucket binding must fit whichever set it compiles against.
+        body: unknown;
+        httpEtag: string;
+        writeHttpMetadata(headers: never): void;
+    } | null>;
+}
+
+function safeDownloadName(key: string): string {
+    const name = key.split('/').pop() || 'download';
+    return name.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 180) || 'download';
+}
+
+/**
+ * Headers that make serving user uploads safe: no MIME sniffing, a sandboxing CSP (an uploaded
+ * HTML/SVG file can't run script on this origin), and only known-safe images shown inline.
+ */
+export function applySafeObjectHeaders(headers: Headers, key: string): void {
+    const contentType = (headers.get('Content-Type') || 'application/octet-stream').split(';', 1)[0]!.toLowerCase();
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Content-Security-Policy', "sandbox; default-src 'none'");
+    headers.set(
+        'Content-Disposition',
+        `${INLINE_SAFE_MIME_TYPES.has(contentType) ? 'inline' : 'attachment'}; filename="${safeDownloadName(key)}"`,
+    );
+}
+
+/**
+ * Stream an uploaded object from R2 with safe headers, or null when it does not exist.
+ * `cacheControl` is opt-in: upload keys are unique (or cache-busted with `?v=`), so a public
+ * site can cache them for a year, while an app may prefer the bucket's own metadata.
+ */
+export async function serveR2Object(
+    bucket: R2ObjectSource,
+    key: string,
+    options: { cacheControl?: string } = {},
+): Promise<Response | null> {
+    const object = await bucket.get(key);
+    if (!object) return null;
+    const headers = new Headers();
+    object.writeHttpMetadata(headers as never);
+    headers.set('etag', object.httpEtag);
+    if (options.cacheControl) headers.set('Cache-Control', options.cacheControl);
+    applySafeObjectHeaders(headers, key);
+    return new Response(object.body as BodyInit, { headers });
+}

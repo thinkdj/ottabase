@@ -36,6 +36,16 @@
             "preview_database_id": "preview",
         },
     ],
+    // The SAME R2 bucket as apps/otta-web: images uploaded in its admin are stored as
+    // /api/upload/file/<key> URLs, which app/api/upload/file serves from here too. Local R2 is
+    // keyed by preview_bucket_name, so keep both names identical to otta-web/wrangler.jsonc.
+    "r2_buckets": [
+        {
+            "binding": "OBCF_R2",
+            "bucket_name": "ottabase-bucket",
+            "preview_bucket_name": "ottabase-bucket-preview",
+        },
+    ],
     // Asset bindings
     "assets": {
         "directory": ".open-next/assets",
@@ -72,6 +82,7 @@
         "production": {
             // Same D1 as otta-web's production environment (same placeholder → same database)
             "d1_databases": [{ "binding": "OBCF_D1", "database_name": "ottabase-db", "database_id": "D1_DATABASE_ID" }],
+            "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "ottabase-bucket" }],
             "vars": {
                 "ENVIRONMENT": "production",
                 "APP_ID": "otta-web",
@@ -96,6 +107,7 @@
                     "database_id": "YOUR_STAGING_D1_DATABASE_ID",
                 },
             ],
+            "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "ottabase-bucket-staging" }],
             "vars": {
                 "ENVIRONMENT": "staging",
                 "APP_ID": "otta-web",
@@ -120,6 +132,7 @@
                     "database_id": "D1_PREVIEW_DATABASE_ID",
                 },
             ],
+            "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "ottabase-bucket-preview" }],
             "vars": {
                 "ENVIRONMENT": "preview",
                 "APP_ID": "otta-web",

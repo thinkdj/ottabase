@@ -25,6 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
         robots: production ? 'index, follow' : 'noindex, nofollow',
         // Resolves canonical and Open Graph URLs against the configured public address.
         metadataBase: toUrl(site?.siteUrl),
+        // The uploaded favicon; without one, browsers fall back to /favicon.ico.
+        ...(site?.faviconUrl ? { icons: { icon: site.faviconUrl } } : {}),
     };
 }
 
@@ -32,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const site = await getSite();
     // The theme's design tokens on :root, rendered server-side so the first paint is already on-brand.
     const theme = getTheme(site?.theme ?? 'launch');
-    const { css, fonts } = themeStyles(theme.id);
+    const { css, fonts } = themeStyles(theme.id, ':root', site?.brandColor);
     return (
         // data-scheme starts as the theme's default; the inline script swaps in the visitor's
         // saved light/dark choice before first paint (hence suppressHydrationWarning).

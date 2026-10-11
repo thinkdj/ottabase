@@ -118,16 +118,16 @@ function ThemePicker({ state }: { state: LandingState }) {
                 {THEMES.map((theme) => {
                     const selected = theme.id === current;
                     return (
-                        <button
+                        // The preview is a whole page (links, buttons), so it can't live inside the
+                        // radio button; the button covers the card from above instead.
+                        <div
                             key={theme.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={selected}
-                            disabled={save.isPending}
-                            onClick={() => !selected && save.mutate(theme.id)}
-                            className={`group overflow-hidden rounded-xl border text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected ? 'border-primary ring-2 ring-primary' : 'border-border hover:shadow-md'}`}
+                            className={`relative overflow-hidden rounded-xl border transition-shadow focus-within:ring-2 focus-within:ring-ring ${selected ? 'border-primary ring-2 ring-primary' : 'border-border hover:shadow-md'}`}
                         >
-                            <div className="relative h-56 overflow-hidden border-b border-border bg-muted/30">
+                            <div
+                                className="relative h-56 overflow-hidden border-b border-border bg-muted/30"
+                                aria-hidden
+                            >
                                 <LandingPreview
                                     site={{ ...state.site, theme: theme.id }}
                                     sections={home?.sections ?? []}
@@ -137,16 +137,27 @@ function ThemePicker({ state }: { state: LandingState }) {
                             <div className="flex items-start justify-between gap-3 p-4">
                                 <div>
                                     <p className="font-semibold">{theme.label}</p>
-                                    <p className="mt-0.5 text-sm text-muted-foreground">{theme.description}</p>
+                                    <p id={`theme-${theme.id}-desc`} className="mt-0.5 text-sm text-muted-foreground">
+                                        {theme.description}
+                                    </p>
                                 </div>
                                 {selected && (
                                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                                         <Check className="h-3.5 w-3.5" aria-hidden />
-                                        <span className="sr-only">Current theme</span>
                                     </span>
                                 )}
                             </div>
-                        </button>
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                aria-label={theme.label}
+                                aria-describedby={`theme-${theme.id}-desc`}
+                                disabled={save.isPending}
+                                onClick={() => !selected && save.mutate(theme.id)}
+                                className="absolute inset-0 focus-visible:outline-none"
+                            />
+                        </div>
                     );
                 })}
             </div>

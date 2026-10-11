@@ -12,7 +12,7 @@ export { newSection, parseSections, SECTION_TYPES, SECTIONS, SectionSchema } fro
 export type { Section, SectionData, SectionType } from './sections';
 export { PAGE_CONTENT_BUDGET_BYTES, PAGE_PATH, PageInputSchema, SITE_FIELDS, SiteSettingsSchema } from './site';
 export type { LandingPageData, PageInput, SiteSettings } from './site';
-export { getTheme, THEMES, themeStyles } from './themes';
+export { getTheme, readableOn, themeFonts, THEMES, themeStyles } from './themes';
 export { schemeInitScript, SCHEME_STORAGE_KEY } from './scheme';
 export type { ColorScheme, LandingTheme, ThemeId } from './themes';
 export { DEFAULT_PAGES, DEFAULT_SITE } from './defaults';

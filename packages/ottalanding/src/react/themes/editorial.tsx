@@ -8,6 +8,7 @@ import {
     MobileMenu,
     paragraphs,
     safeSrc,
+    SiteBrand,
     SiteLink,
     type Action,
     type ThemeComponents,
@@ -48,7 +49,7 @@ export const editorial: ThemeComponents = {
                 <aside className="border-b border-border md:sticky md:top-0 md:h-screen md:border-b-0 md:border-r">
                     <div className="flex items-center justify-between px-6 py-5 md:h-full md:flex-col md:items-start md:justify-start md:px-8 md:py-10">
                         <SiteLink href="/" className={`font-heading text-2xl font-semibold leading-none ${focusRing}`}>
-                            {site.name}
+                            <SiteBrand site={site} logoClassName="h-10" />
                         </SiteLink>
                         {site.tagline && (
                             <p className="mt-3 hidden font-heading text-sm italic leading-snug text-muted-foreground md:block">

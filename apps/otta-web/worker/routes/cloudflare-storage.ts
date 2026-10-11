@@ -2,7 +2,7 @@ import { getSession } from '@ottabase/auth/backend';
 import { createImagesClient } from '@ottabase/cf/images';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createR2Client } from '@ottabase/cf/r2';
-import { uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
+import { serveR2Object, uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
@@ -11,22 +11,6 @@ import { persistUploadedMediaRecord } from './media-library';
 import type { ApiRouteContext } from './router';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const INLINE_SAFE_MIME_TYPES = new Set(['image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp']);
-
-function safeDownloadName(key: string): string {
-    const name = key.split('/').pop() || 'download';
-    return name.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 180) || 'download';
-}
-
-function applySafeObjectHeaders(headers: Headers, key: string): void {
-    const contentType = (headers.get('Content-Type') || 'application/octet-stream').split(';', 1)[0]!.toLowerCase();
-    headers.set('X-Content-Type-Options', 'nosniff');
-    headers.set('Content-Security-Policy', "sandbox; default-src 'none'");
-    headers.set(
-        'Content-Disposition',
-        `${INLINE_SAFE_MIME_TYPES.has(contentType) ? 'inline' : 'attachment'}; filename="${safeDownloadName(key)}"`,
-    );
-}
 
 /** Deterministic hash of userId for avatar path obfuscation (SHA-256, 32 hex chars) */
 async function hashUserId(userId: string): Promise<string> {
@@ -123,15 +107,7 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
         const key = url.searchParams.get('key');
         if (!key) return errorResponse('key is required', 400);
 
-        const object = await env.OBCF_R2.get(key);
-        if (!object) return errorResponse('Object not found', 404);
-
-        const headers = new Headers();
-        object.writeHttpMetadata(headers);
-        headers.set('etag', object.httpEtag);
-        applySafeObjectHeaders(headers, key);
-
-        return new Response(object.body, { headers });
+        return (await serveR2Object(env.OBCF_R2, key)) ?? errorResponse('Object not found', 404);
     }
 
     if (request.method === 'POST') {
@@ -325,17 +301,7 @@ export async function handleUploadFile(context: ApiRouteContext): Promise<Respon
         return errorResponse('key is required', 400);
     }
 
-    const object = await env.OBCF_R2.get(key);
-    if (!object) {
-        return errorResponse('File not found', 404);
-    }
-
-    const headers = new Headers();
-    object.writeHttpMetadata(headers);
-    headers.set('etag', object.httpEtag);
-    applySafeObjectHeaders(headers, key);
-
-    return new Response(object.body, { headers });
+    return (await serveR2Object(env.OBCF_R2, key)) ?? errorResponse('File not found', 404);
 }
 
 export async function handleCloudflareImages(context: ApiRouteContext): Promise<Response> {

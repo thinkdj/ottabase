@@ -23,8 +23,8 @@ it must transpile it and include `packages/ottalanding/src/**` in their Tailwind
 
 ## Content model
 
-**Site** (`landing_sites`, one row per app, `settings` JSON): name, tagline, public URL, theme, navigation links, a nav
-button, footer links and a footer note.
+**Site** (`landing_sites`, one row per app, `settings` JSON): name, tagline, theme, logo, favicon, brand color, public
+URL, navigation links, a nav button, footer links and a footer note.
 
 **Page** (`landing_pages`, unique per `(app_id, path)`): path, title, description, published flag, and an ordered
 `sections` JSON array.
@@ -33,10 +33,10 @@ button, footer links and a footer note.
 
 | Type           | Fields                                                                                              |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| `hero`         | eyebrow, headline\*, subheadline, buttons, image URL, image description                             |
-| `logos`        | heading, logos (name\*, image URL)                                                                  |
+| `hero`         | eyebrow, headline\*, subheadline, buttons, image, image description                                 |
+| `logos`        | heading, logos (name\*, logo image)                                                                 |
 | `features`     | heading, intro, features (title\*, description\*)                                                   |
-| `testimonials` | heading, quotes (quote\*, name\*, role, photo URL)                                                  |
+| `testimonials` | heading, quotes (quote\*, name\*, role, photo)                                                      |
 | `pricing`      | heading, intro, plans (name\*, price\*, period, description, included lines, button, featured flag) |
 | `faq`          | heading, questions (question\*, answer\*)                                                           |
 | `cta`          | heading\*, supporting line, buttons                                                                 |
@@ -57,6 +57,11 @@ Adding a field is a one-line change, and the type, the validation and the admin 
 Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor`, `mailto:` and `tel:`. A field marked
 `absolute` (the site's public URL) accepts only a full `http(s)://host` address. Every rendered href and image `src`
 also goes through `sanitizeUrl`.
+
+**Images** (`kind: 'image'`) are picked from, or uploaded to, the media library in the admin. Uploads are stored as
+`/api/upload/file/<key>` URLs. The landing app binds the same R2 bucket and serves that path too, so one URL works in
+both apps. An image field may name an `altKey`: picking a library image fills that description field from the image's
+alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
 
 **Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
 setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
@@ -100,8 +105,13 @@ comes from server configuration, never from the request.
 | `bold`      | `midnight` | Dark and loud: oversized type, logo ticker (respects reduced motion), bento features, inverted featured plan |
 
 A theme is a Brand Engine preset for colours, type and radius, plus its own React components: a `Shell` (navigation and
-footer) and one component per section type. `themeStyles(themeId, selector)` returns the preset's tokens for **both**
-colour schemes. Use `:root` on the live site and a scoping selector for previews.
+footer) and one component per section type. `themeStyles(themeId, selector, brandColor?)` returns the preset's tokens
+for **both** colour schemes. Use `:root` on the live site and a scoping selector for previews.
+
+A **brand color** replaces the preset's accent (`--primary`, `--ring`) through Brand Engine overrides.
+`--primary-foreground` becomes whichever of white or near-black has the higher WCAG contrast on it (`readableOn()`). The
+site's **logo** appears in every theme's navigation (`SiteBrand`), next to the name unless "the logo already shows the
+site name" is on, in which case the name becomes the logo's alt text.
 
 ```tsx
 import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';

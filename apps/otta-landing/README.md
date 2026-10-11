@@ -45,6 +45,12 @@ Both apps bind `OBCF_D1` to the same database. Keep the `d1_databases` blocks in
 - **`APP_ID`** (a wrangler var, default `otta-web`) selects whose landing content to show. It must match otta-web's
   `config.appId`.
 
+**Uploads.** Both apps also bind `OBCF_R2` to the same bucket. Local R2 is keyed by `preview_bucket_name`, so keep that
+identical too. Images uploaded in otta-web's admin are stored as `/api/upload/file/<key>` URLs, and
+`app/api/upload/file/[...key]` serves that path here from the same bucket. It uses `serveR2Object` from
+`@ottabase/ottaupload/server`: no MIME sniffing, a sandboxing CSP, and only safe image types inline. Keys are unique per
+upload, or cache-busted with `?v=`, so responses are cached for a year.
+
 Schema changes go through otta-web's migrations (`/api/ottaorm/init`). This app never migrates.
 
 Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes). Keep it in step with `wrangler.jsonc`.

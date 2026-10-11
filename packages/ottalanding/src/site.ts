@@ -22,17 +22,29 @@ const links = (label: string, itemLabel: string, max: number) =>
 export const SITE_FIELDS = defineFields({
     name: { kind: 'text', label: 'Site name', required: true },
     tagline: { kind: 'text', label: 'Tagline', help: 'Shown in the footer and as the default description.' },
+    theme: {
+        kind: 'select',
+        label: 'Theme',
+        options: THEMES.map((t) => ({ value: t.id, label: t.label })),
+    },
+    logoUrl: { kind: 'image', label: 'Logo', help: 'Shown in the navigation. A wide PNG or SVG works best.' },
+    faviconUrl: { kind: 'image', label: 'Favicon', help: 'The browser-tab icon. A square PNG, 64×64 or larger.' },
+    logoIncludesName: {
+        kind: 'boolean',
+        label: 'The logo already shows the site name',
+        help: 'Hides the name next to the logo so it isn’t shown twice.',
+    },
+    brandColor: {
+        kind: 'color',
+        label: 'Brand color',
+        help: 'Replaces the theme’s accent color on buttons and highlights. Text on it stays readable automatically.',
+    },
     siteUrl: {
         kind: 'url',
         absolute: true,
         label: 'Public URL',
         placeholder: 'https://example.com',
         help: 'Where the landing site is deployed. Turns on “View” links in the admin.',
-    },
-    theme: {
-        kind: 'select',
-        label: 'Theme',
-        options: THEMES.map((t) => ({ value: t.id, label: t.label })),
     },
     nav: links('Navigation', 'Link', 8),
     navCtaLabel: { kind: 'text', label: 'Nav button label', placeholder: 'Get started' },
