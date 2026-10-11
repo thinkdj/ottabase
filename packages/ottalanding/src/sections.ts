@@ -14,8 +14,8 @@ const actions = {
     itemLabel: 'Button',
     max: 3,
     fields: {
-        label: { kind: 'text', label: 'Label', required: true },
-        href: { kind: 'url', label: 'Link', required: true, placeholder: '/signup or https://…' },
+        label: { kind: 'text', label: 'Text', required: true, placeholder: 'Get started' },
+        href: { kind: 'url', label: 'Goes to', required: true, placeholder: '/signup or https://…' },
     },
 } as const;
 

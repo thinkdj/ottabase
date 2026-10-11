@@ -14,9 +14,19 @@ type ShareCardEditorProps = {
     errors?: FieldErrors;
     /** Prefix of the card's keys within `errors`, e.g. `share.` */
     path?: string;
+    /** `split`: picture beside its fields, for wide areas; `stacked` (default) for narrow ones. */
+    layout?: 'split' | 'stacked';
 };
 
-export function ShareCardEditor({ value, onChange, site, defaults, errors, path }: ShareCardEditorProps) {
+export function ShareCardEditor({
+    value,
+    onChange,
+    site,
+    defaults,
+    errors,
+    path,
+    layout = 'stacked',
+}: ShareCardEditorProps) {
     const canvas = useRef<HTMLCanvasElement>(null);
     const [warnings, setWarnings] = useState<string[]>([]);
     const heading = value?.heading || defaults.heading;
@@ -39,8 +49,11 @@ export function ShareCardEditor({ value, onChange, site, defaults, errors, path 
     }, [value, site, defaultHeading, defaultSubtext]);
 
     return (
-        <div className="space-y-5">
-            <div className="max-w-2xl space-y-2">
+        <div
+            className={layout === 'split' ? 'grid items-start gap-6 lg:grid-cols-[minmax(0,36rem)_18rem]' : 'space-y-5'}
+        >
+            {/* Capped: on a wide screen a full-width 1200×630 preview dwarfs everything around it. */}
+            <div className="max-w-xl space-y-2">
                 <canvas
                     ref={canvas}
                     width={1200}
@@ -55,23 +68,25 @@ export function ShareCardEditor({ value, onChange, site, defaults, errors, path 
                     </p>
                 ))}
                 <p className="text-xs text-muted-foreground">
-                    1200 × 630. Shown when a link is shared on X, LinkedIn, Slack, iMessage and more. Uploaded when you
-                    save.
+                    1200 × 630, exactly as it will be shared. Uploaded when you save.
                 </p>
             </div>
-            <FieldsForm
-                fields={SHARE_FIELDS}
-                omit={['imageUrl']}
-                value={value ?? {}}
-                onChange={(next) => onChange(next as ShareCard)}
-                errors={errors}
-                path={path}
-                placeholders={{
-                    heading: defaults.heading,
-                    subtext: defaults.subtext,
-                    color: cardColor(undefined, site),
-                }}
-            />
+            <div className="min-w-0">
+                <FieldsForm
+                    fields={SHARE_FIELDS}
+                    omit={['imageUrl']}
+                    value={value ?? {}}
+                    onChange={(next) => onChange(next as ShareCard)}
+                    errors={errors}
+                    path={path}
+                    columns={layout === 'split' ? 1 : 2}
+                    placeholders={{
+                        heading: defaults.heading,
+                        subtext: defaults.subtext,
+                        color: cardColor(undefined, site),
+                    }}
+                />
+            </div>
         </div>
     );
 }

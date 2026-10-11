@@ -1,5 +1,6 @@
-// /admin/content/landing/$pageId — edit one page: details, sections (add, reorder, edit,
-// remove) and publish state, with a live preview of the draft in the site's theme.
+// /admin/content/landing/$pageId — edit one page. Its sections are the work, so they own the
+// main column beside a live preview; the page's title, path, description and social image live
+// in a "Page settings" sheet. Publishing is an explicit action, not a switch that waits for Save.
 
 import { getErrorMessage, isApiError } from '@/lib/api';
 import {
@@ -24,13 +25,19 @@ import {
     DropdownMenuTrigger,
     Input,
     Label,
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
     Switch,
     Textarea,
 } from '@ottabase/ui-shadcn';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ExternalLink, Plus, Trash2 } from 'lucide-react';
-import { useMemo, useState, type FormEvent } from 'react';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, Plus, Settings2, Trash2 } from 'lucide-react';
+import { useDeferredValue, useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
 import { PreviewLinkDialog } from './PreviewLinkDialog';
@@ -40,6 +47,9 @@ import { UnsavedChangesGuard } from './UnsavedChangesGuard';
 import { LANDING_QUERY_KEY, landingApi, publicUrl, useLanding, type LandingState, type PageDraft } from './landingApi';
 
 const toDraft = ({ id: _id, updatedAt: _u, ...draft }: LandingPageData): PageDraft => draft;
+
+/** Fields edited in the Page settings sheet: an error in one of them opens it. */
+const SETTINGS_ERROR = /^(title|path|description|share)(\.|$)/;
 
 export function AdminLandingPageEditorPage() {
     const { pageId } = useParams({ strict: false }) as { pageId: string };
@@ -67,9 +77,13 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
     const [draft, setDraft] = useState<PageDraft>(saved);
     const [errors, setErrors] = useState<FieldErrors>({});
     const [open, setOpen] = useState<Set<string>>(() => new Set());
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [previewScheme, setPreviewScheme] = useState<ColorScheme>(() => getTheme(state.site.theme).scheme);
-    const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
-    const isHome = page.path === '/';
+    // A page can hold ~512 KB of sections: serialise the saved side once, not on every keystroke.
+    const savedJson = useMemo(() => JSON.stringify(saved), [saved]);
+    const dirty = JSON.stringify(draft) !== savedJson;
+    // The preview is a whole page: let it trail the typing rather than block it.
+    const previewSections = useDeferredValue(draft.sections);
     const liveUrl = page.published ? publicUrl(state.site, page.path) : undefined;
 
     const save = useMutation({
@@ -85,7 +99,15 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
             // Adopt the server's normalised copy (trimmed text, schema key order) so the page is clean again.
             setDraft(toDraft(updated));
             setErrors({});
-            toast.success(updated.published && !page.published ? 'Page published' : 'Page saved');
+            toast.success(
+                updated.published === page.published
+                    ? updated.published
+                        ? 'Page saved'
+                        : 'Draft saved'
+                    : updated.published
+                      ? 'Page published'
+                      : 'Page unpublished',
+            );
             if (warning) toast.warning(warning);
         },
         onError: (err) => {
@@ -96,20 +118,25 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
 
     const showErrors = (next: FieldErrors) => {
         setErrors(next);
-        // Open every section that has a problem so it can be seen.
+        // Bring every problem into view: open the sections that have one, and the settings sheet.
         const withErrors = Object.keys(next).flatMap((k) => /^sections\.(\d+)\./.exec(k)?.[1] ?? []);
         setOpen((prev) => new Set([...prev, ...withErrors.map((i) => draft.sections[Number(i)]?.id).filter(Boolean)]));
+        if (Object.keys(next).some((k) => SETTINGS_ERROR.test(k))) setSettingsOpen(true);
     };
 
-    const submit = (e?: FormEvent) => {
-        e?.preventDefault();
-        const parsed = PageInputSchema.safeParse(draft);
+    /** Save the page; `published` publishes or unpublishes it in the same step. */
+    const submit = (published = draft.published) => {
+        const parsed = PageInputSchema.safeParse({ ...draft, published });
         if (!parsed.success) {
             showErrors(fieldErrors(parsed.error));
             toast.error('Please fix the highlighted fields.');
             return;
         }
         save.mutate(parsed.data as PageDraft);
+    };
+    const onFormSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        if (dirty) submit();
     };
 
     const setSections = (sections: Section[]) => setDraft((d) => ({ ...d, sections }));
@@ -131,12 +158,13 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
             else next.add(id);
             return next;
         });
+    const settingsErrors = Object.keys(errors).some((k) => SETTINGS_ERROR.test(k));
 
     return (
-        <form onSubmit={submit} className="space-y-6">
+        <div className="space-y-6">
             <UnsavedChangesGuard when={dirty} />
-            {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Header: what this page is, and what you can do with it */}
+            <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 space-y-1">
                     <Link
                         to="/admin/content/landing"
@@ -145,48 +173,266 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                         <ChevronLeft className="h-4 w-4" aria-hidden />
                         Landing site
                     </Link>
-                    <h1 className="flex items-center gap-3 truncate text-2xl font-bold tracking-tight">
-                        {draft.title || 'Untitled page'}
+                    <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-bold tracking-tight">
+                        <span className="min-w-0 truncate">{draft.title || 'Untitled page'}</span>
                         <Badge variant={page.published ? 'default' : 'secondary'}>
                             {page.published ? 'Published' : 'Draft'}
                         </Badge>
                     </h1>
+                    <p className="text-sm text-muted-foreground">
+                        {liveUrl ? (
+                            <a
+                                href={liveUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 hover:text-foreground"
+                            >
+                                {page.path === '/' ? 'Home page' : page.path}
+                                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                <span className="sr-only">(opens the live page)</span>
+                            </a>
+                        ) : page.path === '/' ? (
+                            'Home page'
+                        ) : (
+                            page.path
+                        )}
+                    </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <Switch
-                            id="page-published"
-                            checked={draft.published}
-                            onCheckedChange={(published) => setDraft((d) => ({ ...d, published }))}
-                        />
-                        <Label htmlFor="page-published">Published</Label>
-                    </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" variant="outline" onClick={() => setSettingsOpen(true)}>
+                        <Settings2 className="mr-2 h-4 w-4" aria-hidden />
+                        Page settings
+                        {settingsErrors && (
+                            <>
+                                <span className="ml-2 h-2 w-2 rounded-full bg-destructive" aria-hidden />
+                                <span className="sr-only">(has errors)</span>
+                            </>
+                        )}
+                    </Button>
                     {/* Published pages are public already; a draft gets a private preview link. */}
                     {!page.published && <PreviewLinkDialog site={state.site} pageId={page.id} path={page.path} />}
-                    {liveUrl && (
-                        <Button asChild variant="outline">
-                            <a href={liveUrl} target="_blank" rel="noopener noreferrer">
-                                View
-                                <ExternalLink className="ml-2 h-4 w-4" />
-                            </a>
-                        </Button>
-                    )}
                     {dirty && (
                         <Button type="button" variant="ghost" onClick={() => (setDraft(saved), setErrors({}))}>
                             Discard
                         </Button>
                     )}
-                    <Button type="submit" disabled={!dirty || save.isPending}>
-                        {save.isPending ? 'Saving…' : 'Save'}
-                    </Button>
+                    {page.published ? (
+                        <>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                disabled={save.isPending}
+                                onClick={() => submit(false)}
+                            >
+                                Unpublish
+                            </Button>
+                            <Button type="button" disabled={!dirty || save.isPending} onClick={() => submit()}>
+                                {save.isPending ? 'Saving…' : 'Save'}
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={!dirty || save.isPending}
+                                onClick={() => submit(false)}
+                            >
+                                Save draft
+                            </Button>
+                            <Button type="button" disabled={save.isPending} onClick={() => submit(true)}>
+                                {save.isPending ? 'Saving…' : 'Publish'}
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
             <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)]">
-                {/* Editing column */}
-                <div className="space-y-6">
-                    <fieldset className="space-y-4 rounded-xl border border-border p-5">
-                        <legend className="px-1 text-sm font-semibold">Page details</legend>
+                {/* Editing column — its own form, so the preview's forms are never nested inside it */}
+                <form onSubmit={onFormSubmit} className="space-y-3" aria-labelledby="page-sections">
+                    <div className="flex items-center justify-between">
+                        <h2 id="page-sections" className="font-semibold">
+                            Sections <span className="font-normal text-muted-foreground">{draft.sections.length}</span>
+                        </h2>
+                        <AddSectionMenu onAdd={addSection} />
+                    </div>
+                    {/* Page-level problems (e.g. too much content) that belong to no single field */}
+                    {errors.sections?.[0] && (
+                        <p
+                            role="alert"
+                            className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                        >
+                            {errors.sections[0]}
+                        </p>
+                    )}
+                    {draft.sections.length === 0 && (
+                        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                            <p className="font-medium">This page is empty</p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Most pages start with a hero, then build toward a call to action.
+                            </p>
+                            <Button type="button" className="mt-4" variant="outline" onClick={() => addSection('hero')}>
+                                Add a hero
+                            </Button>
+                        </div>
+                    )}
+                    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                        {draft.sections.map((section, i) => {
+                            const prefix = `sections.${i}.`;
+                            const hasErrors = Object.keys(errors).some((k) => k.startsWith(prefix));
+                            const expanded = open.has(section.id);
+                            const def = SECTIONS[section.type];
+                            const data = section.data as Record<string, unknown>;
+                            const summary = (data.title as string) || def.description;
+                            return (
+                                <div key={section.id} className={hasErrors ? 'bg-destructive/5' : 'bg-background'}>
+                                    <div className="flex items-center gap-1 py-1.5 pl-3 pr-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggle(section.id)}
+                                            aria-expanded={expanded}
+                                            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <ChevronRight
+                                                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
+                                                aria-hidden
+                                            />
+                                            <span className="shrink-0 text-sm font-medium">{def.label}</span>
+                                            <span className="truncate text-sm text-muted-foreground">{summary}</span>
+                                            {hasErrors && (
+                                                <span className="shrink-0 text-xs text-destructive">
+                                                    Needs attention
+                                                </span>
+                                            )}
+                                        </button>
+                                        <IconButton
+                                            label="Move up"
+                                            disabled={i === 0}
+                                            onClick={() => moveSection(i, i - 1)}
+                                        >
+                                            <ArrowUp className="h-4 w-4" />
+                                        </IconButton>
+                                        <IconButton
+                                            label="Move down"
+                                            disabled={i === draft.sections.length - 1}
+                                            onClick={() => moveSection(i, i + 1)}
+                                        >
+                                            <ArrowDown className="h-4 w-4" />
+                                        </IconButton>
+                                        <IconButton
+                                            label={`Remove ${def.label.toLowerCase()} section`}
+                                            destructive
+                                            onClick={() =>
+                                                setSections(draft.sections.filter((s) => s.id !== section.id))
+                                            }
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </IconButton>
+                                    </div>
+                                    {expanded && (
+                                        <div className="border-t border-border p-4">
+                                            <FieldsForm
+                                                fields={def.fields}
+                                                value={data}
+                                                onChange={(next) =>
+                                                    setSections(
+                                                        draft.sections.map((s) =>
+                                                            s.id === section.id ? ({ ...s, data: next } as Section) : s,
+                                                        ),
+                                                    )
+                                                }
+                                                errors={errors}
+                                                path={`${prefix}data.`}
+                                                // Copy is what gets edited here: one column, so headlines aren't cut off.
+                                                columns={1}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </form>
+
+                {/* Live preview */}
+                <aside className="space-y-2 xl:sticky xl:top-4" aria-label="Preview">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm text-muted-foreground">
+                            Preview in the {getTheme(state.site.theme).label} theme
+                            {dirty ? ', including unsaved changes' : ''}.
+                        </p>
+                        <div
+                            role="radiogroup"
+                            aria-label="Preview color scheme"
+                            className="flex rounded-md border border-border p-0.5"
+                        >
+                            {(['light', 'dark'] as const).map((scheme) => (
+                                <button
+                                    key={scheme}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={previewScheme === scheme}
+                                    onClick={() => setPreviewScheme(scheme)}
+                                    className={`rounded px-2.5 py-1 text-xs font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${previewScheme === scheme ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    {scheme}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-border shadow-sm">
+                        <LandingPreview
+                            site={state.site}
+                            sections={previewSections}
+                            currentPath={draft.path}
+                            title={draft.title}
+                            scheme={previewScheme}
+                        />
+                    </div>
+                </aside>
+            </div>
+
+            <PageSettingsSheet
+                open={settingsOpen}
+                onOpenChange={setSettingsOpen}
+                draft={draft}
+                setDraft={setDraft}
+                errors={errors}
+                isHome={page.path === '/'}
+                state={state}
+            />
+        </div>
+    );
+}
+
+/** Title, path, description and social image: set once, changed rarely, saved with the page. */
+function PageSettingsSheet(props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    draft: PageDraft;
+    setDraft: React.Dispatch<React.SetStateAction<PageDraft>>;
+    errors: FieldErrors;
+    isHome: boolean;
+    state: LandingState;
+}) {
+    const { draft, setDraft, errors, isHome, state } = props;
+    return (
+        <Sheet open={props.open} onOpenChange={props.onOpenChange}>
+            <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        props.onOpenChange(false);
+                    }}
+                    className="space-y-8"
+                >
+                    <SheetHeader>
+                        <SheetTitle>Page settings</SheetTitle>
+                        <SheetDescription>Saved with the page.</SheetDescription>
+                    </SheetHeader>
+
+                    <div className="space-y-5">
                         <TextField
                             id="page-title"
                             label="Title"
@@ -212,7 +458,7 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                             <Label htmlFor="page-description">Description</Label>
                             <Textarea
                                 id="page-description"
-                                rows={2}
+                                rows={3}
                                 value={draft.description}
                                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                             />
@@ -220,10 +466,12 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                                 One or two sentences for search engines and link previews.
                             </p>
                         </div>
-                    </fieldset>
+                    </div>
 
-                    <fieldset className="space-y-4 rounded-xl border border-border p-5">
-                        <legend className="px-1 text-sm font-semibold">Social image</legend>
+                    <section className="space-y-4 border-t border-border pt-6" aria-labelledby="page-share-title">
+                        <h3 id="page-share-title" className="font-semibold">
+                            Social image
+                        </h3>
                         <div className="flex items-start gap-3">
                             <Switch
                                 id="page-share"
@@ -270,151 +518,14 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                                 The site’s social image is created the next time you save the site settings.
                             </p>
                         )}
-                    </fieldset>
-
-                    <section className="space-y-3" aria-labelledby="page-sections">
-                        <div className="flex items-center justify-between">
-                            <h2 id="page-sections" className="text-sm font-semibold">
-                                Sections
-                            </h2>
-                            <AddSectionMenu onAdd={addSection} />
-                        </div>
-                        {/* Page-level problems (e.g. too much content) that belong to no single field */}
-                        {errors.sections?.[0] && (
-                            <p
-                                role="alert"
-                                className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-                            >
-                                {errors.sections[0]}
-                            </p>
-                        )}
-                        {draft.sections.length === 0 && (
-                            <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                                <p className="font-medium">This page is empty</p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Most pages start with a hero, then build toward a call to action.
-                                </p>
-                                <Button
-                                    type="button"
-                                    className="mt-4"
-                                    variant="outline"
-                                    onClick={() => addSection('hero')}
-                                >
-                                    Add a hero
-                                </Button>
-                            </div>
-                        )}
-                        {draft.sections.map((section, i) => {
-                            const prefix = `sections.${i}.`;
-                            const hasErrors = Object.keys(errors).some((k) => k.startsWith(prefix));
-                            const expanded = open.has(section.id);
-                            const def = SECTIONS[section.type];
-                            const data = section.data as Record<string, unknown>;
-                            const summary = (data.title as string) || (data.question as string) || def.description;
-                            return (
-                                <div
-                                    key={section.id}
-                                    className={`rounded-xl border bg-background ${hasErrors ? 'border-destructive' : 'border-border'}`}
-                                >
-                                    <div className="flex items-center gap-1 p-2 pl-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => toggle(section.id)}
-                                            aria-expanded={expanded}
-                                            className="flex min-w-0 flex-1 items-center gap-3 rounded-md py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                        >
-                                            <ChevronDown
-                                                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? '' : '-rotate-90'}`}
-                                                aria-hidden
-                                            />
-                                            <span className="shrink-0 font-medium">{def.label}</span>
-                                            <span className="truncate text-sm text-muted-foreground">{summary}</span>
-                                            {hasErrors && <span className="sr-only">(has errors)</span>}
-                                        </button>
-                                        <IconButton
-                                            label="Move up"
-                                            disabled={i === 0}
-                                            onClick={() => moveSection(i, i - 1)}
-                                        >
-                                            <ArrowUp className="h-4 w-4" />
-                                        </IconButton>
-                                        <IconButton
-                                            label="Move down"
-                                            disabled={i === draft.sections.length - 1}
-                                            onClick={() => moveSection(i, i + 1)}
-                                        >
-                                            <ArrowDown className="h-4 w-4" />
-                                        </IconButton>
-                                        <IconButton
-                                            label={`Remove ${def.label.toLowerCase()} section`}
-                                            destructive
-                                            onClick={() =>
-                                                setSections(draft.sections.filter((s) => s.id !== section.id))
-                                            }
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </IconButton>
-                                    </div>
-                                    {expanded && (
-                                        <div className="border-t border-border p-4">
-                                            <FieldsForm
-                                                fields={def.fields}
-                                                value={data}
-                                                onChange={(next) =>
-                                                    setSections(
-                                                        draft.sections.map((s) =>
-                                                            s.id === section.id ? ({ ...s, data: next } as Section) : s,
-                                                        ),
-                                                    )
-                                                }
-                                                errors={errors}
-                                                path={`${prefix}data.`}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
                     </section>
-                </div>
 
-                {/* Live preview */}
-                <aside className="space-y-2 xl:sticky xl:top-4" aria-label="Preview">
-                    <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm text-muted-foreground">
-                            Preview in the {state.site.theme} theme{dirty ? ', including unsaved changes' : ''}.
-                        </p>
-                        <div
-                            role="radiogroup"
-                            aria-label="Preview color scheme"
-                            className="flex rounded-md border border-border p-0.5"
-                        >
-                            {(['light', 'dark'] as const).map((scheme) => (
-                                <button
-                                    key={scheme}
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={previewScheme === scheme}
-                                    onClick={() => setPreviewScheme(scheme)}
-                                    className={`rounded px-2.5 py-1 text-xs font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${previewScheme === scheme ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                                >
-                                    {scheme}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="max-h-[calc(100vh-7rem)] overflow-y-auto rounded-xl border border-border shadow-sm">
-                        <LandingPreview
-                            site={state.site}
-                            sections={draft.sections}
-                            currentPath={draft.path}
-                            title={draft.title}
-                            scheme={previewScheme}
-                        />
-                    </div>
-                </aside>
-            </div>
-        </form>
+                    <SheetFooter>
+                        <Button type="submit">Done</Button>
+                    </SheetFooter>
+                </form>
+            </SheetContent>
+        </Sheet>
     );
 }
 
@@ -460,6 +571,7 @@ function IconButton(props: {
             disabled={props.disabled}
             onClick={props.onClick}
             aria-label={props.label}
+            title={props.label}
         >
             {props.children}
         </Button>

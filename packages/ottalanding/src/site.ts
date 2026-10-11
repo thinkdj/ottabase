@@ -15,8 +15,8 @@ const links = (label: string, itemLabel: string, max: number) =>
         itemLabel,
         max,
         fields: {
-            label: { kind: 'text', label: 'Label', required: true },
-            href: { kind: 'url', label: 'Link', required: true, placeholder: '/about' },
+            label: { kind: 'text', label: 'Text', required: true, placeholder: 'About' },
+            href: { kind: 'url', label: 'Goes to', required: true, placeholder: '/about or https://…' },
         },
     }) as const;
 
@@ -53,9 +53,9 @@ export const SITE_FIELDS = defineFields({
         placeholder: 'you@example.com',
         help: 'A short digest of new messages and signups, within a minute or so. Leave empty to only collect them in the inbox.',
     },
-    nav: links('Navigation', 'Link', 8),
-    navCtaLabel: { kind: 'text', label: 'Nav button label', placeholder: 'Get started' },
-    navCtaHref: { kind: 'url', label: 'Nav button link' },
+    nav: links('Header links', 'Link', 8),
+    navCtaLabel: { kind: 'text', label: 'Button text', placeholder: 'Get started' },
+    navCtaHref: { kind: 'url', label: 'Button link', placeholder: '/signup or https://…' },
     footerLinks: links('Footer links', 'Link', 12),
     footerNote: { kind: 'text', label: 'Footer note', placeholder: '© 2026 Acme Inc.' },
     /** The default social image, used by every page without its own. */

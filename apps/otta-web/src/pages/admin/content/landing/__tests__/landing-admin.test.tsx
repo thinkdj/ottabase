@@ -103,6 +103,11 @@ beforeEach(() => {
     });
 });
 
+/** Radix tabs switch on mouse-down, like a real click. */
+const openTab = async (name: string) => fireEvent.mouseDown(await screen.findByRole('tab', { name }), { button: 0 });
+const openPageSettings = async () => fireEvent.click(await screen.findByRole('button', { name: /Page settings/ }));
+const closePageSettings = () => fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+
 describe('page editor', () => {
     it('keeps Save disabled until something changes, and previews the draft live', async () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
@@ -140,15 +145,18 @@ describe('page editor', () => {
         expect(init.body.sections[1].data.title).toBe('Hello there');
     });
 
-    it('is clean again after a save, even when the server normalises the text', async () => {
+    it('keeps title, path and description in Page settings, saved with the page', async () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
         // Server echoes the Zod-normalised page (trimmed), like the real API.
         api.mockImplementation(async (_url: string, init?: { method?: string; body?: { title: string } }) =>
             init?.method ? { page: { ...about, ...init.body, title: init.body!.title.trim() } } : state(),
         );
-        fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'About us   ' } });
+        await openPageSettings();
+        fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'About us   ' } });
+        closePageSettings();
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
         await waitFor(() => expect(toast.success).toHaveBeenCalled());
+        // Clean again, even though the server trimmed the text.
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
         expect(screen.queryByRole('button', { name: 'Discard' })).toBeNull();
     });
@@ -162,12 +170,12 @@ describe('page editor', () => {
                 fieldErrors: { sections: ['This page has too much content. Split it into more pages.'] },
             });
         });
-        fireEvent.change(await screen.findByLabelText('Title'), { target: { value: 'About' } });
+        fireEvent.click(await screen.findByRole('menuitem', { name: /FAQ/ }));
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('too much content');
     });
 
-    it('shows server-side field errors (e.g. a taken path) on the field', async () => {
+    it('opens Page settings on a server-side error there (e.g. a taken path)', async () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
         api.mockImplementationOnce(async () => {
             throw new ApiError({
@@ -176,19 +184,41 @@ describe('page editor', () => {
                 fieldErrors: { path: ['Another page already uses this path.'] },
             });
         });
-        fireEvent.change(await screen.findByLabelText('Path'), { target: { value: '/contact' } });
+        await openPageSettings();
+        fireEvent.change(screen.getByLabelText('Path'), { target: { value: '/contact' } });
+        closePageSettings();
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-        expect(await screen.findAllByText('Another page already uses this path.')).not.toHaveLength(0);
-        expect(screen.getByLabelText('Path')).toHaveAttribute('aria-invalid', 'true');
+        expect(await screen.findByLabelText('Path')).toHaveAttribute('aria-invalid', 'true');
+        expect(screen.getAllByText('Another page already uses this path.')).not.toHaveLength(0);
+    });
+
+    it('publishes a draft in one step, and unpublishes a live page', async () => {
+        api.mockImplementation(async (url: string, init?: { method?: string; body?: object }) =>
+            init?.method
+                ? { page: { ...about, ...init.body } }
+                : { site: DEFAULT_SITE, pages: [{ ...about, published: false }] },
+        );
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        expect(await screen.findByRole('button', { name: 'Save draft' })).toBeDisabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Publish' }));
+        await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Page published'));
+        expect(api.mock.calls.at(-1)![1].body.published).toBe(true);
+    });
+
+    it('unpublishes a live page without a separate save', async () => {
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        fireEvent.click(await screen.findByRole('button', { name: 'Unpublish' }));
+        await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Page unpublished'));
+        expect(api.mock.calls.at(-1)![1].body.published).toBe(false);
     });
 
     it('reorders and removes sections', async () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
         fireEvent.click(await screen.findByRole('menuitem', { name: /FAQ/ }));
         const order = () =>
-            [...document.querySelectorAll('[aria-expanded]')].map(
-                (b) => within(b as HTMLElement).getByText(/^(FAQ|Text)$/).textContent,
+            [...document.querySelectorAll('[aria-expanded]')].flatMap(
+                (b) => within(b as HTMLElement).queryByText(/^(FAQ|Text)$/)?.textContent ?? [],
             );
         expect(order()).toEqual(['Text', 'FAQ']);
         fireEvent.click(screen.getAllByRole('button', { name: 'Move up' })[1]);
@@ -204,16 +234,19 @@ describe('unsaved changes', () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
         await screen.findByRole('button', { name: 'Save' });
         expect(wouldBlock()).toBe(false);
+        await openPageSettings();
         fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'About the team' } });
+        closePageSettings();
         expect(wouldBlock()).toBe(true);
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
         await waitFor(() => expect(toast.success).toHaveBeenCalled());
         expect(wouldBlock()).toBe(false);
     });
 
-    it('guards the site settings form too', async () => {
+    it('guards the site settings too', async () => {
         renderWithQuery(<AdminLandingSitePage />);
-        fireEvent.change(await screen.findByLabelText(/Site name/), { target: { value: 'Acme' } });
+        await openTab('Settings');
+        fireEvent.change(await screen.findByLabelText('Site name'), { target: { value: 'Acme' } });
         expect(wouldBlock()).toBe(true);
     });
 
@@ -242,8 +275,38 @@ describe('preview color scheme', () => {
 });
 
 describe('site page', () => {
+    it('opens on the pages, with their status, and keeps the home page undeletable', async () => {
+        api.mockImplementation(async (url: string) =>
+            url.startsWith('/api/landing/leads')
+                ? { leads: [], total: 0, unread: 0 }
+                : {
+                      site: DEFAULT_SITE,
+                      pages: [
+                          { ...about, id: 'home', path: '/', title: 'Home', published: true },
+                          { ...about, published: false },
+                      ],
+                  },
+        );
+        renderWithQuery(<AdminLandingSitePage />);
+        expect(await screen.findByRole('tab', { name: 'Pages' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByText('Draft')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Delete Home' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Delete About us' })).toBeInTheDocument();
+    });
+
+    it('still renders when the stored public address does not parse', async () => {
+        api.mockImplementation(async (url: string) =>
+            url.startsWith('/api/landing/leads')
+                ? { leads: [], total: 0, unread: 0 }
+                : { site: { ...DEFAULT_SITE, siteUrl: 'https://[bad' }, pages: [about] },
+        );
+        renderWithQuery(<AdminLandingSitePage />);
+        expect(await screen.findByRole('heading', { name: 'Landing site' })).toBeInTheDocument();
+    });
+
     it('switches theme with one click', async () => {
         renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Design');
         fireEvent.click(await screen.findByRole('radio', { name: /Bold/ }));
         await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Theme changed to Bold'));
         expect(api).toHaveBeenCalledWith('/api/landing/site', {
@@ -252,38 +315,73 @@ describe('site page', () => {
         });
     });
 
-    it('keeps unsaved site-settings edits when the theme is switched', async () => {
+    it('keeps unsaved edits across tabs and theme switches', async () => {
         renderWithQuery(<AdminLandingSitePage />);
-        fireEvent.change(await screen.findByLabelText(/Site name/), { target: { value: 'Acme Rockets' } });
-        fireEvent.click(screen.getByRole('radio', { name: /Bold/ }));
+        await openTab('Settings');
+        fireEvent.change(await screen.findByLabelText('Site name'), { target: { value: 'Acme Rockets' } });
+        await openTab('Design');
+        fireEvent.click(await screen.findByRole('radio', { name: /Bold/ }));
         await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Theme changed to Bold'));
-        expect(screen.getByLabelText(/Site name/)).toHaveValue('Acme Rockets');
-        expect(screen.getByRole('button', { name: 'Save settings' })).toBeEnabled();
+        await openTab('Settings');
+        expect(await screen.findByLabelText('Site name')).toHaveValue('Acme Rockets');
+        expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
     });
 
-    it('lists pages with their status and keeps the home page undeletable', async () => {
-        api.mockImplementation(async () => ({
-            site: DEFAULT_SITE,
-            pages: [
-                { ...about, id: 'home', path: '/', title: 'Home', published: true },
-                { ...about, published: false },
-            ],
-        }));
+    it('saves edits from every tab with one save bar, shown only while something changed', async () => {
         renderWithQuery(<AdminLandingSitePage />);
-        expect(await screen.findByText('Draft')).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Delete Home' })).toBeNull();
-        expect(screen.getByRole('button', { name: 'Delete About us' })).toBeInTheDocument();
+        await openTab('Settings');
+        expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
+        fireEvent.change(await screen.findByLabelText('Site name'), { target: { value: 'Acme' } });
+        await openTab('Design');
+        fireEvent.change(await screen.findByLabelText('Brand color'), { target: { value: '#2563eb' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+        await waitFor(() =>
+            expect(api).toHaveBeenCalledWith('/api/landing/site', {
+                method: 'PUT',
+                body: expect.objectContaining({ name: 'Acme', brandColor: '#2563eb' }),
+            }),
+        );
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull());
+    });
+
+    it('takes you to the tab with the field that needs fixing', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Design');
+        fireEvent.change(await screen.findByLabelText('Brand color'), { target: { value: 'blue' } });
+        await openTab('Settings');
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+        expect(await screen.findByText('Use a hex color like #2563eb')).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'Design' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('edits links as compact rows: add, reorder, remove', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Navigation');
+        const header = await screen.findByRole('group', { name: 'Header links' });
+        const inHeader = within(header);
+        expect(inHeader.getByLabelText('Link 1 text')).toHaveValue(DEFAULT_SITE.nav![0].label);
+        expect(inHeader.getByLabelText('Link 1 goes to')).toHaveValue(DEFAULT_SITE.nav![0].href);
+
+        fireEvent.click(inHeader.getByRole('button', { name: 'Move link 2 up' }));
+        expect(inHeader.getByLabelText('Link 1 text')).toHaveValue(DEFAULT_SITE.nav![1].label);
+
+        fireEvent.click(within(header).getByRole('button', { name: 'Add link' }));
+        const count = DEFAULT_SITE.nav!.length + 1;
+        expect(inHeader.getByLabelText(`Link ${count} text`)).toHaveValue('');
+        fireEvent.click(inHeader.getByRole('button', { name: `Remove link ${count}` }));
+        expect(inHeader.queryByLabelText(`Link ${count} text`)).toBeNull();
     });
 });
 
 describe('images and colors', () => {
     it('picks a logo from the media library and saves it with a brand color', async () => {
         renderWithQuery(<AdminLandingSitePage />);
-        fireEvent.click((await screen.findAllByRole('button', { name: 'Choose image' }))[0]);
+        await openTab('Design');
+        fireEvent.click(await screen.findByRole('button', { name: 'Choose logo' }));
         fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
-        expect(screen.getByLabelText('Logo')).toHaveValue('/api/upload/file/shot.png');
+        expect(screen.getByText('shot.png')).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText('Brand color'), { target: { value: '#2563eb' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
         await waitFor(() =>
             expect(api).toHaveBeenCalledWith('/api/landing/site', {
                 method: 'PUT',
@@ -294,8 +392,9 @@ describe('images and colors', () => {
 
     it('rejects a color that is not #rrggbb, and can go back to the theme’s own', async () => {
         renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Design');
         fireEvent.change(await screen.findByLabelText('Brand color'), { target: { value: 'blue' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
         expect(await screen.findByText('Use a hex color like #2563eb')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
         expect(screen.getByLabelText('Brand color')).toHaveValue('');
@@ -311,7 +410,7 @@ describe('images and colors', () => {
         expect(screen.getByLabelText('Image description')).toHaveValue('Dashboard');
 
         fireEvent.change(screen.getByLabelText('Image description'), { target: { value: 'Mine' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Replace image' }));
         fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
         expect(screen.getByLabelText('Image description')).toHaveValue('Mine');
     });
@@ -323,10 +422,11 @@ describe('social image', () => {
             site: { ...site, share: { ...(site as { share?: object }).share, imageUrl: '/api/upload/file/s.png?v=1' } },
         }));
         renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Settings');
         expect(await screen.findByRole('img', { name: 'Social image: Ottabase' })).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText('Heading'), { target: { value: 'Ship faster' } });
         expect(screen.getByRole('img', { name: 'Social image: Ship faster' })).toBeInTheDocument();
-        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
         await waitFor(() =>
             expect(api).toHaveBeenCalledWith('/api/landing/site', {
                 method: 'PUT',
@@ -340,14 +440,16 @@ describe('social image', () => {
     it('still saves when the image can’t be updated, and says so', async () => {
         share.withSiteShareImage.mockImplementationOnce(async (site: object) => ({ site, warning: 'Saved, but…' }));
         renderWithQuery(<AdminLandingSitePage />);
-        fireEvent.change(await screen.findByLabelText(/Site name/), { target: { value: 'Acme' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
+        await openTab('Settings');
+        fireEvent.change(await screen.findByLabelText('Site name'), { target: { value: 'Acme' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
         await waitFor(() => expect(toast.warning).toHaveBeenCalledWith('Saved, but…'));
         expect(toast.success).toHaveBeenCalledWith('Site settings saved');
     });
 
     it('re-renders the image in the new theme’s fonts when the theme changes', async () => {
         renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Design');
         fireEvent.click(await screen.findByRole('radio', { name: /Bold/ }));
         await waitFor(() =>
             expect(share.withSiteShareImage).toHaveBeenCalledWith(expect.objectContaining({ theme: 'bold' })),
@@ -356,9 +458,11 @@ describe('social image', () => {
 
     it('gives a page its own image on request, defaulting to its title, and can go back to the site’s', async () => {
         renderWithQuery(<AdminLandingPageEditorPage />);
+        await openPageSettings();
         fireEvent.click(await screen.findByLabelText('Use a custom image for this page'));
         expect(screen.getByRole('img', { name: 'Social image: About us' })).toBeInTheDocument();
         expect(screen.getByLabelText('Heading')).toHaveAttribute('placeholder', 'About us');
+        closePageSettings();
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
         await waitFor(() =>
             expect(share.withPageShareImage).toHaveBeenCalledWith(
@@ -368,6 +472,7 @@ describe('social image', () => {
             ),
         );
 
+        await openPageSettings();
         fireEvent.click(screen.getByLabelText('Use a custom image for this page'));
         expect(screen.queryByRole('img', { name: /Social image:/ })).toBeNull();
     });

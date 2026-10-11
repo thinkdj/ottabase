@@ -1,11 +1,13 @@
-// /admin/content/landing — the landing site at a glance: pick a theme (live previews),
-// manage pages, and edit site-wide settings (name, navigation, footer).
+// /admin/content/landing — the landing site, one job per tab: Pages (what's on it), Design (how it
+// looks), Navigation (how people move around it) and Settings (what it is called, where it lives,
+// how it is shared). Design, Navigation and Settings edit one draft with a shared save bar.
 
 import { getErrorMessage, isApiError } from '@/lib/api';
 import {
     fieldErrors,
     SITE_FIELDS,
     SiteSettingsSchema,
+    themeAccent,
     THEMES,
     type LandingPageData,
     type SiteSettings,
@@ -24,11 +26,15 @@ import {
     DialogTitle,
     Input,
     Label,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
 } from '@ottabase/ui-shadcn';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Check, ChevronRight, ExternalLink, Inbox, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Check, ExternalLink, Inbox, Plus, Trash2 } from 'lucide-react';
+import { useDeferredValue, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
 import { ShareCardEditor } from './ShareCardEditor';
@@ -44,19 +50,41 @@ import {
     type LandingState,
 } from './landingApi';
 
+/** The host of a stored address, or the address itself if it doesn't parse (a header must never throw). */
+function hostOf(url: string): string {
+    try {
+        return new URL(url).host;
+    } catch {
+        return url;
+    }
+}
+
+const TABS = ['pages', 'design', 'navigation', 'settings'] as const;
+type Tab = (typeof TABS)[number];
+
+/** Which tab edits which setting, so a validation error can bring its field into view. */
+const TAB_OF: Record<string, Tab> = {
+    logoUrl: 'design',
+    faviconUrl: 'design',
+    logoIncludesName: 'design',
+    brandColor: 'design',
+    nav: 'navigation',
+    navCtaLabel: 'navigation',
+    navCtaHref: 'navigation',
+    footerLinks: 'navigation',
+    footerNote: 'navigation',
+};
+
 export function AdminLandingSitePage() {
     const { data, isLoading, error, refetch } = useLanding();
 
     if (isLoading) {
         return (
-            <div className="space-y-8" aria-busy="true">
+            <div className="space-y-6" aria-busy="true">
                 <span className="sr-only">Loading landing site…</span>
-                <div className="h-16 animate-pulse rounded-xl bg-muted/40" />
-                <div className="grid gap-4 lg:grid-cols-3">
-                    {THEMES.map((t) => (
-                        <div key={t.id} className="h-72 animate-pulse rounded-xl bg-muted/40" />
-                    ))}
-                </div>
+                <div className="h-14 animate-pulse rounded-xl bg-muted/40" />
+                <div className="h-10 w-96 max-w-full animate-pulse rounded-lg bg-muted/40" />
+                <div className="h-64 animate-pulse rounded-xl bg-muted/40" />
             </div>
         );
     }
@@ -73,35 +101,258 @@ export function AdminLandingSitePage() {
         );
     }
 
-    const homeUrl = publicUrl(data.site, '/');
+    return <SiteAdmin state={data} />;
+}
+
+function SiteAdmin({ state }: { state: LandingState }) {
+    const navigate = useNavigate();
+    const [tab, setTab] = useState<Tab>(() => TABS.find((t) => `#${t}` === window.location.hash) ?? 'pages');
+    const settings = useSettingsDraft(state.site, (t) => changeTab(t));
+    const homeUrl = publicUrl(state.site, '/');
+
+    function changeTab(next: Tab) {
+        setTab(next);
+        // In the address too, so a reload (or a shared link) opens the same tab.
+        navigate({ to: '/admin/content/landing', hash: next, replace: true });
+    }
+
     return (
-        <div className="space-y-12">
+        <div className="space-y-6">
+            <UnsavedChangesGuard when={settings.dirty} />
             <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1">
                     <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Landing site</h1>
-                    <p className="max-w-2xl text-muted-foreground">
-                        Your public marketing site. Content is shared by every theme, so you can switch the look at any
-                        time. Saved changes are live immediately.
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <InboxButton />
-                    {homeUrl && (
-                        <Button asChild variant="outline">
-                            <a href={homeUrl} target="_blank" rel="noopener noreferrer">
-                                View site
-                                <ExternalLink className="ml-2 h-4 w-4" />
-                            </a>
-                        </Button>
+                    {homeUrl ? (
+                        <a
+                            href={homeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            {hostOf(homeUrl)}
+                            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                        </a>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            Your public marketing site.{' '}
+                            <button
+                                type="button"
+                                onClick={() => changeTab('settings')}
+                                className="font-medium text-foreground underline underline-offset-4"
+                            >
+                                Add its address
+                            </button>{' '}
+                            to get “View” links and previews.
+                        </p>
                     )}
                 </div>
+                <InboxButton />
             </div>
 
-            <ThemePicker state={data} />
-            <PagesSection state={data} />
-            <SettingsSection site={data.site} />
+            <Tabs value={tab} onValueChange={(v) => changeTab(v as Tab)}>
+                <TabsList className="max-w-full justify-start overflow-x-auto">
+                    <TabsTrigger value="pages">Pages</TabsTrigger>
+                    <TabsTrigger value="design">Design</TabsTrigger>
+                    <TabsTrigger value="navigation">Navigation</TabsTrigger>
+                    <TabsTrigger value="settings">Settings</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="pages" className="mt-6">
+                    <PagesTab state={state} />
+                </TabsContent>
+
+                <TabsContent value="design" className="mt-6">
+                    {/* Previews render whole pages (with their own forms), so they stay outside the settings form. */}
+                    <div className="space-y-10">
+                        <ThemePicker state={state} draft={settings.draft} />
+                        <form onSubmit={settings.submit}>
+                            <Panel
+                                title="Brand"
+                                description="Your logo, browser-tab icon and accent color, in every theme."
+                            >
+                                {settings.fields(['logoUrl', 'faviconUrl', 'logoIncludesName', 'brandColor'], {
+                                    brandColor: themeAccent(state.site.theme),
+                                })}
+                            </Panel>
+                        </form>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="navigation" className="mt-6">
+                    {/* A whole page scaled to fit: too small to read on a phone, so it is left out there. */}
+                    <div className="mb-10 hidden space-y-2 sm:block">
+                        <p className="text-sm text-muted-foreground">
+                            How the header and footer look with these links
+                            {settings.dirty ? ', including unsaved changes' : ''}.
+                        </p>
+                        <div className="max-h-80 overflow-y-auto rounded-xl border border-border shadow-sm" aria-hidden>
+                            <LandingPreview site={settings.draft} sections={[]} currentPath="/" />
+                        </div>
+                    </div>
+                    <form onSubmit={settings.submit} className="space-y-10">
+                        <Panel
+                            title="Header"
+                            description="The links across the top of every page, and one button for your main action."
+                        >
+                            {settings.fields(['nav', 'navCtaLabel', 'navCtaHref'])}
+                        </Panel>
+                        <Panel
+                            title="Footer"
+                            description="Secondary links and a short note at the bottom of every page."
+                        >
+                            {settings.fields(['footerLinks', 'footerNote'])}
+                        </Panel>
+                    </form>
+                </TabsContent>
+
+                <TabsContent value="settings" className="mt-6">
+                    <form onSubmit={settings.submit} className="space-y-10">
+                        <Panel
+                            title="General"
+                            description="The site’s name and one-line description, and the address it is served at."
+                        >
+                            {settings.fields(['name', 'tagline', 'siteUrl'])}
+                        </Panel>
+                        <Panel
+                            title="Social image"
+                            description="The picture shown when any page without its own is shared on X, LinkedIn, Slack or in messages."
+                        >
+                            <ShareCardEditor
+                                value={settings.draft.share}
+                                onChange={(share) => settings.setDraft({ ...settings.draft, share })}
+                                site={settings.draft}
+                                defaults={{ heading: settings.draft.name, subtext: settings.draft.tagline }}
+                                errors={settings.errors}
+                                path="share."
+                                layout="split"
+                            />
+                        </Panel>
+                        <Panel
+                            title="Form notifications"
+                            description="Where to send new messages and signups from your contact and signup sections."
+                        >
+                            {settings.fields(['leadEmail'])}
+                        </Panel>
+                    </form>
+                </TabsContent>
+            </Tabs>
+
+            {settings.dirty && (
+                <div
+                    role="region"
+                    aria-label="Unsaved changes"
+                    className="sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur"
+                >
+                    <p className="text-sm">
+                        <span className="font-medium">Unsaved changes</span>
+                        <span className="text-muted-foreground"> to the site settings</span>
+                    </p>
+                    <div className="flex gap-2">
+                        <Button type="button" variant="ghost" onClick={settings.discard}>
+                            Discard
+                        </Button>
+                        <Button type="button" onClick={() => settings.submit()} disabled={settings.saving}>
+                            {settings.saving ? 'Saving…' : 'Save changes'}
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
+}
+
+/** A titled group of settings: what it is on the left, the controls on the right. */
+function Panel({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+    const id = `panel-${title.toLowerCase().replace(/\W+/g, '-')}`;
+    return (
+        <section
+            aria-labelledby={id}
+            className="grid gap-4 border-t border-border pt-8 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10"
+        >
+            <div className="space-y-1">
+                <h2 id={id} className="font-semibold">
+                    {title}
+                </h2>
+                <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
+            <div className="min-w-0">{children}</div>
+        </section>
+    );
+}
+
+/**
+ * The site-settings draft the Design, Navigation and Settings tabs share: edits survive switching
+ * tabs, one save writes them all, and an invalid field takes you to its tab.
+ */
+function useSettingsDraft(site: SiteSettings, showTab: (tab: Tab) => void) {
+    const queryClient = useQueryClient();
+    const [edits, setDraft] = useState<SiteSettings>(site);
+    const [errors, setErrors] = useState<FieldErrors>({});
+    // The theme belongs to the theme picker, which saves at once: switching it keeps these edits.
+    const draft = useMemo(() => ({ ...edits, theme: site.theme }), [edits, site.theme]);
+    // The saved side only changes on save: serialise it once, not on every keystroke.
+    const savedJson = useMemo(() => JSON.stringify(site), [site]);
+    const dirty = JSON.stringify(draft) !== savedJson;
+
+    const showErrors = (next: FieldErrors) => {
+        setErrors(next);
+        const first = Object.keys(next)[0]?.split('.')[0];
+        showTab(first ? (TAB_OF[first] ?? 'settings') : 'settings');
+    };
+
+    const save = useMutation({
+        mutationFn: async (next: SiteSettings) => {
+            const { site: withImage, warning } = await withSiteShareImage(next);
+            return { ...(await landingApi.saveSite(withImage)), warning };
+        },
+        onSuccess: ({ site: saved, warning }) => {
+            queryClient.setQueryData<LandingState>(LANDING_QUERY_KEY, (old) => old && { ...old, site: saved });
+            setDraft(saved);
+            setErrors({});
+            toast.success('Site settings saved');
+            if (warning) toast.warning(warning);
+        },
+        onError: (err) => {
+            if (isApiError(err) && err.fieldErrors) showErrors(err.fieldErrors);
+            toast.error(getErrorMessage(err));
+        },
+    });
+
+    const submit = (e?: FormEvent) => {
+        e?.preventDefault();
+        if (!dirty) return;
+        const parsed = SiteSettingsSchema.safeParse(draft);
+        if (!parsed.success) {
+            showErrors(fieldErrors(parsed.error));
+            toast.error('Please fix the highlighted fields.');
+            return;
+        }
+        save.mutate(parsed.data);
+    };
+
+    /** The settings form, limited to some fields; shares this draft and its errors. (A render
+     *  function, not a component: a component made here would remount its inputs on every keystroke.) */
+    const fields = (only: string[], placeholders?: Record<string, string>) => (
+        <FieldsForm
+            fields={SITE_FIELDS}
+            value={draft}
+            onChange={(next) => setDraft(next as SiteSettings)}
+            errors={errors}
+            only={only}
+            placeholders={placeholders}
+        />
+    );
+
+    return {
+        draft,
+        setDraft,
+        errors,
+        dirty,
+        saving: save.isPending,
+        submit,
+        discard: () => (setDraft(site), setErrors({})),
+        fields,
+    };
 }
 
 /** The way into the form-entries inbox, with how many are new. */
@@ -122,9 +373,11 @@ function InboxButton() {
     );
 }
 
-// ── Theme ────────────────────────────────────────────────────────────────────
+// ── Design: theme ────────────────────────────────────────────────────────────
 
-function ThemePicker({ state }: { state: LandingState }) {
+function ThemePicker({ state, draft: liveDraft }: { state: LandingState; draft: SiteSettings }) {
+    // Three whole-page previews: let them trail the typing rather than block it.
+    const draft = useDeferredValue(liveDraft);
     const queryClient = useQueryClient();
     const home = state.pages.find((p) => p.path === '/') ?? state.pages[0];
     const save = useMutation({
@@ -145,12 +398,14 @@ function ThemePicker({ state }: { state: LandingState }) {
     return (
         <section className="space-y-4" aria-labelledby="landing-theme">
             <div className="space-y-1">
-                <h2 id="landing-theme" className="text-lg font-semibold">
+                <h2 id="landing-theme" className="font-semibold">
                     Theme
                 </h2>
-                <p className="text-sm text-muted-foreground">Previewed with your home page.</p>
+                <p className="text-sm text-muted-foreground">
+                    Applies as soon as you pick it. Previewed with your home page and brand.
+                </p>
             </div>
-            <div className="grid gap-4 lg:grid-cols-3" role="radiogroup" aria-labelledby="landing-theme">
+            <div className="grid gap-4 md:grid-cols-3" role="radiogroup" aria-labelledby="landing-theme">
                 {THEMES.map((theme) => {
                     const selected = theme.id === current;
                     return (
@@ -161,19 +416,19 @@ function ThemePicker({ state }: { state: LandingState }) {
                             className={`relative overflow-hidden rounded-xl border transition-shadow focus-within:ring-2 focus-within:ring-ring ${selected ? 'border-primary ring-2 ring-primary' : 'border-border hover:shadow-md'}`}
                         >
                             <div
-                                className="relative h-56 overflow-hidden border-b border-border bg-muted/30"
+                                className="relative h-44 overflow-hidden border-b border-border bg-muted/30"
                                 aria-hidden
                             >
                                 <LandingPreview
-                                    site={{ ...state.site, theme: theme.id }}
+                                    site={{ ...draft, theme: theme.id }}
                                     sections={home?.sections ?? []}
                                     currentPath="/"
                                 />
                             </div>
-                            <div className="flex items-start justify-between gap-3 p-4">
-                                <div>
-                                    <p className="font-semibold">{theme.label}</p>
-                                    <p id={`theme-${theme.id}-desc`} className="mt-0.5 text-sm text-muted-foreground">
+                            <div className="flex items-start justify-between gap-3 px-4 py-3">
+                                <div className="min-w-0">
+                                    <p className="font-medium">{theme.label}</p>
+                                    <p id={`theme-${theme.id}-desc`} className="text-sm text-muted-foreground">
                                         {theme.description}
                                     </p>
                                 </div>
@@ -203,7 +458,10 @@ function ThemePicker({ state }: { state: LandingState }) {
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 
-function PagesSection({ state }: { state: LandingState }) {
+const edited = (iso?: string) =>
+    iso ? `Edited ${new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '';
+
+function PagesTab({ state }: { state: LandingState }) {
     const queryClient = useQueryClient();
     const [creating, setCreating] = useState(false);
     const [deleting, setDeleting] = useState<LandingPageData | null>(null);
@@ -217,16 +475,11 @@ function PagesSection({ state }: { state: LandingState }) {
     });
 
     return (
-        <section className="space-y-4" aria-labelledby="landing-pages">
-            <div className="flex items-end justify-between gap-4">
-                <div className="space-y-1">
-                    <h2 id="landing-pages" className="text-lg font-semibold">
-                        Pages
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        Drafts are only visible here until you publish them.
-                    </p>
-                </div>
+        <section className="space-y-4" aria-label="Pages">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                    Drafts are only visible here, or through a preview link, until you publish them.
+                </p>
                 <Button onClick={() => setCreating(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     New page
@@ -234,38 +487,64 @@ function PagesSection({ state }: { state: LandingState }) {
             </div>
 
             <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {state.pages.map((page) => (
-                    <li key={page.id} className="group flex items-center gap-2 hover:bg-muted/40">
-                        <Link
-                            to="/admin/content/landing/$pageId"
-                            params={{ pageId: page.id }}
-                            className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                        >
-                            <div className="min-w-0 flex-1">
-                                <p className="truncate font-medium">{page.title}</p>
-                                <p className="truncate text-sm text-muted-foreground">
-                                    {page.path} · {page.sections.length}{' '}
-                                    {page.sections.length === 1 ? 'section' : 'sections'}
-                                </p>
-                            </div>
-                            <Badge variant={page.published ? 'default' : 'secondary'}>
-                                {page.published ? 'Published' : 'Draft'}
-                            </Badge>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
-                        </Link>
-                        {page.path !== '/' && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="mr-2 text-muted-foreground hover:text-destructive"
-                                onClick={() => setDeleting(page)}
-                                aria-label={`Delete ${page.title}`}
+                {state.pages.map((page) => {
+                    const live = page.published ? publicUrl(state.site, page.path) : undefined;
+                    return (
+                        <li key={page.id} className="flex items-center gap-1 pr-2 hover:bg-muted/40">
+                            <Link
+                                to="/admin/content/landing/$pageId"
+                                params={{ pageId: page.id }}
+                                className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </li>
-                ))}
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium">{page.title}</p>
+                                    <p className="truncate text-sm text-muted-foreground">
+                                        {page.path}
+                                        <span aria-hidden> · </span>
+                                        {page.sections.length} {page.sections.length === 1 ? 'section' : 'sections'}
+                                        {page.updatedAt && (
+                                            <>
+                                                <span aria-hidden> · </span>
+                                                {edited(page.updatedAt)}
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+                                <Badge variant={page.published ? 'default' : 'secondary'}>
+                                    {page.published ? 'Published' : 'Draft'}
+                                </Badge>
+                            </Link>
+                            {/* Empty slots keep the status badges in one column whichever actions a row has. */}
+                            {!live && <span className="h-10 w-10 shrink-0" aria-hidden />}
+                            {live && (
+                                <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
+                                    <a
+                                        href={live}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        aria-label={`View ${page.title} on the site`}
+                                        title="View on the site"
+                                    >
+                                        <ExternalLink className="h-4 w-4" />
+                                    </a>
+                                </Button>
+                            )}
+                            {page.path !== '/' && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-muted-foreground hover:text-destructive"
+                                    onClick={() => setDeleting(page)}
+                                    aria-label={`Delete ${page.title}`}
+                                    title="Delete page"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
+                            {page.path === '/' && <span className="h-10 w-10 shrink-0" aria-hidden />}
+                        </li>
+                    );
+                })}
             </ul>
 
             <NewPageDialog open={creating} onOpenChange={setCreating} />
@@ -364,92 +643,5 @@ function NewPageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
                 </form>
             </DialogContent>
         </Dialog>
-    );
-}
-
-// ── Site settings ────────────────────────────────────────────────────────────
-
-function SettingsSection({ site }: { site: SiteSettings }) {
-    const queryClient = useQueryClient();
-    const [edits, setDraft] = useState<SiteSettings>(site);
-    const [errors, setErrors] = useState<FieldErrors>({});
-    // The theme belongs to the picker above: switching it must not discard edits made here.
-    const draft = useMemo(() => ({ ...edits, theme: site.theme }), [edits, site.theme]);
-    const dirty = JSON.stringify(draft) !== JSON.stringify(site);
-
-    const save = useMutation({
-        mutationFn: async (next: SiteSettings) => {
-            const { site: withImage, warning } = await withSiteShareImage(next);
-            return { ...(await landingApi.saveSite(withImage)), warning };
-        },
-        onSuccess: ({ site: saved, warning }) => {
-            queryClient.setQueryData<LandingState>(LANDING_QUERY_KEY, (old) => old && { ...old, site: saved });
-            setDraft(saved);
-            setErrors({});
-            toast.success('Site settings saved');
-            if (warning) toast.warning(warning);
-        },
-        onError: (err) => {
-            if (isApiError(err) && err.fieldErrors) setErrors(err.fieldErrors);
-            toast.error(getErrorMessage(err));
-        },
-    });
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        const parsed = SiteSettingsSchema.safeParse(draft);
-        if (!parsed.success) {
-            setErrors(fieldErrors(parsed.error));
-            toast.error('Please fix the highlighted fields.');
-            return;
-        }
-        save.mutate(parsed.data);
-    };
-
-    return (
-        <section className="space-y-4" aria-labelledby="landing-settings">
-            <div className="space-y-1">
-                <h2 id="landing-settings" className="text-lg font-semibold">
-                    Site settings
-                </h2>
-                <p className="text-sm text-muted-foreground">Name, navigation and footer, shared by every page.</p>
-            </div>
-            <form onSubmit={submit} className="space-y-6 rounded-xl border border-border p-5 sm:p-6">
-                <UnsavedChangesGuard when={dirty} />
-                <FieldsForm
-                    fields={SITE_FIELDS}
-                    value={draft}
-                    onChange={(next) => setDraft(next as SiteSettings)}
-                    errors={errors}
-                    omit={['theme', 'share']}
-                />
-                <div className="space-y-4 border-t border-border pt-6">
-                    <div className="space-y-1">
-                        <h3 className="font-semibold">Social image</h3>
-                        <p className="text-sm text-muted-foreground">
-                            The picture link previews show for every page that doesn’t have its own.
-                        </p>
-                    </div>
-                    <ShareCardEditor
-                        value={draft.share}
-                        onChange={(share) => setDraft({ ...draft, share })}
-                        site={draft}
-                        defaults={{ heading: draft.name, subtext: draft.tagline }}
-                        errors={errors}
-                        path="share."
-                    />
-                </div>
-                <div className="flex items-center justify-end gap-2 border-t border-border pt-5">
-                    {dirty && (
-                        <Button type="button" variant="ghost" onClick={() => setDraft(site)}>
-                            Discard changes
-                        </Button>
-                    )}
-                    <Button type="submit" disabled={!dirty || save.isPending}>
-                        {save.isPending ? 'Saving…' : 'Save settings'}
-                    </Button>
-                </div>
-            </form>
-        </section>
     );
 }
