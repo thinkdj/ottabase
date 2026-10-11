@@ -39,10 +39,17 @@ export const getSite = cache(async (): Promise<SiteSettings | null> => {
     }
 });
 
-/** A published page by path, or null. */
-export const getPublishedPage = cache(async (path: string): Promise<LandingPageData | null> => {
+/**
+ * The page at `path`: the published one, or — with the page's preview token from otta-web's
+ * "Share preview" link — its saved draft. A wrong token on a draft is a plain 404.
+ */
+export const getPage = cache(async (path: string, previewToken?: string): Promise<LandingPageData | null> => {
     const appId = await connect();
-    return (await LandingPage.findPublished(appId, path))?.toPage() ?? null;
+    // A stale token on a page that has since been published still shows the public page.
+    const page =
+        (previewToken ? await LandingPage.findForPreview(appId, path, previewToken) : null) ??
+        (await LandingPage.findPublished(appId, path));
+    return page?.toPage() ?? null;
 });
 
 /** `[[...slug]]` segments → `/`, `/about`, `/docs/intro`. Pages only use [a-z0-9-], so odd input just 404s. */

@@ -33,6 +33,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ExternalLink, Plus, Trash
 import { useMemo, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { FieldsForm, type FieldErrors } from './FieldsForm';
+import { PreviewLinkDialog } from './PreviewLinkDialog';
 import { ShareCardEditor } from './ShareCardEditor';
 import { withPageShareImage } from './shareImage';
 import { UnsavedChangesGuard } from './UnsavedChangesGuard';
@@ -160,6 +161,8 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                         />
                         <Label htmlFor="page-published">Published</Label>
                     </div>
+                    {/* Published pages are public already; a draft gets a private preview link. */}
+                    {!page.published && <PreviewLinkDialog site={state.site} pageId={page.id} path={page.path} />}
                     {liveUrl && (
                         <Button asChild variant="outline">
                             <a href={liveUrl} target="_blank" rel="noopener noreferrer">

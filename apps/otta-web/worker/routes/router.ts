@@ -150,6 +150,7 @@ import {
     handleLandingGet,
     handleLandingPageCreate,
     handleLandingPageDelete,
+    handleLandingPagePreview,
     handleLandingPageUpdate,
     handleLandingShareImage,
     handleLandingSiteUpdate,
@@ -507,6 +508,7 @@ landingRouter.post('/share-image', h(handleLandingShareImage));
 landingRouter.post('/pages', h(handleLandingPageCreate));
 landingRouter.put('/pages/:id', (c) => handleLandingPageUpdate(ctxOf(c), c.params.id));
 landingRouter.delete('/pages/:id', (c) => handleLandingPageDelete(ctxOf(c), c.params.id));
+landingRouter.post('/pages/:id/preview', (c) => handleLandingPagePreview(ctxOf(c), c.params.id));
 apiRouter.mount('/api/landing', landingRouter, { when: (c) => packages(c).ottalanding });
 
 // -------------------------------------------------------

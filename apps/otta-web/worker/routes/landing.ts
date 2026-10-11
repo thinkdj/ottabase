@@ -75,6 +75,18 @@ export function handleLandingPageDelete(context: ApiRouteContext, id: string): P
     });
 }
 
+/**
+ * POST /api/landing/pages/:id/preview — the page's preview-link token (made on first use).
+ * Body `{ reset: true }` replaces it, so every link shared so far stops working.
+ */
+export function handleLandingPagePreview(context: ApiRouteContext, id: string): Promise<Response> {
+    return asAdmin(context, async (appId) => {
+        const { reset } = await readJson<{ reset?: unknown }>(context.request);
+        const token = await LandingPage.previewTokenFor(appId, id, reset === true);
+        return token ? jsonResponse({ token }) : notFound();
+    });
+}
+
 // ── Social images ───────────────────────────────────────────────────────────
 
 /** Rendered in the admin's browser (the editor's own canvas), so the server only stores it. */

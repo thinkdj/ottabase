@@ -88,6 +88,8 @@ await LandingPage.forApp(appId);
 await LandingPage.createFor(appId, input); // validates, unique path → PATH_TAKEN
 await LandingPage.updateFor(appId, id, input); // null if the page is not in this app
 await LandingPage.deleteFor(appId, id); // the home page can't be deleted (HOME_PAGE_REQUIRED)
+await LandingPage.previewTokenFor(appId, id, reset?); // draft preview-link token; reset retires old links
+await LandingPage.findForPreview(appId, path, token); // the page whose token matches, published or not
 page.toPage(); // plain data; stored sections that no longer match the catalog are dropped
 ```
 

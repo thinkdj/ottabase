@@ -18,13 +18,22 @@ vi.mock('@ottabase/ottaorm', async (importOriginal) => ({
 const request = vi.hoisted(() => ({ headers: new Headers({ host: 'landing.acme.test' }) }));
 vi.mock('next/headers', () => ({ headers: async () => request.headers }));
 
-const store = vi.hoisted(() => ({ findSite: vi.fn(), findPage: vi.fn(), publishedPaths: vi.fn() }));
+const store = vi.hoisted(() => ({
+    findSite: vi.fn(),
+    findPage: vi.fn(),
+    findPreview: vi.fn(),
+    publishedPaths: vi.fn(),
+}));
 vi.mock('@ottabase/ottalanding', async (importOriginal) => {
     const real = await importOriginal<typeof import('@ottabase/ottalanding')>();
     return {
         ...real,
         LandingSite: { findForApp: store.findSite },
-        LandingPage: { findPublished: store.findPage, publishedPaths: store.publishedPaths },
+        LandingPage: {
+            findPublished: store.findPage,
+            findForPreview: store.findPreview,
+            publishedPaths: store.publishedPaths,
+        },
     };
 });
 // React's per-request cache() is a no-op outside a server render; keep it transparent here.
@@ -42,7 +51,10 @@ const home = {
     toPage: () => ({ ...DEFAULT_PAGES[0], id: 'home', sections: parseSections(DEFAULT_PAGES[0].sections) }),
 };
 const html = (node: unknown) => renderToStaticMarkup(node as React.ReactElement);
-const params = (slug?: string[]) => ({ params: Promise.resolve({ slug }) });
+const params = (slug?: string[], preview?: string) => ({
+    params: Promise.resolve({ slug }),
+    searchParams: Promise.resolve(preview === undefined ? {} : { preview }),
+});
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -168,6 +180,42 @@ describe('metadata', () => {
         meta = await generateMetadata(params());
         expect(meta.openGraph).not.toHaveProperty('images');
         expect(meta.twitter).toMatchObject({ card: 'summary' });
+    });
+});
+
+describe('draft previews', () => {
+    const draft = { toPage: () => ({ ...home.toPage(), path: '/launch', title: 'Launch', published: false }) };
+
+    it('shows a draft to its preview link, marked as a preview and kept out of search', async () => {
+        store.findPreview.mockResolvedValue(draft);
+        const out = html(await LandingRoute(params(['launch'], 'tok')));
+        expect(store.findPreview).toHaveBeenCalledWith('acme', '/launch', 'tok');
+        expect(out).toContain('Preview: this page isn’t published yet');
+        expect(await generateMetadata(params(['launch'], 'tok'))).toEqual({
+            title: 'Launch',
+            robots: 'noindex, nofollow',
+        });
+    });
+
+    it('404s a draft for a wrong token, without the token reaching any other lookup', async () => {
+        store.findPreview.mockResolvedValue(null);
+        store.findPage.mockResolvedValue(null);
+        await expect(LandingRoute(params(['launch'], 'wrong'))).rejects.toThrow();
+        expect(store.findPage).toHaveBeenCalledWith('acme', '/launch');
+    });
+
+    it('still shows a published page (without the banner) when an old preview link is opened', async () => {
+        store.findPreview.mockResolvedValue(null);
+        store.findPage.mockResolvedValue(home);
+        const out = html(await LandingRoute(params(undefined, 'stale')));
+        expect(out).not.toContain('Preview:');
+        expect(out).toContain('<h1');
+    });
+
+    it('ignores a repeated ?preview= rather than guessing which one counts', async () => {
+        store.findPage.mockResolvedValue(home);
+        await LandingRoute({ params: Promise.resolve({}), searchParams: Promise.resolve({ preview: ['a', 'b'] }) });
+        expect(store.findPreview).not.toHaveBeenCalled();
     });
 });
 

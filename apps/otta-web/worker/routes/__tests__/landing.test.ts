@@ -19,6 +19,7 @@ const models = vi.hoisted(() => ({
     updateFor: vi.fn(),
     deleteFor: vi.fn(),
     findForApp: vi.fn(),
+    previewTokenFor: vi.fn(),
 }));
 vi.mock('@ottabase/ottalanding', () => ({
     LandingSite: { ensureForApp: models.ensureForApp, saveSettings: models.saveSettings },
@@ -28,6 +29,7 @@ vi.mock('@ottabase/ottalanding', () => ({
         updateFor: models.updateFor,
         deleteFor: models.deleteFor,
         findForApp: models.findForApp,
+        previewTokenFor: models.previewTokenFor,
     },
 }));
 
@@ -35,6 +37,7 @@ import {
     handleLandingGet,
     handleLandingPageCreate,
     handleLandingPageDelete,
+    handleLandingPagePreview,
     handleLandingPageUpdate,
     handleLandingShareImage,
     handleLandingSiteUpdate,
@@ -80,6 +83,7 @@ describe('/api/landing', () => {
         ['POST /pages', () => handleLandingPageCreate(ctx('POST', '/api/landing/pages', {}))],
         ['PUT /pages/:id', () => handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1')],
         ['DELETE /pages/:id', () => handleLandingPageDelete(ctx('DELETE', '/api/landing/pages/p1'), 'p1')],
+        ['POST /pages/:id/preview', () => handleLandingPagePreview(ctx('POST', '/x', {}), 'p1')],
         ['POST /share-image', () => handleLandingShareImage(formCtx({ target: 'site', file: new Blob([PNG]) }))],
     ])('%s refuses anyone who is not a platform admin and touches no data', async (_name, call) => {
         requireAdminAccess.mockResolvedValue(new Response(null, { status: 403 }));
@@ -128,6 +132,20 @@ describe('/api/landing', () => {
     it('lets unexpected failures reach the error boundary instead of leaking them', async () => {
         models.saveSettings.mockRejectedValue(new Error('D1 exploded'));
         await expect(handleLandingSiteUpdate(ctx('PUT', '/api/landing/site', {}))).rejects.toThrow('D1 exploded');
+    });
+
+    it('hands out a page’s preview token, and a new one only when asked to reset', async () => {
+        models.previewTokenFor.mockResolvedValue('tok_abcdefghijklmnopqrstu');
+        const res = await handleLandingPagePreview(ctx('POST', '/x', {}), 'p1');
+        expect(await res.json()).toEqual({ token: 'tok_abcdefghijklmnopqrstu' });
+        expect(models.previewTokenFor).toHaveBeenLastCalledWith('otta-web', 'p1', false);
+        await handleLandingPagePreview(ctx('POST', '/x', { reset: true }), 'p1');
+        expect(models.previewTokenFor).toHaveBeenLastCalledWith('otta-web', 'p1', true);
+        await handleLandingPagePreview(ctx('POST', '/x', { reset: 'yes' }), 'p1');
+        expect(models.previewTokenFor).toHaveBeenLastCalledWith('otta-web', 'p1', false);
+
+        models.previewTokenFor.mockResolvedValue(null);
+        expect((await handleLandingPagePreview(ctx('POST', '/x', {}), 'other')).status).toBe(404);
     });
 
     describe('social images', () => {

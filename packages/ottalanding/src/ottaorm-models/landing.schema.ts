@@ -35,6 +35,8 @@ export const landingPagesTable = sqliteTable(
         sections: text('sections').notNull().default('[]'),
         /** The page's own social image (JSON), or null to use the site's. */
         share: text('share'),
+        /** Secret for the draft's shareable preview link (`?preview=`); null until one is made. */
+        previewToken: text('preview_token'),
         createdAt: integer('created_at')
             .notNull()
             .$defaultFn(() => Date.now()),

@@ -189,3 +189,39 @@ describe('LandingPage social image and sitemap', () => {
         expect(paths[0].updatedAt).toBeInstanceOf(Date);
     });
 });
+
+describe('LandingPage preview links', () => {
+    it('opens a draft only with its current token, and a reset retires the old link', async () => {
+        const draft = await LandingPage.createFor('app-preview', { path: '/launch', title: 'Launch' });
+        const id = draft.get('id') as string;
+        expect(await LandingPage.findPublished('app-preview', '/launch')).toBeNull();
+
+        const token = (await LandingPage.previewTokenFor('app-preview', id))!;
+        expect(token).toMatch(/^[A-Za-z0-9_-]{24}$/);
+        expect(await LandingPage.previewTokenFor('app-preview', id)).toBe(token); // stable until reset
+        expect((await LandingPage.findForPreview('app-preview', '/launch', token))?.get('id')).toBe(id);
+
+        const fresh = (await LandingPage.previewTokenFor('app-preview', id, true))!;
+        expect(fresh).not.toBe(token);
+        expect(await LandingPage.findForPreview('app-preview', '/launch', token)).toBeNull();
+        expect(await LandingPage.findForPreview('app-preview', '/launch', fresh)).not.toBeNull();
+    });
+
+    it('never matches a missing, malformed or other-page token', async () => {
+        const a = await LandingPage.createFor('app-preview', { path: '/a', title: 'A' });
+        await LandingPage.createFor('app-preview', { path: '/b', title: 'B' });
+        const token = (await LandingPage.previewTokenFor('app-preview', a.get('id') as string))!;
+        expect(await LandingPage.findForPreview('app-preview', '/b', token)).toBeNull();
+        expect(await LandingPage.findForPreview('app-other', '/a', token)).toBeNull();
+        expect(await LandingPage.findForPreview('app-preview', '/a', '')).toBeNull();
+        expect(await LandingPage.findForPreview('app-preview', '/a', "' OR 1=1 --")).toBeNull();
+        expect(await LandingPage.previewTokenFor('app-preview', 'nope')).toBeNull();
+    });
+
+    it('keeps the token out of the page data the renderer and API see', async () => {
+        const page = await LandingPage.createFor('app-preview', { path: '/c', title: 'C' });
+        await LandingPage.previewTokenFor('app-preview', page.get('id') as string);
+        const reloaded = await LandingPage.findForApp('app-preview', page.get('id') as string);
+        expect(JSON.stringify(reloaded!.toPage())).not.toMatch(/preview/i);
+    });
+});

@@ -370,3 +370,42 @@ describe('social image', () => {
         expect(screen.queryByRole('img', { name: /Social image:/ })).toBeNull();
     });
 });
+
+describe('preview links', () => {
+    const draft = { ...about, published: false };
+    const withSite = (site: object) =>
+        api.mockImplementation(async (url: string, init?: { method?: string; body?: { reset?: boolean } }) => {
+            if (!init?.method) return { site: { ...DEFAULT_SITE, ...site }, pages: [draft] };
+            if (url.endsWith('/preview'))
+                return { token: init.body?.reset ? 'NEWtokenNEWtokenNEWtoken' : 'tokentokentokentokentoke' };
+            return {};
+        });
+
+    it('offers a private link for drafts on the live site, and resets it on request', async () => {
+        withSite({ siteUrl: 'https://acme.dev' });
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        fireEvent.click(await screen.findByRole('button', { name: 'Share preview' }));
+        expect(
+            await screen.findByDisplayValue('https://acme.dev/about?preview=tokentokentokentokentoke'),
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Reset link' }));
+        expect(
+            await screen.findByDisplayValue('https://acme.dev/about?preview=NEWtokenNEWtokenNEWtoken'),
+        ).toBeInTheDocument();
+        expect(api).toHaveBeenCalledWith('/api/landing/pages/p1/preview', { method: 'POST', body: { reset: true } });
+    });
+
+    it('asks for the public URL first instead of making a link that goes nowhere', async () => {
+        withSite({});
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        fireEvent.click(await screen.findByRole('button', { name: 'Share preview' }));
+        expect(await screen.findByText(/in the site settings first/)).toBeInTheDocument();
+        expect(api).not.toHaveBeenCalledWith(expect.stringContaining('/preview'), expect.anything());
+    });
+
+    it('is not offered for published pages, which are public already', async () => {
+        renderWithQuery(<AdminLandingPageEditorPage />);
+        await screen.findByRole('button', { name: 'Save' });
+        expect(screen.queryByRole('button', { name: 'Share preview' })).toBeNull();
+    });
+});

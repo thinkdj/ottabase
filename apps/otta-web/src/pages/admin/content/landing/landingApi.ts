@@ -18,6 +18,11 @@ export const landingApi = {
     savePage: (id: string, page: PageDraft) =>
         api<{ page: LandingPageData }>(`/api/landing/pages/${encodeURIComponent(id)}`, { method: 'PUT', body: page }),
     deletePage: (id: string) => api(`/api/landing/pages/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    previewToken: (id: string, reset = false) =>
+        api<{ token: string }>(`/api/landing/pages/${encodeURIComponent(id)}/preview`, {
+            method: 'POST',
+            body: { reset },
+        }),
 };
 
 export function useLanding() {

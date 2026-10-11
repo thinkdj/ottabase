@@ -31,6 +31,16 @@ async function uniquePath<T>(write: () => Promise<T>): Promise<T> {
     }
 }
 
+/** 24 url-safe characters (144 random bits). */
+const PREVIEW_TOKEN = /^[A-Za-z0-9_-]{24}$/;
+
+function newPreviewToken(): string {
+    const bytes = crypto.getRandomValues(new Uint8Array(18));
+    return btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+}
+
 export class LandingPage extends BaseModel {
     static entity = 'landing_pages';
     static table = landingPagesTable;
@@ -50,7 +60,7 @@ export class LandingPage extends BaseModel {
 
     static writable = {
         create: ['appId', 'path', 'title', 'description', 'published', 'sections', 'share'],
-        update: ['path', 'title', 'description', 'published', 'sections', 'share'],
+        update: ['path', 'title', 'description', 'published', 'sections', 'share', 'previewToken'],
     };
 
     protected static fields: ModelFields = {
@@ -81,6 +91,26 @@ export class LandingPage extends BaseModel {
             { orderBy: 'path', orderDirection: 'asc' },
         )) as LandingPage[];
         return pages.map((p) => ({ path: p.get('path') as string, updatedAt: p.get('updatedAt') as Date | undefined }));
+    }
+
+    /**
+     * A page by path for a preview link: the published page, or a draft whose preview token
+     * matches. Returns null for a wrong or missing token, exactly like a page that doesn't exist.
+     */
+    static async findForPreview(appId: string, path: string, token: string): Promise<LandingPage | null> {
+        if (!PREVIEW_TOKEN.test(token)) return null;
+        return (await this.first({ appId, path, previewToken: token })) as LandingPage | null;
+    }
+
+    /** The page's preview token, made on first use; `reset` replaces it, so old links stop working. */
+    static async previewTokenFor(appId: string, id: string, reset = false): Promise<string | null> {
+        const page = await this.findForApp(appId, id);
+        if (!page) return null;
+        const current = page.get('previewToken') as string | null;
+        if (current && !reset) return current;
+        const token = newPreviewToken();
+        await this.update(id, { previewToken: token });
+        return token;
     }
 
     static async findForApp(appId: string, id: string): Promise<LandingPage | null> {

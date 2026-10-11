@@ -68,6 +68,15 @@ Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes).
 - **Sitemap and robots:** `/sitemap.xml` lists every published page with its last change. `/robots.txt` allows crawling
   and points at the sitemap in production only. Every other deployment disallows everything, matching its `noindex`.
 
+## Draft previews
+
+A draft page's **Share preview** button (otta-web page editor) makes a private link:
+`https://<site>/<path>?preview=<token>`. The token is 144 random bits stored on the page
+(`landing_pages.preview_token`). With a matching token this app renders the saved draft under a "Preview" banner, with
+`noindex, nofollow` and no canonical or social tags. A wrong token on a draft is a plain 404, the same as a page that
+doesn't exist. An old link to a page that has since been published just shows the public page. **Reset link** replaces
+the token, so every link shared before stops working.
+
 ## Scripts
 
 | Command              | Description                          |
