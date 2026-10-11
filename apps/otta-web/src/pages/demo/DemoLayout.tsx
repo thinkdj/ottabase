@@ -66,7 +66,7 @@ export function DemoLayout() {
                                 className={cn(
                                     'h-8 w-full justify-start gap-2.5 font-normal',
                                     location.pathname === '/demo' || location.pathname === '/demo/'
-                                        ? 'bg-muted font-medium text-foreground hover:bg-muted'
+                                        ? 'bg-muted font-medium text-foreground hover:bg-muted hover:text-foreground'
                                         : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                                 )}
                             >
@@ -87,7 +87,7 @@ export function DemoLayout() {
                                     className={cn(
                                         'h-8 w-full justify-start gap-2.5 font-normal',
                                         active
-                                            ? 'bg-muted font-medium text-foreground hover:bg-muted'
+                                            ? 'bg-muted font-medium text-foreground hover:bg-muted hover:text-foreground'
                                             : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                                     )}
                                 >

@@ -62,9 +62,14 @@ function MediaTile({ item }: { item: MediaLibraryItemLike }) {
 
     return (
         <Card className="overflow-hidden rounded-xl border-border/60 shadow-none transition-colors duration-normal hover:border-border">
-            <div className="h-48 w-full bg-muted/40">
+            <button
+                type="button"
+                onClick={open}
+                aria-label={`Open ${item.title || item.originalName} in lightbox`}
+                className="block h-48 w-full cursor-zoom-in bg-muted/40"
+            >
                 <MediaPreview item={viewerItem} mode="tile" />
-            </div>
+            </button>
             <CardContent className="space-y-3 p-4">
                 <div className="space-y-1">
                     <p className="truncate text-sm font-medium">{item.title || item.originalName}</p>

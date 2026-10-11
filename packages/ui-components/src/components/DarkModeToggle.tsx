@@ -1,6 +1,7 @@
 'use client';
 
 import { IconMoonStars, IconSun } from '@tabler/icons-react';
+import { Button } from '@ottabase/ui-shadcn';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
@@ -54,18 +55,9 @@ const DarkModeToggle = (props: DarkModeToggleProps) => {
             </span>
         </button>
     ) : (
-        <button
-            type="button"
-            onClick={toggleTheme}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-offset-2"
-            title={title}
-        >
-            {isDarkMode ? (
-                <IconSun size={18} className="text-yellow-500" />
-            ) : (
-                <IconMoonStars size={18} className="text-gray-600 dark:text-gray-400" />
-            )}
-        </button>
+        <Button variant="ghost" size="sm" onClick={toggleTheme} title={title} aria-label={title}>
+            {isDarkMode ? <IconSun size={16} /> : <IconMoonStars size={16} />}
+        </Button>
     );
 };
 

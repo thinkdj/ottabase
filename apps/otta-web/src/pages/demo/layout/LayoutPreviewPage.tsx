@@ -31,7 +31,7 @@ export function LayoutPreviewPage() {
             {/* Inline, top of content: always reachable (minimal/fullscreen drop header + nav) without
                 covering the footer the way a fixed bar would. Scrolls horizontally on narrow screens. */}
             <nav aria-label="Layout presets" className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1">
-                <Button asChild variant="ghost" size="sm" className="shrink-0">
+                <Button asChild variant="default" size="sm" className="mr-2 shrink-0 font-semibold">
                     <Link to={LAYOUT_DEMO_PATH}>
                         <ArrowLeft className="h-4 w-4" />
                         Back
