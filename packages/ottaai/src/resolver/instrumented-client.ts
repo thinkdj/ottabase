@@ -110,8 +110,7 @@ export interface AiClient {
 }
 
 function defaultCorrelationId(): string {
-    const uuid = globalThis.crypto?.randomUUID;
-    return typeof uuid === 'function' ? uuid.call(globalThis.crypto) : `cid-${Date.now()}`;
+    return crypto.randomUUID();
 }
 
 /** Coarse error class used to dedupe failing-key notifications. */

@@ -97,14 +97,9 @@ export {
     buildEffectsStyleTag,
     buildInitialConfigScriptTag,
 } from './css-critical';
-export {
-    applyBrandTheme,
-    buildBrandStylesheet,
-    buildCSSVarMap,
-    injectCSSVars,
-    injectFont,
-    upsertStyleElement,
-} from './css-runtime';
+export { buildBrandStylesheet, buildCSSVarMap, injectCSSVars } from './css-runtime';
+// Browser-only appliers (applyBrandTheme, injectFont, upsertStyleElement) live at
+// `@ottabase/brand-engine/dom` so this root stays free of DOM globals for Worker callers.
 export { deepMerge, resolveAliases, resolveTheme } from './resolver';
 export { isModeSplit, pickMode, resolveTokenSet } from './resolve-core';
 export type { ResolvedTokenSet } from './resolve-core';

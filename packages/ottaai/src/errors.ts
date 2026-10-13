@@ -47,8 +47,6 @@ export const AI_ERROR_CODES = {
     DECRYPT_FAILED: 'DECRYPT_FAILED',
     /** Crypto: no keyring / no primary secret registered. */
     NO_ENCRYPTION_KEY: 'NO_ENCRYPTION_KEY',
-    /** Crypto: the runtime exposes no Web Crypto subtle implementation. */
-    NO_WEB_CRYPTO: 'NO_WEB_CRYPTO',
     /**
      * The provider answered, but not with what the call asked for — a `responseFormat` call
      * whose reply does not parse to a JSON object (often a reply cut off by `maxTokens`).
@@ -111,7 +109,6 @@ export const AI_ERROR_HTTP_STATUS: Record<AiErrorCode, number> = {
     BAD_CIPHERTEXT: 500,
     DECRYPT_FAILED: 500,
     NO_ENCRYPTION_KEY: 500,
-    NO_WEB_CRYPTO: 500,
     INVALID_RESPONSE: 502,
     ERROR: 502,
 };
@@ -139,7 +136,6 @@ export const AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
     BAD_CIPHERTEXT: 'The stored credential is unreadable.',
     DECRYPT_FAILED: 'The stored credential could not be decrypted.',
     NO_ENCRYPTION_KEY: 'Credential encryption is not configured on this deployment.',
-    NO_WEB_CRYPTO: 'This runtime does not provide Web Crypto.',
     INVALID_RESPONSE: 'The AI reply was not in the expected format. Try again.',
     ERROR: 'The provider request failed.',
 };

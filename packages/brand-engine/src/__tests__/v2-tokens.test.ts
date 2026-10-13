@@ -7,7 +7,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildCriticalCSSDual, buildCustomCssStyleTag, buildEffectsStyleTag } from '../css-critical';
-import { applyBrandTheme, buildBrandStylesheet, buildCSSVarMap } from '../css-runtime';
+import { buildBrandStylesheet, buildCSSVarMap } from '../css-runtime';
+import { applyBrandTheme } from '../dom';
 import { buildEffectsCSS, buildScopesCSS } from '../effects';
 import { EFFECT_REGISTRY, KEYFRAME_REGISTRY } from '../effects/registry';
 import { buildPreviewTheme } from '../previewTheme';
@@ -63,7 +64,7 @@ describe('motion vocabulary', () => {
         });
         const vars = buildCSSVarMap(theme);
         expect(vars['--ease-spring']).toBe('cubic-bezier(.34,1.4,.5,1)');
-        expect(vars['--motion-ease-bouncy']).toBe('cubic-bezier(.34,1.4,.5,1)');
+        expect(vars).not.toHaveProperty('--motion-ease-bouncy');
         expect(vars['--duration-press']).toBe('120ms');
         expect(vars['--ease-settle']).toBe('ease-out');
     });

@@ -44,6 +44,7 @@
         "type-check:test": "tsc -p tsconfig.test.json --noEmit",
         "type-check:worker": "tsc -p tsconfig.worker.json --noEmit",
         "type-check:worker-test": "tsc -p tsconfig.worker-test.json --noEmit",
+        "type-check:wiring-test": "tsc -p tsconfig.wiring-test.json --noEmit",
         "type-check:tooling": "tsc -p tsconfig.tooling.json --noEmit",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",

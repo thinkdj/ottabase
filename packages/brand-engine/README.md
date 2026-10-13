@@ -54,14 +54,17 @@ Two families of categories:
 Notes:
 
 - Every mode-aware category accepts the `{ light, dark }` `ModeValue` split; a flat value applies to both modes.
+- `tokensJson` keys are singular (`color`, `shadow`). The plural `colors`/`shadows` is only the preset-JSON format that
+  `fromLegacyThemeConfig` converts; a stored `colors` key is ignored.
 - `TOKEN_CATEGORY_KEYS` (tokens.ts) is the single source of truth — preset expansion, the legacy adapter and preview all
   iterate it, so **adding a category = type + default + resolver in `resolve-core.ts` + emitter**.
 - Resolution is shared: `resolve-core.ts` backs `resolveTheme`, `brandKitToTheme` and `buildPreviewTheme` (previously
   three drifting copies).
 - **Three stylesheets**, all edge-injected and client-replaced by id: `#brand-critical` (vars + scope rooms),
   `#brand-effects` (generated rules), `#brand-custom-css` (kit escape hatch). The client applies themes by replacing
-  stylesheet text (`applyBrandTheme(light, dark)`) — never inline styles — so `.dark`/scope re-binding is pure CSS
-  cascade.
+  stylesheet text (`applyBrandTheme(light, dark)` from `@ottabase/brand-engine/dom`) — never inline styles — so
+  `.dark`/scope re-binding is pure CSS cascade. The root entry has no DOM globals, so Workers use it to build the same
+  stylesheets server-side; only `/dom` (`applyBrandTheme`, `injectFont`, `upsertStyleElement`) touches `document`.
 
 ### Component hooks (ui-shadcn)
 
@@ -116,7 +119,7 @@ await api(`/api/brand/kits/${kitId}`, {
 ### Load and Apply Theme (Client & Server)
 
 ```typescript
-import { applyBrandTheme } from '@ottabase/brand-engine';
+import { applyBrandTheme } from '@ottabase/brand-engine/dom'; // browser-only
 import { brandKitToTheme } from '@ottabase/brand-engine/persistence';
 
 // Load brand kit from DB
@@ -296,7 +299,7 @@ await warmBrandCache(env, { kitId });
 const tokens = JSON.parse(brandKit.tokensJson);
 const colors = tokens.color[mode]; // 'light' or 'dark'
 
-// 7. RENDER: Apply to document
+// 7. RENDER: Apply to document (browser — from '@ottabase/brand-engine/dom')
 applyBrandTheme({ colors, typography, ... });
 ```
 

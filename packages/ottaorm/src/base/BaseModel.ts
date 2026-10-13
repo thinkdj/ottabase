@@ -441,7 +441,7 @@ export class BaseModel extends AbstractBaseModel {
         return count;
     }
 
-    /** Locate every legacy-array and `$in` list, including nested boolean groups. */
+    /** Locate every array-shorthand (`{ id: [..] }`) and `$in` list, including nested boolean groups. */
     private static collectFilterLists(
         value: unknown,
         path: Array<string | number> = [],
@@ -1181,11 +1181,7 @@ export class BaseModel extends AbstractBaseModel {
         // Cloudflare Workers (workerd) disallows random generation in module/global scope,
         // so model schemas avoid crypto.randomUUID() defaults. Generate ids at runtime.
         if (this.primaryKey === 'id' && (createData.id === undefined || createData.id === null)) {
-            const uuidFn = globalThis.crypto?.randomUUID;
-            if (typeof uuidFn !== 'function') {
-                throw new Error(`Missing id for ${this.entity} and crypto.randomUUID is unavailable`);
-            }
-            createData.id = uuidFn.call(globalThis.crypto);
+            createData.id = crypto.randomUUID();
         }
 
         const result = await db.insert(table).values(createData).returning();
@@ -1358,10 +1354,10 @@ export class BaseModel extends AbstractBaseModel {
         currentData?: Record<string, unknown>,
         driver?: DbDriver,
     ): Promise<InstanceType<T>> {
-        const ownsLegacyUpdate =
+        const overridesUpdate =
             Object.prototype.hasOwnProperty.call(this, 'update') && this.update !== BaseModel.update;
         const ownsSharedHook = Object.prototype.hasOwnProperty.call(this, 'prepareUpdateMutation');
-        if (ownsLegacyUpdate && !ownsSharedHook) {
+        if (overridesUpdate && !ownsSharedHook) {
             throw new Error(
                 `${this.entity} overrides update() but not prepareUpdateMutation(); refusing to bypass model logic in atomic CRUD`,
             );

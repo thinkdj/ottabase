@@ -10,7 +10,8 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
-import { SocialLoginButtons, SocialLoginDivider, type SocialProvider } from './SocialLoginButtons';
+import type { SocialProvider } from './helpers';
+import { SocialLoginButtons, SocialLoginDivider } from './SocialLoginButtons';
 import { CredentialsForm } from './CredentialsForm';
 import { MagicLinkForm } from './MagicLinkForm';
 

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SITE } from '../defaults';
 import { parseLenient } from '../fields';
 import { SITE_FIELDS, SiteSettingsSchema } from '../site';
-import { drawShareCard, SHARE_CARD_SIZE, wrapLines, type ShareCardScene } from '../share-card';
+import { SHARE_CARD_SIZE } from '../share-card';
+import { drawShareCard, wrapLines, type ShareCardScene } from '../share-card-draw';
 
 /** A recording 2D context: text is "measured" at half the font size per character. */
 function fakeCtx() {

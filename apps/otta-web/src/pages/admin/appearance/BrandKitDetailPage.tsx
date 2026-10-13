@@ -2,7 +2,8 @@
 // Brand Kit detail – Tabbed editor with realtime preview
 // ---------------------------------------------------------------------------
 
-import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
+import { buildCSSVarMap, buildPreviewTheme } from '@ottabase/brand-engine';
+import { injectFont } from '@ottabase/brand-engine/dom';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
@@ -124,7 +125,7 @@ function BrandKitPreviewPanel({
                 className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-primary/10 blur-2xl pointer-events-none"
                 style={{
                     transition:
-                        'transform var(--motion-duration-slow, 500ms) var(--motion-ease-bouncy, cubic-bezier(0.34, 1.56, 0.64, 1))',
+                        'transform var(--motion-duration-slow, 500ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
                     transform: 'scale(1)',
                 }}
             />

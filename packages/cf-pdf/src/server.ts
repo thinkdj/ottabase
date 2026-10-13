@@ -166,7 +166,10 @@ async function waitForFonts(page: Page, timeoutMs: number): Promise<void> {
     if (timeoutMs === 0) return;
 
     await page.evaluate(async (timeout: number) => {
-        const fonts = document.fonts;
+        // Runs inside the rendered page, not the Worker (which has no DOM types): type only the
+        // page global this callback reads.
+        const inPage = globalThis as unknown as { document: { fonts?: { ready: Promise<unknown> } } };
+        const fonts = inPage.document.fonts;
         if (!fonts) return;
         await Promise.race([fonts.ready, new Promise<void>((resolve) => setTimeout(resolve, timeout))]);
     }, timeoutMs);

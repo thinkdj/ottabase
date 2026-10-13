@@ -1,6 +1,3 @@
-export { mediaTable } from './schema';
-export type { MediaType, NewMediaType } from './schema';
-
 export type {
     CreateMediaLibraryRecordInput,
     MediaKind,
@@ -34,8 +31,6 @@ export {
 // Pure lightbox state machine (no React, no JSX, no icons).
 export { clampMediaIndex, createMediaLightboxState, getAdjacentMediaIndex } from './viewer/lightbox-state';
 
-// Headless URL-sync hook — react-only, no rendered UI. Stays on the pure root.
-// The rendered viewer surface (MediaLightbox, MediaPreview, ZoomableImage, the
-// provider, and its registration hooks) lives at `@ottabase/medialibrary/react`.
-export { useMediaLightboxUrlSync } from './viewer/useMediaLightboxUrlSync';
-export type { MediaLightboxUrlSyncOptions } from './viewer/useMediaLightboxUrlSync';
+// Everything browser-bound — the rendered viewer AND the URL-sync hook, which reads `window` —
+// lives at `@ottabase/medialibrary/react`. This root imports neither React nor DOM globals, so
+// Workers and other non-browser callers can use it.

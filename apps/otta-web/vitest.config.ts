@@ -54,6 +54,7 @@ export default defineConfig({
             // Headless-decoupling subpaths (see apps/otta-web/tsconfig.json) — dist-only exports
             // aliased to source so tests resolve them without a prior `pnpm build:pkg`.
             '@ottabase/auth/config': path.resolve(__dirname, '../../packages/auth/src/components/helpers.ts'),
+            '@ottabase/brand-engine/dom': path.resolve(__dirname, '../../packages/brand-engine/src/dom.ts'),
             '@ottabase/forms/react': path.resolve(__dirname, '../../packages/forms/src/react.ts'),
             '@ottabase/ui-datatable/react': path.resolve(__dirname, '../../packages/ui-datatable/src/react.ts'),
             '@ottabase/spotlight/react': path.resolve(__dirname, '../../packages/spotlight/src/react.ts'),

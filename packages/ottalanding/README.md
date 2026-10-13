@@ -139,8 +139,9 @@ The picture link previews show (X, LinkedIn, Slack, iMessage…) is typed conten
 holds the heading, supporting text, color, background image and the rendered `imageUrl`. The site has a default card
 (`settings.share`), and any page may have its own (`landing_pages.share`, null means "use the site's").
 
-The admin draws the card in the browser with `drawShareCard(ctx, scene)`, a pure function. The editor's live canvas and
-the uploaded PNG come from the same call, so what you see is exactly what gets shared:
+The admin draws the card in the browser with `drawShareCard(ctx, scene)` from `@ottabase/ottalanding/react` (canvas
+types keep it off the Worker-safe root), a pure function. The editor's live canvas and the uploaded PNG come from the
+same call, so what you see is exactly what gets shared:
 
 - 1200×630; the heading uses the theme's heading font (`themeFonts()`) at the largest size that fits three lines;
 - the color defaults to the brand color, else the theme's accent (`themeAccent()`), with ink chosen by contrast;

@@ -1,11 +1,6 @@
 import React from 'react';
 import { Button, Separator } from '@ottabase/ui-shadcn';
-
-export interface SocialProvider {
-    id: string;
-    name: string;
-    icon?: React.ReactNode;
-}
+import type { SocialProvider } from './helpers';
 
 export interface SocialLoginButtonsProps {
     providers: SocialProvider[];

@@ -105,31 +105,9 @@ export function buildAad(tuple: AadTuple): Uint8Array {
     return new TextEncoder().encode(parts.join(AAD_SEPARATOR));
 }
 
-function subtle(): SubtleCrypto {
-    const cryptoObj = globalThis.crypto;
-    if (!cryptoObj?.subtle) {
-        throw new AiProvisioningError(
-            'This runtime provides no Web Crypto subtle implementation; credential encryption is impossible.',
-            AI_ERROR_CODES.NO_WEB_CRYPTO,
-        );
-    }
-    return cryptoObj.subtle;
-}
-
-function randomBytes(length: number): Uint8Array {
-    const cryptoObj = globalThis.crypto;
-    if (!cryptoObj?.getRandomValues) {
-        throw new AiProvisioningError(
-            'This runtime provides no Web Crypto getRandomValues; credential encryption is impossible.',
-            AI_ERROR_CODES.NO_WEB_CRYPTO,
-        );
-    }
-    return cryptoObj.getRandomValues(new Uint8Array(length));
-}
-
 /** HKDF-SHA-256 → a 256-bit AES-GCM content key, per record (fresh salt each write). */
 async function deriveContentKey(material: Uint8Array, salt: Uint8Array): Promise<CryptoKey> {
-    const s = subtle();
+    const s = crypto.subtle;
     const baseKey = await s.importKey('raw', material as BufferSource, 'HKDF', false, ['deriveKey']);
     return s.deriveKey(
         {
@@ -173,13 +151,13 @@ export async function encryptSecret(input: {
 
     const keyId = keyring.currentKeyId;
     const material = keyring.currentMaterial();
-    const salt = randomBytes(SALT_BYTES);
-    const iv = randomBytes(IV_BYTES);
+    const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
     const aad = buildAad({ ...input.aad, formatVersion: CURRENT_FORMAT_VERSION });
 
     const key = await deriveContentKey(material, salt);
     const cipher = new Uint8Array(
-        await subtle().encrypt(
+        await crypto.subtle.encrypt(
             { name: 'AES-GCM', iv: iv as BufferSource, additionalData: aad as BufferSource },
             key,
             new TextEncoder().encode(plaintext) as BufferSource,
@@ -213,7 +191,7 @@ export const decryptV1: import('./keyring').EnvelopeDecryptor = async ({ envelop
 
     const key = await deriveContentKey(material, fromBase64Url(envelope.saltB64));
     try {
-        const plain = await subtle().decrypt(
+        const plain = await crypto.subtle.decrypt(
             {
                 name: 'AES-GCM',
                 iv: fromBase64Url(envelope.ivB64) as BufferSource,

@@ -1,11 +1,6 @@
 import { useTheme } from '@/ottabase/providers/ThemeContext';
-import {
-    buildCSSVarMap,
-    getThemeOrDefault,
-    injectFont,
-    resolveTheme,
-    THEME_PRESET_ITEMS,
-} from '@ottabase/brand-engine';
+import { buildCSSVarMap, getThemeOrDefault, resolveTheme, THEME_PRESET_ITEMS } from '@ottabase/brand-engine';
+import { injectFont } from '@ottabase/brand-engine/dom';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
     Button,

@@ -1,5 +1,6 @@
 import type { TokenTypography } from '@ottabase/brand-engine';
-import { getThemeOrDefault, injectFont } from '@ottabase/brand-engine';
+import { getThemeOrDefault } from '@ottabase/brand-engine';
+import { injectFont } from '@ottabase/brand-engine/dom';
 import { GOOGLE_FONTS, fontToTypography } from '@ottabase/brand-engine/fonts';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import {

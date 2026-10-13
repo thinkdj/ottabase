@@ -42,7 +42,7 @@ function base64UrlDecode(value: string): Uint8Array | null {
     }
 }
 
-async function hmacKey(secret: string, usage: KeyUsage): Promise<CryptoKey> {
+async function hmacKey(secret: string, usage: 'sign' | 'verify'): Promise<CryptoKey> {
     return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [usage]);
 }
 

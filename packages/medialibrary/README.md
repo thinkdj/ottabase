@@ -9,22 +9,21 @@ This package provides:
 - A production-ready lightbox provider with fullscreen viewing, keyboard navigation, and thumbnail strip support.
 - Two viewer styles: the default admin/editor viewer and an immersive public-gallery viewer.
 
-> **Note:** The `media` table schema and `Media` model now live in `@ottabase/ottaorm` as a core table. This package
-> re-exports them for backward compatibility.
+> **Note:** The `media` table (`mediaTable`, `MediaType`, `NewMediaType`) and the `Media` model are a core table in
+> `@ottabase/ottaorm`; import them from there.
 
 ## Entry Points
 
 The package is split so that non-UI consumers never pull in rendered React or icon dependencies. All rendered UI lives
 behind a single isolated subpath.
 
-| Import                          | Contents                                                                                                                                                                                                                         | Pulls in React / icons? |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `@ottabase/medialibrary`        | **Pure.** mime/kind helpers, upload-to-record normalization, selection/viewer payload mappers, the lightbox **state machine**, the headless `useMediaLightboxUrlSync` hook, and all type-only exports. Imports zero rendered UI. | No (hook is react-only) |
-| `@ottabase/medialibrary/schema` | `mediaTable` + `MediaType` / `NewMediaType` (re-exported from `@ottabase/ottaorm`). Schema/migration wiring.                                                                                                                     | No                      |
-| `@ottabase/medialibrary/react`  | **Rendered UI.** `MediaLightbox`, `MediaImmersiveLightbox`, `MediaLightboxProvider` (+ `useMediaLightboxRegistration`, `useOptionalMediaLightbox`), `MediaPreview`, `ZoomableImage`.                                             | Yes                     |
+| Import                         | Contents                                                                                                                                                                                                                                   | Pulls in React / icons? |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| `@ottabase/medialibrary`       | **Pure.** mime/kind helpers, upload-to-record normalization, selection/viewer payload mappers, the lightbox **state machine**, and all type-only exports. No React, no DOM globals — safe in a Worker.                                     | No                      |
+| `@ottabase/medialibrary/react` | **Browser surface.** `MediaLightbox`, `MediaImmersiveLightbox`, `MediaLightboxProvider` (+ `useMediaLightboxRegistration`, `useOptionalMediaLightbox`), `MediaPreview`, `ZoomableImage`, and the `useMediaLightboxUrlSync` deep-link hook. | Yes                     |
 
 Because rendered UI is isolated, `react`, `react-dom`, and `@tabler/icons-react` are **optional** peer dependencies —
-callers that only use the pure helpers, schema, or the state machine do not need them installed. The package sets
+callers that only use the pure helpers or the state machine do not need them installed. The package sets
 `"sideEffects": false` for tree-shaking.
 
 ### Pure root
@@ -37,7 +36,6 @@ import {
     createMediaLightboxState, // pure lightbox state machine
     getAdjacentMediaIndex,
     clampMediaIndex,
-    useMediaLightboxUrlSync, // headless deep-link hook (react-only, no JSX)
 } from '@ottabase/medialibrary';
 ```
 
@@ -52,6 +50,7 @@ import {
     ZoomableImage,
     useMediaLightboxRegistration,
     useOptionalMediaLightbox,
+    useMediaLightboxUrlSync, // deep-link hook (reads window)
 } from '@ottabase/medialibrary/react';
 ```
 

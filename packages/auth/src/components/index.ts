@@ -7,8 +7,8 @@ export {
     SocialLoginDivider,
     type SocialLoginButtonsProps,
     type SocialLoginDividerProps,
-    type SocialProvider,
 } from './SocialLoginButtons';
+export type { SocialProvider } from './helpers';
 
 // NOTE: The pure login-config helpers (getLoginConfig, getConfiguredSocialProviders,
 // isCredentialsConfigured, isEmailProviderConfigured) live on the dependency-free

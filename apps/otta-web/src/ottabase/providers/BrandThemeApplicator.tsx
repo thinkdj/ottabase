@@ -8,7 +8,7 @@
 // route token overrides, SPA navigation across differently-themed routes).
 // ---------------------------------------------------------------------------
 
-import { applyBrandTheme } from '@ottabase/brand-engine';
+import { applyBrandTheme } from '@ottabase/brand-engine/dom';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useEffect } from 'react';
 

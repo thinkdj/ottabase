@@ -1,5 +1,15 @@
+import type { ReactNode } from 'react';
 import type { ProviderEnv } from '../providers';
-import type { SocialProvider } from './SocialLoginButtons';
+
+/**
+ * A configured social sign-in provider. Declared here, not next to the button component, so
+ * this dependency-free `./config` subpath never pulls UI code into backend/edge type-checks.
+ */
+export interface SocialProvider {
+    id: string;
+    name: string;
+    icon?: ReactNode;
+}
 
 function isDevEmailTrapConfiguredForClient(env: ProviderEnv): boolean {
     const raw = env.DEV_EMAIL_TRAP_ENABLED;

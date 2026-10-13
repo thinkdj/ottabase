@@ -51,6 +51,7 @@
              * dist-only fallback is unreliable. Mirror these in apps/otta-web/vitest.config.ts.
              */
             "@ottabase/auth/config": ["../../packages/auth/src/components/helpers.ts"],
+            "@ottabase/brand-engine/dom": ["../../packages/brand-engine/src/dom.ts"],
             "@ottabase/forms/react": ["../../packages/forms/src/react.ts"],
             "@ottabase/ui-datatable/react": ["../../packages/ui-datatable/src/react.ts"],
             "@ottabase/spotlight/react": ["../../packages/spotlight/src/react.ts"],

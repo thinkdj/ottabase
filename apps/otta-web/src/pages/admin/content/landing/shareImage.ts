@@ -2,14 +2,8 @@
 // preview and the uploaded PNG come from the same function, so what you see is what gets shared.
 
 import { api, getErrorMessage } from '@/lib/api';
-import {
-    drawShareCard,
-    SHARE_CARD_SIZE,
-    themeAccent,
-    themeFonts,
-    type ShareCard,
-    type SiteSettings,
-} from '@ottabase/ottalanding';
+import { SHARE_CARD_SIZE, themeAccent, themeFonts, type ShareCard, type SiteSettings } from '@ottabase/ottalanding';
+import { drawShareCard } from '@ottabase/ottalanding/react';
 
 /** What an empty heading / supporting text falls back to: the page's title, or the site's name. */
 export type ShareDefaults = { heading: string; subtext?: string };

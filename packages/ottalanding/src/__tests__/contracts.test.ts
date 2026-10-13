@@ -190,4 +190,10 @@ describe('package boundary', () => {
             expect(looksLikeComponent, name).toBe(false);
         }
     });
+
+    it('keeps the canvas renderer off the root (Workers import it for SHARE_FIELDS)', () => {
+        expect(root).not.toHaveProperty('drawShareCard');
+        expect(root).not.toHaveProperty('wrapLines');
+        expect(root).toHaveProperty('SHARE_FIELDS');
+    });
 });

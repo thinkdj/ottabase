@@ -18,8 +18,9 @@ export { getTheme, readableOn, themeAccent, themeFonts, THEMES, themeStyles } fr
 export { schemeInitScript, SCHEME_STORAGE_KEY } from './scheme';
 export type { ColorScheme, LandingTheme, ThemeId } from './themes';
 export { DEFAULT_PAGES, DEFAULT_SITE } from './defaults';
-export { drawShareCard, SHARE_CARD_SIZE, SHARE_FIELDS, wrapLines } from './share-card';
-export type { ShareCard, ShareCardScene } from './share-card';
+export { SHARE_CARD_SIZE, SHARE_FIELDS } from './share-card';
+export type { ShareCard } from './share-card';
+// drawShareCard (canvas) is browser-only: `@ottabase/ottalanding/react`.
 export {
     LEAD_ENDPOINT,
     LEAD_KINDS,

@@ -5,7 +5,8 @@
 // navigate to detail.
 // ---------------------------------------------------------------------------
 
-import { buildCSSVarMap, buildPreviewTheme, injectFont } from '@ottabase/brand-engine';
+import { buildCSSVarMap, buildPreviewTheme } from '@ottabase/brand-engine';
+import { injectFont } from '@ottabase/brand-engine/dom';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
