@@ -21,10 +21,10 @@ export { scheduledTasksTable, type NewScheduledTaskType, type ScheduledTaskType 
  * // Create a scheduled task
  * const task = await ScheduledTask.create({
  *   name: "daily-cleanup",
- *   description: "Clean up expired sessions",
+ *   description: "Delete expired verification tokens",
  *   schedule: "0 0 * * *",
  *   taskType: "handler",
- *   task: "cleanup:sessions",
+ *   task: "cleanup:verification-tokens",
  *   appId: "web",
  * });
  *

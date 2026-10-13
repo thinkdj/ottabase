@@ -19,14 +19,12 @@
 import {
     accountsTable,
     auditLogsTable,
-    authenticatorsTable,
     mediaTable,
     organizationMembersTable,
     organizationsTable,
     permissionsTable,
     rolesTable,
     scheduledTasksTable,
-    sessionsTable,
     tagsTable,
     userGroupMembersTable,
     userGroupsTable,
@@ -44,9 +42,7 @@ export function getAllSchemas() {
     // 1. Core schemas from @ottabase/ottaorm (users, auth tables, etc.)
     const coreTables = {
         accountsTable,
-        authenticatorsTable,
         mediaTable,
-        sessionsTable,
         tagsTable,
         usersTable,
         verificationTokensTable,
@@ -88,9 +84,7 @@ export function getAllSchemas() {
 export function getSchemaSummary() {
     const coreTables = {
         accountsTable,
-        authenticatorsTable,
         mediaTable,
-        sessionsTable,
         tagsTable,
         usersTable,
         verificationTokensTable,

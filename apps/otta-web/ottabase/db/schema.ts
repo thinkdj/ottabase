@@ -30,19 +30,12 @@ import {
     postsTable,
     seriesTable,
 } from '@ottabase/ottablog';
-import {
-    accountsTable,
-    authenticatorsTable,
-    mediaTable,
-    sessionsTable,
-    usersTable,
-    verificationTokensTable,
-} from '@ottabase/ottaorm';
+import { accountsTable, mediaTable, usersTable, verificationTokensTable } from '@ottabase/ottaorm';
 import { landingLeadsTable, landingPagesTable, landingSitesTable } from '@ottabase/ottalanding/schema';
 import { referralTrackingTable } from '@ottabase/referrals';
 import { shortlinksTable } from '@ottabase/shortlinks';
 
-export { accountsTable, authenticatorsTable, mediaTable, sessionsTable, usersTable, verificationTokensTable };
+export { accountsTable, mediaTable, usersTable, verificationTokensTable };
 
 // ============================================================
 // APP-SPECIFIC TABLES

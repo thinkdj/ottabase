@@ -92,11 +92,8 @@ export interface CredentialsAuthorizeOptions {
 export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
     sessionMaxAge?: number;
     disableCredentials?: boolean;
-    authConfig?: {
-        pages?: {
-            error?: string;
-        };
-    };
+    /** App path OAuth/magic-link failures redirect to, with `?error=<code>` appended (default: `/login`). */
+    errorPage?: string;
     /** Called after a user signs out (session revoked). Use to clear app-level caches. */
     onSignOut?: (userId: string) => Promise<void> | void;
     /** Called right after a session is created (sign-in, register+auto-login, magic link, OAuth). */

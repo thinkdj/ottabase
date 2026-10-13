@@ -105,6 +105,16 @@ describe('handleAuthRequest', () => {
         expect(location).toContain('error=OAuthSignin');
     });
 
+    it('honors a custom errorPage, appending the error code to an existing query', async () => {
+        const env = createEnv();
+        const response = await handleAuthRequest(request('/api/auth/signin/not-a-real-provider'), env, {
+            errorPage: '/auth/failed?from=oauth',
+        });
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get('Location')).toBe('http://127.0.0.1:3003/auth/failed?from=oauth&error=OAuthSignin');
+    });
+
     // --- CSRF + Origin backstop -------------------------------------------------------
     async function getCsrf(env: AuthEnv) {
         const res = await handleAuthRequest(request('/api/auth/csrf'), env);

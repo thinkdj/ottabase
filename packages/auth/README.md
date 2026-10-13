@@ -71,8 +71,8 @@ owns. Everything else stays in the host app.
 
 ### Owned by the host app (not part of this package)
 
-These routes already didn't depend on Auth.js and are unaffected by this package; they call `hashPassword` /
-`verifyPassword` / `getSession` / `revokeAllUserSessions` from `@ottabase/auth/backend` directly:
+These routes live in the app and call `hashPassword` / `verifyPassword` / `getSession` / `revokeAllUserSessions` from
+`@ottabase/auth/backend` directly:
 
 | Route                              | Method    |
 | ---------------------------------- | --------- |
@@ -261,6 +261,17 @@ provider before; if the email matches an existing account that has never used th
 `OAuthAccountNotLinked` rather than silently linking (this would otherwise let anyone claim an OAuth identity with a
 matching email hijack an existing account).
 
+The `accounts` row created on first sign-in is an **identity link only** (`provider` + `providerAccountId` → `userId`).
+The provider's access, refresh and id tokens are used once, to fetch the profile during the callback, and are **not
+persisted** — nothing in the framework reads them back, so storing them would be a plaintext credential column with no
+consumer. For the same reason the presets request identity scopes only — Google asks for no offline access and does not
+force the consent screen.
+
+**Login and data access are separate.** Sign-in proves who the user is and nothing more. An app that reads provider data
+on the user's behalf (for example Gmail for an analytics feature) adds a separate "connect" flow with its own scopes,
+consent and encrypted token storage. It never widens sign-in scopes, so users who never use that feature never see its
+consent screen.
+
 ## Magic Link (Passwordless Email)
 
 `POST /api/auth/signin/email` sends a short-lived (15 minute) sign-in link, distinct from the app's own 24-hour
@@ -389,9 +400,10 @@ stale pre-refresh identity or authorization snapshot.
 
 ## Login Config Helpers (pure)
 
-The env-driven login-config helpers live on their own **dependency-free** subpath, `@ottabase/auth/config`. They use
-type-only imports and pull **zero** UI dependencies, so a worker/edge route (e.g. `GET /api/auth/config`) can decide
-which sign-in methods to show without ever loading shadcn or lucide:
+The env-driven login-config helpers live on their own **dependency-free** subpath, `@ottabase/auth/config`. It imports
+nothing from the UI components — not even types, since a type-only import still pulls the file into a Worker type-check
+— so a worker/edge route (e.g. `GET /api/auth/config`) can decide which sign-in methods to show without ever loading
+shadcn or lucide. The `SocialProvider` type is declared here too:
 
 ```typescript
 import {
@@ -415,8 +427,7 @@ const config = getLoginConfig(env);
 Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). This is the package's
 **only** rendered-UI subpath: `@ottabase/ui-shadcn` and `lucide-react` are declared as **optional** peer dependencies
 and are pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
-stay free of them. The components never depended on Auth.js and take plain callback props, so you wire them to
-`@ottabase/auth/client` yourself.
+stay free of them. The components take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
 
 ```typescript
 import { LoginForm } from '@ottabase/auth/components';

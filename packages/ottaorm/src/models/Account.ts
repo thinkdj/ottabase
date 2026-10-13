@@ -10,7 +10,8 @@ export { accountsTable, type AccountType, type NewAccountType } from './Account.
 /**
  * Account model - OAuth provider accounts
  *
- * Stores OAuth and authentication provider data for @ottabase/auth
+ * Links an external provider identity (provider + providerAccountId) to a user for
+ * @ottabase/auth. Holds no provider tokens — see Account.schema.ts for why.
  *
  * @example
  * ```typescript
@@ -34,7 +35,6 @@ export class Account extends BaseModel {
     static packageType: PackageType = 'core';
 
     static casts = {
-        expiresAt: 'number' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };

@@ -30,7 +30,7 @@ controllers/services. Do not write raw SQL or vanilla Drizzle unless there is a 
    `packageModels` / `brandModels`). If the browser drives it through generic CRUD, also:
     - give it an **RLS policy** (`registerPolicy(...)` after `initRLS()` in `db-utils.ts`) — no policy = no access;
     - add its entity to `GENERIC_CRUD_ALLOWLIST` in `apps/*/worker/routes/ottaorm-crud.ts` — the route is default-deny
-      (403 `CRUD_NOT_ALLOWED`). Never allowlist grant/auth tables (`user_roles`, `sessions`, …).
+      (403 `CRUD_NOT_ALLOWED`). Never allowlist grant/auth tables (`user_roles`, `accounts`, …).
 5. **Run migrations**: `curl -X POST http://localhost:3004/api/ottaorm/init`. Auto-migration can add tables/columns but
    **cannot rename/drop** — and a new NOT NULL column needs a DEFAULT.
 

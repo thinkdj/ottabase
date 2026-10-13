@@ -20,8 +20,11 @@ export function createGoogleProvider(env: ProviderEnv, options: ProviderOptions 
         name: 'Google',
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
+        // Sign-in only proves identity, so no `access_type: offline` / `prompt: consent`: those
+        // exist to obtain a refresh token, which sign-in discards. Returning users get a
+        // one-click sign-in instead of the consent screen every time. Long-lived provider
+        // access belongs in a separate, encrypted "connection" flow — not here.
         authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-        authorizationParams: { access_type: 'offline', prompt: 'consent' },
         tokenUrl: 'https://oauth2.googleapis.com/token',
         userInfoUrl: 'https://openidconnect.googleapis.com/v1/userinfo',
         scope: scopeList(['openid', 'email', 'profile'], options.scopes),

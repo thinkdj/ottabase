@@ -295,16 +295,17 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
     return { organizationId, roles, permissions, platformAdmin, createdAt, name, image, emailVerified };
 }
 
+/**
+ * Identity + display fields for a new session. Authorization data (organization, roles,
+ * permissions, platform-admin) is deliberately NOT accepted here: it is always loaded from D1
+ * by `loadUserContext`, so no caller can mint a session with a self-declared grant.
+ */
 export interface CreateSessionInput {
     id: string;
     email: string;
     name?: string | null;
     image?: string | null;
     emailVerified?: number | null;
-    /** Skip organization/role lookup and use these values verbatim (e.g. bootstrap auto-login). */
-    organizationId?: string | null;
-    roles?: string[];
-    permissions?: string[];
 }
 
 export interface CreatedSession {
@@ -358,20 +359,7 @@ export async function createSessionForUser(
         throw new Error('Session store (OBCF_KV) is not bound; cannot create a session');
     }
 
-    const context =
-        input.organizationId !== undefined && input.roles !== undefined && input.permissions !== undefined
-            ? {
-                  organizationId: input.organizationId,
-                  roles: input.roles,
-                  permissions: input.permissions,
-                  // Fast path (explicit context, e.g. legacy callers): platform-admin cannot be
-                  // inferred from a merged permission list without scope, so default false. Callers
-                  // that need a platform-admin session omit roles/permissions and go through
-                  // loadUserContext, which derives it from the real system-scoped grants.
-                  platformAdmin: false,
-                  createdAt: null,
-              }
-            : await loadUserContext(input.id, env);
+    const context = await loadUserContext(input.id, env);
 
     const maxAgeSeconds = resolveSessionMaxAge(env, options);
     const jti = crypto.randomUUID();

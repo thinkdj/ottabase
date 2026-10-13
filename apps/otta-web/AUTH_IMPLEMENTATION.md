@@ -62,8 +62,7 @@ packages/auth/src/
   senders (`resolveMagicLinkSender`, `createDevEmailTrapMagicLinkSender`, `createNodemailerMagicLinkSender`,
   `createResendMagicLinkSender`)
 
-There is no `./adapter` or `./adapters/drizzle` subpath — DB access goes through the existing OttaORM models (`User`,
-`Account`, `VerificationToken`, `OrganizationMember`) directly, and there is no NextAuth-style config object.
+DB access goes through the OttaORM models (`User`, `Account`, `VerificationToken`, `OrganizationMember`) directly.
 
 ### App (Minimal Glue Code)
 
@@ -248,12 +247,8 @@ handleAuthRequest(request, env, {
     disableCredentials: false,
     requireVerifiedEmail: false,
 
-    // Where to send users for OAuth errors
-    authConfig: {
-        pages: {
-            error: '/custom-login',
-        },
-    },
+    // Where OAuth / magic-link failures redirect (default '/login'); `?error=<code>` is appended
+    errorPage: '/custom-login',
 
     // Lifecycle hooks
     onSignIn: async ({ userId, email }) => {
@@ -264,9 +259,6 @@ handleAuthRequest(request, env, {
     },
 });
 ```
-
-`authConfig.pages` is the entire shape — just an `error` path used for OAuth error redirects. There is no broader
-Auth.js-style config object.
 
 ## Features
 

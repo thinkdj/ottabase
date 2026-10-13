@@ -46,11 +46,7 @@ export async function createVerificationToken(
 
 export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     const options: CreateAuthConfigOptions = {
-        authConfig: {
-            pages: {
-                error: '/login',
-            },
-        },
+        errorPage: '/login',
     };
 
     const maxAge = Number(env.AUTH_SESSION_MAX_AGE);
@@ -316,9 +312,9 @@ export async function getSecurityContext(
     // Collect the organization IDs the user can access — ACTIVE MEMBERSHIPS only (organizationIdsForUser
     // no longer trusts the never-cleared Organization.ownerId; see that method for why).
     // Always keep the resolved list — INCLUDING when it is empty. An empty array is a positive
-    // "this user belongs to zero organizations", which must fail closed below (and in the RLS
-    // engine). Collapsing it to `undefined` would be read as "membership unknown" and skip
-    // enforcement — letting a user with no memberships keep a caller-supplied org id.
+    // "this user belongs to zero organizations", which fails closed below. The RLS engine denies
+    // BOTH an empty list and an unresolved (`undefined`) one for any org-scoped operation, so a
+    // signed-in context must always carry this list; only anonymous callers (no org) go without.
     let memberOrganizationIds: string[] | undefined;
     if (userId) {
         try {

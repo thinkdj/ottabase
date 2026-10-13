@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { registerConnection } from '../context';
 import { VerificationToken } from '../models/VerificationToken';
 
-// The rewritten VerificationToken previously crashed because it called the RAW D1 API
-// (db.prepare()/db.run(sql,...args)) on what is actually a Drizzle instance. These tests
-// run the methods against an in-memory driver that exposes ONLY the Drizzle query-builder
-// surface (select/from/where/limit, delete/where/returning) and NO .prepare()/.run() --
-// so the old code would throw here -- while verifying atomic single-use consumption.
+// VerificationToken must use the Drizzle query builder, never the RAW D1 API
+// (db.prepare()/db.run(sql,...args)) -- the registered connection is a Drizzle instance.
+// These tests run the methods against an in-memory driver that exposes ONLY the Drizzle
+// query-builder surface (select/from/where/limit, delete/where/returning) and NO
+// .prepare()/.run() -- so raw-D1 code would throw here -- while verifying atomic
+// single-use consumption.
 //
 // (A full real-D1 round trip belongs in the app's Workers integration suite; this unit
 // test locks in the query-builder contract + single-use semantics with no native deps.)

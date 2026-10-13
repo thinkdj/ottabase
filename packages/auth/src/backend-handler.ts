@@ -2,8 +2,7 @@
 // @ottabase/auth - Backend Request Handler (Cloudflare Workers)
 // ============================================================
 //
-// Self-contained replacement for the Auth.js `Auth()` request handler.
-// `handleAuthRequest` is a small router covering every `/api/auth/*`
+// `handleAuthRequest` is a small, self-contained router covering every `/api/auth/*`
 // sub-path that isn't already owned by the host app (register,
 // verify-email, password reset/change stay in the app -- see
 // packages/auth/README.md for the full route table).
@@ -115,14 +114,15 @@ function sanitizeCallbackPath(raw: string | null | undefined, fallback = '/dashb
     }
 }
 
-function redirectTo(env: AuthEnv, path: string): Response {
-    return Response.redirect(`${resolveFrontendUrl(env)}${path}`, 302);
+/** Absolute URL of the configured error page (`options.errorPage`, default `/login`) with `error=<code>`. */
+function errorPageUrl(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string): string {
+    const errorPage = options?.errorPage || '/login';
+    const separator = errorPage.includes('?') ? '&' : '?';
+    return `${resolveFrontendUrl(env)}${errorPage}${separator}error=${encodeURIComponent(code)}`;
 }
 
 function errorRedirect(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string): Response {
-    const errorPage = options?.authConfig?.pages?.error || '/login';
-    const separator = errorPage.includes('?') ? '&' : '?';
-    return redirectTo(env, `${errorPage}${separator}error=${encodeURIComponent(code)}`);
+    return Response.redirect(errorPageUrl(env, options, code), 302);
 }
 
 async function defaultCredentialsAuthorize(
@@ -306,9 +306,7 @@ function oauthErrorRedirect(
     code: string,
     request: Request,
 ): Response {
-    const errorPage = options?.authConfig?.pages?.error || '/login';
-    const separator = errorPage.includes('?') ? '&' : '?';
-    const location = `${resolveFrontendUrl(env)}${errorPage}${separator}error=${encodeURIComponent(code)}`;
+    const location = errorPageUrl(env, options, code);
     const clearState = clearCookie(oauthStateCookieName(env), {
         secure: resolveSecureCookie(env, request),
         path: '/api/auth',
@@ -426,17 +424,14 @@ async function handleOAuthCallback(
             emailVerifiedAt = profile.emailVerified ? Date.now() : null;
 
             try {
+                // Identity link only. The provider tokens were used above to fetch the profile and
+                // are dropped here on purpose: nothing reads them back, so storing them would be a
+                // plaintext credential column with no consumer (see Account.schema.ts).
                 await Account.create({
                     userId,
                     type: 'oauth',
                     provider: providerId,
                     providerAccountId: profile.providerAccountId,
-                    accessToken: tokens.access_token ?? null,
-                    refreshToken: tokens.refresh_token ?? null,
-                    idToken: tokens.id_token ?? null,
-                    tokenType: tokens.token_type ?? null,
-                    scope: tokens.scope ?? null,
-                    expiresAt: tokens.expires_in ? Math.floor(Date.now() / 1000) + Number(tokens.expires_in) : null,
                 });
             } catch (accountError) {
                 // Roll back the just-created user so a failed Account insert does not leave an

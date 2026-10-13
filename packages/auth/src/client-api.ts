@@ -3,9 +3,7 @@
 // ============================================================
 //
 // Framework-agnostic client for the auth backend. Talks JSON end-to-end;
-// there is no Auth.js REST convention (form-encoded bodies, manual
-// redirect handling, `X-Auth-Return-Redirect`) to replicate since both
-// sides of the wire are implemented in this package.
+// both sides of the wire are implemented in this package.
 //
 // ============================================================
 

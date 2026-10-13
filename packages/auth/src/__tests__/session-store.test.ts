@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SYSTEM_ORGANIZATION_ID } from '../bootstrap';
 import { parseCookies } from '../cookies';
 import { signJwt } from '../jwt';
 import {
@@ -13,6 +14,42 @@ import {
     SESSION_COOKIE_BASE,
 } from '../session-store';
 import type { AuthEnv } from '../types';
+
+// The D1 seam `loadUserContext` reads through: `User.find` (profile + scoped role grants) and
+// `OrganizationMember.where` (active memberships). Every session's authorization data comes
+// from here -- `createSessionForUser` has no input for it.
+const { userFind, memberWhere } = vi.hoisted(() => ({ userFind: vi.fn(), memberWhere: vi.fn() }));
+
+vi.mock('@ottabase/ottaorm/models', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@ottabase/ottaorm/models')>()),
+    User: { find: userFind },
+    OrganizationMember: { where: memberWhere },
+}));
+
+interface FakeGrant {
+    name: string;
+    permissions: string[];
+}
+
+/** Stub the D1 user: an active membership in `orgId` with `orgRoles`, plus SYSTEM-scoped `systemRoles`. */
+function stubDbUser({
+    orgId = null,
+    orgRoles = [],
+    systemRoles = [],
+}: { orgId?: string | null; orgRoles?: FakeGrant[]; systemRoles?: FakeGrant[] } = {}) {
+    const toRecord = (grant: FakeGrant) => ({ get: () => grant.name, getPermissions: () => grant.permissions });
+    userFind.mockResolvedValue({
+        get: () => null,
+        roles: async ({ organizationId }: { organizationId: string }) =>
+            (organizationId === SYSTEM_ORGANIZATION_ID ? systemRoles : orgRoles).map(toRecord),
+    });
+    memberWhere.mockResolvedValue(orgId ? [{ get: () => orgId }] : []);
+}
+
+beforeEach(() => {
+    // Default: a user with no organization and no grants.
+    stubDbUser();
+});
 
 const TEST_SECRET = 'test-secret-at-least-32-chars-long!!';
 
@@ -123,20 +160,12 @@ describe('cookie name hardening', () => {
 });
 
 describe('createSessionForUser + getSession round-trip', () => {
-    it('carries org/roles/permissions via the KV snapshot, not the cookie', async () => {
+    it('carries org/roles/permissions from D1 via the KV snapshot, not the cookie', async () => {
+        stubDbUser({ orgId: 'org-1', orgRoles: [{ name: 'owner', permissions: ['*:*'] }] });
         const env = createEnv();
-        const created = await createSessionForUser(
-            {
-                id: 'user-1',
-                email: 'user@example.com',
-                name: 'User One',
-                organizationId: 'org-1',
-                roles: ['owner'],
-                permissions: ['*:*'],
-            },
-            env,
-        );
+        const created = await createSessionForUser({ id: 'user-1', email: 'user@example.com', name: 'User One' }, env);
 
+        expect(userFind).toHaveBeenCalledWith('user-1');
         expect(created.user.roles).toEqual(['owner']);
         // The heavy claims must NOT be embedded in the cookie JWT (4KB cap protection).
         const jwtPayload = JSON.parse(atob(created.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -151,18 +180,24 @@ describe('createSessionForUser + getSession round-trip', () => {
         expect(session?.user.roles).toEqual(['owner']);
         expect(session?.user.permissions).toEqual(['*:*']);
         expect(session?.user.organizationId).toBe('org-1');
-        // Fast path (explicit roles/permissions) can't infer scope, so platformAdmin is false —
-        // a merged '*:*' here does NOT imply a system-scoped platform grant. Platform-admin
-        // sessions omit explicit roles/permissions and derive it via loadUserContext.
+        // An ORG-scoped '*:*' (or a role merely named 'owner') must NOT imply platform authority:
+        // platformAdmin derives only from SYSTEM-scoped grants.
         expect(session?.user.platformAdmin).toBe(false);
+    });
+
+    it('derives platformAdmin from a system-scoped grant', async () => {
+        stubDbUser({ systemRoles: [{ name: 'platform_owner', permissions: ['platform:admin'] }] });
+        const env = createEnv();
+        const created = await createSessionForUser({ id: 'user-1', email: 'user@example.com' }, env);
+
+        const session = await getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${created.token}`), env);
+        expect(session?.user.platformAdmin).toBe(true);
+        expect(session?.user.roles).toEqual(['platform_owner']);
     });
 
     it('reflects a profile edit via the refreshed KV snapshot, not the stale JWT copy', async () => {
         const env = createEnv();
-        const created = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', name: 'Old Name', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const created = await createSessionForUser({ id: 'user-1', email: 'u@e.com', name: 'Old Name' }, env);
 
         // The cookie JWT still carries the name captured at issue time...
         const jwtPayload = JSON.parse(atob(created.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -192,10 +227,7 @@ describe('createSessionForUser + getSession round-trip', () => {
 
     it('returns null for a token signed with a different secret', async () => {
         const env = createEnv({ AUTH_SECRET: 'secret-a-least-32-characters-long!!' });
-        const created = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const created = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         const otherEnv = createEnv({ AUTH_SECRET: 'secret-b-least-32-characters-long!!', OBCF_KV: env.OBCF_KV });
         const request = cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${created.token}`);
         await expect(getSession(request, otherEnv)).resolves.toBeNull();
@@ -205,10 +237,7 @@ describe('createSessionForUser + getSession round-trip', () => {
 describe('KV eventual-consistency grace window', () => {
     it('tolerates a missing registry record for a freshly-issued session (self-heal window)', async () => {
         const env = createEnv();
-        const created = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const created = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
 
         // Simulate the registry write not having propagated to this colo yet.
         (env.OBCF_KV as any).store.clear();
@@ -233,14 +262,8 @@ describe('KV eventual-consistency grace window', () => {
 describe('session revocation', () => {
     it('revokeSession invalidates only that session (per-jti tombstone)', async () => {
         const env = createEnv();
-        const a = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
-        const b = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const a = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
+        const b = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
 
         await revokeSession('user-1', a.jti, env);
 
@@ -250,10 +273,7 @@ describe('session revocation', () => {
 
     it('the sign-out tombstone wins even inside the grace window', async () => {
         const env = createEnv();
-        const a = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const a = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         await revokeSession('user-1', a.jti, env); // deletes registry, writes tombstone
         // Freshly issued + registry gone would normally be tolerated by the grace window,
         // but the tombstone must still reject it.
@@ -262,10 +282,7 @@ describe('session revocation', () => {
 
     it('revokeAllUserSessions invalidates sessions issued before the call', async () => {
         const env = createEnv();
-        const session = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         await delay(3); // ensure the revoke timestamp is strictly after creation
         await revokeAllUserSessions('user-1', env);
         await expect(
@@ -277,10 +294,7 @@ describe('session revocation', () => {
         const env = createEnv();
         await revokeAllUserSessions('user-1', env);
         await delay(3);
-        const reissued = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const reissued = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         await expect(
             getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${reissued.token}`), env),
         ).resolves.not.toBeNull();
@@ -288,10 +302,7 @@ describe('session revocation', () => {
 
     it('fails closed when OBCF_KV is not bound', async () => {
         const env = createEnv();
-        const session = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         const envWithoutKv = createEnv({ OBCF_KV: undefined });
         await expect(
             getSession(cookieHeaderRequest(`${SESSION_COOKIE_BASE}=${session.token}`), envWithoutKv),
@@ -300,10 +311,7 @@ describe('session revocation', () => {
 
     it('fails closed when the KV read throws', async () => {
         const env = createEnv();
-        const session = await createSessionForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
-            env,
-        );
+        const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         const throwingKv = {
             get: async () => {
                 throw new Error('KV outage');
@@ -322,7 +330,7 @@ describe('createSessionCookieForUser', () => {
     it('builds a Set-Cookie with the token and security flags over https', async () => {
         const env = createEnv();
         const { cookie } = await createSessionCookieForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
+            { id: 'user-1', email: 'u@e.com' },
             env,
             new Request('https://app.example.com/'),
         );
@@ -338,7 +346,7 @@ describe('createSessionCookieForUser', () => {
     it('omits Secure over a plain-http request in a dev env', async () => {
         const env = createEnv();
         const { cookie } = await createSessionCookieForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
+            { id: 'user-1', email: 'u@e.com' },
             env,
             new Request('http://localhost:3004/'),
         );
@@ -348,7 +356,7 @@ describe('createSessionCookieForUser', () => {
     it('forces Secure in production even over a plain-http (proxied) request', async () => {
         const env = createEnv({ ENVIRONMENT: 'production' });
         const { cookie } = await createSessionCookieForUser(
-            { id: 'user-1', email: 'u@e.com', organizationId: null, roles: [], permissions: [] },
+            { id: 'user-1', email: 'u@e.com' },
             env,
             new Request('http://internal/'),
         );

@@ -219,12 +219,6 @@ export const coreMigrations: Migration[] = [
           type TEXT NOT NULL,
           provider TEXT NOT NULL,
           provider_account_id TEXT NOT NULL,
-          refresh_token TEXT,
-          access_token TEXT,
-          expires_at INTEGER,
-          token_type TEXT,
-          scope TEXT,
-          id_token TEXT,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL,
           UNIQUE(provider, provider_account_id)
@@ -236,27 +230,6 @@ export const coreMigrations: Migration[] = [
         down: async (db) => {
             await db.executeRaw(`DROP INDEX IF EXISTS idx_accounts_user_id`);
             await db.executeRaw(`DROP TABLE IF EXISTS accounts`);
-        },
-    },
-    {
-        name: '003_create_posts_table',
-        up: async (db) => {
-            await db.executeRaw(`
-        CREATE TABLE IF NOT EXISTS posts (
-          id TEXT PRIMARY KEY,
-          title TEXT NOT NULL,
-          slug TEXT NOT NULL UNIQUE,
-          content TEXT,
-          excerpt TEXT,
-          published INTEGER NOT NULL DEFAULT 0,
-          author_id TEXT,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        )
-      `);
-        },
-        down: async (db) => {
-            await db.executeRaw(`DROP TABLE IF EXISTS posts`);
         },
     },
     {
@@ -277,44 +250,6 @@ export const coreMigrations: Migration[] = [
         },
     },
     {
-        name: '005_create_post_tags_table',
-        up: async (db) => {
-            await db.executeRaw(`
-        CREATE TABLE IF NOT EXISTS post_tags (
-          post_id TEXT NOT NULL,
-          tag_id TEXT NOT NULL,
-          created_at INTEGER NOT NULL,
-          PRIMARY KEY (post_id, tag_id)
-        )
-      `);
-        },
-        down: async (db) => {
-            await db.executeRaw(`DROP TABLE IF EXISTS post_tags`);
-        },
-    },
-    {
-        name: '006_create_sessions_table',
-        up: async (db) => {
-            await db.executeRaw(`
-        CREATE TABLE IF NOT EXISTS sessions (
-          id TEXT PRIMARY KEY,
-          session_token TEXT NOT NULL UNIQUE,
-          user_id TEXT NOT NULL,
-                    expires INTEGER NOT NULL,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        )
-      `);
-            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
-            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token)`);
-        },
-        down: async (db) => {
-            await db.executeRaw(`DROP INDEX IF EXISTS idx_sessions_token`);
-            await db.executeRaw(`DROP INDEX IF EXISTS idx_sessions_user_id`);
-            await db.executeRaw(`DROP TABLE IF EXISTS sessions`);
-        },
-    },
-    {
         name: '007_create_verification_tokens_table',
         up: async (db) => {
             await db.executeRaw(`
@@ -328,35 +263,6 @@ export const coreMigrations: Migration[] = [
         },
         down: async (db) => {
             await db.executeRaw(`DROP TABLE IF EXISTS verification_tokens`);
-        },
-    },
-    {
-        name: '008_create_authenticators_table',
-        up: async (db) => {
-            await db.executeRaw(`
-        CREATE TABLE IF NOT EXISTS authenticators (
-          id TEXT PRIMARY KEY,
-          credential_id TEXT NOT NULL UNIQUE,
-          user_id TEXT NOT NULL,
-          provider_account_id TEXT NOT NULL,
-          credential_public_key TEXT NOT NULL,
-          counter INTEGER NOT NULL,
-          credential_device_type TEXT NOT NULL,
-          credential_backed_up INTEGER NOT NULL,
-          transports TEXT,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL
-        )
-      `);
-            await db.executeRaw(`CREATE INDEX IF NOT EXISTS idx_authenticators_user_id ON authenticators(user_id)`);
-            await db.executeRaw(
-                `CREATE INDEX IF NOT EXISTS idx_authenticators_credential_id ON authenticators(credential_id)`,
-            );
-        },
-        down: async (db) => {
-            await db.executeRaw(`DROP INDEX IF EXISTS idx_authenticators_credential_id`);
-            await db.executeRaw(`DROP INDEX IF EXISTS idx_authenticators_user_id`);
-            await db.executeRaw(`DROP TABLE IF EXISTS authenticators`);
         },
     },
     {
