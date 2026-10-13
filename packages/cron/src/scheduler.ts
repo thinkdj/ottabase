@@ -7,12 +7,12 @@
  * @example
  * ```typescript
  * import { createScheduler, createTaskRepository } from "@ottabase/cron";
- * import { ScheduledTask } from "@ottabase/ottaorm/models";
+ * import { AuditLog, ScheduledTask } from "@ottabase/ottaorm/models";
  * import { createD1Driver } from "@ottabase/db/drizzle-d1";
  *
  * const scheduler = createScheduler<Env>()
- *   .handler("cleanup:sessions", async ({ env }) => {
- *     await env.OBCF_D1.prepare("DELETE FROM sessions WHERE expires < ?").bind(Date.now()).run();
+ *   .handler("audit:prune", async ({ payload }) => {
+ *     await AuditLog.pruneOlderThan(payload?.olderThanDays ?? 90, "my-app");
  *   });
  *
  * // In your worker's scheduled handler:

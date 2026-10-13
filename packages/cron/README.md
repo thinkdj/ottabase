@@ -189,12 +189,13 @@ Handlers can dispatch jobs to `@ottabase/queue` for heavy/retriable work:
 
 ```typescript
 import { createScheduler } from '@ottabase/cron';
+import { AuditLog } from '@ottabase/ottaorm/models';
 import { dispatch } from '@ottabase/queue';
 
 const scheduler = createScheduler<Env>()
     // Light work: run directly
-    .handler('cleanup:sessions', async ({ env }) => {
-        await env.OBCF_D1.prepare('DELETE FROM sessions WHERE expires < ?').bind(Date.now()).run();
+    .handler('audit:prune', async ({ payload }) => {
+        await AuditLog.pruneOlderThan(payload?.olderThanDays ?? 90, 'my-app');
     })
     // Heavy work: push to queue for async processing with retries
     .handler('process:reports', async ({ env, payload }) => {

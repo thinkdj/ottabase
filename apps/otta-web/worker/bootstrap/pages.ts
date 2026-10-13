@@ -653,9 +653,9 @@ function tokenField(id: string, describedBy: string): string {
 // ============================================================
 //
 // A one-click affordance to re-run RBAC seeding after a framework upgrade that
-// changed role permissions. Non-destructive: ensureDefaultRoles() reconciles the
-// built-in `isSystem` roles to the canonical permission sets (e.g. heals a legacy
-// `owner = ['*:*']` row) and never touches data or operator-created roles.
+// changed role permissions. Non-destructive: ensureDefaultRoles({ heal: true })
+// reconciles the built-in `isSystem` roles to the canonical permission sets in
+// place and never touches data or operator-created roles.
 export function renderReseedPage(state: PlatformStateResult): string {
     const isReady = state.state === 'READY';
     // The inline <script> uses string concatenation (no template literals / no `${...}`) so it does
@@ -678,7 +678,7 @@ export function renderReseedPage(state: PlatformStateResult): string {
     <div class="card-body">
       <div class="card-head">
         <h2>What this does</h2>
-        <p class="prose">Restores the canonical permission sets for the six system roles (<code>platform_owner</code>, <code>owner</code>, <code>admin</code>, <code>editor</code>, <code>viewer</code> and <code>member</code>), and creates any default permission that is missing. It is non-destructive: your data and any role you created yourself are left untouched. Run it after an upgrade that changed role permissions, for example to heal a legacy <code>owner = ['*:*']</code> row without clearing the database.</p>
+        <p class="prose">Restores the canonical permission sets for the six system roles (<code>platform_owner</code>, <code>owner</code>, <code>admin</code>, <code>editor</code>, <code>viewer</code> and <code>member</code>), and creates any default permission that is missing. It is non-destructive: your data and any role you created yourself are left untouched. Run it after an upgrade that changed role permissions: existing roles are updated in place, without clearing the database.</p>
       </div>
       <form id="reseed-form" novalidate>
         ${tokenField('reseed-secret', 'reseed-secret-hint')}

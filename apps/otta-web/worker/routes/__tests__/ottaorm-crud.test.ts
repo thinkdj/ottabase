@@ -16,9 +16,27 @@ vi.mock('@ottabase/ottaorm', () => ({
     registerConnection: vi.fn(),
 }));
 
+/**
+ * A context shaped like the real getSecurityContext output for signed-in user-1: membership is
+ * always resolved, and the active org is one of those memberships. These route tests stub
+ * executeSecureCrudRequest, so the RLS engine never sees this — keep it realistic anyway; the
+ * real context → RLS path is covered by worker/lib/__tests__/tenant-isolation.test.ts.
+ */
+function signedInContext(overrides: Record<string, unknown> = {}) {
+    return {
+        userId: 'user-1',
+        organizationId: 'org-1',
+        appId: 'otta-web',
+        platformAdmin: false,
+        memberOrganizationIds: ['org-1'],
+        memberGroupIds: [],
+        ...overrides,
+    };
+}
+
 vi.mock('../../lib/auth-utils', () => ({
     getAuthOptions: vi.fn(() => ({})),
-    getSecurityContext: vi.fn(() => ({ organizationId: 'org-1', appId: 'otta-web' })),
+    getSecurityContext: vi.fn(async () => signedInContext()),
     invalidateMembershipCache: vi.fn(),
 }));
 
@@ -164,7 +182,7 @@ describe('handleOttaormCrud (posts concurrency)', () => {
         'menu_slot_assignments',
         'ottablog_themes',
         'audit_logs',
-        'sessions',
+        'accounts',
     ])(
         'DEFAULT-DENIES generic CRUD for the non-allowlisted model %s (e.g. self-grant group ownership)',
         async (model) => {
@@ -208,7 +226,7 @@ describe('handleOttaormCrud (posts null-org authoring guard)', () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
         const { getSecurityContext } = await import('../../lib/auth-utils');
 
-        (getSecurityContext as any).mockResolvedValueOnce({ organizationId: null, appId: 'otta-web' });
+        (getSecurityContext as any).mockResolvedValueOnce(signedInContext({ organizationId: null }));
         (parseCrudRequest as any).mockResolvedValue({
             model: 'posts',
             method: 'POST',
@@ -227,11 +245,9 @@ describe('handleOttaormCrud (posts null-org authoring guard)', () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
         const { getSecurityContext } = await import('../../lib/auth-utils');
 
-        (getSecurityContext as any).mockResolvedValueOnce({
-            organizationId: null,
-            appId: 'otta-web',
-            platformAdmin: true,
-        });
+        (getSecurityContext as any).mockResolvedValueOnce(
+            signedInContext({ organizationId: null, platformAdmin: true, memberOrganizationIds: [] }),
+        );
         (parseCrudRequest as any).mockResolvedValue({
             model: 'posts',
             method: 'POST',
@@ -308,12 +324,9 @@ describe('handleOttaormCrud (authorized post mutation policy)', () => {
     it('strips server-owned fields and preserves stored attribution for an authorized editor', async () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
         const { getSecurityContext } = await import('../../lib/auth-utils');
-        (getSecurityContext as any).mockResolvedValueOnce({
-            organizationId: 'org-1',
-            appId: 'otta-web',
-            userId: 'manager-1',
-            permissions: ['posts:publish', 'posts:manage'],
-        });
+        (getSecurityContext as any).mockResolvedValueOnce(
+            signedInContext({ userId: 'manager-1', permissions: ['posts:publish', 'posts:manage'] }),
+        );
         (parseCrudRequest as any).mockResolvedValue({
             model: 'posts',
             method: 'PATCH',
@@ -606,11 +619,7 @@ describe('handleOttaormCrud (organization mutation authorization)', () => {
     async function orgWrite(method: 'PATCH' | 'PUT' | 'DELETE', ctxOverride: Record<string, unknown>) {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
         const { getSecurityContext } = await import('../../lib/auth-utils');
-        (getSecurityContext as any).mockResolvedValueOnce({
-            organizationId: 'org-1',
-            appId: 'otta-web',
-            ...ctxOverride,
-        });
+        (getSecurityContext as any).mockResolvedValueOnce(signedInContext(ctxOverride));
         (parseCrudRequest as any).mockResolvedValue({
             model: 'organizations',
             method,

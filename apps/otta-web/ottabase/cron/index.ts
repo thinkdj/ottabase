@@ -19,6 +19,7 @@ import type {
 } from '../queue/handlers';
 import { incrementDispatchStats } from '../queue';
 import { resolvePlatformState } from '../../worker/bootstrap';
+import { AUDIT_PRUNE_HANDLER, pruneAuditLogs, type AuditPrunePayload } from '../../worker/lib/audit-retention';
 import { ensureDbConnection } from '../../worker/lib/db-utils';
 import { LEAD_NOTIFY_HANDLER, notifyNewLeads } from '../../worker/lib/landing-notify';
 
@@ -31,6 +32,7 @@ export interface AppCronPayloads {
     'queue:sync-data': SyncDataPayload;
     'queue:batch-task': BatchTaskPayload;
     'landing:notify-leads': { inboxUrl?: string } | null;
+    'audit:prune': AuditPrunePayload | null;
 }
 
 export type AppCronHandlerName = keyof AppCronPayloads;
@@ -170,6 +172,13 @@ export const appCronHandlerRegistry = {
         handler: async ({ env, payload }) => {
             const inboxUrl = payload && typeof payload === 'object' ? optionalString(payload, 'inboxUrl') : undefined;
             await notifyNewLeads(env, inboxUrl);
+        },
+    },
+    [AUDIT_PRUNE_HANDLER]: {
+        description:
+            "Delete this app's audit_logs rows older than the retention window (payload olderThanDays, default 90).",
+        handler: async ({ env, payload }) => {
+            await pruneAuditLogs(payload, getOttabaseConfig(env).appId);
         },
     },
 } satisfies TaskHandlerDefinitions<CloudflareEnv, AppCronPayloads>;

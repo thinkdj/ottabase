@@ -2,7 +2,9 @@
 // @ottabase/ottaorm - AuditLog Model
 // ============================================================
 
+import type { DbDriver } from '@ottabase/db/drizzle';
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
+import { ValidationError } from '../validation';
 import { auditLogsTable } from './AuditLog.schema';
 
 export { auditLogsTable, type AuditLogType, type NewAuditLogType } from './AuditLog.schema';
@@ -280,6 +282,35 @@ export class AuditLog extends BaseModel {
         };
 
         return this.create(logData);
+    }
+
+    /**
+     * Delete this app's audit rows older than `days` (retention). Returns the number of rows removed.
+     *
+     * Audit rows are append-only, so without this the table grows without bound toward D1's
+     * database size limit. The app runs it from a scheduled task (`audit:prune` in otta-web);
+     * the retention window is the task payload, not a config key, so an operator changes it in
+     * the Cron admin. `days` is validated because that payload is operator input.
+     *
+     * Scope: rows stamped with `appId` plus unowned rows (`app_id IS NULL` — logger transport and
+     * plain `log()` writes carry no app). Another app sharing the database keeps its own trail
+     * under its own window. Unowned rows are pruned by EVERY app's run, so in a shared database
+     * they live only as long as the shortest window any app sets.
+     */
+    static async pruneOlderThan(days: number, appId: string, driver?: DbDriver): Promise<number> {
+        if (!Number.isFinite(days) || days <= 0) {
+            throw new ValidationError({
+                days: `Audit retention must be a positive number of days, got ${String(days)}`,
+            });
+        }
+        const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+        // executeRaw binds params; Drizzle's getDb().run(string) would silently drop them.
+        // ponytail: one DELETE per run; batch by `id IN (SELECT … LIMIT n)` if a run ever exceeds D1's statement time.
+        const result = await (driver ?? this.getDriver()).executeRaw(
+            `DELETE FROM ${this.entity} WHERE created_at < ? AND (app_id = ? OR app_id IS NULL)`,
+            [cutoff, appId],
+        );
+        return result?.meta?.changes ?? 0;
     }
 
     /**

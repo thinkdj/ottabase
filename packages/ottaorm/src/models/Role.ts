@@ -319,17 +319,19 @@ export class Role extends BaseModel {
      *    rewrites an existing row, so it can't silently revert state or incur an unbounded
      *    session-refresh obligation on every signup.
      *  - `heal: true`: additionally reconcile each existing `isSystem` row's permissions/description
-     *    (e.g. heal a legacy `owner = ['*:*']` from before org/platform scoping). This is the
-     *    DELIBERATE maintenance path — run it from the bootstrap seed step (`/__bootstrap__/seed`),
-     *    which follows the reconcile with an RBAC-cache invalidation + session refresh so the healed
-     *    permissions take effect (see reconcileSystemRoleSessions). Do NOT heal from the signup path.
+     *    to the canonical definition (e.g. after a framework update changes a system role's
+     *    permission set). This is the DELIBERATE maintenance path — run it from the bootstrap seed
+     *    step (`/__bootstrap__/seed`), which follows the reconcile with an RBAC-cache invalidation +
+     *    session refresh so the healed permissions take effect (see reconcileSystemRoleSessions).
+     *    Do NOT heal from the signup path.
      *
-     * TRADEOFF (deliberate): because heal runs only from seed, a legacy `owner = ['*:*']` row
-     * survives until an operator runs it. That delay is NOT a privilege-escalation window: platform
-     * access is gated on a SYSTEM-scoped grant (not on merged permissions), grant/system tables are
-     * default-denied in generic CRUD, and the cross-tenant bypass is gated on the scope-aware
-     * `platformAdmin` flag (not the `*:*` string) — so a lingering org-scoped `*:*` grants exactly
-     * what a legitimate org admin has, and nothing platform-wide or cross-tenant.
+     * TRADEOFF (deliberate): because heal runs only from seed, a drifted system row (e.g. an
+     * `owner` holding `*:*`) survives until an operator runs it. That delay is NOT a
+     * privilege-escalation window: platform access is gated on a SYSTEM-scoped grant (not on merged
+     * permissions), grant/system tables are default-denied in generic CRUD, and the cross-tenant
+     * bypass is gated on the scope-aware `platformAdmin` flag (not the `*:*` string) — so an
+     * org-scoped `*:*` grants exactly what a legitimate org admin has, and nothing platform-wide or
+     * cross-tenant.
      *
      * System roles are framework-owned; customize by creating NEW roles, never by editing these
      * (the admin API rejects edits to `isSystem` roles, and heal would revert them anyway).

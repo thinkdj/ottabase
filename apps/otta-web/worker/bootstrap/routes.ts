@@ -29,6 +29,7 @@ import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { buildAppMigrations } from '../../ottabase/migrations';
+import { ensureAuditPruneTask } from '../lib/audit-retention';
 import { reconcileSystemRoleSessions } from '../lib/auth-utils';
 import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress } from '../lib/utils';
@@ -476,12 +477,12 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         ensureOrmConnection(env);
 
         // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
-        const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
+        const appId = getOttabaseConfig(env).appId;
         await ensureAppBrandDefaults('Ottabase', appId);
 
         // Seed default roles (platform_owner, owner, admin, editor, viewer, member) AND reconcile
-        // existing system-role permission sets to the canonical definitions — e.g. heal a legacy
-        // 'owner' = ['*:*'] row in place. This is the DELIBERATE heal path (heal:true); the signup
+        // existing system-role permission sets to the canonical definitions in place (e.g. after a
+        // framework update changed one). This is the DELIBERATE heal path (heal:true); the signup
         // path only creates-if-missing. See ensureDefaultRoles.
         const changedRoles = await Role.ensureDefaultRoles({ heal: true });
         const roleNames = changedRoles.map((r: any) => r.get('name') as string);
@@ -493,6 +494,10 @@ async function handleSeed(context: BootstrapContext): Promise<Response> {
         if (changedRoles.length > 0) {
             await reconcileSystemRoleSessions(env);
         }
+
+        // Daily audit_logs retention task (idempotent). After the roles, so housekeeping can never
+        // stand between a fresh install and its access-control seed.
+        await ensureAuditPruneTask(appId);
 
         // Count existing roles for reporting
         const allRolesResult = await env.OBCF_D1.prepare('SELECT name FROM roles').all();
@@ -567,8 +572,8 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         ensureOrmConnection(env);
         await ensureMetaTable(env);
 
-        // ensureDefaultRoles both creates missing system roles and self-heals existing ones to the
-        // canonical permission sets, so no separate normalize step is needed here.
+        // Create any missing system roles. This default mode is create-if-missing only; reconciling
+        // existing rows to the canonical permission sets is the seed step's heal:true path.
         await Role.ensureDefaultRoles();
 
         // Atomically claim the right to create the platform owner account.
@@ -625,7 +630,7 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 organizationRole: 'owner',
                 assignedBy: 'system',
                 roleFallbacks: ['owner'],
-                appId: (env as { APP_ID?: string }).APP_ID ?? 'otta-web',
+                appId: getOttabaseConfig(env).appId,
             });
             organizationId = provisioned.organizationId;
             createdOrganizationId = organizationId;
@@ -654,10 +659,10 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
         });
 
         // Auto-login: create the session cookie so the browser is immediately authenticated.
-        // The bootstrap user now holds the SYSTEM-scoped 'platform_owner' grant (via
-        // bootstrapFirstUser above) AND the org-scoped 'owner'. Let loadUserContext derive the
-        // real context from those DB grants — it resolves platformAdmin=true and the '*:*'
-        // permission set from the system-scoped grant, so no fake wildcard is injected here.
+        // The bootstrap user holds the SYSTEM-scoped 'platform_owner' grant (via
+        // bootstrapFirstUser above) AND the org-scoped 'owner'. Session creation loads the context
+        // from those DB grants — it resolves platformAdmin=true and the '*:*' permission set from
+        // the system-scoped grant.
         const { cookie, session } = await createSessionCookieForUser(
             {
                 id: userId,
@@ -859,12 +864,8 @@ async function verifyCoreTables(
         '_ottabase_migrations',
         'users',
         'accounts',
-        'sessions',
         'verification_tokens',
-        'authenticators',
-        'posts',
         'tags',
-        'post_tags',
         'roles',
         'permissions',
         'user_roles',

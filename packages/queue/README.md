@@ -199,7 +199,8 @@ Use `onFailure` hook to store failed jobs for manual retry:
 ```ts
 // Store failed job with full payload for retry
 async function storeToDLQ(kv: KVNamespace, job: QueuedJob, error: Error) {
-    const key = `dlq:${Date.now()}:${job.meta?.id}`;
+    // Keyed by job id: lookup, retry and delete are one KV read each, never a key listing
+    const key = `dlq:${job.meta?.id}`;
     await kv.put(
         key,
         JSON.stringify({
@@ -227,7 +228,8 @@ async function retryFromDLQ(queue: Queue, kv: KVNamespace, jobId: string) {
 
 See `ottabase/queue/index.ts` in the template app for a complete DLQ implementation with:
 
-- Paginated listing (handles 100k+ jobs)
+- Paginated listing (handles 100k+ jobs), ordered by `failedAt` per page
+- O(1) lookup, retry and delete by job id
 - Single/bulk retry
 - Purge functionality
 - Admin UI integration

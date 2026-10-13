@@ -9,6 +9,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- otta-web: `audit_logs` retention. `AuditLog.pruneOlderThan(days, appId)` (the app's own rows plus unowned rows) and a
+  seeded daily scheduled task (`audit:prune`, 03:17 UTC, payload `{"olderThanDays": 90}`) created by `/api/ottaorm/init`
+  and the bootstrap seed step, after the default roles; edit or pause it in the Cron admin.
+- otta-web: server code reads the app id from `getOttabaseConfig(env).appId` everywhere; the hand-rolled
+  `env.APP_ID ?? 'otta-web'` fallbacks in bootstrap, init and registration are gone.
+- otta-web: `worker/lib/__tests__/tenant-isolation.test.ts` runs the real `getSecurityContext` into the real RLS engine
+  (only D1 stubbed): member scoping, forged `x-org-id`, stale session org, anonymous callers, cross-org writes, and a
+  hand-built context without membership.
+- otta-web queue DLQ: entries are keyed by job id (`queue:dlq:<jobId>`), so lookup, retry and delete are one KV read
+  instead of listing up to 1000 keys. Listings are ordered by `failedAt` per page.
+- `@ottabase/ottaorm`: removed the Auth.js adapter leftovers `Session`/`sessions` and `Authenticator`/`authenticators`
+  (model, schema, core migration, RLS policy, app registration). Nothing read or wrote them: a session is a signed
+  cookie plus a KV registry entry, and there is no passkey support. Also removed core migrations
+  `003_create_posts_table` and `005_create_post_tags_table`, which predate `Post` moving to `@ottabase/ottablog` and
+  only created stray tables when the blog was disabled.
+- **otta-web Worker type-checks are green** (`tsconfig.worker.json`, `tsconfig.worker-test.json`), still without the DOM
+  lib. Browser code no longer reaches the Worker program:
+    - `@ottabase/auth/config` declares `SocialProvider` itself instead of type-importing it from the button component.
+    - `useMediaLightboxUrlSync` moved from the `@ottabase/medialibrary` root to `@ottabase/medialibrary/react`.
+    - New `@ottabase/brand-engine/dom` subpath holds `applyBrandTheme`, `injectFont` and `upsertStyleElement`; the root
+      keeps the pure CSS builders the edge uses.
+    - `drawShareCard` / `wrapLines` (canvas) moved from the `@ottabase/ottalanding` root to
+      `@ottabase/ottalanding/react`.
+    - Worker tsconfigs use `@cloudflare/workers-types/2023-07-01`, matching the 2024-12-30 compatibility date (the bare
+      entrypoint models 2021, where `FormData.get` returned only strings).
+    - Plain `crypto` replaces `globalThis.crypto` guards in ottaorm and ottaai (every supported runtime has Web Crypto;
+      the unused `NO_WEB_CRYPTO` error code is gone).
+    - The premium client/server wiring test gets its own `type-check:wiring-test` target (DOM + Workers types); it
+      imports both sides by design. Entry-boundary tests added for medialibrary, brand-engine and ottalanding.
+- **Removed backward-compatibility code** (pre-launch: every install starts on the current version):
+    - `@ottabase/ottablog`: the old single-category `posts.category_id` column, `Post.byCategory()` and the
+      `categoryName`/`categorySlug` enrichment (categories live in `post_category_links`); the one-shot
+      `ottablogMigrations` (orphan cleanup, old translation index drop); the `BlogRenderer` type re-export.
+      `Post.delete()` is documented as the translation cascade it actually is (auto-init emits no foreign keys).
+    - `@ottabase/brand-engine`: the stored `tokensJson` `colors`→`color` fallback, the unused `resolveModeValue`, and
+      the `--motion-ease-bouncy` alias (use `--ease-spring`). `@ottabase/brand-engine-react`: the unused `mode` field.
+    - `@ottabase/ottalayout`: `contentWidth` `'fixed'`/`'fluid'` (use `'md'`/`'lg'`); built-in themes converted.
+    - `@ottabase/utils/user` (use `getInitials` from `@ottabase/utils/string`); `@ottabase/medialibrary/schema` (use
+      `mediaTable` from `@ottabase/ottaorm`); the RBAC `tenantId` alias of `organizationId`; per-component type
+      re-exports in `@ottabase/forms`; `ShortlinksListResponse`; `JsonEditorDefault`; the ottaai `secretAliasInput`
+      fallback.
+    - otta-web: the `spacious` email template alias, the no-op `ThemeContext.setTheme`, `ThemeSwitcher` and
+      `theme.loader`, the `/admin/appearance/theme-generator` and changelog editor redirect routes, and zero-consumer
+      `config.loader` exports. Cloudflare Images reads only `CF_IMAGES_ACCOUNT_ID` / `CF_IMAGES_API_TOKEN` (the
+      `CLOUDFLARE_API_TOKEN` fallback is gone).
+
 - **Landing site is now database-backed and edited in the admin.** New built-in package `@ottabase/ottalanding`:
     - Typed landing content in D1: `landing_sites` (one row per app) and `landing_pages` (path, metadata, ordered
       sections).
@@ -339,6 +385,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security (Unreleased)
 
+- `@ottabase/ottaorm` RLS: an org-scoped operation whose `SecurityContext` has no resolved `memberOrganizationIds` is
+  now **denied** (it used to skip the cross-tenant check as "membership unknown"). The `organizations` policy likewise
+  drops its `ownerId` fallback for an unresolved list. A context builder that forgets to resolve membership fails loudly
+  instead of running unscoped; server code that derives an org itself (a comment inherits its post's org) states so by
+  adding that org to a local copy of the list.
+- `@ottabase/auth`: OAuth provider tokens (access, refresh, id token, expiry, scope) are no longer persisted. The
+  `accounts` table is an identity link (`provider` + `providerAccountId` → user); the tokens were plaintext columns that
+  nothing read back. The Google preset no longer requests offline access or forces the consent screen, so returning
+  Google users sign in with one click.
 - otta-web: all in-app membership mutations (admin routes, sign-in invite activation, org creation, generic CRUD on
   group memberships) eagerly invalidate the new membership cache so revocations take effect on the next request; only
   mutations made outside the app (custom code, direct D1 edits) fall back to the 300s TTL plus KV eventual consistency

@@ -39,8 +39,9 @@ export interface OttaormCrudContext {
  * a post is exactly as visible/commentable as the post itself; requiring the commenter to also
  * be a *member* of the post's org would break ordinary public blog commenting. The caller's
  * memberOrganizationIds is extended (in a local copy only, never persisted) to include the
- * resolved org so the RLS engine's enforceOrgMembership defense-in-depth doesn't spuriously
- * reject a legitimate cross-org public comment.
+ * resolved org: that is how server code tells the RLS engine's enforceOrgMembership "I derived
+ * this org from the target row myself". The engine denies an org it cannot verify — including
+ * an anonymous caller's `undefined` list — so the copy is always an array here.
  *
  * Unknown/custom target types have no registered resolver — for those we fall back to requiring
  * authentication and trusting only the caller's own already-membership-validated organizationId
@@ -73,9 +74,9 @@ async function resolveCommentSecurityContext(
             return { ok: false, response: errorResponse('Target post not found', 404, { code: 'NOT_FOUND' }) };
         }
         const targetOrgId = (post.get('organizationId') as string | null) ?? null;
-        const memberOrganizationIds = Array.isArray(ambient.memberOrganizationIds)
-            ? [...new Set([...ambient.memberOrganizationIds, ...(targetOrgId ? [targetOrgId] : [])])]
-            : ambient.memberOrganizationIds;
+        const memberOrganizationIds = [
+            ...new Set([...(ambient.memberOrganizationIds ?? []), ...(targetOrgId ? [targetOrgId] : [])]),
+        ];
         return {
             ok: true,
             organizationId: targetOrgId,
@@ -248,7 +249,7 @@ const ORG_MUTATING_METHODS = new Set(['PATCH', 'PUT', 'DELETE']);
 /**
  * DEFAULT-DENY allowlist for the generic `/api/ottaorm/*` route. ONLY these app-data models may be
  * read/written through generic CRUD; every other model is refused. That deliberately closes:
- *  - grant/auth/system tables (user_roles, user_group_members, sessions, accounts, authenticators,
+ *  - grant/auth/system tables (user_roles, user_group_members, accounts, verification_tokens,
  *    audit_logs, kill switches, …) — accessed server-side or via dedicated admin endpoints, never here,
  *  - app-global control-plane data (menus, menu_items, menu_slot_assignments, ottablog_themes/plugins,
  *    shortlinks, scheduled_tasks, …) — managed through their own scope-gated routes.

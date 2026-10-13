@@ -274,16 +274,17 @@ automatically filtered by security context (`userId`, `organizationId`, `appId`)
 
 **Pre-registered policies (subset):**
 
-| Model                         | Policy                    | Filter field     |
-| ----------------------------- | ------------------------- | ---------------- |
-| `organizations`               | Custom (owner/membership) | `organizationId` |
-| `organization_members`        | Tenant-scoped             | `organizationId` |
-| `roles`, `permissions`        | Tenant-scoped             | `organizationId` |
-| `users`                       | Owner-only                | `id`             |
-| `accounts`, `sessions`        | User-scoped               | `userId`         |
-| `posts`, `tags`, `shortlinks` | App-scoped                | `appId`          |
-| `audit_logs`                  | Tenant-scoped (read-only) | `organizationId` |
-| `system_config`               | Admin-only                | —                |
+| Model                  | Policy                                                         |
+| ---------------------- | -------------------------------------------------------------- |
+| `organizations`        | Membership-scoped (`memberOrganizationIds`; unresolved ⇒ deny) |
+| `organization_members` | Membership-scoped                                              |
+| `roles`, `permissions` | Platform admin only (and blocked from generic CRUD)            |
+| `user_roles`           | Tenant-scoped + platform admin (and blocked from generic CRUD) |
+| `audit_logs`           | Tenant-scoped + platform admin                                 |
+| `users`                | Owner-only (`id`)                                              |
+| `accounts`             | User-scoped (`userId`)                                         |
+| `posts`                | Tenant + app scoped; authors limited to their own posts        |
+| `system_config`        | Admin-only                                                     |
 
 Cross-tenant writes are blocked and logged automatically. See
 [RBAC_MULTI_TENANT_GUIDE.md](./docs/RBAC_MULTI_TENANT_GUIDE.md) for the full policy list and configuration.
@@ -347,8 +348,8 @@ erDiagram
     Post ||--o{ Media : "attachments"
 ```
 
-**Core models** (from `@ottabase/ottaorm`): `User`, `Account`, `Session`, `Authenticator`, `VerificationToken`,
-`Organization`, `OrganizationMember`, `Role`, `Permission`, `UserRole`, `AuditLog`, `ScheduledTask`, `Tag`, `Media`.
+**Core models** (from `@ottabase/ottaorm`): `User`, `Account`, `VerificationToken`, `Organization`,
+`OrganizationMember`, `Role`, `Permission`, `UserRole`, `AuditLog`, `ScheduledTask`, `Tag`, `Media`.
 
 **Package models** (owned by feature packages): `Post`, `Category`, `Series` (`@ottabase/ottablog`), `Shortlink`
 (`@ottabase/shortlinks`), `ReferralTracking` (`@ottabase/referrals`), `Comment` (`@ottabase/comments`).

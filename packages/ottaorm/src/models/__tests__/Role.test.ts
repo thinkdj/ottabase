@@ -2,15 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ORG_ADMIN_PERMISSION, PLATFORM_OWNER_ROLE_NAME, Role } from '../Role';
 
 // ---------------------------------------------------------------------------
-// ensureDefaultRoles() self-heal
+// ensureDefaultRoles() heal
 //
-// The security-critical behavior: on every run, ensureDefaultRoles reconciles
+// The security-critical behavior: with `heal: true`, ensureDefaultRoles reconciles
 // EXISTING framework `isSystem` role rows back to the canonical permission sets
-// (Role.DEFAULT_ROLE_DEFINITIONS). This is what auto-corrects a role seeded under
-// an older definition — e.g. a legacy `owner = ['*:*']` from before org/platform
-// scoping — with no manual re-seed or DB wipe. These tests lock the create /
-// heal / idempotent / don't-clobber-operator-roles branches so a future refactor
-// can't silently revert to "skip if exists" and reintroduce the escalation.
+// (Role.DEFAULT_ROLE_DEFINITIONS), so a system role whose stored permissions drifted
+// from the definition (e.g. an `owner` holding `*:*` instead of the org bundle) is
+// corrected with no manual re-seed or DB wipe. The default mode is create-if-missing
+// only. These tests lock the create / heal / idempotent / don't-clobber-operator-roles
+// branches so a future refactor can't silently revert to "skip if exists".
 //
 // The static DB methods are stubbed (no driver needed) — we assert the branch
 // logic, i.e. WHICH rows get updated/created and with WHAT permissions.
@@ -68,7 +68,7 @@ describe('Role.hasPermission', () => {
 
 describe('Role.ensureDefaultRoles — heal mode', () => {
     it('heals a stale isSystem `owner = [*:*]` row to the org bundle (org:admin, no *:*) when heal:true', async () => {
-        // All roles already match canonical EXCEPT `owner`, which carries the legacy wildcard.
+        // All roles already match canonical EXCEPT `owner`, which has drifted to a bare wildcard.
         stub('findByName', async (name: string) =>
             name === 'owner' ? existingRow('owner', { permissions: ['*:*'] }) : existingRow(name),
         );

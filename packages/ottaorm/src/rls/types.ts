@@ -18,7 +18,12 @@ export interface SecurityContext {
      * org-scoped grant. Gates `requirePlatformAdmin` policies (e.g. app-global control-plane tables).
      */
     platformAdmin?: boolean;
-    /** Organization IDs where the user is an active member (populated upstream). */
+    /**
+     * Organization IDs where the user is an active member (populated upstream from D1, never
+     * from the request). REQUIRED whenever `organizationId` is set: the engine denies any
+     * org-scoped operation whose context has no resolved list (`undefined`) or an empty one.
+     * Platform admins are exempt. Anonymous callers have no org, so they never need it.
+     */
     memberOrganizationIds?: string[];
     /**
      * User-group IDs the user can access (active memberships + groups they created). Populated

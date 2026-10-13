@@ -700,7 +700,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 // role must match so they can actually administer it (invite teammates, manage
                 // settings) via /admin/*, not just read it. Mirrors bootstrap/routes.ts's first-user flow.
                 roleFallbacks: ['owner'],
-                appId: env.APP_ID ?? 'otta-web',
+                appId: getOttabaseConfig(env).appId,
             });
 
             organizationId = provisioned.organizationId;

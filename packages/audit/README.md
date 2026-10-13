@@ -156,6 +156,21 @@ const postChanges = await AuditLog.where({
 });
 ```
 
+### Retention
+
+Audit rows are append-only. `AuditLog.pruneOlderThan(days, appId)` deletes that app's rows, plus unowned
+(`app_id IS NULL`) rows, older than the window and returns the count. Apps sharing one database each keep their own
+trail under their own window; unowned rows are pruned by every app, so they follow the shortest window any app sets. The
+otta-web template schedules it daily (`audit:prune`, default 90 days, editable in the Cron admin) so the table never
+grows unbounded toward D1's size limit.
+
+```typescript
+import { AuditLog } from '@ottabase/ottaorm/models';
+
+// Delete otta-web's (and unowned) audit rows older than 90 days
+const removed = await AuditLog.pruneOlderThan(90, 'otta-web');
+```
+
 ## Audit Actions
 
 | Action              | Description           |

@@ -51,7 +51,7 @@ describe('RLS Engine', () => {
                 model: 'posts',
                 policy: RLSPolicies.TenantScoped(false),
             });
-            const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-1' };
+            const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
             const filter = engine.applyReadFilter('posts', ctx);
             expect(filter).toEqual({ organizationId: 'org-1' });
         });
@@ -61,7 +61,7 @@ describe('RLS Engine', () => {
                 model: 'posts',
                 policy: RLSPolicies.TenantScoped(false),
             });
-            const ctx: SecurityContext = { organizationId: 'org-1' };
+            const ctx: SecurityContext = { organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
             const filter = engine.applyReadFilter('posts', ctx, { status: 'draft' });
             expect(filter).toEqual({ status: 'draft', organizationId: 'org-1' });
         });
@@ -326,7 +326,7 @@ describe('RLS Engine', () => {
                 model: 'posts',
                 policy: RLSPolicies.TenantScoped(false),
             });
-            const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-1' };
+            const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
             const data: Record<string, any> = { title: 'Hello' };
             engine.validateWrite('posts', ctx, data, 'create');
             expect(data.organizationId).toBe('org-1');
@@ -337,7 +337,7 @@ describe('RLS Engine', () => {
                 model: 'posts',
                 policy: RLSPolicies.TenantScoped(false),
             });
-            const ctx: SecurityContext = { organizationId: 'org-1' };
+            const ctx: SecurityContext = { organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
             const data = { organizationId: 'org-1', title: 'Hi' };
             expect(() => engine.validateWrite('posts', ctx, data, 'create')).not.toThrow();
         });
@@ -438,9 +438,20 @@ describe('org membership enforcement', () => {
         expect(engine.getReadFilter('posts', ctx)).toEqual({ organizationId: 'org-1' });
     });
 
-    it('does not enforce when memberOrganizationIds is absent (opt-in by data)', () => {
+    it('denies when memberOrganizationIds was never resolved (undefined is not "skip")', () => {
+        // A context builder that forgets the list must fail loudly, not run unscoped. This is the
+        // engine-level backstop for an app whose getSecurityContext does not resolve membership.
         const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-x' };
-        expect(engine.getReadFilter('posts', ctx)).toEqual({ organizationId: 'org-x' });
+        expect(() => engine.getReadFilter('posts', ctx)).toThrow(RLSError);
+        expect(() => engine.getReadFilter('posts', ctx)).toThrow(/memberOrganizationIds was not resolved/);
+        const data = { organizationId: 'org-x', title: 'Hi' };
+        expect(() => engine.validateWrite('posts', ctx, data, 'create')).toThrow(/was not resolved/);
+    });
+
+    it('still skips the check for a NULL-org (platform-owned) row with an unresolved list', () => {
+        engine.register({ model: 'notes', policy: RLSPolicies.TenantScoped(true) });
+        const ctx: SecurityContext = { userId: 'u1', organizationId: null };
+        expect(engine.getReadFilter('notes', ctx)).toEqual({ organizationId: null });
     });
 
     it('denies read when memberOrganizationIds is empty (user belongs to no orgs)', () => {

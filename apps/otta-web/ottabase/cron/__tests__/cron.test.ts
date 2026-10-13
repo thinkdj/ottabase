@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduledTaskRecord, TaskRepository } from '@ottabase/cron';
 import { dispatch } from '@ottabase/queue';
-import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { AuditLog, ScheduledTask } from '@ottabase/ottaorm/models';
 import { resolvePlatformState } from '../../../worker/bootstrap';
 import { ensureDbConnection } from '../../../worker/lib/db-utils';
 import { incrementDispatchStats } from '../../queue';
+import { getOttabaseConfig } from '../../config.loader';
 import { APP_CRON_TICK, appCronScheduler, getRegisteredAppCronHandlers, handleAppScheduled } from '..';
 
 vi.mock('@ottabase/queue', () => ({
@@ -19,6 +20,9 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     ScheduledTask: {
         due: vi.fn(),
         find: vi.fn(),
+    },
+    AuditLog: {
+        pruneOlderThan: vi.fn(),
     },
 }));
 
@@ -86,6 +90,7 @@ describe('application Cron registry', () => {
             'queue:sync-data',
             'queue:batch-task',
             'landing:notify-leads',
+            'audit:prune',
         ]);
 
         const result = await appCronScheduler.runTask('task-1', env, repository([task()]));
@@ -96,6 +101,35 @@ describe('application Cron registry', () => {
             userId: undefined,
             params: undefined,
         });
+    });
+
+    it('prunes audit logs with the payload retention window, defaulting to 90 days', async () => {
+        vi.mocked(AuditLog.pruneOlderThan).mockResolvedValue(3);
+        const prune = (payload: string | null) => task({ task: 'audit:prune', payload });
+
+        const appId = getOttabaseConfig(env).appId;
+
+        const result = await appCronScheduler.runTask('task-1', env, repository([prune('{"olderThanDays":30}')]));
+        expect(result.status).toBe('completed');
+        expect(AuditLog.pruneOlderThan).toHaveBeenCalledWith(30, appId);
+
+        await appCronScheduler.runTask('task-1', env, repository([prune(null)]));
+        expect(AuditLog.pruneOlderThan).toHaveBeenLastCalledWith(90, appId);
+    });
+
+    it('rejects a non-positive audit retention window instead of deleting everything', async () => {
+        const repo = repository([task({ task: 'audit:prune', payload: '{"olderThanDays":0}' })]);
+
+        const result = await appCronScheduler.runTask('task-1', env, repo);
+
+        expect(result.status).toBe('failed');
+        expect(AuditLog.pruneOlderThan).not.toHaveBeenCalled();
+        expect(repo.markFailed).toHaveBeenCalledWith(
+            'task-1',
+            expect.any(Date),
+            expect.stringContaining('olderThanDays'),
+            expect.any(Date),
+        );
     });
 
     it('persists handler payload validation failures through the executor', async () => {

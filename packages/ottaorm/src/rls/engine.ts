@@ -232,28 +232,37 @@ export class RLSEngine {
     }
 
     /**
-     * Defense-in-depth tenant check. When the caller supplies the set of organizations the
-     * user actually belongs to (`context.memberOrganizationIds`), refuse any operation scoped
-     * to an organization outside that set — closing the "trust the X-Org-Id header" gap.
+     * Defense-in-depth tenant check. Any operation scoped to an organization must be backed by
+     * the set of organizations the caller actually belongs to (`context.memberOrganizationIds`)
+     * — closing the "trust the X-Org-Id header" gap independently of the context builder.
      *
-     * Opt-in by data, and the empty list is meaningful:
-     *  - `undefined` → caller didn't resolve membership → no-op (backward compatible).
-     *  - `[]`        → caller resolved it and the user belongs to ZERO orgs → fail closed; no
-     *                  organization claim can ever be satisfied by an empty set.
+     * Fail closed on every shape of missing evidence:
+     *  - `undefined` → the caller never resolved membership → DENY. An org claim the engine
+     *                  cannot verify is not a weaker claim, it is an unverified one; a context
+     *                  builder that forgets the list must fail loudly here, not run unscoped.
+     *  - `[]`        → resolved, and the user belongs to ZERO orgs → DENY; no organization claim
+     *                  can ever be satisfied by an empty set.
      * A null/undefined org (system or single-founder rows) is not a tenant claim and is skipped.
      * Only PLATFORM administrators may act across tenants — gated on the scope-aware
      * `platformAdmin` flag, NOT the `*:*` permission string. Those differ: a platform owner has
      * both, but a stale/org-scoped grant can carry `*:*` (org-level) WITHOUT being a platform
      * admin. Trusting the permission string here would let such a grant bypass the tenant check;
      * gating on `platformAdmin` keeps this consistent with the checkAccess platform gate.
+     *
+     * Server code that legitimately acts on an org it derived itself (e.g. a comment on a public
+     * post inherits the POST's org) states that by putting the org in `memberOrganizationIds` on
+     * a local copy of the context — an explicit, greppable assertion instead of a silent skip.
      */
     private enforceOrgMembership(orgId: unknown, context: SecurityContext, model: string): void {
         if (orgId === null || orgId === undefined) return;
-        const memberships = context.memberOrganizationIds;
-        // Only `undefined` is "membership unknown". An empty array is a real answer ("no orgs"),
-        // so it must fall through to the membership check below, which then always fails closed.
-        if (!Array.isArray(memberships)) return;
         if (context.platformAdmin) return;
+        const memberships = context.memberOrganizationIds;
+        if (!Array.isArray(memberships)) {
+            throw new RLSError(
+                `Cross-tenant access blocked: organization "${orgId}" cannot be verified — SecurityContext.memberOrganizationIds was not resolved`,
+                { type: 'cross_tenant_read', model, context },
+            );
+        }
         if (!memberships.includes(orgId as string)) {
             throw new RLSError(
                 `Cross-tenant access blocked: organization "${orgId}" is not one of the user's organizations`,

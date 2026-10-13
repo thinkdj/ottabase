@@ -84,7 +84,7 @@ describe('secureCrud response boundary', () => {
         const response = await secureCrud({
             request,
             url: new URL(request.url),
-            context: { userId: 'u1', organizationId: 'org-1' },
+            context: { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
         });
 
         expect(response.status).toBe(422);
@@ -134,7 +134,7 @@ describe('executeSecureCrudRequest', () => {
             status: 200,
         });
 
-        const context = { userId: 'u1', organizationId: 'org-1' };
+        const context = { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
         const result = await executeSecureCrudRequest(
             { method: 'GET', model: 'posts', query: { where: { status: 'draft' } } },
             context,
@@ -162,7 +162,7 @@ describe('executeSecureCrudRequest', () => {
             status: 200,
         });
 
-        const context = { userId: 'u1', organizationId: 'org-1', appId: 'web' };
+        const context = { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'], appId: 'web' };
         const result = await executeSecureCrudRequest(
             {
                 method: 'GET',
@@ -191,7 +191,7 @@ describe('executeSecureCrudRequest', () => {
 
         const result = await executeSecureCrudRequest(
             { method: 'POST', model: 'posts', body: { title: 'x' } },
-            { userId: 'u1', organizationId: 'org-1' },
+            { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
         );
 
         expect(result.success).toBe(false);
@@ -205,7 +205,7 @@ describe('executeSecureCrudRequest', () => {
             model: 'posts',
             policy: RLSPolicies.TenantScoped(false),
         });
-        const context = { userId: 'u1', organizationId: 'org-1' };
+        const context = { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
         const result = await executeSecureCrudRequest(
             { method: 'POST', model: 'posts', body: { organizationId: 'org-2', title: 'Hi' } },
             context,
@@ -231,7 +231,7 @@ describe('executeSecureCrudRequest', () => {
             status: 201,
         });
 
-        const context = { userId: 'u1', organizationId: 'org-1' };
+        const context = { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] };
         const result = await executeSecureCrudRequest(
             { method: 'POST', model: 'posts', body: { title: 'New' } },
             context,
@@ -286,7 +286,7 @@ describe('executeSecureCrudRequest', () => {
 
         const result = await executeSecureCrudRequest(
             { method: 'PATCH', model: 'posts', id: 'p1', body: { title: 'After' } },
-            { userId: 'u1', organizationId: 'org-1' },
+            { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
         );
 
         expect(result.success).toBe(true);
@@ -323,7 +323,7 @@ describe('executeSecureCrudRequest', () => {
 
         const result = await executeSecureCrudRequest(
             { method: 'PATCH', model: 'posts', id: 'p1', body: { title: 'raw' } },
-            { userId: 'u1', organizationId: 'org-1' },
+            { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
             { prepareAuthorizedMutation },
         );
 
@@ -381,7 +381,7 @@ describe('executeSecureCrudRequest', () => {
 
         const result = await executeSecureCrudRequest(
             { method: 'GET', model: 'posts' },
-            { userId: 'u1', organizationId: 'org-1' },
+            { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
         );
 
         expect(result).toEqual({
@@ -475,7 +475,7 @@ describe('RLS fails closed on misconfigured policy columns', () => {
 
         const result = await executeSecureCrudRequest(
             { method: 'GET', model: 'notes' },
-            { userId: 'u1', organizationId: 'org-1' },
+            { userId: 'u1', organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
         );
 
         expect(result.success).toBe(false);
@@ -499,7 +499,10 @@ describe('RLS fails closed on misconfigured policy columns', () => {
             status: 200,
         });
 
-        const result = await executeSecureCrudRequest({ method: 'GET', model: 'scoped' }, { organizationId: 'org-1' });
+        const result = await executeSecureCrudRequest(
+            { method: 'GET', model: 'scoped' },
+            { organizationId: 'org-1', memberOrganizationIds: ['org-1'] },
+        );
 
         expect(result.success).toBe(true);
         expect(handleCrudSpy).toHaveBeenCalledWith(

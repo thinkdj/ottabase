@@ -1320,16 +1320,17 @@ automatically filtered by security context (`userId`, `organizationId`, `appId`)
 
 **Pre-registered policies (subset):**
 
-| Model                         | Policy                    | Filter field     |
-| ----------------------------- | ------------------------- | ---------------- |
-| `organizations`               | Custom (owner/membership) | `organizationId` |
-| `organization_members`        | Tenant-scoped             | `organizationId` |
-| `roles`, `permissions`        | Tenant-scoped             | `organizationId` |
-| `users`                       | Owner-only                | `id`             |
-| `accounts`, `sessions`        | User-scoped               | `userId`         |
-| `posts`, `tags`, `shortlinks` | App-scoped                | `appId`          |
-| `audit_logs`                  | Tenant-scoped (read-only) | `organizationId` |
-| `system_config`               | Admin-only                | —                |
+| Model                  | Policy                                                         |
+| ---------------------- | -------------------------------------------------------------- |
+| `organizations`        | Membership-scoped (`memberOrganizationIds`; unresolved ⇒ deny) |
+| `organization_members` | Membership-scoped                                              |
+| `roles`, `permissions` | Platform admin only (and blocked from generic CRUD)            |
+| `user_roles`           | Tenant-scoped + platform admin (and blocked from generic CRUD) |
+| `audit_logs`           | Tenant-scoped + platform admin                                 |
+| `users`                | Owner-only (`id`)                                              |
+| `accounts`             | User-scoped (`userId`)                                         |
+| `posts`                | Tenant + app scoped; authors limited to their own posts        |
+| `system_config`        | Admin-only                                                     |
 
 Cross-tenant writes are blocked and logged automatically. See
 [RBAC_MULTI_TENANT_GUIDE.md](./docs/RBAC_MULTI_TENANT_GUIDE.md) for the full policy list and configuration.
@@ -1393,8 +1394,8 @@ erDiagram
     Post ||--o{ Media : "attachments"
 ```
 
-**Core models** (from `@ottabase/ottaorm`): `User`, `Account`, `Session`, `Authenticator`, `VerificationToken`,
-`Organization`, `OrganizationMember`, `Role`, `Permission`, `UserRole`, `AuditLog`, `ScheduledTask`, `Tag`, `Media`.
+**Core models** (from `@ottabase/ottaorm`): `User`, `Account`, `VerificationToken`, `Organization`,
+`OrganizationMember`, `Role`, `Permission`, `UserRole`, `AuditLog`, `ScheduledTask`, `Tag`, `Media`.
 
 **Package models** (owned by feature packages): `Post`, `Category`, `Series` (`@ottabase/ottablog`), `Shortlink`
 (`@ottabase/shortlinks`), `ReferralTracking` (`@ottabase/referrals`), `Comment` (`@ottabase/comments`).
@@ -1622,8 +1623,7 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
 2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
    come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `config.migrations.ts`
-   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1 — the only ORM/backend
-   (Prisma and MongoDB were removed).
+   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1 — the only ORM/backend.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
 4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
@@ -1656,10 +1656,10 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
-  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and deliberately NO `build`.
-  Adding one there emits a `dist/` nothing imports — and for any package with module-level singletons that dist becomes
-  a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its source is still compiled (and
-  therefore CI-covered) by the app build.
+  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and
+  deliberately NO `build`. Adding one there emits a `dist/` nothing imports — and for any package with module-level
+  singletons that dist becomes a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its
+  source is still compiled (and therefore CI-covered) by the app build.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
 - **No noise docs**: do not create stray summary files (for example, `SUMMARY.MD`).
 - **KISS + DRY by default**: prefer the simplest maintainable implementation and reuse existing repo primitives.
@@ -1902,8 +1902,8 @@ export class Post extends BaseModel {
 The `SecurityContext` handed to RLS decides which rows exist for a caller. Getting its provenance wrong is a tenant
 leak, not a bug report.
 
-- **Derive it server-side from a verified session.** OttaORM deliberately has no header-to-context helper; a previous
-  `extractSecurityContext(request)` was removed because request headers are trivially spoofable by any client.
+- **Derive it server-side from a verified session.** OttaORM deliberately has no header-to-context helper, because
+  request headers are trivially spoofable by any client.
 - **`appId` comes from server configuration** (`getOttabaseConfig(env)`), never from a browser `x-app-id` header. The
   same applies to ownership fields on uploads and any other row-scoping column — take them from the resolved context,
   never from request/upload metadata.
@@ -2015,7 +2015,7 @@ boundary that keeps one tenant's cached rows from being read by another.
 
 ### @ottabase/ottaorm
 
-Fat model ORM. Core models: User, Tag, Account, Session, Organization, Role, UserRole (blog `Post` lives in
+Fat model ORM. Core models: User, Tag, Account, Organization, Role, UserRole (blog `Post` lives in
 `@ottabase/ottablog`).
 
 ```typescript
@@ -2544,11 +2544,26 @@ See `README.md` and `AGENTS.MD` above for full command reference. Key commands:
 - `pnpm test` — run all tests via Vitest + Turborepo
 - `pnpm type-check` — TypeScript validation
 
-#### Misc
+<!-- BEGIN:turborepo-agent-rules -->
 
-- Template apps were previously named `ottabase-template-app-tanstack`, `ottabase-template-app-nextjs-homepage` and were
-  later renamed to `otta-web` and `otta-landing` for clarity. If old references appear in docs or code, they can
-  generally be ignored or updated to `otta-web` or `otta-landing`.
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your
+training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be
+visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace
+that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory
+before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed
+package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the
+Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the
+managed block while updates are enabled means a later qualifying invocation will add it again. Set
+`"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block.
+Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+
+<!-- END:turborepo-agent-rules -->
 
 
 ---
@@ -6155,9 +6170,9 @@ This is why a self-registered user — who receives the RBAC role _named_ `owner
 their own workspace but can NEVER reach the control plane: `org:admin` is not `platform:admin`, and their grant is not
 system-scoped. Renaming a role, or a tenant creating a role named `admin`, changes nothing about what it can do.
 
-**Self-healing system roles:** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role rows to the
-canonical permission sets — correcting a role seeded under an older definition (e.g. a legacy `owner = ['*:*']`) without
-a manual re-seed or DB wipe. The reconcile runs on the deliberate seed path (`/__bootstrap__/seed`); the
+**Reconciling system roles:** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role rows to the
+canonical permission sets in place — e.g. after a framework update changes a system role's permissions — without a
+manual re-seed or DB wipe. The reconcile runs on the deliberate seed path (`/__bootstrap__/seed`); the
 signup/provisioning hot path only creates missing roles and never rewrites existing ones. Customize by creating NEW
 roles, never by editing system ones (the admin API rejects edits to `isSystem` roles).
 
@@ -6244,8 +6259,7 @@ export default {
 ```
 
 > Already parsed the request elsewhere? Call `executeSecureCrudRequest(crudRequest, context)` directly instead of
-> `rlsMiddleware`. (The older `tenantAwareCrudMiddleware` has been removed — it only scoped a hardcoded model list and
-> was fail-open for everything else; RLS is fail-closed and covers every registered model.)
+> `rlsMiddleware`. RLS is fail-closed and covers every registered model — there is no per-model allowlist to maintain.
 
 **What this does:**
 
@@ -6419,6 +6433,13 @@ const logs = await AuditLog.where(
     { orderBy: 'createdAt', orderDirection: 'desc', limit: 100 },
 );
 ```
+
+**Retention.** `audit_logs` is append-only, so otta-web seeds a daily scheduled task (`Prune audit logs`, handler
+`audit:prune`, 03:17 UTC) that calls `AuditLog.pruneOlderThan(days, appId)`. The window is the task payload
+(`{"olderThanDays": 90}` by default) — change or pause it in the Cron admin, not in code. A prune removes the app's own
+rows plus unowned (`app_id IS NULL`) rows; another app sharing the database keeps its trail under its own window, and
+unowned rows — pruned by every app — live only as long as the shortest window any app sets. The task is created by
+`/api/ottaorm/init` and the bootstrap seed step, so every initialised app has a retention policy.
 
 ### RBAC Cache
 
@@ -7093,14 +7114,14 @@ on purpose: deriving the context from raw headers would be spoofable, so `getCon
 
 | Model                               | Policy                                                         |
 | ----------------------------------- | -------------------------------------------------------------- |
-| `organizations`                     | Membership-scoped (`memberOrganizationIds`, else own rows)     |
+| `organizations`                     | Membership-scoped (`memberOrganizationIds`; unresolved ⇒ deny) |
 | `organization_members`              | Membership-scoped                                              |
 | `user_groups`, `user_group_members` | Group-membership-scoped                                        |
 | `roles`, `permissions`              | Platform admin only (and blocked from generic CRUD)            |
 | `user_roles`                        | Tenant-scoped + platform admin (and blocked from generic CRUD) |
 | `audit_logs`                        | Tenant-scoped + platform admin                                 |
 | `users`                             | Owner-only (`id`)                                              |
-| `accounts`, `sessions`              | User-scoped (`userId`)                                         |
+| `accounts`                          | User-scoped (`userId`)                                         |
 | `verification_tokens`               | Deny all reads, read-only                                      |
 | `posts`                             | Tenant + app scoped; authors limited to their own posts        |
 
@@ -7118,7 +7139,7 @@ interface SecurityContext {
     roles?: string[]; // User roles in the active org
     permissions?: string[]; // User permissions in the active org
     platformAdmin?: boolean; // System-scoped platform:admin grant — never inferred from a role name
-    memberOrganizationIds?: string[]; // Orgs with an active membership
+    memberOrganizationIds?: string[]; // Active memberships — REQUIRED with organizationId; unresolved or empty ⇒ denied
     memberGroupIds?: string[]; // Accessible user groups
 }
 ```
@@ -9020,7 +9041,8 @@ and others.
 For features requiring API access (like Images):
 
 ```bash
-pnpm wrangler secret put CLOUDFLARE_API_TOKEN   # CLOUDFLARE_ACCOUNT_ID is a wrangler.jsonc var
+pnpm wrangler secret put CF_IMAGES_ACCOUNT_ID
+pnpm wrangler secret put CF_IMAGES_API_TOKEN   # a token scoped to Cloudflare Images only
 ```
 
 ## Development Workflow
@@ -9152,8 +9174,8 @@ export async function POST(request: Request) {
 import { createImagesClient } from '@ottabase/cf/images';
 
 const images = createImagesClient({
-    accountId: env.CLOUDFLARE_ACCOUNT_ID,
-    apiToken: env.CLOUDFLARE_API_TOKEN,
+    accountId: env.CF_IMAGES_ACCOUNT_ID,
+    apiToken: env.CF_IMAGES_API_TOKEN,
 });
 
 // Upload
@@ -9993,6 +10015,21 @@ const postChanges = await AuditLog.where({
 });
 ```
 
+### Retention
+
+Audit rows are append-only. `AuditLog.pruneOlderThan(days, appId)` deletes that app's rows, plus unowned
+(`app_id IS NULL`) rows, older than the window and returns the count. Apps sharing one database each keep their own
+trail under their own window; unowned rows are pruned by every app, so they follow the shortest window any app sets. The
+otta-web template schedules it daily (`audit:prune`, default 90 days, editable in the Cron admin) so the table never
+grows unbounded toward D1's size limit.
+
+```typescript
+import { AuditLog } from '@ottabase/ottaorm/models';
+
+// Delete otta-web's (and unowned) audit rows older than 90 days
+const removed = await AuditLog.pruneOlderThan(90, 'otta-web');
+```
+
 ## Audit Actions
 
 | Action              | Description           |
@@ -10385,8 +10422,8 @@ owns. Everything else stays in the host app.
 
 ### Owned by the host app (not part of this package)
 
-These routes already didn't depend on Auth.js and are unaffected by this package; they call `hashPassword` /
-`verifyPassword` / `getSession` / `revokeAllUserSessions` from `@ottabase/auth/backend` directly:
+These routes live in the app and call `hashPassword` / `verifyPassword` / `getSession` / `revokeAllUserSessions` from
+`@ottabase/auth/backend` directly:
 
 | Route                              | Method    |
 | ---------------------------------- | --------- |
@@ -10575,6 +10612,17 @@ provider before; if the email matches an existing account that has never used th
 `OAuthAccountNotLinked` rather than silently linking (this would otherwise let anyone claim an OAuth identity with a
 matching email hijack an existing account).
 
+The `accounts` row created on first sign-in is an **identity link only** (`provider` + `providerAccountId` → `userId`).
+The provider's access, refresh and id tokens are used once, to fetch the profile during the callback, and are **not
+persisted** — nothing in the framework reads them back, so storing them would be a plaintext credential column with no
+consumer. For the same reason the presets request identity scopes only — Google asks for no offline access and does not
+force the consent screen.
+
+**Login and data access are separate.** Sign-in proves who the user is and nothing more. An app that reads provider data
+on the user's behalf (for example Gmail for an analytics feature) adds a separate "connect" flow with its own scopes,
+consent and encrypted token storage. It never widens sign-in scopes, so users who never use that feature never see its
+consent screen.
+
 ## Magic Link (Passwordless Email)
 
 `POST /api/auth/signin/email` sends a short-lived (15 minute) sign-in link, distinct from the app's own 24-hour
@@ -10703,9 +10751,10 @@ stale pre-refresh identity or authorization snapshot.
 
 ## Login Config Helpers (pure)
 
-The env-driven login-config helpers live on their own **dependency-free** subpath, `@ottabase/auth/config`. They use
-type-only imports and pull **zero** UI dependencies, so a worker/edge route (e.g. `GET /api/auth/config`) can decide
-which sign-in methods to show without ever loading shadcn or lucide:
+The env-driven login-config helpers live on their own **dependency-free** subpath, `@ottabase/auth/config`. It imports
+nothing from the UI components — not even types, since a type-only import still pulls the file into a Worker type-check
+— so a worker/edge route (e.g. `GET /api/auth/config`) can decide which sign-in methods to show without ever loading
+shadcn or lucide. The `SocialProvider` type is declared here too:
 
 ```typescript
 import {
@@ -10729,8 +10778,7 @@ const config = getLoginConfig(env);
 Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). This is the package's
 **only** rendered-UI subpath: `@ottabase/ui-shadcn` and `lucide-react` are declared as **optional** peer dependencies
 and are pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
-stay free of them. The components never depended on Auth.js and take plain callback props, so you wire them to
-`@ottabase/auth/client` yourself.
+stay free of them. The components take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
 
 ```typescript
 import { LoginForm } from '@ottabase/auth/components';
@@ -10897,14 +10945,17 @@ Two families of categories:
 Notes:
 
 - Every mode-aware category accepts the `{ light, dark }` `ModeValue` split; a flat value applies to both modes.
+- `tokensJson` keys are singular (`color`, `shadow`). The plural `colors`/`shadows` is only the preset-JSON format that
+  `fromLegacyThemeConfig` converts; a stored `colors` key is ignored.
 - `TOKEN_CATEGORY_KEYS` (tokens.ts) is the single source of truth — preset expansion, the legacy adapter and preview all
   iterate it, so **adding a category = type + default + resolver in `resolve-core.ts` + emitter**.
 - Resolution is shared: `resolve-core.ts` backs `resolveTheme`, `brandKitToTheme` and `buildPreviewTheme` (previously
   three drifting copies).
 - **Three stylesheets**, all edge-injected and client-replaced by id: `#brand-critical` (vars + scope rooms),
   `#brand-effects` (generated rules), `#brand-custom-css` (kit escape hatch). The client applies themes by replacing
-  stylesheet text (`applyBrandTheme(light, dark)`) — never inline styles — so `.dark`/scope re-binding is pure CSS
-  cascade.
+  stylesheet text (`applyBrandTheme(light, dark)` from `@ottabase/brand-engine/dom`) — never inline styles — so
+  `.dark`/scope re-binding is pure CSS cascade. The root entry has no DOM globals, so Workers use it to build the same
+  stylesheets server-side; only `/dom` (`applyBrandTheme`, `injectFont`, `upsertStyleElement`) touches `document`.
 
 ### Component hooks (ui-shadcn)
 
@@ -10959,7 +11010,7 @@ await api(`/api/brand/kits/${kitId}`, {
 ### Load and Apply Theme (Client & Server)
 
 ```typescript
-import { applyBrandTheme } from '@ottabase/brand-engine';
+import { applyBrandTheme } from '@ottabase/brand-engine/dom'; // browser-only
 import { brandKitToTheme } from '@ottabase/brand-engine/persistence';
 
 // Load brand kit from DB
@@ -11139,7 +11190,7 @@ await warmBrandCache(env, { kitId });
 const tokens = JSON.parse(brandKit.tokensJson);
 const colors = tokens.color[mode]; // 'light' or 'dark'
 
-// 7. RENDER: Apply to document
+// 7. RENDER: Apply to document (browser — from '@ottabase/brand-engine/dom')
 applyBrandTheme({ colors, typography, ... });
 ```
 
@@ -11205,7 +11256,8 @@ function MyContent() {
 - `appId` — App identifier passed to the API
 - `initialConfig` — Pre-fetched config for SSR/SSG (skips client fetch)
 - `fallbackTheme` — Theme tokens used if the API fails (graceful degradation)
-- `mode` — `'light'` | `'dark'` override (default: matches `prefers-color-scheme`)
+
+The active mode is never sent by the API; the client picks `themeLight`/`themeDark` locally.
 
 `BrandProvider` automatically retries transient startup failures from `/api/brand` such as temporary `502`, `503`, and
 `504` responses so worker warmup does not immediately drop the app shell into an error state.
@@ -13450,11 +13502,11 @@ Apps can define templates under `src/email/templates` and register them at runti
 Example (Vite app):
 
 ```ts
-// src/email/templates/spacious.ts
+// src/email/templates/minimalist.ts
 import type { EmailTemplate } from '@ottabase/email';
 
-export const spaciousTemplate: EmailTemplate = {
-    name: 'spacious',
+export const minimalistTemplate: EmailTemplate = {
+    name: 'minimalist',
     subject: '{{subject}}',
     layout: '...',
     header: '{{header}}',
@@ -13464,10 +13516,10 @@ export const spaciousTemplate: EmailTemplate = {
 
 // src/email/templates/index.ts
 import { registerEmailTemplate } from '@ottabase/email';
-import { spaciousTemplate } from './spacious';
+import { minimalistTemplate } from './minimalist';
 
 export function registerAppEmailTemplates() {
-    registerEmailTemplate(spaciousTemplate);
+    registerEmailTemplate(minimalistTemplate);
 }
 ```
 
@@ -14684,22 +14736,21 @@ This package provides:
 - A production-ready lightbox provider with fullscreen viewing, keyboard navigation, and thumbnail strip support.
 - Two viewer styles: the default admin/editor viewer and an immersive public-gallery viewer.
 
-> **Note:** The `media` table schema and `Media` model now live in `@ottabase/ottaorm` as a core table. This package
-> re-exports them for backward compatibility.
+> **Note:** The `media` table (`mediaTable`, `MediaType`, `NewMediaType`) and the `Media` model are a core table in
+> `@ottabase/ottaorm`; import them from there.
 
 ## Entry Points
 
 The package is split so that non-UI consumers never pull in rendered React or icon dependencies. All rendered UI lives
 behind a single isolated subpath.
 
-| Import                          | Contents                                                                                                                                                                                                                         | Pulls in React / icons? |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `@ottabase/medialibrary`        | **Pure.** mime/kind helpers, upload-to-record normalization, selection/viewer payload mappers, the lightbox **state machine**, the headless `useMediaLightboxUrlSync` hook, and all type-only exports. Imports zero rendered UI. | No (hook is react-only) |
-| `@ottabase/medialibrary/schema` | `mediaTable` + `MediaType` / `NewMediaType` (re-exported from `@ottabase/ottaorm`). Schema/migration wiring.                                                                                                                     | No                      |
-| `@ottabase/medialibrary/react`  | **Rendered UI.** `MediaLightbox`, `MediaImmersiveLightbox`, `MediaLightboxProvider` (+ `useMediaLightboxRegistration`, `useOptionalMediaLightbox`), `MediaPreview`, `ZoomableImage`.                                             | Yes                     |
+| Import                         | Contents                                                                                                                                                                                                                                   | Pulls in React / icons? |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| `@ottabase/medialibrary`       | **Pure.** mime/kind helpers, upload-to-record normalization, selection/viewer payload mappers, the lightbox **state machine**, and all type-only exports. No React, no DOM globals — safe in a Worker.                                     | No                      |
+| `@ottabase/medialibrary/react` | **Browser surface.** `MediaLightbox`, `MediaImmersiveLightbox`, `MediaLightboxProvider` (+ `useMediaLightboxRegistration`, `useOptionalMediaLightbox`), `MediaPreview`, `ZoomableImage`, and the `useMediaLightboxUrlSync` deep-link hook. | Yes                     |
 
 Because rendered UI is isolated, `react`, `react-dom`, and `@tabler/icons-react` are **optional** peer dependencies —
-callers that only use the pure helpers, schema, or the state machine do not need them installed. The package sets
+callers that only use the pure helpers or the state machine do not need them installed. The package sets
 `"sideEffects": false` for tree-shaking.
 
 ### Pure root
@@ -14712,7 +14763,6 @@ import {
     createMediaLightboxState, // pure lightbox state machine
     getAdjacentMediaIndex,
     clampMediaIndex,
-    useMediaLightboxUrlSync, // headless deep-link hook (react-only, no JSX)
 } from '@ottabase/medialibrary';
 ```
 
@@ -14727,6 +14777,7 @@ import {
     ZoomableImage,
     useMediaLightboxRegistration,
     useOptionalMediaLightbox,
+    useMediaLightboxUrlSync, // deep-link hook (reads window)
 } from '@ottabase/medialibrary/react';
 ```
 
@@ -16011,7 +16062,6 @@ const post = await Post.create({
 // Query posts
 const published = await Post.published({ limit: 10 });
 const featured = await Post.featured({ contentType: 'blog' });
-const byCategory = await Post.byCategory('category-123');
 
 // Create and manage blog tags
 const tag = await PostTag.create({
@@ -16128,8 +16178,8 @@ translation's publication time, and advertises `Vary: Accept-Language` plus tena
 collection/feed/sitemap queries use scalar translation projections, so rich bodies, footnotes, albums, SEO blobs, and
 other deferred fields are not overfetched. The response exposes `language`, `baseLanguage`, `baseSlug`, `translationId`,
 and `availableLanguages` for language switchers. A scheduled translation is published by the same cron endpoint as
-canonical posts. The translation schema has a post foreign key with cascade protection, and upgrades clean orphan rows
-through the `ottablog_translation_orphan_cleanup_v2` migration. Run auto-init/migrations after deployment.
+canonical posts. Deleting a post deletes its translations: `Post.delete()` removes them first, because OttaORM auto-init
+creates tables without `FOREIGN KEY` clauses, so the schema's `onDelete: 'cascade'` is documentation only.
 
 ## Models
 
@@ -16147,7 +16197,6 @@ const post = await Post.create({
     },
     contentType: 'blog', // blog, blurb, photo, changelog, docs, news, announcement
     status: 'published', // draft, published, archived, scheduled
-    categoryId: 'cat-123',
     seriesId: 'series-123',
     heroImage: {
         url: 'https://...',
@@ -16171,7 +16220,6 @@ const post = await Post.create({
 await Post.findBySlug('my-post');
 await Post.published({ limit: 10 });
 await Post.featured({ contentType: 'blog' });
-await Post.byCategory('category-123');
 await Post.bySeries('series-123');
 await Post.popular({ limit: 5 }); // Most viewed posts
 await Post.related('post-123', { categoryIds: ['cat-1', 'cat-2'], limit: 4 }); // Related by junction categories, then content type
@@ -16213,9 +16261,6 @@ Applications should use `POST /api/blog/blurbs` and `PATCH /api/blog/blurbs/{pos
 derive app/user/organization scope from the verified server context, enforce `posts:create` / `posts:update` and the
 separate `posts:publish` capability, and invoke the fat-model methods above. The Studio content list provides a quick
 composer plus a dedicated blurb editor for status, scheduling, comments, and tags.
-
-The feature adds the nullable `posts.blurb_text` and `posts.crossposts` columns. Run the normal OttaORM auto-init
-endpoint after upgrading; no destructive or data-rewrite migration is required.
 
 Blurbs, like every other content type, can link their copies on Instagram/X/Facebook — see
 [Crossposts](#crossposts-the-same-post-elsewhere).
@@ -16273,9 +16318,6 @@ header can pass `showTitle={false}` without getting a second title. Absent means
 anything. `photoNote` is deliberately outside that contract: it is authored body copy (the excerpt is derived from it),
 so it renders whatever the header flags say.
 
-This feature adds nullable `posts.photo_note` and JSON `posts.photo_album` columns. Run the normal OttaORM auto-init
-endpoint after upgrading; existing rows need no rewrite.
-
 **Fields:**
 
 - `id` - Unique identifier
@@ -16292,7 +16334,6 @@ endpoint after upgrading; existing rows need no rewrite.
   column, not an enum, so rows can carry a value a given build does not know about — render it with
   `contentTypeLabel(value)`, which falls back to the raw string, rather than indexing `CONTENT_TYPES` directly.
 - `status` - Publication status (draft, published, archived, scheduled)
-- `categoryId` - Legacy single-category reference (prefer junction via PostCategoryLink)
 - `seriesId` - Series reference
 - `seriesOrder` - Position in series
 - `heroImage` - Featured image JSON (`url`, `alt`, `caption`, `maxHeight`, `width`, `height`, `focalPoint`, `cfImageId`,
@@ -16770,8 +16811,8 @@ Blog themes can carry data, not just code: each `ottablog_themes` row has a spar
 state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
 no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
 (unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
-Malformed legacy JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored
-content; unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
+Malformed JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content;
+unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
 
 ## Edge SEO Meta
 
@@ -16862,8 +16903,8 @@ order updates that compatibility metadata without changing the permalink.
 GET /api/blog/posts/{id}/related?limit=4
 ```
 
-Returns posts related to the given post. Matches by junction-based categories (via PostCategoryLink) first, falls back
-to legacy `categoryId`, then to content type.
+Returns posts related to the given post. Matches by junction-based categories (via PostCategoryLink) first, then falls
+back to content type.
 
 ### Tag by Slug
 
@@ -17611,7 +17652,7 @@ function MyDatePicker({ value, onChange }) {
 - **FuzzyDateTime timestamp is snapped.** For resolution `'month'`, the timestamp points to the 1st of that month at
   00:00 UTC. The `resolution` field tells renderers to only display down to that granularity.
 - **Preset mode is opt-in.** Pass `presets` to `createDateRangePicker` to enable the sidebar + Apply/Cancel footer.
-  Without it, the picker auto-applies on selection (classic mode). This is fully backward-compatible.
+  Without it, the picker auto-applies on selection (classic mode).
 - **Inline mode disables close.** When `inline: true`, `open()` / `close()` are no-ops; the calendar is always rendered.
 - **Popover positioning.** The popover uses `position: absolute` relative to the picker root. Ensure the parent
   container has `position: relative` or uses normal flow.
@@ -17981,8 +18022,8 @@ it must transpile it and include `packages/ottalanding/src/**` in their Tailwind
 
 ## Content model
 
-**Site** (`landing_sites`, one row per app, `settings` JSON): name, tagline, public URL, theme, navigation links, a nav
-button, footer links and a footer note.
+**Site** (`landing_sites`, one row per app, `settings` JSON): name, tagline, theme, logo, favicon, brand color, public
+URL, navigation links, a nav button, footer links and a footer note.
 
 **Page** (`landing_pages`, unique per `(app_id, path)`): path, title, description, published flag, and an ordered
 `sections` JSON array.
@@ -17991,13 +18032,15 @@ button, footer links and a footer note.
 
 | Type           | Fields                                                                                              |
 | -------------- | --------------------------------------------------------------------------------------------------- |
-| `hero`         | eyebrow, headline\*, subheadline, buttons, image URL, image description                             |
-| `logos`        | heading, logos (name\*, image URL)                                                                  |
+| `hero`         | eyebrow, headline\*, subheadline, buttons, image, image description                                 |
+| `logos`        | heading, logos (name\*, logo image)                                                                 |
 | `features`     | heading, intro, features (title\*, description\*)                                                   |
-| `testimonials` | heading, quotes (quote\*, name\*, role, photo URL)                                                  |
+| `testimonials` | heading, quotes (quote\*, name\*, role, photo)                                                      |
 | `pricing`      | heading, intro, plans (name\*, price\*, period, description, included lines, button, featured flag) |
 | `faq`          | heading, questions (question\*, answer\*)                                                           |
 | `cta`          | heading\*, supporting line, buttons                                                                 |
+| `contact`      | heading, intro, button label, thank-you message (the form asks for name, email and message)         |
+| `signup`       | heading, intro, button label, thank-you message (one email field: a waitlist or newsletter)         |
 | `text`         | heading, body\* (paragraphs separated by blank lines)                                               |
 
 ### One descriptor, three jobs
@@ -18015,6 +18058,11 @@ Adding a field is a one-line change, and the type, the validation and the admin 
 Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor`, `mailto:` and `tel:`. A field marked
 `absolute` (the site's public URL) accepts only a full `http(s)://host` address. Every rendered href and image `src`
 also goes through `sanitizeUrl`.
+
+**Images** (`kind: 'image'`) are picked from, or uploaded to, the media library in the admin. Uploads are stored as
+`/api/upload/file/<key>` URLs. The landing app binds the same R2 bucket and serves that path too, so one URL works in
+both apps. An image field may name an `altKey`: picking a library image fills that description field from the image's
+alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
 
 **Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
 setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
@@ -18036,10 +18084,13 @@ await LandingSite.saveSettings(appId, input); // validates; throws DomainValidat
 site.getSettings(); // validated settings, field by field (see above)
 
 await LandingPage.findPublished(appId, '/pricing'); // public read
+await LandingPage.publishedPaths(appId); // [{ path, updatedAt }] for the sitemap
 await LandingPage.forApp(appId);
 await LandingPage.createFor(appId, input); // validates, unique path → PATH_TAKEN
 await LandingPage.updateFor(appId, id, input); // null if the page is not in this app
 await LandingPage.deleteFor(appId, id); // the home page can't be deleted (HOME_PAGE_REQUIRED)
+await LandingPage.previewTokenFor(appId, id, reset?); // draft preview-link token; reset retires old links
+await LandingPage.findForPreview(appId, path, token); // the page whose token matches, published or not
 page.toPage(); // plain data; stored sections that no longer match the catalog are dropped
 ```
 
@@ -18048,6 +18099,57 @@ which the admin shows on the exact input.
 
 **Scoping:** content is app-global and platform-owned, like brand data, so it's keyed by `appId` only. The app always
 comes from server configuration, never from the request.
+
+## Leads (contact and signup forms)
+
+The `contact` and `signup` sections render `LeadForm` (`@ottabase/ottalanding/react`, a client component each theme
+styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which calls
+`LandingLead.submit(appId, body, { ipHash })` and stores a `landing_leads` row in the shared D1.
+
+```ts
+await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored' | 'rate-limited'; field errors throw (422)
+await LandingLead.inbox(appId, { kind, limit, offset }); // { leads, total, unread }, newest first
+await LandingLead.setRead(appId, id, read);
+await LandingLead.deleteFor(appId, id);
+await LandingLead.pendingNotification(appId); // not yet emailed, oldest first
+await LandingLead.markNotified(appId, ids);
+leadsToCsv(leads); // spreadsheet export; formula-like cells are defused
+leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the notification email, all escaped
+```
+
+**Spam.** Two cheap bot checks: a hidden `website` field people never fill in, and the time spent on the form (under
+`LEAD_MIN_FILL_MS`, a person can't have typed it). Either one makes `submit` return `ignored`. The visitor still sees
+the thank-you, so a bot learns nothing. On top of that, each network (a salted SHA-256 of app + IP, never the IP itself)
+is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
+for the same email is accepted but stored once.
+
+**Notifications** live in otta-web, where the mail provider is configured. Setting **Email new form entries to**
+(`leadEmail`) in the site settings creates an every-minute DB-scheduler task (`landing:notify-leads`, visible and
+pausable in Admin › Cron). Each run emails one digest of everything new through `resolveAppMailer`, then marks those
+entries notified. With no address set, pending entries are retired without a send, so a later address isn't flooded.
+With no working mail provider, the task fails visibly and the entries stay pending until mail works.
+
+The admin inbox is at `/admin/content/landing/leads`: filter by messages or signups, read (opening an entry marks it
+read), reply by email, mark unread, delete, and export CSV.
+
+## Social images
+
+The picture link previews show (X, LinkedIn, Slack, iMessage…) is typed content like everything else: `SHARE_FIELDS`
+holds the heading, supporting text, color, background image and the rendered `imageUrl`. The site has a default card
+(`settings.share`), and any page may have its own (`landing_pages.share`, null means "use the site's").
+
+The admin draws the card in the browser with `drawShareCard(ctx, scene)` from `@ottabase/ottalanding/react` (canvas
+types keep it off the Worker-safe root), a pure function. The editor's live canvas and the uploaded PNG come from the
+same call, so what you see is exactly what gets shared:
+
+- 1200×630; the heading uses the theme's heading font (`themeFonts()`) at the largest size that fits three lines;
+- the color defaults to the brand color, else the theme's accent (`themeAccent()`), with ink chosen by contrast;
+- a background image is drawn cover-fit under a dark shade, with white text on top;
+- the logo and domain sit in the top row, and the site name is left out when the heading already is the name.
+
+otta-web stores the PNG at one fixed key per site or page (`POST /api/landing/share-image`, PNG-signature checked) and
+returns it cache-busted with `?v=`, so re-renders never pile up. A deleted page's image is removed with it. The site's
+card is re-rendered on every settings save and theme switch; a page's on every save of that page.
 
 ## Themes
 
@@ -18058,8 +18160,13 @@ comes from server configuration, never from the request.
 | `bold`      | `midnight` | Dark and loud: oversized type, logo ticker (respects reduced motion), bento features, inverted featured plan |
 
 A theme is a Brand Engine preset for colours, type and radius, plus its own React components: a `Shell` (navigation and
-footer) and one component per section type. `themeStyles(themeId, selector)` returns the preset's tokens for **both**
-colour schemes. Use `:root` on the live site and a scoping selector for previews.
+footer) and one component per section type. `themeStyles(themeId, selector, brandColor?)` returns the preset's tokens
+for **both** colour schemes. Use `:root` on the live site and a scoping selector for previews.
+
+A **brand color** replaces the preset's accent (`--primary`, `--ring`) through Brand Engine overrides.
+`--primary-foreground` becomes whichever of white or near-black has the higher WCAG contrast on it (`readableOn()`). The
+site's **logo** appears in every theme's navigation (`SiteBrand`), next to the name unless "the logo already shows the
+site name" is on, in which case the name becomes the logo's alt text.
 
 ```tsx
 import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
@@ -18118,7 +18225,7 @@ Registered as a built-in package (`packages.ottalanding`):
 - tables in `config.migrations.ts`
 - `db/schema.ts`
 - models in `db-utils.ts`, with a defensive app-scoped, platform-admin RLS policy (generic CRUD default-denies them)
-- `/api/landing` routes, platform admin only
+- `/api/landing` routes, platform admin only (including `POST /share-image` for rendered social images)
 - admin pages at `/admin/content/landing`
 - starter content seeded by `/api/ottaorm/init`
 
@@ -18170,7 +18277,7 @@ import type { LayoutConfig } from '@ottabase/ottalayout';
 const myLayout: LayoutConfig = {
     header: 'topbar',
     navigation: 'sidebar',
-    contentWidth: 'lg',
+    contentWidth: 'lg', // 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full'
     footer: true,
     density: 'comfy',
     // Optional extended fields:
@@ -18193,7 +18300,7 @@ import { LAYOUT_PRESETS, APP_SHELL_LAYOUT, DOCS_LAYOUT } from '@ottabase/ottalay
 //              dashboard, settings, marketing, fullscreen
 
 const config = APP_SHELL_LAYOUT.config;
-// → { header: 'topbar', navigation: 'sidebar', contentWidth: 'fluid', ... }
+// → { header: 'topbar', navigation: 'sidebar', contentWidth: 'lg', ... }
 ```
 
 ### Path Resolver
@@ -18235,9 +18342,9 @@ Tailwind-friendly class helpers for layout dimensions:
 ```typescript
 import { contentWidthClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
 
-contentWidthClass('lg'); // 'max-w-screen-lg'
-densityPadding('compact'); // 'p-2'
-sidebarWidthClass('wide'); // 'w-72'
+contentWidthClass('lg'); // 'max-w-7xl'
+densityPadding('compact'); // 'py-4'
+sidebarWidthClass('wide'); // 'w-80'
 ```
 
 ### React: Slots
@@ -18513,9 +18620,8 @@ pnpm add @ottabase/ottaorm @ottabase/db drizzle-orm
 ### File layout: schema and model
 
 Table definitions live in **`ModelName.schema.ts`** next to the model file. The model file imports the table from
-`./ModelName.schema` and **re-exports** it so existing imports (e.g. for migrations or schema collection) continue to
-work. No breaking changes for callers: `from '../models/Todo'` or `from '@ottabase/ottaorm'` still provide the table and
-types.
+`./ModelName.schema` and **re-exports** it, so the table and its types can be imported from the model
+(`from '../models/Todo'`) or from `@ottabase/ottaorm` — e.g. for migrations or schema collection.
 
 ### 1. Define Your Model
 
@@ -18632,12 +18738,12 @@ for await (const page of Todo.pages({ perPage: 500, where: { completed: false } 
 
 `pages()` orders by the primary key and adds a caller filter with `$and`, so a scan cannot overwrite an existing
 primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`) and nested `$and`/`$or` groups are supported.
-OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from a legacy
-array predicate, `$in`, nested boolean groups, or several lists in the same query; scalar bindings and search terms
-count against the same budget. Planned results are de-duplicated and receive the requested ordering, offset, and limit
-globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a projection. The
-same planner covers rows, counts, sums, and paginated totals. In the Worker template set `OTTAORM_MAX_ALL_ROWS` in the
-Wrangler environment; the generated ambient `CloudflareEnv` includes it.
+OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from the
+array shorthand (`{ id: [..] }`), `$in`, nested boolean groups, or several lists in the same query; scalar bindings and
+search terms count against the same budget. Planned results are de-duplicated and receive the requested ordering,
+offset, and limit globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a
+projection. The same planner covers rows, counts, sums, and paginated totals. In the Worker template set
+`OTTAORM_MAX_ALL_ROWS` in the Wrangler environment; the generated ambient `CloudflareEnv` includes it.
 
 ## D1 Database Setup
 
@@ -19226,10 +19332,10 @@ export const todosTable = sqliteTable('todos', {
 OttaORM core migrations include the auth tables used by `@ottabase/auth`:
 
 - `users`
-- `accounts`
-- `sessions`
+- `accounts` (OAuth identity links — no provider tokens)
 - `verification_tokens`
-- `authenticators`
+
+Sessions are not a table: a session is a signed cookie plus a KV registry entry (see `@ottabase/auth`).
 
 Credentials auth uses `users.password_hash` (PBKDF2) and `users.email_verified` (optional).
 
@@ -19347,12 +19453,9 @@ The package includes these core models (in `@ottabase/ottaorm`):
 - **User** - Users with name, email, image
 - **Account** - OAuth provider accounts
 - **Tag** - Tags with name and slug
-- **Session** - User sessions
-- **VerificationToken** - Email verification tokens
-- **Authenticator** - WebAuthn/Passkey credentials
+- **VerificationToken** - Email verification, password-reset and magic-link tokens (hash-stored)
 
-**Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
-enhanced features.
+The blog/content `Post` model lives in `@ottabase/ottablog`.
 
 ### Role grants (`User` RBAC methods, `UserRole`)
 
@@ -19662,16 +19765,16 @@ const policies: ModelRLSConfig[] = [
 
 ### Organization Membership Filter
 
-The built-in `organizations` policy supports both ownership and membership. When the `SecurityContext` includes
-`memberOrganizationIds`, the filter returns all orgs the user can access (owned + member). Otherwise it falls back to
-`ownerId` only:
+The built-in `organizations` policy is membership-only. The filter returns the orgs in `memberOrganizationIds`; an empty
+list **and** an unresolved (`undefined`) list both deny. There is no `ownerId` fallback, because `Organization.ownerId`
+is stamped at creation and never cleared when that owner is removed:
 
 ```typescript
 // SecurityContext populated by your auth middleware:
 const context: SecurityContext = {
     userId: 'user-123',
     organizationId: 'org-1',
-    memberOrganizationIds: ['org-1', 'org-2', 'org-3'], // owned + member orgs
+    memberOrganizationIds: ['org-1', 'org-2', 'org-3'], // active memberships, resolved from D1
 };
 
 // The organizations RLS filter will return:
@@ -19723,9 +19826,15 @@ interface SecurityContext {
     appId?: string;
     roles?: string[];
     permissions?: string[];
-    memberOrganizationIds?: string[]; // orgs the user can access
+    memberOrganizationIds?: string[]; // active memberships — REQUIRED whenever organizationId is set
 }
 ```
+
+The engine treats `memberOrganizationIds` as the only evidence that a caller may act in `organizationId`. An org-scoped
+read or write whose context has no resolved list (`undefined`) or an empty one is **denied** — a context builder that
+forgets to resolve membership fails loudly instead of running unscoped. Platform admins are exempt; anonymous callers
+never carry an org, so they never need the list. Server code that derives an org itself (a comment inherits its post's
+org) says so by adding that org to a local copy of the list.
 
 > **▲ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT** — never
 > from raw client input. `rlsMiddleware` therefore **requires** an explicit `getContext(request, env)` resolver:
@@ -21333,8 +21442,8 @@ For optimized image delivery with automatic variants.
 
 **Environment:**
 
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- `CF_IMAGES_ACCOUNT_ID`
+- `CF_IMAGES_API_TOKEN` (scoped to Cloudflare Images)
 
 **Client:**
 
@@ -21350,8 +21459,8 @@ import { uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
 const result = await uploadFileToCloudflareImages(
     file,
     {
-        accountId: env.CLOUDFLARE_ACCOUNT_ID,
-        apiToken: env.CLOUDFLARE_API_TOKEN,
+        accountId: env.CF_IMAGES_ACCOUNT_ID,
+        apiToken: env.CF_IMAGES_API_TOKEN,
         requireSignedURLs: false,
         metadata: { userId: 'user-123' },
     },
@@ -21377,8 +21486,8 @@ if (url.pathname === '/api/upload' && request.method === 'POST') {
 
     if (provider === 'cloudflare-images') {
         const result = await uploadFileToCloudflareImages(file, {
-            accountId: env.CLOUDFLARE_ACCOUNT_ID,
-            apiToken: env.CLOUDFLARE_API_TOKEN,
+            accountId: env.CF_IMAGES_ACCOUNT_ID,
+            apiToken: env.CF_IMAGES_API_TOKEN,
         });
         return Response.json(result);
     }
@@ -21407,6 +21516,20 @@ await deleteFileFromR2(key, r2Client);
 // List
 import { listFilesFromR2 } from '@ottabase/ottaupload/server';
 const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
+```
+
+### Serving uploads
+
+`serveR2Object(bucket, key, { cacheControl? })` streams an object from an R2 binding with the headers that make serving
+user uploads safe: `X-Content-Type-Options: nosniff`, a sandboxing `Content-Security-Policy`, and
+`Content-Disposition: inline` only for known-safe images (everything else, SVG and HTML included, downloads). It returns
+`null` for a missing key. Every app that serves `/api/upload/file/*` should use it, so the rules can't drift.
+
+```typescript
+import { serveR2Object } from '@ottabase/ottaupload/server';
+
+const response = await serveR2Object(env.OBCF_R2, key, { cacheControl: 'public, max-age=31536000, immutable' });
+return response ?? errorResponse('File not found', 404);
 ```
 
 ## React Hooks
@@ -22264,7 +22387,8 @@ Use `onFailure` hook to store failed jobs for manual retry:
 ```ts
 // Store failed job with full payload for retry
 async function storeToDLQ(kv: KVNamespace, job: QueuedJob, error: Error) {
-    const key = `dlq:${Date.now()}:${job.meta?.id}`;
+    // Keyed by job id: lookup, retry and delete are one KV read each, never a key listing
+    const key = `dlq:${job.meta?.id}`;
     await kv.put(
         key,
         JSON.stringify({
@@ -22292,7 +22416,8 @@ async function retryFromDLQ(queue: Queue, kv: KVNamespace, jobId: string) {
 
 See `ottabase/queue/index.ts` in the template app for a complete DLQ implementation with:
 
-- Paginated listing (handles 100k+ jobs)
+- Paginated listing (handles 100k+ jobs), ordered by `failedAt` per page
+- O(1) lookup, retry and delete by job id
 - Single/bulk retry
 - Purge functionality
 - Admin UI integration
@@ -22522,7 +22647,6 @@ const context = await buildAppContext({
 // Context includes:
 // {
 //   organizationId: 'org-123',
-//   tenantId: 'org-123',  // Alias
 //   appId: 'web',
 //   user: User,
 //   roles: ['editor'],
@@ -24718,8 +24842,8 @@ function TodosPage() {
 
 ## Integration with @ottabase/forms
 
-`@ottabase/forms`' `ModelTable` component is now powered by `@ottabase/ui-datatable` internally. If you use `ModelCrud`,
-you get the upgraded table automatically — no changes needed:
+`@ottabase/forms`' `ModelTable` component is built on `@ottabase/ui-datatable`, so `ModelCrud` renders its list view
+with this table automatically:
 
 ```tsx
 import { createModelConfig } from '@ottabase/forms';
@@ -24994,7 +25118,7 @@ function App({ children }) {
 
 This provider is a **controlled component**. It does not manage the theme state itself. Instead, you must provide the
 current theme via the `colorScheme` prop. This ensures that Mantine is always in sync with your application's single
-source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` component is no longer needed.
+source of truth for theme state (e.g., a Jotai atom); no separate sync component is needed.
 
 ### Using Pre-built Themes
 
@@ -25368,8 +25492,8 @@ module.exports = {
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 ```
 
-**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + `theme.loader` overrides) _before_ or alongside the
-above so the preset’s `hsl(var(--…))` references resolve.
+**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + Brand Engine tokens applied by
+`BrandThemeApplicator`) _before_ or alongside the above so the preset’s `hsl(var(--…))` references resolve.
 
 ## Peer dependencies
 
@@ -25477,9 +25601,6 @@ import { verifySenderGmail, checkHeaderPass, getAuthenticationResults } from '@o
 
 // JSON utilities
 import { parseJsonFromString, safeStringify, deepClone, isValidJson } from '@ottabase/utils/json';
-
-// User utilities
-import { getInitials } from '@ottabase/utils/user';
 
 // Git utilities
 import { getLastCommitMessage, getCurrentBranch, getLatestCommitHash, isGitRepository } from '@ottabase/utils/git';
@@ -25628,11 +25749,6 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 - **`safeStringify(obj: any, space?: number): string`** - Safe JSON stringify with error handling
 - **`deepClone<T>(obj: T): T | null`** - Deep clone object using JSON
 - **`isValidJson(str: string): boolean`** - Check if string is valid JSON
-
-### User Utilities (`@ottabase/utils/user`)
-
-- **`getInitials(name: string | null | undefined, defaultInitials?: string): string`** - Extract initials from name
-  (re-exported from string utilities)
 
 ### Git Utilities (`@ottabase/utils/git`)
 

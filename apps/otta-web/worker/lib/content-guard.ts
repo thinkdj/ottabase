@@ -101,9 +101,9 @@ export async function requireStudioAdminForScope(
 
     // Same split as requireContentPermission: getRequestContext answers "may they?", but the
     // returned securityContext is what callers hand to the ottaorm RLS engine, so it MUST be the
-    // canonical membership-validated one. A RequestContext has no userId/platformAdmin, and its
-    // undefined memberOrganizationIds reads as "membership unknown" — which makes the engine SKIP
-    // the cross-tenant check rather than fail closed.
+    // canonical membership-validated one. A RequestContext has no userId/platformAdmin and no
+    // memberOrganizationIds — the engine DENIES every org-scoped operation on such a context, so
+    // handing it over would turn a correctly authorized editor into a 403.
     const toAccessResult = async (): Promise<ContentAccessResult> => {
         const session = reqCtx.session ?? null;
         return { session, securityContext: await getSecurityContext(request, session, env) };

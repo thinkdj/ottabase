@@ -53,9 +53,9 @@ This is why a self-registered user — who receives the RBAC role _named_ `owner
 their own workspace but can NEVER reach the control plane: `org:admin` is not `platform:admin`, and their grant is not
 system-scoped. Renaming a role, or a tenant creating a role named `admin`, changes nothing about what it can do.
 
-**Self-healing system roles:** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role rows to the
-canonical permission sets — correcting a role seeded under an older definition (e.g. a legacy `owner = ['*:*']`) without
-a manual re-seed or DB wipe. The reconcile runs on the deliberate seed path (`/__bootstrap__/seed`); the
+**Reconciling system roles:** `Role.ensureDefaultRoles({ heal: true })` reconciles existing `isSystem` role rows to the
+canonical permission sets in place — e.g. after a framework update changes a system role's permissions — without a
+manual re-seed or DB wipe. The reconcile runs on the deliberate seed path (`/__bootstrap__/seed`); the
 signup/provisioning hot path only creates missing roles and never rewrites existing ones. Customize by creating NEW
 roles, never by editing system ones (the admin API rejects edits to `isSystem` roles).
 
@@ -142,8 +142,7 @@ export default {
 ```
 
 > Already parsed the request elsewhere? Call `executeSecureCrudRequest(crudRequest, context)` directly instead of
-> `rlsMiddleware`. (The older `tenantAwareCrudMiddleware` has been removed — it only scoped a hardcoded model list and
-> was fail-open for everything else; RLS is fail-closed and covers every registered model.)
+> `rlsMiddleware`. RLS is fail-closed and covers every registered model — there is no per-model allowlist to maintain.
 
 **What this does:**
 
@@ -317,6 +316,13 @@ const logs = await AuditLog.where(
     { orderBy: 'createdAt', orderDirection: 'desc', limit: 100 },
 );
 ```
+
+**Retention.** `audit_logs` is append-only, so otta-web seeds a daily scheduled task (`Prune audit logs`, handler
+`audit:prune`, 03:17 UTC) that calls `AuditLog.pruneOlderThan(days, appId)`. The window is the task payload
+(`{"olderThanDays": 90}` by default) — change or pause it in the Cron admin, not in code. A prune removes the app's own
+rows plus unowned (`app_id IS NULL`) rows; another app sharing the database keeps its trail under its own window, and
+unowned rows — pruned by every app — live only as long as the shortest window any app sets. The task is created by
+`/api/ottaorm/init` and the bootstrap seed step, so every initialised app has a retention policy.
 
 ### RBAC Cache
 
@@ -991,14 +997,14 @@ on purpose: deriving the context from raw headers would be spoofable, so `getCon
 
 | Model                               | Policy                                                         |
 | ----------------------------------- | -------------------------------------------------------------- |
-| `organizations`                     | Membership-scoped (`memberOrganizationIds`, else own rows)     |
+| `organizations`                     | Membership-scoped (`memberOrganizationIds`; unresolved ⇒ deny) |
 | `organization_members`              | Membership-scoped                                              |
 | `user_groups`, `user_group_members` | Group-membership-scoped                                        |
 | `roles`, `permissions`              | Platform admin only (and blocked from generic CRUD)            |
 | `user_roles`                        | Tenant-scoped + platform admin (and blocked from generic CRUD) |
 | `audit_logs`                        | Tenant-scoped + platform admin                                 |
 | `users`                             | Owner-only (`id`)                                              |
-| `accounts`, `sessions`              | User-scoped (`userId`)                                         |
+| `accounts`                          | User-scoped (`userId`)                                         |
 | `verification_tokens`               | Deny all reads, read-only                                      |
 | `posts`                             | Tenant + app scoped; authors limited to their own posts        |
 
@@ -1016,7 +1022,7 @@ interface SecurityContext {
     roles?: string[]; // User roles in the active org
     permissions?: string[]; // User permissions in the active org
     platformAdmin?: boolean; // System-scoped platform:admin grant — never inferred from a role name
-    memberOrganizationIds?: string[]; // Orgs with an active membership
+    memberOrganizationIds?: string[]; // Active memberships — REQUIRED with organizationId; unresolved or empty ⇒ denied
     memberGroupIds?: string[]; // Accessible user groups
 }
 ```

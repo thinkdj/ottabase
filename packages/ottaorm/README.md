@@ -32,9 +32,8 @@ pnpm add @ottabase/ottaorm @ottabase/db drizzle-orm
 ### File layout: schema and model
 
 Table definitions live in **`ModelName.schema.ts`** next to the model file. The model file imports the table from
-`./ModelName.schema` and **re-exports** it so existing imports (e.g. for migrations or schema collection) continue to
-work. No breaking changes for callers: `from '../models/Todo'` or `from '@ottabase/ottaorm'` still provide the table and
-types.
+`./ModelName.schema` and **re-exports** it, so the table and its types can be imported from the model
+(`from '../models/Todo'`) or from `@ottabase/ottaorm` — e.g. for migrations or schema collection.
 
 ### 1. Define Your Model
 
@@ -151,12 +150,12 @@ for await (const page of Todo.pages({ perPage: 500, where: { completed: false } 
 
 `pages()` orders by the primary key and adds a caller filter with `$and`, so a scan cannot overwrite an existing
 primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`) and nested `$and`/`$or` groups are supported.
-OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from a legacy
-array predicate, `$in`, nested boolean groups, or several lists in the same query; scalar bindings and search terms
-count against the same budget. Planned results are de-duplicated and receive the requested ordering, offset, and limit
-globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a projection. The
-same planner covers rows, counts, sums, and paginated totals. In the Worker template set `OTTAORM_MAX_ALL_ROWS` in the
-Wrangler environment; the generated ambient `CloudflareEnv` includes it.
+OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from the
+array shorthand (`{ id: [..] }`), `$in`, nested boolean groups, or several lists in the same query; scalar bindings and
+search terms count against the same budget. Planned results are de-duplicated and receive the requested ordering,
+offset, and limit globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a
+projection. The same planner covers rows, counts, sums, and paginated totals. In the Worker template set
+`OTTAORM_MAX_ALL_ROWS` in the Wrangler environment; the generated ambient `CloudflareEnv` includes it.
 
 ## D1 Database Setup
 
@@ -745,10 +744,10 @@ export const todosTable = sqliteTable('todos', {
 OttaORM core migrations include the auth tables used by `@ottabase/auth`:
 
 - `users`
-- `accounts`
-- `sessions`
+- `accounts` (OAuth identity links — no provider tokens)
 - `verification_tokens`
-- `authenticators`
+
+Sessions are not a table: a session is a signed cookie plus a KV registry entry (see `@ottabase/auth`).
 
 Credentials auth uses `users.password_hash` (PBKDF2) and `users.email_verified` (optional).
 
@@ -866,12 +865,9 @@ The package includes these core models (in `@ottabase/ottaorm`):
 - **User** - Users with name, email, image
 - **Account** - OAuth provider accounts
 - **Tag** - Tags with name and slug
-- **Session** - User sessions
-- **VerificationToken** - Email verification tokens
-- **Authenticator** - WebAuthn/Passkey credentials
+- **VerificationToken** - Email verification, password-reset and magic-link tokens (hash-stored)
 
-**Note:** The Post model has been moved to `@ottabase/ottablog` as a comprehensive blog/content management model with
-enhanced features.
+The blog/content `Post` model lives in `@ottabase/ottablog`.
 
 ### Role grants (`User` RBAC methods, `UserRole`)
 
@@ -1181,16 +1177,16 @@ const policies: ModelRLSConfig[] = [
 
 ### Organization Membership Filter
 
-The built-in `organizations` policy supports both ownership and membership. When the `SecurityContext` includes
-`memberOrganizationIds`, the filter returns all orgs the user can access (owned + member). Otherwise it falls back to
-`ownerId` only:
+The built-in `organizations` policy is membership-only. The filter returns the orgs in `memberOrganizationIds`; an empty
+list **and** an unresolved (`undefined`) list both deny. There is no `ownerId` fallback, because `Organization.ownerId`
+is stamped at creation and never cleared when that owner is removed:
 
 ```typescript
 // SecurityContext populated by your auth middleware:
 const context: SecurityContext = {
     userId: 'user-123',
     organizationId: 'org-1',
-    memberOrganizationIds: ['org-1', 'org-2', 'org-3'], // owned + member orgs
+    memberOrganizationIds: ['org-1', 'org-2', 'org-3'], // active memberships, resolved from D1
 };
 
 // The organizations RLS filter will return:
@@ -1242,9 +1238,15 @@ interface SecurityContext {
     appId?: string;
     roles?: string[];
     permissions?: string[];
-    memberOrganizationIds?: string[]; // orgs the user can access
+    memberOrganizationIds?: string[]; // active memberships — REQUIRED whenever organizationId is set
 }
 ```
+
+The engine treats `memberOrganizationIds` as the only evidence that a caller may act in `organizationId`. An org-scoped
+read or write whose context has no resolved list (`undefined`) or an empty one is **denied** — a context builder that
+forgets to resolve membership fails loudly instead of running unscoped. Platform admins are exempt; anonymous callers
+never carry an org, so they never need the list. Server code that derives an org itself (a comment inherits its post's
+org) says so by adding that org to a local copy of the list.
 
 > **▲ Build the context from a trusted source.** Derive `SecurityContext` from a **verified session or JWT** — never
 > from raw client input. `rlsMiddleware` therefore **requires** an explicit `getContext(request, env)` resolver:

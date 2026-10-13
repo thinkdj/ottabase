@@ -38,9 +38,12 @@ describe('RLS Registry', () => {
             expect(filter(ctx)).toBeNull();
         });
 
-        it('falls back to ownerId ONLY when membership is UNRESOLVED (undefined)', () => {
+        it('DENIES (null) when membership is UNRESOLVED (undefined) — no ownerId fallback', () => {
+            // Unresolved membership is missing evidence, not weaker evidence. The never-cleared
+            // Organization.ownerId must not become a read path just because a context builder
+            // forgot to resolve the list.
             const ctx: SecurityContext = { userId: 'u1' }; // memberOrganizationIds undefined
-            expect(filter(ctx)).toEqual({ ownerId: 'u1' });
+            expect(filter(ctx)).toBeNull();
         });
 
         it('DENIES (null) when membership is resolved to empty — no stale-ownerId fallback', () => {

@@ -39,19 +39,14 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
                     return {};
                 }
 
-                // When membership was RESOLVED (Array.isArray — even to an empty set), trust it.
-                // An empty set means "no accessible orgs" → deny (null); it must NOT fall back to
-                // ownerId. `Organization.ownerId` is stamped at creation and never cleared on
-                // removal/demotion, so an ownerId fallback would let a removed ex-owner keep reading
-                // (and, since secure-crud lets you update rows you can read, writing) the org they
-                // created. Mirrors the enforceOrgMembership Array.isArray guard.
-                if (Array.isArray(context.memberOrganizationIds)) {
-                    return context.memberOrganizationIds.length > 0 ? { id: context.memberOrganizationIds } : null;
-                }
-
-                // Membership UNRESOLVED (undefined — e.g. pre-migration or an internal context that
-                // didn't populate it): best-effort filter by ownership.
-                return { ownerId: context.userId };
+                // Membership is the ONLY evidence. Unresolved (undefined) and empty both deny:
+                // there is no ownerId fallback because `Organization.ownerId` is stamped at creation
+                // and never cleared on removal/demotion, so it would let a removed ex-owner keep
+                // reading (and, since secure-crud lets you update rows you can read, writing) the
+                // org they created. Mirrors enforceOrgMembership: a context builder that forgot to
+                // resolve membership fails loudly instead of running a weaker filter.
+                const memberships = context.memberOrganizationIds;
+                return Array.isArray(memberships) && memberships.length > 0 ? { id: memberships } : null;
             },
         },
         // Pin ownership on create and block forging someone else's ownerId. The read filter
@@ -112,7 +107,7 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     // any other secure-crud path is platform-admin gated too.
     // WARNING: `roles`/`permissions` are ALSO fail-closed today by an accidental RLS-field/column
     // mismatch (they have no `organizationId` column). Do NOT "fix" that mismatch without keeping a
-    // real gate — the requirePlatformAdmin below is that gate, so the mismatch no longer matters.
+    // real gate — the requirePlatformAdmin below is that gate, so nothing relies on the mismatch.
     {
         model: 'roles',
         policy: { level: 'custom', requirePlatformAdmin: true },
@@ -125,9 +120,9 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // user_roles is org-scoped (real `organization_id` column), so its tenant RLS FUNCTIONS — the
-    // gap was the missing permission gate. requirePlatformAdmin closes it: minting/reading a role
-    // grant now requires a system-scoped platform admin, matching how grants are actually issued.
+    // user_roles is org-scoped (real `organization_id` column), so its tenant RLS FUNCTIONS; on top
+    // of that, requirePlatformAdmin is the permission gate: minting/reading a role grant requires a
+    // system-scoped platform admin, matching how grants are actually issued.
     {
         model: 'user_roles',
         policy: { ...RLSPolicies.TenantScoped(false), requirePlatformAdmin: true },
@@ -160,13 +155,7 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     },
 
     {
-        model: 'sessions',
-        policy: RLSPolicies.UserScoped(),
-        auditEnabled: false, // Too noisy
-    },
-
-    {
-        // Previously PublicReadOnly, which — with no auth gate on the generic CRUD route — let anyone
+        // Never public: with no auth gate on the generic CRUD route, a public policy would let anyone
         // read every email-verification / password-reset / magic-link token row. The auth flows read
         // and consume these via direct model calls (VerificationToken.consumeByIdentifierAndToken,
         // etc.) that bypass RLS, so nothing legitimate needs RLS/CRUD access: deny reads (custom
@@ -279,9 +268,9 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     },
 
     // Blog post versions - tenant + app scoped.
-    // Previously AppScoped (appId only), which let any caller read every organization's draft /
+    // App scope alone (appId only) would let any caller read every organization's draft /
     // version history through the generic CRUD route. organizationId is already injected on write
-    // via contextFields, so scope reads to the caller's organization (and app) as well. Including
+    // via contextFields, so reads are scoped to the caller's organization (and app) as well. Including
     // organizationId in the read filter also activates the engine's enforceOrgMembership check.
     {
         model: 'post_versions',
@@ -329,8 +318,8 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     },
 
     // Referral tracking - owner-scoped.
-    // Previously AppScoped (appId only), which exposed and allowed forgery of every user's referral
-    // rows (IP, user-agent, referrer graph) through the generic CRUD route. Reads are now scoped to
+    // App scope alone (appId only) would expose, and allow forgery of, every user's referral
+    // rows (IP, user-agent, referrer graph) through the generic CRUD route. Reads are scoped to
     // the owning referrer (fails closed when unauthenticated), and writes pin userId. These rows are
     // written server-side (bypassing RLS), so this only constrains the RLS/CRUD path — which is
     // additionally hard-blocked in ottaorm-crud.ts as the primary gate.
@@ -370,13 +359,6 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Authenticators - user-scoped (WebAuthn credentials belong to users)
-    {
-        model: 'authenticators',
-        policy: RLSPolicies.UserScoped(), // Filter by userId
-        auditEnabled: true,
-    },
-
     // Scheduled tasks - admin-only (system-level task management)
     {
         model: 'scheduled_tasks',
@@ -411,7 +393,7 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
     // Menu slot assignments - app-global brand data (platform-owned). The live write path is
     // /api/brand/menu-slots (direct model calls, system-scoped requireBrandEditAccess); generic CRUD
     // is default-denied. requirePlatformAdmin here is defense-in-depth so this RLS can never be
-    // satisfied by an org-scoped session (e.g. a stale pre-heal `*:*`) if ever reached via secure-crud.
+    // satisfied by an org-scoped session (even one holding `*:*`) if ever reached via secure-crud.
     {
         model: 'menu_slot_assignments',
         policy: {

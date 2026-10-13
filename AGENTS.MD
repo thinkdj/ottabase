@@ -24,8 +24,7 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
 2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
    come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `config.migrations.ts`
-   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1 — the only ORM/backend
-   (Prisma and MongoDB were removed).
+   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1 — the only ORM/backend.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
 4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
@@ -58,10 +57,10 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
-  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and deliberately NO `build`.
-  Adding one there emits a `dist/` nothing imports — and for any package with module-level singletons that dist becomes
-  a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its source is still compiled (and
-  therefore CI-covered) by the app build.
+  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and
+  deliberately NO `build`. Adding one there emits a `dist/` nothing imports — and for any package with module-level
+  singletons that dist becomes a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its
+  source is still compiled (and therefore CI-covered) by the app build.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
 - **No noise docs**: do not create stray summary files (for example, `SUMMARY.MD`).
 - **KISS + DRY by default**: prefer the simplest maintainable implementation and reuse existing repo primitives.
@@ -304,8 +303,8 @@ export class Post extends BaseModel {
 The `SecurityContext` handed to RLS decides which rows exist for a caller. Getting its provenance wrong is a tenant
 leak, not a bug report.
 
-- **Derive it server-side from a verified session.** OttaORM deliberately has no header-to-context helper; a previous
-  `extractSecurityContext(request)` was removed because request headers are trivially spoofable by any client.
+- **Derive it server-side from a verified session.** OttaORM deliberately has no header-to-context helper, because
+  request headers are trivially spoofable by any client.
 - **`appId` comes from server configuration** (`getOttabaseConfig(env)`), never from a browser `x-app-id` header. The
   same applies to ownership fields on uploads and any other row-scoping column — take them from the resolved context,
   never from request/upload metadata.
@@ -417,7 +416,7 @@ boundary that keeps one tenant's cached rows from being read by another.
 
 ### @ottabase/ottaorm
 
-Fat model ORM. Core models: User, Tag, Account, Session, Organization, Role, UserRole (blog `Post` lives in
+Fat model ORM. Core models: User, Tag, Account, Organization, Role, UserRole (blog `Post` lives in
 `@ottabase/ottablog`).
 
 ```typescript
@@ -946,8 +945,23 @@ See `README.md` and `AGENTS.MD` above for full command reference. Key commands:
 - `pnpm test` — run all tests via Vitest + Turborepo
 - `pnpm type-check` — TypeScript validation
 
-#### Misc
+<!-- BEGIN:turborepo-agent-rules -->
 
-- Template apps were previously named `ottabase-template-app-tanstack`, `ottabase-template-app-nextjs-homepage` and were
-  later renamed to `otta-web` and `otta-landing` for clarity. If old references appear in docs or code, they can
-  generally be ignored or updated to `otta-web` or `otta-landing`.
+# This is NOT the Turborepo you know
+
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your
+training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be
+visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace
+that depends on `turbo`.
+
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory
+before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed
+package version and are available without network access.
+
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the
+Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the
+managed block while updates are enabled means a later qualifying invocation will add it again. Set
+`"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block.
+Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+
+<!-- END:turborepo-agent-rules -->

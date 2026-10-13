@@ -98,7 +98,7 @@ export async function getQueueStats(env: CloudflareEnv): Promise<QueueStats> {
     if (result.success && result.data) {
         try {
             const stats = JSON.parse(result.data);
-            // Ensure totalDLQ exists when migrating from older stats format
+            // Defaults fill any counter the stored blob lacks
             return { ...defaultStats, ...stats };
         } catch {
             // ignore parse errors
@@ -147,15 +147,20 @@ async function storeProcessedJob(env: CloudflareEnv, job: ProcessedJob): Promise
     await kv.put(key, JSON.stringify(job), { expirationTtl: HISTORY_TTL });
 }
 
+/** KV key of one DLQ entry. Keyed by job id so lookup, retry and delete are single reads. */
+function dlqKey(jobId: string): string {
+    return `${DLQ_PREFIX}${jobId}`;
+}
+
 /**
  * Store job in Dead Letter Queue (after max retries exhausted)
  */
-async function storeDLQJob(env: CloudflareEnv, job: QueuedJob, safeError: string): Promise<void> {
+export async function storeDLQJob(env: CloudflareEnv, job: QueuedJob, safeError: string): Promise<void> {
     if (!env.OBCF_KV) return;
 
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
     const jobId = job.meta?.id || `dlq-${Date.now()}`;
-    const key = `${DLQ_PREFIX}${Date.now()}:${jobId}`;
+    const key = dlqKey(jobId);
 
     const dlqJob: DLQJob = {
         id: jobId,
@@ -262,17 +267,15 @@ export async function getDLQJobs(env: CloudflareEnv, limit = 50, cursor?: string
         const result = await kv.getText(key.name);
         if (result.success && result.data) {
             try {
-                const job = JSON.parse(result.data) as DLQJob;
-                // Store the KV key for deletion/retry operations
-                (job as any)._kvKey = key.name;
-                jobs.push(job);
+                jobs.push(JSON.parse(result.data) as DLQJob);
             } catch {
                 // ignore parse errors
             }
         }
     }
 
-    // Sort by failedAt desc (most recent first)
+    // Keys are job ids, so KV's lexicographic listing is not chronological: order each page by
+    // failedAt desc (most recent first).
     jobs.sort((a, b) => new Date(b.failedAt).getTime() - new Date(a.failedAt).getTime());
 
     return {
@@ -289,27 +292,13 @@ export async function getDLQJob(env: CloudflareEnv, jobId: string): Promise<DLQJ
     if (!env.OBCF_KV) return null;
 
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
-
-    // List keys with DLQ prefix to find the job
-    const listResult = await kv.list({ prefix: DLQ_PREFIX, limit: 1000 });
-    if (!listResult.success) return null;
-
-    for (const key of listResult.data.keys) {
-        if (key.name.includes(jobId)) {
-            const result = await kv.getText(key.name);
-            if (result.success && result.data) {
-                try {
-                    const job = JSON.parse(result.data) as DLQJob;
-                    (job as any)._kvKey = key.name;
-                    return job;
-                } catch {
-                    // ignore
-                }
-            }
-        }
+    const result = await kv.getText(dlqKey(jobId));
+    if (!result.success || !result.data) return null;
+    try {
+        return JSON.parse(result.data) as DLQJob;
+    } catch {
+        return null;
     }
-
-    return null;
 }
 
 /**
@@ -319,23 +308,18 @@ export async function deleteDLQJob(env: CloudflareEnv, jobId: string): Promise<b
     if (!env.OBCF_KV) return false;
 
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
+    const key = dlqKey(jobId);
+    // Read first so the stats counter only moves for an entry that existed (KV delete is
+    // silent on a missing key).
+    const existing = await kv.getText(key);
+    if (!existing.success || !existing.data) return false;
 
-    // Find and delete the job
-    const listResult = await kv.list({ prefix: DLQ_PREFIX, limit: 1000 });
-    if (!listResult.success) return false;
-
-    for (const key of listResult.data.keys) {
-        if (key.name.includes(jobId)) {
-            await kv.delete(key.name);
-            // Decrement DLQ count
-            await updateStats(env, (stats) => {
-                stats.totalDLQ = Math.max(0, stats.totalDLQ - 1);
-            });
-            return true;
-        }
-    }
-
-    return false;
+    const deleted = await kv.delete(key);
+    if (!deleted.success) return false;
+    await updateStats(env, (stats) => {
+        stats.totalDLQ = Math.max(0, stats.totalDLQ - 1);
+    });
+    return true;
 }
 
 /**

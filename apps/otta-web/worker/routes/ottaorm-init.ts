@@ -7,6 +7,7 @@ import { LandingSite } from '@ottabase/ottalanding';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { buildAppMigrations } from '../../ottabase/migrations';
+import { ensureAuditPruneTask } from '../lib/audit-retention';
 import { checkMigrationAuth, initDbConnection } from '../lib/db-utils';
 import { ensureAppBrandDefaults } from '../lib/user-provisioning';
 
@@ -90,8 +91,9 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
     // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
     if (result.success) {
         initDbConnection(env);
-        const appId = (env as { APP_ID?: string }).APP_ID ?? 'otta-web';
-        await ensureAppBrandDefaults('Ottabase', appId);
+        await ensureAppBrandDefaults('Ottabase', ottabaseConfig.appId);
+        // Daily audit_logs retention task, so an initialised app never grows the table unbounded
+        await ensureAuditPruneTask(ottabaseConfig.appId);
         // Starter landing site, so the public site has content the moment the tables exist
         if (ottabaseConfig.packages.ottalanding) await LandingSite.ensureForApp(ottabaseConfig.appId);
     }
