@@ -34,11 +34,11 @@ Apps can define templates under `src/email/templates` and register them at runti
 Example (Vite app):
 
 ```ts
-// src/email/templates/spacious.ts
+// src/email/templates/minimalist.ts
 import type { EmailTemplate } from '@ottabase/email';
 
-export const spaciousTemplate: EmailTemplate = {
-    name: 'spacious',
+export const minimalistTemplate: EmailTemplate = {
+    name: 'minimalist',
     subject: '{{subject}}',
     layout: '...',
     header: '{{header}}',
@@ -48,10 +48,10 @@ export const spaciousTemplate: EmailTemplate = {
 
 // src/email/templates/index.ts
 import { registerEmailTemplate } from '@ottabase/email';
-import { spaciousTemplate } from './spacious';
+import { minimalistTemplate } from './minimalist';
 
 export function registerAppEmailTemplates() {
-    registerEmailTemplate(spaciousTemplate);
+    registerEmailTemplate(minimalistTemplate);
 }
 ```
 

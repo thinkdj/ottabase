@@ -41,8 +41,8 @@ type AdminUserLike = { permissions?: string[]; platformAdmin?: boolean } | null 
  * PLATFORM administrator — the SaaS control plane (all users/orgs, RBAC, infrastructure, app-global
  * appearance/content). Trust ONLY the server-derived, scope-aware `user.platformAdmin` flag (set from
  * a SYSTEM-scoped grant). Deliberately NO `*:*` fallback: the session's merged permission list is
- * scope-blind, so an ORG-scoped `*:*` (e.g. a legacy/stale `owner=['*:*']` row on an un-migrated DB)
- * would otherwise masquerade as platform admin here. The server enforces the same boundary; this is
+ * scope-blind, so an ORG-scoped `*:*` (e.g. an org role granted `*:*`) would
+ * otherwise masquerade as platform admin here. The server enforces the same boundary; this is
  * just what the client renders.
  */
 export function isPlatformAdmin(user: AdminUserLike): boolean {
@@ -51,8 +51,8 @@ export function isPlatformAdmin(user: AdminUserLike): boolean {
 }
 
 /**
- * ORGANIZATION administrator — can administer their own tenant. True for `org:admin` (which a
- * legacy org-scoped `*:*` also matches, correctly: such a user IS an org owner) or a platform owner.
+ * ORGANIZATION administrator — can administer their own tenant. True for `org:admin` (which an
+ * org-scoped `*:*` also matches, correctly: such a user IS an org owner) or a platform owner.
  */
 export function isOrgAdmin(user: AdminUserLike): boolean {
     if (!user) return false;

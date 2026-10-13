@@ -96,7 +96,7 @@
         /* ── Layout tokens (BrandEngine defaults) ────────────────── */
         --layout-header: topbar;
         --layout-navigation: sidebar;
-        --layout-content-width: fluid;
+        --layout-content-width: lg;
         --layout-footer: 1;
         --layout-density: comfy;
 

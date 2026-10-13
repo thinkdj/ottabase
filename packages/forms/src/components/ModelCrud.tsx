@@ -14,8 +14,6 @@ import { ModelDetail } from './ModelDetail';
 import { ModelForm } from './ModelForm';
 import { ModelTable } from './ModelTable';
 
-export type { ModelCrudProps } from '../types';
-
 interface PaginationResult<T> {
     data: T[];
     total: number;

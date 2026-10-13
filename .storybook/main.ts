@@ -13,7 +13,6 @@ const __dirname = dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const storybookPostCssConfig = path.resolve(__dirname, 'postcss.config.cjs');
 const storybookTailwindConfig = path.resolve(__dirname, 'tailwind.config.cjs');
-const defaultTailwindConfig = path.resolve(projectRoot, 'apps/ottabase-template-app/tailwind.config.cjs');
 
 // Use Storybook-specific Tailwind config by default
 if (!process.env.TAILWIND_CONFIG) {

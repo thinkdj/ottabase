@@ -27,7 +27,7 @@ import type { LayoutConfig } from '@ottabase/ottalayout';
 const myLayout: LayoutConfig = {
     header: 'topbar',
     navigation: 'sidebar',
-    contentWidth: 'lg',
+    contentWidth: 'lg', // 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full'
     footer: true,
     density: 'comfy',
     // Optional extended fields:
@@ -50,7 +50,7 @@ import { LAYOUT_PRESETS, APP_SHELL_LAYOUT, DOCS_LAYOUT } from '@ottabase/ottalay
 //              dashboard, settings, marketing, fullscreen
 
 const config = APP_SHELL_LAYOUT.config;
-// → { header: 'topbar', navigation: 'sidebar', contentWidth: 'fluid', ... }
+// → { header: 'topbar', navigation: 'sidebar', contentWidth: 'lg', ... }
 ```
 
 ### Path Resolver
@@ -92,9 +92,9 @@ Tailwind-friendly class helpers for layout dimensions:
 ```typescript
 import { contentWidthClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
 
-contentWidthClass('lg'); // 'max-w-screen-lg'
-densityPadding('compact'); // 'p-2'
-sidebarWidthClass('wide'); // 'w-72'
+contentWidthClass('lg'); // 'max-w-7xl'
+densityPadding('compact'); // 'py-4'
+sidebarWidthClass('wide'); // 'w-80'
 ```
 
 ### React: Slots

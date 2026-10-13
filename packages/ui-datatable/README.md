@@ -134,8 +134,8 @@ function TodosPage() {
 
 ## Integration with @ottabase/forms
 
-`@ottabase/forms`' `ModelTable` component is now powered by `@ottabase/ui-datatable` internally. If you use `ModelCrud`,
-you get the upgraded table automatically — no changes needed:
+`@ottabase/forms`' `ModelTable` component is built on `@ottabase/ui-datatable`, so `ModelCrud` renders its list view
+with this table automatically:
 
 ```tsx
 import { createModelConfig } from '@ottabase/forms';

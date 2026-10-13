@@ -331,7 +331,7 @@ describe('resolveTheme', () => {
             layout: {
                 header: 'topbar',
                 navigation: 'sidebar',
-                contentWidth: 'fluid',
+                contentWidth: 'lg',
                 footer: true,
                 density: 'comfy',
             },
@@ -342,7 +342,7 @@ describe('resolveTheme', () => {
                 layout: {
                     header: 'minimal',
                     navigation: 'sidebar',
-                    contentWidth: 'fluid',
+                    contentWidth: 'lg',
                     footer: true,
                     density: 'compact',
                 },
@@ -619,8 +619,7 @@ describe('buildCSSVarMap', () => {
         expect(vars['--motion-ease-default']).toBe(vars['--ease']);
         expect(vars['--motion-ease-enter']).toBe(vars['--ease-enter']);
         expect(vars['--motion-ease-exit']).toBe(vars['--ease-exit']);
-        // Fixed bouncy easing preset
-        expect(vars['--motion-ease-bouncy']).toBe('cubic-bezier(0.34, 1.56, 0.64, 1)');
+        expect(vars['--ease-spring']).toBe('cubic-bezier(0.34, 1.56, 0.64, 1)');
     });
 
     it('generates typography extended vars (weight, line-height, letter-spacing)', () => {
@@ -1282,7 +1281,7 @@ describe('Layout', () => {
             layout: {
                 header: 'none',
                 navigation: 'drawer',
-                contentWidth: 'fixed',
+                contentWidth: 'md',
                 footer: false,
                 density: 'compact',
             },
@@ -1291,7 +1290,7 @@ describe('Layout', () => {
         const vars = buildCSSVarMap(resolved);
         expect(vars['--layout-header']).toBe('none');
         expect(vars['--layout-navigation']).toBe('drawer');
-        expect(vars['--layout-content-width']).toBe('fixed');
+        expect(vars['--layout-content-width']).toBe('md');
         expect(vars['--layout-footer']).toBe('0');
         expect(vars['--layout-density']).toBe('compact');
     });

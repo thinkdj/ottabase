@@ -116,7 +116,7 @@
     "layout": {
         "header": "topbar",
         "navigation": "topbar",
-        "contentWidth": "fixed",
+        "contentWidth": "md",
         "footer": true,
         "density": "comfy"
     },

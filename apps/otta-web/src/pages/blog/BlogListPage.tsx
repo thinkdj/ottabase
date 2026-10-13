@@ -76,7 +76,6 @@ interface BlogPost {
     publishedAt: string | null;
     seriesId: string | null;
     seriesTitle?: string | null;
-    categoryName?: string | null;
     categories?: { id: string; name: string; slug: string }[];
     tags?: BlogPostTag[];
     viewCount?: number;

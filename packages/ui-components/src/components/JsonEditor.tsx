@@ -818,5 +818,3 @@ function RawEditor({
         </div>
     );
 }
-
-export default JsonEditor;

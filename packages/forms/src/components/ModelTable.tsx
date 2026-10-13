@@ -17,15 +17,12 @@ import { Edit2, Eye, Plus, Trash2 } from 'lucide-react';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { ModelFieldDescriptor, ModelTableProps } from '../types';
 
-// Re-export for backwards compatibility
-export type { ModelTableProps } from '../types';
-
 /**
  * ModelTable — auto-generated table/list view for model records.
  *
- * Now powered by `@ottabase/ui-datatable` under the hood. Converts OttaORM
- * model field metadata into DataTable column definitions, providing sorting,
- * pagination, row selection, search, and row actions out of the box.
+ * Built on `@ottabase/ui-datatable`. Converts OttaORM model field metadata into
+ * DataTable column definitions, providing sorting, pagination, row selection,
+ * search, and row actions out of the box.
  */
 export function ModelTable<T extends Record<string, unknown>>({
     config,

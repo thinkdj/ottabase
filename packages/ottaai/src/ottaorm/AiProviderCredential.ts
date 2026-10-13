@@ -516,9 +516,8 @@ export class AiProviderCredential extends BaseModel {
             currentCiphertext?: string | null;
         },
     ): Promise<void> {
-        const submittedAlias = Self_normalizeAlias(data.secretAliasInput ?? data.alias);
+        const submittedAlias = Self_normalizeAlias(data.alias);
         delete data.alias;
-        delete data.secretAliasInput;
 
         // Rule 3 — explicit clear.
         if (data.clearSecret === true) {

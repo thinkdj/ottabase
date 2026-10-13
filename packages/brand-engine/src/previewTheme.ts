@@ -32,16 +32,11 @@ export function buildPreviewTheme(kitData: PreviewKitData, mode: string = 'light
         try {
             const parsed = JSON.parse(kitData.tokensJson) as Record<string, unknown>;
             // Extract cursors separately – they live at root of tokensJson, not inside DesignTokens
-            const { cursors, colors: legacyColors, ...tokenRest } = parsed;
-            tokens = { ...tokenRest } as Partial<DesignTokens>;
+            const { cursors, ...tokenRest } = parsed;
+            tokens = tokenRest as Partial<DesignTokens>;
 
             if (cursors && typeof cursors === 'object') {
                 parsedCursors = cursors as Record<string, string>;
-            }
-
-            // Handle legacy colors -> color migration
-            if (legacyColors && typeof legacyColors === 'object' && !tokens.color) {
-                tokens.color = legacyColors as DesignTokens['color'];
             }
         } catch {
             // If parsing fails, use defaults

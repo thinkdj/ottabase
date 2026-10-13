@@ -13,7 +13,7 @@ import { DEFAULT_LAYOUT, LAYOUT_FIELD_DEFAULTS } from './types';
 
 export const VALID_HEADERS = ['minimal', 'sidebar', 'topbar', 'none'] as const;
 export const VALID_NAVIGATIONS = ['sidebar', 'topbar', 'drawer', 'none'] as const;
-export const VALID_WIDTHS = ['xs', 'sm', 'md', 'lg', 'xl', 'full', 'fixed', 'fluid'] as const;
+export const VALID_WIDTHS = ['xs', 'sm', 'md', 'lg', 'xl', 'full'] as const;
 export const VALID_DENSITIES = ['compact', 'comfy', 'spacious'] as const;
 export const VALID_SIDEBAR_WIDTHS = ['narrow', 'standard', 'wide'] as const;
 export const VALID_CONTAINER_PADDINGS = ['none', 'sm', 'md', 'lg'] as const;

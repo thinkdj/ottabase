@@ -179,12 +179,12 @@ export async function handleUpload(context: ApiRouteContext): Promise<Response> 
         }
 
         if (provider === 'cloudflare-images') {
-            const accountId = env.CLOUDFLARE_ACCOUNT_ID;
-            const apiToken = env.CLOUDFLARE_API_TOKEN;
+            const accountId = env.CF_IMAGES_ACCOUNT_ID;
+            const apiToken = env.CF_IMAGES_API_TOKEN;
 
             if (!accountId || !apiToken) {
                 return errorResponse(
-                    'Cloudflare Images not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN',
+                    'Cloudflare Images not configured. Set CF_IMAGES_ACCOUNT_ID and CF_IMAGES_API_TOKEN',
                     500,
                     { code: 'CONFIG_ERROR' },
                 );

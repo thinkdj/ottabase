@@ -20,10 +20,6 @@ import { CrosspostsRow } from './Crossposts';
 import { PhotoJournalRenderer } from './PhotoJournalRenderer';
 import { usePostRenderLifecycle } from './usePostRenderLifecycle';
 
-// The prop/data interfaces are declared in the pure `./blog-renderer-types` module so that
-// pure sites can reference them without importing this rendered file. Re-export them here so
-// relative importers (tests, theme/plugin type modules) keep resolving them from this path.
-export type { BlurbRendererProps, BlogExcerptCardProps, BlogPostData, BlogRendererProps } from './blog-renderer-types';
 export { BlurbText } from './BlurbText';
 
 /** Render a blurb through the active theme and the blurb-specific filter hook. */

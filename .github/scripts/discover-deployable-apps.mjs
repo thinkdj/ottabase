@@ -47,21 +47,12 @@ function discoverApps() {
             const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
             const packageName = packageJson.name;
 
-            // Check for cloudflare-config.json
-            let config = { ...DEFAULT_CONFIG };
-
-            if (existsSync(configPath)) {
-                const customConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
-                config = { ...DEFAULT_CONFIG, ...customConfig };
-            } else {
-                // No config file - check if it has wrangler.jsonc (legacy detection)
-                const wranglerPath = join(appPath, 'wrangler.jsonc');
-                if (!existsSync(wranglerPath)) {
-                    console.error(`⏭️  Skipping ${packageName}: No cloudflare-config.json or wrangler.jsonc found`);
-                    continue;
-                }
-                console.warn(`⚠️  ${packageName}: Using defaults (no cloudflare-config.json found)`);
+            // cloudflare-config.json is the deploy contract: an app without one is not deployable.
+            if (!existsSync(configPath)) {
+                console.error(`⏭️  Skipping ${packageName}: No cloudflare-config.json found`);
+                continue;
             }
+            const config = { ...DEFAULT_CONFIG, ...JSON.parse(readFileSync(configPath, 'utf-8')) };
 
             // Skip if explicitly marked as non-deployable
             if (config.deployable === false) {

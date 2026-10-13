@@ -124,7 +124,6 @@ interface BlogPost {
     content: OutputData | null;
     contentType: ContentType;
     status: PostStatus;
-    categoryId: string | null;
     seriesId: string | null;
     seriesOrder: number | null;
     heroImage: HeroImage | null;

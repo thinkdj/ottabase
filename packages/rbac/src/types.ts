@@ -13,7 +13,6 @@ export interface RBACContext {
     permissions: string[];
     isAuthenticated: boolean;
     organizationId?: string | null; // Organization/tenant context
-    tenantId?: string | null; // Alternative tenant identifier
 }
 
 /**

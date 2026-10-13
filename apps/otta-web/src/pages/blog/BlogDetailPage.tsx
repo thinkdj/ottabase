@@ -96,7 +96,6 @@ interface BlogPost {
     seriesOrder: number | null;
     tags?: { id: string; name: string; slug: string }[];
     categories?: { id: string; name: string; slug: string }[];
-    categoryName?: string | null;
     viewCount?: number;
     originalDate?: {
         timestamp: number;

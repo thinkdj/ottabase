@@ -26,23 +26,6 @@ async function exec(db: MigrationDb, sql: string): Promise<void> {
     await db.executeRaw(sql);
 }
 
-export const ottablogMigrations = [
-    {
-        name: 'ottablog_translation_orphan_cleanup_v2',
-        up: async (db: MigrationDb) => {
-            await exec(db, 'DELETE FROM post_translations WHERE post_id NOT IN (SELECT id FROM posts)');
-        },
-        affectedTables: ['post_translations', 'posts'],
-    },
-    {
-        name: 'ottablog_translation_scope_indexes_v1',
-        up: async (db: MigrationDb) => {
-            await exec(db, 'DROP INDEX IF EXISTS post_translations_app_slug_unique_idx');
-        },
-        affectedTables: ['post_translations'],
-    },
-];
-
 const ORG_MODE_INDEX_STATEMENTS: string[] = [
     // posts: drop the strict app-wide unique slug index; org rows are constrained by the
     // existing posts_org_app_slug_unique_idx, platform rows by the partial below.
@@ -111,7 +94,6 @@ export const ottablogOrgModeMigrations = [
  */
 export const ottablogOrgModeSuppressedIndexes: string[] = [
     'posts_app_id_slug_unique_idx',
-    'post_translations_app_slug_unique_idx',
     'categories_app_id_type_slug_unique_idx',
     'post_tags_app_id_type_slug_unique_idx',
     'series_app_id_slug_unique_idx',

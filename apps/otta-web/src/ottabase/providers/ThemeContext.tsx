@@ -5,8 +5,6 @@ import { createContext, useContext } from 'react';
 export interface ThemeProviderState {
     /** Current theme name */
     theme: string;
-    /** Change the active theme */
-    setTheme: (theme: string) => void;
     /** The raw BrandTheme definition */
     config: BrandTheme;
     /** Fully resolved theme (tokens + layout + defaults applied) */
@@ -23,7 +21,6 @@ export interface ThemeProviderState {
 
 const initialState: ThemeProviderState = {
     theme: 'default',
-    setTheme: () => null,
     config: {} as BrandTheme,
     resolved: null,
     layout: null,

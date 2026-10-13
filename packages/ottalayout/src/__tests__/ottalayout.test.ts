@@ -240,9 +240,9 @@ describe('mergeLayoutConfig', () => {
         expect(result.centerContent).toBe(true);
     });
 
-    it('accepts fixed and fluid content widths', () => {
-        expect(mergeLayoutConfig({ contentWidth: 'fixed' }).contentWidth).toBe('fixed');
-        expect(mergeLayoutConfig({ contentWidth: 'fluid' }).contentWidth).toBe('fluid');
+    it('rejects the old fixed/fluid width names', () => {
+        expect(mergeLayoutConfig({ contentWidth: 'fixed' }).contentWidth).toBe(DEFAULT_LAYOUT.contentWidth);
+        expect(mergeLayoutConfig({ contentWidth: 'fluid' }).contentWidth).toBe(DEFAULT_LAYOUT.contentWidth);
     });
 
     it('accepts new navigation variant "none"', () => {
@@ -274,7 +274,7 @@ describe('isValidLayoutConfig', () => {
         ).toBe(true);
     });
 
-    it('accepts config with fixed/fluid values', () => {
+    it('rejects config with the old fluid width name', () => {
         expect(
             isValidLayoutConfig({
                 header: 'topbar',
@@ -283,7 +283,7 @@ describe('isValidLayoutConfig', () => {
                 footer: true,
                 density: 'comfy',
             }),
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it('accepts config with new values', () => {
@@ -344,11 +344,6 @@ describe('contentWidthClass', () => {
         expect(contentWidthClass('lg')).toBe('max-w-7xl');
         expect(contentWidthClass('xl')).toBe('max-w-[1536px]');
         expect(contentWidthClass('full')).toBe('w-full');
-    });
-
-    it('maps fixed and fluid to classes', () => {
-        expect(contentWidthClass('fixed')).toBe('max-w-5xl');
-        expect(contentWidthClass('fluid')).toBe('max-w-7xl');
     });
 });
 

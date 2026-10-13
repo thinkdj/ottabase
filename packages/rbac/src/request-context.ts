@@ -134,7 +134,6 @@ export async function getRequestContext(
     // Load system-scope roles (always applied)
     const systemContext = await createRBACContext(user, cache, {
         organizationId: SYSTEM_ORGANIZATION_ID,
-        tenantId: SYSTEM_ORGANIZATION_ID,
     });
 
     // The requested org is only a request: a tenant org needs active membership, and the
@@ -157,7 +156,6 @@ export async function getRequestContext(
     const scopedContext = organizationId
         ? await createRBACContext(user, cache, {
               organizationId,
-              tenantId: organizationId,
           })
         : { roles: [], permissions: [], isAuthenticated: false };
 

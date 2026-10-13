@@ -48,17 +48,6 @@ export interface ShortlinkResponse {
     error?: string;
 }
 
-/**
- * Response for list operations
- * @deprecated Use ShortlinksPaginatedResponse instead for new implementations
- */
-export interface ShortlinksListResponse {
-    success: boolean;
-    data?: ShortlinkRecord[];
-    total?: number;
-    error?: string;
-}
-
 // ============================================================
 // Pagination Types (Simplified)
 // ============================================================

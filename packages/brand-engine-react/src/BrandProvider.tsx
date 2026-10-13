@@ -243,8 +243,6 @@ export interface FullBrandConfig {
             hideOttabaseBranding: boolean;
         }
     >;
-    /** @deprecated No longer sent by API — client determines mode locally */
-    mode?: 'light' | 'dark';
 }
 
 function expandCompactConfig(config: FullBrandConfig): RouteMapping[] {

@@ -34,7 +34,7 @@ describe('runtime generator — schema constraints', () => {
         const sql = driver.executed.join('\n');
 
         expect(/CREATE TABLE IF NOT EXISTS "members"/i.test(sql)).toBe(true);
-        // Composite PK must be emitted as a table-level constraint (was previously dropped).
+        // Composite PK must be emitted as a table-level constraint, not dropped.
         expect(/PRIMARY KEY \("user_id", "org_id"\)/i.test(sql)).toBe(true);
         // Declared index is created idempotently and tracked.
         expect(/CREATE INDEX IF NOT EXISTS "members_role_idx" ON "members" \("role"\)/i.test(sql)).toBe(true);

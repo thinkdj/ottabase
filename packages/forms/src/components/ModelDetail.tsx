@@ -9,8 +9,6 @@ import { ArrowLeft, Check, Edit2, ExternalLink, Trash2, X } from 'lucide-react';
 import { useMemo } from 'react';
 import type { ModelDetailProps, ModelFieldDescriptor } from '../types';
 
-export type { ModelDetailProps } from '../types';
-
 interface FieldEntry {
     key: string;
     field: ModelFieldDescriptor;

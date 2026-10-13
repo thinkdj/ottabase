@@ -34,7 +34,7 @@ export interface ResolveBrandConfigOptions {
 }
 
 /** Full resolution data – all route mappings + all brand kits (both modes). Client resolves path locally. */
-export type FullBrandConfig = BrandResolutionCache & { mode?: string; r2PublicUrl?: string };
+export type FullBrandConfig = BrandResolutionCache & { r2PublicUrl?: string };
 
 /**
  * Load and build brand kits map from database.

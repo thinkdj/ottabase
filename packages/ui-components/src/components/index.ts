@@ -2,7 +2,7 @@ export { default as BlogPagination } from './BlogPagination';
 export { ConfirmDialog } from './ConfirmDialog';
 export { default as DarkModeToggle } from './DarkModeToggle';
 export { default as HistoryGoBackButton } from './HistoryGoBackButton';
-export { JsonEditor, default as JsonEditorDefault } from './JsonEditor';
+export { JsonEditor } from './JsonEditor';
 export { default as Logo } from './Logo';
 export { default as MessageBox } from './MessageBox';
 export type { ConfirmDialogProps, ConfirmDialogTone } from './ConfirmDialog';

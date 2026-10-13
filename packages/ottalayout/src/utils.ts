@@ -15,10 +15,8 @@ export function contentWidthClass(contentWidth: ContentWidth): string {
         case 'sm':
             return 'max-w-3xl'; // 768px
         case 'md':
-        case 'fixed':
             return 'max-w-5xl'; // 1024px
         case 'lg':
-        case 'fluid':
             return 'max-w-7xl'; // 1280px
         case 'xl':
             return 'max-w-[1536px]'; // 1536px

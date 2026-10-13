@@ -165,7 +165,7 @@ export {
 export type { BlogExportFile, BlogExportPost, BlogImportResult } from './import-export';
 
 // Migrations (org-mode index swap; register conditionally in the app's migration registry)
-export { ottablogMigrations, ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
+export { ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
 
 // Draft preview tokens (Web Crypto HMAC; used by the router's ?preview= path)
 export { signPreviewToken, verifyPreviewToken } from './preview-token';

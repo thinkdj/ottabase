@@ -11,10 +11,10 @@
 
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import { DEFAULT_LAYOUT } from '@ottabase/ottalayout';
-import { isPlainObject, pickMode, resolveAliases, resolveCursors, resolveTokenSet } from './resolve-core';
+import { isPlainObject, resolveAliases, resolveCursors, resolveTokenSet } from './resolve-core';
 import type { ResolvedTokenSet } from './resolve-core';
 import type { BrandTheme } from './theme';
-import type { ColorScheme, ModeValue, TokenCursors } from './tokens';
+import type { ColorScheme, TokenCursors } from './tokens';
 
 export { resolveAliases };
 
@@ -41,23 +41,6 @@ export function deepMerge<T extends Record<string, unknown>>(target: T, source: 
     }
 
     return result as T;
-}
-
-// ---------------------------------------------------------------------------
-// Mode extraction utility (kept for external callers; delegates to core)
-// ---------------------------------------------------------------------------
-
-/**
- * Safely extracts the value for the active mode from a ModeValue token.
- * The `isBase` predicate is retained for signature compatibility but split
- * detection now uses the robust light/dark-key check from resolve-core.
- */
-export function resolveModeValue<T>(
-    val: ModeValue<T> | undefined,
-    mode: ColorScheme,
-    _isBase?: (v: unknown) => boolean,
-): T | undefined {
-    return pickMode(val, mode);
 }
 
 // ---------------------------------------------------------------------------

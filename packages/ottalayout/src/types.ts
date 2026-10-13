@@ -16,7 +16,7 @@ export type NavigationVariant = 'sidebar' | 'topbar' | 'drawer' | 'none';
  * Content width strategy.
  * Named sizes map to max-width utilities.
  */
-export type ContentWidth = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'fixed' | 'fluid';
+export type ContentWidth = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 /** UI density */
 export type Density = 'compact' | 'comfy' | 'spacious';

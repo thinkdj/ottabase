@@ -30,8 +30,8 @@ module.exports = {
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 ```
 
-**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + `theme.loader` overrides) _before_ or alongside the
-above so the preset’s `hsl(var(--…))` references resolve.
+**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + Brand Engine tokens applied by
+`BrandThemeApplicator`) _before_ or alongside the above so the preset’s `hsl(var(--…))` references resolve.
 
 ## Peer dependencies
 

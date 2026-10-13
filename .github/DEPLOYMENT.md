@@ -28,7 +28,8 @@ URLs use an explicit `--name` override (for example `my-app-pr-1234`) so no `-pr
 }
 ```
 
-1. Ensure `package.json` has a `build` script and, if needed, `wrangler.jsonc` exists.
+1. Ensure `package.json` has a `build` script and the app has a `cloudflare-config.json` (apps without one are not
+   deployed).
 1. Push to `main` and the production deploy runs when that app or `packages/` changes. Open a PR and preview deploy runs
    unless skipped.
 
@@ -236,7 +237,7 @@ Use markers so PR preview or production deploy do not run when not needed, such 
 2. Checks for `package.json`
 3. Looks for `cloudflare-config.json`:
     - Found: Uses custom config merged with defaults
-    - Not found: Uses defaults if `wrangler.jsonc` exists
+    - Not found: Skips the app
 4. Verifies required build scripts exist
 5. Skips if `deployable: false`
 6. Outputs GitHub Actions matrix JSON

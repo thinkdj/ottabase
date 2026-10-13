@@ -14,7 +14,7 @@ import type { RBACContext, RBACCheckOptions, PermissionCheckResult } from './typ
 export async function createRBACContext(
     user: User | null,
     cache?: any,
-    options?: { organizationId?: string; tenantId?: string },
+    options?: { organizationId?: string },
 ): Promise<RBACContext> {
     if (!user) {
         return {
@@ -23,18 +23,16 @@ export async function createRBACContext(
             permissions: [],
             isAuthenticated: false,
             organizationId: options?.organizationId,
-            tenantId: options?.tenantId,
         };
     }
 
     const userId = user.get('id') as string;
     const organizationId = options?.organizationId;
-    const tenantId = options?.tenantId;
 
     // Grants are org-scoped. Without an org there is nothing to evaluate — fail closed with no
     // roles/permissions rather than merging the user's grants from every tenant.
     if (!organizationId) {
-        return { user, roles: [], permissions: [], isAuthenticated: true, organizationId, tenantId };
+        return { user, roles: [], permissions: [], isAuthenticated: true, organizationId };
     }
 
     // Try to get full context from cache first (tenant-aware)
@@ -42,7 +40,7 @@ export async function createRBACContext(
         try {
             const cached = await cache.getUserContext(userId, organizationId);
             if (cached) {
-                return { ...cached, user, organizationId, tenantId }; // Re-attach user and tenant info
+                return { ...cached, user, organizationId }; // Re-attach user and org
             }
         } catch (error) {
             // Ignore cache errors, fallback to DB
@@ -59,7 +57,6 @@ export async function createRBACContext(
         permissions,
         isAuthenticated: true,
         organizationId,
-        tenantId,
     };
 
     // Cache the context (tenant-aware)
@@ -73,7 +70,6 @@ export async function createRBACContext(
                     permissions: context.permissions,
                     isAuthenticated: true,
                     organizationId,
-                    tenantId,
                 },
                 organizationId,
             );

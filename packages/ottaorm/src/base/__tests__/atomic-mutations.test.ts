@@ -136,16 +136,16 @@ describe('atomic model mutations', () => {
         expect(conditionSql(db.captured.where)).toBe(conditionSql(expected));
     });
 
-    it('fails closed when a legacy custom update has not joined the shared hook', async () => {
-        class LegacyRow extends GuardedRow {
-            static entity = 'legacy_rows';
+    it('fails closed when a custom update() override has not joined the shared hook', async () => {
+        class CustomUpdateRow extends GuardedRow {
+            static entity = 'custom_update_rows';
             static async update(id: string, data: Record<string, unknown>, driver?: any) {
                 return super.update(id, data, driver);
             }
         }
         const db = mutationDriver([]);
         await expect(
-            LegacyRow.updateConstrained(
+            CustomUpdateRow.updateConstrained(
                 'r1',
                 {},
                 { where: { organizationId: 'org-1' } },

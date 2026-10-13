@@ -92,7 +92,7 @@ describe('isValidLayoutConfig', () => {
         const config = {
             header: 'topbar',
             navigation: 'sidebar',
-            contentWidth: 'fluid',
+            contentWidth: 'lg',
             footer: true,
             density: 'comfy',
         };

@@ -126,7 +126,7 @@ ${
 // ============================================================
 // Re-export every core table. Using \`export *\` keeps this in sync with the package
 // automatically (drizzle-kit ignores non-table exports), so it never goes stale when
-// tables are added or moved. Blog/content tables now live in @ottabase/ottablog and
+// tables are added or moved. Blog/content tables live in @ottabase/ottablog and
 // must be exported by the app schema if that package is used.
 export * from "@ottabase/ottaorm";
 

@@ -46,7 +46,8 @@ function MyContent() {
 - `appId` — App identifier passed to the API
 - `initialConfig` — Pre-fetched config for SSR/SSG (skips client fetch)
 - `fallbackTheme` — Theme tokens used if the API fails (graceful degradation)
-- `mode` — `'light'` | `'dark'` override (default: matches `prefers-color-scheme`)
+
+The active mode is never sent by the API; the client picks `themeLight`/`themeDark` locally.
 
 `BrandProvider` automatically retries transient startup failures from `/api/brand` such as temporary `502`, `503`, and
 `504` responses so worker warmup does not immediately drop the app shell into an error state.

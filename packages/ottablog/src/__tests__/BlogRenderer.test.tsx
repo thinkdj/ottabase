@@ -1,7 +1,8 @@
 import { act, render, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
-import { BlogExcerptCard, BlogRenderer, BlurbRenderer, type BlogPostData } from '../components/BlogRenderer';
+import type { BlogPostData } from '../components/blog-renderer-types';
+import { BlogExcerptCard, BlogRenderer, BlurbRenderer } from '../components/BlogRenderer';
 
 const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
     id: 'test-post-1',

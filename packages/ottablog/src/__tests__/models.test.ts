@@ -39,7 +39,6 @@ describe('ottablog models', () => {
             expect(fields).toHaveProperty('photoNote');
             expect(fields).toHaveProperty('photoAlbum');
             expect(fields).toHaveProperty('status');
-            expect(fields).toHaveProperty('categoryId');
             expect(fields).toHaveProperty('isProtected');
             expect(fields).toHaveProperty('passwordHash');
             expect(fields).toHaveProperty('passwordHint');
@@ -138,7 +137,6 @@ describe('ottablog models', () => {
                     blurbText: 'Watched xyz today.\nIt stayed with me.',
                     content: null,
                     contentType: 'blurb',
-                    categoryId: null,
                     seriesId: null,
                     heroImage: null,
                     footnotes: null,
@@ -779,11 +777,12 @@ describe('ottablog models', () => {
             };
             expect(await prepareUpdate({ title: 'Still live' }, current)).toEqual({ title: 'Still live' });
 
-            const repaired = await prepareUpdate(
-                { title: 'Repair legacy timestamps' },
+            // A published row must always carry both timestamps; any edit fills a missing one.
+            const backfilled = await prepareUpdate(
+                { title: 'Fill missing timestamps' },
                 { ...current, publishedAt: null, postedAt: null },
             );
-            expect(repaired).toEqual(
+            expect(backfilled).toEqual(
                 expect.objectContaining({
                     publishedAt: expect.any(Number),
                     postedAt: expect.any(Number),
@@ -951,11 +950,6 @@ describe('ottablog models', () => {
         it('Post should have static featured method', () => {
             expect(Post.featured).toBeDefined();
             expect(typeof Post.featured).toBe('function');
-        });
-
-        it('Post should have static byCategory method', () => {
-            expect(Post.byCategory).toBeDefined();
-            expect(typeof Post.byCategory).toBe('function');
         });
 
         it('Post should have static bySeries method', () => {

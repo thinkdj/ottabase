@@ -147,7 +147,6 @@ const context = await buildAppContext({
 // Context includes:
 // {
 //   organizationId: 'org-123',
-//   tenantId: 'org-123',  // Alias
 //   appId: 'web',
 //   user: User,
 //   roles: ['editor'],

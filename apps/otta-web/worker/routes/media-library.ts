@@ -81,8 +81,8 @@ async function deleteStoredMedia(env: CloudflareEnv, mediaItem: Media): Promise<
     }
 
     if (provider === 'cloudflare-images') {
-        const accountId = env.CLOUDFLARE_ACCOUNT_ID || env.CF_IMAGES_ACCOUNT_ID;
-        const apiToken = env.CLOUDFLARE_API_TOKEN || env.CF_IMAGES_API_TOKEN;
+        const accountId = env.CF_IMAGES_ACCOUNT_ID;
+        const apiToken = env.CF_IMAGES_API_TOKEN;
 
         if (!accountId || !apiToken) {
             throw new Error('Cloudflare Images credentials not configured');

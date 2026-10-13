@@ -57,7 +57,6 @@ export async function requireAdminAccess(
         permissions: reqCtx.permissions,
         isAuthenticated: reqCtx.isAuthenticated,
         organizationId: reqCtx.organizationId || undefined,
-        tenantId: reqCtx.organizationId || undefined,
     };
 
     return {
@@ -110,7 +109,6 @@ export async function requireBrandEditAccess(
         isAuthenticated: reqCtx.isAuthenticated,
         // Brand rows are app-global; a null org (system/default brand) maps to "no tenant".
         organizationId: result.organizationId ?? undefined,
-        tenantId: result.organizationId ?? undefined,
     };
 
     return {

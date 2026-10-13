@@ -16,7 +16,6 @@ export interface AppContext {
     organizationId: string | null;
     organizationName?: string;
     organizationSlug?: string;
-    tenantId: string | null; // Alias for organizationId
 
     // App dimension (second level)
     appId: string;
@@ -103,7 +102,6 @@ export async function buildAppContext(options: BuildAppContextOptions): Promise<
         organizationId: organizationId ?? null,
         organizationName,
         organizationSlug,
-        tenantId: organizationId ?? null, // Alias
         appId,
         appName,
         user: user || null,

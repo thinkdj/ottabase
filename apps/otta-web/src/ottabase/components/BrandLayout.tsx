@@ -18,7 +18,7 @@ export function BrandLayout() {
 
     const header = layout?.header ?? 'topbar';
     const navigation = layout?.navigation ?? 'topbar';
-    const cw = layout?.contentWidth ?? 'fixed';
+    const cw = layout?.contentWidth ?? 'md';
     const showFooter = layout?.footer ?? true;
     const density = layout?.density ?? 'comfy';
 

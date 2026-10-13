@@ -181,9 +181,8 @@ export interface BlogRouterConfig<Env = unknown> {
 }
 
 /**
- * The full set of blog route handlers. Signatures intentionally match the
- * pre-extraction otta-web handlers so existing imports, mocks, and dispatch
- * tests keep working: context first, then any path parameter.
+ * The full set of blog route handlers. Every handler takes the request context
+ * first, then any path parameter.
  */
 export interface BlogHandlers<Env = unknown> {
     handleBlogStudioState(ctx: BlogRequestContext<Env>): Promise<Response>;

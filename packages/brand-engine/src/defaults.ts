@@ -113,7 +113,6 @@ export const DEFAULT_MOTION: ResolvedMotion = {
     easing: 'cubic-bezier(0.35, 0.65, 0.05, 1)',
     easingEnter: 'cubic-bezier(0.05, 0.6, 0.15, 1)',
     easingExit: 'cubic-bezier(0.4, 0, 0.85, 0.2)',
-    // Previously hardcoded as --motion-ease-bouncy in css-runtime; now themeable
     easingSpring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
     disableAnimations: false,
 };

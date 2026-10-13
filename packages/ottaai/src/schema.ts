@@ -5,7 +5,7 @@
 // registering the table for auto-migrations does NOT pull the model, the ORM store
 // or the route factory into whatever is importing it (drizzle-kit included).
 //
-// Same convention as `@ottabase/comments/schema` and `@ottabase/medialibrary/schema`.
+// Same convention as `@ottabase/comments/schema`.
 // ============================================================
 
 export {

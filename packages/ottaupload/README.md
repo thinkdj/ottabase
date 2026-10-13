@@ -112,8 +112,8 @@ For optimized image delivery with automatic variants.
 
 **Environment:**
 
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- `CF_IMAGES_ACCOUNT_ID`
+- `CF_IMAGES_API_TOKEN` (scoped to Cloudflare Images)
 
 **Client:**
 
@@ -129,8 +129,8 @@ import { uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
 const result = await uploadFileToCloudflareImages(
     file,
     {
-        accountId: env.CLOUDFLARE_ACCOUNT_ID,
-        apiToken: env.CLOUDFLARE_API_TOKEN,
+        accountId: env.CF_IMAGES_ACCOUNT_ID,
+        apiToken: env.CF_IMAGES_API_TOKEN,
         requireSignedURLs: false,
         metadata: { userId: 'user-123' },
     },
@@ -156,8 +156,8 @@ if (url.pathname === '/api/upload' && request.method === 'POST') {
 
     if (provider === 'cloudflare-images') {
         const result = await uploadFileToCloudflareImages(file, {
-            accountId: env.CLOUDFLARE_ACCOUNT_ID,
-            apiToken: env.CLOUDFLARE_API_TOKEN,
+            accountId: env.CF_IMAGES_ACCOUNT_ID,
+            apiToken: env.CF_IMAGES_API_TOKEN,
         });
         return Response.json(result);
     }

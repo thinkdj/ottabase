@@ -181,7 +181,7 @@ export class BrandKit extends BaseModel {
         }) as Promise<BrandKit>;
     }
 
-    /** Convert to BrandTheme for resolver. Normalizes legacy "colors" -> "color". */
+    /** Convert to BrandTheme for resolver. */
     toBrandTheme(): BrandTheme {
         const tokensJson = this.get('tokensJson');
         let parsed: Record<string, unknown> = {};
@@ -194,11 +194,8 @@ export class BrandKit extends BaseModel {
             }
         }
 
-        const { cursors: rawCursors, colors: legacyColors, ...tokenRest } = parsed;
-        const tokens = { ...tokenRest } as Partial<DesignTokens>;
-        if (legacyColors && typeof legacyColors === 'object' && !tokens.color) {
-            tokens.color = legacyColors as DesignTokens['color'];
-        }
+        const { cursors: rawCursors, ...tokenRest } = parsed;
+        const tokens = tokenRest as Partial<DesignTokens>;
         const cursors = rawCursors as BrandTheme['cursors'] | undefined;
 
         return {

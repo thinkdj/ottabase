@@ -81,9 +81,6 @@ import { verifySenderGmail, checkHeaderPass, getAuthenticationResults } from '@o
 // JSON utilities
 import { parseJsonFromString, safeStringify, deepClone, isValidJson } from '@ottabase/utils/json';
 
-// User utilities
-import { getInitials } from '@ottabase/utils/user';
-
 // Git utilities
 import { getLastCommitMessage, getCurrentBranch, getLatestCommitHash, isGitRepository } from '@ottabase/utils/git';
 
@@ -231,11 +228,6 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 - **`safeStringify(obj: any, space?: number): string`** - Safe JSON stringify with error handling
 - **`deepClone<T>(obj: T): T | null`** - Deep clone object using JSON
 - **`isValidJson(str: string): boolean`** - Check if string is valid JSON
-
-### User Utilities (`@ottabase/utils/user`)
-
-- **`getInitials(name: string | null | undefined, defaultInitials?: string): string`** - Extract initials from name
-  (re-exported from string utilities)
 
 ### Git Utilities (`@ottabase/utils/git`)
 

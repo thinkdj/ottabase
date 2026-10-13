@@ -14,9 +14,6 @@ import { getServerErrorData, useFormRequest } from '../hooks/useFormRequest';
 import type { ModelFieldDescriptor, ModelFormProps } from '../types';
 import { FormField } from './FormField';
 
-// Re-export for backwards compatibility
-export type { ModelFormProps } from '../types';
-
 interface FieldEntry {
     key: string;
     field: ModelFieldDescriptor;

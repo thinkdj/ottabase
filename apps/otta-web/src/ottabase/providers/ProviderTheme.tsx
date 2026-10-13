@@ -1,7 +1,6 @@
 import type { BrandTheme, ResolvedBrandTheme } from '@ottabase/brand-engine';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { LayoutConfig } from '@ottabase/ottalayout';
-import { useTheme as useNextTheme } from 'next-themes';
 import { useCallback, useMemo, useState } from 'react';
 import { ThemeProviderContext } from './ThemeContext';
 
@@ -29,7 +28,6 @@ function mergeLayout(base: LayoutConfig | undefined | null, overrides: Partial<L
 /** Theme is app-level (Brand Engine). User can only switch light/dark. */
 export function ThemeProvider({ children }: ThemeProviderProps) {
     const { config } = useBrand();
-    const { resolvedTheme } = useNextTheme();
     const [layoutOverrides, setLayoutOverridesState] = useState<Partial<LayoutConfig>>(loadLayoutOverrides);
 
     const {
@@ -69,10 +67,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         };
     }, [config]);
 
-    const setTheme = useCallback(() => {
-        // Theme is app-level; no user switching. Kept for API compat.
-    }, []);
-
     const setLayoutOverrides = useCallback((overrides: Partial<LayoutConfig>) => {
         setLayoutOverridesState(overrides);
         try {
@@ -92,7 +86,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     const value = useMemo(
         () => ({
             theme: themeBase,
-            setTheme,
             config: brandConfig,
             resolved,
             layout,
@@ -100,7 +93,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
             setLayoutOverrides,
             resetLayoutOverrides,
         }),
-        [themeBase, setTheme, brandConfig, resolved, layout, layoutOverrides, setLayoutOverrides, resetLayoutOverrides],
+        [themeBase, brandConfig, resolved, layout, layoutOverrides, setLayoutOverrides, resetLayoutOverrides],
     );
 
     return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>;

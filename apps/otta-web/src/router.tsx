@@ -9,15 +9,7 @@ import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES } from '@/ottabase/confi
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import { BrandScope } from '@ottabase/ui-shadcn';
-import {
-    createBrowserHistory,
-    lazyRouteComponent,
-    Navigate,
-    Outlet,
-    RootRoute,
-    Route,
-    Router,
-} from '@tanstack/react-router';
+import { createBrowserHistory, lazyRouteComponent, Outlet, RootRoute, Route, Router } from '@tanstack/react-router';
 
 import { type ComponentType, type ReactNode } from 'react';
 
@@ -370,11 +362,6 @@ const adminMenuDetailRoute = makeAdminRoute(
     () => import('@/pages/admin/appearance/MenuDetailPage'),
     'AdminMenuDetailPage',
 );
-const adminThemeGeneratorRoute = makeAdminRoute(
-    '/admin/appearance/theme-generator',
-    () => import('@/pages/admin/appearance/ThemeGeneratorRedirect'),
-    'ThemeGeneratorRedirect',
-);
 
 // ─── /admin/content ──────────────────────────────────────────────────────────
 
@@ -494,26 +481,6 @@ const adminChangelogRoute = makeAdminRoute(
     'AdminChangelogListPage',
     { scope: 'org' },
 );
-// Changelog new/edit redirect to blog editor with contentType=changelog.
-// Cast Navigate target: routes built via makeAdminRoute don't expose path as a
-// string literal in the inferred route tree, so the Register types here are
-// incomplete. The runtime path is correct.
-const adminChangelogNewRoute = new Route({
-    getParentRoute: () => rootRoute,
-    path: '/admin/content/changelog/new',
-    component: () => (
-        <Navigate to={'/admin/content/blog/new' as never} search={{ contentType: 'changelog' } as never} />
-    ),
-});
-const adminChangelogEditRoute = new Route({
-    getParentRoute: () => rootRoute,
-    path: '/admin/content/changelog/$entryId/edit',
-    component: () => {
-        const params = window.location.pathname.match(/\/admin\/content\/changelog\/([^/]+)\/edit/);
-        const entryId = params?.[1] ?? '';
-        return <Navigate to={'/admin/content/blog/$postId/edit' as never} params={{ postId: entryId } as never} />;
-    },
-});
 const adminMediaLibraryRoute = makeAdminRoute(
     '/admin/content/media',
     () => import('@/pages/admin/content/MediaLibraryPage'),
@@ -797,10 +764,7 @@ const coreRoutes = [
     adminMenusRoute,
     adminMenuNewRoute,
     adminMenuDetailRoute,
-    adminThemeGeneratorRoute,
     adminChangelogRoute,
-    adminChangelogNewRoute,
-    adminChangelogEditRoute,
     adminUsersRoute,
     adminUserRBACRoute,
     adminOrganizationsRoute,

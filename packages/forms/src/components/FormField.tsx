@@ -13,8 +13,6 @@ import React, { useCallback } from 'react';
 import { useFormRequest } from '../hooks/useFormRequest';
 import type { FormFieldProps, ModelFieldDescriptor } from '../types';
 
-export type { FormFieldProps };
-
 /**
  * FormField - Renders the appropriate input based on field type
  */

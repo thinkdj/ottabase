@@ -10,7 +10,7 @@
 import type React from 'react';
 import type { Plugin } from './types';
 import { HOOKS } from '../hooks';
-import type { BlogPostData } from '../components/BlogRenderer';
+import type { BlogPostData } from '../components/blog-renderer-types';
 import type { EditorJSData } from '../types';
 
 export interface ContentInjectorPluginOptions {

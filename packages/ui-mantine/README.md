@@ -55,7 +55,7 @@ function App({ children }) {
 
 This provider is a **controlled component**. It does not manage the theme state itself. Instead, you must provide the
 current theme via the `colorScheme` prop. This ensures that Mantine is always in sync with your application's single
-source of truth for theme state (e.g., a Jotai atom). The `MantineThemeSync` component is no longer needed.
+source of truth for theme state (e.g., a Jotai atom); no separate sync component is needed.
 
 ### Using Pre-built Themes
 

@@ -3,7 +3,7 @@
  */
 
 import type { ReactNode } from 'react';
-import type { BlogPostData } from '../components/BlogRenderer';
+import type { BlogPostData } from '../components/blog-renderer-types';
 import type { HookName } from '../hooks/types';
 
 /**

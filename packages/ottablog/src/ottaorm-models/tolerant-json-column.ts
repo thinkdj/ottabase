@@ -1,9 +1,8 @@
 import { customType } from 'drizzle-orm/sqlite-core';
 
 /**
- * SQLite TEXT column that owns its JSON mapping and isolates malformed legacy
- * values to the affected field. The physical column remains TEXT, so adopting
- * this mapper does not require a migration.
+ * SQLite TEXT column that owns its JSON mapping and isolates malformed values
+ * (e.g. hand-edited rows) to the affected field as `null`.
  *
  * Database/query failures are deliberately not handled here. They must still
  * propagate so callers do not confuse an unavailable or unauthorized database

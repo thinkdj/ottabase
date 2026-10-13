@@ -53,9 +53,6 @@ export const postsTable = sqliteTable(
         // Publication status: draft, published, archived, scheduled
         status: text('status').notNull().default('draft'),
 
-        // Category reference
-        categoryId: text('category_id'),
-
         // Series reference (for multi-part content)
         seriesId: text('series_id'),
 
@@ -202,9 +199,6 @@ export const postsTable = sqliteTable(
 
         // Author's posts: authorId + status + publishedAt
         index('posts_author_id_status_published_at_idx').on(table.authorId, table.status, table.publishedAt),
-
-        // Category posts: categoryId + status + publishedAt
-        index('posts_category_id_status_published_at_idx').on(table.categoryId, table.status, table.publishedAt),
 
         // Series ordering: seriesId + seriesOrder
         index('posts_series_id_order_idx').on(table.seriesId, table.seriesOrder),

@@ -40,7 +40,6 @@ vi.mock('@/lib/auth', () => ({
 // Mock theme context
 const mockThemeState = {
     theme: 'default',
-    setTheme: vi.fn(),
     config: {} as any,
     resolved: null,
     layout: null as LayoutConfig | null,
@@ -53,9 +52,6 @@ vi.mock('@/ottabase/providers/ThemeContext', () => ({
 }));
 
 // Mock components used inside BrandLayout
-vi.mock('@/ottabase/components/ThemeSwitcher', () => ({
-    ThemeSwitcher: () => <div data-testid="theme-switcher" />,
-}));
 vi.mock('@ottabase/ui-components/dark-mode-toggle', () => ({
     DarkModeToggle: (props: any) => <button data-testid="dark-mode-toggle" {...props} />,
 }));
@@ -135,7 +131,7 @@ function setLayout(overrides: Partial<LayoutConfig>) {
     mockThemeState.layout = {
         header: 'topbar',
         navigation: 'topbar',
-        contentWidth: 'fixed',
+        contentWidth: 'md',
         footer: true,
         density: 'comfy',
         ...overrides,

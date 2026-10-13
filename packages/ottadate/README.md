@@ -415,7 +415,7 @@ function MyDatePicker({ value, onChange }) {
 - **FuzzyDateTime timestamp is snapped.** For resolution `'month'`, the timestamp points to the 1st of that month at
   00:00 UTC. The `resolution` field tells renderers to only display down to that granularity.
 - **Preset mode is opt-in.** Pass `presets` to `createDateRangePicker` to enable the sidebar + Apply/Cancel footer.
-  Without it, the picker auto-applies on selection (classic mode). This is fully backward-compatible.
+  Without it, the picker auto-applies on selection (classic mode).
 - **Inline mode disables close.** When `inline: true`, `open()` / `close()` are no-ops; the calendar is always rendered.
 - **Popover positioning.** The popover uses `position: absolute` relative to the picker root. Ensure the parent
   container has `position: relative` or uses normal flow.

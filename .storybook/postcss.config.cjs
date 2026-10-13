@@ -1,8 +1,6 @@
 const path = require('node:path');
 
-const projectRoot = path.resolve(__dirname, '..');
 const storybookTailwindConfig = path.resolve(__dirname, 'tailwind.config.cjs');
-const fallbackTailwindConfig = path.resolve(projectRoot, 'apps/ottabase-template-app/tailwind.config.cjs');
 
 module.exports = {
     plugins: {

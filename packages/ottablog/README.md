@@ -89,7 +89,6 @@ const post = await Post.create({
 // Query posts
 const published = await Post.published({ limit: 10 });
 const featured = await Post.featured({ contentType: 'blog' });
-const byCategory = await Post.byCategory('category-123');
 
 // Create and manage blog tags
 const tag = await PostTag.create({
@@ -206,8 +205,8 @@ translation's publication time, and advertises `Vary: Accept-Language` plus tena
 collection/feed/sitemap queries use scalar translation projections, so rich bodies, footnotes, albums, SEO blobs, and
 other deferred fields are not overfetched. The response exposes `language`, `baseLanguage`, `baseSlug`, `translationId`,
 and `availableLanguages` for language switchers. A scheduled translation is published by the same cron endpoint as
-canonical posts. The translation schema has a post foreign key with cascade protection, and upgrades clean orphan rows
-through the `ottablog_translation_orphan_cleanup_v2` migration. Run auto-init/migrations after deployment.
+canonical posts. Deleting a post deletes its translations: `Post.delete()` removes them first, because OttaORM auto-init
+creates tables without `FOREIGN KEY` clauses, so the schema's `onDelete: 'cascade'` is documentation only.
 
 ## Models
 
@@ -225,7 +224,6 @@ const post = await Post.create({
     },
     contentType: 'blog', // blog, blurb, photo, changelog, docs, news, announcement
     status: 'published', // draft, published, archived, scheduled
-    categoryId: 'cat-123',
     seriesId: 'series-123',
     heroImage: {
         url: 'https://...',
@@ -249,7 +247,6 @@ const post = await Post.create({
 await Post.findBySlug('my-post');
 await Post.published({ limit: 10 });
 await Post.featured({ contentType: 'blog' });
-await Post.byCategory('category-123');
 await Post.bySeries('series-123');
 await Post.popular({ limit: 5 }); // Most viewed posts
 await Post.related('post-123', { categoryIds: ['cat-1', 'cat-2'], limit: 4 }); // Related by junction categories, then content type
@@ -291,9 +288,6 @@ Applications should use `POST /api/blog/blurbs` and `PATCH /api/blog/blurbs/{pos
 derive app/user/organization scope from the verified server context, enforce `posts:create` / `posts:update` and the
 separate `posts:publish` capability, and invoke the fat-model methods above. The Studio content list provides a quick
 composer plus a dedicated blurb editor for status, scheduling, comments, and tags.
-
-The feature adds the nullable `posts.blurb_text` and `posts.crossposts` columns. Run the normal OttaORM auto-init
-endpoint after upgrading; no destructive or data-rewrite migration is required.
 
 Blurbs, like every other content type, can link their copies on Instagram/X/Facebook — see
 [Crossposts](#crossposts-the-same-post-elsewhere).
@@ -351,9 +345,6 @@ header can pass `showTitle={false}` without getting a second title. Absent means
 anything. `photoNote` is deliberately outside that contract: it is authored body copy (the excerpt is derived from it),
 so it renders whatever the header flags say.
 
-This feature adds nullable `posts.photo_note` and JSON `posts.photo_album` columns. Run the normal OttaORM auto-init
-endpoint after upgrading; existing rows need no rewrite.
-
 **Fields:**
 
 - `id` - Unique identifier
@@ -370,7 +361,6 @@ endpoint after upgrading; existing rows need no rewrite.
   column, not an enum, so rows can carry a value a given build does not know about — render it with
   `contentTypeLabel(value)`, which falls back to the raw string, rather than indexing `CONTENT_TYPES` directly.
 - `status` - Publication status (draft, published, archived, scheduled)
-- `categoryId` - Legacy single-category reference (prefer junction via PostCategoryLink)
 - `seriesId` - Series reference
 - `seriesOrder` - Position in series
 - `heroImage` - Featured image JSON (`url`, `alt`, `caption`, `maxHeight`, `width`, `height`, `focalPoint`, `cfImageId`,
@@ -848,8 +838,8 @@ Blog themes can carry data, not just code: each `ottablog_themes` row has a spar
 state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
 no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
 (unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
-Malformed legacy JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored
-content; unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
+Malformed JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content;
+unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
 
 ## Edge SEO Meta
 
@@ -940,8 +930,8 @@ order updates that compatibility metadata without changing the permalink.
 GET /api/blog/posts/{id}/related?limit=4
 ```
 
-Returns posts related to the given post. Matches by junction-based categories (via PostCategoryLink) first, falls back
-to legacy `categoryId`, then to content type.
+Returns posts related to the given post. Matches by junction-based categories (via PostCategoryLink) first, then falls
+back to content type.
 
 ### Tag by Slug
 

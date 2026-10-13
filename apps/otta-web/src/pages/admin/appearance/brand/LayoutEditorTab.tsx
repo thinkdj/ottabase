@@ -72,7 +72,7 @@ const LayoutMiniPreview = memo(function LayoutMiniPreview({
     const contentMaxWidth =
         config.contentWidth === 'full'
             ? 'max-w-none'
-            : ['lg', 'fluid', 'xl'].includes(config.contentWidth)
+            : ['lg', 'xl'].includes(config.contentWidth)
               ? 'max-w-[94%]'
               : ['xs', 'sm'].includes(config.contentWidth)
                 ? 'max-w-[56%]'

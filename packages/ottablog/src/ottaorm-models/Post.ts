@@ -119,7 +119,6 @@ const SUBTYPE_WRITE_FIELDS = new Set([
     'excerpt',
     'heroImage',
     'footnotes',
-    'categoryId',
     'seriesId',
     'seriesOrder',
     'readingTimeMinutes',
@@ -235,7 +234,6 @@ function normalizeWriteData(
             photoAlbum: null,
             content: null,
             contentType: 'blurb',
-            categoryId: null,
             seriesId: null,
             seriesOrder: null,
             heroImage: null,
@@ -262,7 +260,6 @@ function normalizeWriteData(
             photoAlbum: items,
             content,
             contentType: 'photo',
-            categoryId: null,
             seriesId: null,
             seriesOrder: null,
             heroImage: photoJournalHero(items[0], title),
@@ -335,8 +332,9 @@ export class Post extends BaseModel {
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
 
-    /** Delete dependent translations before the canonical row so older databases without the
-     * cascade constraint cannot retain localized slugs or orphaned content. */
+    /** Delete dependent translations before the canonical row. This IS the cascade: OttaORM
+     * auto-init emits no FOREIGN KEY clauses, so the schema's `onDelete: 'cascade'` never reaches
+     * the database and translations would otherwise keep their localized slugs as orphans. */
     static async delete(id: string | number, driver?: DbDriver): Promise<boolean> {
         const { PostTranslation } = await import('./PostTranslation');
         const translations = await PostTranslation.where({ postId: String(id) });
@@ -410,7 +408,6 @@ export class Post extends BaseModel {
             'content',
             'contentType',
             'status',
-            'categoryId',
             'seriesId',
             'seriesOrder',
             'heroImage',
@@ -442,7 +439,6 @@ export class Post extends BaseModel {
             'content',
             'contentType',
             'status',
-            'categoryId',
             'seriesId',
             'seriesOrder',
             'heroImage',
@@ -671,23 +667,6 @@ export class Post extends BaseModel {
             tableConfig: {
                 visible: true,
                 colWidth: 100,
-            },
-        },
-        categoryId: {
-            type: 'string',
-            editable: true,
-            filterable: true,
-            uiConfig: {
-                label: 'Category',
-                description: 'Post category',
-            },
-            formConfig: {
-                visible: true,
-                fieldType: 'select',
-            },
-            tableConfig: {
-                visible: true,
-                colWidth: 150,
             },
         },
         seriesId: {
@@ -1245,30 +1224,6 @@ export class Post extends BaseModel {
     }
 
     /**
-     * Get posts by category
-     */
-    static async byCategory(
-        categoryId: string,
-        options?: {
-            status?: PostStatus;
-            appId?: string;
-            orderBy?: string;
-            orderDirection?: 'asc' | 'desc';
-            limit?: number;
-        },
-    ) {
-        const query: Record<string, unknown> = { categoryId };
-        if (options?.status) query.status = options.status;
-        if (options?.appId) query.appId = options.appId;
-
-        return this.where(query, {
-            orderBy: options?.orderBy || 'publishedAt',
-            orderDirection: options?.orderDirection || 'desc',
-            limit: options?.limit,
-        });
-    }
-
-    /**
      * Get posts in a series
      */
     static async bySeries(
@@ -1374,7 +1329,6 @@ export class Post extends BaseModel {
             photoAlbum: null,
             content: null,
             contentType: 'blurb',
-            categoryId: null,
             seriesId: null,
             seriesOrder: null,
             heroImage: null,
@@ -1424,7 +1378,6 @@ export class Post extends BaseModel {
             photoAlbum: items,
             content,
             contentType: 'photo',
-            categoryId: null,
             seriesId: null,
             seriesOrder: null,
             heroImage: photoJournalHero(items[0], title),
@@ -1485,7 +1438,6 @@ export class Post extends BaseModel {
         this.set('wordCount', words);
         this.set('content', null);
         this.set('contentType', 'blurb');
-        this.set('categoryId', null);
         this.set('seriesId', null);
         this.set('seriesOrder', null);
         this.set('heroImage', null);
@@ -1558,7 +1510,6 @@ export class Post extends BaseModel {
         this.set('photoAlbum', items);
         if (contentProvided) this.set('content', content);
         this.set('contentType', 'photo');
-        this.set('categoryId', null);
         this.set('seriesId', null);
         this.set('seriesOrder', null);
         this.set('heroImage', photoJournalHero(items[0], title));

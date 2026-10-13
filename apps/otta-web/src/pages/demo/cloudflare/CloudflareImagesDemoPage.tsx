@@ -28,8 +28,8 @@ export function CloudflareImagesDemoPage() {
                         <li>Add these environment variables to your worker:</li>
                     </ol>
                     <div className="mt-2 rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                        <div>CLOUDFLARE_ACCOUNT_ID=&lt;your-account-id&gt;</div>
-                        <div>CLOUDFLARE_IMAGES_TOKEN=&lt;your-api-token&gt;</div>
+                        <div>CF_IMAGES_ACCOUNT_ID=&lt;your-account-id&gt;</div>
+                        <div>CF_IMAGES_API_TOKEN=&lt;your-api-token&gt;</div>
                     </div>
                     <p className="mt-2 text-xs">
                         See the{' '}

@@ -317,22 +317,6 @@ describe('buildPreviewTheme', () => {
         });
     });
 
-    describe('Legacy Colors Migration', () => {
-        it('handles legacy colors field (pre-refactor format)', () => {
-            // Old format: colors instead of color
-            const tokensJson = JSON.stringify({
-                colors: {
-                    light: { primary: '180 75% 55%' },
-                    dark: { primary: '180 75% 65%' },
-                },
-            });
-
-            const theme = buildPreviewTheme({ tokensJson }, 'light');
-
-            expect(theme.colors.primary).toBe('180 75% 55%');
-        });
-    });
-
     describe('No Registry Dependency', () => {
         it('does not require theme registry to be initialized', () => {
             // This test validates that buildPreviewTheme works without registerBuiltInThemes()

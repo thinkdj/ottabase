@@ -125,7 +125,7 @@ export interface TokenMotion {
     easingEnter?: string;
     /** Easing curve for exit animations */
     easingExit?: string;
-    /** Spring/bounce easing – emitted as --ease-spring (+ --motion-ease-bouncy alias) */
+    /** Spring/bounce easing – emitted as --ease-spring */
     easingSpring?: string;
     /** Disable all animations – sets animation: none, transition: 0s */
     disableAnimations?: boolean;

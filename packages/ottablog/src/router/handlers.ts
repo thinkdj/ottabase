@@ -1,9 +1,9 @@
 /**
  * Blog route handlers — the package-owned HTTP surface.
  *
- * Bodies were moved verbatim from apps/otta-web/worker/routes/blog.ts; the only
- * changes are the injected seams in {@link BlogRouterConfig} (DB connect, admin
- * guard, cron auth, password verify, demo seed content, default appId).
+ * App-specific behavior enters only through the injected seams in
+ * {@link BlogRouterConfig} (DB connect, admin guard, cron auth, password
+ * verify, demo seed content, default appId).
  */
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
@@ -235,9 +235,9 @@ function stripProtectedBody(post: Record<string, unknown>): void {
  * Batch enrichment for a page of posts — flat queries instead of ~5 per post.
  * Output per post is shape-identical to publicPostJson's enriched object
  * (privateNotes stripped, protected content stripped, tags[], categories[],
- * legacy categoryName/categorySlug, seriesTitle, author{}). Query count is
- * bounded: 6 flat queries per page (each id list chunked at 90 for D1's
- * bound-parameter limit), matching the RSS handler's whereIn batching pattern.
+ * seriesTitle, author{}). Query count is bounded: 6 flat queries per page
+ * (each id list chunked at 90 for D1's bound-parameter limit), matching the
+ * RSS handler's whereIn batching pattern.
  */
 async function enrichPostsJsonBatch(
     records: Post[],
@@ -272,8 +272,8 @@ async function enrichPostsJsonBatch(
         // Tag enrichment is best-effort, same as publicPostJson.
     }
 
-    // Categories: junction links plus legacy single-category column. Same
-    // best-effort fallback as tags above.
+    // Categories: junction links → category rows. Same best-effort fallback
+    // as tags above.
     const catIdsByPost = new Map<string, string[]>();
     const catById = new Map<string, { id: string; name: string; slug: string }>();
     try {
@@ -284,8 +284,7 @@ async function enrichPostsJsonBatch(
             if (!catIdsByPost.has(pid)) catIdsByPost.set(pid, []);
             catIdsByPost.get(pid)!.push(cid);
         }
-        const legacyCatIds = records.map((r) => r.get('categoryId') as string | null).filter(Boolean) as string[];
-        const uniqueCatIds = [...new Set([...catLinks.map((l) => l.get('categoryId') as string), ...legacyCatIds])];
+        const uniqueCatIds = [...new Set(catLinks.map((l) => l.get('categoryId') as string))];
         const catRows = await chunkedFetch(uniqueCatIds, (ids) => PostCategory.whereIn('id', ids));
         for (const c of catRows) {
             catById.set(c.get('id') as string, {
@@ -398,11 +397,6 @@ async function enrichPostsJsonBatch(
         rest.author = rest.authorId ? (authorById.get(rest.authorId as string) ?? null) : null;
         rest.tags = (tagIdsByPost.get(postId) ?? []).map((tid) => tagJsonById.get(tid)).filter(Boolean);
         rest.categories = (catIdsByPost.get(postId) ?? []).map((cid) => catById.get(cid)).filter(Boolean);
-        if (rest.categoryId) {
-            const legacy = catById.get(rest.categoryId as string);
-            rest.categoryName = legacy ? legacy.name : null;
-            rest.categorySlug = legacy ? legacy.slug : null;
-        }
         rest.seriesTitle = rest.seriesId ? (seriesTitleById.get(rest.seriesId as string) ?? null) : null;
 
         // A collection read never SELECTs Post.deferred, and `toJson()` walks loaded attributes, so
@@ -544,12 +538,6 @@ async function publicPostJson(
                     .map((c) => ({ id: c!.get('id'), name: c!.get('name'), slug: c!.get('slug') }));
             } else {
                 rest.categories = [];
-            }
-            // Legacy: keep categoryName for backwards compatibility if single categoryId exists
-            if (rest.categoryId) {
-                const category = await PostCategory.find(rest.categoryId as string);
-                rest.categoryName = category ? category.get('name') : null;
-                rest.categorySlug = category ? category.get('slug') : null;
             }
         } catch {
             rest.categories = [];

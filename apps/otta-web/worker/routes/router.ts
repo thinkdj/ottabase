@@ -236,7 +236,7 @@ export function makeApiRouteContext(
 
 const ctxOf = (c: WorkerCtx): ApiRouteContext => makeApiRouteContext(c.req, c.env, c.url);
 
-/** Adapt a legacy ApiRouteContext handler to an ottarouter handler. */
+/** Adapt an `ApiHandler` (takes an `ApiRouteContext`) to an ottarouter handler. */
 const h =
     (handler: ApiHandler) =>
     (c: WorkerCtx): Promise<Response | null> | Response | null =>
@@ -374,13 +374,12 @@ apiRouter.all('/api/admin/queues/dlq/:jobId', (c) => handleAdminQueuesDLQJob(ctx
 
 // -------------------------------------------------------
 // Admin: DB browser (table names are charset-restricted; anything
-// else declines so the request falls through, as before).
+// else declines so the request falls through).
 //
 // Registered as `*` wildcards rather than `:tableName` so the charset
 // test runs on the RAW segment: `*` captures are never auto-decoded,
 // so a percent-encoded table name (valid or malformed) simply fails
-// the charset test and falls through, exactly like the legacy regex
-// that matched against the raw pathname.
+// the charset test and falls through.
 // -------------------------------------------------------
 apiRouter.get('/api/admin/db/tables', h(handleAdminDbTables));
 apiRouter.get('/api/admin/db/tables/*', (c) => {
