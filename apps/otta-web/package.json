@@ -117,6 +117,7 @@
         "@ottabase/ui-shadcn": "workspace:*",
         "@ottabase/ui-split-pane": "workspace:*",
         "@ottabase/utils": "workspace:*",
+        "@ottabase/vault": "workspace:*",
         "@tabler/icons-react": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "catalog:",

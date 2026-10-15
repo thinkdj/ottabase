@@ -1,0 +1,41 @@
+{
+    "name": "@ottabase/vault",
+    "version": "0.1.0",
+    "description": "Backups, restore and per-tenant export for Ottabase apps: D1 tables to R2 as NDJSON on a schedule, restored in one transaction, with admin routes",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/vault"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/vault#readme"
+}

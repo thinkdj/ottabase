@@ -39,6 +39,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   links with RFC 8058 headers, and Resend (Svix-signed) and SES/SNS bounce and complaint webhooks under
   `/api/email/hooks` that record hard bounces and complaints. otta-web lists it and exports the Worker's `email()`
   handler, which puts every inbound message on the bus as `email.inbound`.
+- `@ottabase/vault`: backups, restore and per-tenant export. `createVault` writes every user table to R2 as NDJSON
+  (rowid-paged, BLOBs as `{ "$blob" }`, the manifest written last), lists and prunes backups (never the newest),
+  restores in one D1 `batch` with deferred foreign keys while tolerating dropped columns and tables, and streams one
+  tenant's rows from every table carrying the tenant column. `createVaultPackage` adds the admin routes under
+  `/api/vault` (restore needs `{ confirm: id }`), `GET /api/vault/export/me` for a user's own data, the `vault:backup`
+  cron (`23 2 * * *`, 30-day retention) and a staleness health check. Listed in otta-web.
 - otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 

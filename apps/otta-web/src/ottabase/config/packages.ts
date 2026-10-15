@@ -29,6 +29,7 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'meter' }),
     definePackageClient({ key: 'apikeys' }),
     definePackageClient({ key: 'postmaster' }),
+    definePackageClient({ key: 'vault' }),
     definePackageClient({
         key: WEBHOOKS_PACKAGE_KEY,
         adminPages: [
