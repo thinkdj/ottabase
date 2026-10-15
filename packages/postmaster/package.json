@@ -1,0 +1,52 @@
+{
+    "name": "@ottabase/postmaster",
+    "version": "0.1.0",
+    "description": "Inbound mail for Cloudflare Email Routing, a suppression list, signed one-click unsubscribe, and Resend/SES bounce and complaint webhooks, as one Ottabase package",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/email": "workspace:*",
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*",
+        "postal-mime": "catalog:"
+    },
+    "peerDependencies": {
+        "drizzle-orm": "catalog:"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "drizzle-orm": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/postmaster"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/postmaster#readme"
+}

@@ -50,6 +50,7 @@ export { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 export { apiKeysTable } from '@ottabase/apikeys/schema';
 export { flagOverridesTable } from '@ottabase/flags/schema';
 export { meterBalancesTable, meterUsageTable } from '@ottabase/meter/schema';
+export { emailSuppressionsTable } from '@ottabase/postmaster/schema';
 export {
     brandKitsTable,
     layoutRouteMappingsTable,

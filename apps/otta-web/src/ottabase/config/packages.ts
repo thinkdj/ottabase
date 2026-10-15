@@ -28,6 +28,7 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'flags' }),
     definePackageClient({ key: 'meter' }),
     definePackageClient({ key: 'apikeys' }),
+    definePackageClient({ key: 'postmaster' }),
     definePackageClient({
         key: WEBHOOKS_PACKAGE_KEY,
         adminPages: [

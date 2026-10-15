@@ -32,6 +32,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   conditional D1 `UPDATE` (no read-then-write), with periods, `grant`/`topUp`/`reset`/`refund`, a `meter_usage` ledger
   pruned by `meter:prune-usage`, `requireCredits` answering 402 `CREDITS_EXHAUSTED` with `X-Remaining-Credits`, and
   `/api/meter` routes. Both are listed in otta-web's package list.
+- `@ottabase/postmaster`: the half of email that is not sending. Inbound mail for Cloudflare Email Routing
+  (`createInboundEmailHandler` parses the raw message with postal-mime into plain data, plus-address tag included, and
+  rejects unknown mailboxes at SMTP time), a suppression list in `email_suppressions` (`*` for never, a list name for
+  one unsubscribe; `suppressions.guard(mailer)` drops suppressed recipients), signed stateless one-click unsubscribe
+  links with RFC 8058 headers, and Resend (Svix-signed) and SES/SNS bounce and complaint webhooks under
+  `/api/email/hooks` that record hard bounces and complaints. otta-web lists it and exports the Worker's `email()`
+  handler, which puts every inbound message on the bus as `email.inbound`.
 - otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 

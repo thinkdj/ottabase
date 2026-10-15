@@ -3,6 +3,7 @@ import type { QueuedJob } from '@ottabase/queue';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { handleAppScheduled } from './ottabase/cron';
 import { packages } from './ottabase/packages';
+import { handleInboundEmail } from './ottabase/packages/postmaster';
 import { queueHandler } from './ottabase/queue';
 import {
     handleBootstrapRoute,
@@ -155,4 +156,5 @@ export default {
     },
     scheduled: handleAppScheduled,
     queue: queueHandler,
+    email: handleInboundEmail,
 } satisfies ExportedHandler<CloudflareEnv, QueuedJob<unknown>>;

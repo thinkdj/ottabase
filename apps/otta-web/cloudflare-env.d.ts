@@ -55,6 +55,9 @@ interface __BaseEnv_CloudflareEnv {
 	OBCF_AI?: Ai;
 	AUTH_ALLOW_INSECURE_DEV_SECRET?: string;
 	R2_PUBLIC_URL?: string;
+	EMAIL_RESEND_WEBHOOK_SECRET?: string;
+	EMAIL_SES_WEBHOOK_SECRET?: string;
+	EMAIL_UNSUBSCRIBE_SECRET?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

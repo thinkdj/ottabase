@@ -174,6 +174,9 @@ catalogs:
     nodemailer:
       specifier: ^7.0.0
       version: 7.0.12
+    postal-mime:
+      specifier: ^4.0.7
+      version: 4.0.7
     postcss:
       specifier: ^8.5.6
       version: 8.5.6
@@ -609,6 +612,9 @@ importers:
       '@ottabase/ottaupload':
         specifier: workspace:*
         version: link:../../packages/ottaupload
+      '@ottabase/postmaster':
+        specifier: workspace:*
+        version: link:../../packages/postmaster
       '@ottabase/premium':
         specifier: workspace:*
         version: link:../../packages/premium
@@ -2139,6 +2145,43 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/postmaster:
+    dependencies:
+      '@ottabase/email':
+        specifier: workspace:*
+        version: link:../email
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@ottabase/ottaorm':
+        specifier: workspace:*
+        version: link:../ottaorm
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../ottarouter
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
+      postal-mime:
+        specifier: 'catalog:'
+        version: 4.0.7
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: 'catalog:'
+        version: 4.20260702.1
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/premium:
     dependencies:
@@ -10319,6 +10362,10 @@ packages:
     resolution: {integrity: sha512-ctaZ2haxF5wUup5k3HHJpAmIy9xlwmTLDkidt96RfyDc9NZNhyNiXylpulLUt+KhFwaC2awqXcrqq3MrfhbwSg==}
     engines: {node: '>=18.12'}
     hasBin: true
+
+  postal-mime@4.0.7:
+    resolution: {integrity: sha512-6iBsSWv8bd9ss+lp9hzKITHj+h7HyDSum7MC8P6XH5/HEuEzZxk8+6u/MpfX7mLstMw6dQ9MvPEMP/SOcGQnFg==}
+    engines: {node: '>=20'}
 
   postcss-attribute-case-insensitive@6.0.3:
     resolution: {integrity: sha512-KHkmCILThWBRtg+Jn1owTnHPnFit4OkqS+eKiGEOPIGke54DCeYGJ6r0Fx/HjfE9M9kznApCLcU0DvnPchazMQ==}
@@ -20616,6 +20663,8 @@ snapshots:
       pathe: 2.0.3
 
   pnpm@10.27.0: {}
+
+  postal-mime@4.0.7: {}
 
   postcss-attribute-case-insensitive@6.0.3(postcss@8.5.6):
     dependencies:

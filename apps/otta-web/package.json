@@ -98,6 +98,7 @@
         "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
+        "@ottabase/postmaster": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",
         "@ottabase/premium": "workspace:*",
         "@ottabase/premium-webhooks": "workspace:*",

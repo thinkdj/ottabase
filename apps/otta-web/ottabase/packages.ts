@@ -30,6 +30,7 @@ import { meterPackage } from './packages/meter';
 import { ottaaiPackage } from './packages/ottaai';
 import { ottablogPackage } from './packages/ottablog';
 import { ottalandingPackage } from './packages/ottalanding';
+import { postmasterPackage } from './packages/postmaster';
 import { referralsPackage } from './packages/referrals';
 import { shortlinksPackage } from './packages/shortlinks';
 import { webhooksPackage } from './packages/webhooks';
@@ -47,6 +48,7 @@ definePackageList(() => [
     flagsPackage,
     meterPackage,
     apiKeysPackage,
+    postmasterPackage,
     // Premium: collected like the rest; routes and lifecycle are the premium registry's.
     webhooksPackage,
 ]);
