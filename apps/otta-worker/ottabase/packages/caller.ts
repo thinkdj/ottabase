@@ -14,6 +14,7 @@ export interface PackageCaller {
     userId: string;
     organizationId: string | null;
     appId: string;
+    email: string | null;
     platformAdmin: boolean;
     canManage: boolean;
 }
@@ -44,6 +45,7 @@ export async function resolvePackageCaller(request: Request, env: CloudflareEnv)
         userId: 'operator',
         organizationId: null,
         appId: getOttabaseConfig(env).appId,
+        email: null,
         platformAdmin: true,
         canManage: true,
     };

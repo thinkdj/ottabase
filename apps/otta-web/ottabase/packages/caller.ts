@@ -16,6 +16,8 @@ export interface PackageCaller {
     userId: string;
     organizationId: string | null;
     appId: string;
+    /** Session email, for packages that mail or bill the caller. */
+    email: string | null;
     /** Platform (system-scoped) administrator: the operator of the deployment. */
     platformAdmin: boolean;
     /** May manage the organization's own settings and resources. */
@@ -36,6 +38,7 @@ export async function resolvePackageCaller(request: Request, env: CloudflareEnv)
         userId: user.id,
         organizationId: (user.organizationId as string | null | undefined) ?? null,
         appId: getOttabaseConfig(env).appId,
+        email: (user.email as string | null | undefined) ?? null,
         platformAdmin,
         canManage: platformAdmin || hasGrantedPermission(permissions, 'org:admin'),
     };
