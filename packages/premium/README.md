@@ -52,7 +52,7 @@ export const reportsPackage = definePremiumPackage({
 
     tables: { reportsTable },
     models: [Report],
-    routes: { basePath: '/api/reports', build: () => createReportsRouter() },
+    routes: { basePath: '/api/reports', build: (host) => createReportsRouter(premiumRegistryOf(host)) },
     nav: [{ title: 'Reports', description: 'Scheduled reports', href: '/admin/reports', icon: 'FileText' }],
 
     lifecycle: {
@@ -90,7 +90,7 @@ and Drizzle schema exports stay in sync.
 import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premium/server';
 
 // Each package's routes, each behind its own license gate (402 when unlicensed).
-mountPremiumPackages(apiRouter, premium);
+mountPremiumPackages(apiRouter, premium, { packages });
 
 // The operator API. Authorization is INJECTED — the framework has no idea what an admin is.
 apiRouter.mount(

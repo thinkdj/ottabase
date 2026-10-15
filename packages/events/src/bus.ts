@@ -74,7 +74,7 @@ export class EventBus<Env = unknown, M extends object = EventMap> {
     }
 
     /** Register many at once, as a package manifest hands them over. */
-    subscribe(subscriptions: Iterable<Subscription<Env, unknown>>): this {
+    subscribe(subscriptions: Iterable<Subscription<Env, never>>): this {
         for (const sub of subscriptions) {
             this.on(sub.event as keyof M & string, sub.handler as EventHandler<Env, M[keyof M & string]>, {
                 via: sub.via,

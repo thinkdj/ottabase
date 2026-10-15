@@ -1,0 +1,55 @@
+{
+    "name": "@ottabase/kernel",
+    "version": "0.1.0",
+    "description": "The Ottabase package contract: one manifest declares a package's tables, models, policies, routes, cron, queue, events, nav, env and health, and one registry wires all of them into the app",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./client": {
+            "types": "./src/client.ts",
+            "default": "./src/client.ts"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/cron": "workspace:*",
+        "@ottabase/events": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/queue": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/kernel"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/kernel#readme"
+}

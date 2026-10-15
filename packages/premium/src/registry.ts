@@ -10,13 +10,6 @@
 // no nav entries. That is the point — the framework is inert until something is sold.
 // ============================================================
 
-import {
-    collectPremiumMigrations,
-    collectPremiumModels,
-    collectPremiumNav,
-    collectPremiumPolicies,
-    collectPremiumTables,
-} from './collect';
 import { checkFeature, checkLimit, isServingState, resolveFeatures, resolveLimits } from './entitlements';
 import { licenseExpiresAt, verifyLicense } from './license/verify';
 import {
@@ -31,7 +24,6 @@ import type {
     PremiumGateAnswer,
     PremiumLicenseResult,
     PremiumLicenseSource,
-    PremiumNavItem,
     PremiumPackage,
     PremiumPackageStatus,
     PremiumStateStore,
@@ -138,11 +130,6 @@ export interface PremiumRegistry<Env = unknown> {
     invalidate(key?: string): void;
 
     // ── Contributions, for the host's own wiring ──
-    tables(): Record<string, unknown>;
-    migrations(): unknown[];
-    models(): unknown[];
-    policies(): unknown[];
-    nav(): Array<PremiumNavItem & { packageKey: string }>;
 }
 
 export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOptions<Env>): PremiumRegistry<Env> {
@@ -450,10 +437,5 @@ export function createPremiumRegistry<Env = unknown>(options: PremiumRegistryOpt
         // Static: they describe what the package CAN add, and are read at boot (migrations,
         // model registry) where no request env exists to verify a license against. The
         // license gate lives on the request path, where it belongs.
-        tables: () => collectPremiumTables(packages, [...disabled]),
-        migrations: () => collectPremiumMigrations(packages, [...disabled]),
-        models: () => collectPremiumModels(packages, [...disabled]),
-        policies: () => collectPremiumPolicies(packages, [...disabled]),
-        nav: () => collectPremiumNav(packages, [...disabled]),
     };
 }

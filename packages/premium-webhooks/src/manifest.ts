@@ -6,7 +6,7 @@
 // learn that outbound webhooks exist.
 // ============================================================
 
-import { definePremiumPackage, type PremiumPackage } from '@ottabase/premium';
+import { definePremiumPackage, premiumRegistryOf, type PremiumPackage } from '@ottabase/premium';
 import {
     WEBHOOKS_BASE_PATH,
     WEBHOOKS_FEATURE_CUSTOM_HEADERS,
@@ -69,7 +69,7 @@ export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>)
             // `entitlements`, not `license`: the free tier lives behind these routes, so the
             // namespace must stay reachable and the paid paths guard themselves. See routes.ts.
             gate: 'entitlements',
-            build: (registry) => createWebhooksRouter({ ...options, registry }),
+            build: (host) => createWebhooksRouter({ ...options, registry: premiumRegistryOf<Env>(host) }),
         },
 
         nav: [

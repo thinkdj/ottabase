@@ -4,7 +4,7 @@
 // One call wires every registered package's routes into the host router, each behind
 // its own license gate:
 //
-//     mountPremiumPackages(apiRouter, premium);
+//     mountPremiumPackages(apiRouter, premium, { packages });
 //
 // The gate is MIDDLEWARE, not a `when` mount gate, and that is a load-bearing choice:
 // license verification is async (Web Crypto), while ottarouter's `when` gate is sync.
@@ -12,11 +12,17 @@
 // answers 402 for its whole namespace instead of leaking a 404 map of what exists.
 // ============================================================
 
+import { createPackageRegistry, type PackageHost, type PackageRegistry } from '@ottabase/kernel';
 import type { Ctx, Router } from '@ottabase/ottarouter';
 import type { PremiumRegistry } from '../registry';
 import { premiumDeniedResponse, requirePremium } from './guard';
 
 export interface MountPremiumOptions<Env> {
+    /**
+     * The app's kernel registry, so a paid package's routes can see what else is installed.
+     * Defaults to a registry of just the premium packages.
+     */
+    packages?: PackageRegistry<Env>;
     /**
      * Runs BEFORE the license gate for every paid route. Use it for session/permission
      * checks that should answer 401/403 rather than advertising 402 to anonymous callers.
@@ -37,6 +43,10 @@ export function mountPremiumPackages<Env>(
     options?: MountPremiumOptions<Env>,
 ): string[] {
     const mounted: string[] = [];
+    const host: PackageHost<Env> = {
+        packages: options?.packages ?? createPackageRegistry<Env>({ packages: [...registry.packages] }),
+        premium: registry,
+    };
 
     for (const pkg of registry.packages) {
         if (!pkg.routes) continue;
@@ -70,7 +80,7 @@ export function mountPremiumPackages<Env>(
             return next();
         });
 
-        router.mount(basePath, build(registry));
+        router.mount(basePath, build(host));
         mounted.push(basePath);
     }
 

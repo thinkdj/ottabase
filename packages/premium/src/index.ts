@@ -7,15 +7,9 @@
 // pulls in a component library and the browser never pulls in the router.
 // ============================================================
 
-export {
-    collectPremiumMigrations,
-    collectPremiumModels,
-    collectPremiumNav,
-    collectPremiumPolicies,
-    collectPremiumTables,
-} from './collect';
-
 export { definePremiumPackage } from './define';
+
+export { isPremiumPackage, premiumRegistryOf } from './host';
 
 export {
     UNLIMITED,
@@ -71,6 +65,7 @@ export type {
     PremiumLifecycleHooks,
     PremiumNavItem,
     PremiumPackage,
+    PremiumPackageInput,
     PremiumPackageStatus,
     PremiumReason,
     PremiumRouteContribution,

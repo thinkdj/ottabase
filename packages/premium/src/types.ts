@@ -1,16 +1,15 @@
 // ============================================================
 // @ottabase/premium — the Premium Package contract
 // ============================================================
-// One manifest describes everything a paid add-on contributes: tables, models,
-// routes, nav, entitlements, and lifecycle hooks. The host app never learns the
-// package's internals — it registers the manifest and the framework does the rest.
+// A Premium Package IS an Ottabase package (`@ottabase/kernel`'s `OttaPackage`): the same
+// tables, models, policies, cron, queue, events, nav and health, collected by the same
+// registry. What this package adds is the commercial layer: an offline-verified license,
+// entitlements (features and limits) that a license unlocks, a license-aware lifecycle,
+// and route mounting behind a license gate.
 // ============================================================
 
+import type { LifecycleContext, NavContribution, OttaPackage, PackageHost, RouteContribution } from '@ottabase/kernel';
 import type { Router } from '@ottabase/ottarouter';
-// Type-only, and deliberately circular: a Premium Package's routes almost always need to
-// consult their own entitlements, so `build` receives the registry they were registered
-// in. Both directions are erased at compile time, so there is no runtime cycle.
-import type { PremiumRegistry } from './registry';
 
 /**
  * Runtime state of a registered Premium Package. Resolved on every request from the
@@ -100,29 +99,11 @@ export interface PremiumLicenseResult {
 /** Where the license came from. Shown in the admin UI, because it decides who can change it. */
 export type PremiumLicenseSource = 'env' | 'store' | null;
 
-/** A nav entry a Premium Package contributes to the host's admin navigation. */
-export interface PremiumNavItem {
-    /** Display title. */
-    title: string;
-    /** Long description for card-style navigation. */
-    description: string;
-    /** Target route in the host app. */
-    href: string;
-    /** Icon NAME (e.g. a lucide export name), not a component: the manifest stays headless. */
-    icon?: string;
-    /** Which admin capability the page needs. Mirrors the host's own nav scopes. */
-    scope?: 'platform' | 'org';
-}
+/** A nav entry a Premium Package contributes. The kernel's shape; kept as a name for readers. */
+export type PremiumNavItem = NavContribution;
 
-/** Lifecycle hook arguments. `env` is the host runtime env (Cloudflare env, process.env, …). */
-export interface PremiumLifecycleContext<Env = unknown> {
-    env: Env;
-    /** The package this hook belongs to. */
-    key: string;
-    /** Version recorded in the state store before this transition (null on first install). */
-    previousVersion: string | null;
-    /** Version declared by the manifest now. */
-    version: string;
+/** Lifecycle hook arguments: the kernel's context plus the verified license claims. */
+export interface PremiumLifecycleContext<Env = unknown> extends LifecycleContext<Env> {
     /** Verified claims, when the transition happened with a license in hand. */
     claims: PremiumLicenseClaims | null;
 }
@@ -149,19 +130,17 @@ export interface PremiumLifecycleHooks<Env = unknown> {
     onUninstall?: (ctx: PremiumLifecycleContext<Env>) => Promise<void> | void;
 }
 
-/** How a package contributes API routes. */
-export interface PremiumRouteContribution<Env = unknown> {
-    /** Mount prefix in the host app, e.g. `/api/webhooks`. Must start with `/`. */
-    basePath: string;
+/** How a Premium Package contributes API routes. One mount, behind the license gate. */
+export interface PremiumRouteContribution<Env = unknown> extends Pick<RouteContribution<Env>, 'basePath'> {
     /**
      * Build the sub-router. Called ONCE at mount time, never per request — an ottarouter
      * Router freezes when mounted, so this must return a fresh instance.
      *
-     * Receives the registry the package was registered in, which is what lets a package's
-     * own routes call `requirePremiumFeature(registry, …)` without the host having to
-     * thread it through by hand.
+     * Receives the package host. `premiumRegistryOf(host)` returns the premium registry the
+     * package was registered in, which is what lets a package's own routes call
+     * `requirePremiumFeature(registry, …)` without the host app threading it through by hand.
      */
-    build: (registry: PremiumRegistry<Env>) => Router<Env>;
+    build: (host: PackageHost<Env>) => Router<Env>;
     /**
      * How the mounted namespace is gated.
      *
@@ -177,21 +156,11 @@ export interface PremiumRouteContribution<Env = unknown> {
 }
 
 /**
- * A Premium Package, as declared by its vendor.
- *
- * Everything except `key`, `name` and `version` is optional: a package that only adds a
- * React component is as valid as one that adds tables, routes and a queue consumer.
+ * A Premium Package, as declared by its vendor: an Ottabase package plus the commercial
+ * layer. Everything except `key`, `name` and `version` is optional.
  */
-export interface PremiumPackage<Env = unknown> {
-    /** Stable identifier. Used in config, env var names, license claims, and API paths. */
-    key: string;
-    /** Display name. */
-    name: string;
-    /** Package version. A change triggers the `onUpgrade` lifecycle hook. */
-    version: string;
-    description?: string;
+export interface PremiumPackage<Env = unknown> extends Omit<OttaPackage<Env>, 'routes' | 'lifecycle' | 'premium'> {
     vendor?: string;
-    docsUrl?: string;
     /** Where to buy a license. Rendered as the upsell link on every closed gate. */
     purchaseUrl?: string;
 
@@ -214,22 +183,16 @@ export interface PremiumPackage<Env = unknown> {
     /** Numeric ceilings that apply without a license. A license may raise them. */
     freeLimits?: Record<string, number>;
 
-    /** Drizzle tables contributed to the host's auto-migrations. */
-    tables?: Record<string, unknown>;
-    /** Host-format migrations appended after the tables. */
-    migrations?: unknown[];
-    /** OttaORM model classes to register with the host's model registry. */
-    models?: unknown[];
-    /** RLS policies to register after the host's `initRLS()`. */
-    policies?: unknown[];
-
-    /** API routes, mounted behind the license gate. */
+    /** API routes, mounted behind the license gate by the premium registry, not the kernel. */
     routes?: PremiumRouteContribution<Env>;
-    /** Admin navigation entries. */
-    nav?: PremiumNavItem[];
-
     lifecycle?: PremiumLifecycleHooks<Env>;
+
+    /** Always `true`: tells the kernel to leave routes and lifecycle to the premium registry. */
+    premium: true;
 }
+
+/** What a vendor passes to `definePremiumPackage()`; the `premium` marker is added for them. */
+export type PremiumPackageInput<Env = unknown> = Omit<PremiumPackage<Env>, 'premium'>;
 
 /** Persisted per-package state. Small on purpose — it is read on the request path. */
 export interface PremiumInstallRecord {

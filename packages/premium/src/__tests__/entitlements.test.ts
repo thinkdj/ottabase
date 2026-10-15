@@ -19,6 +19,7 @@ const pkg: PremiumPackage = {
     features: ['deliveries.log', 'custom-headers'],
     freeFeatures: ['endpoints.manage'],
     freeLimits: { endpoints: 1 },
+    premium: true,
 };
 
 const claims: PremiumLicenseClaims = {

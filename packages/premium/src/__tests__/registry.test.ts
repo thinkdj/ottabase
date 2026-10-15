@@ -41,8 +41,8 @@ function makePackage(version = '1.0.0') {
         features: ['deliveries.log'],
         freeLimits: { endpoints: 1 },
         tables: { webhookEndpointsTable: { name: 'endpoints' } },
-        migrations: [{ id: 'm1' }],
-        models: [class Endpoint {}],
+        migrations: [{ name: 'm1', up: async () => {} }],
+        models: [class Endpoint {} as never],
         nav: [{ title: 'Webhooks', description: 'Outbound webhooks', href: '/admin/webhooks' }],
         lifecycle: hooks,
     });
@@ -72,10 +72,6 @@ describe('an app with no Premium Packages', () => {
         const registry = createPremiumRegistry({ packages: [] });
 
         expect(registry.packages).toHaveLength(0);
-        expect(registry.tables()).toEqual({});
-        expect(registry.migrations()).toEqual([]);
-        expect(registry.models()).toEqual([]);
-        expect(registry.nav()).toEqual([]);
         expect(await registry.statuses({})).toEqual([]);
         expect(await registry.isActive({}, 'anything')).toBe(false);
 
@@ -179,8 +175,6 @@ describe('operator switches', () => {
         const status = await registry.status({ [licenseEnvKey('webhooks')]: license }, 'webhooks');
 
         expect(status?.state).toBe('disabled');
-        expect(registry.tables()).toEqual({});
-        expect(registry.nav()).toEqual([]);
     });
 
     it('honours PREMIUM_PKG_<KEY>=false even with a valid license', async () => {
@@ -324,17 +318,6 @@ describe('lifecycle', () => {
         await registry.uninstall(env, 'webhooks');
 
         expect((await registry.status(env, 'webhooks'))?.state).toBe('unlicensed');
-    });
-});
-
-describe('contributions', () => {
-    it('exposes tables, migrations, models and nav for host wiring', () => {
-        const { registry } = makeRegistry();
-
-        expect(Object.keys(registry.tables())).toEqual(['webhookEndpointsTable']);
-        expect(registry.migrations()).toHaveLength(1);
-        expect(registry.models()).toHaveLength(1);
-        expect(registry.nav()[0]).toMatchObject({ packageKey: 'webhooks', href: '/admin/webhooks' });
     });
 });
 
