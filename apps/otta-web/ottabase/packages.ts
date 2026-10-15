@@ -24,6 +24,8 @@ import { appPackage } from './packages/app';
 import { brandEnginePackage } from './packages/brand-engine';
 import { commentsPackage } from './packages/comments';
 import { corePackage } from './packages/core';
+import { flagsPackage } from './packages/flags';
+import { meterPackage } from './packages/meter';
 import { ottaaiPackage } from './packages/ottaai';
 import { ottablogPackage } from './packages/ottablog';
 import { ottalandingPackage } from './packages/ottalanding';
@@ -41,6 +43,8 @@ definePackageList(() => [
     shortlinksPackage,
     referralsPackage,
     ottaaiPackage,
+    flagsPackage,
+    meterPackage,
     // Premium: collected like the rest; routes and lifecycle are the premium registry's.
     webhooksPackage,
 ]);

@@ -1,0 +1,66 @@
+{
+    "name": "@ottabase/flags",
+    "version": "0.1.0",
+    "description": "Entitlements for Ottabase apps: plans with features and limits, per-tenant overrides in D1, 402 guards for routes and a fail-closed client gate",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.tsx",
+            "default": "./src/react/index.tsx"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "@tanstack/react-query": "catalog:",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@tanstack/react-query": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "react": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/flags"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/flags#readme"
+}

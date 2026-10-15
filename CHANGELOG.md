@@ -20,6 +20,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Manifests for the built-in packages: `createShortlinksPackage`, `createReferralsPackage`, `createCommentsPackage`,
   `createOttalandingPackage` (with its policies), `createOttablogPackage({ mode })` (org-mode migrations, suppressed
   indexes and policies) and `@ottabase/ottaai/manifest` `createOttaaiPackage({ strategy })` (table, model, policy).
+- `@ottabase/flags`: entitlements as a core package. Plans with features and limits, `resolvePlan` for whatever the host
+  knows (a payport license, a column), operator overrides in `flag_overrides` (plan, feature, limit; app, org or user
+  scope; expiring), `requireFeature`/`requireLimit` guards answering 402 `UPGRADE_REQUIRED`, `/api/flags/me` and the
+  override routes, and a fail-closed client gate (`@ottabase/flags/react`: `usePlan`, `useFeature`, `PlanGate`).
+- `@ottabase/meter`: usage credits as a core package. A balance per (tenant, meter) in `meter_balances`, consumed by one
+  conditional D1 `UPDATE` (no read-then-write), with periods, `grant`/`topUp`/`reset`/`refund`, a `meter_usage` ledger
+  pruned by `meter:prune-usage`, `requireCredits` answering 402 `CREDITS_EXHAUSTED` with `X-Remaining-Credits`, and
+  `/api/meter` routes. Both are listed in otta-web's package list.
 - otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 

@@ -25,6 +25,8 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'shortlinks' }),
     definePackageClient({ key: 'referrals' }),
     definePackageClient({ key: 'ottaai' }),
+    definePackageClient({ key: 'flags' }),
+    definePackageClient({ key: 'meter' }),
     definePackageClient({
         key: WEBHOOKS_PACKAGE_KEY,
         adminPages: [

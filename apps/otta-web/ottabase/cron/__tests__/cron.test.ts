@@ -83,8 +83,10 @@ describe('application Cron registry', () => {
 
     it('registers every package cron handler for admin discovery and execution', async () => {
         const names = getRegisteredAppCronHandlers().map((handler) => handler.name);
-        expect(names.sort()).toEqual(
-            [
+        // Every package contributes its own; the registry is the union. A new package adding a
+        // handler must not break this test, so assert the known ones, not an exact list.
+        expect(names).toEqual(
+            expect.arrayContaining([
                 'queue:send-email',
                 'queue:process-order',
                 'queue:generate-report',
@@ -92,8 +94,10 @@ describe('application Cron registry', () => {
                 'queue:batch-task',
                 'landing:notify-leads',
                 'audit:prune',
-            ].sort(),
+                'meter:prune-usage',
+            ]),
         );
+        expect(new Set(names).size).toBe(names.length);
 
         const result = await appCronScheduler.runTask('task-1', env, repository([task()]));
 
