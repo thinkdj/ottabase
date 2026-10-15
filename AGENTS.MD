@@ -22,9 +22,10 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries
    unless absolutely necessary for performance. Logic belongs in the Model class, not in "Controllers" or "Services".
-2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there. Package tables
-   come from package schemas (e.g. `@ottabase/shortlinks/schema`) and are wired via `config.migrations.ts`
-   PACKAGE_REGISTRY and `schemas-helper.ts`. The app uses Drizzle + OttaORM over Cloudflare D1 — the only ORM/backend.
+2. **Schema Integrity**: Drizzle schema lives in `apps/*/ottabase/db/schema.ts`. Export all tables there (drizzle-kit
+   reads named exports and never evaluates config). At runtime, package tables come from the package MANIFESTS listed in
+   `ottabase/packages.ts` (`packages.tables()` via `schemas-helper.ts`). The app uses Drizzle + OttaORM over Cloudflare
+   D1 — the only ORM/backend.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
 4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
@@ -127,15 +128,22 @@ Use this as the default decision tree when shipping new work.
 1. **Persistence decision first**
     - No DB persistence: keep package framework-agnostic and stateless where possible.
     - Needs DB persistence: follow OttaORM split below.
-2. **OttaORM persistence split (required)**
-    - Package exports table schema (`packages/<pkg>/src/schema.ts` or `packages/<pkg>/src/persistence` for complex
-      packages).
-    - Add tables to `ottabase/config.migrations.ts` PACKAGE_REGISTRY (tables + optional migrations).
-    - Add package key to `ottabase.config.ts` `packages` (built-in) or `customPackages` (custom).
-    - For custom packages: also register routes in `ottabase/config.routes.ts`.
-    - App owns the `BaseModel` class (`apps/*/ottabase/models/*`).
-    - Add model to `worker/lib/db-utils.ts` initDbConnection (registerModels array).
-    - App exports table from `apps/*/ottabase/db/schema.ts`; app tables also go in `ottabase/db/schemas-helper.ts`.
+2. **One manifest (`@ottabase/kernel`), one list**
+    - The package exports a manifest:
+      `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health, lifecycle })`
+      from `packages/<pkg>/src/manifest.ts`. Expose it as `createXPackage(options)` when the host must supply something
+      (routes whose handlers live in the app, a structural dial such as the blog mode). Tables are keyed by their export
+      name and MUST end in `Table`.
+    - The app installs it by adding ONE entry to `apps/*/ottabase/packages.ts`. Tables reach auto-init, models and RLS
+      policies reach the ORM, routes are mounted, cron and queue handlers are registered, events are subscribed, nav and
+      health follow. Nothing else is edited: not `db-utils.ts`, not the router, not the cron or queue registries.
+    - Two build-time adapters remain, and the packages-registration test keeps them honest: re-export the tables from
+      `apps/*/ottabase/db/schema.ts` for drizzle-kit, and list a client descriptor (`@ottabase/kernel/client`,
+      `definePackageClient`) in `apps/*/src/ottabase/config/packages.ts` when the package renders admin pages.
+    - Inside the manifest graph (route handlers, lib code, `db-utils`), read the registry from `ottabase/registry.ts`,
+      never from `ottabase/packages.ts`: the list imports the handlers, so a handler importing the list is a cycle.
+    - Structural dials (which migrations run, which policies guard a table) are VALUES in `ottabase.config.ts`, never
+      env vars. There is no runtime toggle for a package: removing its entry removes it.
 3. **Headless and rendered entrypoints (required when both exist)**
     - Keep the root entrypoint (`@ottabase/<pkg>`) headless: export types, pure utilities, models, schemas, and hooks
       that do not render UI.
@@ -159,16 +167,16 @@ Use this as the default decision tree when shipping new work.
 
 ### If adding a Premium Package
 
-Paid add-ons use `@ottabase/premium` and deliberately bypass the free-package wiring above.
+A Premium Package IS a kernel package plus a commercial layer (`@ottabase/premium`). It is installed the same way: one
+entry in `apps/*/ottabase/packages.ts`. The kernel collects its tables, models, policies, cron, queue and events like
+any other package's; the premium registry (`worker/lib/premium.ts`, fed by `isPremiumPackage`) owns its license state,
+entitlements and lifecycle, and mounts its routes behind the license gate.
 
-1. **One server registration point.** Add the manifest to `apps/*/ottabase/config.premium.ts` (`PREMIUM_PACKAGES`). Its
-   runtime tables, migrations, models, routes, nav and gates are derived from there. Do NOT add it to
-   `config.migrations.ts` PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`, or `db-utils.ts` — those are for
-   free packages. Drizzle-kit requires each table as a static export in `ottabase/db/schema.ts`; rendered admin pages
-   also need the explicit client adapter in `src/ottabase/config/premium.ts`. Keep those two unavoidable build-time
-   adapters covered by the premium-registration test.
+1. **One entry in the list.** Same two build-time adapters as a free package: tables re-exported from
+   `ottabase/db/schema.ts`, client descriptor in `src/ottabase/config/packages.ts` for rendered admin pages.
 2. **Manifest, not integration code.**
    `definePremiumPackage({ key, name, version, licensePublicKey, tables, models, routes, nav, features, freeFeatures, freeLimits, lifecycle })`.
+   Its `routes.build(host)` receives the package host; `premiumRegistryOf(host)` is the registry for its gates.
 3. **Licensing is offline.** ECDSA P-256 tokens verified with Web Crypto; a license may come from
    `PREMIUM_LICENSE_<KEY>`, the `PREMIUM_LICENSES` map, or the admin UI (in that precedence). `PREMIUM_PKG_<KEY>=false`
    is the kill switch. A package with no `licensePublicKey` is free by construction.
@@ -176,7 +184,7 @@ Paid add-ons use `@ottabase/premium` and deliberately bypass the free-package wi
    `usePremiumFeature` only decide what to render, and fail closed while loading.
 5. **Register a paid page's ROUTE on installed, never on licensed.** An unlicensed page renders its upsell; a route that
    disappears gives a bookmarked link a 404 and no way to reach the screen that fixes it.
-6. **Never drop a package's tables on uninstall.** Removing it from `PREMIUM_PACKAGES` removes routes and nav only.
+6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
 Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/premium-webhooks`.
 
@@ -332,24 +340,18 @@ leak, not a bug report.
 Tables are collected from 3 sources for auto-migrations. `getAllSchemas()` in `ottabase/db/schemas-helper.ts` combines:
 
 1. **CORE** — from @ottabase/ottaorm (users, auth tables, etc.)
-2. **APP** — app-specific tables (add to schemas-helper.ts appTables)
-3. **PACKAGES** — from `getEnabledPackageTables()` in config.migrations.ts
+2. **PACKAGES** — `packages.tables()`, every manifest in `ottabase/packages.ts`. The app's own tables are a package too
+   (`ottabase/packages/app.ts`), and so is Brand Engine persistence (`ottabase/packages/brand-engine.ts`).
 
-Package tables are driven by `ottabase.config.ts` `packages` and `customPackages`. **brandEngine is core** — always
-enabled, not in ottabase.config packages. `schema.ts` exports for drizzle-kit (db:push, db:studio); schemas-helper feeds
-runtime migrations (api/ottaorm/init).
+`schema.ts` exports for drizzle-kit (db:push, db:studio); schemas-helper feeds runtime migrations (api/ottaorm/init). A
+table key that does not end in `Table` is refused by `definePackage`, because auto-init would silently skip it.
 
 ### Model Registry (for CRUD API)
 
-Models must be registered in `worker/lib/db-utils.ts` initDbConnection for `/api/ottaorm/{entity}` to work:
-
-```typescript
-// worker/lib/db-utils.ts
-registerModels([...coreModels, ...ottablogModels, ...packageModels, ...brandModels, ...appModels]);
-```
-
-When adding a new model, add it to the appropriate array (packageModels, brandModels, appModels) in that file. Then
-generic CRUD works: `GET /api/ottaorm/todos`, `POST /api/ottaorm/shortlinks`, etc.
+`worker/lib/db-utils.ts` registers the core models, then `packages.models()` from the registry, then `initRLS()`, then
+`packages.policies()` (after `initRLS`, because the RLS registry is last-write-wins). A new model is registered by
+listing it in its package manifest (`models: [MyModel]`), never by editing `db-utils.ts`. Then generic CRUD works:
+`GET /api/ottaorm/todos`, `POST /api/ottaorm/shortlinks`, etc.
 
 ### Auto-Migrations
 
@@ -547,8 +549,8 @@ Premium Packages framework: manifests, offline license verification, entitlement
 and a drop-in admin surface. Inert until a package is registered — an app that sells nothing pays nothing.
 
 ```typescript
-// Install (the whole job): apps/*/ottabase/config.premium.ts
-export const PREMIUM_PACKAGES = [createWebhooksPackage({ resolveCaller })];
+// Install (the whole job): one entry in apps/*/ottabase/packages.ts
+definePackageList(() => [corePackage, appPackage, /* … */ createWebhooksPackage({ resolveCaller })]);
 
 // Enforce (worker)
 import { requirePremiumFeature } from '@ottabase/premium/server';
@@ -616,10 +618,25 @@ export const myTable = sqliteTable('mytable', {
 });
 ```
 
-### 2. App: Register in config.migrations.ts
+### 2. Package: Declare the manifest
 
-Add to PACKAGE_REGISTRY and ottabase.config.ts `packages` (built-in) or `customPackages` (custom). For custom packages,
-also add route handlers in `ottabase/config.routes.ts`.
+```typescript
+// packages/mypackage/src/manifest.ts
+import { definePackage, type PackageExtras } from '@ottabase/kernel';
+import { MyModel } from './ottaorm-models/MyModel';
+import { myTable } from './schema';
+
+export function createMyPackage<Env>(extras: PackageExtras<Env> = {}) {
+    return definePackage<Env>({
+        key: 'mypackage',
+        name: 'My Package',
+        version: '1.0.0',
+        tables: { myTable },
+        models: [MyModel],
+        ...extras,
+    });
+}
+```
 
 ### 3. App: Create model
 
@@ -635,9 +652,14 @@ export class MyModel extends BaseModel {
 }
 ```
 
-### 4. App: Register model in db-utils.ts
+### 4. App: List the package
 
-Add `MyModel` to the appropriate array in `worker/lib/db-utils.ts` initDbConnection.
+```typescript
+// apps/my-app/ottabase/packages.ts
+definePackageList(() => [corePackage, appPackage, createMyPackage<CloudflareEnv>({ routes: myRoutes })]);
+```
+
+The model, the table, the routes, any cron or queue handlers and the nav entry are wired from that one line.
 
 ### 5. App: Export table and create hooks
 
@@ -740,20 +762,20 @@ pnpm install
 
 ## File Locations
 
-| Purpose           | Location                                            |
-| ----------------- | --------------------------------------------------- |
-| Models            | `apps/*/ottabase/models/`                           |
-| Schema            | `apps/*/ottabase/db/schema.ts`                      |
-| Schema collection | `apps/*/ottabase/db/schemas-helper.ts`              |
-| Package registry  | `apps/*/ottabase/config.migrations.ts`              |
-| Model registry    | `apps/*/worker/lib/db-utils.ts` (initDbConnection)  |
-| Custom routes     | `apps/*/ottabase/config.routes.ts`                  |
-| Premium Packages  | `apps/*/ottabase/config.premium.ts`                 |
-| App config        | `apps/*/ottabase/ottabase.config.ts`                |
-| Client hooks      | `apps/*/src/ottabase/hooks/` or `apps/*/src/hooks/` |
-| Migrations        | `apps/*/ottabase/migrations/`                       |
-| API routes        | `apps/*/worker/routes/router.ts`                    |
-| Pages             | `apps/*/src/pages/`                                 |
+| Purpose            | Location                                            |
+| ------------------ | --------------------------------------------------- |
+| Models             | `apps/*/ottabase/models/`                           |
+| Schema             | `apps/*/ottabase/db/schema.ts`                      |
+| Schema collection  | `apps/*/ottabase/db/schemas-helper.ts`              |
+| Package list       | `apps/*/ottabase/packages.ts` (every manifest)      |
+| Package registry   | `apps/*/ottabase/registry.ts` (what the list wires) |
+| App's own package  | `apps/*/ottabase/packages/app.ts`                   |
+| Client descriptors | `apps/*/src/ottabase/config/packages.ts`            |
+| App config         | `apps/*/ottabase/ottabase.config.ts`                |
+| Client hooks       | `apps/*/src/ottabase/hooks/` or `apps/*/src/hooks/` |
+| Migrations         | `apps/*/ottabase/migrations/`                       |
+| API routes         | `apps/*/worker/routes/router.ts`                    |
+| Pages              | `apps/*/src/pages/`                                 |
 
 ## Anti-Patterns
 
@@ -872,7 +894,7 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 6. **For model changes**, ensure:
     - Model has `static entity` and `static table`
     - Table is exported in `ottabase/db/schema.ts`
-    - Model is added to `worker/lib/db-utils.ts` initDbConnection if CRUD API needed
+    - Model is listed in its package manifest (`models: [...]`) in `ottabase/packages.ts` if CRUD API needed
     - Run `curl -X POST http://localhost:3004/api/ottaorm/init` to apply migrations
 
 ### CI / PR Checklist

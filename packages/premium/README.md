@@ -63,26 +63,26 @@ export const reportsPackage = definePremiumPackage({
 });
 ```
 
-## 2. Register its server manifest
+## 2. List it with every other package
 
 ```typescript
-// apps/otta-web/ottabase/config.premium.ts
+// apps/otta-web/ottabase/packages.ts
 import { reportsPackage } from '@acme/reports';
 
-export const PREMIUM_PACKAGES = [reportsPackage];
-
-// Server-side registration only. See the next section for rendered pages.
+definePackageList(() => [corePackage, appPackage, /* … */ reportsPackage]);
 ```
 
-Server contributions — migrations, model registration, RLS policies and gated routes — read from that array.
+The kernel registry collects its tables, migrations, models and RLS policies like any other package's. The premium
+registry is built from the same list (`packages.packages.filter(isPremiumPackage)`) and owns license state,
+entitlements, lifecycle and gated routes.
 
 ## 3. Register client pages explicitly
 
-The server manifest is intentionally headless. For an add-on that renders an admin page, add its key and lazy page
-import to the app's `src/ottabase/config/premium.ts` and add its schema export to `ottabase/db/schema.ts` for
-drizzle-kit. `otta-web` scans every `packages/premium*/src` directory for Tailwind classes, so a Premium Package does
-not need its own content-path edit. The app's premium-registration test verifies the server manifest, client adapter,
-and Drizzle schema exports stay in sync.
+The server manifest is intentionally headless. For an add-on that renders an admin page, add a client descriptor
+(`definePackageClient` from `@ottabase/kernel/client`) to the app's `src/ottabase/config/packages.ts` and add its schema
+export to `ottabase/db/schema.ts` for drizzle-kit. `otta-web` scans every `packages/premium*/src` directory for Tailwind
+classes, so a Premium Package does not need its own content-path edit. The app's packages-registration test verifies the
+server list, the client list and the Drizzle schema exports stay in sync.
 
 ## 4. Mount the routes and the control plane (worker)
 

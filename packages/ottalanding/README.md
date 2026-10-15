@@ -221,11 +221,12 @@ it.
 
 ## App integration (otta-web)
 
-Registered as a built-in package (`packages.ottalanding`):
+Listed in `ottabase/packages.ts` as `createOttalandingPackage({ routes, cron })` (`ottabase/packages/ottalanding.ts`):
 
-- tables in `config.migrations.ts`
-- `db/schema.ts`
-- models in `db-utils.ts`, with a defensive app-scoped, platform-admin RLS policy (generic CRUD default-denies them)
+- tables, models and a defensive app-scoped, platform-admin RLS policy from the manifest (generic CRUD default-denies
+  the models)
+- tables re-exported from `db/schema.ts` for drizzle-kit
+- the `landing:notify-leads` cron handler, seeded with the admin inbox URL by the landing admin route
 - `/api/landing` routes, platform admin only (including `POST /share-image` for rendered social images)
 - admin pages at `/admin/content/landing`
 - starter content seeded by `/api/ottaorm/init`

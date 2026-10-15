@@ -25,7 +25,7 @@ works across your entire monorepo. It handles:
 │         Collects all table schemas:                          │
 │  • Core (from @ottabase/ottaorm/schema)                     │
 │  • App (from ottabase/db/schema.ts)                         │
-│  • Packages (from config.migrations.ts)                     │
+│  • Packages (from ottabase/packages.ts, via the registry)   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -47,10 +47,10 @@ works across your entire monorepo. It handles:
 
 ### Key Components
 
-1. **`ottabase/config.migrations.ts`**
-    - Single source of truth for enabled packages
-    - Configure which packages are active
-    - Each package can provide tables + custom migrations
+1. **`ottabase/packages.ts`**
+    - The installed packages: one manifest each
+    - A manifest provides its tables, optional migrations and the indexes auto-init must not re-create
+    - `packages.tables()` / `packages.migrations()` / `packages.suppressIndexes()` collect them
 
 2. **`ottabase/db/schemas-helper.ts`**
     - Collects all schemas from different sources
@@ -61,7 +61,7 @@ works across your entire monorepo. It handles:
     - Exports all table schemas
     - Core tables from `@ottabase/ottaorm`
     - App-specific tables
-    - Package tables (via `config.migrations.ts`)
+    - Package tables (re-exported statically so drizzle-kit sees them)
 
 4. **`ottabase/migrations/index.ts`**
     - Custom migrations registry
@@ -141,28 +141,20 @@ That's it! The table will be automatically created.
 
 ### Adding a Package
 
-1. **Enable the package** in `ottabase/config.migrations.ts`:
+1. **List the package** in `ottabase/packages.ts`. Its manifest carries the tables and any migrations:
 
 ```typescript
-import { shortlinksTable } from '@ottabase/shortlinks';
-import { shortlinkMigrations } from '@ottabase/shortlinks/migrations';
+// packages/mypackage/src/manifest.ts
+export const myPackage = definePackage<CloudflareEnv>({
+    key: 'mypackage',
+    name: 'My Package',
+    version: '1.0.0',
+    tables: { myPackageTable },
+    migrations: myPackageMigrations, // optional
+});
 
-const PACKAGE_REGISTRY = {
-    shortlinks: {
-        tables: { shortlinksTable },
-        migrations: shortlinkMigrations, // Optional custom migrations
-    },
-    // Add your package here:
-    myPackage: {
-        tables: { myPackageTable },
-        migrations: myPackageMigrations,
-    },
-} as const;
-
-export const migrationConfig: Record<MigrationPackageName, boolean> = {
-    shortlinks: true,
-    myPackage: true, // Enable it
-};
+// ottabase/packages.ts
+definePackageList(() => [corePackage, appPackage, /* … */ myPackage]);
 ```
 
 2. **Run migrations** - the package tables will be created automatically!
@@ -316,7 +308,7 @@ For data migrations, implement a `down` function in your custom migration.
 
 ### Package tables not created
 
-- Verify the package is enabled in `config.migrations.ts`
+- Verify the package is listed in `ottabase/packages.ts` and its table key ends in `Table`
 - Check that the table is imported correctly
 - Look for errors in `/migration-status`
 
@@ -333,4 +325,4 @@ See the following files for complete examples:
 - `ottabase/models/Todo.ts` - Simple app-specific model
 - `@ottabase/shortlinks` package - Shortlinks model in package
 - `ottabase/migrations/index.ts` - Custom migrations setup
-- `ottabase/config.migrations.ts` - Package configuration
+- `ottabase/packages.ts` - The installed packages

@@ -1,8 +1,8 @@
 # Package Creation Guide
 
-Quick reference for creating packages in the Ottabase Turborepo monorepo. The authoritative checklist (DB tables,
-migrations registry, headless vs rendered entrypoints) is AGENTS.MD → "If adding a new package"; this page covers the
-package skeleton only.
+Quick reference for creating packages in the Ottabase Turborepo monorepo. The authoritative checklist (the manifest, the
+one-line install, headless vs rendered entrypoints) is AGENTS.MD → "If adding a new package" and
+`packages/kernel/README.md`; this page covers the package skeleton only.
 
 ## Core Principles
 

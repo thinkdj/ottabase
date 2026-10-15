@@ -343,11 +343,11 @@ createTodo.mutate({ title: 'New Todo' });
 
 ### Premium Packages
 
-Sell add-ons for your app, or install someone else's. One server manifest carries everything a Premium Package
-contributes — tables, models, routes, nav, entitlements and lifecycle hooks — and installing it starts with
-`ottabase/config.premium.ts`. Rendered pages and Drizzle's static schema export are explicit build-time adapters, kept
-in sync by the app's premium-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing
-phones home. An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
+Sell add-ons for your app, or install someone else's. A Premium Package is an ordinary Ottabase package manifest
+(`@ottabase/kernel`) plus a commercial layer, so installing it is the same one entry in `ottabase/packages.ts` as any
+free package. Rendered pages and Drizzle's static schema export are explicit build-time adapters, kept in sync by the
+app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
+An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
 | Package                      | Purpose                                                                          |
 | ---------------------------- | -------------------------------------------------------------------------------- |

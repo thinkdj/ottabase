@@ -14,17 +14,19 @@ description:
 - **No DB**: keep it framework-agnostic and stateless where possible.
 - **Needs a table**: follow the OttaORM persistence split below.
 
-## OttaORM persistence split (when the package owns a table)
+## The manifest (when the package owns a table, a route, a job or a page)
 
-1. Package exports the Drizzle table (`packages/<pkg>/src/schema.ts`, or `src/persistence` for complex packages).
-2. App: add the table to `ottabase/config.migrations.ts` `PACKAGE_REGISTRY`.
-3. App: add the package key to `ottabase.config.ts` `packages` (built-in) or `customPackages` (custom). Custom packages
-   also register routes in `ottabase/config.routes.ts`.
-4. App owns the `BaseModel` class (`apps/*/ottabase/models/*`) and registers it in `worker/lib/db-utils.ts`. Generic
-   `/api/ottaorm/*` CRUD is default-deny: add the entity to `GENERIC_CRUD_ALLOWLIST` (`worker/routes/ottaorm-crud.ts`)
-   only if it should be reachable there, with an RLS policy registered.
-5. App exports the table from `ottabase/db/schema.ts` and adds it to `db/schemas-helper.ts`. _(Premium packages bypass
-   all of this — one registration in `config.premium.ts`. See `docs/PREMIUM_PACKAGES.md`.)_
+1. Package exports the Drizzle table (`packages/<pkg>/src/schema.ts`, or `src/persistence` for complex packages) and the
+   `BaseModel` class, and declares a manifest in `packages/<pkg>/src/manifest.ts`:
+   `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health })`
+   (`@ottabase/kernel`). Table keys end in `Table`. Expose `createXPackage(extras)` when the host supplies routes.
+2. App: add ONE entry to `apps/*/ottabase/packages.ts`. Nothing else is edited.
+3. App: re-export the table from `ottabase/db/schema.ts` (drizzle-kit), and add a client descriptor to
+   `src/ottabase/config/packages.ts` if the package renders admin pages. The packages-registration test checks both.
+4. Generic `/api/ottaorm/*` CRUD is default-deny: add the entity to `GENERIC_CRUD_ALLOWLIST`
+   (`worker/routes/ottaorm-crud.ts`) only if it should be reachable there, with an RLS policy in the manifest.
+5. Inside the manifest graph (handlers, lib code) read the registry from `ottabase/registry.ts`, not from the list.
+   _(Premium packages are the same manifest plus licensing. See `docs/PREMIUM_PACKAGES.md`.)_
 
 ## Headless vs rendered (required when both exist)
 

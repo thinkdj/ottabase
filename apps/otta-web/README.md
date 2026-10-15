@@ -63,15 +63,16 @@ await api('/api/email/test', {
 
 ### Config Files
 
-| File                                     | Why                                                                                                                                     | When to Edit                                                |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| **`ottabase/ottabase.config.ts`**        | Main config (SSOT): app identity, packages (ottablog, shortlinks, referrals), features, meta, UI. brandEngine is core — always enabled. | Always — primary config surface                             |
-| **`.env.local`** (from `.env.example`)   | Secrets and env-specific values: auth, OAuth, email, migration secret. Not committed.                                                   | Local dev and per-environment deployment                    |
-| **`wrangler.jsonc`**                     | Cloudflare bindings: D1, KV, R2, Queues, Rate Limiter, Durable Objects, Analytics Engine.                                               | Deploying to Cloudflare; adding bindings                    |
-| **`ottabase/config.routes.ts`**          | Custom or premium API route handlers. Extends built-in routing.                                                                         | Adding custom API routes                                    |
-| **`ottabase/config.migrations.ts`**      | Package registry (tables, migrations). Built-in packages preconfigured.                                                                 | Adding **custom** packages (not ottablog, shortlinks, etc.) |
-| **`src/ottabase/config/i18n.config.ts`** | i18n: default language, enabled languages, fallback.                                                                                    | Changing languages                                          |
-| **`ottabase/models/*.ts`**               | App-specific OttaORM models.                                                                                                            | Adding or changing app models                               |
+| File                                     | Why                                                                                                   | When to Edit                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| **`ottabase/ottabase.config.ts`**        | Main config (SSOT): app identity, feature dials, meta, UI. Packages are NOT here.                     | Always — primary config surface               |
+| **`ottabase/packages.ts`**               | The installed packages: one manifest each (tables, models, routes, cron, queue, events, nav, health). | Adding or removing a package                  |
+| **`.env.local`** (from `.env.example`)   | Secrets and env-specific values: auth, OAuth, email, migration secret. Not committed.                 | Local dev and per-environment deployment      |
+| **`wrangler.jsonc`**                     | Cloudflare bindings: D1, KV, R2, Queues, Rate Limiter, Durable Objects, Analytics Engine.             | Deploying to Cloudflare; adding bindings      |
+| **`ottabase/packages/app.ts`**           | This app's own package: its tables, models, routes, cron and queue jobs.                              | Adding an app feature with a table or a route |
+| **`src/ottabase/config/packages.ts`**    | Client half of the list: installed keys and the admin pages packages render.                          | Adding a package that renders admin pages     |
+| **`src/ottabase/config/i18n.config.ts`** | i18n: default language, enabled languages, fallback.                                                  | Changing languages                            |
+| **`ottabase/models/*.ts`**               | App-specific OttaORM models.                                                                          | Adding or changing app models                 |
 
 **Do not edit:** `ottabase/config.loader.ts` — derived from ottabase.config.ts.
 
@@ -79,10 +80,10 @@ await api('/api/email/test', {
 
 ```
 1. cp .env.example → .env.local  (fill secrets)
-2. Edit ottabase.config.ts (packages, features, meta)
+2. Edit ottabase.config.ts (features, meta)
 3. Edit wrangler.jsonc if changing Cloudflare bindings
-4. (Optional) Edit config.routes.ts for custom API routes
-5. (Optional) Edit config.migrations.ts for custom packages
+4. Add or remove packages in ottabase/packages.ts (and src/ottabase/config/packages.ts for their admin pages)
+5. Put app features with tables or routes in ottabase/packages/app.ts
 ```
 
 ## Authentication

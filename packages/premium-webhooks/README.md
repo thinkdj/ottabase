@@ -16,7 +16,7 @@ reachable when the license lapses.
 
 ## Try it in otta-web
 
-The package is already registered in `apps/otta-web/ottabase/config.premium.ts`.
+The package is already listed in `apps/otta-web/ottabase/packages.ts` (`ottabase/packages/webhooks.ts`).
 
 1. Run migrations so the two tables exist: `curl -X POST http://localhost:3004/api/ottaorm/init`
 2. Open **Admin → Growth → Webhooks**. With no license you can add **one** endpoint; the second attempt is refused with
@@ -63,7 +63,7 @@ const token = await issueLicense(
 ## Registering it in an app
 
 ```typescript
-// apps/otta-web/ottabase/config.premium.ts
+// apps/otta-web/ottabase/packages/webhooks.ts
 import { createWebhooksPackage } from '@ottabase/premium-webhooks';
 
 export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
@@ -82,10 +82,12 @@ export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
     events: ['ping', 'todo.created'],
 });
 
-export const PREMIUM_PACKAGES = [webhooksPackage];
+// ottabase/packages.ts
+definePackageList(() => [corePackage, appPackage, /* … */ webhooksPackage]);
 ```
 
-The server manifest contributes tables, models, RLS policies, routes at `/api/webhooks` and entitlement gates.
+The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the premium registry behind
+its entitlement gate) and the nav entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
 
 `/events` is an event catalog, not an event bus. `ping` is emitted by the built-in test route; every product event must
 be dispatched from its real, tenant-scoped domain write (as shown below). The template app therefore advertises only

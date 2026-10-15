@@ -380,22 +380,31 @@ export class Project extends BaseModel {
 
 ### 2. Register It
 
-1. Export the table from `apps/otta-web/ottabase/db/schema.ts`: `export { projectsTable } from '../models/Project';`
-2. Add `projectsTable` to the `appTables` maps in `apps/otta-web/ottabase/db/schemas-helper.ts` (`getAllSchemas()` and
-   `getSchemaSummary()`).
-3. In `apps/otta-web/worker/lib/db-utils.ts` `initDbConnection`, add `Project` to `appModels` and register a tenant
-   policy **after** `initRLS()` (the registry is last-write-wins):
+Your app's own tables, models and routes live in its package manifest, `apps/otta-web/ottabase/packages/app.ts`. Add the
+table, the model and a tenant policy there; the framework registers the model, applies the policy after `initRLS()` (the
+registry is last-write-wins) and creates the table on the next init:
 
-    ```typescript
-    registerPolicy({
-        model: 'projects',
-        policy: RLSPolicies.TenantScoped(false), // rows filtered by the caller's organizationId
-        auditEnabled: true,
-    });
-    ```
+```typescript
+// apps/otta-web/ottabase/packages/app.ts
+export const appPackage = definePackage<CloudflareEnv>({
+    key: 'app',
+    // …
+    tables: { todosTable, projectsTable },
+    models: [Todo, Project],
+    policies: [
+        {
+            model: 'projects',
+            policy: RLSPolicies.TenantScoped(false), // rows filtered by the caller's organizationId
+            auditEnabled: true,
+        },
+    ],
+});
+```
 
-4. Add `'projects'` to `GENERIC_CRUD_ALLOWLIST` in `apps/otta-web/worker/routes/ottaorm-crud.ts`.
-5. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`.
+1. Export the table from `apps/otta-web/ottabase/db/schema.ts` too, so drizzle-kit sees it:
+   `export { projectsTable } from '../models/Project';`
+2. Add `'projects'` to `GENERIC_CRUD_ALLOWLIST` in `apps/otta-web/worker/routes/ottaorm-crud.ts`.
+3. Run migrations: `curl -X POST http://localhost:3004/api/ottaorm/init`.
 
 `GET/POST/PATCH/DELETE /api/ottaorm/projects` now works. On create, RLS injects the caller's `organizationId`; a body
 that names another organization is rejected as a cross-tenant write. Generic CRUD enforces **tenant scope**, so any

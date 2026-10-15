@@ -371,18 +371,27 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Config["ottabase/ottabase.config.ts<br/>packages + customPackages toggles"] --> Registry["ottabase/config.migrations.ts<br/>PACKAGE_REGISTRY"]
+    List["ottabase/packages.ts<br/>one manifest per package"] --> Registry["ottabase/registry.ts<br/>@ottabase/kernel createPackageRegistry()"]
 
-    Registry --> Tables["getEnabledPackageTables()"]
-    Registry --> Migrations["getEnabledPackageMigrations()"]
+    Registry --> Tables["packages.tables()"]
+    Registry --> Migrations["packages.migrations()"]
+    Registry --> Models["packages.models() + policies()"]
+    Registry --> Routes["packages.routes() → mountPackages()"]
+    Registry --> Jobs["packages.cron() + queue() + events()"]
 
     Tables --> SchemasHelper["ottabase/db/schemas-helper.ts"]
     SchemasHelper --> Init["/api/ottaorm/init"]
     Migrations --> Init
+    Init --> Schedules["ensurePackageSchedules() + applyPackageLifecycle()"]
 
     Init --> AutoInit["@ottabase/ottaorm autoInit()"]
     AutoInit --> D1[(D1)]
+    Models --> DbUtils["worker/lib/db-utils.ts"]
+    Routes --> Router["worker/routes/router.ts"]
 ```
+
+A Premium Package is one more manifest in the list. The kernel collects everything it contributes; the premium registry
+(`worker/lib/premium.ts`) owns its license state and mounts its routes behind the license gate.
 
 ## Model and Domain Layer
 
@@ -467,10 +476,13 @@ flowchart LR
 
 - Worker entrypoint: `apps/otta-web/cloudflare-worker.ts`
 - API router: `apps/otta-web/worker/routes/router.ts` (declarative registrations on `@ottabase/ottarouter`)
-- DB init and model registration: `apps/otta-web/worker/lib/db-utils.ts`
+- Package list: `apps/otta-web/ottabase/packages.ts`; registry holder: `apps/otta-web/ottabase/registry.ts`
+- Per-package compositions (routes from app handlers, structural dials): `apps/otta-web/ottabase/packages/*.ts`
+- Client descriptors (admin pages, installed map): `apps/otta-web/src/ottabase/config/packages.ts`
+- DB init and model registration: `apps/otta-web/worker/lib/db-utils.ts` (core models + `packages.models()`)
 - App config: `apps/otta-web/ottabase/ottabase.config.ts`
 - Schema collector: `apps/otta-web/ottabase/db/schemas-helper.ts`
-- Package migration registry: `apps/otta-web/ottabase/config.migrations.ts`
+- Event bus: `apps/otta-web/ottabase/events.ts` (`@ottabase/events`)
 
 ## Architecture Decisions
 
@@ -495,16 +507,23 @@ validation + orchestration). There is no service layer.
 **Consequences:** Models are self-contained and testable. Complex cross-model orchestration may bloat individual models
 over time. Mitigation: use model composition and keep methods focused on single-entity behavior.
 
-### ADR-3: Config-driven package composition
+### ADR-3: Manifest-driven package composition (`@ottabase/kernel`)
 
 **Context:** Different apps need different feature sets. A blog app doesn't need shortlinks; an analytics dashboard
-doesn't need the blog.
+doesn't need the blog. The first design toggled packages in `ottabase.config.ts` and wired each one by hand in four app
+files (migrations registry, routes, model registry, config); a missing edit failed silently, and paid packages grew a
+separate manifest to avoid the same four edits.
 
-**Decision:** Package tables, routes, and migrations are toggled via `ottabase.config.ts` (`packages` and
-`customPackages`). `PACKAGE_REGISTRY` in `config.migrations.ts` maps enabled packages to their schemas and migrations.
+**Decision:** Every package, free or paid, is ONE manifest (`definePackage`) that declares its tables, migrations,
+models, RLS policies, routes, cron and queue handlers, event subscriptions, nav, env and health. The app lists manifests
+in `ottabase/packages.ts`; `createPackageRegistry` collects them once and throws at boot on any clash. Installed means
+listed; there is no runtime toggle. Structural dials a manifest reads (blog mode, AI credential strategy) are values in
+`ottabase.config.ts` with no env override, because they decide migrations and policies.
 
-**Consequences:** Smaller app footprints without forking the runtime. Adding a new package requires registration in
-config + registry + model registry (`db-utils.ts`), not code changes to the core framework.
+**Consequences:** Adding a package is one line in the list plus two build-time adapters a test enforces (the drizzle-kit
+schema re-export, and a client descriptor when the package renders admin pages). The registry is built lazily and held
+apart from the list (`ottabase/registry.ts`) so modules inside a manifest's import graph can read it without a cycle.
+The cost is that the whole manifest graph loads with the list; unit tests of lib code mock `ottabase/registry`.
 
 ### ADR-4: Edge-native primitives by default
 
@@ -529,6 +548,19 @@ based on a `SecurityContext`. Policies are registered per model via `registerPol
 **Consequences:** Data isolation is enforced by default — developers cannot accidentally query across tenants.
 Violations are blocked and logged. Trade-off: every query incurs a small overhead for policy evaluation. Custom queries
 that bypass OttaORM (raw SQL) are not protected by RLS.
+
+### ADR-6: Packages talk through events, not imports
+
+**Context:** A lifecycle-email package must react to a billing event, a webhooks package must see a post being
+published, without either importing the other and without the app writing glue for every pair.
+
+**Decision:** One typed event bus per app (`@ottabase/events`, `ottabase/events.ts`). A manifest subscribes through its
+`events` field; the emitter calls `events.emit(env, name, payload, { actor, defer })`. Inline subscribers run in the
+request; `via: 'queue'` subscribers travel through OBCF_QUEUE as one `events:deliver` job (the core package registers
+the consumer) and run inline when there is no queue. A subscriber that throws is reported and counted, never propagated.
+
+**Consequences:** Packages compose without a dependency edge. Queued subscribers must be idempotent, which is the
+ordinary queue contract. The envelope is plain JSON on purpose: it is the queue job body.
 
 ## Limits and Future Evolution
 

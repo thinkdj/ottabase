@@ -129,7 +129,8 @@ when changing retention or BYOK fallback behavior.
 | `@ottabase/ottaai`                    | types, error taxonomy, provider registry, model-ref grammar, field metadata, **crypto + keyring**, pure scoring/merge | none                                 |
 | `@ottabase/ottaai/resolver`           | `createAiProvisioning`, the resolver, the instrumented client, verify-a-key, store + transport interfaces             | none                                 |
 | `@ottabase/ottaai/ottaorm`            | table, model, RLS policy factory, ORM store, route factory, re-wrap job, **the composing factory**                    | `@ottabase/ottaorm`, `drizzle-orm`   |
-| `@ottabase/ottaai/schema`             | the Drizzle table only (for `config.migrations.ts`)                                                                   | `drizzle-orm`                        |
+| `@ottabase/ottaai/manifest`           | `createOttaaiPackage({ strategy, routes })`: the kernel manifest (table, model, RLS policy) the app lists             | `@ottabase/kernel`                   |
+| `@ottabase/ottaai/schema`             | the Drizzle table only (for `db/schema.ts`)                                                                           | `drizzle-orm`                        |
 | `@ottabase/ottaai/transports/gateway` | the Cloudflare AI Gateway adapter, its provider routing table and its wire dialects                                   | none                                 |
 | `@ottabase/ottaai/react`              | status/gate hooks, credential mutations, the settings component                                                       | `react`, `@tanstack/react-query`, UI |
 | `@ottabase/ottaai/testing`            | mock transport, in-memory store, deterministic keyring, fixtures, strict mode                                         | dev only                             |
@@ -203,29 +204,26 @@ AI_CREDENTIAL_KEY_ID=k2
 Never type a master secret. `createKeyring` rejects anything below 32 bytes of decoded material, because HKDF-Extract
 over a weak secret turns one stolen database backup into an offline break of every tenant's key.
 
-### 3. Register the table
+### 3. List the package
 
 ```ts
-// ottabase/config.migrations.ts
-import { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
+// ottabase/packages.ts
+import { createOttaaiPackage } from '@ottabase/ottaai/manifest';
 
-const PACKAGE_REGISTRY = {
-    ottaai: { tables: { aiProviderCredentialsTable }, migrations: [] },
+definePackageList(() => [
     // …
-};
+    createOttaaiPackage<CloudflareEnv>({
+        // STRUCTURAL: shapes the RLS policy, so it comes from ottabase.config.ts, never an env var. It MUST be the
+        // same value `createAiProvisioningWithStorage` receives; reading both from the config file makes that so.
+        strategy: ottabaseConfig.features.ottaai.strategy,
+        routes: { basePath: '/api/ai', build: () => aiRouter },
+    }),
+]);
 ```
 
-### 4. Register the model and the policy
-
-```ts
-// worker/lib/db-utils.ts
-import { AiProviderCredential, createCredentialPolicy } from '@ottabase/ottaai/ottaorm';
-
-registerModels([...coreModels, AiProviderCredential]);
-initRLS();
-// AFTER initRLS() — the RLS registry is last-write-wins.
-registerPolicy(createCredentialPolicy({ strategy: 'user-then-org' }));
-```
+The manifest carries the table, the model and `createCredentialPolicy({ strategy })`; the app registers the policy after
+`initRLS()` (the RLS registry is last-write-wins). Re-export `aiProviderCredentialsTable` from `ottabase/db/schema.ts`
+for drizzle-kit.
 
 Model registration makes the table resolvable; it does not itself authorize an HTTP surface. Prefer the package's
 credential handlers below, which own permission checks, tenancy stamping, and secret-column filter/sort denial. If a

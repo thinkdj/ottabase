@@ -7,7 +7,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added (Unreleased)
+
+- `@ottabase/kernel`: the package contract. One manifest (`definePackage`) declares a package's tables, migrations,
+  models, RLS policies, routes, cron and queue handlers, event subscriptions, nav, env and health;
+  `createPackageRegistry` collects a list of them once and throws at boot on a duplicate key, table export, cron name or
+  queue job type. `mountPackages`, `runHealth`, `applyPackageLifecycle` (install/upgrade with a KV record) and the
+  client half (`@ottabase/kernel/client`: `definePackageClient`, `installedPackages`, `packageAdminPages`).
+- `@ottabase/events`: a typed in-process event bus with queue fan-out. `emit()` runs inline subscribers now and
+  dispatches one `events:deliver` job for `via: 'queue'` subscribers (inline when there is no queue); a throwing
+  subscriber is reported and counted, never propagated; `defer()` hands slow work to `waitUntil` when offered.
+- Manifests for the built-in packages: `createShortlinksPackage`, `createReferralsPackage`, `createCommentsPackage`,
+  `createOttalandingPackage` (with its policies), `createOttablogPackage({ mode })` (org-mode migrations, suppressed
+  indexes and policies) and `@ottabase/ottaai/manifest` `createOttaaiPackage({ strategy })` (table, model, policy).
+- otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
+  `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
+
 ### Changed (Unreleased)
+
+- **Packages are installed by listing their manifest in `apps/otta-web/ottabase/packages.ts`**, nothing else. The four
+  hand-wired files are gone (`config.migrations.ts`, `config.routes.ts`, `config.premium.ts`,
+  `src/ottabase/config/premium.ts`); `db-utils`, the router, the cron and queue registries, the schema collector, the
+  admin nav and the client router all read the registry. The app's own tables, routes and jobs are a package too
+  (`ottabase/packages/app.ts`), as are core housekeeping (`core.ts`) and Brand Engine persistence.
+- `@ottabase/premium`: a Premium Package is a kernel manifest plus licensing (`PremiumPackage extends OttaPackage`,
+  `premium: true`). `routes.build(host)` receives the package host (`premiumRegistryOf(host)` for gates);
+  `mountPremiumPackages(router, registry, { packages })`; the `collectPremium*` helpers and the registry's
+  `tables()/migrations()/models()/policies()/nav()` moved to the kernel registry. `isPremiumPackage` narrows a list.
+- `@ottabase/config`: `packages`, `customPackages`, `BuiltInPackageName`, `isPackageEnabled`, `isCustomPackageEnabled`
+  and the `OTTABASE_PKG_*` env toggles are removed; a package is installed when it is listed. `OTTABLOG_MODE` and
+  `OTTAAI_STRATEGY` env overrides are removed too: both decide migrations and RLS policies, so they are values in
+  `ottabase.config.ts` only.
+- otta-web: `handleCustomRoutes` is gone (custom routes are app-package routes);
+  `getAiConfigSnapshot(env, { installed })` takes the installed flag from the admin route; the shortlink fallback and
+  the blog HTML injections are gated by the worker entry (`packages.has(...)`), not inside the libraries; referral
+  attribution on sign-up follows `features.referrals.enabled`.
 
 - otta-web: `audit_logs` retention. `AuditLog.pruneOlderThan(days, appId)` (the app's own rows plus unowned rows) and a
   seeded daily scheduled task (`audit:prune`, 03:17 UTC, payload `{"olderThanDays": 90}`) created by `/api/ottaorm/init`

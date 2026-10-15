@@ -5,18 +5,21 @@ How to install, build, license and operate commercial add-ons in an Ottabase app
 The framework is [`@ottabase/premium`](../packages/premium/README.md); the worked example is
 [`@ottabase/premium-webhooks`](../packages/premium-webhooks/README.md).
 
-**An app with no Premium Packages is unaffected.** Leave `PREMIUM_PACKAGES` empty and nothing mounts: no routes, no KV
-reads, no nav entries, no tables. Everything below is opt-in.
+**An app with no Premium Packages is unaffected.** List none and nothing mounts: no routes, no KV reads, no nav entries,
+no tables. Everything below is opt-in.
+
+A Premium Package is an ordinary package manifest (`@ottabase/kernel`) plus a commercial layer: a license, entitlements,
+a license-aware lifecycle and route mounting behind the license gate. Read `packages/kernel/README.md` first.
 
 ---
 
 ## 1. Installing one (the whole job)
 
 ```typescript
-// apps/otta-web/ottabase/config.premium.ts
+// apps/otta-web/ottabase/packages.ts — the same list every free package is in
 import { createReportsPackage } from '@vendor/reports';
 
-export const PREMIUM_PACKAGES = [createReportsPackage({ resolveCaller })];
+definePackageList(() => [corePackage, appPackage, /* … */ createReportsPackage({ resolveCaller })]);
 ```
 
 Then:
@@ -27,23 +30,24 @@ curl -X POST http://localhost:3004/api/ottaorm/init   # creates the package's ta
 
 …and paste the license at **Admin → Growth → Premium packages** (or set `PREMIUM_LICENSE_<KEY>`).
 
-The server integration is centralized here: tables, migrations, models, RLS policies and API routes are read from the
-manifest. You do **not** touch `config.migrations.ts`, `config.routes.ts`, `db-utils.ts` or `ottabase.config.ts` — those
-are for free built-in and custom packages, and a Premium Package deliberately bypasses all four.
+The kernel registry collects its tables, migrations, models and RLS policies like any other package's. The premium
+registry (`worker/lib/premium.ts`, built from `packages.packages.filter(isPremiumPackage)`) owns its license state and
+mounts its routes behind the license gate (`mountPremiumPackages(apiRouter, premium, { packages })`).
 
-### Client adapter
+### Client descriptor
 
-The manifest remains server-only. For a package with rendered admin pages, explicitly register its key and lazy page
-loader in `src/ottabase/config/premium.ts`, and add static table exports to `ottabase/db/schema.ts` for drizzle-kit.
-`otta-web` scans every `packages/premium*/src` directory for Tailwind, so premium package styles need no separate
-configuration. The app's premium-registration test asserts that the server manifest, client adapter, and Drizzle schema
-exports stay in sync.
+The manifest remains server-only. For a package with rendered admin pages, add a client descriptor
+(`definePackageClient` from `@ottabase/kernel/client`) to `src/ottabase/config/packages.ts` with the page's path, nav
+group, icon and lazy loader, and re-export its tables from `ottabase/db/schema.ts` for drizzle-kit. `otta-web` scans
+every `packages/premium*/src` directory for Tailwind, so premium package styles need no separate configuration. The
+app's packages-registration test asserts that the server list, the client list and the Drizzle schema exports stay in
+sync.
 
 ### Uninstalling
 
-Delete the entry from `PREMIUM_PACKAGES`. Routes and nav disappear on the next deploy. **Tables are left alone** —
-dropping customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a
-migration that says so.
+Delete the entry from the list. Routes and nav disappear on the next deploy. **Tables are left alone** — dropping
+customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a migration that
+says so.
 
 ---
 
@@ -118,6 +122,7 @@ and a missed call is an unguarded paid route.
 ```typescript
 import { requirePremiumFeature, requirePremiumLimit } from '@ottabase/premium/server';
 
+// `registry` is `premiumRegistryOf(host)`, where `host` is what the manifest's `routes.build(host)` received.
 const denied = await requirePremiumFeature(registry, env, 'reports', 'reports.export');
 if (denied) return denied; // 402 { code: 'PREMIUM_REQUIRED', metadata: { package, reason, purchaseUrl } }
 
@@ -206,4 +211,5 @@ tier, and a licensed delivery log.
 
 - [`packages/premium/README.md`](../packages/premium/README.md) — full API
 - [`packages/premium-webhooks/README.md`](../packages/premium-webhooks/README.md) — the worked example
+- [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison

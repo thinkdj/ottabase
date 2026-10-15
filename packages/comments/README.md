@@ -161,14 +161,12 @@ If the User lookup fails, comments are returned normally with `_user: null`.
 
 ## App Integration
 
-When integrating into an app, modify these files:
+When integrating into an app:
 
-1. **`ottabase/config.migrations.ts`** — add both `commentsTable` and `commentReactionsTable` to `PACKAGE_REGISTRY`
-2. **`ottabase/ottabase.config.ts`** — add `'comments'` to `customPackages`
-3. **`ottabase/db/schema.ts`** — statically export both tables so Drizzle Kit sees them, for example:
+1. **`ottabase/packages.ts`** — list `createCommentsPackage()`. Its manifest carries both tables and both models;
+   reaction CRUD remains disabled and reactions are mutated through `Comment.toggleReaction`
+2. **`ottabase/db/schema.ts`** — statically export both tables so Drizzle Kit sees them, for example:
    `export { commentsTable, commentReactionsTable } from '@ottabase/comments/schema'`
-4. **`worker/lib/db-utils.ts`** — add both `Comment` and `CommentReaction` to the `registerModels` array in
-   `initDbConnection`; reaction CRUD remains disabled and reactions are mutated through `Comment.toggleReaction`
 
 Then run migrations:
 
