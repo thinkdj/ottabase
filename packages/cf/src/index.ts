@@ -75,6 +75,40 @@ export {
     type RateLimitingConfig,
 } from './rate-limiting';
 
+// Vectorize
+export { VectorizeClient, createVectorizeClient, type VectorizeConfig, type VectorizeQuery } from './vectorize';
+
+// Workers AI
+export {
+    AiClient,
+    createAiClient,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_TEXT_MODEL,
+    type AiConfig,
+    type AiMessage,
+    type AiTextOptions,
+} from './ai';
+
+// Browser Rendering
+export {
+    BrowserClient,
+    createBrowserClient,
+    type BrowserBaseOptions,
+    type BrowserConfig,
+    type BrowserPdfOptions,
+    type BrowserRendered,
+    type BrowserResponseLike,
+    type BrowserRunLike,
+    type BrowserScreenshotOptions,
+    type BrowserTarget,
+} from './browser';
+
+// Workflows
+export { WorkflowsClient, createWorkflowsClient, type WorkflowStatus, type WorkflowsConfig } from './workflows';
+
+// Durable Object alarms
+export { AlarmQueue, type AlarmEntry, type AlarmStorage } from './durable-alarms';
+
 // KV Cache (read-through helper)
 export { invalidateCache, invalidateCacheByPrefix, withCache } from './kv-cache';
 

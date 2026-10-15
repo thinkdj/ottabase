@@ -10,6 +10,15 @@ export type CloudflareEnv = Record<string, unknown>;
  */
 export type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
+/** Run `work` and fold its outcome into a `Result`; a thrown non-Error becomes an Error. */
+export async function attempt<T>(work: () => Promise<T>): Promise<Result<T, Error>> {
+    try {
+        return { success: true, data: await work() };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error : new Error(String(error)) };
+    }
+}
+
 /**
  * Generic Cloudflare binding configuration
  */

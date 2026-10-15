@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/cf",
     "version": "1.0.0",
-    "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, and Rate Limiting",
+    "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows and Durable Object alarms",
     "keywords": [
         "cloudflare",
         "workers",
@@ -9,7 +9,12 @@
         "kv",
         "r2",
         "queues",
-        "rate-limiting"
+        "rate-limiting",
+        "vectorize",
+        "workers-ai",
+        "browser-rendering",
+        "workflows",
+        "durable-objects"
     ],
     "author": "thinkdj",
     "license": "MIT",
@@ -76,6 +81,31 @@
             "import": "./dist/cache-keys.mjs",
             "require": "./dist/cache-keys.js"
         },
+        "./vectorize": {
+            "types": "./dist/vectorize.d.ts",
+            "import": "./dist/vectorize.mjs",
+            "require": "./dist/vectorize.js"
+        },
+        "./ai": {
+            "types": "./dist/ai.d.ts",
+            "import": "./dist/ai.mjs",
+            "require": "./dist/ai.js"
+        },
+        "./browser": {
+            "types": "./dist/browser.d.ts",
+            "import": "./dist/browser.mjs",
+            "require": "./dist/browser.js"
+        },
+        "./workflows": {
+            "types": "./dist/workflows.d.ts",
+            "import": "./dist/workflows.mjs",
+            "require": "./dist/workflows.js"
+        },
+        "./durable-alarms": {
+            "types": "./dist/durable-alarms.d.ts",
+            "import": "./dist/durable-alarms.mjs",
+            "require": "./dist/durable-alarms.js"
+        },
         "./kv-cache": {
             "types": "./dist/kv-cache.d.ts",
             "import": "./dist/kv-cache.mjs",
@@ -84,8 +114,8 @@
     },
     "sideEffects": false,
     "scripts": {
-        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --watch",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest run",

@@ -14,6 +14,11 @@ Type-safe wrappers for all major Cloudflare Worker bindings:
 - **Queues**: Message queue processing
 - **Secrets**: Environment variables and secrets management
 - **Rate Limiting**: Request throttling and protection
+- **Vectorize**: Similarity search over embeddings, namespaced per tenant
+- **Workers AI**: `run()` any model, plus `embed()` and `generateText()`
+- **Browser Rendering**: PDF, screenshot, Markdown, links and structured extraction without puppeteer
+- **Workflows**: start, inspect and steer durable runs
+- **Durable Object alarms**: many named timers over the one alarm
 
 ## Installation
 
@@ -168,6 +173,70 @@ const profile = await withCache(env.OBCF_KV, userKey('auth', userId, 'profile'),
 // Invalidate single key or by prefix
 await invalidateCache(env.OBCF_KV, key);
 await invalidateCacheByPrefix(env.OBCF_KV, 'rbac:');
+```
+
+### Vectorize
+
+```typescript
+import { createVectorizeClient } from '@ottabase/cf/vectorize';
+
+const vectors = createVectorizeClient({ index: env.OBCF_VECTORIZE, namespace: orgId }); // one index, every tenant
+await vectors.upsert([{ id: 'doc_1', values: embedding, metadata: { title: 'Pricing' } }]);
+const hits = await vectors.query(queryEmbedding, { topK: 5, returnMetadata: 'all' }); // never another tenant's rows
+```
+
+### Workers AI
+
+```typescript
+import { createAiClient } from '@ottabase/cf/ai';
+
+const ai = createAiClient({ ai: env.OBCF_AI, gateway: { id: 'my-gateway' } });
+const embeddings = await ai.embed(['first chunk', 'second chunk']); // number[][] in input order
+const answer = await ai.generateText('Summarise this ticket', { system: 'Be brief.' });
+const raw = await ai.run('@cf/openai/whisper', { audio: bytes }); // anything else
+```
+
+For provider routing, customer keys and spend tracking use `@ottabase/ottaai`; this is the raw binding.
+
+### Browser Rendering
+
+```typescript
+import { createBrowserClient } from '@ottabase/cf/browser';
+
+const browser = createBrowserClient({ browser: env.OBCF_BROWSER });
+const pdf = await browser.pdf({ html: invoiceHtml }, { pdfOptions: { format: 'a4', printBackground: true } });
+const md = await browser.markdown({ url: 'https://example.com/docs' }); // what you feed a model
+const data = await browser.json({ url }, { prompt: 'Extract the product name and price' });
+```
+
+Quick actions only; for a scripted session use `@cloudflare/puppeteer` against the same binding.
+
+### Workflows
+
+```typescript
+import { createWorkflowsClient } from '@ottabase/cf/workflows';
+
+const onboarding = createWorkflowsClient<{ userId: string }>({ workflow: env.ONBOARDING });
+await onboarding.start({ userId }, { id: `onboarding-${userId}` }); // the id makes it idempotent
+await onboarding.status(id);
+await onboarding.sendEvent(id, 'email.verified');
+```
+
+### Durable Object alarms
+
+```typescript
+import { AlarmQueue } from '@ottabase/cf/durable-alarms';
+
+class Ticket extends DurableObject {
+    private alarms = new AlarmQueue<{ kind: 'sla' | 'reminder' }>(this.ctx.storage);
+    async open() {
+        await this.alarms.schedule('sla', Date.now() + 4 * 3_600_000, { kind: 'sla' });
+        await this.alarms.schedule('reminder', Date.now() + 86_400_000, { kind: 'reminder' });
+    }
+    async alarm() {
+        for (const due of await this.alarms.due()) await this.handle(due); // re-armed for the rest
+    }
+}
 ```
 
 ## Complete Documentation

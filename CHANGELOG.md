@@ -45,6 +45,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   tenant's rows from every table carrying the tenant column. `createVaultPackage` adds the admin routes under
   `/api/vault` (restore needs `{ confirm: id }`), `GET /api/vault/export/me` for a user's own data, the `vault:backup`
   cron (`23 2 * * *`, 30-day retention) and a staleness health check. Listed in otta-web.
+- `@ottabase/cf`: wrappers for the bindings the framework did not cover, in the package's `Result` style.
+  `VectorizeClient` (per-tenant namespace stamped on writes and queries, `scoped()`), `AiClient` (`run`, `embed`,
+  `generateText`, optional AI Gateway), `BrowserClient` (quick actions: `pdf`, `screenshot`, `markdown`, `content`,
+  `links`, `scrape`, `json`, with billed browser time), `WorkflowsClient` (start by id, status, pause, resume,
+  terminate, restart, events) and `AlarmQueue` (many named timers multiplexed over a Durable Object's one alarm).
+  Subpath exports `./vectorize`, `./ai`, `./browser`, `./workflows`, `./durable-alarms`.
 - otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 
