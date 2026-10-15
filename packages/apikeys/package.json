@@ -2,6 +2,17 @@
     "name": "@ottabase/apikeys",
     "version": "0.1.0",
     "description": "API keys for the end users of an Ottabase app: hashed at rest, scoped, expiring, revocable, shown once, verified in one lookup",
+    "ottabase": {
+        "key": "apikeys",
+        "factory": "createApiKeysPackage",
+        "export": "apiKeysPackage",
+        "tables": {
+            "import": "@ottabase/apikeys/schema",
+            "names": [
+                "apiKeysTable"
+            ]
+        }
+    },
     "type": "module",
     "exports": {
         ".": {

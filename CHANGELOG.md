@@ -51,6 +51,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `links`, `scrape`, `json`, with billed browser time), `WorkflowsClient` (start by id, status, pause, resume,
   terminate, restart, events) and `AlarmQueue` (many named timers multiplexed over a Durable Object's one alarm).
   Subpath exports `./vectorize`, `./ai`, `./browser`, `./workflows`, `./durable-alarms`.
+- `otta add <package> [app]`: one command wires a workspace package into an app: the `workspace:*` dependency, a
+  composition under `ottabase/packages/<key>.ts` (copied from otta-web when it has one, else a stub), the entry in
+  `ottabase/packages.ts`, the client key, and the table re-exports for drizzle-kit; every step is skipped when already
+  done, `--dry-run` prints the plan. Packages opt in with an `ottabase` descriptor
+  (`{ key, factory, export?, manifestImport?, tables? }`) in their package.json; the built-in packages carry one.
 - otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 

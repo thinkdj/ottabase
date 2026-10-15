@@ -41,5 +41,9 @@
     "bugs": {
         "url": "https://github.com/thinkdj/ottabase/issues"
     },
-    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/referrals#readme"
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/referrals#readme",
+    "ottabase": {
+        "key": "referrals",
+        "factory": "createReferralsPackage"
+    }
 }

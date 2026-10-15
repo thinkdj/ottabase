@@ -2,6 +2,10 @@
     "name": "@ottabase/ottablog",
     "version": "0.0.1",
     "description": "Blog and content management system for Ottabase apps - articles, blurbs, photo journals, changelogs, and documentation",
+    "ottabase": {
+        "key": "ottablog",
+        "factory": "createOttablogPackage"
+    },
     "type": "module",
     "sideEffects": [
         "**/*.css",

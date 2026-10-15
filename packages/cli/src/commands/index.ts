@@ -1,3 +1,13 @@
+export {
+    addPackage,
+    applyAdd,
+    formatAddPlan,
+    planAdd,
+    readPackageDescriptor,
+    type AddPlan,
+    type AddStep,
+    type PackageDescriptor,
+} from './add.js';
 export { newApp } from './new.js';
 export { devApp, buildApp, testApp, lintApp, cleanApp, typeCheckApp } from './run.js';
 export { createStartPlan, formatStartPlan, runStartPlan, startApp, type StartOptions } from './start.js';

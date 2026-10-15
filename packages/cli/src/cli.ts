@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import pkg from '../package.json' with { type: 'json' };
 import {
+    addPackage,
     buildApp,
     cleanApp,
     lintApp,
@@ -62,6 +63,31 @@ program
     .description('Show available app templates')
     .action(() => {
         showTemplates();
+    });
+
+program
+    .command('add <package> [app]')
+    .description('Install a workspace package into an app: dependency, composition, package list, client key, tables')
+    .option('--dry-run', 'Print the planned file changes without writing them')
+    .addHelpText(
+        'after',
+        `
+Examples:
+  $ otta add vault                 Add @ottabase/vault to the default app
+  $ otta add @ottabase/postmaster my-app
+  $ otta add meter my-app --dry-run
+
+The package declares itself in its package.json "ottabase" field ({ key, factory, export?, tables? }).
+The composition is copied from apps/otta-web when it has one, otherwise a stub is written for you to fill in.
+`,
+    )
+    .action(async (packageName: string, app: string | undefined, options: { dryRun?: boolean }) => {
+        try {
+            await addPackage(packageName, app, { dryRun: options.dryRun });
+        } catch (error) {
+            log.error(error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
     });
 
 // =====================================================

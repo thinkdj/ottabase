@@ -2,6 +2,10 @@
     "name": "@ottabase/ottalanding",
     "version": "0.0.1",
     "description": "Database-backed landing sites for Ottabase apps: typed page sections, site settings, and swappable themes",
+    "ottabase": {
+        "key": "ottalanding",
+        "factory": "createOttalandingPackage"
+    },
     "type": "module",
     "exports": {
         ".": {

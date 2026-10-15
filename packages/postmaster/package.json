@@ -2,6 +2,16 @@
     "name": "@ottabase/postmaster",
     "version": "0.1.0",
     "description": "Inbound mail for Cloudflare Email Routing, a suppression list, signed one-click unsubscribe, and Resend/SES bounce and complaint webhooks, as one Ottabase package",
+    "ottabase": {
+        "key": "postmaster",
+        "factory": "createPostmasterPackage",
+        "tables": {
+            "import": "@ottabase/postmaster/schema",
+            "names": [
+                "emailSuppressionsTable"
+            ]
+        }
+    },
     "type": "module",
     "exports": {
         ".": {

@@ -33,6 +33,33 @@ pnpm otta new landing my-site
 pnpm otta templates
 ```
 
+### Adding a package to an app
+
+```bash
+otta add vault                      # @ottabase/vault into the default app
+otta add @ottabase/postmaster my-app
+otta add meter my-app --dry-run     # show the file changes, write nothing
+```
+
+One command does every wiring step the package contract needs: the `workspace:*` dependency, a composition file under
+`ottabase/packages/<key>.ts` (copied from `apps/otta-web` when it has one, otherwise a stub you fill in), the entry in
+`ottabase/packages.ts`, the client key in `src/ottabase/config/packages.ts`, and the table re-exports in
+`ottabase/db/schema.ts` for drizzle-kit. Every step is skipped when already done, so it is safe to re-run.
+
+A package opts in with an `ottabase` field in its package.json:
+
+```json
+"ottabase": {
+    "key": "postmaster",
+    "factory": "createPostmasterPackage",
+    "export": "postmasterPackage",
+    "tables": { "import": "@ottabase/postmaster/schema", "names": ["emailSuppressionsTable"] }
+}
+```
+
+`export` defaults to `<key>Package`, `manifestImport` to the package name (`@ottabase/ottaai` sets it to
+`@ottabase/ottaai/manifest`), and `tables` is omitted when the package owns no Drizzle tables.
+
 ### Starting apps and environments
 
 ```bash
@@ -204,6 +231,7 @@ bin, so invoke it through the workspace script: `pnpm otta <command>`.
 | Command                      | Description                                              |
 | ---------------------------- | -------------------------------------------------------- |
 | `otta new <template> <name>` | Create a new app from a template                         |
+| `otta add <package> [app]`   | Wire a workspace package into an app (`--dry-run`)       |
 | `otta start [app]`           | Start development or a named local Wrangler environment  |
 | `otta dev [app]`             | Start the hot-reload development topology                |
 | `otta preview [app]`         | Build and start the preview Wrangler environment locally |

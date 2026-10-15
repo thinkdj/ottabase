@@ -2,6 +2,10 @@
     "name": "@ottabase/shortlinks",
     "version": "0.0.1",
     "description": "Reusable shortlink management system for Cloudflare infrastructure",
+    "ottabase": {
+        "key": "shortlinks",
+        "factory": "createShortlinksPackage"
+    },
     "type": "module",
     "exports": {
         ".": {

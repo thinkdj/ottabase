@@ -2,6 +2,10 @@
     "name": "@ottabase/comments",
     "version": "0.0.1",
     "description": "Threaded comment system for Ottabase apps — polymorphic, nestable, with reactions and moderation",
+    "ottabase": {
+        "key": "comments",
+        "factory": "createCommentsPackage"
+    },
     "type": "module",
     "exports": {
         ".": {

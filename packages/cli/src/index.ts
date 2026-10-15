@@ -2,6 +2,16 @@
 // Main exports for programmatic usage
 
 export { program, run } from './cli.js';
+export {
+    addPackage,
+    applyAdd,
+    formatAddPlan,
+    planAdd,
+    readPackageDescriptor,
+    type AddPlan,
+    type AddStep,
+    type PackageDescriptor,
+} from './commands/add.js';
 export { listAllApps, showAppInfo, showTemplates } from './commands/info.js';
 export { newApp } from './commands/new.js';
 export { buildApp, cleanApp, devApp, lintApp, testApp, typeCheckApp } from './commands/run.js';

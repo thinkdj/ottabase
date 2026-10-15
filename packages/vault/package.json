@@ -2,6 +2,10 @@
     "name": "@ottabase/vault",
     "version": "0.1.0",
     "description": "Backups, restore and per-tenant export for Ottabase apps: D1 tables to R2 as NDJSON on a schedule, restored in one transaction, with admin routes",
+    "ottabase": {
+        "key": "vault",
+        "factory": "createVaultPackage"
+    },
     "type": "module",
     "exports": {
         ".": {

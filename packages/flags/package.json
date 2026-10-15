@@ -2,6 +2,16 @@
     "name": "@ottabase/flags",
     "version": "0.1.0",
     "description": "Entitlements for Ottabase apps: plans with features and limits, per-tenant overrides in D1, 402 guards for routes and a fail-closed client gate",
+    "ottabase": {
+        "key": "flags",
+        "factory": "createFlagsPackage",
+        "tables": {
+            "import": "@ottabase/flags/schema",
+            "names": [
+                "flagOverridesTable"
+            ]
+        }
+    },
     "type": "module",
     "exports": {
         ".": {

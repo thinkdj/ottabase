@@ -2,6 +2,17 @@
     "name": "@ottabase/meter",
     "version": "0.1.0",
     "description": "Usage credits for Ottabase apps: atomic D1 decrements per tenant and meter, period resets, top-ups, a usage ledger and a 402 guard",
+    "ottabase": {
+        "key": "meter",
+        "factory": "createMeterPackage",
+        "tables": {
+            "import": "@ottabase/meter/schema",
+            "names": [
+                "meterBalancesTable",
+                "meterUsageTable"
+            ]
+        }
+    },
     "type": "module",
     "exports": {
         ".": {
