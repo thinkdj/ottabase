@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/vault",
     "version": "0.1.0",
-    "description": "Backups, restore and per-tenant export for Ottabase apps: D1 tables to R2 as NDJSON on a schedule, restored in one transaction, with admin routes",
+    "description": "Backups, restore and per-tenant export for Ottabase apps: D1 tables to R2 as NDJSON, restored in one transaction. A Premium Package: manual backups free, the nightly schedule and tenant export licensed",
     "ottabase": {
         "key": "vault",
         "factory": "createVaultPackage"
@@ -11,6 +11,10 @@
         ".": {
             "types": "./src/index.ts",
             "default": "./src/index.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.ts",
+            "default": "./src/react/index.ts"
         }
     },
     "sideEffects": false,
@@ -24,10 +28,36 @@
     "dependencies": {
         "@ottabase/kernel": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/premium": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },
+    "peerDependencies": {
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/ui-shadcn": {
+            "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
     "devDependencies": {
+        "@ottabase/ui-shadcn": "workspace:*",
+        "@tanstack/react-query": "catalog:",
         "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:",
         "rimraf": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"

@@ -13,7 +13,7 @@
  */
 import { definePackageClient, installedPackages, packageAdminPages } from '@ottabase/kernel/client';
 import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/premium-webhooks';
-import { Webhook } from 'lucide-react';
+import { Archive, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'core' }),
@@ -29,7 +29,21 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'meter' }),
     definePackageClient({ key: 'apikeys' }),
     definePackageClient({ key: 'postmaster' }),
-    definePackageClient({ key: 'vault' }),
+    definePackageClient({
+        key: 'vault',
+        adminPages: [
+            {
+                path: '/admin/infrastructure/vault',
+                title: 'Vault',
+                description: 'Backups to R2, restore, and per-tenant export.',
+                icon: Archive,
+                group: 'infrastructure',
+                scope: 'platform',
+                load: () => import('@/pages/admin/infrastructure/VaultPage'),
+                exportName: 'VaultPage',
+            },
+        ],
+    }),
     definePackageClient({
         key: WEBHOOKS_PACKAGE_KEY,
         adminPages: [

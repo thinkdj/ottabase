@@ -1,8 +1,18 @@
-import { createPackageRegistry, mountPackages } from '@ottabase/kernel';
+import { createPackageRegistry } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
+import { createMemoryStateStore, createPremiumRegistry } from '@ottabase/premium';
+import { mountPremiumPackages } from '@ottabase/premium/server';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { describe, expect, it, vi } from 'vitest';
-import { createVault, createVaultPackage, d1Driver, defaultBackupId, type BucketLike, type RawDriver } from '../index';
+import {
+    createVault,
+    createVaultPackage,
+    d1Driver,
+    defaultBackupId,
+    DEMO_PRO_LICENSE,
+    type BucketLike,
+    type RawDriver,
+} from '../index';
 
 // ---------- a real database (Node's SQLite) and a Map-backed bucket ----------
 
@@ -274,13 +284,14 @@ describe('d1Driver', () => {
     });
 });
 
-describe('routes and package', () => {
+describe('routes and package (a Premium Package)', () => {
     type RouteEnv = Env & {
         who?: { userId: string; organizationId: string | null; platformAdmin?: boolean; canManage?: boolean } | null;
+        PREMIUM_LICENSE_VAULT?: string;
     };
 
-    function mount() {
-        const { vault, env } = build();
+    function mount(options: { licensed?: boolean } = {}) {
+        const { vault, env: base } = build();
         const pkg = createVaultPackage<RouteEnv>({
             vault: vault as never,
             resolveCaller: (_request, e) =>
@@ -289,23 +300,42 @@ describe('routes and package', () => {
                     : e.who && { appId: 'app', ...e.who },
             retentionDays: 7,
         });
+        const premium = createPremiumRegistry<RouteEnv>({
+            packages: [pkg],
+            getStore: () => createMemoryStateStore(),
+            cacheTtlMs: 0,
+        });
         const router = new Router<RouteEnv>();
-        mountPackages(router, { packages: createPackageRegistry({ packages: [pkg] }) });
+        mountPremiumPackages(router, premium, { packages: createPackageRegistry<RouteEnv>({ packages: [pkg] }) });
+        const env = {
+            ...base,
+            ...(options.licensed === false ? {} : { PREMIUM_LICENSE_VAULT: DEMO_PRO_LICENSE }),
+        } as RouteEnv;
         const call = (path: string, init: RequestInit = {}, e: Partial<RouteEnv> = {}) =>
             router.handle(new Request(`https://app.test/api/vault${path}`, init), { ...env, ...e } as RouteEnv);
-        return { router, env, pkg, vault, call };
+        return { router, env, pkg, vault, premium, call };
     }
+    const post = (body: unknown): RequestInit => ({
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'content-type': 'application/json' },
+    });
+
+    it('is a Premium Package whose free tier keeps backup, restore and delete', () => {
+        const { pkg } = mount();
+        expect(pkg.premium).toBe(true);
+        expect(pkg.freeFeatures).toEqual(['backup']);
+        expect(pkg.freeLimits).toEqual({ backups: 5 });
+        expect(pkg.routes?.gate).toBe('entitlements');
+        expect(pkg.nav?.[0].href).toBe('/admin/infrastructure/vault');
+    });
 
     it('backs up, lists, restores with confirmation, and deletes, for platform admins only', async () => {
         const { call, env } = mount();
         expect((await call('/backups', {}, { who: null }))?.status).toBe(401);
         expect((await call('/backups', {}, { who: { userId: 'u2', organizationId: 'org-a' } }))?.status).toBe(403);
 
-        const created = await call('/backups', {
-            method: 'POST',
-            body: JSON.stringify({ label: 'manual' }),
-            headers: { 'content-type': 'application/json' },
-        });
+        const created = await call('/backups', post({ label: 'manual' }));
         expect(created?.status).toBe(201);
         const { data: manifest } = (await created!.json()) as { data: { id: string; label: string } };
         expect(manifest.label).toBe('manual');
@@ -315,10 +345,7 @@ describe('routes and package', () => {
         env.db.exec('DELETE FROM posts');
         const unconfirmed = await call(`/backups/${manifest.id}/restore`, { method: 'POST', body: '{}' });
         expect(unconfirmed?.status).toBe(400);
-        const restored = await call(`/backups/${manifest.id}/restore`, {
-            method: 'POST',
-            body: JSON.stringify({ confirm: manifest.id }),
-        });
+        const restored = await call(`/backups/${manifest.id}/restore`, post({ confirm: manifest.id }));
         expect(restored?.status).toBe(200);
         expect(rows(env.db, 'SELECT count(*) AS n FROM posts')).toEqual([{ n: 3 }]);
 
@@ -327,19 +354,32 @@ describe('routes and package', () => {
         expect((await call('/backups', {}, { bucket: null }))?.status).toBe(503);
     });
 
-    it('exports a tenant for admins by query, and the caller`s own organization or rows on /export/me', async () => {
+    it("unlicensed: the sixth backup is 402 with the limit, operator export is 402, a user's own export stays free", async () => {
+        const { call } = mount({ licensed: false });
+        for (let i = 0; i < 5; i++) expect((await call('/backups', post({ label: `b${i}` })))?.status).toBe(201);
+        const sixth = await call('/backups', post({}));
+        expect(sixth?.status).toBe(402);
+        const body = (await sixth!.json()) as { code: string; metadata: Record<string, unknown> };
+        expect(body.code).toBe('PREMIUM_REQUIRED');
+        expect(body.metadata).toMatchObject({ package: 'vault', reason: 'LIMIT_REACHED', limit: 5, upsell: true });
+
+        const operator = await call('/export?organizationId=org-b');
+        expect(operator?.status).toBe(402);
+        expect(((await operator!.json()) as { metadata: { reason: string } }).metadata.reason).toBe('LICENSE_MISSING');
+
+        const me = await call('/export/me', {}, { who: { userId: 'u3', organizationId: 'org-a', canManage: true } });
+        expect(me?.status).toBe(200);
+        expect((await me!.text()).trim().split('\n')).toHaveLength(2);
+    });
+
+    it("licensed: operator export streams a tenant and the kept-backups ceiling is the license's", async () => {
         const { call } = mount();
         const admin = await call('/export?organizationId=org-b');
+        expect(admin?.status).toBe(200);
         expect(admin?.headers.get('content-disposition')).toContain('organization-org-b.ndjson');
         expect((await admin!.text()).trim().split('\n')).toHaveLength(1);
         expect((await call('/export'))?.status).toBe(400);
-
-        const manager = await call(
-            '/export/me',
-            {},
-            { who: { userId: 'u3', organizationId: 'org-a', canManage: true } },
-        );
-        expect((await manager!.text()).trim().split('\n')).toHaveLength(2);
+        for (let i = 0; i < 6; i++) expect((await call('/backups', post({})))?.status).toBe(201);
         const member = await call(
             '/export/me',
             {},
@@ -349,7 +389,15 @@ describe('routes and package', () => {
         expect((await member!.text()).trim()).toBe('');
     });
 
-    it('the scheduled handler backs up then prunes, and health reports staleness', async () => {
+    it('the scheduled handler runs only with a license, then prunes; health follows the same gate', async () => {
+        const unlicensed = mount({ licensed: false });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        await unlicensed.pkg.cron!['vault:backup'].handler({ env: unlicensed.env, payload: null } as never);
+        expect(await unlicensed.vault.list(unlicensed.env)).toEqual([]);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('unlicensed'));
+        warn.mockRestore();
+        expect(await unlicensed.pkg.health!(unlicensed.env)).toMatchObject({ name: 'vault:schedule', ok: true });
+
         const { pkg, env, vault } = mount();
         const prune = vi.spyOn(vault, 'prune');
         const cron = pkg.cron!['vault:backup'];
@@ -361,7 +409,6 @@ describe('routes and package', () => {
         const fresh = await pkg.health!(env);
         expect(fresh).toMatchObject({ name: 'vault:latest-backup', ok: true });
         expect((fresh as { detail: string }).detail).toContain('3 tables');
-
         const [latest] = await vault.list(env, 1);
         (env.bucket as MemoryBucket).objects.set(
             `vault/app/${latest.id}/manifest.json`,
@@ -369,5 +416,15 @@ describe('routes and package', () => {
         );
         expect(await pkg.health!(env)).toMatchObject({ name: 'vault:latest-backup', ok: false });
         expect(await pkg.health!({ ...env, bucket: null })).toMatchObject({ name: 'vault:bucket', ok: false });
+    });
+
+    it('before the routes are mounted the schedule stays off, and health says why', async () => {
+        const { vault, env } = build();
+        const pkg = createVaultPackage<Env>({ vault, resolveCaller: () => null });
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        await pkg.cron!['vault:backup'].handler({ env, payload: null } as never);
+        warn.mockRestore();
+        expect(await vault.list(env)).toEqual([]);
+        expect(await pkg.health!(env)).toMatchObject({ name: 'vault:schedule', ok: false });
     });
 });

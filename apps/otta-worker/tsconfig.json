@@ -17,7 +17,9 @@
         "paths": {
             "@ottabase/ottaorm": ["../../packages/ottaorm/src/index.ts"],
             "@ottabase/ottaorm/models": ["../../packages/ottaorm/src/models/index.ts"],
-            "@ottabase/ottaorm/base": ["../../packages/ottaorm/src/base/index.ts"]
+            "@ottabase/ottaorm/base": ["../../packages/ottaorm/src/base/index.ts"],
+            "@ottabase/premium": ["../../packages/premium/src/index.ts"],
+            "@ottabase/premium/server": ["../../packages/premium/src/server/index.ts"]
         }
     },
     "include": ["worker/**/*.ts", "ottabase/**/*.ts", "cloudflare-env.d.ts"],

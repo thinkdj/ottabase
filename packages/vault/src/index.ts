@@ -1,13 +1,19 @@
 export { decodeRow, encodeRow, isInternalTable, ndjsonLines, quoteIdent } from './codec';
 export {
-    createVaultPackage,
     DEFAULT_RETENTION_DAYS,
+    DEFAULT_SCHEDULE,
     DEFAULT_STALE_AFTER_HOURS,
     VAULT_BACKUP_HANDLER,
     VAULT_BASE_PATH,
+    VAULT_FEATURE_BACKUP,
+    VAULT_FEATURE_EXPORT,
+    VAULT_FEATURE_SCHEDULE,
+    VAULT_FREE_BACKUP_LIMIT,
+    VAULT_LIMIT_BACKUPS,
     VAULT_PACKAGE_KEY,
-    type VaultPackageOptions,
-} from './manifest';
+} from './constants';
+export { DEMO_LICENSE_PRIVATE_KEY, DEMO_LICENSE_PUBLIC_KEY, DEMO_PRO_LICENSE } from './demo-license';
+export { createVaultPackage, type VaultPackageOptions } from './manifest';
 export { createVaultRouter, type VaultCaller, type VaultRouterOptions } from './routes';
 export { createVault, d1Driver, defaultBackupId, type D1Like, type D1StatementLike } from './vault';
 export {

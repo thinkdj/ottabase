@@ -2,8 +2,15 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "skipLibCheck": true,
+        "jsx": "react-jsx",
         "lib": ["esnext", "dom", "dom.iterable", "dom.asynciterable"],
-        "types": ["node"]
+        "types": ["node"],
+        "baseUrl": ".",
+        "paths": {
+            "@ottabase/premium": ["../premium/src/index.ts"],
+            "@ottabase/premium/server": ["../premium/src/server/index.ts"],
+            "@ottabase/premium/react": ["../premium/src/react/index.ts"]
+        }
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]

@@ -63,8 +63,15 @@ describe('the Worker', () => {
     it('mounts package routes behind the same operator token, and 404s the rest as JSON', async () => {
         expect((await call('/api/vault/backups')).status).toBe(401);
         const backups = await call('/api/vault/backups', asOperator);
-        expect(backups.status).toBe(503); // mounted, operator accepted, no bucket bound
+        expect(backups.status).toBe(503); // mounted (free tier, no license needed), operator accepted, no bucket bound
         expect(((await backups.json()) as { code: string }).code).toBe('NOT_CONFIGURED');
+
+        // The premium control plane: operator only, and it knows Vault is installed but unlicensed.
+        expect((await call('/api/premium/packages')).status).toBe(401);
+        const premium = await call('/api/premium/packages', asOperator);
+        expect(premium.status).toBe(200);
+        const { data: statuses } = (await premium.json()) as { data: Array<{ key: string; state: string }> };
+        expect(statuses).toEqual([expect.objectContaining({ key: 'vault', state: 'unlicensed' })]);
 
         const missing = await call('/nope');
         expect(missing.status).toBe(404);

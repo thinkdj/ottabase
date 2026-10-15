@@ -367,7 +367,6 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard   |
 | `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once              |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces |
-| `@ottabase/vault`      | Scheduled D1 backups to R2 as NDJSON, one-transaction restore, per-tenant export          |
 
 ### Premium Packages
 
@@ -377,10 +376,11 @@ free package. Rendered pages and Drizzle's static schema export are explicit bui
 app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
 An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
-| Package                      | Purpose                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI |
-| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log |
+| Package                      | Purpose                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
+| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
+| `@ottabase/vault`            | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
 
 See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 

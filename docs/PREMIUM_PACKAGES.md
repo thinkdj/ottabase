@@ -193,6 +193,12 @@ Ship your package as a normal workspace/npm package with a `definePremiumPackage
 `packages/premium-webhooks` for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free
 tier, and a licensed delivery log.
 
+`packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
+manual backup, restore and delete are free (five kept backups), the nightly schedule, retention and operator tenant
+export are licensed, and a user's own `/export/me` is never gated. **Gating a cron contribution:** a cron handler never
+sees the host, so the manifest keeps the registry `routes.build(host)` received in a closure and the handler and health
+probe ask it; until the routes are mounted the schedule stays off and health says so.
+
 ### Design notes worth copying
 
 - **Free tier that survives expiry.** A lapsed license collapses to `freeFeatures`/`freeLimits`, not to nothing. The

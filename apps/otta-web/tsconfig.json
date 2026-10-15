@@ -66,6 +66,7 @@
             "@ottabase/premium-webhooks": ["../../packages/premium-webhooks/src/index.ts"],
             "@ottabase/premium-webhooks/schema": ["../../packages/premium-webhooks/src/schema.ts"],
             "@ottabase/premium-webhooks/react": ["../../packages/premium-webhooks/src/react/index.ts"],
+            "@ottabase/vault/react": ["../../packages/vault/src/react/index.ts"],
             "@ottabase/*": ["../../packages/*/src"]
         },
         "types": ["vite/client"]

@@ -44,7 +44,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   restores in one D1 `batch` with deferred foreign keys while tolerating dropped columns and tables, and streams one
   tenant's rows from every table carrying the tenant column. `createVaultPackage` adds the admin routes under
   `/api/vault` (restore needs `{ confirm: id }`), `GET /api/vault/export/me` for a user's own data, the `vault:backup`
-  cron (`23 2 * * *`, 30-day retention) and a staleness health check. Listed in otta-web.
+  cron (`23 2 * * *`, 30-day retention) and a staleness health check. Vault is a **Premium Package**: manual backup,
+  list, restore and delete are free (up to five kept backups, and `/api/vault/export/me` is always free); a license
+  unlocks the nightly schedule with retention, the staleness health check, and operator export of any tenant
+  (`/api/vault/export?organizationId=`). The cron handler and health probe check the license through the registry the
+  routes were mounted with, so no host plumbing is needed. Admin page at Infrastructure → Vault
+  (`@ottabase/vault/react`); demo keypair and license in `packages/vault/src/demo-license.ts`. Listed in otta-web and
+  otta-worker, which now mount premium routes and the `/api/premium` control plane behind the operator token.
 - `@ottabase/cf`: wrappers for the bindings the framework did not cover, in the package's `Result` style.
   `VectorizeClient` (per-tenant namespace stamped on writes and queries, `scoped()`), `AiClient` (`run`, `embed`,
   `generateText`, optional AI Gateway), `BrowserClient` (quick actions: `pdf`, `screenshot`, `markdown`, `content`,

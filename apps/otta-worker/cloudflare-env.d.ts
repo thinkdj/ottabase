@@ -9,6 +9,9 @@ interface CloudflareEnv {
     APP_ID?: string;
     /** Bearer token for the operator routes (`/api/admin/*` and every package's admin routes). */
     ADMIN_TOKEN?: string;
+    /** Premium package licenses: one per package (`PREMIUM_LICENSE_VAULT`) or a JSON map. */
+    PREMIUM_LICENSES?: string;
+    PREMIUM_LICENSE_VAULT?: string;
     MIGRATION_ALLOW_DESTRUCTIVE?: string;
     OTTAORM_MAX_ALL_ROWS?: string;
 }

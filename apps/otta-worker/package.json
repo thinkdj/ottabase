@@ -46,6 +46,7 @@
         "@ottabase/kernel": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/premium": "workspace:*",
         "@ottabase/queue": "workspace:*",
         "@ottabase/utils": "workspace:*",
         "@ottabase/vault": "workspace:*",

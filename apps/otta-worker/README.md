@@ -37,6 +37,21 @@ wrangler secret put ADMIN_TOKEN
 curl -H "Authorization: Bearer $TOKEN" https://my-tool.example.workers.dev/api/admin/health
 ```
 
+## Premium packages
+
+Premium packages in the list (Vault ships in it) are mounted behind their license gate, and `/api/premium` is the
+control plane, behind the operator token. A license comes from env (`PREMIUM_LICENSE_VAULT`, or a `PREMIUM_LICENSES`
+JSON map) or is pasted once:
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
+     -d '{"license":"obp1.…"}' http://127.0.0.1:3005/api/premium/packages/vault/license
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3005/api/premium/packages   # state, plan, features
+```
+
+Unlicensed, Vault still backs up and restores by hand (five kept backups); the nightly schedule waits for a key. The
+home page shows each premium package's state next to its key.
+
 ## First run
 
 ```bash

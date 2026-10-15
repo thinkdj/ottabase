@@ -26,6 +26,7 @@ module.exports = {
         '../../packages/ottaai/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottalanding/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/cf-pdf/src/**/*.{js,ts,jsx,tsx}',
+        '../../packages/vault/src/**/*.{js,ts,jsx,tsx}',
         // One narrow glob covers every Premium Package; adding one needs no Tailwind config edit.
         '../../packages/premium*/src/**/*.{js,ts,jsx,tsx}',
         // ottalayout returns Tailwind class names as dynamic strings from utility functions

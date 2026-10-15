@@ -9,11 +9,13 @@
 
 import { mountPackages, runHealth } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
+import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premium/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { getOttabaseConfig } from '../ottabase/config.loader';
 import { packages } from '../ottabase/packages';
 import { requireOperator } from '../ottabase/packages/caller';
+import { premium } from '../ottabase/premium';
 import { initDatabase } from './lib/db-utils';
 import { escapeHtml, html, page } from './lib/html';
 import { ensurePackageSchedules } from './lib/package-schedules';
@@ -25,12 +27,22 @@ function basePathsOf(pkg: (typeof packages.packages)[number]): string[] {
     return routes.map((route) => route.basePath);
 }
 
-router.get('/', (c) => {
+router.get('/', async (c) => {
     const config = getOttabaseConfig(c.env);
+    // Premium packages: show what the license unlocks, so the page answers "is it on?" at a glance.
+    const licenses = new Map(
+        (premium.packages.length ? await premium.statuses(c.env) : []).map((status) => [status.key, status]),
+    );
     const rows = packages.packages
         .map(
             (pkg) => `<tr>
-    <td><code>${escapeHtml(pkg.key)}</code></td>
+    <td><code>${escapeHtml(pkg.key)}</code>${
+        licenses.has(pkg.key)
+            ? `<br><span class="muted">${escapeHtml(licenses.get(pkg.key)!.state)}${
+                  licenses.get(pkg.key)!.plan ? ` · ${escapeHtml(licenses.get(pkg.key)!.plan)}` : ''
+              }</span>`
+            : ''
+    }</td>
     <td>${escapeHtml(pkg.name)}<br><span class="muted">${escapeHtml(pkg.description ?? '')}</span></td>
     <td class="muted">${
         basePathsOf(pkg)
@@ -78,3 +90,8 @@ router.post('/api/admin/init', async (c) => {
 });
 
 mountPackages(router, { packages });
+
+// Premium packages: each namespace behind its own license gate, and the control plane the
+// operator pastes a license into. Both are no-ops when the list holds no premium package.
+mountPremiumPackages(router, premium, { packages });
+router.mount('/api/premium', createPremiumAdminRouter(premium, { requireAdmin: (c) => requireOperator(c.req, c.env) }));
