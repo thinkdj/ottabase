@@ -20,6 +20,7 @@
 // ============================================================
 
 import { definePackageList } from './registry';
+import { apiKeysPackage } from './packages/apikeys';
 import { appPackage } from './packages/app';
 import { brandEnginePackage } from './packages/brand-engine';
 import { commentsPackage } from './packages/comments';
@@ -45,6 +46,7 @@ definePackageList(() => [
     ottaaiPackage,
     flagsPackage,
     meterPackage,
+    apiKeysPackage,
     // Premium: collected like the rest; routes and lifecycle are the premium registry's.
     webhooksPackage,
 ]);

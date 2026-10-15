@@ -27,6 +27,7 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'ottaai' }),
     definePackageClient({ key: 'flags' }),
     definePackageClient({ key: 'meter' }),
+    definePackageClient({ key: 'apikeys' }),
     definePackageClient({
         key: WEBHOOKS_PACKAGE_KEY,
         adminPages: [

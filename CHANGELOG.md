@@ -20,6 +20,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Manifests for the built-in packages: `createShortlinksPackage`, `createReferralsPackage`, `createCommentsPackage`,
   `createOttalandingPackage` (with its policies), `createOttablogPackage({ mode })` (org-mode migrations, suppressed
   indexes and policies) and `@ottabase/ottaai/manifest` `createOttaaiPackage({ strategy })` (table, model, policy).
+- `@ottabase/apikeys`: API keys for an app's own customers. Hashed at rest (SHA-256), a recognisable prefix, scopes,
+  expiry, revocation, `lastUsedAt` written back at most once a minute, `authenticate(request, env, { scopes })` reading
+  `Authorization: Bearer` or `X-Api-Key` (401/403), an `afterVerify` hook for a per-key rate limit, and self-service
+  routes under `/api/keys` (personal and organization keys). Listed in otta-web.
 - `@ottabase/flags`: entitlements as a core package. Plans with features and limits, `resolvePlan` for whatever the host
   knows (a payport license, a column), operator overrides in `flag_overrides` (plan, feature, limit; app, org or user
   scope; expiring), `requireFeature`/`requireLimit` guards answering 402 `UPGRADE_REQUIRED`, `/api/flags/me` and the
