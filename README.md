@@ -125,6 +125,7 @@ ottabase/
 │   ├── apikeys/          # Hashed, scoped, revocable API keys for your customers
 │   ├── postmaster/       # Inbound mail, suppression list, one-click unsubscribe, bounce webhooks
 │   ├── vault/            # D1 backups to R2 as NDJSON, restore, per-tenant export
+│   ├── fleet/            # The beacon: GET /api/fleet/report for whatever watches your apps
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
 │   ├── rbac/             # Role-based access control with KV caching
 │   ├── audit/            # Audit logging with change tracking
@@ -359,14 +360,15 @@ createTodo.mutate({ title: 'New Todo' });
 The contract every package is built on, and the primitives a SaaS needs on day one. Each is one entry in
 `ottabase/packages.ts` (or `otta add <name> <app>`).
 
-| Package                | Purpose                                                                                   |
-| ---------------------- | ----------------------------------------------------------------------------------------- |
-| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle   |
-| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                 |
-| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`  |
-| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard   |
-| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once              |
-| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces |
+| Package                | Purpose                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle             |
+| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                           |
+| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`            |
+| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard             |
+| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                        |
+| `@ottabase/fleet`      | The beacon: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup) |
+| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces           |
 
 ### Premium Packages
 

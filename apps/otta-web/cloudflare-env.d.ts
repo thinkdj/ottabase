@@ -58,6 +58,7 @@ interface __BaseEnv_CloudflareEnv {
 	EMAIL_RESEND_WEBHOOK_SECRET?: string;
 	EMAIL_SES_WEBHOOK_SECRET?: string;
 	EMAIL_UNSUBSCRIBE_SECRET?: string;
+	FLEET_TOKEN?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

@@ -45,6 +45,7 @@
         "@ottabase/events": "workspace:*",
         "@ottabase/kernel": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/fleet": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
         "@ottabase/premium": "workspace:*",
         "@ottabase/queue": "workspace:*",

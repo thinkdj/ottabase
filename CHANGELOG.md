@@ -51,6 +51,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   routes were mounted with, so no host plumbing is needed. Admin page at Infrastructure → Vault
   (`@ottabase/vault/react`); demo keypair and license in `packages/vault/src/demo-license.ts`. Listed in otta-web and
   otta-worker, which now mount premium routes and the `/api/premium` control plane behind the operator token.
+- `@ottabase/fleet`: the beacon that makes an app watchable. `GET /api/fleet/report` behind `FLEET_TOKEN` returns the
+  packages and versions, each Premium Package’s license state (handed in by the host), the kernel health report,
+  scheduled tasks with their last status, the newest backup and whether `POST /api/fleet/init` relays the host init; a
+  source that throws is named in `errors` and the report stands. `summarize(report)` is the shared verdict (`ok`,
+  `degraded`). A free package: the cockpit that watches a fleet of beacons is sold separately, outside this repository.
+  Listed in otta-web and otta-worker (the Worker wires `init`).
 - `@ottabase/cf`: wrappers for the bindings the framework did not cover, in the package's `Result` style.
   `VectorizeClient` (per-tenant namespace stamped on writes and queries, `scoped()`), `AiClient` (`run`, `embed`,
   `generateText`, optional AI Gateway), `BrowserClient` (quick actions: `pdf`, `screenshot`, `markdown`, `content`,

@@ -77,6 +77,7 @@
         "@ottabase/cron": "workspace:*",
         "@ottabase/events": "workspace:*",
         "@ottabase/flags": "workspace:*",
+        "@ottabase/fleet": "workspace:*",
         "@ottabase/kernel": "workspace:*",
         "@ottabase/meter": "workspace:*",
         "@ottabase/db": "workspace:*",

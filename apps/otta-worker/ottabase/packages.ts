@@ -11,7 +11,8 @@
 import { definePackageList } from './registry';
 import { corePackage } from './packages/core';
 import { vaultPackage } from './packages/vault';
+import { fleetPackage } from './packages/fleet';
 
-definePackageList(() => [corePackage, vaultPackage]);
+definePackageList(() => [corePackage, vaultPackage, fleetPackage]);
 
 export { packages } from './registry';

@@ -27,6 +27,8 @@ describe('the Worker', () => {
         expect(body).toContain('<code>vault</code>');
         expect(body).toContain('/api/vault');
         expect(body).toContain('vault:backup');
+        expect(body).toContain('<code>fleet</code>');
+        expect(body).toContain('/api/fleet');
     });
 
     it('answers the public health probe and the operator report, token-gated outside development', async () => {
@@ -35,7 +37,7 @@ describe('the Worker', () => {
             ok: true,
             app: 'test-app',
             environment: 'production',
-            packages: ['core', 'vault'],
+            packages: ['core', 'vault', 'fleet'],
         });
 
         expect((await call('/api/admin/health')).status).toBe(401);
@@ -48,7 +50,7 @@ describe('the Worker', () => {
             checks: Array<{ package: string; name: string; ok: boolean }>;
         };
         expect(json.ok).toBe(false);
-        expect(json.packages).toEqual(['core', 'vault']);
+        expect(json.packages).toEqual(['core', 'vault', 'fleet']);
         expect(json.checks.some((check) => check.package === 'core' && check.name === 'env:OBCF_D1' && !check.ok)).toBe(
             true,
         );
@@ -78,6 +80,42 @@ describe('the Worker', () => {
         expect(((await missing.json()) as { code: string }).code).toBe('NOT_FOUND');
     });
 
+    it('is a Fleet beacon behind FLEET_TOKEN, reporting its packages, health and license states', async () => {
+        expect((await call('/api/fleet/report')).status).toBe(503); // no FLEET_TOKEN: fail closed
+        const wrong = await call(
+            '/api/fleet/report',
+            { headers: { authorization: 'Bearer nope' } },
+            { FLEET_TOKEN: 'beacon' },
+        );
+        expect(wrong.status).toBe(401);
+        const report = await call(
+            '/api/fleet/report',
+            { headers: { authorization: 'Bearer beacon' } },
+            { FLEET_TOKEN: 'beacon' },
+        );
+        expect(report.status).toBe(200);
+        const { data } = (await report.json()) as {
+            data: {
+                app: string;
+                environment: string;
+                packages: Array<{ key: string; premium?: { state: string } }>;
+                health: { ok: boolean };
+                canInit: boolean;
+                errors: string[];
+            };
+        };
+        expect(data.app).toBe('test-app');
+        expect(data.environment).toBe('production');
+        expect(data.packages.map((pkg) => pkg.key)).toEqual(['core', 'vault', 'fleet']);
+        expect(data.packages.find((pkg) => pkg.key === 'vault')?.premium?.state).toBe('unlicensed');
+        expect(data.packages.find((pkg) => pkg.key === 'fleet')?.premium).toBeUndefined(); // a free package
+        expect(data.health.ok).toBe(false); // no D1 bound
+        expect(data.canInit).toBe(true);
+        expect(data.errors.some((error) => error.startsWith('tasks:'))).toBe(true); // no D1: the task read failed, the report stands
+        // The operator token is NOT the beacon token: a cockpit never holds admin rights here.
+        expect((await call('/api/fleet/report', asOperator, { FLEET_TOKEN: 'beacon' })).status).toBe(401);
+    });
+
     it('refuses to init tables without D1 and never seeds schedules it did not create', async () => {
         const init = await call('/api/admin/init', { method: 'POST', ...asOperator });
         expect(init.status).toBe(503);
@@ -98,6 +136,6 @@ describe('the package list', () => {
         expect(Object.keys(packages.cron())).toContain('vault:backup');
         expect(packages.cron()['vault:backup'].schedule).toBe('23 2 * * *');
         expect(Object.keys(packages.queue())).toContain('events:deliver');
-        expect(packages.keys()).toEqual(['core', 'vault']);
+        expect(packages.keys()).toEqual(['core', 'vault', 'fleet']);
     });
 });

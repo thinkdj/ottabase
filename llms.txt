@@ -48,6 +48,7 @@
 - [@ottabase/email](packages/email/README.md): Edge-friendly email templating + mailer helpers for Ottabase.
 - [@ottabase/events](packages/events/README.md): Typed in-process event bus for Ottabase apps and packages, with optional queue fan-out for slow subscribers.
 - [@ottabase/flags](packages/flags/README.md): Entitlements for Ottabase apps: plans with features and limits, per-tenant overrides in D1, 402 guards for routes and a fail-closed client gate.
+- [@ottabase/fleet](packages/fleet/README.md): The beacon that makes an Ottabase app watchable. List it, set one secret, and the app answers GET /api/fleet/report with one JSON document: its packages and versions, each Premium Package's license…
 - [@ottabase/forms](packages/forms/README.md): Auto-generated CRUD Forms for OttaORM fat models. Zero config, real-time Zod validation, works standalone or with ModelCrud.
 - [@ottabase/hello-world](packages/hello-world/README.md): A simple, customizable React component that displays a friendly greeting message with beautiful default styling.
 - [@ottabase/i18n](packages/i18n/README.md): Internationalization (i18n) package for the Ottabase monorepo, built with i18next and react-i18next.
@@ -88,4 +89,4 @@
 - [@ottabase/ui-split-pane](packages/ui-split-pane/README.md): Minimal, clean split-pane component for React applications with no frills.
 - [@ottabase/ui-tailwind](packages/ui-tailwind/README.md): Shared Tailwind CSS preset and base styles for Ottabase apps. The preset maps theme CSS variables (shadcn-style HSL tokens, radii, fonts, charts, sidebar, etc.) to Tailwind utilities and registers…
 - [@ottabase/utils](packages/utils/README.md): A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency formatting, email parsing, JSON handling, git operations, and more.
-- [@ottabase/vault](packages/vault/README.md): Backups, restore and per-tenant export for an Ottabase app. Every D1 table goes to R2 as NDJSON on a schedule, comes back in one transaction, and any one tenant's rows can be streamed out when a…
+- [@ottabase/vault](packages/vault/README.md): Backups, restore and per-tenant export for an Ottabase app. Every D1 table goes to R2 as NDJSON, comes back in one transaction, and any one tenant's rows can be streamed out when a customer asks for…

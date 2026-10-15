@@ -34,6 +34,7 @@ import { postmasterPackage } from './packages/postmaster';
 import { referralsPackage } from './packages/referrals';
 import { shortlinksPackage } from './packages/shortlinks';
 import { vaultPackage } from './packages/vault';
+import { fleetPackage } from './packages/fleet';
 import { webhooksPackage } from './packages/webhooks';
 
 definePackageList(() => [
@@ -51,6 +52,7 @@ definePackageList(() => [
     apiKeysPackage,
     postmasterPackage,
     vaultPackage,
+    fleetPackage,
     // Premium: collected like the rest; routes and lifecycle are the premium registry's.
     webhooksPackage,
 ]);

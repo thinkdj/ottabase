@@ -134,6 +134,7 @@ ottabase/
 │   ├── apikeys/          # Hashed, scoped, revocable API keys for your customers
 │   ├── postmaster/       # Inbound mail, suppression list, one-click unsubscribe, bounce webhooks
 │   ├── vault/            # D1 backups to R2 as NDJSON, restore, per-tenant export
+│   ├── fleet/            # The beacon: GET /api/fleet/report for whatever watches your apps
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
 │   ├── rbac/             # Role-based access control with KV caching
 │   ├── audit/            # Audit logging with change tracking
@@ -375,8 +376,8 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`  |
 | `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard   |
 | `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once              |
+| `@ottabase/fleet`      | The beacon: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup) |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces |
-| `@ottabase/vault`      | Scheduled D1 backups to R2 as NDJSON, one-transaction restore, per-tenant export          |
 
 ### Premium Packages
 
@@ -386,10 +387,11 @@ free package. Rendered pages and Drizzle's static schema export are explicit bui
 app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
 An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
-| Package                      | Purpose                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI |
-| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log |
+| Package                      | Purpose                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                       |
+| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                       |
+| `@ottabase/vault`            | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed       |
 
 See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
@@ -6219,6 +6221,19 @@ Ship your package as a normal workspace/npm package with a `definePremiumPackage
 `packages/premium-webhooks` for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free
 tier, and a licensed delivery log.
 
+`packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
+manual backup, restore and delete are free (five kept backups), the nightly schedule, retention and operator tenant
+export are licensed, and a user's own `/export/me` is never gated. **Gating a cron contribution:** a cron handler never
+sees the host, so the manifest keeps the registry `routes.build(host)` received in a closure and the handler and health
+probe ask it; until the routes are mounted the schedule stays off and health says so.
+
+**Where the paywall actually is.** A license on a package whose source is in this public repository is a courtesy,
+not a gate: the demo private key is published and anyone can swap in their own. Vault and webhooks are here as worked
+examples and as free tiers that make clone-and-use credible. Anything meant to earn lives in a private repository and is
+sold as repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: the beacon
+(`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
+cockpit that watches a fleet of beacons is a private Premium Package.
+
 ### Design notes worth copying
 
 - **Free tier that survives expiry.** A lapsed license collapses to `freeFeatures`/`freeLimits`, not to nothing. The
@@ -7482,34 +7497,35 @@ Read the columns as:
 - **Possible** — the framework won't stop you, but you're on your own; expect to give up conveniences (caching, tenant
   scoping, type-safety) the default provides. Some rows have **nothing** here because the wrong path is lint-banned.
 
-| Subsystem                  | Recommended                                                                              | Supported                                                                           | Possible                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Data model**             | Fat `BaseModel` (`@ottabase/ottaorm`); logic as model methods                            | Model + custom methods for domain logic                                             | Raw Drizzle / SQL — only for a measured perf need                       |
-| **CRUD API**               | Generic route via registered model (`/api/ottaorm/{entity}`)                             | A route in the app package manifest (`ottabase/packages/app.ts`) for non-CRUD needs | Hand-rolled endpoint — avoid                                            |
-| **CRUD UI**                | `createModelConfig(Model)` + `<ModelCrud>` (`@ottabase/forms/react`)                     | `<DataTable>` / `useDataTable` primitives                                           | Build the table by hand                                                 |
-| **Forms**                  | `createModelConfig` → `<ModelForm>` (model-driven)                                       | `ui-shadcn` `Form`/`FormField` (react-hook-form) for custom forms                   | Native `<form>` + `FormData`                                            |
-| **Client data fetching**   | Query/mutation hooks (`createModelHooks`, `useApiQuery`, `useApiMutation`)               | `queryClient.fetchQuery` for imperative reads                                       | ~~Raw `fetch()`~~ — **lint-banned** in `apps/*/src/**`                  |
-| **API error responses**    | `errorResponse(...)` / `jsonResponse(...)` (`@ottabase/utils/http-errors`)               | —                                                                                   | ~~`new Response(JSON.stringify(...))`~~ — **lint-banned** on the server |
-| **Env access (edge)**      | `getOttabaseConfig(env)`                                                                 | —                                                                                   | ~~`process.env`~~ — **lint-banned** in edge code                        |
-| **Styling / components**   | `@ottabase/ui-shadcn` (static Tailwind + design tokens)                                  | `@ottabase/ui-mantine` (Mantine) where its ergonomics help                          | One-off CSS / inline styles that bypass tokens — avoid for repeated UI  |
-| **Theming**                | Brand Engine design tokens → CSS variables                                               | Component slot overrides (`data-slot`, `BrandComponentsProvider`)                   | Per-route `tokenOverridesJson` for a localized override                 |
-| **State**                  | Jotai (`@ottabase/state`)                                                                | Local component state                                                               | (No competing global-state lib — don't add one)                         |
-| **Auth**                   | In-house `@ottabase/auth` (`getSession` / `useSession`)                                  | Generic OAuth2/OIDC + magic links via the same package                              | (No Auth.js/NextAuth — deliberately removed)                            |
-| **RBAC / authz**           | Server guard (`hasPermission` / `withRBAC`) as the boundary; browser gate as a UX hint   | App `ProtectedRoute` for route gating                                               | (Never gate on a role _name_ — permission + scope only)                 |
-| **Uploads**                | `useFileUpload` / `uploadFile` → `/api/upload`                                           | `uploadFileToR2` / `uploadFileToCloudflareImages` on the server                     | Raw R2 via `@ottabase/cf` when genuinely off-path                       |
-| **Background work**        | `dispatch(queue, type, payload)` (`@ottabase/queue`)                                     | `createDispatcher` with priority queues / chaining                                  | Raw `QueueAdapter` / binding via `dispatcher.getAdapter()`              |
-| **Database access**        | `@ottabase/db/drizzle-d1` + OttaORM                                                      | Drizzle query builder for a specific hot path                                       | Raw D1 client (`@ottabase/cf/d1`) for non-OttaORM code                  |
-| **KV cache keys**          | `@ottabase/cf/cache-keys` builders (`orgKey`, `userKey`, …)                              | `withCache` read-through wrapper                                                    | Hand-formatted key strings — collision risk, avoid                      |
-| **Backups / export**       | `@ottabase/vault` listed: nightly `vault:backup` to R2, `GET /api/vault/export/me`       | `vault.backup()` / `restore()` by hand around a risky migration                     | D1 Time Travel alone — Cloudflare's net, not a copy you hold            |
-| **Transactional mail**     | `@ottabase/email` templates via the app mailer                                           | `suppressions.guard(mailer)` (`@ottabase/postmaster`) for list mail                 | Sending to a list you never checked against suppressions — avoid        |
-| **Inbound mail / bounces** | `@ottabase/postmaster`: Worker `email()` → `email.inbound` on the bus, provider webhooks | A custom `email()` export over `parseInboundEmail`                                  | Polling a mailbox — not a Workers pattern                               |
-| **Entitlements / usage**   | `@ottabase/flags` guards (402 `UPGRADE_REQUIRED`) + `@ottabase/meter` credits            | Reading a plan column for one isolated check                                        | Plan names hard-coded in routes — avoid                                 |
-| **Customer API access**    | `@ottabase/apikeys` (`authenticate(request, env, { scopes })`)                           | Session cookie for first-party calls                                                | One shared secret in env — avoid                                        |
-| **AI / vectors**           | `@ottabase/ottaai` (providers, customer keys, spend) + `@ottabase/cf/vectorize`          | `@ottabase/cf/ai` for a raw Workers AI call                                         | Direct `fetch` to a vendor API                                          |
-| **HTML → PDF / scraping**  | `@ottabase/cf-pdf` (safe downloads, metadata)                                            | `@ottabase/cf/browser` quick actions (`pdf`, `markdown`, `json`)                    | `@cloudflare/puppeteer` scripted sessions                               |
-| **Timers / long jobs**     | `@ottabase/cron` scheduled tasks + `@ottabase/queue`                                     | `AlarmQueue` inside a Durable Object; `@ottabase/cf/workflows` for multi-step runs  | `setTimeout` in a Worker — lost on eviction                             |
-| **App shape**              | `otta new web` (SPA + admin)                                                             | `otta new worker` (single Worker, server-rendered + API)                            | A bare Worker without `ottabase/packages.ts` — loses every package      |
-| **Package deps**           | `workspace:*` (internal) / `catalog:` (shared external)                                  | `peerDependency` for a shared package's framework dep                               | Package-local version of a shared dep — avoid                           |
+| Subsystem                  | Recommended                                                                                                  | Supported                                                                           | Possible                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Data model**             | Fat `BaseModel` (`@ottabase/ottaorm`); logic as model methods                                                | Model + custom methods for domain logic                                             | Raw Drizzle / SQL — only for a measured perf need                       |
+| **CRUD API**               | Generic route via registered model (`/api/ottaorm/{entity}`)                                                 | A route in the app package manifest (`ottabase/packages/app.ts`) for non-CRUD needs | Hand-rolled endpoint — avoid                                            |
+| **CRUD UI**                | `createModelConfig(Model)` + `<ModelCrud>` (`@ottabase/forms/react`)                                         | `<DataTable>` / `useDataTable` primitives                                           | Build the table by hand                                                 |
+| **Forms**                  | `createModelConfig` → `<ModelForm>` (model-driven)                                                           | `ui-shadcn` `Form`/`FormField` (react-hook-form) for custom forms                   | Native `<form>` + `FormData`                                            |
+| **Client data fetching**   | Query/mutation hooks (`createModelHooks`, `useApiQuery`, `useApiMutation`)                                   | `queryClient.fetchQuery` for imperative reads                                       | ~~Raw `fetch()`~~ — **lint-banned** in `apps/*/src/**`                  |
+| **API error responses**    | `errorResponse(...)` / `jsonResponse(...)` (`@ottabase/utils/http-errors`)                                   | —                                                                                   | ~~`new Response(JSON.stringify(...))`~~ — **lint-banned** on the server |
+| **Env access (edge)**      | `getOttabaseConfig(env)`                                                                                     | —                                                                                   | ~~`process.env`~~ — **lint-banned** in edge code                        |
+| **Styling / components**   | `@ottabase/ui-shadcn` (static Tailwind + design tokens)                                                      | `@ottabase/ui-mantine` (Mantine) where its ergonomics help                          | One-off CSS / inline styles that bypass tokens — avoid for repeated UI  |
+| **Theming**                | Brand Engine design tokens → CSS variables                                                                   | Component slot overrides (`data-slot`, `BrandComponentsProvider`)                   | Per-route `tokenOverridesJson` for a localized override                 |
+| **State**                  | Jotai (`@ottabase/state`)                                                                                    | Local component state                                                               | (No competing global-state lib — don't add one)                         |
+| **Auth**                   | In-house `@ottabase/auth` (`getSession` / `useSession`)                                                      | Generic OAuth2/OIDC + magic links via the same package                              | (No Auth.js/NextAuth — deliberately removed)                            |
+| **RBAC / authz**           | Server guard (`hasPermission` / `withRBAC`) as the boundary; browser gate as a UX hint                       | App `ProtectedRoute` for route gating                                               | (Never gate on a role _name_ — permission + scope only)                 |
+| **Uploads**                | `useFileUpload` / `uploadFile` → `/api/upload`                                                               | `uploadFileToR2` / `uploadFileToCloudflareImages` on the server                     | Raw R2 via `@ottabase/cf` when genuinely off-path                       |
+| **Background work**        | `dispatch(queue, type, payload)` (`@ottabase/queue`)                                                         | `createDispatcher` with priority queues / chaining                                  | Raw `QueueAdapter` / binding via `dispatcher.getAdapter()`              |
+| **Database access**        | `@ottabase/db/drizzle-d1` + OttaORM                                                                          | Drizzle query builder for a specific hot path                                       | Raw D1 client (`@ottabase/cf/d1`) for non-OttaORM code                  |
+| **KV cache keys**          | `@ottabase/cf/cache-keys` builders (`orgKey`, `userKey`, …)                                                  | `withCache` read-through wrapper                                                    | Hand-formatted key strings — collision risk, avoid                      |
+| **Backups / export**       | `@ottabase/vault` listed: nightly `vault:backup` to R2, `GET /api/vault/export/me`                           | `vault.backup()` / `restore()` by hand around a risky migration                     | D1 Time Travel alone — Cloudflare's net, not a copy you hold            |
+| **Several apps**           | `@ottabase/fleet` listed on each app (its beacon) and a cockpit reading `GET /api/fleet/report` | `curl -H "Authorization: Bearer $FLEET_TOKEN" …/api/fleet/report` from a shell | Opening every admin panel by hand on a Monday |
+| **Transactional mail**     | `@ottabase/email` templates via the app mailer                                                               | `suppressions.guard(mailer)` (`@ottabase/postmaster`) for list mail                 | Sending to a list you never checked against suppressions — avoid        |
+| **Inbound mail / bounces** | `@ottabase/postmaster`: Worker `email()` → `email.inbound` on the bus, provider webhooks                     | A custom `email()` export over `parseInboundEmail`                                  | Polling a mailbox — not a Workers pattern                               |
+| **Entitlements / usage**   | `@ottabase/flags` guards (402 `UPGRADE_REQUIRED`) + `@ottabase/meter` credits                                | Reading a plan column for one isolated check                                        | Plan names hard-coded in routes — avoid                                 |
+| **Customer API access**    | `@ottabase/apikeys` (`authenticate(request, env, { scopes })`)                                               | Session cookie for first-party calls                                                | One shared secret in env — avoid                                        |
+| **AI / vectors**           | `@ottabase/ottaai` (providers, customer keys, spend) + `@ottabase/cf/vectorize`                              | `@ottabase/cf/ai` for a raw Workers AI call                                         | Direct `fetch` to a vendor API                                          |
+| **HTML → PDF / scraping**  | `@ottabase/cf-pdf` (safe downloads, metadata)                                                                | `@ottabase/cf/browser` quick actions (`pdf`, `markdown`, `json`)                    | `@cloudflare/puppeteer` scripted sessions                               |
+| **Timers / long jobs**     | `@ottabase/cron` scheduled tasks + `@ottabase/queue`                                                         | `AlarmQueue` inside a Durable Object; `@ottabase/cf/workflows` for multi-step runs  | `setTimeout` in a Worker — lost on eviction                             |
+| **App shape**              | `otta new web` (SPA + admin)                                                                                 | `otta new worker` (single Worker, server-rendered + API)                            | A bare Worker without `ottabase/packages.ts` — loses every package      |
+| **Package deps**           | `workspace:*` (internal) / `catalog:` (shared external)                                                      | `peerDependency` for a shared package's framework dep                               | Package-local version of a shared dep — avoid                           |
 
 ## Notes
 
@@ -14268,6 +14284,78 @@ what happens.
 - **No subject, no plan.** An anonymous caller gets 401 from the guards, never the default plan.
 - Premium (operator-side licensing of a package) and flags (end-user plans) are different axes on purpose; a payport
   license is one `resolvePlan` source among others.
+
+
+---
+
+# packages/fleet/README.md
+
+# @ottabase/fleet
+
+The beacon that makes an Ottabase app watchable. List it, set one secret, and the app answers
+`GET /api/fleet/report` with one JSON document: its packages and versions, each Premium Package's license state, the
+kernel health report, its scheduled tasks with their last status, and its newest backup. `POST /api/fleet/init` relays
+whatever init the host wired (the Worker template passes its database init).
+
+This is deliberately the free half. A cockpit that watches a fleet of these needs every app on the board to carry the
+beacon, including apps run by people who never bought anything; a beacon behind a paywall would have nothing to report
+to. The cockpit itself (Tower: watched apps, polling, history, version drift, alerts, the board) is a paid add-on kept
+outside this repository.
+
+## Install
+
+```bash
+otta add fleet my-app        # or by hand:
+```
+
+```typescript
+// apps/otta-web/ottabase/packages/fleet.ts
+import { createFleetPackage } from '@ottabase/fleet';
+
+export const fleetPackage = createFleetPackage<CloudflareEnv>({
+    appId: (env) => getOttabaseConfig(env).appId,
+    environment: (env) => env.ENVIRONMENT,
+    token: (env) => env.FLEET_TOKEN,
+    sources: { backup: async (env) => (await vault.list(env, 1))[0] ?? null },
+    licenses: async (env) => (await import('../../worker/lib/premium')).premium.statuses(env),
+    // init: initDatabase,  // what POST /api/fleet/init runs; omit and it answers 501
+});
+```
+
+List `fleetPackage` in `ottabase/packages.ts`, then `wrangler secret put FLEET_TOKEN`. No tables, no nav, no cron. The
+health report gains one line, `fleet:beacon`, saying whether the token is set.
+
+## The report
+
+```bash
+curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/api/fleet/report
+```
+
+```jsonc
+{
+    "data": {
+        "app": "my-tool",
+        "environment": "production",
+        "takenAt": 1792584000000,
+        "packages": [{ "key": "vault", "name": "Vault", "version": "1.0.0", "premium": { "state": "active", "plan": "pro", "expiresAt": null } }],
+        "health": { "ok": true, "checks": [{ "package": "core", "name": "env:OBCF_D1", "ok": true }] },
+        "tasks": [{ "name": "Nightly backup", "task": "vault:backup", "isActive": true, "lastStatus": "success", "lastRunAt": 1792548180000, "lastError": null, "failCount": 0 }],
+        "backup": { "id": "20261016T022300Z", "createdAt": "2026-10-16T02:23:00.000Z" },
+        "canInit": false,
+        "errors": []
+    }
+}
+```
+
+A source that throws (no bucket, no D1) is named in `errors`; the rest of the report stands. `summarize(report)` is the
+shared verdict a board applies: any failing health check, or an active scheduled task whose last run failed, makes the
+app `degraded`.
+
+## Why a token, and why a secret
+
+The health report's details name bindings and env vars, so the beacon is not public: it answers only a bearer token
+compared in constant time, and refuses with 503 until one is configured. The token unlocks a read-only report plus
+whatever `init` the host chose to expose, and nothing else: no sessions, no admin token, no database.
 
 
 ---
@@ -26957,16 +27045,27 @@ pnpm --filter @ottabase/utils verify:dist-sanitize
 
 # @ottabase/vault
 
-Backups, restore and per-tenant export for an Ottabase app. Every D1 table goes to R2 as NDJSON on a schedule, comes
-back in one transaction, and any one tenant's rows can be streamed out when a customer asks for their data.
+Backups, restore and per-tenant export for an Ottabase app. Every D1 table goes to R2 as NDJSON, comes back in one
+transaction, and any one tenant's rows can be streamed out when a customer asks for their data.
 
 D1 has point-in-time recovery; that is Cloudflare's safety net. This one is yours: a copy in a bucket you control,
 readable by anything that reads JSON, restorable into a fresh database, portable off the platform.
 
+Vault is a **Premium Package** (`@ottabase/premium`). The part that gets you out of trouble is free; what is sold is not
+having to remember.
+
+|                                                               | Free                      | Licensed                                 |
+| ------------------------------------------------------------- | ------------------------- | ---------------------------------------- |
+| Manual backup, list, restore, delete                          | yes, up to 5 kept backups | yes, up to the license's `backups` limit |
+| A user's own export (`GET /export/me`)                        | yes                       | yes                                      |
+| Nightly schedule (`vault:backup`) with retention pruning      | no                        | yes                                      |
+| Stale-backup health check in `/api/admin/health`              | no                        | yes                                      |
+| Operator export of any tenant (`GET /export?organizationId=`) | no                        | yes                                      |
+
 ## Install
 
 ```bash
-pnpm add @ottabase/vault
+otta add vault my-app        # or by hand:
 ```
 
 ```typescript
@@ -26983,12 +27082,24 @@ export const vaultPackage = createVaultPackage<CloudflareEnv>({
     vault,
     resolveCaller: resolvePackageCaller,
     env: { required: ['OBCF_D1', 'OBCF_R2'] },
+    // licensePublicKey: '…',  // your vendor key; defaults to the DEMO key published in this repo
 });
 ```
 
-List `vaultPackage` in `ottabase/packages.ts`. The package has no tables of its own. It installs the admin routes under
-`/api/vault`, seeds a `vault:backup` task at `23 2 * * *` (back up, then prune backups older than 30 days, never the
-newest), and reports in `/api/admin/health` when the newest backup is more than 48 hours old.
+List `vaultPackage` in `ottabase/packages.ts`; the premium registry (`worker/lib/premium.ts`) picks it up from the list
+and mounts its routes behind the entitlement gate. The package has no tables of its own. It seeds a `vault:backup` task
+at `23 2 * * *` and renders at **Admin → Infrastructure → Vault** (`VaultSettings` from `@ottabase/vault/react`; add
+`'../../packages/vault/src/**/*.{js,ts,jsx,tsx}'` to the app's Tailwind `content`).
+
+## Licensing
+
+Paste a license at **Admin → Growth → Premium packages**, or set `PREMIUM_LICENSE_VAULT` (or a `PREMIUM_LICENSES` JSON
+map). A license names features (`schedule`, `export`) and may raise the `backups` limit.
+`packages/vault/src/demo-license.ts` holds the demo vendor's keypair and a perpetual pro license, so the whole flow can
+be tried without buying anything; replace the public key for anything you sell (`generateLicenseKeypair` from
+`@ottabase/premium/license-tools`).
+
+A lapsed license closes the schedule and the operator export. Backups stay, restore stays, your data stays.
 
 ## Layout in the bucket
 
@@ -27011,24 +27122,31 @@ await vault.prune(env, 30); // ids removed
 vault.export(env, { column: 'organization_id', value: orgId }); // ReadableStream of {table,row} NDJSON lines
 ```
 
+The core (`createVault`) is not gated: app code can call any of it. The gates live in the routes and the cron handler.
 Restore intersects the backup's columns with the live table's, so a column dropped since the backup is skipped and
 reported, and a table that no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does),
 the whole restore is one transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
 
 ## Routes
 
-| Route                                  | Who                | Does                                                      |
-| -------------------------------------- | ------------------ | --------------------------------------------------------- |
-| `GET /backups`                         | platform admin     | newest manifests (`?limit=`)                              |
-| `POST /backups`                        | platform admin     | run a backup now (`{ tables?, label? }`)                  |
-| `GET /backups/:id`                     | platform admin     | one manifest                                              |
-| `POST /backups/:id/restore`            | platform admin     | `{ confirm: id, tables?, truncate? }`; replaces live rows |
-| `DELETE /backups/:id`                  | platform admin     | remove every object of the backup                         |
-| `GET /export?organizationId=\|userId=` | platform admin     | NDJSON download of one tenant                             |
-| `GET /export/me`                       | any signed-in user | their organization (if they manage it) or their own rows  |
+| Route                                  | Who                | Gate             | Does                                                      |
+| -------------------------------------- | ------------------ | ---------------- | --------------------------------------------------------- |
+| `GET /backups`                         | platform admin     | free             | newest manifests (`?limit=`)                              |
+| `POST /backups`                        | platform admin     | `backups` limit  | run a backup now (`{ tables?, label? }`); 402 at the cap  |
+| `GET /backups/:id`                     | platform admin     | free             | one manifest                                              |
+| `POST /backups/:id/restore`            | platform admin     | free             | `{ confirm: id, tables?, truncate? }`; replaces live rows |
+| `DELETE /backups/:id`                  | platform admin     | free             | remove every object of the backup                         |
+| `GET /export?organizationId=\|userId=` | platform admin     | `export` feature | NDJSON download of one tenant                             |
+| `GET /export/me`                       | any signed-in user | free             | their organization (if they manage it) or their own rows  |
+
+A closed gate answers `402 PREMIUM_REQUIRED` with `metadata.reason` (`LIMIT_REACHED`, `LICENSE_MISSING`, …) and the
+purchase URL, which is what the admin page renders as the upsell.
 
 ## Design notes
 
+- **The registry arrives at mount time.** A cron handler never sees the host, so `routes.build(host)` keeps the premium
+  registry in a closure and the handler and the health probe ask it. Until the routes are mounted the schedule stays off
+  and health reports why.
 - **NDJSON, not SQLite files.** D1 does not hand out its database file; a row-per-line text format is what every tool
   can read, diff and import, and it slices per tenant.
 - **Internal tables are skipped**: `_cf_KV`, `sqlite_sequence`, the migration ledgers. Pass `exclude` for your own.

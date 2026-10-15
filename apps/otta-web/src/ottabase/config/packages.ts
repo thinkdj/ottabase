@@ -29,6 +29,7 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'meter' }),
     definePackageClient({ key: 'apikeys' }),
     definePackageClient({ key: 'postmaster' }),
+    definePackageClient({ key: 'fleet' }),
     definePackageClient({
         key: 'vault',
         adminPages: [

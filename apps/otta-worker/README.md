@@ -20,7 +20,7 @@ otta add postmaster my-tool  # install a package
 | `worker/queue.ts`             | one handler per queue job type the manifests declare                                 |
 | `worker/lib/db-utils.ts`      | connect the ORM, register package models and policies, `initDatabase()`              |
 | `ottabase/packages.ts`        | **the one list** of installed packages                                               |
-| `ottabase/packages/*.ts`      | one composition per package (`core`, `vault` to start)                               |
+| `ottabase/packages/*.ts`      | one composition per package (`core`, `vault`, `fleet` to start)                      |
 | `ottabase/packages/caller.ts` | the operator token as a package caller                                               |
 | `ottabase/config.loader.ts`   | `appId`, `environment`, from env                                                     |
 | `ottabase/db/schema.ts`       | the tables, as static exports (scheduler + package tables)                           |
@@ -51,6 +51,10 @@ curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3005/api/premium/package
 
 Unlicensed, Vault still backs up and restores by hand (five kept backups); the nightly schedule waits for a key. The
 home page shows each premium package's state next to its key.
+
+`@ottabase/fleet` makes this Worker a beacon: with `wrangler secret put FLEET_TOKEN`, a cockpit reads
+`GET /api/fleet/report` (packages, health, tasks, newest backup, license states) and can run `POST /api/fleet/init`,
+which does what `/api/admin/init` does. The cockpit that watches a fleet of these is a paid add-on outside this repo.
 
 ## First run
 
