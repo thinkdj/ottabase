@@ -1,0 +1,12 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "src",
+        "baseUrl": ".",
+        "paths": {},
+        "skipLibCheck": true,
+        "lib": ["esnext", "dom", "dom.iterable"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}
