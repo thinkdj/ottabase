@@ -248,6 +248,11 @@ export const APP_TEMPLATES = {
         description: 'Next.js landing page with Cloudflare Workers deployment',
         source: 'otta-landing',
     },
+    worker: {
+        name: 'worker',
+        description: 'Single Worker, server-rendered and API-first: the package contract without the SPA',
+        source: 'otta-worker',
+    },
 } as const;
 
 export type AppTemplate = keyof typeof APP_TEMPLATES;

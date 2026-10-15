@@ -1,0 +1,72 @@
+// ============================================================
+// Cron — the scheduler over the handlers every package contributes
+// ============================================================
+// Cloudflare wakes the Worker once a minute; the scheduler runs whatever `scheduled_tasks`
+// rows are due. Handlers come from the manifests' `cron` field, schedules are seeded from
+// them on init (and on the first tick of an isolate, so a fresh deploy needs no click).
+// ============================================================
+
+import { createScheduler, createTaskRepository, type TaskHandler } from '@ottabase/cron';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { getOttabaseConfig } from '../ottabase/config.loader';
+import { packages } from '../ottabase/packages';
+import { ensureDbConnection } from './lib/db-utils';
+import { ensurePackageSchedules } from './lib/package-schedules';
+
+export const scheduler = createScheduler<CloudflareEnv>({
+    logger: {
+        info: (message) => console.log(JSON.stringify({ event: 'cron_scheduler', level: 'info', message })),
+        warn: (message) => console.warn(JSON.stringify({ event: 'cron_scheduler', level: 'warn', message })),
+        error: (message) => console.error(JSON.stringify({ event: 'cron_scheduler', level: 'error', message })),
+    },
+});
+
+for (const [name, job] of Object.entries(packages.cron())) {
+    scheduler.handler(name, job.handler as TaskHandler<CloudflareEnv, unknown>, job.description);
+}
+
+function repository(env: CloudflareEnv) {
+    const appId = getOttabaseConfig(env).appId;
+    const scoped = {
+        due: () => ScheduledTask.due(appId),
+        find: (id: string) => ScheduledTask.findForApp(id, appId),
+        acquireExecutionLock: (
+            id: string,
+            startedAt: Date,
+            staleBefore: Date,
+            scheduledOnly: boolean,
+            driver: Parameters<typeof ScheduledTask.acquireExecutionLock>[5],
+        ) => ScheduledTask.acquireExecutionLock(id, appId, startedAt, staleBefore, scheduledOnly, driver),
+        completeExecution: (
+            id: string,
+            startedAt: Date,
+            nextRunAt: Date,
+            driver: Parameters<typeof ScheduledTask.completeExecution>[4],
+        ) => ScheduledTask.completeExecution(id, appId, startedAt, nextRunAt, driver),
+        failExecution: (
+            id: string,
+            startedAt: Date,
+            error: string,
+            nextRunAt: Date | null,
+            driver: Parameters<typeof ScheduledTask.failExecution>[5],
+        ) => ScheduledTask.failExecution(id, appId, startedAt, error, nextRunAt, driver),
+    };
+    return createTaskRepository(scoped, createD1Driver(env.OBCF_D1));
+}
+
+let seededInThisIsolate = false;
+
+export async function handleScheduled(controller: ScheduledController, env: CloudflareEnv): Promise<void> {
+    if (!env.OBCF_D1) {
+        controller.noRetry();
+        return;
+    }
+    ensureDbConnection(env);
+    if (!seededInThisIsolate) {
+        await ensurePackageSchedules(packages, getOttabaseConfig(env).appId);
+        seededInThisIsolate = true;
+    }
+    const result = await scheduler.tick(env, repository(env));
+    console.log(JSON.stringify({ event: 'cron_tick', ...result }));
+}

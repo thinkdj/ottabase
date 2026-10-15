@@ -1,0 +1,53 @@
+{
+    // One Worker, no static assets, no SPA. Placeholders follow apps/otta-web/wrangler.jsonc:
+    // YOUR_* values are local-only (Wrangler uses its simulators), ALL_CAPS values under env.*
+    // name the GitHub Secret CI substitutes at deploy time. See CLOUDFLARE_DEPLOY.md.
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "otta-worker",
+    "main": "worker/index.ts",
+    "compatibility_date": "2024-12-30",
+    "compatibility_flags": ["nodejs_compat"],
+
+    // The DB-driven scheduler evaluates task expressions itself; Cloudflare wakes the Worker once a minute.
+    "triggers": {
+        "crons": ["* * * * *"],
+    },
+
+    // ottaorm MUST resolve to exactly one copy in the bundle (module-level RLS registry,
+    // `instanceof` checks on its errors). Same aliases as otta-web, same reason.
+    "alias": {
+        "@ottabase/ottaorm": "../../packages/ottaorm/src/index.ts",
+        "@ottabase/ottaorm/models": "../../packages/ottaorm/src/models/index.ts",
+        "@ottabase/ottaorm/base": "../../packages/ottaorm/src/base/index.ts",
+    },
+
+    "minify": true,
+    "upload_source_maps": true,
+    "observability": {
+        "logs": { "enabled": true, "head_sampling_rate": 1, "persist": true, "invocation_logs": true },
+    },
+
+    "vars": {
+        "ENVIRONMENT": "development",
+        "APP_ID": "otta-worker",
+    },
+    "d1_databases": [
+        {
+            "binding": "OBCF_D1",
+            "database_name": "otta-worker",
+            "database_id": "YOUR_D1_DATABASE_ID",
+        },
+    ],
+    "kv_namespaces": [{ "binding": "OBCF_KV", "id": "YOUR_KV_NAMESPACE_ID" }],
+    "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "otta-worker" }],
+
+    "env": {
+        "production": {
+            "vars": { "ENVIRONMENT": "production", "APP_ID": "otta-worker" },
+            "d1_databases": [{ "binding": "OBCF_D1", "database_name": "otta-worker", "database_id": "D1_DATABASE_ID" }],
+            "kv_namespaces": [{ "binding": "OBCF_KV", "id": "KV_NAMESPACE_ID" }],
+            "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "otta-worker" }],
+            "triggers": { "crons": ["* * * * *"] },
+        },
+    },
+}

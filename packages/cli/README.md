@@ -265,6 +265,12 @@ Next.js landing page with Cloudflare Workers deployment. Includes:
 - Tailwind CSS
 - shadcn/ui components
 
+### `worker`
+
+Single Cloudflare Worker, server-rendered HTML and an API, no SPA and no asset build. Same `ottabase/packages.ts`
+contract as `web`, an operator token instead of sessions, `/api/admin/init` to create tables, and the DB-driven
+scheduler. Source: `apps/otta-worker`. For internal tools, webhook receivers, cron-driven jobs and first versions.
+
 ## Programmatic Usage
 
 The CLI can also be used programmatically:

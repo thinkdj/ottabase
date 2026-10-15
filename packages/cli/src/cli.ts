@@ -43,10 +43,12 @@ program
 Templates:
   web       Full-featured Vite + TanStack Router + Cloudflare Workers app
   landing   Next.js landing page with Cloudflare Workers deployment
+  worker    Single Worker, server-rendered and API-first (no SPA)
 
 Examples:
   $ otta new web my-app
   $ otta new landing my-site
+  $ otta new worker my-tool
 `,
     )
     .action(async (template: string, name: string) => {

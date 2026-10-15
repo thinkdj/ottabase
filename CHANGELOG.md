@@ -56,6 +56,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `ottabase/packages.ts`, the client key, and the table re-exports for drizzle-kit; every step is skipped when already
   done, `--dry-run` prints the plan. Packages opt in with an `ottabase` descriptor
   (`{ key, factory, export?, manifestImport?, tables? }`) in their package.json; the built-in packages carry one.
+- `apps/otta-worker` and `otta new worker`: the second app shape. One Cloudflare Worker, server-rendered HTML and an
+  API, no SPA and no asset build, on the same `ottabase/packages.ts` contract: `mountPackages`, the DB-driven scheduler
+  over manifest cron handlers (schedules seeded on init and on the first tick), the queue consumer, the event bus,
+  `POST /api/admin/init` to create every table, `/api/admin/health`, and an operator bearer token (`ADMIN_TOKEN`)
+  standing in for sessions until `@ottabase/auth` is added. Ships with `core` and `vault` listed; `otta add` targets it
+  like any other app. ~340 KiB bundled.
 - otta-web: `GET /api/admin/health` (platform admin) runs every package's required-env check and health probe;
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 

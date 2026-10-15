@@ -1,0 +1,60 @@
+{
+    "name": "@ottabase/otta-worker",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "description": "Single Worker, server-rendered, API-first Ottabase app: the package contract without the SPA",
+    "ottabase": {
+        "start": {
+            "development": {
+                "processes": [
+                    {
+                        "name": "worker",
+                        "script": "dev",
+                        "url": "http://127.0.0.1:3005",
+                        "readyUrl": "http://127.0.0.1:3005/api/health",
+                        "portArg": "--port",
+                        "primary": true
+                    }
+                ]
+            },
+            "worker": {
+                "url": "http://127.0.0.1:3005",
+                "readyUrl": "http://127.0.0.1:3005/api/health"
+            },
+            "readyTimeoutMs": 60000
+        }
+    },
+    "scripts": {
+        "dev": "wrangler dev --local --port 3005",
+        "build": "wrangler deploy --dry-run --outdir dist",
+        "preview": "wrangler dev --local --port 3005",
+        "deploy": "wrangler deploy --env production",
+        "lint": "eslint worker ottabase",
+        "type-check": "pnpm run --parallel \"/type-check:.*/\"",
+        "type-check:worker": "tsc -p tsconfig.json --noEmit",
+        "type-check:test": "tsc -p tsconfig.test.json --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "cf-typegen": "wrangler types cloudflare-env.d.ts --env-interface CloudflareEnv --include-runtime false --strict-vars false",
+        "wrangler": "wrangler"
+    },
+    "dependencies": {
+        "@ottabase/cron": "workspace:*",
+        "@ottabase/db": "workspace:*",
+        "@ottabase/events": "workspace:*",
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/queue": "workspace:*",
+        "@ottabase/utils": "workspace:*",
+        "@ottabase/vault": "workspace:*",
+        "drizzle-orm": "catalog:"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+        "wrangler": "catalog:"
+    }
+}
