@@ -11,5 +11,5 @@
         "src/ottabase/models/**/*.test.ts",
         "cloudflare-env.d.ts"
     ],
-    "exclude": ["node_modules", "dist", "ottabase/__tests__/premium-registration.test.ts"]
+    "exclude": ["node_modules", "dist", "ottabase/__tests__/packages-registration.test.ts"]
 }

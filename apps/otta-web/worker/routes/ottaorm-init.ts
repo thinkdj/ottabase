@@ -1,14 +1,15 @@
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { applyPackageLifecycle, createKvInstallStore, createMemoryInstallStore } from '@ottabase/kernel';
 import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
+import { LandingSite } from '@ottabase/ottalanding';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { ottablogOrgModeSuppressedIndexes } from '@ottabase/ottablog';
-import { LandingSite } from '@ottabase/ottalanding';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { buildAppMigrations } from '../../ottabase/migrations';
-import { ensureAuditPruneTask } from '../lib/audit-retention';
+import { packages } from '../../ottabase/packages';
 import { checkMigrationAuth, initDbConnection } from '../lib/db-utils';
+import { ensurePackageSchedules } from '../lib/package-schedules';
 import { ensureAppBrandDefaults } from '../lib/user-provisioning';
 
 export interface OttaormInitContext {
@@ -72,30 +73,36 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
         env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true';
 
-    // Org-mode blogs: the index-swap migration runs once (tracked), but autoInit's
-    // ensure step re-creates schema-declared indexes on EVERY run — suppress the
-    // dropped strict slug indexes so a re-init can't silently restore app-wide
-    // uniqueness and break per-org slug namespaces. Env-aware (OTTABLOG_MODE).
     const ottabaseConfig = getOttabaseConfig(env);
-    const blogOrgMode = ottabaseConfig.packages.ottablog && ottabaseConfig.features.ottablog.mode === 'org';
 
     const result = await autoInit({
         driver,
         schema: allSchemas,
-        customMigrations: buildAppMigrations(env as unknown as Record<string, unknown>),
+        customMigrations: buildAppMigrations(),
         verbose: true,
         allowDestructive,
-        suppressIndexes: blogOrgMode ? ottablogOrgModeSuppressedIndexes : [],
+        // Indexes a package's migration dropped on purpose (org-mode blog slugs); autoInit's
+        // ensure step would otherwise re-create them on every run.
+        suppressIndexes: packages.suppressIndexes(),
     });
 
-    // Seed default brand kit + route mappings for current app (brand kits are always app-scoped)
     if (result.success) {
         initDbConnection(env);
+        // Default brand kit + route mappings for the current app (brand kits are always app-scoped)
         await ensureAppBrandDefaults('Ottabase', ottabaseConfig.appId);
-        // Daily audit_logs retention task, so an initialised app never grows the table unbounded
-        await ensureAuditPruneTask(ottabaseConfig.appId);
+        // Every package's scheduled housekeeping (audit retention, …), once per app
+        const seededTasks = await ensurePackageSchedules(packages, ottabaseConfig.appId);
+        // onInstall / onUpgrade for packages seen for the first time or at a new version
+        const lifecycle = await applyPackageLifecycle({
+            registry: packages,
+            env,
+            store: env.OBCF_KV
+                ? createKvInstallStore(env.OBCF_KV, `${ottabaseConfig.storage.prefix}:packages:`)
+                : createMemoryInstallStore(),
+        });
         // Starter landing site, so the public site has content the moment the tables exist
-        if (ottabaseConfig.packages.ottalanding) await LandingSite.ensureForApp(ottabaseConfig.appId);
+        if (packages.has('ottalanding')) await LandingSite.ensureForApp(ottabaseConfig.appId);
+        return jsonResponse({ ...result, packages: { seededTasks, lifecycle } });
     }
 
     return jsonResponse(result);

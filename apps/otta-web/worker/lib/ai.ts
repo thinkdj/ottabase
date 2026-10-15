@@ -257,7 +257,6 @@ export async function getAiProvisioning(
     // documented way across this app's env reads — see the `CLOUDFLARE_ACCOUNT_ID` lookups
     // below, which cast for the same reason.
     const config = getOttabaseConfig(env as unknown as Record<string, unknown>);
-    if (!config.packages.ottaai) return null;
 
     const feature = config.features.ottaai;
     const keyring = feature.byokEnabled ? buildAiKeyring(env) : null;

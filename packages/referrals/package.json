@@ -19,6 +19,7 @@
         "test": "vitest run"
     },
     "dependencies": {
+        "@ottabase/kernel": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/ottaorm": "workspace:*"
     },

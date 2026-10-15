@@ -26,7 +26,6 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
 
     try {
         const config = getOttabaseConfig(env);
-        if (!config.packages.ottablog) return response;
 
         const url = new URL(request.url);
         const slug = extractBlogSlugFromPath(url.pathname);

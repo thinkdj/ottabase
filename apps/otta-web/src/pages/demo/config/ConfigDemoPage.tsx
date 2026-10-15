@@ -6,6 +6,7 @@ import { createAppConfig } from '@ottabase/config';
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Key, Layers, Package, Settings } from 'lucide-react';
 import { useMemo } from 'react';
+import { PACKAGES_ENABLED } from '@/ottabase/config/packages';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 export function ConfigDemoPage() {
@@ -73,9 +74,10 @@ export function ConfigDemoPage() {
                                 etc.). Used by components and hooks.
                             </li>
                             <li>
-                                <strong>defineOttabaseConfig()</strong> — Package and feature gating via{' '}
-                                <code className="rounded bg-muted px-1 py-0.5 text-xs">ottabase.config.ts</code>.
-                                Controls which packages/features are enabled for the app.
+                                <strong>defineOttabaseConfig()</strong> — Feature dials via{' '}
+                                <code className="rounded bg-muted px-1 py-0.5 text-xs">ottabase.config.ts</code>. Which
+                                packages are installed is the list in{' '}
+                                <code className="rounded bg-muted px-1 py-0.5 text-xs">ottabase/packages.ts</code>.
                             </li>
                         </ol>
                     </div>
@@ -128,70 +130,38 @@ export function ConfigDemoPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Package className="h-4 w-4" />
-                        Package Gating (defineOttabaseConfig)
+                        Packages (ottabase/packages.ts)
                     </CardTitle>
                     <CardDescription>
-                        The <code>ottabase.config.ts</code> file controls which built-in and custom packages are
-                        enabled.
+                        A package is installed by listing its manifest once. Tables, models, routes, cron, queue,
+                        events, nav, env and health are derived from the list.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
-                        <code>{`// ottabase.config.ts
-import { defineOttabaseConfig } from '@ottabase/config';
+                        <code>{`// ottabase/packages.ts
+import { createPackageRegistry } from '@ottabase/kernel';
+import { createOttablogPackage } from '@ottabase/ottablog';
+import { createShortlinksPackage } from '@ottabase/shortlinks';
+import { invoicesPackage } from './packages/invoices'; // your own
 
-export default defineOttabaseConfig({
-    meta: {
-        appId: 'my-saas-app',
-        appName: 'My SaaS',
-    },
+export const PACKAGES = [
+    corePackage,
+    appPackage,
+    createOttablogPackage({ mode: 'platform', routes: blogRoutes }),
+    createShortlinksPackage({ routes: shortlinkRoutes }),
+    invoicesPackage, // tables, models, routes, cron, nav — one manifest
+];
 
-    // Built-in packages (toggle on/off)
-    packages: {
-        ottablog: true,
-        shortlinks: true,
-        referrals: false,
-        ottamenu: true,
-        comments: true,
-        audit: true,
-        analytics: true,
-        medialibrary: true,
-    },
-
-    // Custom packages with route handlers
-    customPackages: {
-        invoices: {
-            enabled: true,
-            tables: ['invoices', 'invoice_items'],
-            routes: '/api/invoices',
-        },
-    },
-
-    // Feature flags
-    features: {
-        spotlight: { enabled: true },
-        pagination: { defaultPerPage: 25 },
-    },
-});`}</code>
+export const packages = createPackageRegistry<CloudflareEnv>({ packages: PACKAGES });`}</code>
                     </pre>
 
                     <div className="rounded-lg bg-background p-4 ring-1 ring-border">
                         <h4 className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                            Built-in Packages
+                            Installed in this app
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
-                            {[
-                                'ottablog',
-                                'shortlinks',
-                                'referrals',
-                                'ottamenu',
-                                'comments',
-                                'audit',
-                                'analytics',
-                                'medialibrary',
-                                'notifications',
-                                'i18n',
-                            ].map((pkg) => (
+                            {Object.keys(PACKAGES_ENABLED).map((pkg) => (
                                 <Badge
                                     key={pkg}
                                     variant="outline"
@@ -202,7 +172,8 @@ export default defineOttabaseConfig({
                             ))}
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                            <strong>brandEngine</strong> is core — always enabled, not listed in packages.
+                            <strong>core</strong> and <strong>brand-engine</strong> are always in the list; the rest is
+                            the app's choice.
                         </p>
                     </div>
                 </CardContent>
@@ -234,18 +205,15 @@ const config = resolveConfigWithEnv(ottabaseConfig, env);
                     </pre>
 
                     <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
-                        <code>{`// Check if a package is enabled:
-import { isPackageEnabled } from '@ottabase/config';
-
-if (isPackageEnabled(config, 'ottablog')) {
-    // Register blog routes
+                        <code>{`// Is a package installed? Ask the registry, on either side:
+import { packages } from 'ottabase/registry'; // Worker
+if (packages.has('ottablog')) {
+    // the blog's routes, tables and cron are already wired from its manifest
 }
 
-// Check custom packages:
-import { isCustomPackageEnabled } from '@ottabase/config';
-
-if (isCustomPackageEnabled(config, 'invoices')) {
-    // Register invoice routes
+import { PACKAGES_ENABLED } from '@/ottabase/config'; // browser
+if (PACKAGES_ENABLED.ottablog) {
+    // show the blog's navigation
 }`}</code>
                     </pre>
                 </CardContent>
@@ -266,19 +234,11 @@ if (isCustomPackageEnabled(config, 'invoices')) {
                             },
                             {
                                 name: 'defineOttabaseConfig(input)',
-                                desc: 'Define package-level config for ottabase.config.ts. Validates package names and feature flags.',
+                                desc: 'Define app config for ottabase.config.ts: identity, feature dials, email and UI. Packages are listed in ottabase/packages.ts.',
                             },
                             {
                                 name: 'resolveConfigWithEnv(config, env)',
                                 desc: 'Merge static config with Cloudflare Worker environment bindings at runtime.',
-                            },
-                            {
-                                name: 'isPackageEnabled(config, pkg)',
-                                desc: 'Check if a built-in package is enabled in the config.',
-                            },
-                            {
-                                name: 'isCustomPackageEnabled(config, pkg)',
-                                desc: 'Check if a custom package is enabled in the config.',
                             },
                             {
                                 name: 'createStorageKey(prefix, key)',

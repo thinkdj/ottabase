@@ -5,12 +5,16 @@
  *   - The admin sidebar (apps/otta-web/src/components/admin/AdminLayout.tsx)
  *   - The admin overview cards (apps/otta-web/src/pages/admin/AdminIndexPage.tsx)
  *
- * To add a new admin page: add a single entry to ADMIN_NAV_GROUPS,
+ * To add a new admin page for the APP: add a single entry to ADMIN_NAV_GROUPS,
  * then register the route in apps/otta-web/src/router.tsx.
+ *
+ * A PACKAGE's admin pages come from its client descriptor (src/ottabase/config/packages.ts)
+ * and are merged into their nav group below; neither this file nor router.tsx is edited.
  */
 
-import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
-import { isPremiumPackageInstalled, PREMIUM_ADMIN_PAGES, type PremiumAdminPage } from '@/ottabase/config/premium';
+import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
+import { PACKAGE_ADMIN_PAGES, PACKAGES_ENABLED } from '@/ottabase/config/packages';
+import type { AdminPageContribution } from '@ottabase/kernel/client';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
@@ -64,28 +68,27 @@ export interface AdminNavItem {
     scope?: AdminNavScope;
     /** Set true for `/api/*` style links opened in a new tab. */
     external?: boolean;
-    /** Visible only when this package is enabled (skip if undefined). */
-    requiresPackage?: keyof typeof PACKAGES_ENABLED;
+    /**
+     * Visible only when this package is installed (skip if undefined).
+     *
+     * Installed, not licensed: a Premium Package's page still renders with its license lapsed,
+     * with its upsell, because hiding it would leave the operator no route to the screen that
+     * fixes it.
+     */
+    requiresPackage?: string;
     /** Visible only when MEDIA_LIBRARY_ENABLED is true. */
     requiresMediaLibrary?: boolean;
-    /**
-     * Visible only when this Premium Package is installed (see `ottabase/config.premium.ts`).
-     *
-     * Installed, not licensed: an unlicensed page still renders — with its upsell — because
-     * hiding it would leave the operator no route to the screen that fixes it.
-     */
-    requiresPremiumPackage?: string;
 }
 
-/** A Premium Package's registered admin page (`config/premium.ts`), as a nav item. */
-function premiumPageNavItem(page: PremiumAdminPage): AdminNavItem {
+/** A package's admin page (its client descriptor), as a nav item. */
+function packagePageNavItem(page: AdminPageContribution & { pkg: string }): AdminNavItem {
     return {
         title: page.title,
         description: page.description,
         href: page.path,
-        icon: page.icon,
+        icon: page.icon as AdminNavIcon,
         scope: page.scope,
-        requiresPremiumPackage: page.pkg,
+        requiresPackage: page.pkg,
     };
 }
 
@@ -304,8 +307,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
                 requiresPackage: 'ottaai',
             },
-            // Premium Packages' pages — one entry per registration in `config/premium.ts`.
-            ...PREMIUM_ADMIN_PAGES.map(premiumPageNavItem),
             {
                 // Always listed, even with nothing installed: it is the control plane for paid
                 // add-ons, and an operator handed a license key needs somewhere to put it.
@@ -317,6 +318,18 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         ],
     },
 ];
+
+// Package admin pages, each into the group its descriptor names. A group id that does not
+// exist is a typo in a package, and throws here rather than silently dropping the page.
+for (const page of PACKAGE_ADMIN_PAGES) {
+    const group = ADMIN_NAV_GROUPS.find((candidate) => candidate.id === page.group);
+    if (!group) {
+        throw new Error(
+            `[admin-nav] Package "${page.pkg}" places "${page.path}" in unknown nav group "${page.group}".`,
+        );
+    }
+    group.items.push(packagePageNavItem(page));
+}
 
 export interface AdminNavCapabilities {
     /** System-scoped platform admin — sees the control plane. */
@@ -337,7 +350,6 @@ export function getEnabledAdminNav(caps: AdminNavCapabilities): AdminNavGroup[] 
         items: group.items.filter((item) => {
             if (item.requiresMediaLibrary && !MEDIA_LIBRARY_ENABLED) return false;
             if (item.requiresPackage && !PACKAGES_ENABLED[item.requiresPackage]) return false;
-            if (item.requiresPremiumPackage && !isPremiumPackageInstalled(item.requiresPremiumPackage)) return false;
             const scope = item.scope ?? 'platform';
             if (scope === 'platform' && !caps.isPlatformAdmin) return false;
             if (scope === 'org' && !caps.isOrgAdmin) return false;

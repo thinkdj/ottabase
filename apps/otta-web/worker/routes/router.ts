@@ -7,20 +7,25 @@
 // match priority. Conflicting registrations throw at module load.
 //
 // A handler returns a Response, or null to decline and keep matching. When no
-// route claims a request, handleApiRequest() consults the user-zone
-// handleCustomRoutes (ottabase/config.routes.ts) and finally resolves null so
-// the worker can fall through to shortlinks and static assets.
+// route claims a request, handleApiRequest() resolves null so the worker can
+// fall through to shortlinks and static assets.
+//
+// Core routes (auth, admin, ORM, brand, platform demos) are registered here.
+// Everything a PACKAGE contributes — blog, landing, shortlinks, referrals, AI,
+// the app's own routes, paid add-ons — is mounted from `ottabase/packages.ts`
+// by mountPackages() and mountPremiumPackages() below.
 // ============================================================
 
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
-import { buildBlogRouter } from '@ottabase/ottablog/router';
-import { Router, withHeaders, type Ctx } from '@ottabase/ottarouter';
+import { mountPackages, runHealth } from '@ottabase/kernel';
+import { Router } from '@ottabase/ottarouter';
 import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premium/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { handleCustomRoutes } from '../../ottabase/config.routes';
+import { packages } from '../../ottabase/packages';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { buildCorsHeaders, ctxOf, h, makeApiRouteContext, type ApiRouteContext } from '../lib/api-context';
 import { premium } from '../lib/premium';
 import { handleUnhandledRequestError } from '../lib/http-error-boundary';
 import { getKillSwitchStatus } from '../lib/killswitch';
@@ -64,20 +69,6 @@ import {
     handleAdminRolesList,
 } from './admin-roles';
 import { handleAdminUserById, handleAdminUserSearch, handleAdminUsers } from './admin-users';
-import {
-    handleAiComplete,
-    handleAiCredentialsActivate,
-    handleAiCredentialsCreate,
-    handleAiCredentialsDelete,
-    handleAiCredentialsList,
-    handleAiCredentialsTest,
-    handleAiCredentialsUpdate,
-    handleAiEmbed,
-    handleAiExplain,
-    handleAiProviders,
-    handleAiStatus,
-    handleAiVision,
-} from './ai';
 import { handleAuditLogs } from './audit';
 import {
     handleAuthConfig,
@@ -90,37 +81,6 @@ import {
     handleVerifyEmail,
     handleVerifyEmailResend,
 } from './auth';
-import {
-    handleBlogBlurbCreate,
-    handleBlogBlurbUpdate,
-    handleBlogPhotoJournalCreate,
-    handleBlogPhotoJournalUpdate,
-    handleBlogCategoryBySlug,
-    handleBlogDemoSeed,
-    handleBlogPostBySlug,
-    handleBlogPreviewTokenMint,
-    handleBlogStudioThemeTokens,
-    handleBlogStudioLanguages,
-    handleBlogPostTranslations,
-    handleBlogPostTranslationCreate,
-    handleBlogPostTranslationUpdate,
-    handleBlogPostTranslationDelete,
-    handleBlogPostUnlock,
-    handleBlogPostsList,
-    handleBlogPublishScheduled,
-    handleBlogRelatedPosts,
-    handleBlogRssFeed,
-    handleBlogSeriesBySlug,
-    handleBlogAuthorById,
-    handleBlogExport,
-    handleBlogImport,
-    handleBlogSitemap,
-    handleBlogStudioActivateTheme,
-    handleBlogStudioPluginConfig,
-    handleBlogStudioPluginEnable,
-    handleBlogStudioState,
-    handleBlogTagBySlug,
-} from './blog';
 import { handleBrandApi } from './brand';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
 import { handleCloudflareQueue } from './cloudflare-queue';
@@ -138,111 +98,11 @@ import { handleDemo, handleDemoError } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
-import {
-    handleReferralStats,
-    handleReferralTrack,
-    handleReferralTrackingList,
-    handleReferralUser,
-    handleReferralUsernameUpdate,
-    handleReferralsAnalytics,
-} from './referrals';
-import {
-    handleLandingGet,
-    handleLandingLeadDelete,
-    handleLandingLeadsList,
-    handleLandingLeadUpdate,
-    handleLandingPageCreate,
-    handleLandingPageDelete,
-    handleLandingPagePreview,
-    handleLandingPageUpdate,
-    handleLandingShareImage,
-    handleLandingSiteUpdate,
-} from './landing';
-import {
-    handleShortlinkById,
-    handleShortlinkExplicitGo,
-    handleShortlinksAnalytics,
-    handleShortlinksCreate,
-    handleShortlinksList,
-} from './shortlinks';
 
-/** The context every route handler receives (unchanged across the ottarouter migration). */
-export interface ApiRouteContext {
-    request: Request;
-    env: CloudflareEnv;
-    url: URL;
-    route: string;
-    method: string;
-    withAuthCors: (response: Response) => Response;
-    corsHeaders: Record<string, string>;
-}
-
-type WorkerCtx = Ctx<CloudflareEnv>;
-type ApiHandler = (context: ApiRouteContext) => Promise<Response | null> | Response | null;
-
-function buildCorsHeaders(request: Request, env: CloudflareEnv): Record<string, string> {
-    // Never reflect an arbitrary Origin together with credentials. Doing so lets any site
-    // issue credentialed cross-origin reads (e.g. GET /api/auth/csrf, which would leak the
-    // CSRF token, or GET /api/auth/session, which would leak session data). Only echo the
-    // Origin when it is same-origin, matches the configured AUTH_URL, or is in the
-    // CORS_ALLOWED_ORIGINS allowlist; otherwise omit Access-Control-Allow-Origin so the
-    // browser blocks the cross-origin read.
-    const cfg = env as { AUTH_URL?: string; CORS_ALLOWED_ORIGINS?: string };
-    const requestOrigin = request.headers.get('Origin');
-    const allowedOrigins = new Set<string>();
-    try {
-        allowedOrigins.add(new URL(request.url).origin);
-    } catch {
-        /* ignore */
-    }
-    for (const candidate of [cfg.AUTH_URL, ...String(cfg.CORS_ALLOWED_ORIGINS || '').split(',')]) {
-        const trimmed = (candidate || '').trim();
-        if (!trimmed) continue;
-        try {
-            allowedOrigins.add(new URL(trimmed).origin);
-        } catch {
-            /* ignore malformed configured origin */
-        }
-    }
-    const corsOrigin = requestOrigin && allowedOrigins.has(requestOrigin) ? requestOrigin : null;
-    return corsOrigin
-        ? {
-              'Access-Control-Allow-Origin': corsOrigin,
-              'Access-Control-Allow-Credentials': 'true',
-              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-              'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-              Vary: 'Origin',
-          }
-        : { Vary: 'Origin' };
-}
-
-export function makeApiRouteContext(
-    request: Request,
-    env: CloudflareEnv,
-    url: URL = new URL(request.url),
-): ApiRouteContext {
-    const corsHeaders = buildCorsHeaders(request, env);
-    const route = url.pathname !== '/' && url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
-    return {
-        request,
-        env,
-        url,
-        route,
-        method: request.method,
-        corsHeaders,
-        withAuthCors: (response) => withHeaders(response, corsHeaders),
-    };
-}
-
-const ctxOf = (c: WorkerCtx): ApiRouteContext => makeApiRouteContext(c.req, c.env, c.url);
-
-/** Adapt an `ApiHandler` (takes an `ApiRouteContext`) to an ottarouter handler. */
-const h =
-    (handler: ApiHandler) =>
-    (c: WorkerCtx): Promise<Response | null> | Response | null =>
-        handler(ctxOf(c));
-
-const packages = (c: WorkerCtx) => getOttabaseConfig(c.env).packages;
+// The handler context and its adapters live in ../lib/api-context so package manifests can
+// use them without importing this module. Re-exported for the many handlers that import
+// the type from here.
+export { makeApiRouteContext, type ApiRouteContext };
 
 const TABLE_NAME = /^[a-zA-Z0-9_]+$/;
 
@@ -262,11 +122,23 @@ apiRouter.use('/api', (c, next) => {
 // -------------------------------------------------------
 // Core / system
 // -------------------------------------------------------
+// Liveness: public, and deliberately says nothing about bindings or packages.
 apiRouter.get('/api/health', () =>
     jsonResponse({
         ok: true,
         name: 'otta-web',
         timestamp: Date.now(),
+    }),
+);
+// Readiness: every package's required env and its own probe, for platform admins. The
+// per-check detail names bindings, so it is not public.
+apiRouter.get(
+    '/api/admin/health',
+    h(async (ctx) => {
+        const auth = await requireAdminAccess(ctx, { scope: 'system' });
+        if (auth instanceof Response) return auth;
+        const report = await runHealth(packages, ctx.env);
+        return jsonResponse({ ...report, packages: packages.keys(), timestamp: Date.now() }, report.ok ? 200 : 503);
     }),
 );
 // Platform control-plane status — exposes lockdown/read-only flags, so restrict to platform admins.
@@ -456,127 +328,23 @@ apiRouter.all('/api/ottaorm/*', (c) =>
 );
 
 // -------------------------------------------------------
-// Ottablog package (request-time gate) — the route table is canonical in
-// @ottabase/ottablog/router; handlers stay imported from './blog' so that
-// module remains the seam for tests/mocks and app-specific wiring.
+// Packages (ottabase/packages.ts)
 // -------------------------------------------------------
-apiRouter.mount(
-    '/api/blog',
-    buildBlogRouter<CloudflareEnv>(
-        {
-            handleBlogStudioState,
-            handleBlogStudioActivateTheme,
-            handleBlogStudioPluginEnable,
-            handleBlogStudioPluginConfig,
-            handleBlogPostsList,
-            handleBlogBlurbCreate,
-            handleBlogBlurbUpdate,
-            handleBlogPhotoJournalCreate,
-            handleBlogPhotoJournalUpdate,
-            handleBlogPostBySlug,
-            handleBlogPostUnlock,
-            handleBlogTagBySlug,
-            handleBlogCategoryBySlug,
-            handleBlogSeriesBySlug,
-            handleBlogAuthorById,
-            handleBlogExport,
-            handleBlogImport,
-            handleBlogRelatedPosts,
-            handleBlogRssFeed,
-            handleBlogSitemap,
-            handleBlogPublishScheduled,
-            handleBlogDemoSeed,
-            handleBlogPreviewTokenMint,
-            handleBlogStudioThemeTokens,
-            handleBlogStudioLanguages,
-            handleBlogPostTranslations,
-            handleBlogPostTranslationCreate,
-            handleBlogPostTranslationUpdate,
-            handleBlogPostTranslationDelete,
-        },
-        { makeContext: ctxOf },
-    ),
-    { when: (c) => packages(c).ottablog },
-);
-
-// -------------------------------------------------------
-// Landing site package (request-time gate) — platform-admin editing only;
-// the public site reads the shared D1 directly (apps/otta-landing)
-// -------------------------------------------------------
-const landingRouter = new Router<CloudflareEnv>();
-landingRouter.get('/', h(handleLandingGet));
-landingRouter.put('/site', h(handleLandingSiteUpdate));
-landingRouter.post('/share-image', h(handleLandingShareImage));
-landingRouter.get('/leads', h(handleLandingLeadsList));
-landingRouter.patch('/leads/:id', (c) => handleLandingLeadUpdate(ctxOf(c), c.params.id));
-landingRouter.delete('/leads/:id', (c) => handleLandingLeadDelete(ctxOf(c), c.params.id));
-landingRouter.post('/pages', h(handleLandingPageCreate));
-landingRouter.put('/pages/:id', (c) => handleLandingPageUpdate(ctxOf(c), c.params.id));
-landingRouter.delete('/pages/:id', (c) => handleLandingPageDelete(ctxOf(c), c.params.id));
-landingRouter.post('/pages/:id/preview', (c) => handleLandingPagePreview(ctxOf(c), c.params.id));
-apiRouter.mount('/api/landing', landingRouter, { when: (c) => packages(c).ottalanding });
-
-// -------------------------------------------------------
-// Shortlinks package (request-time gate) — mounted at '/'
-// because the group spans /api/shortlinks/* and /shortlinks/go
-// -------------------------------------------------------
-const shortlinksRouter = new Router<CloudflareEnv>();
-shortlinksRouter.get('/api/shortlinks', h(handleShortlinksList));
-shortlinksRouter.get('/api/shortlinks/analytics', h(handleShortlinksAnalytics));
-shortlinksRouter.post('/api/shortlinks', h(handleShortlinksCreate));
-shortlinksRouter.patch('/api/shortlinks/*', (c) => handleShortlinkById(ctxOf(c), c.params['*'], 'PATCH'));
-shortlinksRouter.delete('/api/shortlinks/*', (c) => handleShortlinkById(ctxOf(c), c.params['*'], 'DELETE'));
-shortlinksRouter.get('/shortlinks/go', h(handleShortlinkExplicitGo));
-apiRouter.mount('/', shortlinksRouter, { when: (c) => packages(c).shortlinks });
-
-// -------------------------------------------------------
-// Referrals package (request-time gate)
-// -------------------------------------------------------
-const referralsRouter = new Router<CloudflareEnv>();
-referralsRouter.get('/stats', h(handleReferralStats));
-referralsRouter.get('/user', h(handleReferralUser));
-referralsRouter.get('/tracking', h(handleReferralTrackingList));
-referralsRouter.get('/analytics', h(handleReferralsAnalytics));
-referralsRouter.post('/track', h(handleReferralTrack));
-referralsRouter.put('/username', h(handleReferralUsernameUpdate));
-apiRouter.mount('/api/referrals', referralsRouter, { when: (c) => packages(c).referrals });
-
-// -------------------------------------------------------
-// AI provisioning / BYOK (@ottabase/ottaai) — request-time gate
-// -------------------------------------------------------
-// Credential CRUD is deliberately NOT exposed through /api/ottaorm: the model is absent
-// from GENERIC_CRUD_ALLOWLIST, and these handlers come from the package's route factory,
-// which owns tenancy stamping, the authorize hook, and the filter/sort deny-list on the
-// secret-union columns.
-const aiRouter = new Router<CloudflareEnv>();
-aiRouter.get('/status', h(handleAiStatus));
-aiRouter.get('/providers', h(handleAiProviders));
-aiRouter.get('/explain', h(handleAiExplain));
-aiRouter.get('/credentials', h(handleAiCredentialsList));
-aiRouter.post('/credentials', h(handleAiCredentialsCreate));
-// Static beats :param in this router, so /credentials/test cannot be shadowed by :id.
-aiRouter.post('/credentials/test', h(handleAiCredentialsTest));
-aiRouter.post('/credentials/:id/activate', (c) => handleAiCredentialsActivate(ctxOf(c), c.params.id));
-aiRouter.patch('/credentials/:id', (c) => handleAiCredentialsUpdate(ctxOf(c), c.params.id));
-aiRouter.delete('/credentials/:id', (c) => handleAiCredentialsDelete(ctxOf(c), c.params.id));
-// Registered with the RAW `Ctx`, not `h(...)`: the inference path needs a real
-// `waitUntil` or the credential-health and attribution writes it defers are cancelled at
-// response — silent data loss, and the one thing the `defer` seam exists to prevent.
-aiRouter.post('/complete', (c) => handleAiComplete(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
-aiRouter.post('/vision', (c) => handleAiVision(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
-aiRouter.post('/embed', (c) => handleAiEmbed(ctxOf(c), (promise) => c.ctx.waitUntil(promise)));
-apiRouter.mount('/api/ai', aiRouter, { when: (c) => packages(c).ottaai });
+// Every free package's routes, from its manifest: blog, landing, shortlinks, referrals, AI,
+// and the app's own. A package is installed when it is in the list, so there is no
+// request-time toggle to check; removing the entry removes the routes.
+mountPackages(apiRouter, { packages });
 
 // -------------------------------------------------------
 // Premium Packages (@ottabase/premium)
 // -------------------------------------------------------
-// Both calls are no-ops when `ottabase/config.premium.ts` registers nothing: no routes,
-// no middleware, no KV reads. An app that sells no add-ons pays nothing for this.
+// Both calls are no-ops when the list holds no premium package: no routes, no middleware,
+// no KV reads. An app that sells no add-ons pays nothing for this.
 //
 // Each package's namespace is mounted behind its own license gate, so an unlicensed
 // package answers 402 instead of serving. The control plane below is separate, and admin-
 // gated, because reading and changing license state is an operator action, not a feature.
-mountPremiumPackages(apiRouter, premium);
+mountPremiumPackages(apiRouter, premium, { packages });
 
 apiRouter.mount(
     '/api/premium',
@@ -608,18 +376,13 @@ apiRouter.onError((err, c) => {
 });
 
 /**
- * Resolve an API request: built-in routes first, then the user-zone custom
- * routes (ottabase/config.routes.ts). Resolves null when nothing claimed the
- * request, so the worker can fall through to shortlinks and static assets.
+ * Resolve an API request. Resolves null when nothing claimed the request, so the worker
+ * can fall through to shortlinks and static assets.
  */
 export async function handleApiRequest(
     request: Request,
     env: CloudflareEnv,
     ctx?: ExecutionContext,
 ): Promise<Response | null> {
-    const response = await apiRouter.handle(request, env, ctx);
-    if (response) {
-        return response;
-    }
-    return handleCustomRoutes(makeApiRouteContext(request, env));
+    return apiRouter.handle(request, env, ctx);
 }

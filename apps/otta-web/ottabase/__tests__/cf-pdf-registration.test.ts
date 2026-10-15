@@ -1,5 +1,9 @@
+// ============================================================
+// The app package's PDF route reaches the router through the kernel mount, with the
+// host adapter wired in: a POST is answered by the cf-pdf handler, any other method
+// declines so the request keeps falling through.
+// ============================================================
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiRouteContext } from '../../worker/routes/router';
 
 const { createCfPdfRequestHandlerMock, pdfHandlerMock } = vi.hoisted(() => {
     const pdfHandler = vi.fn();
@@ -13,20 +17,18 @@ vi.mock('@ottabase/cf-pdf/router', () => ({
     createCfPdfRequestHandler: createCfPdfRequestHandlerMock,
 }));
 
-import { handleCustomRoutes } from '../config.routes';
+import { createPackageRegistry, mountPackages } from '@ottabase/kernel';
+import { Router } from '@ottabase/ottarouter';
+import { appPackage } from '../packages/app';
 
-function makeContext(route: string, method: string): ApiRouteContext {
-    const request = new Request(`https://app.test${route}`, { method });
-    return {
-        request,
-        env: {} as ApiRouteContext['env'],
-        url: new URL(request.url),
-        route,
-        method,
-        withAuthCors: (response) => response,
-        corsHeaders: {},
-    };
+function app() {
+    const router = new Router<CloudflareEnv>();
+    const packages = createPackageRegistry<CloudflareEnv>({ packages: [appPackage] });
+    const mounted = mountPackages(router, { packages });
+    return { router, mounted };
 }
+
+const env = {} as CloudflareEnv;
 
 describe('Cloudflare PDF route registration', () => {
     beforeEach(() => {
@@ -34,17 +36,19 @@ describe('Cloudflare PDF route registration', () => {
         pdfHandlerMock.mockResolvedValue(new Response('pdf', { status: 200 }));
     });
 
-    it('dispatches POST /api/cf-pdf through the normal custom-route path', async () => {
-        const context = makeContext('/api/cf-pdf', 'POST');
-        const response = await handleCustomRoutes(context);
+    it('is mounted from the app manifest', () => {
+        expect(app().mounted).toContain('/api/cf-pdf');
+    });
 
+    it('dispatches POST /api/cf-pdf to the host-configured handler', async () => {
+        const request = new Request('https://app.test/api/cf-pdf', { method: 'POST' });
+        const response = await app().router.handle(request, env);
         expect(response?.status).toBe(200);
-        expect(pdfHandlerMock).toHaveBeenCalledWith(context.request, context.env);
+        expect(pdfHandlerMock).toHaveBeenCalledWith(request, env);
     });
 
     it('does not claim unsupported methods', async () => {
-        const response = await handleCustomRoutes(makeContext('/api/cf-pdf', 'GET'));
-
+        const response = await app().router.handle(new Request('https://app.test/api/cf-pdf'), env);
         expect(response).toBeNull();
         expect(pdfHandlerMock).not.toHaveBeenCalled();
     });

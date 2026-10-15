@@ -90,6 +90,6 @@ export const REFERRALS_CONFIG = appConfig.features.referrals;
  */
 export const OTTAAI_CONFIG = baseCfg.features.ottaai;
 
-// ── Package toggles (SSOT from ottabase.config.ts) ──
-export const PACKAGES_ENABLED = baseCfg.packages;
+// Which packages are installed is not config: see ottabase/packages.ts (server) and
+// src/ottabase/config/packages.ts (client), which derive PACKAGES_ENABLED from the one list.
 export const MEDIA_LIBRARY_ENABLED = true; // Media is a core table, always available

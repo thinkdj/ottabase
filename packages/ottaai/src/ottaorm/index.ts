@@ -4,16 +4,11 @@
 // PLANE: MANAGEMENT. Model, table, RLS policy factory, ORM store, route
 // factory, rotation job, and the composing factory.
 //
-// Copy-paste registration (order matters — see the comments in factory.ts):
+// Registration is one manifest (`@ottabase/ottaai/manifest`): table, model and the RLS
+// policy, with the STRATEGY passed once and shared with the resolver:
 //
-//     // ottabase/config.migrations.ts
-//     import { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
-//     ottaai: { tables: { aiProviderCredentialsTable }, migrations: [] },
-//
-//     // worker/lib/db-utils.ts  (inside registerAppModels)
-//     registerModels([...others, AiProviderCredential]);
-//     initRLS();
-//     registerPolicy(createCredentialPolicy({ strategy: 'user-then-org' }));
+//     // ottabase/packages.ts
+//     createOttaaiPackage({ strategy: 'user-then-org', routes })
 //
 //     // worker/lib/ai.ts  (per request)
 //     const ai = createAiProvisioningWithStorage({ ... });

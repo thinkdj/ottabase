@@ -39,7 +39,7 @@ export interface CreateAiProvisioningWithStorageOptions<HostContext> extends Omi
 }
 
 export interface AiProvisioningWithStorage<HostContext> extends AiProvisioning<HostContext> {
-    /** Spread into the app's schema bucket (`config.migrations.ts` PACKAGE_REGISTRY). */
+    /** The table, for a host that composes its own manifest instead of using `@ottabase/ottaai/manifest`. */
     readonly tables: { aiProviderCredentialsTable: typeof aiProviderCredentialsTable };
     /** Register with `registerModels([...])`. */
     readonly models: readonly [typeof AiProviderCredential];

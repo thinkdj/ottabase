@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../../../ottabase/registry', () => ({
+    packages: { has: () => true },
+}));
+
 vi.mock('../../lib/admin-guard', () => ({
     requireAdminAccess: vi.fn(),
 }));

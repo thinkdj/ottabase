@@ -9,13 +9,8 @@ import { globalKey } from '@ottabase/cf/cache-keys';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createQueueHandler, createRegistry, dispatch, type QueuedJob } from '@ottabase/queue';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
-import {
-    batchTaskHandler,
-    generateReportHandler,
-    processOrderHandler,
-    sendEmailHandler,
-    syncDataHandler,
-} from './handlers';
+import type { JobHandler } from '@ottabase/queue';
+import { packages } from '../registry';
 
 // KV keys for queue stats (using cache key builder for consistency)
 const STATS_KEY = globalKey('queue', 'stats');
@@ -421,21 +416,23 @@ export async function purgeDLQ(env: CloudflareEnv): Promise<number> {
  * Create the queue handler registry
  * Register all your job handlers here
  */
+/**
+ * One handler per job type, from the package manifests (ottabase/packages.ts). A job type
+ * no package claims is acked with a warning rather than retried forever.
+ */
 export function createAppQueueRegistry() {
-    return createRegistry<CloudflareEnv>()
-        .register('send-email', sendEmailHandler)
-        .register('process-order', processOrderHandler)
-        .register('generate-report', generateReportHandler)
-        .register('sync-data', syncDataHandler)
-        .register('batch-task', batchTaskHandler)
-        .setDefault(async (job, ctx) => {
-            // Default handler for unknown job types
-            console.warn(`[Queue] Unknown job type: ${job.type}`);
-            console.log(`  Payload: ${JSON.stringify(job.payload)}`);
-            console.log(`  Attempt: ${ctx.attempt}`);
-            // Ack to prevent infinite retries
-            ctx.ack();
-        });
+    const registry = createRegistry<CloudflareEnv>();
+    for (const [type, handler] of Object.entries(packages.queue())) {
+        registry.register(type, handler as JobHandler<unknown, CloudflareEnv>);
+    }
+    return registry.setDefault(async (job, ctx) => {
+        // Default handler for unknown job types
+        console.warn(`[Queue] Unknown job type: ${job.type}`);
+        console.log(`  Payload: ${JSON.stringify(job.payload)}`);
+        console.log(`  Attempt: ${ctx.attempt}`);
+        // Ack to prevent infinite retries
+        ctx.ack();
+    });
 }
 
 /**
@@ -526,10 +523,17 @@ export function createAppQueueHandler() {
 }
 
 /**
- * Queue handler for Cloudflare Workers
- * Export this in your worker's default export
+ * Queue handler for Cloudflare Workers. Export this in your worker's default export.
+ *
+ * Built on first use, not at module load: the package manifests import this module for
+ * `incrementDispatchStats`, and the registry imports the manifests, so a registry built at
+ * load time would read the package list before it exists.
  */
-export const queueHandler = createAppQueueHandler();
+let appQueueHandler: ReturnType<typeof createAppQueueHandler> | null = null;
+export const queueHandler: ReturnType<typeof createAppQueueHandler> = (batch, env) => {
+    appQueueHandler ??= createAppQueueHandler();
+    return appQueueHandler(batch, env);
+};
 
 // Re-export handlers for direct use if needed
 export * from './handlers';

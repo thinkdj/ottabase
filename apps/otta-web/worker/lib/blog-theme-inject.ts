@@ -34,7 +34,6 @@ export async function injectBlogThemeCss(response: Response, request: Request, e
 
     try {
         const config = getOttabaseConfig(env);
-        if (!config.packages.ottablog) return response;
 
         const url = new URL(request.url);
         if (!isBlogDocumentPath(url.pathname)) return response;

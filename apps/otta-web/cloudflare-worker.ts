@@ -2,6 +2,7 @@ import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import type { QueuedJob } from '@ottabase/queue';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { handleAppScheduled } from './ottabase/cron';
+import { packages } from './ottabase/packages';
 import { queueHandler } from './ottabase/queue';
 import {
     handleBootstrapRoute,
@@ -102,16 +103,19 @@ export default {
                 ensureDbConnection(env);
             }
 
-            // API routes (built-ins, then user-zone custom routes) — null falls through
+            // API routes (core routes, then every package's) — null falls through
             const apiResponse = await handleApiRequest(request, env, ctx);
 
             if (apiResponse) {
                 return apiResponse;
             }
 
-            const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
-            if (shortlinkFallbackResponse) {
-                return shortlinkFallbackResponse;
+            // Bare short codes (/abc) resolve only when the shortlinks package is installed.
+            if (packages.has('shortlinks')) {
+                const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
+                if (shortlinkFallbackResponse) {
+                    return shortlinkFallbackResponse;
+                }
             }
 
             if (!env.OBCF_ASSETS) {
@@ -132,14 +136,16 @@ export default {
 
             if (isHtmlRequest(request) && response.ok) {
                 response = await injectBrandCriticalCSS(response, request, env);
-                // Blog detail navigations additionally get per-post SEO meta
-                // (title, description, canonical, OG/Twitter, JSON-LD) so
-                // crawlers and unfurlers see the article, not the SPA shell.
-                response = await injectBlogPostSeo(response, request, env);
-                // Blog documents also get the active blog theme's scoped token
-                // CSS ([data-brand-scope="blog"]) so the blog room first-paints
-                // themed, matching what the client applies after hydration.
-                response = await injectBlogThemeCss(response, request, env);
+                if (packages.has('ottablog')) {
+                    // Blog detail navigations additionally get per-post SEO meta
+                    // (title, description, canonical, OG/Twitter, JSON-LD) so
+                    // crawlers and unfurlers see the article, not the SPA shell.
+                    response = await injectBlogPostSeo(response, request, env);
+                    // Blog documents also get the active blog theme's scoped token
+                    // CSS ([data-brand-scope="blog"]) so the blog room first-paints
+                    // themed, matching what the client applies after hydration.
+                    response = await injectBlogThemeCss(response, request, env);
+                }
             }
 
             return response;

@@ -5,10 +5,8 @@
 // Precedence: ENV VAR >> this file >> default
 // Secrets (AUTH_SECRET, OAuth keys, API keys) = env only, never here.
 //
-// PREMIUM / CUSTOM PACKAGES:
-//   1. Register tables in  ottabase/config.migrations.ts
-//   2. Register routes in  ottabase/config.routes.ts
-//   3. Add the key to `customPackages` below.
+// PACKAGES (free or premium) are not configured here: list their manifests in
+// ottabase/packages.ts. See packages/kernel/README.md.
 // ============================================================
 
 import { defineOttabaseConfig } from '@ottabase/config';
@@ -34,33 +32,12 @@ export default defineOttabaseConfig({
         prefix: 'ottabase',
     },
 
-    // ── Built-in Package Toggles ──────────────────────────────
-    // Set a package to `false` (or remove it) to exclude its
-    // database tables and API routes from your app.
-    // brandEngine is core — always enabled, not configurable.
-    packages: {
-        comments: true,
-        ottablog: true,
-        ottalanding: true,
-        shortlinks: true,
-        referrals: true,
-        // AI provisioning / BYOK. Dormant until AI_CREDENTIAL_SECRET is set — the routes,
-        // the table and the settings UI all stay off, so the app boots and serves fine
-        // without any AI configuration at all.
-        ottaai: true,
-    },
-
-    // ── Custom / Premium Packages ─────────────────────────────
-    // After installing a premium package:
-    //   1. Register tables in  ottabase/config.migrations.ts
-    //   2. Register routes in  ottabase/config.routes.ts
-    //   3. Add the key here:
-    //
-    // Example:
-    //   customPackages: {
-    //     myPremiumFeature: { tables: { premiumTable } },
-    //   },
-    customPackages: {},
+    // ── Packages ──────────────────────────────────────────────
+    // Which packages are installed is NOT config: it is the list of manifests in
+    // ottabase/packages.ts (server) mirrored by src/ottabase/config/packages.ts (client).
+    // Remove a package by removing its entry there. Structural dials a package reads at
+    // boot (features.ottablog.mode, features.ottaai.strategy) live here, in the file, and
+    // deliberately have no env override: they decide migrations and RLS policies.
 
     // ── Feature Configuration ─────────────────────────────────
     features: {

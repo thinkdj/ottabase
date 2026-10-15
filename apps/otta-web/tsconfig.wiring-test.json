@@ -1,12 +1,12 @@
 {
     // Client/server WIRING tests: they assert the browser adapters (src/ottabase/config/*) match the
-    // server manifests (ottabase/config.*.ts), so they import both sides on purpose. Only these
+    // server manifests (ottabase/packages.ts), so they import both sides on purpose. Only these
     // files get DOM + Workers types together; the Worker programs stay DOM-free so a browser global
     // in edge code is still a type error.
     "extends": "./tsconfig.worker-test.json",
     "compilerOptions": {
         "lib": ["ES2022", "DOM", "DOM.Iterable"]
     },
-    "include": ["ottabase/__tests__/premium-registration.test.ts", "cloudflare-env.d.ts"],
+    "include": ["ottabase/__tests__/packages-registration.test.ts", "cloudflare-env.d.ts"],
     "exclude": ["node_modules", "dist"]
 }

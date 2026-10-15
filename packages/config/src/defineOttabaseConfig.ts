@@ -1,12 +1,12 @@
 // ============================================================
 // defineOttabaseConfig — Validates and normalizes user config
 // ============================================================
-// Single source of truth for: packages, features, migrations, routes.
+// Single source of truth for app identity, feature dials, email and UI settings.
+// Which PACKAGES an app installs is not config: it is the list in `ottabase/packages.ts`.
 // ============================================================
 
 import type {
     AuthBehaviorConfig,
-    BuiltInPackageName,
     CrudHubFeatureConfig,
     OttabaseConfig,
     OttabaseConfigInput,
@@ -17,7 +17,7 @@ import type {
     ReferralsFeatureConfig,
     SpotlightFeatureConfig,
 } from './ottabase-types';
-import { BUILT_IN_PACKAGES, DEFAULT_REFERRAL_PARAM, normalizeReferralParam } from './ottabase-types';
+import { DEFAULT_REFERRAL_PARAM, normalizeReferralParam } from './ottabase-types';
 
 const DEFAULT_REFERRALS: ReferralsFeatureConfig = {
     enabled: false,
@@ -118,29 +118,8 @@ export function normalizeOttaaiStrategy(value: unknown): OttaaiFeatureConfig['st
         : DEFAULT_OTTAAI.strategy;
 }
 
-const DEFAULT_PACKAGES: Record<BuiltInPackageName, boolean> = {
-    comments: true,
-    ottablog: true,
-    // Dormant by default: a deployment with no keys at all must boot, serve, and simply
-    // not show the AI affordances. Enable it explicitly in ottabase.config.ts.
-    ottaai: false,
-    ottalanding: true,
-    shortlinks: true,
-    referrals: true,
-};
-
 /** Known top-level keys. Unrecognised keys trigger a console warning. */
-const KNOWN_KEYS = new Set([
-    'appId',
-    'appName',
-    'meta',
-    'storage',
-    'packages',
-    'customPackages',
-    'features',
-    'email',
-    'ui',
-]);
+const KNOWN_KEYS = new Set(['appId', 'appName', 'meta', 'storage', 'features', 'email', 'ui']);
 
 /**
  * Validates and normalizes user config. Throws on missing required fields.
@@ -158,18 +137,14 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
     // Warn on unknown keys
     const inputKeys = Object.keys(input);
     for (const key of inputKeys) {
+        if (key === 'packages' || key === 'customPackages') {
+            console.warn(
+                `[ottabase.config] "${key}" is no longer config: a package is installed by listing its manifest in ottabase/packages.ts.`,
+            );
+            continue;
+        }
         if (!KNOWN_KEYS.has(key)) {
             console.warn(`[ottabase.config] Unrecognised key "${key}" — did you mean something else?`);
-        }
-    }
-
-    // Merge packages: user overrides on top of defaults
-    const packages: Record<BuiltInPackageName, boolean> = { ...DEFAULT_PACKAGES };
-    if (input.packages && typeof input.packages === 'object') {
-        for (const pkg of BUILT_IN_PACKAGES) {
-            if (input.packages[pkg] !== undefined) {
-                packages[pkg] = Boolean(input.packages[pkg]);
-            }
         }
     }
 
@@ -241,8 +216,6 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
         storage: {
             prefix: input.storage?.prefix ?? 'ottabase',
         },
-        packages,
-        customPackages: input.customPackages ?? {},
         features,
         email: {
             from: input.email?.from ?? 'noreply@example.com',
@@ -258,18 +231,4 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
     };
 
     return config;
-}
-
-/**
- * Check if a built-in package is enabled.
- */
-export function isPackageEnabled(config: OttabaseConfig, packageName: BuiltInPackageName): boolean {
-    return config.packages[packageName] === true;
-}
-
-/**
- * Check if a custom package is registered.
- */
-export function isCustomPackageEnabled(config: OttabaseConfig, packageName: string): boolean {
-    return packageName in config.customPackages && !!config.customPackages[packageName];
 }

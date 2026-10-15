@@ -246,10 +246,6 @@ export async function handleShortlinkExplicitGo(context: ShortlinkContext): Prom
 export async function handleShortlinkFallback(context: ShortlinkContext): Promise<Response | null> {
     const { env, request, url } = context;
 
-    if (!getOttabaseConfig(env).packages.shortlinks) {
-        return null;
-    }
-
     if (
         !env.OBCF_D1 ||
         url.pathname.startsWith('/api/') ||

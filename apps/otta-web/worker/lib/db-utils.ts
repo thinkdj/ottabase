@@ -1,30 +1,12 @@
-import { BrandKit, LayoutRouteMapping, LayoutTemplate, MenuSlotAssignment } from '@ottabase/brand-engine/persistence';
-import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { AiProviderCredential, createCredentialPolicy } from '@ottabase/ottaai/ottaorm';
-import {
-    OttablogPlugin,
-    OttablogTheme,
-    OttablogSettings,
-    PostTranslation,
-    Post,
-    PostCategory,
-    PostCategoryLink,
-    PostSeries,
-    PostTag,
-    PostTagLink,
-    PostVersion,
-} from '@ottabase/ottablog';
 import {
     clearConnection,
     configureOttaORM,
     hasConnection,
     initRLS,
-    type ModelRLSConfig,
     registerConnection,
     registerModels,
     registerPolicy,
-    RLSPolicies,
 } from '@ottabase/ottaorm';
 import {
     Account,
@@ -39,14 +21,9 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
-import { LandingLead, LandingPage, LandingSite } from '@ottabase/ottalanding';
-import { ReferralTracking } from '@ottabase/referrals';
-import { Shortlink } from '@ottabase/shortlinks';
 import { errorResponse } from '@ottabase/utils/http-errors';
-import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { Todo } from '../../ottabase/models/Todo';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
-import { getPremiumPackageModels, premium } from './premium';
+import { packages } from '../../ottabase/registry';
 import { readJson } from './utils';
 
 let initializedD1Binding: CloudflareEnv['OBCF_D1'] | null = null;
@@ -97,9 +74,13 @@ export async function checkMigrationAuth(
     return providedSecret === env.MIGRATION_SECRET;
 }
 
-function registerAppModels(env: CloudflareEnv): void {
-    const config = getOttabaseConfig(env);
-    const packages = config.packages;
+/**
+ * Core models first (the ORM needs them before anything else), then every model the
+ * installed packages contribute (ottabase/packages.ts). Premium models are registered
+ * regardless of license state: registration only teaches the ORM about a table, every paid
+ * route runs its own gate, and generic CRUD refuses them by default (GENERIC_CRUD_ALLOWLIST).
+ */
+function registerAppModels(): void {
     const coreModels = [
         Account,
         Media,
@@ -113,102 +94,16 @@ function registerAppModels(env: CloudflareEnv): void {
         UserGroup,
         UserGroupMember,
     ];
-    const ottablogModels = packages.ottablog
-        ? [
-              Post,
-              PostTag,
-              PostTagLink,
-              PostCategoryLink,
-              PostCategory,
-              PostSeries,
-              PostVersion,
-              OttablogPlugin,
-              OttablogTheme,
-              OttablogSettings,
-              PostTranslation,
-          ]
-        : [];
-    const packageModels = [
-        ...(packages.comments ? [Comment, CommentReaction] : []),
-        ...(packages.ottalanding ? [LandingSite, LandingPage, LandingLead] : []),
-        ...(packages.shortlinks ? [Shortlink] : []),
-        ...(packages.referrals ? [ReferralTracking] : []),
-        ...(packages.ottaai ? [AiProviderCredential] : []),
-    ];
-    // Menu, MenuItem: use /api/brand/menus (cache-invalidating CRUD), not OttaORM
-    const brandModels = [BrandKit, LayoutTemplate, LayoutRouteMapping, MenuSlotAssignment];
-    const appModels = [Todo];
-    // Premium Packages (ottabase/config.premium.ts). Registered regardless of license state:
-    // registration only teaches the ORM about a table, and every paid route runs its own
-    // gate — generic CRUD refuses these models by default (GENERIC_CRUD_ALLOWLIST).
-    const premiumModels = getPremiumPackageModels() as typeof appModels;
-    const premiumPolicies = premium.policies();
 
     registerPolicy(mediaLibraryPolicy);
-    registerModels([
-        ...coreModels,
-        ...ottablogModels,
-        ...packageModels,
-        ...brandModels,
-        ...appModels,
-        ...premiumModels,
-    ]);
+    registerModels([...coreModels, ...packages.models()]);
     initRLS();
 
-    // Premium manifests may contribute tenant policies alongside their models. They
-    // are registered after initRLS so the package's explicit policy wins over a
-    // built-in policy with the same model name.
-    for (const policy of premiumPolicies) registerPolicy(policy as ModelRLSConfig);
-
-    // Landing-site content (and the form entries it collects) is app-global and platform-owned,
-    // like brand data. It is read and edited through /api/landing (platform-admin gated) and
-    // generic CRUD default-denies it; this policy is defense in depth should either change.
-    if (packages.ottalanding) {
-        for (const model of ['landing_sites', 'landing_pages', 'landing_leads']) {
-            registerPolicy({
-                model,
-                policy: { ...RLSPolicies.AppScoped(), requirePlatformAdmin: true },
-                contextFields: ['appId'],
-                auditEnabled: true,
-            });
-        }
-    }
-
-    // AI provider credentials — registered AFTER initRLS() for the same reason as the
-    // ottablog overrides below: the RLS registry is last-write-wins, so a policy registered
-    // before initRLS() would be silently replaced by the built-ins if the name ever collided.
-    //
-    // The STRATEGY here MUST match the one passed to createAiProvisioningWithStorage
-    // (worker/lib/ai.ts) — both read `config.features.ottaai.strategy`, which is what makes
-    // the match structural rather than a comment in two files. Mismatch them and tenants
-    // manage one set of rows while their calls use another, with NO error.
-    if (packages.ottaai) {
-        registerPolicy(createCredentialPolicy({ strategy: config.features.ottaai.strategy }));
-    }
-
-    // Org-mode blogs: taxonomy and studio state become tenant data, not app-global.
-    // Registered AFTER initRLS so these overrides win (the RLS registry is last-write-wins).
-    // Platform mode (default) keeps the built-in AppScoped policies untouched.
-    // RLS applies on the generic-CRUD path only; the public blog endpoints read published
-    // content directly through models and stay public in both modes.
-    if (packages.ottablog && config.features.ottablog.mode === 'org') {
-        for (const model of [
-            'categories',
-            'post_tags',
-            'series',
-            'ottablog_themes',
-            'ottablog_plugins',
-            'ottablog_settings',
-            'post_translations',
-        ]) {
-            registerPolicy({
-                model,
-                policy: RLSPolicies.TenantScoped(false),
-                contextFields: ['organizationId', 'appId'],
-                auditEnabled: true,
-            });
-        }
-    }
+    // Package policies are registered AFTER initRLS(): the RLS registry is last-write-wins,
+    // so a policy registered before it would be silently replaced by a built-in with the
+    // same model name. This is where org-mode blog overrides, the AI credential policy and
+    // the landing-site policies land, each declared by its own manifest.
+    for (const policy of packages.policies()) registerPolicy(policy);
 }
 
 export function ensureDbConnection(env: CloudflareEnv): void {
@@ -232,7 +127,7 @@ export function ensureDbConnection(env: CloudflareEnv): void {
         }
 
         registerConnection('default', createD1Driver(env.OBCF_D1));
-        registerAppModels(env);
+        registerAppModels();
 
         initializedD1Binding = env.OBCF_D1;
         dbConnectionReady = true;

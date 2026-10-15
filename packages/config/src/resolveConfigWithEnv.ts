@@ -5,24 +5,10 @@
 // Secrets (AUTH_SECRET, OAuth keys, API keys) must come from env only.
 // ============================================================
 
-import {
-    normalizeOttaaiMode,
-    normalizeOttaaiStrategy,
-    normalizeOttablogMode,
-    normalizeRateLimit,
-} from './defineOttabaseConfig';
+import { normalizeOttaaiMode, normalizeRateLimit } from './defineOttabaseConfig';
 import { ENV_KEYS } from './env-keys';
-import type { BuiltInPackageName, OttabaseConfig } from './ottabase-types';
-import { BUILT_IN_PACKAGES, normalizeReferralParam } from './ottabase-types';
-
-const PACKAGE_ENV_KEYS: Record<BuiltInPackageName, string> = {
-    comments: ENV_KEYS.OTTABASE_PKG_COMMENTS,
-    ottablog: ENV_KEYS.OTTABASE_PKG_OTTABLOG,
-    ottaai: ENV_KEYS.OTTABASE_PKG_OTTAAI,
-    ottalanding: ENV_KEYS.OTTABASE_PKG_OTTALANDING,
-    shortlinks: ENV_KEYS.OTTABASE_PKG_SHORTLINKS,
-    referrals: ENV_KEYS.OTTABASE_PKG_REFERRALS,
-};
+import type { OttabaseConfig } from './ottabase-types';
+import { normalizeReferralParam } from './ottabase-types';
 
 /** Env-like object (Cloudflare env, process.env, etc.). */
 export type EnvLike = object;
@@ -56,18 +42,10 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
     const appId = str(env, ENV_KEYS.APP_ID) ?? config.appId;
     const appName = str(env, ENV_KEYS.APP_NAME) ?? config.appName;
 
-    // Merge package toggles: ENV overrides config (OTTABASE_PKG_OTTABLOG, etc.)
-    const packages = { ...config.packages };
-    for (const pkg of BUILT_IN_PACKAGES) {
-        const v = bool(env, PACKAGE_ENV_KEYS[pkg]);
-        if (v !== undefined) packages[pkg] = v;
-    }
-
     return {
         ...config,
         appId,
         appName,
-        packages,
         meta: {
             ...config.meta,
             description: str(env, ENV_KEYS.APP_DESCRIPTION) ?? config.meta.description,
@@ -115,14 +93,12 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                     bool(env, 'AUTH_DISABLE_CREDENTIALS') ?? config.features.authBehavior.disableCredentials,
                 verbose: bool(env, 'AUTH_VERBOSE') ?? config.features.authBehavior.verbose,
             },
-            ottablog: {
-                mode: normalizeOttablogMode(str(env, ENV_KEYS.OTTABLOG_MODE) ?? config.features.ottablog.mode),
-            },
+            // Structural (migrations, policies): the config FILE decides, never an env var.
+            ottablog: config.features.ottablog,
             ottaai: {
                 mode: normalizeOttaaiMode(str(env, ENV_KEYS.OTTAAI_MODE) ?? config.features.ottaai.mode),
-                strategy: normalizeOttaaiStrategy(
-                    str(env, ENV_KEYS.OTTAAI_STRATEGY) ?? config.features.ottaai.strategy,
-                ),
+                // Structural (shapes the credentials RLS policy): the config FILE decides.
+                strategy: config.features.ottaai.strategy,
                 appScope:
                     (str(env, ENV_KEYS.OTTAAI_APP_SCOPE) ?? config.features.ottaai.appScope) === 'wildcard'
                         ? 'wildcard'

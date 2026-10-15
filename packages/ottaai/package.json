@@ -16,6 +16,10 @@
             "types": "./src/ottaorm/index.ts",
             "default": "./src/ottaorm/index.ts"
         },
+        "./manifest": {
+            "types": "./src/manifest.ts",
+            "default": "./src/manifest.ts"
+        },
         "./schema": {
             "types": "./src/schema.ts",
             "default": "./src/schema.ts"
@@ -41,6 +45,7 @@
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
+        "@ottabase/kernel": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*"

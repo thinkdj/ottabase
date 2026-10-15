@@ -31,3 +31,4 @@ export {
     leadsToCsv,
 } from './leads';
 export type { LeadData, LeadInput, LeadKind } from './leads';
+export { createOttalandingPackage, OTTALANDING_PACKAGE_KEY, type OttalandingPackageOptions } from './manifest';

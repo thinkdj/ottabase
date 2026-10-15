@@ -203,14 +203,15 @@ vi.mock('../shortlinks', () => ({
     handleShortlinksList: handlerMock('handleShortlinksList'),
 }));
 
-vi.mock('../../../ottabase/config.routes', () => ({
-    handleCustomRoutes: vi.fn(async () => null),
+vi.mock('../media-library', () => ({
+    handleMediaLibraryPurge: handlerMock('handleMediaLibraryPurge'),
 }));
 
 vi.mock('../../../ottabase/config.loader', () => ({
     getOttabaseConfig: vi.fn(() => ({
         appId: 'otta-web',
-        packages: { ottablog: true, shortlinks: true, referrals: true },
+        storage: { prefix: 'ottabase' },
+        features: { ottablog: { mode: 'platform' }, ottaai: { strategy: 'user-then-org' } },
     })),
 }));
 
@@ -224,7 +225,7 @@ vi.mock('@ottabase/analytics/server', () => ({
 
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { getOttabaseConfig } from '../../../ottabase/config.loader';
-import { handleCustomRoutes } from '../../../ottabase/config.routes';
+import { handleMediaLibraryPurge } from '../media-library';
 import { handleAdminAiConfig } from '../admin-ai';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from '../admin-cron';
 import {
@@ -461,7 +462,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleShortlinksCreate,
     handleShortlinksList,
     handleAnalyticsTrack,
-    handleCustomRoutes,
+    handleMediaLibraryPurge,
 } as any;
 
 function expectNoHandlersCalled(except: string[] = []) {
@@ -471,23 +472,18 @@ function expectNoHandlersCalled(except: string[] = []) {
     }
 }
 
-const GATES_ON = {
+const APP_CONFIG = {
     appId: 'otta-web',
-    packages: { ottablog: true, shortlinks: true, referrals: true },
-};
-
-const GATES_OFF = {
-    appId: 'otta-web',
-    packages: { ottablog: false, shortlinks: false, referrals: false },
+    storage: { prefix: 'ottabase' },
+    features: { ottablog: { mode: 'platform' }, ottaai: { strategy: 'user-then-org' } },
 };
 
 beforeEach(() => {
     vi.clearAllMocks();
     // Re-establish defaults every test so per-test overrides never leak.
-    vi.mocked(getOttabaseConfig).mockImplementation(() => GATES_ON as any);
+    vi.mocked(getOttabaseConfig).mockImplementation(() => APP_CONFIG as any);
     vi.mocked(handleBrandApi).mockImplementation(async () => null as any);
     vi.mocked(handleCronTask).mockImplementation(async () => null as any);
-    vi.mocked(handleCustomRoutes).mockImplementation(async () => null as any);
 });
 
 describe('router dispatch parity', () => {
@@ -650,7 +646,7 @@ describe('router dispatch parity', () => {
         });
     });
 
-    describe('blog (gate on)', () => {
+    describe('blog (mounted from its manifest)', () => {
         it('POST /api/blog/blurbs dispatches to blurb creation', async () => {
             const { response } = await dispatch('POST', '/api/blog/blurbs');
             expect(handleBlogBlurbCreate).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
@@ -734,31 +730,7 @@ describe('router dispatch parity', () => {
         });
     });
 
-    describe('package gates off', () => {
-        beforeEach(() => {
-            vi.mocked(getOttabaseConfig).mockImplementation(() => GATES_OFF as any);
-        });
-
-        it('GET /api/blog/posts matches nothing when ottablog is disabled', async () => {
-            const { response } = await dispatch('GET', '/api/blog/posts');
-            expect(response).toBeNull();
-            expect(handleBlogPostsList).not.toHaveBeenCalled();
-        });
-
-        it('GET /api/shortlinks matches nothing when shortlinks is disabled', async () => {
-            const { response } = await dispatch('GET', '/api/shortlinks');
-            expect(response).toBeNull();
-            expect(handleShortlinksList).not.toHaveBeenCalled();
-        });
-
-        it('PATCH /api/shortlinks/abc matches nothing when shortlinks is disabled', async () => {
-            const { response } = await dispatch('PATCH', '/api/shortlinks/abc');
-            expect(response).toBeNull();
-            expect(handleShortlinkById).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('shortlinks (gate on)', () => {
+    describe('shortlinks (mounted from its manifest)', () => {
         it('PATCH /api/shortlinks/abc dispatches with id and method literal', async () => {
             const { response } = await dispatch('PATCH', '/api/shortlinks/abc');
             expect(handleShortlinkById).toHaveBeenCalledWith(
@@ -786,7 +758,7 @@ describe('router dispatch parity', () => {
         });
     });
 
-    describe('referrals (gate on)', () => {
+    describe('referrals (mounted from its manifest)', () => {
         it('PUT /api/referrals/username dispatches to the username update handler', async () => {
             const { response } = await dispatch('PUT', '/api/referrals/username');
             expect(handleReferralUsernameUpdate).toHaveBeenCalledWith(expect.objectContaining({ method: 'PUT' }));
@@ -968,19 +940,17 @@ describe('router dispatch parity', () => {
         });
     });
 
-    describe('custom routes and fall-through', () => {
-        it('unmatched GET /api/nope returns null after consulting custom routes', async () => {
-            const { response, context } = await dispatch('GET', '/api/nope');
+    describe('app package routes and fall-through', () => {
+        it('unmatched GET /api/nope returns null so the worker can fall through', async () => {
+            const { response } = await dispatch('GET', '/api/nope');
             expect(response).toBeNull();
-            expect(handleCustomRoutes).toHaveBeenCalledTimes(1);
-            expect(vi.mocked(handleCustomRoutes).mock.calls[0][0].request).toBe(context.request);
+            expectNoHandlersCalled();
         });
 
-        it('a Response from custom routes is returned (DELETE /api/medialibrary/m1/purge)', async () => {
-            vi.mocked(handleCustomRoutes).mockResolvedValueOnce(new Response('handleCustomRoutes'));
+        it('DELETE /api/medialibrary/m1/purge dispatches to the app package route with the id', async () => {
             const { response } = await dispatch('DELETE', '/api/medialibrary/m1/purge');
-            expect(handleCustomRoutes).toHaveBeenCalledWith(expect.objectContaining({ method: 'DELETE' }));
-            expect(await response!.text()).toBe('handleCustomRoutes');
+            expect(handleMediaLibraryPurge).toHaveBeenCalledWith(expect.objectContaining({ method: 'DELETE' }), 'm1');
+            expect(await response!.text()).toBe('handleMediaLibraryPurge');
         });
 
         it('GET / returns null', async () => {

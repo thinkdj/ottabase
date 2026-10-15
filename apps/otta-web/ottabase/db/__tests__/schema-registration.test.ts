@@ -4,11 +4,11 @@
 // debug the wrong layer.
 //
 // These assertions are cheap and they are the only thing standing between
-// "I added the table to PACKAGE_REGISTRY" and "the table actually exists in D1".
+// "I listed the package in ottabase/packages.ts" and "the table actually exists in D1".
 // ============================================================
 
 import { describe, expect, it } from 'vitest';
-import { getEnabledPackageTables } from '../../config.migrations';
+import { packages } from '../../packages';
 import { getAllSchemas, getSchemaSummary } from '../schemas-helper';
 import * as drizzleSchema from '../schema';
 
@@ -55,12 +55,12 @@ describe('comments package schema adapters stay in lockstep', () => {
     const tableKeys = ['commentsTable', 'commentReactionsTable'] as const;
 
     it('exports every enabled comments table through the runtime and drizzle-kit adapters', () => {
-        const packageTables = getEnabledPackageTables() as Record<string, unknown>;
+        const packageTables = packages.tables();
         const runtimeTables = getAllSchemas() as Record<string, unknown>;
         const staticTables = drizzleSchema as Record<string, unknown>;
 
         for (const tableKey of tableKeys) {
-            expect(packageTables[tableKey], `PACKAGE_REGISTRY.${tableKey}`).toBeDefined();
+            expect(packageTables[tableKey], `packages.tables().${tableKey}`).toBeDefined();
             expect(runtimeTables[tableKey], `getAllSchemas().${tableKey}`).toBe(packageTables[tableKey]);
             expect(staticTables[tableKey], `db/schema.${tableKey}`).toBe(packageTables[tableKey]);
         }
@@ -71,12 +71,12 @@ describe('landing package schema adapters stay in lockstep', () => {
     const tableKeys = ['landingSitesTable', 'landingPagesTable', 'landingLeadsTable'] as const;
 
     it('exports every landing table through the runtime and drizzle-kit adapters', () => {
-        const packageTables = getEnabledPackageTables() as Record<string, unknown>;
+        const packageTables = packages.tables();
         const runtimeTables = getAllSchemas() as Record<string, unknown>;
         const staticTables = drizzleSchema as Record<string, unknown>;
 
         for (const tableKey of tableKeys) {
-            expect(packageTables[tableKey], `PACKAGE_REGISTRY.${tableKey}`).toBeDefined();
+            expect(packageTables[tableKey], `packages.tables().${tableKey}`).toBeDefined();
             expect(runtimeTables[tableKey], `getAllSchemas().${tableKey}`).toBe(packageTables[tableKey]);
             expect(staticTables[tableKey], `db/schema.${tableKey}`).toBe(packageTables[tableKey]);
         }

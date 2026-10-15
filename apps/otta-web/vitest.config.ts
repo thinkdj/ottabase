@@ -38,6 +38,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
             // Subpaths before the bare package — these ship dist-only exports, so aliasing to
             // source lets the app's tests run without a prior `pnpm build:pkg`.
+            '@ottabase/ottaai/manifest': path.resolve(__dirname, '../../packages/ottaai/src/manifest.ts'),
             '@ottabase/ottaai/resolver': path.resolve(__dirname, '../../packages/ottaai/src/resolver/index.ts'),
             '@ottabase/ottaai/testing': path.resolve(__dirname, '../../packages/ottaai/src/testing/index.ts'),
             '@ottabase/ottaai/ottaorm': path.resolve(__dirname, '../../packages/ottaai/src/ottaorm/index.ts'),
@@ -79,7 +80,7 @@ export default defineConfig({
             '@ottabase/brand-engine-react': path.resolve(__dirname, '../../packages/brand-engine-react/src/index.tsx'),
             '@ottabase/ui-shadcn': path.resolve(__dirname, '../../packages/ui-shadcn/src/index.ts'),
             '@ottabase/api': path.resolve(__dirname, '../../packages/api/src/index.ts'),
-            // Premium Packages (ottabase/config.premium.ts) — subpaths before the bare specifier.
+            // Premium Packages (ottabase/packages.ts) — subpaths before the bare specifier.
             '@ottabase/premium/server': path.resolve(__dirname, '../../packages/premium/src/server/index.ts'),
             '@ottabase/premium/react': path.resolve(__dirname, '../../packages/premium/src/react/index.ts'),
             '@ottabase/premium': path.resolve(__dirname, '../../packages/premium/src/index.ts'),

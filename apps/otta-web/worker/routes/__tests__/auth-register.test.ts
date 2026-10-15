@@ -46,7 +46,7 @@ vi.mock('@ottabase/ottaorm/models', () => ({
 }));
 
 vi.mock('../../../ottabase/config.loader', () => ({
-    getOttabaseConfig: vi.fn(() => ({ packages: { referrals: false } })),
+    getOttabaseConfig: vi.fn(() => ({ features: { referrals: { enabled: false } } })),
 }));
 
 vi.mock('../../../ottabase/helpers/referral-attribution', () => ({

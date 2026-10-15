@@ -81,17 +81,19 @@ describe('application Cron registry', () => {
         });
     });
 
-    it('uses one explicit registry for admin discovery and execution', async () => {
+    it('registers every package cron handler for admin discovery and execution', async () => {
         const names = getRegisteredAppCronHandlers().map((handler) => handler.name);
-        expect(names).toEqual([
-            'queue:send-email',
-            'queue:process-order',
-            'queue:generate-report',
-            'queue:sync-data',
-            'queue:batch-task',
-            'landing:notify-leads',
-            'audit:prune',
-        ]);
+        expect(names.sort()).toEqual(
+            [
+                'queue:send-email',
+                'queue:process-order',
+                'queue:generate-report',
+                'queue:sync-data',
+                'queue:batch-task',
+                'landing:notify-leads',
+                'audit:prune',
+            ].sort(),
+        );
 
         const result = await appCronScheduler.runTask('task-1', env, repository([task()]));
 

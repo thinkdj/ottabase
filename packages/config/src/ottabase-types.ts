@@ -227,25 +227,12 @@ export interface OttabaseUIConfig {
  */
 export const PLATFORM_ORG_SENTINEL = 'platform';
 
-/** Built-in package keys. Extend when adding new built-in packages. brandEngine is core, not a package. */
-export const BUILT_IN_PACKAGES = ['comments', 'ottablog', 'ottaai', 'ottalanding', 'referrals', 'shortlinks'] as const;
-
-export type BuiltInPackageName = (typeof BUILT_IN_PACKAGES)[number];
-
-/** Custom package config: maps package key to its table definitions (for migrations). */
-export interface CustomPackageConfig {
-    tables: Record<string, unknown>;
-    migrations?: unknown[];
-}
-
 /** User input for defineOttabaseConfig — partial, with optional packages. */
 export interface OttabaseConfigInput {
     appId: string;
     appName: string;
     meta?: OttabaseMeta;
     storage?: { prefix?: string };
-    packages?: Partial<Record<BuiltInPackageName, boolean>>;
-    customPackages?: Record<string, CustomPackageConfig>;
     features?: OttabaseFeaturesConfig;
     email?: OttabaseEmailConfig;
     ui?: OttabaseUIConfig;
@@ -266,8 +253,6 @@ export interface OttabaseConfig {
         tagline: string;
     };
     storage: { prefix: string };
-    packages: Record<BuiltInPackageName, boolean>;
-    customPackages: Record<string, CustomPackageConfig>;
     features: {
         referrals: ReferralsFeatureConfig;
         spotlight: SpotlightFeatureConfig;

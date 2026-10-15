@@ -161,6 +161,14 @@ export interface OttaPackage<Env = unknown> {
     premium?: boolean;
 }
 
+/**
+ * What a package factory lets the host add on top of the package's own data half: routes whose
+ * handlers live in the app, extra cron or queue handlers, subscriptions, nav, env and health.
+ */
+export type PackageExtras<Env = unknown> = Partial<
+    Pick<OttaPackage<Env>, 'routes' | 'cron' | 'queue' | 'events' | 'nav' | 'env' | 'health' | 'lifecycle'>
+>;
+
 /** The app's registry: every installed package, and everything they contribute, collected. */
 export interface PackageRegistry<Env = unknown> {
     readonly packages: ReadonlyArray<OttaPackage<Env>>;

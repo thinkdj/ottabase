@@ -211,3 +211,4 @@ export * from './plugins';
 
 // Studio (themes/plugins management)
 export * from './studio';
+export { createOttablogPackage, OTTABLOG_PACKAGE_KEY, type OttablogPackageOptions } from './manifest';

@@ -8,6 +8,7 @@
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { packages } from '../../ottabase/registry';
 import { getAiConfigSnapshot } from '../lib/ai-config';
 import type { ApiRouteContext } from './router';
 
@@ -16,7 +17,7 @@ export async function handleAdminAiConfig(context: ApiRouteContext): Promise<Res
     if (auth instanceof Response) return auth;
 
     try {
-        return jsonResponse(getAiConfigSnapshot(context.env), 200, {
+        return jsonResponse(getAiConfigSnapshot(context.env, { installed: packages.has('ottaai') }), 200, {
             headers: { 'Cache-Control': 'private, no-store' },
         });
     } catch (error) {

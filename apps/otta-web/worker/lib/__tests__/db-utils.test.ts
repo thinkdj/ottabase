@@ -10,6 +10,8 @@ const {
     mockHasConnection,
     mockCreateD1Driver,
     mockConfigureOttaORM,
+    PackageModel,
+    packagePolicy,
 } = vi.hoisted(() => ({
     mockRegisterConnection: vi.fn(),
     mockRegisterModels: vi.fn(),
@@ -19,40 +21,15 @@ const {
     mockHasConnection: vi.fn(() => false),
     mockCreateD1Driver: vi.fn((binding) => ({ binding })),
     mockConfigureOttaORM: vi.fn(),
-}));
-
-vi.mock('@ottabase/brand-engine/persistence', () => ({
-    BrandKit: class BrandKit {},
-    LayoutRouteMapping: class LayoutRouteMapping {},
-    LayoutTemplate: class LayoutTemplate {},
-    MenuSlotAssignment: class MenuSlotAssignment {},
-}));
-
-vi.mock('@ottabase/comments', () => ({
-    Comment: class Comment {},
-    CommentReaction: class CommentReaction {},
+    PackageModel: class PackageModel {},
+    packagePolicy: { model: 'package_rows', policy: { tenantScoped: true }, contextFields: ['organizationId'] },
 }));
 
 vi.mock('@ottabase/db/drizzle-d1', () => ({
     createD1Driver: mockCreateD1Driver,
 }));
 
-vi.mock('@ottabase/ottablog', () => ({
-    OttablogPlugin: class OttablogPlugin {},
-    OttablogTheme: class OttablogTheme {},
-    Post: class Post {},
-    PostCategory: class PostCategory {},
-    PostCategoryLink: class PostCategoryLink {},
-    PostSeries: class PostSeries {},
-    PostTag: class PostTag {},
-    PostTagLink: class PostTagLink {},
-    PostVersion: class PostVersion {},
-    OttablogSettings: class OttablogSettings {},
-    PostTranslation: class PostTranslation {},
-}));
-
 vi.mock('@ottabase/ottaorm', () => ({
-    BaseModel: class BaseModel {},
     clearConnection: mockClearConnection,
     configureOttaORM: mockConfigureOttaORM,
     hasConnection: mockHasConnection,
@@ -60,7 +37,6 @@ vi.mock('@ottabase/ottaorm', () => ({
     registerConnection: mockRegisterConnection,
     registerModels: mockRegisterModels,
     registerPolicy: mockRegisterPolicy,
-    RLSPolicies: { AppScoped: () => ({ appScoped: true }), TenantScoped: () => ({ tenantScoped: true }) },
 }));
 
 vi.mock('@ottabase/ottaorm/models', () => ({
@@ -77,37 +53,16 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     VerificationToken: class VerificationToken {},
 }));
 
-vi.mock('@ottabase/referrals', () => ({
-    ReferralTracking: class ReferralTracking {},
+// The registry is what every package contributes, collected (ottabase/packages.ts). What the
+// packages ARE is the registration test's business; here it is one model and one policy.
+vi.mock('../../../ottabase/registry', () => ({
+    packages: {
+        models: () => [PackageModel],
+        policies: () => [packagePolicy],
+    },
 }));
 
-vi.mock('@ottabase/ottalanding', () => ({
-    LandingSite: class LandingSite {},
-    LandingPage: class LandingPage {},
-    LandingLead: class LandingLead {},
-}));
-
-vi.mock('@ottabase/shortlinks', () => ({
-    Shortlink: class Shortlink {},
-}));
-
-vi.mock('../../ottabase/config.loader', () => ({
-    getOttabaseConfig: vi.fn(() => ({
-        packages: {
-            ottablog: true,
-            comments: true,
-            ottalanding: true,
-            shortlinks: true,
-            referrals: true,
-        },
-    })),
-}));
-
-vi.mock('../../ottabase/models/Todo', () => ({
-    Todo: class Todo {},
-}));
-
-vi.mock('../../ottabase/models/mediaLibraryPolicy', () => ({
+vi.mock('../../../ottabase/models/mediaLibraryPolicy', () => ({
     mediaLibraryPolicy: { name: 'mediaLibraryPolicy' },
 }));
 
@@ -138,12 +93,26 @@ describe('ensureDbConnection', () => {
         expect(mockConfigureOttaORM).toHaveBeenCalledTimes(2);
         expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(1, { maxAllRows: '5000' });
         expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(2, { maxAllRows: '5000' });
-        // Asserted as "unchanged by the second call", NOT as a fixed number: the policy
-        // count is a function of which packages are enabled (media, plus ottaai's credential
-        // policy, plus the ottablog org-mode overrides), so a hard-coded 1 would break every
-        // time a package is added — while saying nothing about the invariant under test.
         expect(mockRegisterPolicy.mock.calls.length).toBe(policyCallsAfterFirst);
         expect(policyCallsAfterFirst).toBeGreaterThan(0);
+    });
+
+    it('registers core models first, then every model the packages contribute', () => {
+        ensureDbConnection({ OBCF_D1: { id: 'binding-1' } } as any);
+
+        const registered = mockRegisterModels.mock.calls[0][0] as Array<{ name: string }>;
+        const names = registered.map((model) => model.name);
+        expect(names.slice(0, 2)).toEqual(['Account', 'Media']);
+        expect(names.at(-1)).toBe('PackageModel');
+    });
+
+    it('registers package policies AFTER initRLS, so a package policy wins over a built-in of the same name', () => {
+        ensureDbConnection({ OBCF_D1: { id: 'binding-1' } } as any);
+
+        expect(mockRegisterPolicy).toHaveBeenCalledWith({ name: 'mediaLibraryPolicy' });
+        expect(mockRegisterPolicy).toHaveBeenCalledWith(packagePolicy);
+        const packagePolicyCall = mockRegisterPolicy.mock.invocationCallOrder[1];
+        expect(packagePolicyCall).toBeGreaterThan(mockInitRLS.mock.invocationCallOrder[0]);
     });
 
     it('reinitializes when the D1 binding changes', () => {
@@ -184,26 +153,5 @@ describe('initAdminCron', () => {
         expect(response?.headers.get('cache-control')).toBe('no-store');
         await expect(response?.json()).resolves.toMatchObject({ code: 'CONFIG_ERROR' });
         expect(mockConfigureOttaORM).not.toHaveBeenCalled();
-    });
-});
-
-describe('landing-site RLS', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockHasConnection.mockReturnValue(false);
-        resetDbConnectionForTests();
-    });
-
-    it('registers platform-admin, app-scoped policies for every landing table', () => {
-        ensureDbConnection({ OBCF_D1: { id: 'binding-landing' } } as any);
-        for (const model of ['landing_sites', 'landing_pages', 'landing_leads']) {
-            expect(mockRegisterPolicy).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    model,
-                    policy: expect.objectContaining({ appScoped: true, requirePlatformAdmin: true }),
-                    contextFields: ['appId'],
-                }),
-            );
-        }
     });
 });

@@ -62,6 +62,7 @@
         }
     },
     "dependencies": {
+        "@ottabase/kernel": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
         "@ottabase/utils": "workspace:*"

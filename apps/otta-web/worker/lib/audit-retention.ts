@@ -3,19 +3,20 @@
 // size limit. A DB-driven scheduled task (handler `audit:prune`) deletes this app's rows (and
 // unowned rows) older than the retention window once a day. The window lives in the task
 // payload — an operator changes it in the Cron admin, and a task they paused stays paused.
+//
+// The handler and its default schedule are declared by the core package manifest
+// (ottabase/packages/core.ts); `ensurePackageSchedules` seeds the task on install.
 
-import { AuditLog, ScheduledTask } from '@ottabase/ottaorm/models';
+import { AuditLog } from '@ottabase/ottaorm/models';
 
 export const AUDIT_PRUNE_HANDLER = 'audit:prune';
-const AUDIT_PRUNE_TASK = 'Prune audit logs';
-/** Default retention when the task payload names none. */
 export const DEFAULT_AUDIT_RETENTION_DAYS = 90;
 
 export interface AuditPrunePayload {
     olderThanDays?: number;
 }
 
-/** Resolve the retention window from an operator-edited payload; anything not a positive number is rejected. */
+/** The retention window from an operator-edited payload; a non-positive window is refused, never "delete everything". */
 export function auditRetentionDays(payload: unknown): number {
     const raw =
         payload && typeof payload === 'object' && !Array.isArray(payload)
@@ -28,29 +29,7 @@ export function auditRetentionDays(payload: unknown): number {
     return raw;
 }
 
-/** Delete this app's audit rows older than the window; returns the number removed. */
+/** Delete this app's audit rows older than the window. Returns how many went. */
 export async function pruneAuditLogs(payload: unknown, appId: string): Promise<number> {
     return AuditLog.pruneOlderThan(auditRetentionDays(payload), appId);
-}
-
-/**
- * Create the daily prune task for this app if it does not exist yet. Idempotent; called from the
- * same seed step as the default brand kit, so every initialised app has a retention policy.
- * Runs at 03:17 UTC — off the top-of-the-hour bunching every other schedule gravitates to.
- */
-export async function ensureAuditPruneTask(appId: string): Promise<void> {
-    if (await ScheduledTask.findByName(appId, AUDIT_PRUNE_TASK)) return;
-    await ScheduledTask.createRegistered(
-        {
-            name: AUDIT_PRUNE_TASK,
-            description: `Deletes this app's audit_logs rows older than the retention window (payload olderThanDays, default ${DEFAULT_AUDIT_RETENTION_DAYS}).`,
-            schedule: '17 3 * * *',
-            taskType: 'handler',
-            task: AUDIT_PRUNE_HANDLER,
-            payload: JSON.stringify({ olderThanDays: DEFAULT_AUDIT_RETENTION_DAYS }),
-            isActive: true,
-            appId,
-        },
-        [AUDIT_PRUNE_HANDLER],
-    );
 }

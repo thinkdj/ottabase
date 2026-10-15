@@ -121,5 +121,5 @@ export interface EventBusOptions<Env = unknown> {
 
 /** The slice of a Cloudflare `Queue` the bus needs. `@ottabase/queue` builds the job body. */
 export interface QueueLike {
-    send(body: unknown, options?: unknown): Promise<void>;
+    send(body: unknown, options?: unknown): Promise<unknown>;
 }

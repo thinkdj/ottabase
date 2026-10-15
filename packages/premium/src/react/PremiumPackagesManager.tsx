@@ -227,8 +227,7 @@ export function PremiumPackagesManager({ emptyMessage }: PremiumPackagesManagerP
     if (!data || data.length === 0) {
         return (
             <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
-                {emptyMessage ??
-                    'No premium packages are installed. Register one in ottabase/config.premium.ts to see it here.'}
+                {emptyMessage ?? 'No premium packages are installed. Add one to ottabase/packages.ts to see it here.'}
             </div>
         );
     }

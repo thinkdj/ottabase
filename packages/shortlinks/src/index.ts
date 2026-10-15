@@ -4,3 +4,4 @@ export { getShortlinkPageCss } from './pages/styles';
 export { Shortlink, buildRedirectResponse, shortlinksTable } from './ottaorm-models/Shortlink';
 export type { NewShortlinkRecord, ShortlinkRecord } from './ottaorm-models/Shortlink';
 export * from './types';
+export { createShortlinksPackage, SHORTLINKS_PACKAGE_KEY, type ShortlinksPackageOptions } from './manifest';

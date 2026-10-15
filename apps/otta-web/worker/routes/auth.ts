@@ -725,7 +725,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         }
 
         let attributionResult;
-        if (body.referralCode && getOttabaseConfig(env).packages.referrals) {
+        if (body.referralCode && getOttabaseConfig(env).features.referrals.enabled) {
             const safeHeaders: Record<string, string> = {};
             for (const h of ['accept', 'accept-language']) {
                 const v = request.headers.get(h);

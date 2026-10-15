@@ -1,8 +1,6 @@
 // Ottabase config (dynamic packages, features, routes)
 export {
     defineOttabaseConfig,
-    isPackageEnabled,
-    isCustomPackageEnabled,
     normalizeOttaaiMode,
     normalizeOttaaiStrategy,
     normalizeOttablogMode,
@@ -21,18 +19,11 @@ export type {
     OttaaiRateLimitConfig,
     OttablogFeatureConfig,
     OttablogMode,
-    CustomPackageConfig,
-    BuiltInPackageName,
     OttabaseFeaturesConfig,
     OttabaseEmailConfig,
     OttabaseUIConfig,
 } from './ottabase-types';
-export {
-    BUILT_IN_PACKAGES,
-    DEFAULT_REFERRAL_PARAM,
-    normalizeReferralParam,
-    PLATFORM_ORG_SENTINEL,
-} from './ottabase-types';
+export { DEFAULT_REFERRAL_PARAM, normalizeReferralParam, PLATFORM_ORG_SENTINEL } from './ottabase-types';
 export { resolveConfigWithEnv, type EnvLike } from './resolveConfigWithEnv';
 
 // Export types

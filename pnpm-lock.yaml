@@ -543,12 +543,18 @@ importers:
       '@ottabase/email':
         specifier: workspace:*
         version: link:../../packages/email
+      '@ottabase/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@ottabase/forms':
         specifier: workspace:*
         version: link:../../packages/forms
       '@ottabase/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
       '@ottabase/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -1105,6 +1111,9 @@ importers:
 
   packages/comments:
     dependencies:
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
@@ -1541,6 +1550,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../db
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
@@ -1587,6 +1599,9 @@ importers:
 
   packages/ottablog:
     dependencies:
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
@@ -1758,6 +1773,9 @@ importers:
       '@ottabase/brand-engine':
         specifier: workspace:*
         version: link:../brand-engine
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
@@ -2194,6 +2212,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../db
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
@@ -2241,6 +2262,9 @@ importers:
 
   packages/shortlinks:
     dependencies:
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
@@ -22139,7 +22163,7 @@ snapshots:
   vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.28)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@20.19.28)(jiti@2.6.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
+      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18

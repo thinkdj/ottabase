@@ -1,21 +1,9 @@
 // ============================================================
-// Schema Collection Helper (otta-web)
-// ============================================================
-//
-// This file provides utilities to collect and organize all table
-// schemas from different sources:
-// 1. CORE schemas (from @ottabase/ottaorm)
-// 2. APP schemas (app-specific models like Todo)
-// 3. PACKAGE schemas (from enabled packages)
-//
-// Usage in cloudflare-worker.ts:
-// import { getAllSchemas } from './ottabase/db/schemas-helper';
-// const allSchemas = getAllSchemas();
-// await autoInit({ driver, schema: allSchemas, ... });
+// Every table auto-init should know about: core, then whatever the installed packages
+// contribute (ottabase/packages.ts). `collectTableSchemas` picks up entries whose KEY ends
+// in `Table`; the kernel refuses a manifest table under any other key.
 // ============================================================
 
-// Blog tables are included via package registry (getEnabledPackageTables)
-// No need to import them directly here to avoid duplication
 import {
     accountsTable,
     auditLogsTable,
@@ -32,88 +20,38 @@ import {
     usersTable,
     verificationTokensTable,
 } from '@ottabase/ottaorm';
-import { getEnabledPackageTables } from '../config.migrations';
-import { todosTable } from '../models/Todo';
+import { packages } from '../packages';
 
-/**
- * Get all table schemas organized by source
- */
+const coreTables = {
+    accountsTable,
+    mediaTable,
+    tagsTable,
+    usersTable,
+    verificationTokensTable,
+    scheduledTasksTable,
+    // Multi-tenant/RBAC tables
+    organizationsTable,
+    organizationMembersTable,
+    rolesTable,
+    permissionsTable,
+    userRolesTable,
+    auditLogsTable,
+    userGroupsTable,
+    userGroupMembersTable,
+};
+
 export function getAllSchemas() {
-    // 1. Core schemas from @ottabase/ottaorm (users, auth tables, etc.)
-    const coreTables = {
-        accountsTable,
-        mediaTable,
-        tagsTable,
-        usersTable,
-        verificationTokensTable,
-        scheduledTasksTable,
-        // Multi-tenant/RBAC tables
-        organizationsTable,
-        organizationMembersTable,
-        rolesTable,
-        permissionsTable,
-        userRolesTable,
-        auditLogsTable,
-        userGroupsTable,
-        userGroupMembersTable,
-    };
-
-    // 2. App-specific schemas
-    const appTables = {
-        todosTable,
-    };
-
-    // 3. Package schemas from enabled packages (ottablog, shortlinks, referrals, etc.)
-    // This includes blog tables (posts, categories, series, etc.) from ottablog package
-    const packageTables = getEnabledPackageTables();
-
-    // Combine all schemas
-    // Note: Later entries override earlier ones if there are duplicates
-    const allSchemas = {
-        ...coreTables,
-        ...appTables,
-        ...packageTables,
-    };
-
-    return allSchemas;
+    // Later entries override earlier ones; the kernel already refused duplicate package keys.
+    return { ...coreTables, ...packages.tables() };
 }
 
-/**
- * Get schema breakdown for debugging/status
- */
+/** Schema breakdown for the admin Database page and for debugging. */
 export function getSchemaSummary() {
-    const coreTables = {
-        accountsTable,
-        mediaTable,
-        tagsTable,
-        usersTable,
-        verificationTokensTable,
-        scheduledTasksTable,
-        // Multi-tenant/RBAC tables
-        organizationsTable,
-        organizationMembersTable,
-        rolesTable,
-        permissionsTable,
-        userRolesTable,
-        auditLogsTable,
-        userGroupsTable,
-        userGroupMembersTable,
-    };
-
-    const appTables = {
-        todosTable,
-    };
-
-    const packageTables = getEnabledPackageTables();
-
+    const packageTables = packages.tables();
     return {
         core: Object.keys(coreTables),
-        app: Object.keys(appTables),
         packages: Object.keys(packageTables),
-        total: Object.keys({
-            ...coreTables,
-            ...appTables,
-            ...packageTables,
-        }).length,
+        byPackage: Object.fromEntries(packages.packages.map((pkg) => [pkg.key, Object.keys(pkg.tables ?? {})])),
+        total: Object.keys(coreTables).length + Object.keys(packageTables).length,
     };
 }

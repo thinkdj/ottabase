@@ -26,6 +26,7 @@ export type {
     ModelEntry,
     NavContribution,
     OttaPackage,
+    PackageExtras,
     PackageHost,
     PackageRegistry,
     RouteContribution,

@@ -7,3 +7,4 @@ export type { CommentReactionRecord, NewCommentReactionRecord } from './ottaorm-
 // Types
 export { DEFAULT_REACTIONS } from './types';
 export type { CommentStatus, CreateCommentParams, DefaultReaction, ListCommentsParams } from './types';
+export { COMMENTS_PACKAGE_KEY, createCommentsPackage, type CommentsPackageOptions } from './manifest';

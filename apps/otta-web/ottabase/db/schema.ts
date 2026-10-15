@@ -48,6 +48,14 @@ export { todosTable } from '../models/Todo';
 // Statically re-exported so drizzle-kit sees them without evaluating config.
 export { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 export {
+    brandKitsTable,
+    layoutRouteMappingsTable,
+    layoutTemplatesTable,
+    menuItemsTable,
+    menuSlotAssignmentsTable,
+    menusTable,
+} from '@ottabase/brand-engine/persistence';
+export {
     categoriesTable,
     commentsTable,
     commentReactionsTable,
@@ -69,18 +77,11 @@ export {
 };
 
 // ============================================================
-// PREMIUM PACKAGE TABLES (installed in config.premium.ts)
+// PREMIUM PACKAGE TABLES (listed in ottabase/packages.ts)
 // ============================================================
 // Re-exported statically for the same reason as the package tables above: drizzle-kit
 // reads this module's NAMED EXPORTS and never evaluates config, so a table reachable only
-// through `packageTables` below is invisible to `db:push`.
+// through the runtime registry (ottabase/packages.ts) is invisible to `db:push`.
 //
 // Remove this block along with the package if you uninstall @ottabase/premium-webhooks.
 export { webhookDeliveriesTable, webhookEndpointsTable } from '@ottabase/premium-webhooks/schema';
-
-// ============================================================
-// DYNAMIC PACKAGE TABLES (Configured in config.migrations.ts)
-// ============================================================
-import { getEnabledPackageTables } from '../config.migrations';
-
-export const packageTables = getEnabledPackageTables();

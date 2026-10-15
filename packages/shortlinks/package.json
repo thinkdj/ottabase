@@ -20,6 +20,7 @@
         "drizzle-orm": "catalog:"
     },
     "dependencies": {
+        "@ottabase/kernel": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },

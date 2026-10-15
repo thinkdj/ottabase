@@ -171,12 +171,7 @@ describe('injectBlogPostSeo', () => {
         expect(await injectBlogPostSeo(changelog, requestFor('https://demo.test/blog/cl'), env)).toBe(changelog);
     });
 
-    it('returns the original response when ottablog is disabled or the response is not HTML', async () => {
-        mockGetOttabaseConfig.mockReturnValue({ ...PLATFORM_CONFIG, packages: { ottablog: false } });
-        const gated = htmlResponse();
-        expect(await injectBlogPostSeo(gated, requestFor('https://demo.test/blog/hello-world'), env)).toBe(gated);
-
-        mockGetOttabaseConfig.mockReturnValue(PLATFORM_CONFIG);
+    it('returns the original response when the response is not HTML', async () => {
         const json = new Response('{}', { headers: { 'Content-Type': 'application/json' } });
         expect(await injectBlogPostSeo(json, requestFor('https://demo.test/blog/hello-world'), env)).toBe(json);
     });

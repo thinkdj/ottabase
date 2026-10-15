@@ -10,7 +10,7 @@
 //   @ottabase/ottaai                      primitives, registry, crypto, pure scoring/merge
 //   @ottabase/ottaai/resolver             createAiProvisioning, resolve, verify, gates
 //   @ottabase/ottaai/ottaorm              table, model, RLS policy factory, store, handlers
-//   @ottabase/ottaai/schema               the Drizzle table only (for config.migrations.ts)
+//   @ottabase/ottaai/schema               the Drizzle table only (for db/schema.ts)
 //   @ottabase/ottaai/transports/gateway   the Cloudflare AI Gateway adapter
 //   @ottabase/ottaai/react                hooks + settings UI
 //   @ottabase/ottaai/testing              mock transport, in-memory store, fixtures

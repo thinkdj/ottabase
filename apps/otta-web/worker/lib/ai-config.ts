@@ -45,10 +45,15 @@ function gatewayProxyUrl(accountId: string | null, gateway: string | null): stri
  * Redacted operator snapshot. Safe to serialise: no provider keys, no master secret,
  * no gateway token. Account id and gateway slug are deployment identity, not credentials.
  */
-export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
+export interface AiConfigSnapshotOptions {
+    /** Whether the ottaai package is in ottabase/packages.ts. The admin route passes it; defaults to true. */
+    installed?: boolean;
+}
+
+export function getAiConfigSnapshot(env: CloudflareEnv, options: AiConfigSnapshotOptions = {}): AiConfigSnapshot {
     const config = getOttabaseConfig(env as unknown as Record<string, unknown>);
     const feature = config.features.ottaai;
-    const packageEnabled = config.packages.ottaai === true;
+    const packageEnabled = options.installed ?? true;
     const vars = envRecord(env);
 
     const accountId = vars.CLOUDFLARE_ACCOUNT_ID?.trim() || null;
@@ -144,7 +149,7 @@ export function getAiConfigSnapshot(env: CloudflareEnv): AiConfigSnapshot {
     const routeUsable = provisioningConfigured && transportRouteUsable;
 
     const missing: string[] = [];
-    if (!packageEnabled) missing.push('Enable the ottaai package.');
+    if (!packageEnabled) missing.push('Add the ottaai package to ottabase/packages.ts.');
     if (feature.byokEnabled && !keyringPresent)
         missing.push('Set AI_CREDENTIAL_SECRET or AI_CREDENTIAL_KEYRING while BYOK is enabled.');
     if (!accountId) missing.push('Set CLOUDFLARE_ACCOUNT_ID.');

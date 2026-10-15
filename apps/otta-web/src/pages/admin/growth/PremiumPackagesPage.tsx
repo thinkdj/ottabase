@@ -1,7 +1,7 @@
 /**
  * Premium packages (admin)
  *
- * The operator's view of every paid add-on registered in `ottabase/config.premium.ts`:
+ * The operator's view of every paid add-on listed in `ottabase/packages.ts`:
  * what is installed, what state each license is in, and where to paste a key.
  *
  * The whole surface is the package's drop-in `<PremiumPackagesManager />`, so any
@@ -32,7 +32,7 @@ export function PremiumPackagesPage() {
 
                 <p className="text-xs text-muted-foreground">
                     Install a package by adding its manifest to{' '}
-                    <code className="rounded bg-muted px-1 py-0.5 font-mono">ottabase/config.premium.ts</code>, then run
+                    <code className="rounded bg-muted px-1 py-0.5 font-mono">ottabase/packages.ts</code>, then run
                     migrations so its tables exist. See{' '}
                     <code className="rounded bg-muted px-1 py-0.5 font-mono">docs/PREMIUM_PACKAGES.md</code>.
                 </p>
