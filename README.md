@@ -109,14 +109,22 @@ ottabase/
 ├── apps/
 │   ├── otta-web/       # TanStack Router + Vite + Workers (primary)
 │   ├── otta-landing/   # Next.js + OpenNext public landing site (content edited in otta-web admin)
+│   ├── otta-worker/    # Single Worker: server-rendered + API, same package contract, no SPA
 │   └── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
 ├── packages/
 │   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
 │   ├── ottarouter/        # Cloudflare Workers router (order-free precedence, middleware)
 │   ├── db/               # Drizzle D1 driver
-│   ├── cf/               # Cloudflare bindings (D1, KV, R2, Queues, Cache Keys)
+│   ├── cf/               # Cloudflare bindings (D1, KV, R2, Queues, Vectorize, Workers AI, Browser, Workflows, DO alarms)
 │   ├── cf-realtime/      # WebSocket pub/sub (Durable Objects)
 │   ├── queue/            # Job queue (dispatch, handlers, priority)
+│   ├── kernel/           # The package contract: one manifest, one registry, one list
+│   ├── events/           # Typed in-process event bus with queue fan-out
+│   ├── flags/            # Entitlements: plans, features, limits, 402 guards
+│   ├── meter/            # Usage credits: atomic balances, periods, ledger
+│   ├── apikeys/          # Hashed, scoped, revocable API keys for your customers
+│   ├── postmaster/       # Inbound mail, suppression list, one-click unsubscribe, bounce webhooks
+│   ├── vault/            # D1 backups to R2 as NDJSON, restore, per-tenant export
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
 │   ├── rbac/             # Role-based access control with KV caching
 │   ├── audit/            # Audit logging with change tracking
@@ -198,6 +206,11 @@ pnpm otta dev otta-web --process worker # One process from the dev topology
 # Scaffold a new app
 pnpm otta new web my-app                # Vite + TanStack Router + Workers
 pnpm otta new landing my-site           # Next.js landing page
+pnpm otta new worker my-tool            # Single Worker, server-rendered + API, no SPA
+
+# Install a package into an app (dependency, composition, list entry, client key, tables)
+pnpm otta add postmaster my-app
+pnpm otta add vault my-tool --dry-run
 
 # App-scoped quality commands
 pnpm otta build otta-web
@@ -324,22 +337,37 @@ createTodo.mutate({ title: 'New Todo' });
 
 ### Database, Auth & Infrastructure
 
-| Package                | Purpose                                                                  |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `@ottabase/ottaorm`    | Fat models, CRUD, relationships, RLS, auto-migrations                    |
-| `@ottabase/ottarouter` | Cloudflare Workers router - order-free precedence, middleware, mounts    |
-| `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                     |
-| `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Cache Keys, read-through KV cache     |
-| `@ottabase/cf-pdf`     | Cloudflare HTML-to-PDF export with Browser Rendering and safe downloads  |
-| `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)        |
-| `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link |
-| `@ottabase/rbac`       | Role-based access control with per-org KV caching                        |
-| `@ottabase/audit`      | Audit logging with change tracking and RBAC context                      |
-| `@ottabase/logger`     | Structured logging (Console, HTTP, Sentry, Memory, Buffer transports)    |
-| `@ottabase/analytics`  | Cloudflare Analytics Engine (WAE) - write events, query, funnel, top-K   |
-| `@ottabase/config`     | App config, env vars, storage key utilities                              |
-| `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)     |
-| `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`              |
+| Package                | Purpose                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `@ottabase/ottaorm`    | Fat models, CRUD, relationships, RLS, auto-migrations                                                         |
+| `@ottabase/ottarouter` | Cloudflare Workers router - order-free precedence, middleware, mounts                                         |
+| `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                                                          |
+| `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows, DO alarms, Cache Keys |
+| `@ottabase/cf-pdf`     | Cloudflare HTML-to-PDF export with Browser Rendering and safe downloads                                       |
+| `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)                                             |
+| `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link                                      |
+| `@ottabase/rbac`       | Role-based access control with per-org KV caching                                                             |
+| `@ottabase/audit`      | Audit logging with change tracking and RBAC context                                                           |
+| `@ottabase/logger`     | Structured logging (Console, HTTP, Sentry, Memory, Buffer transports)                                         |
+| `@ottabase/analytics`  | Cloudflare Analytics Engine (WAE) - write events, query, funnel, top-K                                        |
+| `@ottabase/config`     | App config, env vars, storage key utilities                                                                   |
+| `@ottabase/cron`       | Cron handlers - static code-defined and DB scheduler (Laravel-style)                                          |
+| `@ottabase/scripts`    | CLI tools: `cf:login`, `cf:setup`, `cf:validate`, `clean:*`                                                   |
+
+### Platform
+
+The contract every package is built on, and the primitives a SaaS needs on day one. Each is one entry in
+`ottabase/packages.ts` (or `otta add <name> <app>`).
+
+| Package                | Purpose                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------- |
+| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle   |
+| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                 |
+| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`  |
+| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard   |
+| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once              |
+| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces |
+| `@ottabase/vault`      | Scheduled D1 backups to R2 as NDJSON, one-transaction restore, per-tenant export          |
 
 ### Premium Packages
 
@@ -458,6 +486,11 @@ cd apps/my-new-app
 **Marketing site** (Next.js, OpenNext): `apps/otta-landing` renders the landing content you edit at
 `/admin/content/landing` in otta-web, from the shared D1 database. Pick a theme and edit pages there, with no code
 changes. See [apps/otta-landing/README.md](apps/otta-landing/README.md).
+
+**Single Worker** (`otta new worker my-tool`): `apps/otta-worker` is the same package contract without the SPA. One
+Worker serves a server-rendered page and an API, runs the scheduler and the queue over the manifests, creates its tables
+from `POST /api/admin/init`, and uses one operator token until you add `@ottabase/auth`. For internal tools, webhook
+receivers, cron-driven jobs and first versions. See [apps/otta-worker/README.md](apps/otta-worker/README.md).
 
 ## Package Fat Model Pattern
 

@@ -23,11 +23,14 @@ flowchart TB
 
     Apps --> Web App Template[otta-web]
     Apps --> Homepage Template[otta-landing]
+    Apps --> Worker Template[otta-worker]
 
     Packages --> Core[core platform packages]
     Packages --> UI[UI and editor packages]
     Packages --> Feature[feature packages]
 
+    Core --> Kernel["@ottabase/kernel"]
+    Core --> Events["@ottabase/events"]
     Core --> OttaORM["@ottabase/ottaorm"]
     Core --> DB["@ottabase/db"]
     Core --> CF["@ottabase/cf"]
@@ -483,6 +486,9 @@ flowchart LR
 - App config: `apps/otta-web/ottabase/ottabase.config.ts`
 - Schema collector: `apps/otta-web/ottabase/db/schemas-helper.ts`
 - Event bus: `apps/otta-web/ottabase/events.ts` (`@ottabase/events`)
+- Single-Worker shape: `apps/otta-worker/worker/index.ts` (fetch, scheduled, queue), `worker/routes.ts` (`mountPackages`
+  over the same `ottabase/packages.ts`), `ottabase/packages/caller.ts` (operator token as caller)
+- Package installer: `packages/cli/src/commands/add.ts` (`otta add`, driven by each package's `ottabase` descriptor)
 
 ## Architecture Decisions
 

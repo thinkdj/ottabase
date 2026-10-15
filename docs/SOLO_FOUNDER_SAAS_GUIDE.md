@@ -796,7 +796,8 @@ export async function handleCreateProject(context: ApiRouteContext): Promise<Res
 - [ ] Deploy with an explicit `--env` (the top-level `wrangler.jsonc` vars are the development defaults)
 - [ ] Configure `CORS_ALLOWED_ORIGINS` if a different origin calls the API
 - [ ] Test multi-tenant isolation (CRITICAL)
-- [ ] Setup backup strategy (D1 Time Travel / exports)
+- [ ] Backups: `@ottabase/vault` is listed, so `vault:backup` runs nightly into R2 and
+      `POST /api/vault/backups/:id/restore` brings a database back; D1 Time Travel is the second net
 - [ ] Review rate limits for auth and public endpoints
 
 Analytics dashboards (`/api/analytics/core`, `/api/shortlinks/analytics`, `/api/referrals/analytics`) are **system-admin

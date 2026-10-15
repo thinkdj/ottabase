@@ -20,7 +20,9 @@ description:
    `BaseModel` class, and declares a manifest in `packages/<pkg>/src/manifest.ts`:
    `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health })`
    (`@ottabase/kernel`). Table keys end in `Table`. Expose `createXPackage(extras)` when the host supplies routes.
-2. App: add ONE entry to `apps/*/ottabase/packages.ts`. Nothing else is edited.
+2. App: add ONE entry to `apps/*/ottabase/packages.ts`. Nothing else is edited. `otta add <pkg> [app]` does it (and
+   step 3) from the package's `ottabase` descriptor in package.json
+   (`{ key, factory, export?, manifestImport?, tables? }`); give every new package one.
 3. App: re-export the table from `ottabase/db/schema.ts` (drizzle-kit), and add a client descriptor to
    `src/ottabase/config/packages.ts` if the package renders admin pages. The packages-registration test checks both.
 4. Generic `/api/ottaorm/*` CRUD is default-deny: add the entity to `GENERIC_CRUD_ALLOWLIST`

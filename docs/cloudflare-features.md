@@ -449,6 +449,67 @@ export async function GET(request: Request) {
 }
 ```
 
+### Vectorize
+
+```typescript
+import { createVectorizeClient } from '@ottabase/cf/vectorize';
+
+// One index, every tenant: the namespace is stamped on writes and queries.
+const vectors = createVectorizeClient({ index: env.OBCF_VECTORIZE, namespace: organizationId });
+await vectors.upsert([{ id: 'doc_1', values: embedding, metadata: { title: 'Pricing' } }]);
+const hits = await vectors.query(queryEmbedding, { topK: 5, returnMetadata: 'all' });
+```
+
+### Workers AI
+
+```typescript
+import { createAiClient } from '@ottabase/cf/ai';
+
+const ai = createAiClient({ ai: env.OBCF_AI, gateway: { id: 'my-gateway' } });
+const embeddings = await ai.embed(['first chunk', 'second chunk']); // number[][] in input order
+const answer = await ai.generateText('Summarise this ticket', { system: 'Be brief.' });
+```
+
+Provider routing, customer-supplied keys and spend tracking live in `@ottabase/ottaai`; this is the raw binding.
+
+### Browser Rendering (quick actions)
+
+```typescript
+import { createBrowserClient } from '@ottabase/cf/browser';
+
+const browser = createBrowserClient({ browser: env.OBCF_BROWSER });
+const pdf = await browser.pdf({ html: invoiceHtml }, { pdfOptions: { format: 'a4', printBackground: true } });
+const markdown = await browser.markdown({ url: 'https://example.com/docs' });
+```
+
+For safe PDF downloads with metadata use `@ottabase/cf-pdf`; for scripted sessions use `@cloudflare/puppeteer`.
+
+### Workflows
+
+```typescript
+import { createWorkflowsClient } from '@ottabase/cf/workflows';
+
+const onboarding = createWorkflowsClient<{ userId: string }>({ workflow: env.ONBOARDING });
+await onboarding.start({ userId }, { id: `onboarding-${userId}` }); // the id makes the start idempotent
+await onboarding.sendEvent(id, 'email.verified');
+```
+
+### Durable Object alarms
+
+```typescript
+import { AlarmQueue } from '@ottabase/cf/durable-alarms';
+
+class Ticket extends DurableObject {
+    private alarms = new AlarmQueue<{ kind: 'sla' | 'reminder' }>(this.ctx.storage);
+    async open() {
+        await this.alarms.schedule('sla', Date.now() + 4 * 3_600_000, { kind: 'sla' });
+    }
+    async alarm() {
+        for (const due of await this.alarms.due()) await this.handle(due); // re-armed for the rest
+    }
+}
+```
+
 ## Next.js-Specific Notes
 
 ### Server Components

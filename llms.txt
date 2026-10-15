@@ -31,6 +31,7 @@
 
 - [@ottabase/analytics](packages/analytics/README.md): Cloudflare Workers Analytics Engine (WAE) wrapper — track events, query aggregated data, and analyze user behavior.
 - [@ottabase/api](packages/api/README.md): Type-safe fetch wrapper with error handling.
+- [@ottabase/apikeys](packages/apikeys/README.md): API keys for the end users of an Ottabase app: hashed at rest, scoped, expiring, revocable, shown once, verified in one lookup.
 - [@ottabase/audit](packages/audit/README.md): Audit logging for multi-tenant applications with RBAC context integration.
 - [@ottabase/auth](packages/auth/README.md): Lightweight, dependency-free authentication for Ottabase apps on Cloudflare Workers + D1. Signed session cookies, PBKDF2 credentials, generic OAuth2/OIDC, and magic-link email sign-in — all built on…
 - [@ottabase/brand-engine](packages/brand-engine/README.md): Unified theme engine for Ottabase — design tokens, preset template expansion, CSS variable injection, email branding, and brand persistence via D1.
@@ -46,12 +47,14 @@
 - [@ottabase/docs](packages/docs/README.md): Minimal, reusable documentation viewer for Markdown files. Clean layout with left navigation, content area, and right table of contents. Colors from Brand Kit; layout themes control spacing and…
 - [@ottabase/email](packages/email/README.md): Edge-friendly email templating + mailer helpers for Ottabase.
 - [@ottabase/events](packages/events/README.md): Typed in-process event bus for Ottabase apps and packages, with optional queue fan-out for slow subscribers.
+- [@ottabase/flags](packages/flags/README.md): Entitlements for Ottabase apps: plans with features and limits, per-tenant overrides in D1, 402 guards for routes and a fail-closed client gate.
 - [@ottabase/forms](packages/forms/README.md): Auto-generated CRUD Forms for OttaORM fat models. Zero config, real-time Zod validation, works standalone or with ModelCrud.
 - [@ottabase/hello-world](packages/hello-world/README.md): A simple, customizable React component that displays a friendly greeting message with beautiful default styling.
 - [@ottabase/i18n](packages/i18n/README.md): Internationalization (i18n) package for the Ottabase monorepo, built with i18next and react-i18next.
 - [@ottabase/kernel](packages/kernel/README.md): The Ottabase package contract. One manifest declares everything a package contributes to an app; one registry wires all of it in. Free and paid packages share the contract. A paid one adds licensing…
 - [@ottabase/logger](packages/logger/README.md): Extensible logger for Ottabase with support for multiple transports and formatters.
 - [@ottabase/medialibrary](packages/medialibrary/README.md): Shared media-library primitives for Ottabase apps.
+- [@ottabase/meter](packages/meter/README.md): Usage credits for Ottabase apps: atomic D1 decrements per tenant and meter, period resets, top-ups, a usage ledger and a 402 guard.
 - [@ottabase/notifications](packages/notifications/README.md): Minimalistic notifications engine for Ottabase - multi-channel user notifications, system alerts, and real-time updates.
 - [@ottabase/ottaai](packages/ottaai/README.md): Tenant BYOK for AI: a user's key → an org's key → the platform default → no client. Encrypted at rest, resolved deterministically, gated server-side, and shipped with the settings UI.
 - [@ottabase/ottablog](packages/ottablog/README.md): A comprehensive blog and content management system for Ottabase apps. Built on the fat model pattern with OttaORM.
@@ -65,6 +68,7 @@
 - [@ottabase/ottarouter](packages/ottarouter/README.md): The simplest opinionated router for Cloudflare Workers — zero dependencies, order-free precedence, onion middleware, gated mounts, and null-based fall-through.
 - [@ottabase/ottaselect](packages/ottaselect/README.md): A select component that accepts any object format and always returns a standardized output. Perfect for React applications with dynamic data sources and CrudHub integration.
 - [@ottabase/ottaupload](packages/ottaupload/README.md): A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and Cloudflare Images.
+- [@ottabase/postmaster](packages/postmaster/README.md): The half of email that is not sending: inbound mail for Cloudflare Email Routing, a suppression list, signed one-click unsubscribe, and Resend/SES bounce and complaint webhooks, as one Ottabase…
 - [@ottabase/premium](packages/premium/README.md): Premium Packages framework for Ottabase apps. A server manifest declares everything a commercial add-on contributes — tables, models, routes, nav, entitlements and lifecycle hooks — and the host app…
 - [@ottabase/premium-webhooks](packages/premium-webhooks/README.md): Outbound webhooks for Ottabase apps — and the worked example of a Premium Package built on @ottabase/premium.
 - [@ottabase/queue](packages/queue/README.md): Minimal queue system for Cloudflare Workers. Laravel-inspired job dispatching with modular handler registration.
@@ -84,3 +88,4 @@
 - [@ottabase/ui-split-pane](packages/ui-split-pane/README.md): Minimal, clean split-pane component for React applications with no frills.
 - [@ottabase/ui-tailwind](packages/ui-tailwind/README.md): Shared Tailwind CSS preset and base styles for Ottabase apps. The preset maps theme CSS variables (shadcn-style HSL tokens, radii, fonts, charts, sidebar, etc.) to Tailwind utilities and registers…
 - [@ottabase/utils](packages/utils/README.md): A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency formatting, email parsing, JSON handling, git operations, and more.
+- [@ottabase/vault](packages/vault/README.md): Backups, restore and per-tenant export for an Ottabase app. Every D1 table goes to R2 as NDJSON on a schedule, comes back in one transaction, and any one tenant's rows can be streamed out when a…

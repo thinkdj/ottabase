@@ -140,6 +140,9 @@ Use this as the default decision tree when shipping new work.
     - Two build-time adapters remain, and the packages-registration test keeps them honest: re-export the tables from
       `apps/*/ottabase/db/schema.ts` for drizzle-kit, and list a client descriptor (`@ottabase/kernel/client`,
       `definePackageClient`) in `apps/*/src/ottabase/config/packages.ts` when the package renders admin pages.
+    - `otta add <pkg> [app]` performs that entry and both adapters from the package's `ottabase` descriptor in its
+      package.json (`{ key, factory, export?, manifestImport?, tables? }`). Give every new package one; the built-in
+      packages carry theirs. The composition it writes is otta-web's when one exists, else a stub to fill in.
     - Inside the manifest graph (route handlers, lib code, `db-utils`), read the registry from `ottabase/registry.ts`,
       never from `ottabase/packages.ts`: the list imports the handlers, so a handler importing the list is a cycle.
     - Structural dials (which migrations run, which policies guard a table) are VALUES in `ottabase.config.ts`, never
@@ -213,8 +216,10 @@ export class Todo extends BaseModel {
 ```text
 ottabase/
 ├── apps/
-│   └── otta-web/  # Primary app (Vite + Workers)
-└── packages/      # Shared code
+│   ├── otta-web/     # Primary app (Vite + Workers): SPA + admin
+│   ├── otta-landing/ # Next.js marketing site
+│   └── otta-worker/  # Single Worker: server-rendered + API, same package contract
+└── packages/         # Shared code
 ```
 
 ## Local Development
@@ -446,7 +451,15 @@ import { createD1Client } from '@ottabase/cf/d1';
 import { createKVClient } from '@ottabase/cf/kv';
 import { createR2Client } from '@ottabase/cf/r2';
 import { createRateLimitingClient } from '@ottabase/cf/rate-limiting';
+import { createVectorizeClient } from '@ottabase/cf/vectorize'; // per-tenant namespace on one index
+import { createAiClient } from '@ottabase/cf/ai'; // raw Workers AI: run, embed, generateText
+import { createBrowserClient } from '@ottabase/cf/browser'; // quick actions: pdf, screenshot, markdown, json
+import { createWorkflowsClient } from '@ottabase/cf/workflows'; // start by id, status, events
+import { AlarmQueue } from '@ottabase/cf/durable-alarms'; // many named timers over a DO's one alarm
 ```
+
+Every client returns `Result<T, Error>`; nothing throws past the binding. For provider-routed AI with customer keys and
+spend tracking use `@ottabase/ottaai`; for safe PDF downloads use `@ottabase/cf-pdf`.
 
 ### @ottabase/auth
 
@@ -660,6 +673,8 @@ definePackageList(() => [corePackage, appPackage, createMyPackage<CloudflareEnv>
 ```
 
 The model, the table, the routes, any cron or queue handlers and the nav entry are wired from that one line.
+`otta add mypackage my-app` writes it (plus step 5's re-export and the client descriptor) from the package's `ottabase`
+descriptor.
 
 ### 5. App: Export table and create hooks
 
@@ -799,7 +814,9 @@ The `otta` CLI provides a streamlined interface for common monorepo tasks:
 # Scaffolding
 otta new web my-app              # Create a new web app (Vite + TanStack Router + Workers)
 otta new landing my-site         # Create a new landing page (Next.js + Workers)
+otta new worker my-tool          # Create a single-Worker app (server-rendered + API, no SPA)
 otta templates                   # Show available templates
+otta add postmaster my-app       # Wire a workspace package into an app (--dry-run to preview)
 
 # Development
 otta dev otta-web                # Start dev server for an app
