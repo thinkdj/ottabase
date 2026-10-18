@@ -175,7 +175,8 @@ import { ComponentName } from '@ottabase/package-name/component-name';
 - Declare `lint`, `type-check`, `test` and `build` scripts (exception: `./src`-exported packages omit `build`, see
   AGENTS.MD)
 - Include package sources in consumer app Tailwind config
-- Add an `ottabase` descriptor to package.json (`{ "key", "factory", "export"?, "manifestImport"?, "tables"? }`) so
-  `otta add <package> <app>` can install it; see `packages/cli/README.md`
+- Add an `ottabase` descriptor to package.json
+  (`{ "key", "factory", "export"?, "manifestImport"?, "tables"?, "adminPages"? }`) so `otta add <package> <app>` can
+  install it; see `packages/cli/README.md`
 - Prove the package in the app shape it is for: `apps/otta-web` (SPA + admin) or `apps/otta-worker` (single Worker); the
   packages-registration test in each app catches a table or client key that did not arrive

@@ -39,6 +39,7 @@ pnpm otta templates
 otta add vault                      # @ottabase/vault into the default app
 otta add @ottabase/postmaster my-app
 otta add meter my-app --dry-run     # show the file changes, write nothing
+otta add pro my-app                 # every package of a bundle (packages/pro/*), pages included
 ```
 
 One command does every wiring step the package contract needs: the `workspace:*` dependency, a composition file under
@@ -228,21 +229,21 @@ pnpm otta info my-app
 `otta` is the command name the published binary installs. Inside this monorepo the root package does not link its own
 bin, so invoke it through the workspace script: `pnpm otta <command>`.
 
-| Command                      | Description                                              |
-| ---------------------------- | -------------------------------------------------------- |
-| `otta new <template> <name>` | Create a new app from a template                         |
-| `otta add <package> [app]`   | Wire a workspace package into an app (`--dry-run`)       |
-| `otta start [app]`           | Start development or a named local Wrangler environment  |
-| `otta dev [app]`             | Start the hot-reload development topology                |
-| `otta preview [app]`         | Build and start the preview Wrangler environment locally |
-| `otta build <app>`           | Build an app for production                              |
-| `otta test <app>`            | Run tests for an app                                     |
-| `otta lint <app>`            | Lint an app                                              |
-| `otta type-check <app>`      | Type check an app                                        |
-| `otta clean <app>`           | Clean build artifacts                                    |
-| `otta list`                  | List all apps in the monorepo                            |
-| `otta info <app>`            | Show detailed info about an app                          |
-| `otta templates`             | Show available templates                                 |
+| Command                      | Description                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `otta new <template> <name>` | Create a new app from a template                                                                |
+| `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`) |
+| `otta start [app]`           | Start development or a named local Wrangler environment                                         |
+| `otta dev [app]`             | Start the hot-reload development topology                                                       |
+| `otta preview [app]`         | Build and start the preview Wrangler environment locally                                        |
+| `otta build <app>`           | Build an app for production                                                                     |
+| `otta test <app>`            | Run tests for an app                                                                            |
+| `otta lint <app>`            | Lint an app                                                                                     |
+| `otta type-check <app>`      | Type check an app                                                                               |
+| `otta clean <app>`           | Clean build artifacts                                                                           |
+| `otta list`                  | List all apps in the monorepo                                                                   |
+| `otta info <app>`            | Show detailed info about an app                                                                 |
+| `otta templates`             | Show available templates                                                                        |
 
 ## Templates
 

@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyAdd, formatAddPlan, planAdd, readPackageDescriptor } from '../commands/add.js';
+import { applyAdd, formatAddPlan, listBundle, planAdd, readPackageDescriptor } from '../commands/add.js';
 
 const roots: string[] = [];
 
@@ -10,7 +10,7 @@ function fixture(): string {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'otta-add-'));
     roots.push(root);
     const write = (file: string, content: string) => fs.outputFileSync(path.join(root, file), content);
-    write('pnpm-workspace.yaml', 'packages:\n  - apps/*\n  - packages/*\n');
+    write('pnpm-workspace.yaml', 'packages:\n  - apps/*\n  - packages/*\n  - packages/pro/*\n');
     write(
         'packages/vault/package.json',
         JSON.stringify({
@@ -30,6 +30,42 @@ function fixture(): string {
         }),
     );
     write('packages/plain/package.json', JSON.stringify({ name: '@ottabase/plain' }));
+    // A bundle: packages/pro has no package.json of its own, two packages inside.
+    write(
+        'packages/pro/tower/package.json',
+        JSON.stringify({
+            name: '@ottabase/tower',
+            ottabase: {
+                key: 'tower',
+                factory: 'createTowerPackage',
+                tables: { names: ['towerAppsTable'] },
+                adminPages: [
+                    {
+                        path: '/admin/infrastructure/tower',
+                        title: 'Tower',
+                        description: "Every app you run, on one board. It's live.",
+                        icon: 'Radar',
+                        group: 'infrastructure',
+                        scope: 'platform',
+                        page: 'admin/infrastructure/TowerPage',
+                        export: 'TowerPage',
+                    },
+                ],
+            },
+        }),
+    );
+    write(
+        'packages/pro/tower/app/ottabase/packages/tower.ts',
+        '// shipped composition\nexport const towerPackage = 1;\n',
+    );
+    write(
+        'packages/pro/tower/app/src/pages/admin/infrastructure/TowerPage.tsx',
+        'export function TowerPage() {\n    return null;\n}\n',
+    );
+    write(
+        'packages/pro/payport/package.json',
+        JSON.stringify({ name: '@ottabase/payport', ottabase: { key: 'payport', factory: 'createPayportPackage' } }),
+    );
     write('apps/otta-web/ottabase/packages/vault.ts', '// reference composition\nexport const vaultPackage = 1;\n');
     write(
         'apps/bar/package.json',
@@ -91,6 +127,7 @@ describe('readPackageDescriptor', () => {
             factory: 'createVaultPackage',
             export: 'vaultPackage',
             manifestImport: '@ottabase/vault',
+            dir: 'packages/vault',
         });
         expect(readPackageDescriptor(root, 'postmaster').tables).toEqual({
             import: '@ottabase/postmaster/schema',
@@ -99,6 +136,48 @@ describe('readPackageDescriptor', () => {
         expect(() => readPackageDescriptor(root, 'plain')).toThrow(/no "ottabase" descriptor/);
         expect(() => readPackageDescriptor(root, 'nope')).toThrow(/No workspace package/);
         expect(() => readPackageDescriptor(root, '../etc')).toThrow(/Invalid package name/);
+    });
+
+    it('finds a package inside the pro bundle, by bare or explicit name, and validates its admin pages', () => {
+        const root = fixture();
+        const tower = readPackageDescriptor(root, 'tower');
+        expect(tower.dir).toBe('packages/pro/tower');
+        expect(tower.adminPages).toEqual([
+            {
+                path: '/admin/infrastructure/tower',
+                title: 'Tower',
+                description: "Every app you run, on one board. It's live.",
+                icon: 'Radar',
+                group: 'infrastructure',
+                scope: 'platform',
+                page: 'admin/infrastructure/TowerPage',
+                export: 'TowerPage',
+            },
+        ]);
+        expect(readPackageDescriptor(root, 'pro/tower').name).toBe('@ottabase/tower');
+        expect(readPackageDescriptor(root, 'pro/payport').adminPages).toBeUndefined();
+        expect(() => readPackageDescriptor(root, 'pro/nope')).toThrow(/No workspace package/);
+        expect(() => readPackageDescriptor(root, 'a/b/c')).toThrow(/Invalid package name/);
+
+        const file = path.join(root, 'packages/pro/tower/package.json');
+        const pkg = fs.readJsonSync(file);
+        pkg.ottabase.adminPages[0].icon = 'alert("x")';
+        fs.writeJsonSync(file, pkg);
+        expect(() => readPackageDescriptor(root, 'tower')).toThrow(/not a lucide-react export name/);
+        delete pkg.ottabase.adminPages[0].group;
+        pkg.ottabase.adminPages[0].icon = 'Radar';
+        fs.writeJsonSync(file, pkg);
+        expect(() => readPackageDescriptor(root, 'tower')).toThrow(/needs path, title, group, page and export/);
+    });
+});
+
+describe('listBundle', () => {
+    it('lists the packages of a folder that has none of its own, and nothing for a package or a stranger', () => {
+        const root = fixture();
+        expect(listBundle(root, 'pro')).toEqual(['pro/payport', 'pro/tower']);
+        expect(listBundle(root, 'vault')).toBeNull();
+        expect(listBundle(root, 'nope')).toBeNull();
+        expect(listBundle(root, '../etc')).toBeNull();
     });
 });
 
@@ -149,6 +228,68 @@ describe('planAdd and applyAdd', () => {
                 '',
             ].join('\n'),
         );
+    });
+
+    it('ships a bundle package: its composition and pages are copied, the admin page registered with its icon', () => {
+        const root = fixture();
+        const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'tower'));
+        expect(plan.steps.map((step) => [step.action, step.file])).toEqual([
+            ['edit', 'apps/bar/package.json'],
+            ['create', 'apps/bar/ottabase/packages/tower.ts'],
+            ['edit', 'apps/bar/ottabase/packages.ts'],
+            ['edit', 'apps/bar/src/ottabase/config/packages.ts'],
+            ['edit', 'apps/bar/ottabase/db/schema.ts'],
+            ['create', 'apps/bar/src/pages/admin/infrastructure/TowerPage.tsx'],
+        ]);
+        expect(formatAddPlan(plan)).toContain(
+            'create apps/bar/ottabase/packages/tower.ts  copied from packages/pro/tower/app',
+        );
+        applyAdd(root, plan);
+
+        expect(text(root, 'apps/bar/ottabase/packages/tower.ts')).toContain('// shipped composition');
+        expect(text(root, 'apps/bar/src/pages/admin/infrastructure/TowerPage.tsx')).toContain(
+            'export function TowerPage',
+        );
+        const client = text(root, 'apps/bar/src/ottabase/config/packages.ts');
+        expect(client.startsWith("import { Radar } from 'lucide-react';\nexport const CLIENT_PACKAGES = [")).toBe(true);
+        expect(client).toContain(
+            [
+                "    definePackageClient({ key: 'app' }),",
+                '    definePackageClient({',
+                "        key: 'tower',",
+                '        adminPages: [',
+                '            {',
+                "                path: '/admin/infrastructure/tower',",
+                "                title: 'Tower',",
+                "                description: 'Every app you run, on one board. It\\'s live.',",
+                '                icon: Radar,',
+                "                group: 'infrastructure',",
+                "                scope: 'platform',",
+                "                load: () => import('@/pages/admin/infrastructure/TowerPage'),",
+                "                exportName: 'TowerPage',",
+                '            },',
+                '        ],',
+                '    }),',
+                '    definePackageClient({',
+                '        key: WEBHOOKS_PACKAGE_KEY,',
+            ].join('\n'),
+        );
+        expect(text(root, 'apps/bar/ottabase/db/schema.ts')).toContain(
+            "export { towerAppsTable } from '@ottabase/tower/schema';",
+        );
+
+        const again = planAdd(root, 'bar', readPackageDescriptor(root, 'tower'));
+        expect(again.steps.every((step) => step.action === 'skip')).toBe(true);
+    });
+
+    it('merges icons into an existing lucide-react import', () => {
+        const root = fixture();
+        const clientFile = path.join(root, 'apps/bar/src/ottabase/config/packages.ts');
+        fs.writeFileSync(clientFile, "import { Webhook } from 'lucide-react';\n" + fs.readFileSync(clientFile, 'utf8'));
+        applyAdd(root, planAdd(root, 'bar', readPackageDescriptor(root, 'tower')));
+        const client = text(root, 'apps/bar/src/ottabase/config/packages.ts');
+        expect(client.startsWith("import { Radar, Webhook } from 'lucide-react';\n")).toBe(true);
+        expect(client.match(/from 'lucide-react'/g)).toHaveLength(1);
     });
 
     it('keeps CRLF files CRLF and refuses an app without a package.json', () => {

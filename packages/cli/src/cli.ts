@@ -78,9 +78,12 @@ Examples:
   $ otta add vault                 Add @ottabase/vault to the default app
   $ otta add @ottabase/postmaster my-app
   $ otta add meter my-app --dry-run
+  $ otta add pro my-app            Every package of a bundle: packages/pro/*
 
-The package declares itself in its package.json "ottabase" field ({ key, factory, export?, tables? }).
-The composition is copied from apps/otta-web when it has one, otherwise a stub is written for you to fill in.
+The package declares itself in its package.json "ottabase" field ({ key, factory, export?, tables?, adminPages? }).
+A bundle is a folder under packages/ with packages inside and no package.json of its own, such as packages/pro.
+The composition and pages come from the package's app/ folder when it ships one, else the composition is copied
+from apps/otta-web, else a stub is written for you to fill in.
 `,
     )
     .action(async (packageName: string, app: string | undefined, options: { dryRun?: boolean }) => {
