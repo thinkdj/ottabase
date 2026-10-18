@@ -38,7 +38,7 @@ router.get('/', async (c) => {
             (pkg) => `<tr>
     <td><code>${escapeHtml(pkg.key)}</code>${
         licenses.has(pkg.key)
-            ? `<br><span class="muted">${escapeHtml(licenses.get(pkg.key)!.state)}${
+            ? `<br><span class="state state-${escapeHtml(licenses.get(pkg.key)!.state)}">${escapeHtml(licenses.get(pkg.key)!.state)}</span><span class="muted">${
                   licenses.get(pkg.key)!.plan ? ` · ${escapeHtml(licenses.get(pkg.key)!.plan)}` : ''
               }</span>`
             : ''

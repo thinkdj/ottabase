@@ -243,12 +243,14 @@ export async function addPackage(
     }
     applyAdd(root, plan);
     const changed = plan.steps.filter((step) => step.action !== 'skip').length;
+    // The exit words of the design system: Done. (green) then Next: (amber) with the fix.
+    console.log('');
     if (changed === 0) {
-        log.success(`\n${descriptor.name} was already wired into ${app.name}.`);
+        log.done(`${descriptor.name} was already wired into ${app.name}.`);
         return plan;
     }
-    log.success(`\n${descriptor.name} added to ${app.name}.`);
-    log.info('\nNext steps:');
+    log.done(`${descriptor.name} added to ${app.name}.`);
+    log.next('');
     log.dim('  1. pnpm install');
     const composition = plan.steps.find((step) => step.action === 'create');
     if (composition) log.dim(`  2. Review ${composition.file}`);

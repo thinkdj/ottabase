@@ -120,7 +120,7 @@ describe('client state hygiene', () => {
     it.each(ALL_PAGES)('%s applies dark tokens to the media query and the override alike', (_name, html) => {
         // Both blocks are interpolated from one DARK_TOKENS constant — if this count
         // ever drops to 1, the toggle and the system default have drifted apart.
-        const occurrences = html.split('--background: 148 24% 6%;').length - 1;
+        const occurrences = html.split('--background: 150 16.7% 7.1%;').length - 1;
         expect(occurrences).toBe(2);
         expect(html).toContain(":root:not([data-theme='light'])");
         expect(html).toContain(":root[data-theme='dark']");

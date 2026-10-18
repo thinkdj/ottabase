@@ -27,6 +27,10 @@ export const log = {
     error: (msg: string) => console.log(`${colors.red}✗${colors.reset} ${msg}`),
     step: (msg: string) => console.log(`${colors.blue}→${colors.reset} ${msg}`),
     dim: (msg: string) => console.log(`${colors.dim}${msg}${colors.reset}`),
+    /** The exit words: Done. (green), Next: (amber), Failed: (red), each followed by the reason or the fix. */
+    done: (msg: string) => console.log(`${colors.green}Done.${colors.reset} ${msg}`),
+    next: (msg: string) => console.log(`${colors.yellow}Next:${colors.reset} ${msg}`),
+    failed: (msg: string) => console.log(`${colors.red}Failed:${colors.reset} ${msg}`),
 };
 
 /**

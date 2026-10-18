@@ -6,12 +6,12 @@
 // platform has no database, no brand engine and no asset pipeline, so every
 // style and script is inline and the page makes no outbound request.
 //
-// DESIGN — the palette, radius, shadow and motion tokens below are transcribed
-// from the app's default brand theme (packages/brand-engine/src/themes/default.json)
-// and the component recipes mirror @ottabase/ui-shadcn (button h-10/rounded-md,
-// input h-10, card rounded-lg + border, the global 2px focus ring). First-run
-// setup should look like the product it is installing. Light and dark come from
-// prefers-color-scheme — there is no theme store to read yet.
+// DESIGN — the palette, radius, shadow and motion tokens below are Design
+// System v1 (packages/brand-engine/src/themes/verdant.json, the framework
+// default) and the component recipes mirror @ottabase/ui-shadcn (button
+// h-9/rounded-md, input h-9, card rounded-lg + border, the global 2px focus
+// ring). First-run setup should look like the product it is installing. Light
+// and dark come from prefers-color-scheme — there is no theme store to read yet.
 //
 // IMPORTANT — the inline <script> lives inside a TS template literal, so it must
 // never contain a backtick or a ${...} sequence; use string concatenation there.
@@ -32,24 +32,27 @@ const BRAND = 'Ottabase';
  * so the theme toggle can never drift from the system default.
  */
 const DARK_TOKENS = `
-      /* Verdant dark, verbatim. It already sets card above background (9% vs 6%),
-         so cards read as raised without the lift earlier palettes needed here. */
-      --background: 148 24% 6%;
-      --foreground: 138 14% 86%;
-      --card: 148 20% 9%;
-      --muted: 146 16% 13%;
-      --muted-foreground: 140 10% 54%;
-      --border: 146 14% 12%;
-      --input: 146 14% 12%;
-      --ring: 156 48% 46%;
-      --primary: 156 48% 46%;
-      --primary-foreground: 148 24% 6%;
-      /* Inverted against light: the dark fill brightens on hover. */
-      --primary-hover: 156 48% 54%;
-      --primary-active: 156 48% 62%;
-      --danger: 4 82% 68%;
-      --success: 162 54% 52%;
-      --warning: 44 78% 60%;
+      /* Design System v1 dark, verbatim: card sits above the page (10% vs 7%),
+         so cards read as raised without a lift. */
+      --background: 150 16.7% 7.1%;
+      --foreground: 142.5 16.7% 90.6%;
+      --card: 142.5 16% 9.8%;
+      --muted: 144 15.6% 12.5%;
+      --muted-foreground: 150 6.5% 57.6%;
+      --border: 147.3 12.6% 17.1%;
+      --input: 145.7 10.8% 25.5%;
+      --ring: 152.6 40.4% 50%;
+      /* 500 is the fill on dark; 400 (hover) brightens, 600 (active) deepens. */
+      --primary: 153.1 53.2% 39.4%;
+      --primary-foreground: 150 42.9% 5.5%;
+      --primary-hover: 152.6 40.4% 50%;
+      --primary-active: 156 51.7% 34.1%;
+      --danger: 5.5 83.2% 76.7%;
+      --success: 148.2 48% 66.1%;
+      --warning: 41.4 83.1% 65.1%;
+      --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.32);
+      --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.26);
+      --shadow-md: 0 4px 12px rgb(0 0 0 / 0.36), 0 16px 32px -12px rgb(0 0 0 / 0.6);
 `;
 
 const STYLES = `
@@ -59,45 +62,41 @@ const STYLES = `
   :root {
     color-scheme: light dark;
 
-    /* Palette transcribed from the verdant theme (light scheme), which is the
-       framework default: see brand-engine/src/defaults.ts and the
-       themePresetId: 'verdant' that ensureAppBrandDefaults seeds in step two. */
-    --background: 138 18% 97%;
-    --foreground: 148 22% 10%;
+    /* Design System v1 light (the verdant preset, the framework default): see
+       brand-engine/src/defaults.ts and the themePresetId: 'verdant' that
+       ensureAppBrandDefaults seeds in step two. */
+    --background: 150 12.5% 96.9%;
+    --foreground: 142.5 18.2% 8.6%;
     --card: 0 0% 100%;
-    --muted: 140 14% 93%;
-    /* Verdant ships 142 8% 46%, which measures 4.03:1 on its own tinted
-       background and misses AA. Same hue, four points darker, now 4.9:1. */
-    --muted-foreground: 142 8% 40%;
-    --border: 140 12% 88%;
-    --input: 140 12% 88%;
-    --ring: 156 52% 34%;
-    --primary: 156 52% 34%;
+    --muted: 135 13.3% 94.1%;
+    --muted-foreground: 148 7.5% 39.4%;
+    --border: 145.7 12.7% 89.2%;
+    --input: 147.3 10.1% 78.6%;
+    --ring: 153.1 53.2% 39.4%;
+    /* 600 is the action fill, 700 hover, 800 pressed: explicit stops rather
+       than bg-primary/90, which composites toward the card and drops the
+       label under 4.5:1. */
+    --primary: 156 51.7% 34.1%;
     --primary-foreground: 0 0% 100%;
-    /* Explicit hover/active stops rather than shadcn's bg-primary/90: alpha
-       composites the fill toward the card and drops the label under 4.5:1.
-       Hue and saturation are unchanged; only lightness moves. */
-    --primary-hover: 156 52% 28%;
-    --primary-active: 156 52% 22%;
+    --primary-hover: 156.2 52.5% 27.3%;
+    --primary-active: 157.5 50.9% 21.6%;
 
-    /* Verdant's destructive / success / warning are button-FILL values and fall
-       under 4.5:1 as body copy, so these keep the hue and drop the lightness. */
-    --danger: 4 70% 40%;
-    --success: 162 62% 26%;
-    --warning: 40 82% 28%;
+    /* The tones' text colours (AA on a surface), not their fills. */
+    --danger: 3.2 71.3% 41%;
+    --success: 154.7 55.1% 27.1%;
+    --warning: 39.1 100% 27.1%;
 
-    --radius: 0.5rem;
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    --radius: 10px;
+    --radius-md: 7px;
+    --radius-sm: 5px;
 
-    /* Verdant's shadows are green-tinted and softer than a neutral scale. */
-    --shadow-xs: 0 1px 2px rgb(20 60 30 / 0.05);
-    --shadow-sm: 0 2px 4px rgb(20 60 30 / 0.06);
-    --shadow-md: 0 4px 8px -1px rgb(20 60 30 / 0.08);
+    --shadow-xs: 0 1px 2px rgb(18 26 21 / 0.05);
+    --shadow-sm: 0 1px 2px rgb(18 26 21 / 0.04), 0 2px 8px rgb(18 26 21 / 0.05);
+    --shadow-md: 0 4px 12px rgb(18 26 21 / 0.08), 0 16px 32px -12px rgb(18 26 21 / 0.16);
 
-    --fast: 105ms;
+    --fast: 120ms;
     --normal: 200ms;
-    --ease: cubic-bezier(0.35, 0.65, 0.05, 1);
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
@@ -105,14 +104,12 @@ const STYLES = `
     --text-lg: 1.0625rem;
     --text-2xl: 1.75rem;
 
-    /* Verdant names Sora for headings and Source Sans 3 for body, both served from
-       Google Fonts. Bootstrap pages may not make outbound requests, so the families
-       are listed FIRST and used only when already installed locally (common on the
-       machines that built the theme); everyone else falls back to the system stack,
-       which is the closest humanist sans available without a download. */
-    --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
-    --font-heading: 'Sora', 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace;
+    /* Inter for everything read, JetBrains Mono for everything copied. Bootstrap
+       pages may not make outbound requests, so the families are listed FIRST and
+       used only when installed locally; everyone else gets the system stack. */
+    --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
+    --font-heading: var(--font-sans);
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   }
 
   /* The system preference decides, unless the reader picked light explicitly. */
