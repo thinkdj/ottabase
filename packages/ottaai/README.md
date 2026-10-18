@@ -511,6 +511,36 @@ consistent coordinator such as a Durable Object. (Cloudflare's own rate-limit bi
 eventually consistent.) Token accounting against a commercial policy — free tier, reset period, retries, refunds,
 per-model pricing, admin overrides — is deliberately out of scope here.
 
+### Credit metering (platform calls debit, BYOK is free)
+
+The rate limiter bounds burst. `createCreditMetering` bounds SPEND, and only on the operator's money: it returns a
+`quota` that refuses a platform call when the tenant's balance has no room, and an `eventSink` that debits the actual
+`inputTokens + outputTokens` of every successful platform call from `call.completed`. BYOK calls pass both untouched.
+The `CreditLedger` is structural, so `@ottabase/meter` fits with a two-line adapter and this package stays
+dependency-free:
+
+```ts
+import { allQuotas, createCreditMetering, fanOutEvents } from '@ottabase/ottaai/resolver';
+
+const credits = createCreditMetering({
+    ledger: {
+        hasCredits: async (s, estimate) =>
+            (await meter.requireCredits(env, { appId, ...s }, 'ai.tokens', estimate)) === null,
+        consume: (s, amount, ref) => meter.consume(env, { appId, ...s }, 'ai.tokens', amount, { ref }),
+    },
+    defer: (p) => ctx.waitUntil(p),
+});
+
+createAiProvisioningWithStorage({
+    quota: allQuotas(rateLimiter, credits.quota),
+    eventSink: fanOutEvents(analyticsSink, credits.eventSink),
+    // …
+});
+```
+
+A tenant with no balance row is refused (`NO_BALANCE`), so grant the free tier when a plan starts. otta-web turns this
+on with `features.ottaai.credits: 'ai.tokens'` in `ottabase.config.ts` (null = off).
+
 ### Organization-scoped keys
 
 `allowOrgCredentials` is a **server dial**, passed to `createAiProvisioning`. It gates `handlers.create` and is ANDed

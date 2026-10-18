@@ -82,6 +82,7 @@ const DEFAULT_OTTAAI: OttaaiFeatureConfig = {
     platformProvider: null,
     platformBilling: null,
     platformModel: null,
+    credits: null,
 };
 
 /**
@@ -181,6 +182,7 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
         platformProvider: input.features?.ottaai?.platformProvider ?? DEFAULT_OTTAAI.platformProvider,
         platformBilling: input.features?.ottaai?.platformBilling === 'unified' ? 'unified' : null,
         platformModel: input.features?.ottaai?.platformModel ?? DEFAULT_OTTAAI.platformModel,
+        credits: input.features?.ottaai?.credits ?? DEFAULT_OTTAAI.credits,
     };
 
     const referrals = { ...DEFAULT_REFERRALS, ...input.features?.referrals };

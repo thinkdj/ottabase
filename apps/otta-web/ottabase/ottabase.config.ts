@@ -100,6 +100,10 @@ export default defineOttabaseConfig({
             // A CFAI_<PROVIDER>_API_KEY takes precedence when one is supplied.
             platformBilling: null,
             platformModel: null,
+            // Name a @ottabase/meter balance (e.g. 'ai.tokens') and every PLATFORM-paid call
+            // debits its tokens from the caller's balance; BYOK calls are never metered.
+            // Grant the free tier when a plan starts, or tenants without a balance are refused.
+            credits: null,
         },
 
         // ── Auth behaviour (non-secret flags) ──────────────────

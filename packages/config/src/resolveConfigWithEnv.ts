@@ -137,6 +137,7 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                         ? 'unified'
                         : config.features.ottaai.platformBilling,
                 platformModel: str(env, ENV_KEYS.OTTAAI_PLATFORM_MODEL) ?? config.features.ottaai.platformModel,
+                credits: config.features.ottaai.credits,
             },
         },
         email: {

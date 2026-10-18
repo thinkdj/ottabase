@@ -187,6 +187,13 @@ export interface OttaaiFeatureConfig {
     platformBilling: 'unified' | null;
     /** Platform default model. `dynamic/<route>` requires provider-native Gateway authentication. */
     platformModel: string | null;
+    /**
+     * The @ottabase/meter name that PLATFORM-paid inference debits (e.g. `ai.tokens`), one credit
+     * per token. `null` = no credit metering; the rate limit alone bounds platform spend. BYOK
+     * calls are never metered: the tenant's key is the tenant's bill. Config-file only — a
+     * commercial policy, not an incident dial.
+     */
+    credits: string | null;
 }
 
 export interface OttabaseFeaturesConfig {

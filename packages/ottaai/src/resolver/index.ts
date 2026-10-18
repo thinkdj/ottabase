@@ -60,6 +60,7 @@ export * from './store';
 export * from './transport';
 export * from './events';
 export * from './instrumented-client';
+export * from './credits';
 export * from './verify';
 
 // ---------------------------------------------------------------------------
