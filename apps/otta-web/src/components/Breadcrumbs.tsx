@@ -49,6 +49,8 @@ const ROUTE_LABELS: Record<string, string> = {
     '/demo/ui-cropper': 'Image Cropper',
     '/demo/timezone': 'Timezone Utils',
     '/demo/api': 'API Client',
+    '/demo/apikeys': 'API Keys',
+    '/demo/legal': 'Legal Pages',
     '/demo/renderer': 'Content Renderer',
     '/demo/email': 'Email Templates',
     '/demo/state': 'State Management',
