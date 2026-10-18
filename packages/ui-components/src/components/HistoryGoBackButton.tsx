@@ -1,5 +1,3 @@
-'use client';
-
 import { IconArrowLeft } from '@tabler/icons-react';
 
 const HistoryGoBackButton = () => {

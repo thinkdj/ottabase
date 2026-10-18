@@ -1,5 +1,3 @@
-'use client';
-
 import { IconMoonStars, IconSun } from '@tabler/icons-react';
 import { Button } from '@ottabase/ui-shadcn';
 import { useTheme } from 'next-themes';

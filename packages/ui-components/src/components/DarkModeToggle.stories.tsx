@@ -1,5 +1,3 @@
-'use client';
-
 import type { Meta, StoryObj } from '@storybook/react-webpack5';
 import DarkModeToggle from './DarkModeToggle';
 
