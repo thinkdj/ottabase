@@ -13,8 +13,9 @@ and brand persistence via D1.
 - **Effects Stylesheet** — Generated `@font-face`/`@keyframes`/text styles/link contract/theme CSS (`#brand-effects`)
 - **Email Branding** — Replace `{{brandName}}`, `{{logoUrl}}`, etc. in email HTML
 - **Favicon** — Resolve best favicon URL from brand config
-- **Built-in Presets** — Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, Verdant, plus two full 1:1 design-system
-  ports used as fidelity references: Visited (the90s.page) and Marquee (uppcoming)
+- **Built-in Presets** — Verdant (Ottabase Design System v1, the framework default and the engine's merge-under
+  defaults; see `docs/DESIGN_SYSTEM.md`), Default, Neo, Crisp, Funky, Artisan, Midnight, Rose, plus two full 1:1
+  design-system ports used as fidelity references: Visited (the90s.page) and Marquee (uppcoming)
 - **Fonts & Cursors** — Google Fonts catalog, custom cursor SVG registry
 
 ## v2 Token Categories (design-system fidelity)

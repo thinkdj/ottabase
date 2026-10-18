@@ -63,20 +63,67 @@ export interface TokenColors {
     /** Scrim color behind dialogs/sheets/drawers (HSL channels, used as bg-overlay/80) */
     overlay?: string;
 
-    /** Semantic status tokens for feedback UI */
+    /**
+     * Design System v1 brand-dependent extras. Derived from primary / accent /
+     * foreground when a theme leaves them out (see resolve-core deriveColorExtras),
+     * so a kit that only sets `primary` still gets a correct hover fill.
+     */
+    'primary-hover'?: string;
+    'primary-active'?: string;
+    'accent-line'?: string;
+    /** Text ladder: foreground > subtle > muted > faint (placeholder, disabled) */
+    'subtle-foreground'?: string;
+    'faint-foreground'?: string;
+
+    /**
+     * Status tones (Design System v1). Meaning is fixed across every surface:
+     * success = healthy/active/done · warning = grace/waiting/degraded ·
+     * destructive = failed/expired/unreachable · info = running · smoke = quiet
+     * (disabled, unlicensed, never polled) · neutral = no state.
+     * Each tone: solid, -foreground (text ON the solid), -text (text on a
+     * surface, AA), -soft (fill), -line (border).
+     */
     success?: string;
     'success-foreground'?: string;
+    'success-text'?: string;
+    'success-soft'?: string;
+    'success-line'?: string;
     warning?: string;
     'warning-foreground'?: string;
+    'warning-text'?: string;
+    'warning-soft'?: string;
+    'warning-line'?: string;
+    'destructive-text'?: string;
+    'destructive-soft'?: string;
+    'destructive-line'?: string;
     info?: string;
     'info-foreground'?: string;
+    'info-text'?: string;
+    'info-soft'?: string;
+    'info-line'?: string;
+    smoke?: string;
+    'smoke-foreground'?: string;
+    'smoke-text'?: string;
+    'smoke-soft'?: string;
+    'smoke-line'?: string;
+    neutral?: string;
+    'neutral-foreground'?: string;
+    'neutral-text'?: string;
+    'neutral-soft'?: string;
+    'neutral-line'?: string;
 
-    /** Data visualization palette (5 slots) */
+    /** Data visualization palette (8 categorical slots, assigned in order) + chrome */
     'chart-1'?: string;
     'chart-2'?: string;
     'chart-3'?: string;
     'chart-4'?: string;
     'chart-5'?: string;
+    'chart-6'?: string;
+    'chart-7'?: string;
+    'chart-8'?: string;
+    'chart-grid'?: string;
+    'chart-axis'?: string;
+    'chart-label'?: string;
 
     /** Extensible – additional custom colour tokens */
     [custom: string]: string | undefined;

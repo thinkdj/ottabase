@@ -1,120 +1,231 @@
 // ---------------------------------------------------------------------------
 // BrandEngine – Default token values
+//
+// The defaults ARE the Ottabase Design System v1 (verdant): one green, cool
+// neutrals with a trace of it, Inter + JetBrains Mono, a fixed status
+// language. Every theme merges on top of these, so a kit that only sets
+// `primary` still gets the system's surfaces, text ladder and tones.
 // ---------------------------------------------------------------------------
 
 import type { BrandTheme } from './theme';
 import type { ResolvedMotion, TokenColors, TokenCursors, TokenSpacing, TokenTypographyRoles } from './tokens';
 
-/** Default light-mode colour palette (verdant) */
-export const DEFAULT_COLORS_LIGHT: TokenColors = {
-    background: '138 18% 97%',
-    foreground: '148 22% 10%',
-    primary: '156 52% 34%',
-    'primary-foreground': '0 0% 100%',
-    secondary: '140 16% 92%',
-    'secondary-foreground': '148 22% 14%',
-    muted: '140 14% 93%',
-    'muted-foreground': '142 8% 46%',
-    accent: '156 52% 34%',
-    'accent-foreground': '0 0% 100%',
-    destructive: '4 74% 52%',
-    'destructive-foreground': '0 0% 100%',
-    border: '140 12% 88%',
-    input: '140 12% 88%',
-    ring: '156 52% 34%',
-    card: '0 0% 100%',
-    'card-foreground': '148 22% 10%',
-    popover: '0 0% 100%',
-    'popover-foreground': '148 22% 10%',
-    'sidebar-background': '138 16% 95%',
-    'sidebar-foreground': '148 18% 18%',
-    'sidebar-border': '140 12% 88%',
-    'sidebar-accent': '156 52% 34%',
-    'sidebar-accent-foreground': '0 0% 100%',
-    'sidebar-ring': '156 52% 34%',
-    success: '162 60% 36%',
+/**
+ * Status tones, light. Fixed across every surface and every theme: green =
+ * healthy / active / done, amber = grace / waiting / degraded, red = failed /
+ * expired / unreachable, blue = running, smoke = quiet (disabled, unlicensed,
+ * never polled), neutral = no state. Each tone: solid (dot, bar, icon),
+ * -foreground (text ON the solid), -text (text on a surface, AA), -soft (fill),
+ * -line (border). The brand green and the status green share a hue on purpose.
+ */
+const STATUS_TONES_LIGHT = {
+    success: '153.4 57.8% 39%',
     'success-foreground': '0 0% 100%',
-    warning: '42 82% 46%',
-    'warning-foreground': '32 48% 14%',
-    info: '202 74% 48%',
+    'success-text': '154.7 55.1% 27.1%',
+    'success-soft': '145.7 38.9% 92.9%',
+    'success-line': '145.5 37.7% 79.2%',
+    warning: '42 82.1% 46.1%',
+    'warning-foreground': '142.5 18.2% 8.6%',
+    'warning-text': '39.1 100% 27.1%',
+    'warning-soft': '41.8 89.2% 92.7%',
+    'warning-line': '43.4 75.7% 77.5%',
+    destructive: '3.8 69.6% 51%',
+    'destructive-foreground': '0 0% 100%',
+    'destructive-text': '3.2 71.3% 41%',
+    'destructive-soft': '6.3 82.6% 95.5%',
+    'destructive-line': '4.7 71.8% 86.1%',
+    info: '210.2 66.3% 50%',
     'info-foreground': '0 0% 100%',
-    'chart-1': '156 52% 34%',
-    'chart-2': '202 74% 48%',
-    'chart-3': '42 82% 46%',
-    'chart-4': '286 42% 50%',
-    'chart-5': '18 70% 52%',
-    overlay: '0 0% 0%',
+    'info-text': '212.5 72.3% 39.6%',
+    'info-soft': '213 76.9% 94.9%',
+    'info-line': '212.9 73.9% 86.5%',
+    smoke: '216.3 15.8% 52.9%',
+    'smoke-foreground': '0 0% 100%',
+    'smoke-text': '212 16% 36.9%',
+    'smoke-soft': '210 21.4% 94.5%',
+    'smoke-line': '210 21.1% 85.1%',
+    neutral: '150 6.5% 57.6%',
+    'neutral-foreground': '0 0% 100%',
+    'neutral-text': '148 9.1% 32.4%',
+    'neutral-soft': '135 13.3% 94.1%',
+    'neutral-line': '146.7 12% 85.3%',
+} as const;
+
+/** Status tones, dark. */
+const STATUS_TONES_DARK = {
+    success: '152.8 48.1% 47.6%',
+    'success-foreground': '150 42.9% 5.5%',
+    'success-text': '148.2 48% 66.1%',
+    'success-soft': '148.7 39% 11.6%',
+    'success-line': '149.3 42.1% 21%',
+    warning: '41 75% 51.4%',
+    'warning-foreground': '150 42.9% 5.5%',
+    'warning-text': '41.4 83.1% 65.1%',
+    'warning-soft': '42.2 45.8% 11.6%',
+    'warning-line': '41.9 56.8% 21.8%',
+    destructive: '5 82.1% 62.7%',
+    'destructive-foreground': '150 42.9% 5.5%',
+    'destructive-text': '5.5 83.2% 76.7%',
+    'destructive-soft': '6.2 39.7% 14.3%',
+    'destructive-line': '5.2 43.9% 25.9%',
+    info: '212.5 77.3% 60.2%',
+    'info-foreground': '150 42.9% 5.5%',
+    'info-text': '211.8 83.6% 76.1%',
+    'info-soft': '214.1 46.8% 15.5%',
+    'info-line': '215.5 50.4% 27.6%',
+    smoke: '214.7 19.4% 61.6%',
+    'smoke-foreground': '150 42.9% 5.5%',
+    'smoke-text': '212.9 20.8% 70.8%',
+    'smoke-soft': '212.3 18.8% 13.5%',
+    'smoke-line': '211.2 19.7% 24.9%',
+    neutral: '150 6.5% 57.6%',
+    'neutral-foreground': '150 42.9% 5.5%',
+    'neutral-text': '147.3 7.3% 70.4%',
+    'neutral-soft': '144 15.6% 12.5%',
+    'neutral-line': '147.7 12.1% 21%',
+} as const;
+
+/**
+ * Charts, light. Categorical order is fixed: slots 1 to 8 are assigned in
+ * order, never cycled. Grid, axis and label are the recessive chrome.
+ */
+const CHART_LIGHT = {
+    'chart-1': '156 51.7% 34.1%',
+    'chart-2': '210.2 66.3% 50%',
+    'chart-3': '42 82.1% 46.1%',
+    'chart-4': '264.1 55.5% 58.6%',
+    'chart-5': '21.2 71.2% 52.4%',
+    'chart-6': '182.2 72.5% 37.1%',
+    'chart-7': '329.5 55.9% 60%',
+    'chart-8': '216.3 15.8% 52.9%',
+    'chart-grid': '144 11.6% 91.6%',
+    'chart-axis': '145 9.1% 74.1%',
+    'chart-label': '148 7.5% 39.4%',
+} as const;
+
+const CHART_DARK = {
+    'chart-1': '152.8 48.1% 47.6%',
+    'chart-2': '212.5 77.3% 60.2%',
+    'chart-3': '41 75% 51.4%',
+    'chart-4': '260.4 67.3% 70%',
+    'chart-5': '20 80.4% 62%',
+    'chart-6': '182.1 59.8% 45.9%',
+    'chart-7': '330 65.9% 67.8%',
+    'chart-8': '214.7 19.4% 61.6%',
+    'chart-grid': '147.3 12.6% 17.1%',
+    'chart-axis': '145.7 10.8% 25.5%',
+    'chart-label': '150 6.5% 57.6%',
+} as const;
+
+/**
+ * Default light-mode colour palette (Design System v1, verdant).
+ * Surfaces: background = page, card/popover/sidebar = surface, muted = subtle
+ * fill (table head, hover), secondary = pressed/selected neutral.
+ * Text ladder: foreground, subtle-foreground, muted-foreground, faint-foreground.
+ * 600 green is the action fill, 700 is text and links, 500 is the focus ring.
+ */
+export const DEFAULT_COLORS_LIGHT: TokenColors = {
+    background: '150 12.5% 96.9%',
+    foreground: '142.5 18.2% 8.6%',
+    primary: '156 51.7% 34.1%',
+    'primary-foreground': '0 0% 100%',
+    'primary-hover': '156.2 52.5% 27.3%',
+    'primary-active': '157.5 50.9% 21.6%',
+    secondary: '140 12.5% 90.6%',
+    'secondary-foreground': '142.5 18.2% 8.6%',
+    muted: '135 13.3% 94.1%',
+    'muted-foreground': '148 7.5% 39.4%',
+    'subtle-foreground': '148 9.1% 32.4%',
+    'faint-foreground': '150 6% 54.5%',
+    accent: '145.7 38.9% 92.9%',
+    'accent-foreground': '156.2 52.5% 27.3%',
+    'accent-line': '145.5 37.7% 79.2%',
+    border: '145.7 12.7% 89.2%',
+    input: '147.3 10.1% 78.6%',
+    ring: '153.1 53.2% 39.4%',
+    card: '0 0% 100%',
+    'card-foreground': '142.5 18.2% 8.6%',
+    popover: '0 0% 100%',
+    'popover-foreground': '142.5 18.2% 8.6%',
+    'sidebar-background': '0 0% 100%',
+    'sidebar-foreground': '148 9.1% 32.4%',
+    'sidebar-border': '145.7 12.7% 89.2%',
+    'sidebar-accent': '145.7 38.9% 92.9%',
+    'sidebar-accent-foreground': '156.2 52.5% 27.3%',
+    'sidebar-ring': '153.1 53.2% 39.4%',
+    overlay: '150 16.7% 7.1%',
+    ...STATUS_TONES_LIGHT,
+    ...CHART_LIGHT,
 };
 
-/** Default dark-mode colour palette (verdant) */
+/** Default dark-mode colour palette (Design System v1, verdant). 400 is text and links, 500 the fill. */
 export const DEFAULT_COLORS_DARK: TokenColors = {
-    background: '148 24% 6%',
-    foreground: '138 14% 86%',
-    primary: '156 48% 46%',
-    'primary-foreground': '148 24% 6%',
-    secondary: '146 16% 13%',
-    'secondary-foreground': '138 14% 86%',
-    muted: '146 16% 13%',
-    'muted-foreground': '140 10% 54%',
-    accent: '156 48% 46% / 0.12',
-    'accent-foreground': '156 48% 52%',
-    destructive: '4 66% 42%',
-    'destructive-foreground': '138 14% 90%',
-    border: '146 14% 12%',
-    input: '146 14% 12%',
-    ring: '156 48% 46%',
-    card: '148 20% 9%',
-    'card-foreground': '138 14% 86%',
-    popover: '148 20% 9%',
-    'popover-foreground': '138 14% 86%',
-    'sidebar-background': '148 22% 7%',
-    'sidebar-foreground': '140 10% 66%',
-    'sidebar-border': '146 14% 10%',
-    'sidebar-accent': '156 48% 46% / 0.1',
-    'sidebar-accent-foreground': '156 48% 52%',
-    'sidebar-ring': '156 48% 46%',
-    success: '162 54% 44%',
-    'success-foreground': '148 24% 6%',
-    warning: '44 78% 52%',
-    'warning-foreground': '148 24% 6%',
-    info: '206 70% 54%',
-    'info-foreground': '148 24% 6%',
-    'chart-1': '156 48% 46%',
-    'chart-2': '206 70% 54%',
-    'chart-3': '44 78% 52%',
-    'chart-4': '290 38% 56%',
-    'chart-5': '22 66% 58%',
+    background: '150 16.7% 7.1%',
+    foreground: '142.5 16.7% 90.6%',
+    primary: '153.1 53.2% 39.4%',
+    'primary-foreground': '150 42.9% 5.5%',
+    'primary-hover': '152.6 40.4% 50%',
+    'primary-active': '156 51.7% 34.1%',
+    secondary: '145 14.6% 16.1%',
+    'secondary-foreground': '142.5 16.7% 90.6%',
+    muted: '144 15.6% 12.5%',
+    'muted-foreground': '150 6.5% 57.6%',
+    'subtle-foreground': '147.3 7.3% 70.4%',
+    'faint-foreground': '148 6.8% 42.9%',
+    accent: '151.4 33.3% 12.4%',
+    'accent-foreground': '152.6 40.4% 50%',
+    'accent-line': '153.1 39.8% 24.1%',
+    border: '147.3 12.6% 17.1%',
+    input: '145.7 10.8% 25.5%',
+    ring: '152.6 40.4% 50%',
+    card: '142.5 16% 9.8%',
+    'card-foreground': '142.5 16.7% 90.6%',
+    popover: '142.5 16% 9.8%',
+    'popover-foreground': '142.5 16.7% 90.6%',
+    'sidebar-background': '142.5 16% 9.8%',
+    'sidebar-foreground': '147.3 7.3% 70.4%',
+    'sidebar-border': '147.3 12.6% 17.1%',
+    'sidebar-accent': '151.4 33.3% 12.4%',
+    'sidebar-accent-foreground': '152.6 40.4% 50%',
+    'sidebar-ring': '152.6 40.4% 50%',
     overlay: '0 0% 0%',
+    ...STATUS_TONES_DARK,
+    ...CHART_DARK,
 };
 
-/** Default shadow elevation scale (light surfaces, verdant) */
+/** Default shadow elevation scale (light). Borders do the work; shadows lift only what floats. */
 export const DEFAULT_SHADOWS: Record<string, string> = {
-    xs: '0 1px 2px rgb(20 60 30 / 0.05)',
-    sm: '0 2px 4px rgb(20 60 30 / 0.06)',
-    md: '0 4px 8px -1px rgb(20 60 30 / 0.08)',
-    lg: '0 8px 18px -3px rgb(20 60 30 / 0.1)',
-    xl: '0 18px 32px -5px rgb(20 60 30 / 0.12)',
+    xs: '0 1px 2px rgb(18 26 21 / 0.05)',
+    sm: '0 1px 2px rgb(18 26 21 / 0.04), 0 2px 8px rgb(18 26 21 / 0.05)',
+    md: '0 4px 12px rgb(18 26 21 / 0.08), 0 16px 32px -12px rgb(18 26 21 / 0.16)',
+    lg: '0 24px 56px -12px rgb(18 26 21 / 0.28)',
+    xl: '0 24px 56px -12px rgb(18 26 21 / 0.28)',
 };
 
-/** Default shadow elevation scale (dark surfaces) – must match shadcn.css .dark */
+/** Default shadow elevation scale (dark) – must match shadcn.css .dark */
 export const DEFAULT_SHADOWS_DARK: Record<string, string> = {
-    xs: '0 1px 2px 0 rgb(0 0 0 / 0.35)',
-    sm: '0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.45)',
-    md: '0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45)',
-    lg: '0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5)',
-    xl: '0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.55)',
+    xs: '0 1px 2px rgb(0 0 0 / 0.32)',
+    sm: '0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.26)',
+    md: '0 4px 12px rgb(0 0 0 / 0.36), 0 16px 32px -12px rgb(0 0 0 / 0.6)',
+    lg: '0 24px 56px -12px rgb(0 0 0 / 0.7)',
+    xl: '0 24px 56px -12px rgb(0 0 0 / 0.7)',
 };
 
-/** Default motion / transition presets (verdant) */
+/**
+ * Default motion: three durations, one curve. Controls answer in 120ms, page
+ * content enters in 360ms, the theme eases every colour for 320ms when it flips.
+ * Nothing bounces; exits are linear and shorter.
+ */
 export const DEFAULT_MOTION: ResolvedMotion = {
-    durationFast: '105ms',
+    durationFast: '120ms',
     durationNormal: '200ms',
-    durationSlow: '380ms',
-    easing: 'cubic-bezier(0.35, 0.65, 0.05, 1)',
-    easingEnter: 'cubic-bezier(0.05, 0.6, 0.15, 1)',
-    easingExit: 'cubic-bezier(0.4, 0, 0.85, 0.2)',
+    durationSlow: '360ms',
+    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    easingEnter: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    easingExit: 'cubic-bezier(0.4, 0, 1, 1)',
     easingSpring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
     disableAnimations: false,
+    durations: { theme: '320ms' },
 };
 
 /** Default cursor map */
@@ -124,32 +235,36 @@ export const DEFAULT_CURSORS: TokenCursors = {
     text: 'text',
 };
 
-/** Default spacing tokens (verdant) */
+/** Default spacing tokens: a 4px grid. */
 export const DEFAULT_SPACING: TokenSpacing = {
-    section: '2.25rem',
-    card: '1.375rem',
+    section: '2rem',
+    card: '1.25rem',
     element: '0.5rem',
 };
 
 /**
- * Default typography roles for base theme (verdant).
+ * Default typography: Inter for everything read, JetBrains Mono for everything
+ * copied (keys, ids, env names, cron expressions, versions, CLI lines).
  * heading/body/handwriting/mono are ALWAYS present after resolution; themes
  * may add arbitrary extra roles (display, ticker, …) → --font-{role}.
  */
 export const DEFAULT_TYPOGRAPHY: TokenTypographyRoles = {
     heading: {
-        fontFamily: 'Sora',
-        url: 'https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap',
+        fontFamily: 'Inter',
+        url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
     },
     body: {
-        fontFamily: 'Source Sans 3',
-        url: 'https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap',
+        fontFamily: 'Inter',
+        url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
     },
     handwriting: {
         fontFamily: 'Indie Flower',
         url: 'https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap',
     },
-    mono: { fontFamily: 'JetBrains Mono' },
+    mono: {
+        fontFamily: 'JetBrains Mono',
+        url: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap',
+    },
 };
 
 /**

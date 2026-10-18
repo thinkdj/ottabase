@@ -6,6 +6,10 @@ import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
 
 /*
+ * Design System v1 card: the surface, a hairline, 10px corners, the smallest
+ * shadow. Head (title 14/600, one-line sub), body, and a foot on the subtle
+ * fill for the line that qualifies the card ("Free tier: five kept").
+ *
  * Theming hooks (BrandEngine): data-slot stamps on every part let theme CSS
  * reshape cards ([data-slot=card] { … }); `relative` positions the
  * [data-decor] span themes can enable for texture/ornament layers.
@@ -26,7 +30,10 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
             <div
                 ref={ref}
                 data-slot="card"
-                className={cn('relative rounded-lg border bg-card text-card-foreground', className)}
+                className={cn(
+                    'relative flex flex-col rounded-lg border bg-card text-card-foreground shadow-xs',
+                    className,
+                )}
                 {...props}
             >
                 {children}
@@ -40,7 +47,12 @@ Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
     ({ className, ...props }, ref) => (
-        <div ref={ref} data-slot="card-header" className={cn('flex flex-col space-y-1.5 p-6', className)} {...props} />
+        <div
+            ref={ref}
+            data-slot="card-header"
+            className={cn('flex flex-col gap-1 px-5 pb-3 pt-4', className)}
+            {...props}
+        />
     ),
 );
 CardHeader.displayName = 'CardHeader';
@@ -50,7 +62,7 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTML
         <h3
             ref={ref}
             data-slot="card-title"
-            className={cn('text-2xl font-semibold leading-none tracking-tight', className)}
+            className={cn('text-sm font-semibold leading-snug tracking-[-0.01em]', className)}
             {...props}
         />
     ),
@@ -71,14 +83,22 @@ CardDescription.displayName = 'CardDescription';
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
     ({ className, ...props }, ref) => (
-        <div ref={ref} data-slot="card-content" className={cn('p-6 pt-0', className)} {...props} />
+        <div ref={ref} data-slot="card-content" className={cn('px-5 pb-5 pt-0', className)} {...props} />
     ),
 );
 CardContent.displayName = 'CardContent';
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
     ({ className, ...props }, ref) => (
-        <div ref={ref} data-slot="card-footer" className={cn('flex items-center p-6 pt-0', className)} {...props} />
+        <div
+            ref={ref}
+            data-slot="card-footer"
+            className={cn(
+                'mt-auto flex items-center gap-3 rounded-b-[inherit] border-t bg-muted px-5 py-3 text-sm text-subtle-foreground',
+                className,
+            )}
+            {...props}
+        />
     ),
 );
 CardFooter.displayName = 'CardFooter';

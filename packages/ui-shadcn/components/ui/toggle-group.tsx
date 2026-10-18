@@ -21,7 +21,13 @@ const ToggleGroup = React.forwardRef<
         data-slot="toggle-group"
         data-variant={variant ?? 'default'}
         data-size={size ?? 'default'}
-        className={cn('flex items-center justify-center gap-1', className)}
+        className={cn(
+            // The segmented control track: the subtle fill with a hairline; the pressed segment lifts onto the surface.
+            variant === 'outline'
+                ? 'inline-flex items-center gap-1'
+                : 'inline-flex items-center gap-0.5 rounded-md border border-border bg-muted p-[3px]',
+            className,
+        )}
         {...props}
     >
         <ToggleGroupContext.Provider value={{ variant, size }}>{children}</ToggleGroupContext.Provider>

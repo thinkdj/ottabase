@@ -292,7 +292,27 @@
             "import": "./dist/brand-components.mjs",
             "require": "./dist/brand-components.js"
         },
-        "./styles.css": "./styles/shadcn.css"
+        "./styles.css": "./styles/shadcn.css",
+        "./page-header": {
+            "types": "./dist/page-header.d.ts",
+            "import": "./dist/page-header.mjs",
+            "require": "./dist/page-header.js"
+        },
+        "./stat": {
+            "types": "./dist/stat.d.ts",
+            "import": "./dist/stat.mjs",
+            "require": "./dist/stat.js"
+        },
+        "./status": {
+            "types": "./dist/status.d.ts",
+            "import": "./dist/status.mjs",
+            "require": "./dist/status.js"
+        },
+        "./status-language": {
+            "types": "./dist/status-language.d.ts",
+            "import": "./dist/status-language.mjs",
+            "require": "./dist/status-language.js"
+        }
     },
     "files": [
         "dist",

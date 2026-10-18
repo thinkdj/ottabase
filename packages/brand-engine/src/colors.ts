@@ -272,3 +272,36 @@ export function buildTokensFromBaseColor(
         },
     };
 }
+
+// ---------------------------------------------------------------------------
+// HSL channel strings ("156 52% 34%", optionally "… / 0.5") – the format every
+// semantic color token is stored in. Used to derive hover/active/ladder
+// tokens from a theme that defines only the base ones.
+// ---------------------------------------------------------------------------
+
+const HSL_CHANNELS = /^\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*(.+))?\s*$/;
+
+/** Parse an HSL channel string; null when the value is not plain channels. */
+export function parseHslChannels(value: string): { h: number; s: number; l: number; alpha?: string } | null {
+    const m = HSL_CHANNELS.exec(value);
+    if (!m) return null;
+    return { h: Number(m[1]), s: Number(m[2]), l: Number(m[3]), alpha: m[4]?.trim() };
+}
+
+function formatHslChannels(c: { h: number; s: number; l: number; alpha?: string }): string {
+    const n = (v: number) => String(Math.round(v * 10) / 10);
+    return `${n(c.h)} ${n(c.s)}% ${n(Math.min(100, Math.max(0, c.l)))}%${c.alpha ? ` / ${c.alpha}` : ''}`;
+}
+
+/** Shift lightness by `delta` points (clamped 0..100); non-channel values pass through untouched. */
+export function shiftHslLightness(value: string, delta: number): string {
+    const c = parseHslChannels(value);
+    return c ? formatHslChannels({ ...c, l: c.l + delta }) : value;
+}
+
+/** Lightness midpoint between two channel strings, keeping `a`'s hue and saturation. */
+export function midHslLightness(a: string, b: string): string {
+    const ca = parseHslChannels(a);
+    const cb = parseHslChannels(b);
+    return ca && cb ? formatHslChannels({ ...ca, l: (ca.l + cb.l) / 2 }) : a;
+}

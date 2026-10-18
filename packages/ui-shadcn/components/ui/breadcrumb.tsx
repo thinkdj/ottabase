@@ -17,10 +17,7 @@ const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWi
         <ol
             ref={ref}
             data-slot="breadcrumb-list"
-            className={cn(
-                'flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground sm:gap-2.5',
-                className,
-            )}
+            className={cn('flex flex-wrap items-center gap-1.5 break-words text-sm text-muted-foreground', className)}
             {...props}
         />
     ),
@@ -51,7 +48,7 @@ const BreadcrumbLink = React.forwardRef<
         <Comp
             ref={ref}
             data-slot="breadcrumb-link"
-            className={cn('transition hover:text-foreground', className)}
+            className={cn('transition duration-fast ease-theme hover:text-foreground', className)}
             {...props}
         />
     );
@@ -66,7 +63,7 @@ const BreadcrumbPage = React.forwardRef<HTMLSpanElement, React.ComponentPropsWit
             role="link"
             aria-disabled="true"
             aria-current="page"
-            className={cn('font-normal text-foreground', className)}
+            className={cn('font-medium text-foreground', className)}
             {...props}
         />
     ),
@@ -78,7 +75,7 @@ const BreadcrumbSeparator = ({ children, className, ...props }: React.ComponentP
         data-slot="breadcrumb-separator"
         role="presentation"
         aria-hidden="true"
-        className={cn('[&>svg]:size-3.5', className)}
+        className={cn('text-faint-foreground [&>svg]:size-3.5', className)}
         {...props}
     >
         {children ?? <ChevronRight />}

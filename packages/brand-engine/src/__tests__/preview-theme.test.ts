@@ -146,8 +146,8 @@ describe('buildPreviewTheme', () => {
         it('uses default typography when not provided', () => {
             const theme = buildPreviewTheme({}, 'light');
 
-            expect(theme.typography.heading.fontFamily).toBe('Sora');
-            expect(theme.typography.body.fontFamily).toBe('Source Sans 3');
+            expect(theme.typography.heading.fontFamily).toBe('Inter');
+            expect(theme.typography.body.fontFamily).toBe('Inter');
             expect(theme.typography.handwriting.fontFamily).toBe('Indie Flower');
         });
     });

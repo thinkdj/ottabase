@@ -3,94 +3,123 @@
 @tailwind utilities;
 
 /*
- * Ottabase Design Tokens
+ * Ottabase Design Tokens — Design System v1 (verdant) as the static defaults.
  *
  * All colour values use space-separated HSL channels so Tailwind can
  * inject an alpha via the  `/ <alpha-value>` syntax.
- * The theme loader (theme.loader.ts) overrides these at runtime when
- * a user selects a different theme or toggles light/dark mode.
+ * The brand engine overrides these at runtime (#brand-critical) when an app
+ * has a brand kit; what is below is what a themeless surface renders, and it
+ * is the system itself: one green, cool neutrals, a fixed status language.
  */
 
 @layer base {
     :root {
-        /* ── Core surface & text ─────────────────────────────────── */
-        --background: 0 0% 100%;
-        --foreground: 222.2 84% 4.9%;
+        /* ── Surfaces: page, surface (card/popover/sidebar), subtle fill, pressed ── */
+        --background: 150 12.5% 96.9%;
+        --foreground: 142.5 18.2% 8.6%;
 
-        /* ── Muted / subdued surfaces ────────────────────────────── */
-        --muted: 210 40% 96.1%;
-        --muted-foreground: 215.4 16.3% 46.9%;
+        --muted: 135 13.3% 94.1%;
+        --muted-foreground: 148 7.5% 39.4%;
+        --subtle-foreground: 148 9.1% 32.4%;
+        --faint-foreground: 150 6% 54.5%;
 
-        /* ── Popover layer ───────────────────────────────────────── */
         --popover: 0 0% 100%;
-        --popover-foreground: 222.2 84% 4.9%;
+        --popover-foreground: 142.5 18.2% 8.6%;
 
-        /* ── Card layer ──────────────────────────────────────────── */
         --card: 0 0% 100%;
-        --card-foreground: 222.2 84% 4.9%;
+        --card-foreground: 142.5 18.2% 8.6%;
 
-        /* ── Borders & form inputs ───────────────────────────────── */
-        --border: 214.3 31.8% 91.4%;
-        --input: 214.3 31.8% 91.4%;
+        /* ── Borders: hairlines, and the stronger edge inputs need ─────────── */
+        --border: 145.7 12.7% 89.2%;
+        --input: 147.3 10.1% 78.6%;
 
-        /* ── Primary brand colour ────────────────────────────────── */
-        --primary: 222.2 47.4% 11.2%;
-        --primary-foreground: 210 40% 98%;
+        /* ── Primary: green 600 is the action fill, 700 hover, 800 pressed ──── */
+        --primary: 156 51.7% 34.1%;
+        --primary-foreground: 0 0% 100%;
+        --primary-hover: 156.2 52.5% 27.3%;
+        --primary-active: 157.5 50.9% 21.6%;
 
-        /* ── Secondary brand colour ──────────────────────────────── */
-        --secondary: 210 40% 96.1%;
-        --secondary-foreground: 222.2 47.4% 11.2%;
+        --secondary: 140 12.5% 90.6%;
+        --secondary-foreground: 142.5 18.2% 8.6%;
 
-        /* ── Accent (highlights, hover) ──────────────────────────── */
-        --accent: 210 40% 96.1%;
-        --accent-foreground: 222.2 47.4% 11.2%;
+        /* ── Accent: the soft green fill of an active nav item or selected row ── */
+        --accent: 145.7 38.9% 92.9%;
+        --accent-foreground: 156.2 52.5% 27.3%;
+        --accent-line: 145.5 37.7% 79.2%;
 
-        /* ── Destructive / danger ────────────────────────────────── */
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 210 40% 98%;
+        /* ── Focus ring: green 500, the 3:1 floor on white ──────────────────── */
+        --ring: 153.1 53.2% 39.4%;
 
-        /* ── Focus ring ──────────────────────────────────────────── */
-        --ring: 215 20.2% 65.1%;
+        /* ── Radius base: 10px cards, 8 controls, 6 chips via the calc chain ── */
+        --radius: 0.625rem;
 
-        /* ── Radius base ─────────────────────────────────────────── */
-        --radius: 0.5rem;
-
-        /* ── Semantic status colours ─────────────────────────────── */
-        --success: 150 60% 40%;
+        /* ── Status tones: solid · -foreground (on solid) · -text · -soft · -line ── */
+        --success: 153.4 57.8% 39%;
         --success-foreground: 0 0% 100%;
-        --warning: 36 86% 50%;
-        --warning-foreground: 26 54% 14%;
-        --info: 206 78% 52%;
+        --success-text: 154.7 55.1% 27.1%;
+        --success-soft: 145.7 38.9% 92.9%;
+        --success-line: 145.5 37.7% 79.2%;
+        --warning: 42 82.1% 46.1%;
+        --warning-foreground: 142.5 18.2% 8.6%;
+        --warning-text: 39.1 100% 27.1%;
+        --warning-soft: 41.8 89.2% 92.7%;
+        --warning-line: 43.4 75.7% 77.5%;
+        --destructive: 3.8 69.6% 51%;
+        --destructive-foreground: 0 0% 100%;
+        --destructive-text: 3.2 71.3% 41%;
+        --destructive-soft: 6.3 82.6% 95.5%;
+        --destructive-line: 4.7 71.8% 86.1%;
+        --info: 210.2 66.3% 50%;
         --info-foreground: 0 0% 100%;
+        --info-text: 212.5 72.3% 39.6%;
+        --info-soft: 213 76.9% 94.9%;
+        --info-line: 212.9 73.9% 86.5%;
+        --smoke: 216.3 15.8% 52.9%;
+        --smoke-foreground: 0 0% 100%;
+        --smoke-text: 212 16% 36.9%;
+        --smoke-soft: 210 21.4% 94.5%;
+        --smoke-line: 210 21.1% 85.1%;
+        --neutral: 150 6.5% 57.6%;
+        --neutral-foreground: 0 0% 100%;
+        --neutral-text: 148 9.1% 32.4%;
+        --neutral-soft: 135 13.3% 94.1%;
+        --neutral-line: 146.7 12% 85.3%;
 
-        /* ── Sidebar chrome ──────────────────────────────────────── */
-        --sidebar-background: 210 40% 97%;
-        --sidebar-foreground: 222.2 47.4% 11.2%;
-        --sidebar-border: 214.3 31.8% 91.4%;
-        --sidebar-accent: 221.2 83.2% 53.3%;
-        --sidebar-accent-foreground: 221.2 83.2% 53.3%;
-        --sidebar-ring: 221.2 83.2% 53.3%;
+        /* ── Sidebar chrome: the surface, the accent fill, the accent text ─── */
+        --sidebar-background: 0 0% 100%;
+        --sidebar-foreground: 148 9.1% 32.4%;
+        --sidebar-border: 145.7 12.7% 89.2%;
+        --sidebar-accent: 145.7 38.9% 92.9%;
+        --sidebar-accent-foreground: 156.2 52.5% 27.3%;
+        --sidebar-ring: 153.1 53.2% 39.4%;
 
-        /* ── Data-viz palette (5 slots) ──────────────────────────── */
-        --chart-1: 221.2 83.2% 53.3%;
-        --chart-2: 150 60% 40%;
-        --chart-3: 36 86% 50%;
-        --chart-4: 280 56% 52%;
-        --chart-5: 14 78% 54%;
+        /* ── Data-viz palette (8 categorical slots, assigned in order) ─────── */
+        --chart-1: 156 51.7% 34.1%;
+        --chart-2: 210.2 66.3% 50%;
+        --chart-3: 42 82.1% 46.1%;
+        --chart-4: 264.1 55.5% 58.6%;
+        --chart-5: 21.2 71.2% 52.4%;
+        --chart-6: 182.2 72.5% 37.1%;
+        --chart-7: 329.5 55.9% 60%;
+        --chart-8: 216.3 15.8% 52.9%;
+        --chart-grid: 144 11.6% 91.6%;
+        --chart-axis: 145 9.1% 74.1%;
+        --chart-label: 148 7.5% 39.4%;
 
-        /* ── Shadow elevation scale ──────────────────────────────── */
-        --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-        --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
-        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.09);
+        /* ── Elevation: borders do the work; shadows lift only what floats ── */
+        --shadow-xs: 0 1px 2px rgb(18 26 21 / 0.05);
+        --shadow-sm: 0 1px 2px rgb(18 26 21 / 0.04), 0 2px 8px rgb(18 26 21 / 0.05);
+        --shadow-md: 0 4px 12px rgb(18 26 21 / 0.08), 0 16px 32px -12px rgb(18 26 21 / 0.16);
+        --shadow-lg: 0 24px 56px -12px rgb(18 26 21 / 0.28);
+        --shadow-xl: 0 24px 56px -12px rgb(18 26 21 / 0.28);
 
-        /* ── Motion / transition presets ─────────────────────────── */
-        --duration-fast: 100ms;
+        /* ── Motion: three durations, one curve ─────────────────────────── */
+        --duration-fast: 120ms;
         --duration-normal: 200ms;
-        --duration-slow: 400ms;
-        --ease: cubic-bezier(0.4, 0, 0.2, 1);
-        --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+        --duration-slow: 360ms;
+        --duration-theme: 320ms;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
         --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
         /* ── Layout tokens (BrandEngine defaults) ────────────────── */
@@ -100,72 +129,143 @@
         --layout-footer: 1;
         --layout-density: comfy;
 
-        /* ── Spacing tokens ──────────────────────────────────────── */
+        /* ── Spacing tokens: a 4px grid ───────────────────────────── */
         --spacing-section: 2rem;
-        --spacing-card: 1.5rem;
+        --spacing-card: 1.25rem;
         --spacing-element: 0.5rem;
 
         /* ── Overlay scrim (dialog/sheet/drawer backdrops) ────────── */
-        --overlay: 0 0% 0%;
+        --overlay: 150 16.7% 7.1%;
+
+        /* ── The two faces, as static fallbacks: an unresolved var() voids the
+           whole font-family declaration (its fallback list included), so a
+           render without brand CSS would otherwise drop to the UA serif. ── */
+        --font-heading: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+        --font-handwriting: 'Indie Flower', cursive;
     }
 
     .dark {
-        --background: 222.2 84% 4.9%;
-        --foreground: 210 40% 98%;
+        --background: 150 16.7% 7.1%;
+        --foreground: 142.5 16.7% 90.6%;
 
-        --muted: 217.2 32.6% 17.5%;
-        --muted-foreground: 215 20.2% 65.1%;
+        --muted: 144 15.6% 12.5%;
+        --muted-foreground: 150 6.5% 57.6%;
+        --subtle-foreground: 147.3 7.3% 70.4%;
+        --faint-foreground: 148 6.8% 42.9%;
 
-        --popover: 222.2 84% 4.9%;
-        --popover-foreground: 210 40% 98%;
+        --popover: 142.5 16% 9.8%;
+        --popover-foreground: 142.5 16.7% 90.6%;
 
-        --card: 222.2 84% 4.9%;
-        --card-foreground: 210 40% 98%;
+        --card: 142.5 16% 9.8%;
+        --card-foreground: 142.5 16.7% 90.6%;
 
-        --border: 217.2 32.6% 17.5%;
-        --input: 217.2 32.6% 17.5%;
+        --border: 147.3 12.6% 17.1%;
+        --input: 145.7 10.8% 25.5%;
 
-        --primary: 210 40% 98%;
-        --primary-foreground: 222.2 47.4% 11.2%;
+        /* 500 is the fill on dark, 400 hover (brighter), 600 pressed */
+        --primary: 153.1 53.2% 39.4%;
+        --primary-foreground: 150 42.9% 5.5%;
+        --primary-hover: 152.6 40.4% 50%;
+        --primary-active: 156 51.7% 34.1%;
 
-        --secondary: 217.2 32.6% 17.5%;
-        --secondary-foreground: 210 40% 98%;
+        --secondary: 145 14.6% 16.1%;
+        --secondary-foreground: 142.5 16.7% 90.6%;
 
-        --accent: 217.2 32.6% 17.5%;
-        --accent-foreground: 210 40% 98%;
+        --accent: 151.4 33.3% 12.4%;
+        --accent-foreground: 152.6 40.4% 50%;
+        --accent-line: 153.1 39.8% 24.1%;
 
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 210 40% 98%;
+        --ring: 152.6 40.4% 50%;
 
-        --ring: 215 20.2% 65.1%;
+        --success: 152.8 48.1% 47.6%;
+        --success-foreground: 150 42.9% 5.5%;
+        --success-text: 148.2 48% 66.1%;
+        --success-soft: 148.7 39% 11.6%;
+        --success-line: 149.3 42.1% 21%;
+        --warning: 41 75% 51.4%;
+        --warning-foreground: 150 42.9% 5.5%;
+        --warning-text: 41.4 83.1% 65.1%;
+        --warning-soft: 42.2 45.8% 11.6%;
+        --warning-line: 41.9 56.8% 21.8%;
+        --destructive: 5 82.1% 62.7%;
+        --destructive-foreground: 150 42.9% 5.5%;
+        --destructive-text: 5.5 83.2% 76.7%;
+        --destructive-soft: 6.2 39.7% 14.3%;
+        --destructive-line: 5.2 43.9% 25.9%;
+        --info: 212.5 77.3% 60.2%;
+        --info-foreground: 150 42.9% 5.5%;
+        --info-text: 211.8 83.6% 76.1%;
+        --info-soft: 214.1 46.8% 15.5%;
+        --info-line: 215.5 50.4% 27.6%;
+        --smoke: 214.7 19.4% 61.6%;
+        --smoke-foreground: 150 42.9% 5.5%;
+        --smoke-text: 212.9 20.8% 70.8%;
+        --smoke-soft: 212.3 18.8% 13.5%;
+        --smoke-line: 211.2 19.7% 24.9%;
+        --neutral: 150 6.5% 57.6%;
+        --neutral-foreground: 150 42.9% 5.5%;
+        --neutral-text: 147.3 7.3% 70.4%;
+        --neutral-soft: 144 15.6% 12.5%;
+        --neutral-line: 147.7 12.1% 21%;
 
-        --success: 154 56% 48%;
-        --success-foreground: 222.2 84% 4.9%;
-        --warning: 40 82% 56%;
-        --warning-foreground: 222.2 84% 4.9%;
-        --info: 210 74% 58%;
-        --info-foreground: 222.2 84% 4.9%;
+        --sidebar-background: 142.5 16% 9.8%;
+        --sidebar-foreground: 147.3 7.3% 70.4%;
+        --sidebar-border: 147.3 12.6% 17.1%;
+        --sidebar-accent: 151.4 33.3% 12.4%;
+        --sidebar-accent-foreground: 152.6 40.4% 50%;
+        --sidebar-ring: 152.6 40.4% 50%;
 
-        --sidebar-background: 222.2 70% 7%;
-        --sidebar-foreground: 215 20.2% 65.1%;
-        --sidebar-border: 217.2 32.6% 17.5%;
-        --sidebar-accent: 217.2 91.2% 59.8%;
-        --sidebar-accent-foreground: 217.2 91.2% 59.8%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+        --chart-1: 152.8 48.1% 47.6%;
+        --chart-2: 212.5 77.3% 60.2%;
+        --chart-3: 41 75% 51.4%;
+        --chart-4: 260.4 67.3% 70%;
+        --chart-5: 20 80.4% 62%;
+        --chart-6: 182.1 59.8% 45.9%;
+        --chart-7: 330 65.9% 67.8%;
+        --chart-8: 214.7 19.4% 61.6%;
+        --chart-grid: 147.3 12.6% 17.1%;
+        --chart-axis: 145.7 10.8% 25.5%;
+        --chart-label: 150 6.5% 57.6%;
 
-        --chart-1: 217.2 91.2% 59.8%;
-        --chart-2: 154 56% 48%;
-        --chart-3: 40 82% 56%;
-        --chart-4: 284 52% 58%;
-        --chart-5: 18 74% 60%;
-
-        --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.35);
-        --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.45);
-        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.45), 0 2px 4px -2px rgb(0 0 0 / 0.45);
-        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.55), 0 8px 10px -6px rgb(0 0 0 / 0.55);
+        --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.32);
+        --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.26);
+        --shadow-md: 0 4px 12px rgb(0 0 0 / 0.36), 0 16px 32px -12px rgb(0 0 0 / 0.6);
+        --shadow-lg: 0 24px 56px -12px rgb(0 0 0 / 0.7);
+        --shadow-xl: 0 24px 56px -12px rgb(0 0 0 / 0.7);
 
         --overlay: 0 0% 0%;
+    }
+
+    /* ── The terminal: code, commands, CLI output. One dark room that never
+       flips with the page theme. Wrap a subtree in data-brand-scope="terminal"
+       (or <BrandScope name="terminal">) and components inside dress themselves.
+       A theme may re-bind it through `scopes.terminal`; this is the fallback. ── */
+    [data-brand-scope='terminal'] {
+        --background: 150 16.7% 7.1%;
+        --foreground: 142.5 16.7% 90.6%;
+        --card: 142.5 16% 9.8%;
+        --card-foreground: 142.5 16.7% 90.6%;
+        --popover: 142.5 16% 9.8%;
+        --popover-foreground: 142.5 16.7% 90.6%;
+        --muted: 142.5 16% 9.8%;
+        --muted-foreground: 150 6.5% 57.6%;
+        --subtle-foreground: 150 6.5% 57.6%;
+        --faint-foreground: 156 7.7% 38.2%;
+        --border: 147.3 12.6% 17.1%;
+        --input: 147.3 12.6% 17.1%;
+        --primary: 152.6 40.4% 50%;
+        --primary-foreground: 150 42.9% 5.5%;
+        --accent: 142.5 16% 9.8%;
+        --accent-foreground: 152.6 40.4% 50%;
+        --success: 152.6 40.4% 50%;
+        --success-text: 152.6 40.4% 50%;
+        --warning: 41 76.3% 58.6%;
+        --warning-text: 41 76.3% 58.6%;
+        --destructive: 5 81.6% 68%;
+        --destructive-text: 5 81.6% 68%;
+        color-scheme: dark;
     }
 }
 
@@ -177,6 +277,7 @@
         --duration-fast: 0.01ms !important;
         --duration-normal: 0.01ms !important;
         --duration-slow: 0.01ms !important;
+        --duration-theme: 0.01ms !important;
         --motion-duration-fast: 0.01ms !important;
         --motion-duration-normal: 0.01ms !important;
         --motion-duration-slow: 0.01ms !important;
@@ -202,6 +303,8 @@
         background-image: var(--bg-backdrop, none);
         /* No fallback on purpose: unset var → invalid → UA default tap flash */
         -webkit-tap-highlight-color: var(--tap-highlight);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
     }
 
     :root {
@@ -224,6 +327,62 @@
         background-color: var(--selection-bg, Highlight);
         color: var(--selection-fg, HighlightText);
     }
+
+    /* Numbers in tables and stats are tabular in either face */
+    table,
+    [data-slot='stat-value'] {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+/* ── Status tones ────────────────────────────────────────────────────────────
+   One map from a tone name to four vars. A component sets data-tone and reads
+   --t-fg (text), --t-bg (soft fill), --t-line (border) and --t-solid (dot, bar,
+   icon); markup never names a colour, it names the state. Tone names are the
+   design system's: green = healthy, amber = grace/waiting, red = failed,
+   blue = running, smoke = quiet, neutral = no state, brand = a flag worth
+   noticing. */
+[data-tone] {
+    --t-fg: hsl(var(--neutral-text));
+    --t-bg: hsl(var(--neutral-soft));
+    --t-line: hsl(var(--neutral-line));
+    --t-solid: hsl(var(--neutral));
+}
+[data-tone='green'] {
+    --t-fg: hsl(var(--success-text));
+    --t-bg: hsl(var(--success-soft));
+    --t-line: hsl(var(--success-line));
+    --t-solid: hsl(var(--success));
+}
+[data-tone='amber'] {
+    --t-fg: hsl(var(--warning-text));
+    --t-bg: hsl(var(--warning-soft));
+    --t-line: hsl(var(--warning-line));
+    --t-solid: hsl(var(--warning));
+}
+[data-tone='red'] {
+    --t-fg: hsl(var(--destructive-text));
+    --t-bg: hsl(var(--destructive-soft));
+    --t-line: hsl(var(--destructive-line));
+    --t-solid: hsl(var(--destructive));
+}
+[data-tone='blue'] {
+    --t-fg: hsl(var(--info-text));
+    --t-bg: hsl(var(--info-soft));
+    --t-line: hsl(var(--info-line));
+    --t-solid: hsl(var(--info));
+}
+[data-tone='smoke'] {
+    --t-fg: hsl(var(--smoke-text));
+    --t-bg: hsl(var(--smoke-soft));
+    --t-line: hsl(var(--smoke-line));
+    --t-solid: hsl(var(--smoke));
+}
+[data-tone='brand'] {
+    --t-fg: hsl(var(--accent-foreground));
+    --t-bg: hsl(var(--accent));
+    --t-line: hsl(var(--accent-line));
+    --t-solid: hsl(var(--primary));
 }
 
 /* ── Unified focus ring ─────────────────────────────────────────────────────
@@ -245,6 +404,42 @@
 ):focus-visible {
     outline: var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, hsl(var(--ring)));
     outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* Text fields take a 3px soft halo instead of the offset ring (focus, not
+   focus-visible: a click into a field should show where typing lands). */
+:where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select'], [data-slot='select-trigger']):focus,
+:where(
+    [data-slot='input'],
+    [data-slot='textarea'],
+    [data-slot='native-select'],
+    [data-slot='select-trigger']
+):focus-visible {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--ring)) 22%, transparent);
+}
+:where([data-slot='input'], [data-slot='textarea'])[aria-invalid='true']:focus {
+    border-color: hsl(var(--destructive));
+    box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--destructive)) 22%, transparent);
+}
+
+/* ── Theme flip ─────────────────────────────────────────────────────────────
+   Add .theming to <html> just before toggling .dark and remove it ~400ms
+   later (DarkModeToggle does): every colour eases once instead of snapping. */
+@media (prefers-reduced-motion: no-preference) {
+    .theming,
+    .theming *,
+    .theming *::before,
+    .theming *::after {
+        transition:
+            background-color var(--duration-theme, 320ms) ease,
+            border-color var(--duration-theme, 320ms) ease,
+            color var(--duration-theme, 320ms) ease,
+            fill var(--duration-theme, 320ms) ease,
+            stroke var(--duration-theme, 320ms) ease,
+            box-shadow var(--duration-theme, 320ms) ease !important;
+    }
 }
 
 /* ── Interaction physics (hover lift / press) ───────────────────────────────

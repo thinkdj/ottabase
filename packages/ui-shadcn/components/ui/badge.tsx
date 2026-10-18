@@ -7,20 +7,25 @@ import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
 
 /*
+ * Design System v1 chips. `default` is the brand chip (a flag worth noticing,
+ * used sparingly), `secondary` the quiet tag, `destructive` a soft red pill,
+ * `outline` a neutral pill on the surface. A record's STATE is a StatusChip
+ * (./status), which carries its tone from the one status map.
+ *
  * Theming hooks (BrandEngine): data-slot="badge" + data-variant stamps let
  * theme CSS restyle any variant; focus-visible styling comes from the GLOBAL
  * --focus-ring-* rule in shadcn.css (no per-component ring recipe).
  * `transition` (not transition-colors) so interaction tokens can animate.
  */
 const badgeVariants = cva(
-    'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition',
+    'inline-flex h-[22px] items-center gap-1.5 whitespace-nowrap rounded-full border px-2 text-xs font-semibold leading-none transition [&_svg]:size-[13px] [&_svg]:shrink-0',
     {
         variants: {
             variant: {
-                default: 'border-transparent bg-primary text-primary-foreground shadow',
-                secondary: 'border-transparent bg-secondary text-secondary-foreground',
-                destructive: 'border-transparent bg-destructive text-destructive-foreground shadow',
-                outline: 'text-foreground',
+                default: 'border-accent-line bg-accent text-accent-foreground',
+                secondary: 'rounded-sm border-border bg-muted font-medium text-subtle-foreground',
+                destructive: 'border-destructive-line bg-destructive-soft text-destructive-text',
+                outline: 'border-input bg-card font-medium text-subtle-foreground',
             },
         },
         defaultVariants: {

@@ -288,6 +288,33 @@ export {
 
 export { Kbd, KbdGroup } from './kbd';
 
+// Design System v1 pieces
+export { PageHeader, type PageHeaderProps } from './page-header';
+export { Stat, type StatProps } from './stat';
+export {
+    CountBadge,
+    EnvName,
+    LiveDot,
+    PremiumMark,
+    Status,
+    StatusChip,
+    Tag,
+    type CountBadgeProps,
+    type LiveDotProps,
+    type PremiumMarkProps,
+    type StatusChipProps,
+    type StatusProps,
+    type TagProps,
+} from './status';
+export {
+    STATUS_LANGUAGE,
+    statusOf,
+    type StatusDomain,
+    type StatusEntry,
+    type StatusValue,
+    type Tone,
+} from './status-language';
+
 export { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from './native-select';
 
 export { Spinner } from './spinner';

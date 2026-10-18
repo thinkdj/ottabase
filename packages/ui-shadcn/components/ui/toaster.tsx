@@ -6,24 +6,19 @@ import { Toaster as Sonner } from 'sonner';
 
 export type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+/*
+ * Design System v1 toast: one dark surface (the page's ink, so it flips to a
+ * light toast in dark mode), white text, and the tone carried by the icon
+ * alone — green for done, red for failed, amber for a warning, blue for info.
+ * Never a loud coloured block; the word says what happened.
+ */
 export function Toaster({ style, ...props }: ToasterProps) {
     const toastStyle = {
         zIndex: 'var(--z-toast, 100)',
-        '--normal-bg': 'hsl(var(--background) / 0.96)',
-        '--normal-border': 'hsl(var(--border))',
-        '--normal-text': 'hsl(var(--foreground))',
-        '--success-bg': 'hsl(var(--success) / 0.96)',
-        '--success-border': 'hsl(var(--success) / 0.96)',
-        '--success-text': 'hsl(var(--success-foreground))',
-        '--error-bg': 'hsl(var(--destructive) / 0.96)',
-        '--error-border': 'hsl(var(--destructive) / 0.96)',
-        '--error-text': 'hsl(var(--destructive-foreground))',
-        '--warning-bg': 'hsl(var(--warning) / 0.96)',
-        '--warning-border': 'hsl(var(--warning) / 0.96)',
-        '--warning-text': 'hsl(var(--warning-foreground))',
-        '--info-bg': 'hsl(var(--info) / 0.96)',
-        '--info-border': 'hsl(var(--info) / 0.96)',
-        '--info-text': 'hsl(var(--info-foreground))',
+        '--normal-bg': 'hsl(var(--foreground))',
+        '--normal-border': 'hsl(var(--foreground))',
+        '--normal-text': 'hsl(var(--background))',
+        '--border-radius': 'var(--radius-lg, var(--radius))',
         ...style,
     } as React.CSSProperties;
 
@@ -36,14 +31,18 @@ export function Toaster({ style, ...props }: ToasterProps) {
             // (z-index: 999999999) but apps can accidentally override the
             // [data-sonner-toaster] rule, so we set it inline too. Callers can
             // still override via the `style` prop.
-            richColors
             style={toastStyle}
             toastOptions={{
                 classNames: {
-                    toast: 'group toast shadow-lg',
-                    description: 'group-[.toast]:!text-current/80',
-                    actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
-                    cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
+                    toast: 'group toast !border-0 !shadow-md',
+                    title: 'font-medium',
+                    description: 'group-[.toast]:!text-current/70',
+                    success: '[&_[data-icon]]:text-success',
+                    error: '[&_[data-icon]]:text-destructive',
+                    warning: '[&_[data-icon]]:text-warning',
+                    info: '[&_[data-icon]]:text-info',
+                    actionButton: '!bg-transparent !font-semibold !text-success',
+                    cancelButton: '!bg-transparent !text-current/70',
                 },
             }}
             {...props}

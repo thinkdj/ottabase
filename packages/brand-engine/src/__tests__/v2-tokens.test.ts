@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_COLORS_DARK } from '../defaults';
 import { buildCriticalCSSDual, buildCustomCssStyleTag, buildEffectsStyleTag } from '../css-critical';
 import { buildBrandStylesheet, buildCSSVarMap } from '../css-runtime';
 import { applyBrandTheme } from '../dom';
@@ -111,8 +112,8 @@ describe('palette (raw/derived colors)', () => {
 describe('typography roles', () => {
     it('always emits the four default roles', () => {
         const vars = buildCSSVarMap(makeTheme({}));
-        expect(vars['--font-heading']).toContain('Sora');
-        expect(vars['--font-body']).toContain('Source Sans 3');
+        expect(vars['--font-heading']).toContain('Inter');
+        expect(vars['--font-body']).toContain('Inter');
         expect(vars['--font-mono']).toContain('JetBrains Mono');
         expect(vars['--font-handwriting']).toContain('cursive');
     });
@@ -239,9 +240,10 @@ describe('sparse chrome categories', () => {
 });
 
 describe('overlay color token', () => {
-    it('defaults overlay to black channels in both palettes', () => {
+    it('defaults overlay to the page ink on light and black on dark (Design System v1 scrim)', () => {
         const vars = buildCSSVarMap(makeTheme({}));
-        expect(vars['--overlay']).toBe('0 0% 0%');
+        expect(vars['--overlay']).toBe('150 16.7% 7.1%');
+        expect(DEFAULT_COLORS_DARK.overlay).toBe('0 0% 0%');
     });
 });
 

@@ -14,6 +14,20 @@ const defaultTheme = require('tailwindcss/defaultTheme');
 /* helper – wraps an HSL variable with alpha support */
 const hslVar = (name) => `hsl(var(--${name}) / <alpha-value>)`;
 
+/* helper – an HSL variable that falls back to another token's channels, for
+ * the Design System v1 extras a stale critical stylesheet may not carry yet */
+const hslVarOr = (name, fallback) => `hsl(var(--${name}, var(--${fallback})) / <alpha-value>)`;
+
+/* helper – a status tone (Design System v1): solid, text on the solid, text on
+ * a surface, soft fill, border. Meaning is fixed across every theme. */
+const tone = (name) => ({
+    DEFAULT: hslVar(name),
+    foreground: hslVar(`${name}-foreground`),
+    text: hslVarOr(`${name}-text`, name),
+    soft: hslVar(`${name}-soft`),
+    line: hslVar(`${name}-line`),
+});
+
 /* helper – font-size step backed by theme vars with stock-value fallbacks.
  * letterSpacing falls back to `inherit` (= no declaration) so parent tracking
  * utilities keep cascading when a theme doesn't define per-step tracking. */
@@ -38,20 +52,36 @@ module.exports = {
                 foreground: hslVar('foreground'),
 
                 /* semantic pairs */
-                primary: { DEFAULT: hslVar('primary'), foreground: hslVar('primary-foreground') },
+                primary: {
+                    DEFAULT: hslVar('primary'),
+                    foreground: hslVar('primary-foreground'),
+                    /* explicit hover/active stops: alpha hover (bg-primary/90) composites
+                     * toward the surface and drops the label under AA */
+                    hover: hslVarOr('primary-hover', 'primary'),
+                    active: hslVarOr('primary-active', 'primary'),
+                },
                 secondary: { DEFAULT: hslVar('secondary'), foreground: hslVar('secondary-foreground') },
-                destructive: { DEFAULT: hslVar('destructive'), foreground: hslVar('destructive-foreground') },
                 muted: { DEFAULT: hslVar('muted'), foreground: hslVar('muted-foreground') },
-                accent: { DEFAULT: hslVar('accent'), foreground: hslVar('accent-foreground') },
+                /* text ladder: foreground > subtle > muted > faint (placeholder, disabled) */
+                subtle: { foreground: hslVarOr('subtle-foreground', 'muted-foreground') },
+                faint: { foreground: hslVarOr('faint-foreground', 'muted-foreground') },
+                accent: {
+                    DEFAULT: hslVar('accent'),
+                    foreground: hslVar('accent-foreground'),
+                    line: hslVarOr('accent-line', 'border'),
+                },
 
                 /* layered surfaces */
                 popover: { DEFAULT: hslVar('popover'), foreground: hslVar('popover-foreground') },
                 card: { DEFAULT: hslVar('card'), foreground: hslVar('card-foreground') },
 
-                /* status feedback */
-                success: { DEFAULT: hslVar('success'), foreground: hslVar('success-foreground') },
-                warning: { DEFAULT: hslVar('warning'), foreground: hslVar('warning-foreground') },
-                info: { DEFAULT: hslVar('info'), foreground: hslVar('info-foreground') },
+                /* status tones (Design System v1): success · warning · destructive · info · smoke · neutral */
+                success: tone('success'),
+                warning: tone('warning'),
+                destructive: tone('destructive'),
+                info: tone('info'),
+                smoke: tone('smoke'),
+                neutral: tone('neutral'),
 
                 /* sidebar chrome */
                 sidebar: {
@@ -63,12 +93,18 @@ module.exports = {
                     ring: hslVar('sidebar-ring'),
                 },
 
-                /* data-viz palette (5 slots) */
+                /* data-viz palette (8 categorical slots, assigned in order) + chrome */
                 'chart-1': hslVar('chart-1'),
                 'chart-2': hslVar('chart-2'),
                 'chart-3': hslVar('chart-3'),
                 'chart-4': hslVar('chart-4'),
                 'chart-5': hslVar('chart-5'),
+                'chart-6': hslVar('chart-6'),
+                'chart-7': hslVar('chart-7'),
+                'chart-8': hslVar('chart-8'),
+                'chart-grid': hslVarOr('chart-grid', 'border'),
+                'chart-axis': hslVarOr('chart-axis', 'input'),
+                'chart-label': hslVarOr('chart-label', 'muted-foreground'),
 
                 /* dialog/sheet/drawer scrim (bg-overlay/80 replaces bg-black/80) */
                 overlay: hslVar('overlay'),
@@ -199,6 +235,7 @@ module.exports = {
                 normal: 'var(--duration-normal)',
                 slow: 'var(--duration-slow)',
                 press: 'var(--duration-press, var(--duration-fast))',
+                theme: 'var(--duration-theme, 320ms)',
             },
             transitionTimingFunction: {
                 DEFAULT: 'var(--ease)',
@@ -222,11 +259,22 @@ module.exports = {
                     '0%,70%,100%': { opacity: '1' },
                     '20%,50%': { opacity: '0' },
                 },
+                /* page content fades up once on mount (Design System v1 motion) */
+                'page-in': {
+                    from: { opacity: '0', transform: 'translateY(8px)' },
+                },
+                /* skeleton shimmer: a gradient sweeping across the placeholder */
+                shimmer: {
+                    from: { backgroundPosition: '200% 0' },
+                    to: { backgroundPosition: '-200% 0' },
+                },
             },
             animation: {
                 'accordion-down': 'accordion-down var(--duration-normal) var(--ease)',
                 'accordion-up': 'accordion-up var(--duration-normal) var(--ease)',
                 'caret-blink': 'caret-blink 1.25s ease-out infinite',
+                'page-in': 'page-in var(--duration-slow) var(--ease-enter) both',
+                shimmer: 'shimmer 1.4s linear infinite',
             },
         },
     },

@@ -8,8 +8,12 @@ import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 /*
- * Theming hooks (BrandEngine): data-slot="input" for theme CSS; focus-visible
- * styling comes from the GLOBAL --focus-ring-* rule in shadcn.css.
+ * Design System v1 field: 36px, 7px corners, the strong border, the surface
+ * behind it. Hover darkens the edge; focus swaps the ring for a 3px halo
+ * (the global [data-slot=input]:focus rule in shadcn.css). Anything a person
+ * pastes into wrangler gets `font-mono` from the caller.
+ *
+ * Theming hooks (BrandEngine): data-slot="input" for theme CSS.
  */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, ...props }, ref) => {
     // Tier-2 escape hatch: a fork may register a wholly different input
@@ -23,7 +27,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type,
             type={type}
             data-slot="input"
             className={cn(
-                'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm transition duration-fast ease-theme file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+                'flex h-9 w-full rounded-md border border-input bg-card px-3 py-1 text-sm text-foreground shadow-xs transition duration-fast ease-theme file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-faint-foreground hover:border-faint-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-faint-foreground aria-[invalid=true]:border-destructive',
                 className,
             )}
             ref={ref}

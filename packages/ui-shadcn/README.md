@@ -101,3 +101,23 @@ pnpm --filter @ottabase/ui-shadcn build
 pnpm --filter @ottabase/ui-shadcn lint
 pnpm --filter @ottabase/ui-shadcn type-check
 ```
+
+## Design System v1 pieces
+
+The recipes implement Ottabase Design System v1 (`docs/DESIGN_SYSTEM.md`). Beyond the shadcn set, the package ships the
+record-level pieces the admin and every package panel share:
+
+```tsx
+import { Status, Tag, EnvName, PageHeader, Stat, Button } from '@ottabase/ui-shadcn';
+
+<PageHeader title="Vault" description="Backups to R2, restore, per-tenant export." actions={<Button>Run backup</Button>} />
+<Stat label="Backups kept" value={3} unit=" of 5" foot="newest 9h ago" />
+<Status domain="license" value="grace" withIcon />   // tone, label and icon from the one status map
+<Tag mono>v1.0.0</Tag> <EnvName>PREMIUM_LICENSE_VAULT</EnvName>
+<Button variant="danger">Remove app</Button>        // outline in place; `destructive` (solid) only inside a confirm
+<Button loading>Run backup</Button>                 // the one spinner
+```
+
+Tones are a CSS map: any element with `data-tone="green|amber|red|blue|smoke|neutral|brand"` can read `--t-fg`,
+`--t-bg`, `--t-line` and `--t-solid`. Code and CLI output sit in the always-dark `terminal` room:
+`<BrandScope name="terminal">` or `data-brand-scope="terminal"`.

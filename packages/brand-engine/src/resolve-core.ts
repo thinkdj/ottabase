@@ -15,6 +15,7 @@
 //     carry the pixel-identical fallbacks.
 // ---------------------------------------------------------------------------
 
+import { midHslLightness, shiftHslLightness } from './colors';
 import {
     DEFAULT_COLORS_DARK,
     DEFAULT_COLORS_LIGHT,
@@ -86,11 +87,33 @@ export function pickMode<T>(val: ModeValue<T> | undefined, mode: ColorScheme): T
 // Defaulted categories
 // ---------------------------------------------------------------------------
 
-/** Resolve the semantic color palette for a mode (defaults merged under). */
+/**
+ * Design System v1 extras a theme rarely spells out, derived from the tokens
+ * it does define so they follow the theme's hue instead of the verdant default:
+ * primary-hover/active from primary, accent-line from accent, the
+ * subtle/faint text steps from foreground and muted-foreground.
+ * ponytail: lightness shifts only; an OKLCH walk to AA is the upgrade path.
+ */
+export function deriveColorExtras(raw: Partial<TokenColors>, mode: ColorScheme): Partial<TokenColors> {
+    const out: Partial<TokenColors> = { ...raw };
+    const dir = mode === 'dark' ? 1 : -1;
+    if (raw.primary) {
+        out['primary-hover'] ??= shiftHslLightness(raw.primary, dir * 6);
+        out['primary-active'] ??= shiftHslLightness(raw.primary, dir * 12);
+    }
+    if (raw.accent) out['accent-line'] ??= shiftHslLightness(raw.accent, dir * 13);
+    if (raw.foreground && raw['muted-foreground']) {
+        out['subtle-foreground'] ??= midHslLightness(raw['muted-foreground'], raw.foreground);
+        out['faint-foreground'] ??= shiftHslLightness(raw['muted-foreground'], -dir * 15);
+    }
+    return out;
+}
+
+/** Resolve the semantic color palette for a mode (defaults merged under, extras derived). */
 export function resolveColors(tokens: Partial<DesignTokens> | undefined, mode: ColorScheme): TokenColors {
     const defaultPalette = mode === 'dark' ? DEFAULT_COLORS_DARK : DEFAULT_COLORS_LIGHT;
     const rawPalette = tokens?.color?.[mode] ?? tokens?.color?.light ?? defaultPalette;
-    return { ...defaultPalette, ...rawPalette } as TokenColors;
+    return { ...defaultPalette, ...deriveColorExtras(rawPalette, mode) } as TokenColors;
 }
 
 /**
