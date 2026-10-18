@@ -181,7 +181,7 @@ function insertLine(source: string, line: string, { after, before }: { after?: R
 }
 
 /** Merge lucide icon names into the file's `lucide-react` import, adding the import when there is none. */
-function withIcons(source: string, icons: string[], eol: string): string {
+function withIcons(source: string, icons: string[]): string {
     if (icons.length === 0) return source;
     const existing = source.match(/^import \{([^}]*)\} from 'lucide-react';$/m);
     const names = new Set(
@@ -195,10 +195,7 @@ function withIcons(source: string, icons: string[], eol: string): string {
     for (const icon of icons) names.add(icon);
     const line = `import { ${[...names].sort().join(', ')} } from 'lucide-react';`;
     if (existing) return source.replace(existing[0], line);
-    return insertLine(source, line, { after: /^import .* from '.*';$/, before: /^export const/ }).replace(
-        /\n/g,
-        eol === '\n' ? '\n' : '\n',
-    );
+    return insertLine(source, line, { after: /^import .* from '.*';$/, before: /^export const/ });
 }
 
 const quote = (value: string) => `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
@@ -316,15 +313,13 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
     } else if (new RegExp(`key:\\s*'${pkg.key}'`).test(client)) {
         steps.push({ file: rel(clientFile), action: 'skip', detail: 'client key present' });
     } else {
-        const eol = eolOf(client);
         const icons = (pkg.adminPages ?? []).map((page) => page.icon).filter((icon): icon is string => !!icon);
         const updated = withIcons(
-            insertLine(client, clientEntry(pkg, eol), {
+            insertLine(client, clientEntry(pkg, eolOf(client)), {
                 after: /^\s*definePackageClient\(\{ key: '[a-z0-9-]+' \}\),$/,
                 before: /^\];$/,
             }),
             icons,
-            eol,
         );
         const pages = pkg.adminPages?.length ? ` with ${pkg.adminPages.length} admin page(s)` : '';
         steps.push({
@@ -394,6 +389,27 @@ export function formatAddPlan(plan: AddPlan): string {
     return lines.join('\n');
 }
 
+/**
+ * Plan and apply one package after another: each plan reads the files the previous one wrote, so
+ * two packages that edit the same list both land. A dry run plans every package against the
+ * untouched app, which is what "what would change" means.
+ */
+export function addPackages(
+    root: string,
+    appName: string,
+    descriptors: PackageDescriptor[],
+    options: { dryRun?: boolean; report?: (plan: AddPlan) => void } = {},
+): AddPlan[] {
+    const plans: AddPlan[] = [];
+    for (const pkg of descriptors) {
+        const plan = planAdd(root, appName, pkg);
+        options.report?.(plan);
+        if (!options.dryRun) applyAdd(root, plan);
+        plans.push(plan);
+    }
+    return plans;
+}
+
 /** `otta add <package|bundle> [app]`: list a workspace package (or every package of a bundle) in an app. */
 export async function addPackage(
     requested: string,
@@ -405,13 +421,14 @@ export async function addPackage(
     const members = listBundle(root, requested);
     const descriptors = (members ?? [requested]).map((name) => readPackageDescriptor(root, name));
     if (members) log.dim(`${requested} is a bundle: ${descriptors.map((pkg) => pkg.name).join(', ')}\n`);
-    const plans = descriptors.map((pkg) => planAdd(root, app.name, pkg));
-    for (const plan of plans) console.log(formatAddPlan(plan));
+    const plans = addPackages(root, app.name, descriptors, {
+        dryRun: options.dryRun,
+        report: (plan) => console.log(formatAddPlan(plan)),
+    });
     if (options.dryRun) {
         log.dim('\nDry run: nothing written.');
         return plans;
     }
-    for (const plan of plans) applyAdd(root, plan);
     const steps = plans.flatMap((plan) => plan.steps);
     const what = descriptors.map((pkg) => pkg.name).join(', ');
     // The exit words of the design system: Done. (green) then Next: (amber) with the fix.
@@ -422,7 +439,7 @@ export async function addPackage(
     }
     log.done(`${what} added to ${app.name}.`);
     log.next('');
-    const next = ['pnpm install'];
+    const next = ['pnpm install', 'pnpm build:pkg'];
     const compositions = steps.filter((step) => step.action === 'create' && step.file.includes('/ottabase/packages/'));
     if (compositions.length) next.push(`Review ${compositions.map((step) => step.file).join(', ')}`);
     next.push(

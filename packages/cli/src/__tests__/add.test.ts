@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyAdd, formatAddPlan, listBundle, planAdd, readPackageDescriptor } from '../commands/add.js';
+import { addPackages, applyAdd, formatAddPlan, listBundle, planAdd, readPackageDescriptor } from '../commands/add.js';
 
 const roots: string[] = [];
 
@@ -280,6 +280,37 @@ describe('planAdd and applyAdd', () => {
 
         const again = planAdd(root, 'bar', readPackageDescriptor(root, 'tower'));
         expect(again.steps.every((step) => step.action === 'skip')).toBe(true);
+    });
+
+    it('wires a bundle one package after another, so the second package sees what the first wrote', () => {
+        const root = fixture();
+        const seen: string[] = [];
+        const descriptors = listBundle(root, 'pro')!.map((name) => readPackageDescriptor(root, name));
+        const plans = addPackages(root, 'bar', descriptors, { report: (plan) => seen.push(plan.package.key) });
+        expect(plans.map((plan) => plan.package.key)).toEqual(['payport', 'tower']);
+        expect(seen).toEqual(['payport', 'tower']);
+        const deps = JSON.parse(text(root, 'apps/bar/package.json')).dependencies;
+        expect(deps['@ottabase/payport']).toBe('workspace:*');
+        expect(deps['@ottabase/tower']).toBe('workspace:*');
+        const list = text(root, 'apps/bar/ottabase/packages.ts');
+        expect(list).toContain(
+            "import { payportPackage } from './packages/payport';\nimport { towerPackage } from './packages/tower';",
+        );
+        expect(list).toContain('    appPackage,\n    payportPackage,\n    towerPackage,\n    // Premium');
+        expect(text(root, 'apps/bar/src/ottabase/config/packages.ts')).toContain(
+            "    definePackageClient({ key: 'payport' }),\n    definePackageClient({\n        key: 'tower',",
+        );
+
+        // A dry run writes nothing and plans every package against the untouched app.
+        const fresh = fixture();
+        const dry = addPackages(
+            fresh,
+            'bar',
+            descriptors.map((pkg) => readPackageDescriptor(fresh, pkg.dir.replace('packages/', ''))),
+            { dryRun: true },
+        );
+        expect(dry.every((plan) => plan.steps.some((step) => step.action === 'edit'))).toBe(true);
+        expect(JSON.parse(text(fresh, 'apps/bar/package.json')).dependencies['@ottabase/tower']).toBeUndefined();
     });
 
     it('merges icons into an existing lucide-react import', () => {
