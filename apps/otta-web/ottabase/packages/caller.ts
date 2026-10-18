@@ -33,7 +33,10 @@ export async function resolvePackageCaller(request: Request, env: CloudflareEnv)
     const user = session?.user;
     if (!user?.id) return null;
     const permissions = (user.permissions as string[] | undefined) ?? [];
-    const platformAdmin = hasGrantedPermission(permissions, '*:*');
+    // The session's scope-aware flag, derived from SYSTEM-scoped grants only. Never the merged
+    // permission set: an org-scoped `*:*` (a custom role, a drifted system row) must grant what an
+    // org admin has and nothing platform-wide. Every package admin route trusts this field.
+    const platformAdmin = user.platformAdmin === true;
     return {
         userId: user.id,
         organizationId: (user.organizationId as string | null | undefined) ?? null,
