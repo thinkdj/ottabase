@@ -30,6 +30,7 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'apikeys' }),
     definePackageClient({ key: 'postmaster' }),
     definePackageClient({ key: 'fleet' }),
+    definePackageClient({ key: 'legal' }),
     definePackageClient({
         key: 'vault',
         adminPages: [

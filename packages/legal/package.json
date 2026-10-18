@@ -1,0 +1,74 @@
+{
+    "name": "@ottabase/legal",
+    "version": "2.0.0",
+    "description": "Parameterized, conditional legal pages for SaaS apps: Terms, Privacy (GDPR/CCPA), Cookies, Acceptable Use, Refunds and Sub-processors from one config, with clause toggles and per-app overrides. Served from the Worker or rendered in React",
+    "ottabase": {
+        "key": "legal",
+        "factory": "createLegalPackage"
+    },
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.ts",
+            "default": "./src/react/index.ts"
+        },
+        "./styles.css": "./src/styles.css"
+    },
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "keywords": [
+        "legal",
+        "terms-of-service",
+        "privacy-policy",
+        "gdpr",
+        "ccpa",
+        "cookies",
+        "refunds",
+        "saas",
+        "ottabase"
+    ],
+    "author": "thinkdj",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/legal"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/legal#readme"
+}

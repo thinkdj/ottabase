@@ -203,6 +203,11 @@ function makeStudioRoute<const TPath extends string, TSearch = Record<string, un
 const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((m) => ({ default: m.HomePage })));
 
 const docsRoute = publicRoute('/docs/$', () => import('@/pages/docs/DocsPage').then((m) => ({ default: m.DocsPage })));
+// Legal pages (@ottabase/legal): /legal is the index, /legal/terms, /legal/privacy, ... each document, all from
+// ottabase/legal.config.ts. The Worker serves the same documents as JSON and Markdown at /api/legal.
+const legalRoute = publicRoute('/legal/$', () =>
+    import('@/pages/legal/LegalPage').then((m) => ({ default: m.LegalPage })),
+);
 
 // Outside the /demo wrapper on purpose: each preview swaps the whole app shell (see LayoutPreviewPage).
 const layoutPreviewRoute = publicRoute('/layout-preview/$preset', () =>
@@ -744,6 +749,7 @@ demoLayoutRoute.addChildren(demoChildren);
 const coreRoutes = [
     indexRoute,
     docsRoute,
+    legalRoute,
     layoutPreviewRoute,
     demoLayoutRoute,
     changelogListRoute,
