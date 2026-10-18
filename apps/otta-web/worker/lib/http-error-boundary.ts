@@ -27,7 +27,8 @@ export function handleUnhandledRequestError(error: unknown, request: Request, ho
 
     if (status >= 500) {
         if (hooks) {
-            packages.report({
+            // Not awaited: the response is synchronous. The reports live on under waitUntil.
+            void packages.report({
                 error,
                 env: hooks.env,
                 source: 'request',

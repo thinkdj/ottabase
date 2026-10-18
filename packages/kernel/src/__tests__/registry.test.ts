@@ -140,6 +140,31 @@ describe('createPackageRegistry', () => {
         warn.mockRestore();
     });
 
+    it('resolves report() only after every reporter settled, so a host without waitUntil can await it', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        let finished = false;
+        const registry = createPackageRegistry<Env>({
+            packages: [
+                pkg({
+                    key: 'slow',
+                    errors: {
+                        report: async () => {
+                            await new Promise((resolve) => setTimeout(resolve, 5));
+                            finished = true;
+                        },
+                    },
+                }),
+                pkg({ key: 'broken', errors: { report: async () => Promise.reject(new Error('nope')) } }),
+            ],
+        });
+        await expect(registry.report({ error: 'x', env: {}, source: 'queue' })).resolves.toBeUndefined();
+        expect(finished).toBe(true);
+        expect(
+            await createPackageRegistry<Env>({ packages: [] }).report({ error: 'x', env: {}, source: 'other' }),
+        ).toBeUndefined();
+        warn.mockRestore();
+    });
+
     it('throws at boot on duplicate keys, table names, cron names and queue job types', () => {
         expect(() => createPackageRegistry({ packages: [pkg({ key: 'alpha' }), pkg({ key: 'alpha' })] })).toThrow(
             /Duplicate package key "alpha"/,

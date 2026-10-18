@@ -30,8 +30,11 @@ export const appCronScheduler = createScheduler<CloudflareEnv>({
         error: (message) => console.error(JSON.stringify({ event: 'cron_scheduler', level: 'error', message })),
     },
     // A failing task is already recorded on its scheduled_tasks row; this hands it to the
-    // packages that report errors as well. `tick()` awaits the hook, so no waitUntil needed.
-    onError: (error, context) => packages.report({ error, env: context.env, source: 'cron', task: context.taskName }),
+    // packages that report errors as well. Awaited: a scheduled event has no waitUntil here,
+    // and `tick()` awaits this hook, so the reports finish before the event does.
+    onError: async (error, context) => {
+        await packages.report({ error, env: context.env, source: 'cron', task: context.taskName });
+    },
 });
 
 for (const [name, job] of Object.entries(packages.cron())) {

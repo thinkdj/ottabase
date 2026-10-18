@@ -67,17 +67,19 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
         packages.flatMap((pkg) => pick(pkg) ?? []);
 
     const reporters = packages.filter((pkg) => pkg.errors);
-    const report = (incident: ErrorIncident<Env>): void => {
-        for (const pkg of reporters) {
+    const report = (incident: ErrorIncident<Env>): Promise<void> => {
+        const outcomes = reporters.map((pkg) => {
             const failed = (thrown: unknown) =>
                 console.warn(
                     `[kernel] ${pkg.key} error reporter failed: ${thrown instanceof Error ? thrown.message : String(thrown)}`,
                 );
-            // The async wrapper turns a synchronous throw into a rejection, so every reporter
-            // ends up under waitUntil and no reporter can take the host's response down.
+            // The async wrapper turns a synchronous throw into a rejection, so no reporter can
+            // take the host's response down, and every one is kept alive the same way.
             const outcome = (async () => pkg.errors!.report(incident))().catch(failed);
             incident.waitUntil?.(outcome);
-        }
+            return outcome;
+        });
+        return Promise.all(outcomes).then(() => undefined);
     };
 
     return {

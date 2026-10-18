@@ -10,6 +10,7 @@ import { createKVClient } from '@ottabase/cf/kv';
 import { createQueueHandler, createRegistry, dispatch, type QueuedJob } from '@ottabase/queue';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import type { JobHandler } from '@ottabase/queue';
+import { ensureDbConnection } from '../../worker/lib/db-utils';
 import { packages } from '../registry';
 
 // KV keys for queue stats (using cache key builder for consistency)
@@ -495,7 +496,11 @@ export function createAppQueueHandler() {
             );
 
             if (env) {
-                packages.report({ error, env, source: 'queue', task: job.type, requestId: jobId });
+                // A queue batch can run in an isolate that never served a request, so the ORM may not
+                // be connected yet; reporters write through it. Awaited: there is no waitUntil here,
+                // so un-awaited reports would die with the batch.
+                ensureDbConnection(env);
+                await packages.report({ error, env, source: 'queue', task: job.type, requestId: jobId });
                 // Update stats
                 await updateStats(env, (stats) => {
                     stats.totalFailed++;

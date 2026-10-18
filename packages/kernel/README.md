@@ -73,6 +73,10 @@ export const notesPackage = definePackage<CloudflareEnv>({
 | `lifecycle`       | `onInstall` / `onUpgrade` run from the init route, versions recorded in KV         |
 | `errors`          | `report(incident)` receives every unhandled error the host hands to the registry   |
 
+`registry.report(incident)` fans an incident out to every `errors` reporter and never rejects. A request boundary passes
+`waitUntil` and does not wait; a scheduled task or queue batch has no `waitUntil` and must `await` it, or the reports
+die with the handler.
+
 Cron handler names and queue job types are app-wide. Namespace them (`notes:purge`); the registry throws on a clash.
 
 ## The registry

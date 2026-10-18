@@ -217,10 +217,12 @@ export interface PackageRegistry<Env = unknown> {
     nav(): Array<NavContribution & { packageKey: string }>;
     env(): { required: string[]; optional: string[] };
     /**
-     * Hand an unhandled error to every package that reports errors. Never throws and never
-     * waits: each reporter runs under `incident.waitUntil` when the host gave one.
+     * Hand an unhandled error to every package that reports errors. Never throws or rejects.
+     * A host with an execution context passes `incident.waitUntil` and need not wait; a host
+     * without one (a scheduled task, a queue batch) awaits the promise, or the reports die
+     * with the handler.
      */
-    report(incident: ErrorIncident<Env>): void;
+    report(incident: ErrorIncident<Env>): Promise<void>;
 }
 
 export interface HealthReport {
