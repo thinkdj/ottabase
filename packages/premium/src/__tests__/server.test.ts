@@ -211,7 +211,7 @@ describe('control-plane API', () => {
     it('answers 422 with the reason for a key that does not verify', async () => {
         const { app } = build();
         const response = await app.handle(
-            post('/api/premium/packages/webhooks/license', { license: 'obp1.bogus.bogus' }),
+            post('/api/premium/packages/webhooks/license', { license: 'otta_premium_v1.bogus.bogus' }),
             {},
         );
         const body = (await response?.json()) as { data: Record<string, unknown>; error: string };

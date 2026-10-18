@@ -127,7 +127,7 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                                 <Input
                                     value={licenseInput}
                                     onChange={(event) => setLicenseInput(event.target.value)}
-                                    placeholder="Paste license key (obp1.…)"
+                                    placeholder="Paste license key (otta_premium_v1.…)"
                                     className="font-mono text-sm"
                                     aria-label={`License key for ${status.name}`}
                                     spellCheck={false}

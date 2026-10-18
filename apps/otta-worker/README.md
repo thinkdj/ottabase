@@ -45,7 +45,7 @@ JSON map) or is pasted once:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
-     -d '{"license":"obp1.…"}' http://127.0.0.1:3005/api/premium/packages/vault/license
+     -d '{"license":"otta_premium_v1.…"}' http://127.0.0.1:3005/api/premium/packages/vault/license
 curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3005/api/premium/packages   # state, plan, features
 ```
 

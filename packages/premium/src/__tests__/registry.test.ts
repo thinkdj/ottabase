@@ -133,7 +133,7 @@ describe('license sources', () => {
         const { registry, store } = makeRegistry();
         await registry.activate({}, 'webhooks', license);
 
-        const rejected = await registry.activate({}, 'webhooks', 'obp1.not-a-license.signature');
+        const rejected = await registry.activate({}, 'webhooks', 'otta_premium_v1.not-a-license.signature');
 
         expect(rejected).toMatchObject({ state: 'invalid', reason: 'LICENSE_MALFORMED' });
         expect((await store.get('webhooks'))?.license).toBe(license);
@@ -142,7 +142,7 @@ describe('license sources', () => {
 
     it('lets the env license win over a stored one, so infrastructure config is authoritative', async () => {
         const { registry } = makeRegistry();
-        await registry.activate({}, 'webhooks', 'obp1.garbage.garbage');
+        await registry.activate({}, 'webhooks', 'otta_premium_v1.garbage.garbage');
         const status = await registry.status({ [licenseEnvKey('webhooks')]: license }, 'webhooks');
 
         expect(status?.state).toBe('active');

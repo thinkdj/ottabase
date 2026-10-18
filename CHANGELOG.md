@@ -345,10 +345,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   free-package wiring (`config.migrations.ts` PACKAGE_REGISTRY, `config.routes.ts`, `ottabase.config.ts`,
   `db-utils.ts`): runtime integration is derived from the manifest list. Drizzle's static schema export and any rendered
   admin page remain explicit build-time adapters, verified by the premium-registration test.
-    - **Licensing is offline.** A license is a compact signed token (`obp1.<claims>.<sig>`, ECDSA P-256 via Web Crypto)
-      verified in microseconds with no network on the request path, so a vendor outage cannot take a customer's feature
-      down and customer traffic patterns never reach the vendor. The stated cost: an offline token **cannot be revoked
-      before it expires** — expiry is the revocation mechanism, and subscription vendors mint short-dated tokens.
+    - **Licensing is offline.** A license is a compact signed token (`otta_premium_v1.<claims>.<sig>`, ECDSA P-256 via
+      Web Crypto) verified in microseconds with no network on the request path, so a vendor outage cannot take a
+      customer's feature down and customer traffic patterns never reach the vendor. The stated cost: an offline token
+      **cannot be revoked before it expires** — expiry is the revocation mechanism, and subscription vendors mint
+      short-dated tokens.
     - **License sources, in precedence order:** `PREMIUM_LICENSE_<KEY>` → the `PREMIUM_LICENSES` JSON map → a key pasted
       in the admin UI (KV). Env wins deliberately, so the key in your infrastructure config is the key actually in
       force. `PREMIUM_PKG_<KEY>=false` is the kill switch, independent of licensing. A package with no

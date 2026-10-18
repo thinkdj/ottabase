@@ -157,7 +157,7 @@ UI shares the app's authorization and tenant-selection path.
 
 ## Licenses
 
-A license is a compact signed token: `obp1.<base64url(claims)>.<base64url(signature)>`.
+A license is a compact signed token: `otta_premium_v1.<base64url(claims)>.<base64url(signature)>`.
 
 ```typescript
 // Vendor side only — never imported by a consuming app.
@@ -181,11 +181,11 @@ const token = await issueLicense(
 
 ### Where a customer puts the key
 
-| Source                  | Precedence | Notes                                                             |
-| ----------------------- | ---------- | ----------------------------------------------------------------- |
-| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, upper-snake-cased key (`PREMIUM_LICENSE_REPORTS`)    |
-| `PREMIUM_LICENSES`      | 2          | JSON map `{"reports":"obp1…"}` for many packages in one variable  |
-| Admin UI (stored in KV) | 3          | Pasted at `/admin/growth/premium`; ignored when an env key exists |
+| Source                  | Precedence | Notes                                                                       |
+| ----------------------- | ---------- | --------------------------------------------------------------------------- |
+| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, upper-snake-cased key (`PREMIUM_LICENSE_REPORTS`)              |
+| `PREMIUM_LICENSES`      | 2          | JSON map `{"reports":"otta_premium_v1…"}` for many packages in one variable |
+| Admin UI (stored in KV) | 3          | Pasted at `/admin/growth/premium`; ignored when an env key exists           |
 
 Env wins deliberately: the key in your infrastructure config must be the key actually in force.
 

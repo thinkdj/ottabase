@@ -68,19 +68,19 @@ says so.
 
 ## 3. Licensing
 
-A license is a signed, offline-verifiable token — `obp1.<claims>.<signature>`, ECDSA P-256 over Web Crypto. It is
-checked in microseconds, works air-gapped, and cannot be forged without the vendor's private key.
+A license is a signed, offline-verifiable token — `otta_premium_v1.<claims>.<signature>`, ECDSA P-256 over Web Crypto.
+It is checked in microseconds, works air-gapped, and cannot be forged without the vendor's private key.
 
 **It also cannot be revoked before it expires.** Revocation is what expiry is for: subscription vendors mint short-dated
 tokens and re-issue on renewal.
 
 ### Where a customer puts the key
 
-| Source                  | Precedence | Notes                                                |
-| ----------------------- | ---------- | ---------------------------------------------------- |
-| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, key upper-snake-cased                   |
-| `PREMIUM_LICENSES`      | 2          | JSON map `{"webhooks":"obp1…"}` for several packages |
-| Admin UI (stored in KV) | 3          | Ignored when an env key exists for that package      |
+| Source                  | Precedence | Notes                                                           |
+| ----------------------- | ---------- | --------------------------------------------------------------- |
+| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, key upper-snake-cased                              |
+| `PREMIUM_LICENSES`      | 2          | JSON map `{"webhooks":"otta_premium_v1…"}` for several packages |
+| Admin UI (stored in KV) | 3          | Ignored when an env key exists for that package                 |
 
 Env wins deliberately: the key in your infrastructure config must be the key actually in force.
 

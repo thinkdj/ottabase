@@ -3,7 +3,7 @@
 // ============================================================
 // A license is a compact, OFFLINE-VERIFIABLE token:
 //
-//     obp1.<base64url(claims JSON)>.<base64url(signature)>
+//     otta_premium_v1.<base64url(claims JSON)>.<base64url(signature)>
 //
 // ECDSA P-256 / SHA-256, verified with Web Crypto — the same primitive set the rest
 // of the framework uses, so it runs unchanged on Workers, Node and the browser.
@@ -22,7 +22,7 @@
 import type { PremiumLicenseClaims } from '../types';
 
 /** Token prefix. Bumped only if the signed byte string ever changes shape. */
-export const LICENSE_TOKEN_PREFIX = 'obp1';
+export const LICENSE_TOKEN_PREFIX = 'otta_premium_v1';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

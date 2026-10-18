@@ -127,8 +127,8 @@ describe('forgery resistance', () => {
         ['empty', ''],
         ['not a token', 'hello'],
         ['wrong prefix', 'jwt.aaa.bbb'],
-        ['two segments', 'obp1.aaa'],
-        ['payload is not json', 'obp1.bm90LWpzb24.c2ln'],
+        ['two segments', 'otta_premium_v1.aaa'],
+        ['payload is not json', 'otta_premium_v1.bm90LWpzb24.c2ln'],
     ])('reports %s as malformed rather than throwing', async (_label, token) => {
         const result = await verifyLicense(token, { packageKey: 'webhooks', publicKey: keys.publicKey });
         expect(['invalid', 'unlicensed']).toContain(result.state);

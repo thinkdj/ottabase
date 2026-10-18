@@ -25,13 +25,13 @@ The package is already listed in `apps/otta-web/ottabase/packages.ts` (`ottabase
 4. Back on the webhooks page: the ceiling is now 25 and the delivery log has replaced its upsell.
 
 ```text
-obp1.eyJpZCI6ImxpY19kZW1vX3Byb18wMDAxIiwicGtnIjoid2ViaG9va3MiLCJwbGFuIjoicHJvIiwibGljZW5zZWUiOiJPdHRhYmFzZSBEZW1vIiwiZmVhdHVyZXMiOlsiZGVsaXZlcmllcy5sb2ciLCJjdXN0b20taGVhZGVycyJdLCJsaW1pdHMiOnsiZW5kcG9pbnRzIjoyNX0sImlhdCI6MTczNTY4OTYwMH0.yNy_XM1hjiwMCqOQUwC4INMt6FZ19jObyESanPU_C5hPv6cQhl0FbXwIXCvfn-smOz2ziqFIi784Mp4ErZ68mg
+otta_premium_v1.eyJpZCI6ImxpY19kZW1vX3Byb18wMDAxIiwicGtnIjoid2ViaG9va3MiLCJwbGFuIjoicHJvIiwibGljZW5zZWUiOiJPdHRhYmFzZSBEZW1vIiwiZmVhdHVyZXMiOlsiZGVsaXZlcmllcy5sb2ciLCJjdXN0b20taGVhZGVycyJdLCJsaW1pdHMiOnsiZW5kcG9pbnRzIjoyNX0sImlhdCI6MTczNTY4OTYwMH0.yNy_XM1hjiwMCqOQUwC4INMt6FZ19jObyESanPU_C5hPv6cQhl0FbXwIXCvfn-smOz2ziqFIi784Mp4ErZ68mg
 ```
 
 Or set it per deploy, which takes precedence over anything pasted in the UI:
 
 ```bash
-PREMIUM_LICENSE_WEBHOOKS=obp1.…
+PREMIUM_LICENSE_WEBHOOKS=otta_premium_v1.…
 ```
 
 ## Licensing

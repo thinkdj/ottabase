@@ -39,7 +39,7 @@ export function toggleEnvKey(packageKey: string): string {
     return `PREMIUM_PKG_${packageKey.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`;
 }
 
-/** Env var holding a JSON map of many licenses: `{"webhooks":"obp1...."}`. */
+/** Env var holding a JSON map of many licenses: `{"webhooks":"otta_premium_v1...."}`. */
 export const LICENSE_MAP_ENV_KEY = 'PREMIUM_LICENSES';
 
 function readEnvString(env: unknown, key: string): string | undefined {
