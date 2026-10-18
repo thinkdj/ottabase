@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- `@ottabase/screenshot`: automated screenshots, ported from Tuskly's docs-image script. One CDP runner (`captureShot`)
+  drives a local Chrome from Node (`@ottabase/screenshot/node`: `runShots`, zero-dependency CDP over WebSocket) or a
+  Cloudflare Browser Rendering session (`POST /api/screenshot/capture`, session + rate limit, same-origin paths only).
+  png/jpg/webp, quality, viewport/scale, light/dark, `waitFor` and click/scroll/type/key steps; an optimization pass
+  keeps the smaller encoding (sharp in Node: palette png, mozjpeg; the Images binding at the edge). Listed in otta-web
+  with `/demo/cloudflare/screenshot`, `pnpm gen:screenshots` and a new `OBCF_IMAGES` binding.
+
 - `@ottabase/kernel`: the package contract. One manifest (`definePackage`) declares a package's tables, migrations,
   models, RLS policies, routes, cron and queue handlers, event subscriptions, nav, env and health;
   `createPackageRegistry` collects a list of them once and throws at boot on a duplicate key, table export, cron name or

@@ -1,0 +1,12 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "lib": ["esnext", "dom", "dom.iterable", "dom.asynciterable"],
+        "types": ["node"],
+        // ./node runs from source under Node's type stripping, which needs real extensions.
+        "allowImportingTsExtensions": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

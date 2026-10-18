@@ -8,6 +8,7 @@ import {
     Blocks,
     Bot,
     Calendar,
+    Camera,
     Clock,
     Cloud,
     Code,
@@ -195,6 +196,15 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'PDF Rendering',
         title: 'Cloudflare PDF Rendering',
         description: 'Secure HTML-to-PDF export with static DOM capture, Browser Rendering, and safe metadata.',
+        buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/cloudflare/screenshot',
+        icon: Camera,
+        label: 'Screenshots',
+        title: 'Screenshots',
+        description:
+            'Capture app pages as PNG, JPG or WebP with quality and an optimization pass, from the Worker or a Node script.',
         buttonVariant: 'outline',
     },
     {

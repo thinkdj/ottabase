@@ -714,6 +714,11 @@ const demoChildren = [
         () => import('@/pages/demo/cloudflare/CloudflarePdfPackageDemoPage'),
         'CloudflarePdfPackageDemoPage',
     ),
+    demoChild(
+        'cloudflare/screenshot',
+        () => import('@/pages/demo/cloudflare/CloudflareScreenshotDemoPage'),
+        'CloudflareScreenshotDemoPage',
+    ),
     demoChild('api', () => import('@/pages/demo/api/ApiDemoPage'), 'ApiDemoPage'),
     demoChild('theming', () => import('@/pages/demo/theming/ThemingDemoPage'), 'ThemingDemoPage'),
     demoChild('state', () => import('@/pages/demo/state/StateDemoPage'), 'StateDemoPage'),

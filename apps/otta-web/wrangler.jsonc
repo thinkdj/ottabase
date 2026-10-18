@@ -185,6 +185,14 @@
         "binding": "OBCF_BROWSER",
     },
 
+    // Images binding — the edge optimization pass for @ottabase/screenshot (local dev runs it
+    // through sharp). Counts against Cloudflare Images transformations (free tier: 5,000/month).
+    // Remove it and screenshots are served as Chrome encodes them.
+    // @see https://developers.cloudflare.com/images/transform-images/bindings/
+    "images": {
+        "binding": "OBCF_IMAGES",
+    },
+
     // Durable Objects bindings for real-time features
     "durable_objects": {
         "bindings": [

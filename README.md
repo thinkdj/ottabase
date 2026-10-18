@@ -345,6 +345,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/db`         | Drizzle D1 driver (`createD1Driver`)                                                                          |
 | `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows, DO alarms, Cache Keys |
 | `@ottabase/cf-pdf`     | Cloudflare HTML-to-PDF export with Browser Rendering and safe downloads                                       |
+| `@ottabase/screenshot` | Automated screenshots (png/jpg/webp, quality, optimization pass): Node runner + Browser Rendering route       |
 | `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)                                             |
 | `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link                                      |
 | `@ottabase/rbac`       | Role-based access control with per-org KV caching                                                             |

@@ -53,6 +53,7 @@ interface __BaseEnv_CloudflareEnv {
 	OBCF_RATE_LIMITER: RateLimit;
 	OBCF_BROWSER?: BrowserRun;
 	OBCF_AI?: Ai;
+	OBCF_IMAGES?: ImagesBinding;
 	AUTH_ALLOW_INSECURE_DEV_SECRET?: string;
 	R2_PUBLIC_URL?: string;
 	EMAIL_RESEND_WEBHOOK_SECRET?: string;
