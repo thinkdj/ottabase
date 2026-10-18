@@ -98,12 +98,14 @@ type MemoryBucket = ReturnType<typeof memoryBucket>;
 
 function build(db = seed(), bucket: MemoryBucket | null = memoryBucket()) {
     let tick = 0;
+    // Real time, not a fixed date: the health probe ages backups against Date.now().
+    const base = Date.now();
     const vault = createVault<Env>({
         driver: (env) => sqliteDriver(env.db),
         bucket: (env) => env.bucket,
         appId: () => 'app',
         pageSize: 2, // small on purpose: every table with 3 rows exercises keyset paging
-        now: () => new Date(Date.UTC(2026, 9, 16, 2, 23, 0, tick++)),
+        now: () => new Date(base + tick++),
         id: (at) => `${at.toISOString().replace(/[-:.]/g, '')}-${tick}`,
     });
     return { vault, env: { bucket, db } as Env, bucket };
