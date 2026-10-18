@@ -372,7 +372,7 @@ apiRouter.onError((err, c) => {
     if (err instanceof URIError) {
         return errorResponse('Invalid identifier', 400, { code: 'BAD_REQUEST' });
     }
-    return handleUnhandledRequestError(err, c.req);
+    return handleUnhandledRequestError(err, c.req, { env: c.env, ctx: c.ctx });
 });
 
 /**

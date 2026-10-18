@@ -18,6 +18,8 @@ export type {
     Awaitable,
     CronContribution,
     EnvContribution,
+    ErrorContribution,
+    ErrorIncident,
     HealthCheck,
     HealthProbe,
     HealthReport,

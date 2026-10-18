@@ -4,6 +4,7 @@ import type { JobHandler } from '@ottabase/queue';
 import { routesOf } from './define';
 import type {
     CronContribution,
+    ErrorIncident,
     ModelEntry,
     NavContribution,
     OttaPackage,
@@ -65,6 +66,20 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
     const flat = <T>(pick: (pkg: OttaPackage<Env>) => T[] | undefined): T[] =>
         packages.flatMap((pkg) => pick(pkg) ?? []);
 
+    const reporters = packages.filter((pkg) => pkg.errors);
+    const report = (incident: ErrorIncident<Env>): void => {
+        for (const pkg of reporters) {
+            const failed = (thrown: unknown) =>
+                console.warn(
+                    `[kernel] ${pkg.key} error reporter failed: ${thrown instanceof Error ? thrown.message : String(thrown)}`,
+                );
+            // The async wrapper turns a synchronous throw into a rejection, so every reporter
+            // ends up under waitUntil and no reporter can take the host's response down.
+            const outcome = (async () => pkg.errors!.report(incident))().catch(failed);
+            incident.waitUntil?.(outcome);
+        }
+    };
+
     return {
         packages,
         has: (key) => byKey.has(key),
@@ -98,5 +113,6 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
             required: [...new Set(flat<string>((pkg) => pkg.env?.required))],
             optional: [...new Set(flat<string>((pkg) => pkg.env?.optional))],
         }),
+        report,
     };
 }

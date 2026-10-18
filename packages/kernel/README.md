@@ -71,6 +71,7 @@ export const notesPackage = definePackage<CloudflareEnv>({
 | `env`             | Required keys are checked by the health report                                     |
 | `health`          | Probed by `/api/health`                                                            |
 | `lifecycle`       | `onInstall` / `onUpgrade` run from the init route, versions recorded in KV         |
+| `errors`          | `report(incident)` receives every unhandled error the host hands to the registry   |
 
 Cron handler names and queue job types are app-wide. Namespace them (`notes:purge`); the registry throws on a clash.
 

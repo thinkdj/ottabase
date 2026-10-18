@@ -1,4 +1,11 @@
 import { errorResponse, redactErrorForLog, ServiceError } from '@ottabase/utils/http-errors';
+import { packages } from '../../ottabase/registry';
+
+/** What the boundary needs to hand a 5xx to the packages that report errors. */
+export interface ErrorBoundaryHooks {
+    env: CloudflareEnv;
+    ctx?: { waitUntil(promise: Promise<unknown>): void };
+}
 
 function requestIdFor(request: Request): string {
     // CF-Ray is edge-controlled in production. A browser-provided X-Request-Id
@@ -11,13 +18,24 @@ function requestIdFor(request: Request): string {
 /**
  * Shared final error boundary for both ottarouter and the outer Worker fetch
  * handler. It emits one bounded structured log and never returns exception
- * messages or private ServiceError context for a 5xx response.
+ * messages or private ServiceError context for a 5xx response. With `hooks`,
+ * a 5xx is also handed to the packages that report errors (`registry.report`).
  */
-export function handleUnhandledRequestError(error: unknown, request: Request): Response {
+export function handleUnhandledRequestError(error: unknown, request: Request, hooks?: ErrorBoundaryHooks): Response {
     const requestId = requestIdFor(request);
     const status = error instanceof ServiceError ? error.status : 500;
 
     if (status >= 500) {
+        if (hooks) {
+            packages.report({
+                error,
+                env: hooks.env,
+                source: 'request',
+                request,
+                requestId,
+                waitUntil: hooks.ctx ? (promise) => hooks.ctx!.waitUntil(promise) : undefined,
+            });
+        }
         console.error(
             JSON.stringify({
                 event: 'worker_request_failed',

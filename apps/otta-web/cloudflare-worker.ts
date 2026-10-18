@@ -151,7 +151,7 @@ export default {
 
             return response;
         } catch (err) {
-            return handleUnhandledRequestError(err, request);
+            return handleUnhandledRequestError(err, request, { env, ctx });
         }
     },
     scheduled: handleAppScheduled,

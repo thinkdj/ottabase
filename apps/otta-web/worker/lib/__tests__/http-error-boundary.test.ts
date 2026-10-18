@@ -1,9 +1,13 @@
 import { ServiceError } from '@ottabase/utils/http-errors';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { packages } from '../../../ottabase/registry';
 import { handleUnhandledRequestError } from '../http-error-boundary';
+
+vi.mock('../../../ottabase/registry', () => ({ packages: { report: vi.fn() } }));
 
 afterEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(packages.report).mockClear();
 });
 
 describe('handleUnhandledRequestError', () => {
@@ -67,5 +71,25 @@ describe('handleUnhandledRequestError', () => {
         expect(parsedLog.status).toBe(503);
         expect(parsedLog.code).toBe('SECURITY_CONTEXT_UNAVAILABLE');
         expect(parsedLog.cause.message).toContain('[REDACTED]');
+    });
+
+    it('hands a 5xx, but not a 4xx, to the error reporters with the same request id and the waitUntil', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const env = {} as CloudflareEnv;
+        const kept: Promise<unknown>[] = [];
+        const ctx = { waitUntil: (promise: Promise<unknown>) => void kept.push(promise) };
+        const request = new Request('https://app.example.com/api/users', { headers: { 'cf-ray': 'cf-ray-789' } });
+
+        const response = handleUnhandledRequestError(new Error('boom'), request, { env, ctx });
+        const body = (await response.json()) as { requestId: string };
+        expect(packages.report).toHaveBeenCalledTimes(1);
+        const incident = vi.mocked(packages.report).mock.calls[0]![0];
+        expect(incident).toMatchObject({ env, source: 'request', request, requestId: 'cf-ray-789' });
+        expect(body.requestId).toBe('cf-ray-789');
+        incident.waitUntil!(Promise.resolve());
+        expect(kept).toHaveLength(1);
+
+        handleUnhandledRequestError(new ServiceError('nope', 404, { code: 'NOT_FOUND' }), request, { env, ctx });
+        expect(packages.report).toHaveBeenCalledTimes(1);
     });
 });

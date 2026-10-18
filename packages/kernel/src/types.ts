@@ -74,6 +74,31 @@ export interface NavContribution {
     group?: string;
 }
 
+/**
+ * An error the host could not handle, offered to every package that reports errors. The
+ * host's own log line and 5xx response are already written when this is built; a reporter
+ * only records.
+ */
+export interface ErrorIncident<Env = unknown> {
+    error: unknown;
+    env: Env;
+    /** Where it happened: a request, a scheduled task, a queue job, or somewhere else. */
+    source: 'request' | 'cron' | 'queue' | 'other';
+    request?: Request;
+    /** Task or job name for cron and queue incidents. */
+    task?: string;
+    /** Correlates with the host's own log line (the `cf-ray`, or whatever the host chose). */
+    requestId?: string;
+    /** Keeps the isolate alive for the report; the host passes `ctx.waitUntil` when it has one. */
+    waitUntil?: (promise: Promise<unknown>) => void;
+}
+
+/** How a package observes unhandled errors (an error tracker, a pager). */
+export interface ErrorContribution<Env = unknown> {
+    /** Called for every incident. Must not throw; the registry logs and swallows if it does. */
+    report: (incident: ErrorIncident<Env>) => Awaitable<void>;
+}
+
 /** Env keys (vars, secrets and bindings) this package reads. Checked by the health report. */
 export interface EnvContribution {
     required?: string[];
@@ -152,6 +177,8 @@ export interface OttaPackage<Env = unknown> {
     env?: EnvContribution;
     health?: HealthProbe<Env>;
     lifecycle?: LifecycleHooks<Env>;
+    /** Observe unhandled errors the host reports through `registry.report()`. */
+    errors?: ErrorContribution<Env>;
 
     /**
      * Set by `@ottabase/premium`. The kernel collects EVERYTHING from a premium package
@@ -189,6 +216,11 @@ export interface PackageRegistry<Env = unknown> {
     events(): Array<Subscription<Env, never>>;
     nav(): Array<NavContribution & { packageKey: string }>;
     env(): { required: string[]; optional: string[] };
+    /**
+     * Hand an unhandled error to every package that reports errors. Never throws and never
+     * waits: each reporter runs under `incident.waitUntil` when the host gave one.
+     */
+    report(incident: ErrorIncident<Env>): void;
 }
 
 export interface HealthReport {

@@ -495,6 +495,7 @@ export function createAppQueueHandler() {
             );
 
             if (env) {
+                packages.report({ error, env, source: 'queue', task: job.type, requestId: jobId });
                 // Update stats
                 await updateStats(env, (stats) => {
                     stats.totalFailed++;

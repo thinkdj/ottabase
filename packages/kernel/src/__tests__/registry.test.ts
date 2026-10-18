@@ -105,6 +105,41 @@ describe('createPackageRegistry', () => {
         expect(registry.env()).toEqual({ required: ['OBCF_D1'], optional: ['SECRET'] });
     });
 
+    it('hands an incident to every error reporter, under waitUntil, and survives a reporter that throws', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const seen: string[] = [];
+        const kept: Promise<unknown>[] = [];
+        const registry = createPackageRegistry<Env>({
+            packages: [
+                pkg({
+                    key: 'tracker',
+                    errors: { report: async (incident) => void seen.push(`tracker:${incident.source}`) },
+                }),
+                pkg({
+                    key: 'pager',
+                    errors: {
+                        report: () => {
+                            throw new Error('pager down');
+                        },
+                    },
+                }),
+                pkg({ key: 'quiet' }),
+            ],
+        });
+        registry.report({
+            error: new Error('boom'),
+            env: {},
+            source: 'cron',
+            task: 'notes:purge',
+            waitUntil: (p) => void kept.push(p),
+        });
+        await Promise.all(kept);
+        expect(seen).toEqual(['tracker:cron']);
+        expect(kept).toHaveLength(2);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('pager error reporter failed: pager down'));
+        warn.mockRestore();
+    });
+
     it('throws at boot on duplicate keys, table names, cron names and queue job types', () => {
         expect(() => createPackageRegistry({ packages: [pkg({ key: 'alpha' }), pkg({ key: 'alpha' })] })).toThrow(
             /Duplicate package key "alpha"/,

@@ -130,7 +130,7 @@ Use this as the default decision tree when shipping new work.
     - Needs DB persistence: follow OttaORM split below.
 2. **One manifest (`@ottabase/kernel`), one list**
     - The package exports a manifest:
-      `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health, lifecycle })`
+      `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health, lifecycle, errors })`
       from `packages/<pkg>/src/manifest.ts`. Expose it as `createXPackage(options)` when the host must supply something
       (routes whose handlers live in the app, a structural dial such as the blog mode). Tables are keyed by their export
       name and MUST end in `Table`.
