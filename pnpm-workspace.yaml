@@ -1,6 +1,7 @@
 packages:
     - apps/*
     - packages/*
+    - packages/pro/*
 
 catalog:
     "@babel/core": ^7.28.6
