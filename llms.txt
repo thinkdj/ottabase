@@ -17,6 +17,7 @@
 - [Cache Key Prefixing System](docs/CACHE_KEYS.md): The Ottabase cache layer uses a systematic, type-safe approach to building cache keys for Cloudflare KV storage. This ensures cache integrity and prevents accidental overwrites across different…
 - [Cloudflare Configuration Guide for Ottabase](docs/CLOUDFLARE_CONFIGURATION_GUIDE.md): Complete guide for configuring your Ottabase application to work 100% with Cloudflare Workers using OBCF_ binding names.
 - [Deploy Ottabase to Cloudflare Workers](docs/CLOUDFLARE_DEPLOY.md): Complete guide for deploying otta-web to Cloudflare Workers with automated CI/CD.
+- [Design System v1](docs/DESIGN_SYSTEM.md): One set of tokens, components, words and navigation for every Ottabase surface: the admin (otta-web), the operator Worker page (otta-worker), the otta command line, the bootstrap pages and the docs.…
 - [Package Creation Guide](docs/PACKAGE_CREATION_GUIDE.md): Quick reference for creating packages in the Ottabase Turborepo monorepo. The authoritative checklist (the manifest, the one-line install, headless vs rendered entrypoints) is AGENTS.MD → "If adding…
 - [Premium Packages](docs/PREMIUM_PACKAGES.md): How to install, build, license and operate commercial add-ons in an Ottabase app.
 - [Multi-Tenant RBAC System - Complete Guide](docs/RBAC_MULTI_TENANT_GUIDE.md): Last Updated: 2026-10-02 Status: Production Ready ✅ Architecture: Tenant > App > User (RBAC)
@@ -53,6 +54,7 @@
 - [@ottabase/hello-world](packages/hello-world/README.md): A simple, customizable React component that displays a friendly greeting message with beautiful default styling.
 - [@ottabase/i18n](packages/i18n/README.md): Internationalization (i18n) package for the Ottabase monorepo, built with i18next and react-i18next.
 - [@ottabase/kernel](packages/kernel/README.md): The Ottabase package contract. One manifest declares everything a package contributes to an app; one registry wires all of it in. Free and paid packages share the contract. A paid one adds licensing…
+- [@ottabase/legal](packages/legal/README.md): Parameterized, conditional legal pages for SaaS apps. One config produces Terms of Service, Privacy Policy (GDPR and CCPA clauses fold in), Cookie Policy, Acceptable Use Policy, Refund and…
 - [@ottabase/logger](packages/logger/README.md): Extensible logger for Ottabase with support for multiple transports and formatters.
 - [@ottabase/medialibrary](packages/medialibrary/README.md): Shared media-library primitives for Ottabase apps.
 - [@ottabase/meter](packages/meter/README.md): Usage credits for Ottabase apps: atomic D1 decrements per tenant and meter, period resets, top-ups, a usage ledger and a 402 guard.
@@ -75,6 +77,7 @@
 - [@ottabase/queue](packages/queue/README.md): Minimal queue system for Cloudflare Workers. Laravel-inspired job dispatching with modular handler registration.
 - [@ottabase/rbac](packages/rbac/README.md): Production-ready Role-Based Access Control with multi-tenant support and optimized caching.
 - [@ottabase/referrals](packages/referrals/README.md): Referral system package for Ottabase — schema, model, validation, and attribution tracking.
+- [@ottabase/screenshot](packages/screenshot/README.md): Automated screenshots of an Ottabase app. One runner drives a headless Chrome over the Chrome DevTools Protocol: a local Chrome from a Node script, or Cloudflare Browser Rendering from a Worker.…
 - [@ottabase/scripts](packages/scripts/README.md): CLI tools for Ottabase monorepo — Cloudflare resource setup, local env secrets, and cleanup.
 - [@ottabase/shortlinks](packages/shortlinks/README.md): URL shortening system for Cloudflare D1 — redirect handling, interstitial pages, expiry, and click analytics.
 - [@ottabase/spotlight](packages/spotlight/README.md): Lightweight spotlight/command palette component with dark mode support, background blur effects, and configurable search.
