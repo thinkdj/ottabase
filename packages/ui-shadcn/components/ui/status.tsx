@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Lock, type LucideIcon } from 'lucide-react';
+import { Crown, type LucideIcon } from 'lucide-react';
 
 import { cn } from '@ottabase/ui-shadcn/lib/utils';
 import { statusOf, type StatusDomain, type StatusValue, type Tone } from './status-language';
@@ -15,7 +15,7 @@ import { statusOf, type StatusDomain, type StatusValue, type Tone } from './stat
  *   Tag          quiet metadata: a group, a package key, a version
  *   EnvName      an exact variable name, mono, with the `$` saying "a name"
  *   CountBadge   a count beside a tab or nav item
- *   PremiumMark  a lock and a word, never a colour of its own
+ *   PremiumMark  a crown and a word, never a colour of its own
  *   LiveDot      a realtime connection or a beacon answering
  */
 
@@ -129,7 +129,7 @@ export const CountBadge = React.forwardRef<HTMLSpanElement, CountBadgeProps>(({ 
 CountBadge.displayName = 'CountBadge';
 
 export interface PremiumMarkProps extends React.HTMLAttributes<HTMLSpanElement> {
-    /** Just the lock (nav entries, table cells); the word stays for screen readers. */
+    /** Just the crown (nav entries, table cells); the word stays for screen readers. */
     iconOnly?: boolean;
 }
 
@@ -145,7 +145,7 @@ export const PremiumMark = React.forwardRef<HTMLSpanElement, PremiumMarkProps>(
             )}
             {...props}
         >
-            <Lock aria-hidden="true" className="size-3 shrink-0 [stroke-width:2.25]" />
+            <Crown aria-hidden="true" className="size-3 shrink-0 [stroke-width:2.25]" />
             <span className={iconOnly ? 'sr-only' : undefined}>{children ?? 'Premium'}</span>
         </span>
     ),
