@@ -77,7 +77,8 @@ export function DemoLayout() {
                             </Button>
                         )}
                         {filteredItems.map((item, index) => {
-                            const active = location.pathname.startsWith(item.to);
+                            // Segment-aware: /demo/api must not light up on /demo/apikeys.
+                            const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
                             return (
                                 <Button
                                     key={String(index) + '-' + String(item.to)}
