@@ -46,12 +46,12 @@ export function VerifyEmailPage() {
                         {APP_META.appName.charAt(0)}
                     </span>
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Email Verification</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Email Verification</h1>
                         <p className="text-muted-foreground">Confirming your email address</p>
                     </div>
                 </div>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="gap-1.5">
                         <CardTitle className="text-[0.9375rem] font-semibold">Verification status</CardTitle>
                         <CardDescription>We&apos;re confirming the link from your email</CardDescription>

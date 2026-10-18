@@ -91,13 +91,13 @@ export function AdminEmailPage() {
     return (
         <div className="space-y-8">
             <div className="space-y-1.5">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Email</h1>
+                <h1 className="text-2xl font-semibold tracking-[-0.015em]">Email</h1>
                 <p className="max-w-3xl text-muted-foreground">
                     Check which email providers are configured and send a test email to verify delivery.
                 </p>
             </div>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Send a test email</CardTitle>
                     <CardDescription>
@@ -187,7 +187,7 @@ export function AdminEmailPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Provider configuration</CardTitle>
                     <CardDescription>Providers are configured via environment variables / secrets.</CardDescription>

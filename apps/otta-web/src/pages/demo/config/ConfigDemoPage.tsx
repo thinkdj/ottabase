@@ -59,7 +59,7 @@ export function ConfigDemoPage() {
             />
 
             {/* Overview */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Settings className="h-4 w-4" />
@@ -85,7 +85,7 @@ export function ConfigDemoPage() {
             </Card>
 
             {/* Live config values */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Key className="h-4 w-4" />
@@ -126,7 +126,7 @@ export function ConfigDemoPage() {
             </Card>
 
             {/* defineOttabaseConfig */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Package className="h-4 w-4" />
@@ -180,7 +180,7 @@ export const packages = createPackageRegistry<CloudflareEnv>({ packages: PACKAGE
             </Card>
 
             {/* resolveConfigWithEnv */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Layers className="h-4 w-4" />
@@ -220,7 +220,7 @@ if (PACKAGES_ENABLED.ottablog) {
             </Card>
 
             {/* Utility functions */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Utility Functions</CardTitle>
                     <CardDescription>Helper functions exported by @ottabase/config.</CardDescription>

@@ -35,7 +35,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Sparkles, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
+const QUIET_CARD = '';
 const SECTION_TITLE = 'text-[0.9375rem] font-semibold';
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
@@ -183,7 +183,7 @@ export function AiProvidersPage() {
         <AiProvisioningProvider basePath="/api/ai" request={aiRequest}>
             <div className="max-w-3xl space-y-8">
                 <div className="space-y-1.5">
-                    <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight md:text-3xl">
+                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-[-0.015em]">
                         <Sparkles className="h-6 w-6 text-muted-foreground" />
                         AI providers
                     </h1>

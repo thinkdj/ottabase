@@ -223,7 +223,7 @@ export function UserRBACPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">User Access Control</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">User Access Control</h1>
                     <p className="max-w-3xl text-muted-foreground">
                         Manage organization memberships and roles for this user
                     </p>

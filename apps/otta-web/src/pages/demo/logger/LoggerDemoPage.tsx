@@ -114,7 +114,7 @@ export function LoggerDemoPage() {
             />
 
             {/* How to use — client-side console visualization */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">How to use this demo</CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
@@ -145,7 +145,7 @@ export function LoggerDemoPage() {
             </Card>
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Log levels</CardTitle>
                         <CardDescription>
@@ -178,7 +178,7 @@ export function LoggerDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Actions</CardTitle>
                         <CardDescription>
@@ -214,7 +214,7 @@ export function LoggerDemoPage() {
                 </Card>
             </div>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">In-memory logs (last 50)</CardTitle>
                     <CardDescription>

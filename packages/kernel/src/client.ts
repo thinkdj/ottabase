@@ -20,6 +20,8 @@ export interface AdminPageContribution {
     scope?: 'platform' | 'org';
     /** Admin nav group id the page lives under (e.g. `growth`). */
     group: string;
+    /** A Premium Package's page: the nav entry carries a lock, and stays listed when the license lapses. */
+    premium?: boolean;
     /** Lazy import of the page module; the named export `exportName` is rendered. */
     load: () => Promise<Record<string, ComponentType>>;
     exportName: string;

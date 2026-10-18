@@ -137,7 +137,7 @@ function MenuCreateView({
                             Back
                         </Button>
                     </div>
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Create Menu</CardTitle>
                             <CardDescription className="leading-relaxed">
@@ -209,7 +209,7 @@ function MenuPreviewPanel({ menu, type }: { menu: MenuWithItemsDto | null; type:
     const isWide = type === 'mega' || type === 'navbar' || type === 'footer';
 
     return (
-        <Card className="sticky top-4 rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card className="sticky top-4">
             <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                     <IconEye className="h-4 w-4 text-muted-foreground" />
@@ -267,7 +267,7 @@ function MenuEditForm({ menu, onTypeChange }: { menu: MenuWithItemsDto; onTypeCh
     });
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Menu settings</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -361,7 +361,7 @@ function MenuItemsEditor({ menu }: { menu: MenuWithItemsDto }) {
     const tree = buildItemTree(menu.items);
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Menu items</CardTitle>
                 <CardDescription className="leading-relaxed">

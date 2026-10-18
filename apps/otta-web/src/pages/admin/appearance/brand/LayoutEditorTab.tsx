@@ -376,7 +376,7 @@ export function LayoutEditorTab() {
                 </div>
             </details>
 
-            <Card className="space-y-0 rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card className="space-y-0">
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Route mappings</CardTitle>
                     <CardDescription className="leading-relaxed">
@@ -406,7 +406,7 @@ export function LayoutEditorTab() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Layout templates</CardTitle>
                     <CardDescription className="leading-relaxed">

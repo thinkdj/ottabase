@@ -23,6 +23,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Stat,
     Textarea,
     Switch,
 } from '@ottabase/ui-shadcn';
@@ -93,8 +94,6 @@ const CRON_PRESETS = [
     { label: 'Monthly (1st)', value: '0 0 1 * *' },
     { label: 'Weekdays at 9am', value: '0 9 * * 1-5' },
 ];
-
-const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 export function AdminCronPage() {
     const [page, setPage] = useState(1);
@@ -231,7 +230,7 @@ export function AdminCronPage() {
 
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Scheduled Tasks</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Scheduled Tasks</h1>
                         <p className="max-w-3xl text-muted-foreground">
                             Manage DB-driven cron jobs (Laravel-style scheduler)
                         </p>
@@ -255,54 +254,27 @@ export function AdminCronPage() {
                 </div>
             </div>
 
-            {/* Stats Cards */}
+            {/* Numbers before narrative: the count reads first; only a failure earns a tone. */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="pb-2">
-                        <CardDescription className={MICRO_LABEL}>Total Tasks</CardDescription>
-                        <CardTitle className="text-2xl font-semibold">{stats?.total ?? 0}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xs text-muted-foreground">Scheduled tasks in database</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="pb-2">
-                        <CardDescription className={MICRO_LABEL}>Active</CardDescription>
-                        <CardTitle className="text-2xl font-semibold text-success">{stats?.active ?? 0}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xs text-muted-foreground">Currently enabled</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="pb-2">
-                        <CardDescription className={MICRO_LABEL}>Total Runs</CardDescription>
-                        <CardTitle className="text-2xl font-semibold">{stats?.totalRuns ?? 0}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xs text-muted-foreground">All-time executions</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
-                    <CardHeader className="pb-2">
-                        <CardDescription className={MICRO_LABEL}>Failed</CardDescription>
-                        <CardTitle className="text-2xl font-semibold text-destructive">
-                            {stats?.totalFails ?? 0}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xs text-muted-foreground">All-time failures</p>
-                    </CardContent>
-                </Card>
+                <Stat label="Tasks" value={stats?.total ?? 0} foot="Scheduled tasks in the database" />
+                <Stat
+                    label="Active"
+                    value={stats?.active ?? 0}
+                    unit={` of ${stats?.total ?? 0}`}
+                    foot="Currently enabled"
+                />
+                <Stat label="Runs" value={stats?.totalRuns ?? 0} foot="All-time executions" />
+                <Stat
+                    label="Failed"
+                    value={stats?.totalFails ?? 0}
+                    tone={stats?.totalFails ? 'red' : undefined}
+                    foot="All-time failures"
+                />
             </div>
 
             {/* Create Task Form */}
             {isCreating && (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Add Scheduled Task</CardTitle>
                         <CardDescription>Create a new DB-driven cron job</CardDescription>
@@ -439,7 +411,7 @@ export function AdminCronPage() {
             )}
 
             {/* Tasks List */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Scheduled Tasks</CardTitle>
                     <CardDescription>All tasks in the database</CardDescription>
@@ -618,7 +590,7 @@ export function AdminCronPage() {
 
             {/* Registered Handlers */}
             {overview?.registeredHandlers && overview.registeredHandlers.length > 0 && (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Registered Handlers</CardTitle>
                         <CardDescription>Available task handlers in your scheduler</CardDescription>

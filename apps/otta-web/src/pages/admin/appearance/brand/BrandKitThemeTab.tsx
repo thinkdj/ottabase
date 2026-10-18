@@ -531,7 +531,7 @@ export function BrandKitThemeTab({
 
     // ── Preset section ───────────────────────────────────────────────────
     const presetSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Theme preset</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -652,7 +652,7 @@ export function BrandKitThemeTab({
     const paletteTokenKeys = Object.keys(lightTokens ?? darkTokens ?? {}) as (keyof SemanticPalette)[];
 
     const colorSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Custom color overrides</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -945,7 +945,7 @@ export function BrandKitThemeTab({
     };
 
     const spacingRadiusShadowSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Spacing, radius &amp; shadows</CardTitle>
                 <CardDescription className="leading-relaxed">
@@ -997,7 +997,7 @@ export function BrandKitThemeTab({
 
     // ── Token usage reference ────────────────────────────────────────────
     const tokenUsageSection = (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader className="pb-3">
                 <CardTitle className="text-[0.9375rem] font-semibold">Token reference</CardTitle>
                 <CardDescription className="leading-relaxed">Where each color token appears in the UI.</CardDescription>

@@ -67,7 +67,7 @@ export function AuthDemoPage() {
                 }
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconKey className="h-4 w-4" />
@@ -135,7 +135,7 @@ export function AuthDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconShieldLock className="h-4 w-4" />
@@ -201,7 +201,7 @@ export function AuthDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">CSRF Token</CardTitle>
                     <CardDescription>
@@ -221,7 +221,7 @@ export function AuthDemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Auth Flows</CardTitle>
                     <CardDescription>Use the app auth pages to test full sign-in behavior.</CardDescription>

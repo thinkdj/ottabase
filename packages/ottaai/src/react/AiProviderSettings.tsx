@@ -36,7 +36,7 @@ import type { CredentialView } from '../types';
 import { useAiCredentials, useAiProviders, useAiStatus, type ProviderOption, type SaveCredentialInput } from './hooks';
 
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
+const QUIET_CARD = '';
 const SECTION_TITLE = 'text-[0.9375rem] font-semibold';
 
 export interface AiProviderSettingsProps {

@@ -71,7 +71,7 @@ export function StateDemoPage() {
             />
 
             {/* Current State Display */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">📊 Current Global State</CardTitle>
                     <CardDescription>Full appStateAtom value displayed as JSON</CardDescription>
@@ -84,7 +84,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Theme Control */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">🎨 Theme</CardTitle>
                     <CardDescription>
@@ -102,7 +102,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Theme Info */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">🎭 Theme Info</CardTitle>
                     <CardDescription>
@@ -133,7 +133,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* User Control */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">👤 User & Authentication</CardTitle>
                     <CardDescription>
@@ -175,7 +175,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Sidebar Control */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">📱 Sidebar State</CardTitle>
                     <CardDescription>
@@ -275,7 +275,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Scale Control */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">🔍 UI Scale</CardTitle>
                     <CardDescription>
@@ -323,7 +323,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Browser Zoom */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">🖥️ Browser Zoom</CardTitle>
                     <CardDescription>
@@ -350,7 +350,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Loading State */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">⏳ Loading State</CardTitle>
                     <CardDescription>
@@ -371,7 +371,7 @@ export function StateDemoPage() {
             </Card>
 
             {/* Usage Example */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">📖 Usage</CardTitle>
                     <CardDescription>How to use @ottabase/state in your app</CardDescription>

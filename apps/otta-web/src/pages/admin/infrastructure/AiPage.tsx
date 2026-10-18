@@ -17,7 +17,7 @@ import { AlertTriangle, CheckCircle2, Copy, ExternalLink, KeyRound, Server, Spar
 import { useState, type ReactNode } from 'react';
 import type { AiConfigSnapshot } from '@/ottabase/ai-config-types';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none';
+const QUIET_CARD = '';
 const SECTION_TITLE = 'text-[0.9375rem] font-semibold';
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
@@ -71,7 +71,7 @@ export function AdminAiPage() {
         <div className="space-y-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-1.5">
-                    <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight md:text-3xl">
+                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-[-0.015em]">
                         <Sparkles className="h-6 w-6 text-muted-foreground" />
                         AI Gateway
                     </h1>

@@ -152,7 +152,7 @@ export function OttaORMDemoPage() {
 
             {dbReady ? (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
                                 Users
@@ -219,7 +219,7 @@ export function OttaORMDemoPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between text-[0.9375rem] font-semibold">
                                 Posts
@@ -304,7 +304,7 @@ export function OttaORMDemoPage() {
                 </div>
             ) : null}
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">TanStack Query Benefits</CardTitle>
                 </CardHeader>

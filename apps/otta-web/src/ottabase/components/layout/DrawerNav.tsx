@@ -25,10 +25,10 @@ export function DrawerNav() {
                 key={link.to}
                 to={link.to}
                 aria-current={isActive ? 'page' : undefined}
-                className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
+                className={`h-8 px-2.5 text-sm font-medium rounded-md inline-flex items-center transition duration-fast ease-theme ${
                     isActive
-                        ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                        ? 'bg-accent font-semibold text-accent-foreground'
+                        : 'text-subtle-foreground hover:bg-muted hover:text-foreground'
                 }`}
                 onClick={() => setOpen(false)}
             >

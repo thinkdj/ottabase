@@ -45,7 +45,7 @@ import { useState } from 'react';
 const CHIP_CLASS =
     'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
 const TH_CLASS = 'px-4 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
-const TINT_CARD_CLASS = 'rounded-xl border-transparent bg-muted/40 shadow-none';
+const TINT_CARD_CLASS = '';
 
 interface SecurityTest {
     name: string;
@@ -235,7 +235,7 @@ export function RLSInspectorPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Row-Level Security (RLS) Demo</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Row-Level Security (RLS) Demo</h1>
                     <p className="max-w-3xl text-muted-foreground">
                         Database-level security that makes data leaks impossible
                     </p>

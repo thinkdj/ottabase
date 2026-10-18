@@ -99,7 +99,7 @@ export function CloudflareKVDemoPage() {
                 </div>
             ) : null}
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Operations</CardTitle>
                 </CardHeader>

@@ -95,7 +95,7 @@ export function UiTailwindDemoPage() {
             />
 
             {/* Overview */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Paintbrush className="h-5 w-5" />
@@ -126,7 +126,7 @@ export function UiTailwindDemoPage() {
             </Card>
 
             {/* Setup */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
                     <CardDescription>Add the preset to your Tailwind config.</CardDescription>
@@ -147,7 +147,7 @@ module.exports = {
 
             {/* Live token swatches */}
             {TOKEN_GROUPS.map((group) => (
-                <Card key={group.label} className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card key={group.label}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Palette className="h-4 w-4" />
@@ -168,7 +168,7 @@ module.exports = {
             ))}
 
             {/* Dark mode */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Sun className="h-4 w-4" />

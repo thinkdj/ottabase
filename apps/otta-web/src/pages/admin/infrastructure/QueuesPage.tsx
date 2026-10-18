@@ -302,7 +302,7 @@ export function AdminQueuePage() {
 
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Queue Management</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Queue Management</h1>
                         <p className="max-w-3xl text-muted-foreground">Monitor and manage background job queues</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -331,7 +331,7 @@ export function AdminQueuePage() {
             </div>
 
             {/* Status Banner */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardContent className="flex items-center gap-3 py-3">
                     {overview?.queueBinding === 'configured' ? (
                         <>
@@ -349,7 +349,7 @@ export function AdminQueuePage() {
 
             {/* Stats Cards */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Total Dispatched</CardDescription>
                         <CardTitle className="text-2xl font-semibold">{stats?.totalDispatched ?? 0}</CardTitle>
@@ -359,7 +359,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Processed</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-success">
@@ -371,7 +371,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Failed</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-destructive">
@@ -383,7 +383,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Dead Letter Queue</CardDescription>
                         <CardTitle className="text-2xl font-semibold text-warning">{stats?.totalDLQ ?? 0}</CardTitle>
@@ -393,7 +393,7 @@ export function AdminQueuePage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className={MICRO_LABEL}>Success Rate</CardDescription>
                         <CardTitle className="text-2xl font-semibold">{successRate}%</CardTitle>
@@ -451,7 +451,7 @@ export function AdminQueuePage() {
                 {activeTab === 'overview' && (
                     <>
                         {/* Registered Handlers */}
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                     <Layers className="h-4 w-4 text-muted-foreground" />
@@ -493,7 +493,7 @@ export function AdminQueuePage() {
 
                         {/* Stats by Job Type */}
                         {stats && Object.keys(stats.byJobType).length > 0 && (
-                            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                            <Card>
                                 <CardHeader>
                                     <CardTitle className="text-[0.9375rem] font-semibold">Stats by Job Type</CardTitle>
                                     <CardDescription>Breakdown of jobs by type</CardDescription>
@@ -548,7 +548,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'pending' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Pending Jobs</CardTitle>
                             <CardDescription>Jobs waiting to be processed</CardDescription>
@@ -581,7 +581,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'processed' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Processed Jobs</CardTitle>
                             <CardDescription>Recently completed jobs (last 24 hours)</CardDescription>
@@ -640,7 +640,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'failed' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Failed Jobs</CardTitle>
                             <CardDescription>Jobs that failed after all retry attempts</CardDescription>
@@ -696,7 +696,7 @@ export function AdminQueuePage() {
                 )}
 
                 {activeTab === 'dlq' && (
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>

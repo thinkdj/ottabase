@@ -514,7 +514,7 @@ function CommentThread({
             )}
 
             {/* Mock target entity card */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardContent className="py-4">
                     <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground mb-1">
                         Target: {DEMO_TARGET_TYPE} / {DEMO_TARGET_ID}
@@ -795,7 +795,7 @@ export function CommentsDemoPage() {
             {/* Model API */}
             <section className="flex flex-col gap-4">
                 <h2 className="text-[0.9375rem] font-semibold text-foreground">Model API</h2>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-0">
                         <pre className="overflow-x-auto rounded-xl p-4 text-xs leading-relaxed text-foreground">
                             {`// Create a comment

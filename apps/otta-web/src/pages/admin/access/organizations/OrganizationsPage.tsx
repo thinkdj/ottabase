@@ -102,7 +102,7 @@ export function OrganizationsPage() {
         <div className="space-y-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Organizations</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Organizations</h1>
                     <p className="max-w-3xl text-muted-foreground">Manage organization tenants and settings</p>
                 </div>
                 <Button onClick={handleCreate} className="shrink-0 gap-2">

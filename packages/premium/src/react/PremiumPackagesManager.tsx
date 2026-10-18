@@ -8,38 +8,22 @@
 // can build it from the hooks instead — nothing here is privileged.
 // ============================================================
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
-import { CheckCircle2, ExternalLink, KeyRound, Lock, RefreshCw, TriangleAlert } from 'lucide-react';
+import {
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    EnvName,
+    Input,
+    Status,
+    Tag,
+} from '@ottabase/ui-shadcn';
+import { ExternalLink, KeyRound, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { usePremiumLicense, usePremiumPackages } from './hooks';
-import type { PremiumPackageStatus, PremiumState } from '../types';
-
-const STATE_LABEL: Record<PremiumState, string> = {
-    active: 'Active',
-    grace: 'Grace period',
-    expired: 'Expired',
-    invalid: 'Invalid key',
-    unlicensed: 'Not licensed',
-    disabled: 'Disabled',
-};
-
-/** Badge variant per state. `grace` reads as a warning on purpose — it is a deadline. */
-const STATE_VARIANT: Record<PremiumState, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    active: 'default',
-    grace: 'secondary',
-    expired: 'destructive',
-    invalid: 'destructive',
-    unlicensed: 'outline',
-    disabled: 'outline',
-};
-
-function StateIcon({ state }: { state: PremiumState }) {
-    if (state === 'active') return <CheckCircle2 className="h-4 w-4 text-success" />;
-    if (state === 'grace' || state === 'expired' || state === 'invalid') {
-        return <TriangleAlert className="h-4 w-4 text-warning" />;
-    }
-    return <Lock className="h-4 w-4 text-muted-foreground" />;
-}
+import type { PremiumPackageStatus } from '../types';
 
 function formatDate(timestamp: number | null): string {
     if (!timestamp) return 'never';
@@ -68,17 +52,15 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
     };
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none dark:bg-muted/20">
+        <Card>
             <CardHeader className="gap-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-                        <StateIcon state={status.state} />
+                    <CardTitle className="flex items-center gap-2">
                         {status.name}
-                        <span className="font-mono text-xs font-normal text-muted-foreground">v{status.version}</span>
+                        <Tag mono>v{status.version}</Tag>
                     </CardTitle>
-                    <Badge variant={STATE_VARIANT[status.state]} className="rounded-full text-[0.6875rem]">
-                        {STATE_LABEL[status.state]}
-                    </Badge>
+                    {/* The one status map: a license state is the same pill on every surface. */}
+                    <Status domain="license" value={status.state} withIcon />
                 </div>
                 {status.description ? <CardDescription>{status.description}</CardDescription> : null}
             </CardHeader>
@@ -86,15 +68,21 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
             <CardContent className="space-y-4">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                     <div>
-                        <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Plan</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                            Plan
+                        </dt>
                         <dd className="text-foreground">{status.plan ?? '—'}</dd>
                     </div>
                     <div>
-                        <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Licensed to</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                            Licensed to
+                        </dt>
                         <dd className="truncate text-foreground">{status.licensee ?? '—'}</dd>
                     </div>
                     <div>
-                        <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Expires</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                            Expires
+                        </dt>
                         <dd className="text-foreground">
                             {status.requiresLicense
                                 ? status.expiresAt
@@ -104,7 +92,9 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                         </dd>
                     </div>
                     <div>
-                        <dt className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Installed</dt>
+                        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                            Installed
+                        </dt>
                         <dd className="text-foreground">{formatDate(status.installedAt)}</dd>
                     </div>
                 </dl>
@@ -112,23 +102,24 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                 {(status.features.length > 0 || limitEntries.length > 0) && (
                     <div className="flex flex-wrap gap-1.5">
                         {status.features.map((feature) => (
-                            <Badge key={feature} variant="outline" className="rounded-full font-mono text-[0.6875rem]">
+                            <Tag key={feature} mono>
                                 {feature}
-                            </Badge>
+                            </Tag>
                         ))}
                         {limitEntries.map(([key, value]) => (
-                            <Badge key={key} variant="outline" className="rounded-full font-mono text-[0.6875rem]">
+                            <Tag key={key} mono>
                                 {key}: {value < 0 ? '∞' : value}
-                            </Badge>
+                            </Tag>
                         ))}
                     </div>
                 )}
 
                 {status.requiresLicense ? (
                     envManaged ? (
-                        <p className="rounded-lg bg-background p-3 text-xs text-muted-foreground ring-1 ring-border">
-                            Licensed from an environment variable. Change it where you configure secrets — a key pasted
-                            here would be ignored.
+                        <p className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                            <EnvName>PREMIUM_LICENSE_{status.key.toUpperCase().replace(/-/g, '_')}</EnvName>
+                            Licensed from the environment, which outranks a key pasted here. Change it where you
+                            configure secrets.
                         </p>
                     ) : (
                         <div className="space-y-2">
@@ -137,7 +128,7 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                                     value={licenseInput}
                                     onChange={(event) => setLicenseInput(event.target.value)}
                                     placeholder="Paste license key (obp1.…)"
-                                    className="font-mono text-xs"
+                                    className="font-mono text-sm"
                                     aria-label={`License key for ${status.name}`}
                                     spellCheck={false}
                                 />
@@ -162,7 +153,7 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                                     </Button>
                                 ) : null}
                             </div>
-                            {error ? <p className="text-xs text-destructive">{error}</p> : null}
+                            {error ? <p className="text-xs text-destructive-text">{error}</p> : null}
                         </div>
                     )
                 ) : (
@@ -175,7 +166,7 @@ function PackageCard({ status }: { status: PremiumPackageStatus }) {
                     <div className="flex flex-wrap gap-3 text-xs">
                         {status.purchaseUrl ? (
                             <a
-                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                                className="inline-flex items-center gap-1 font-medium text-accent-foreground hover:underline"
                                 href={status.purchaseUrl}
                                 target="_blank"
                                 rel="noreferrer noopener"

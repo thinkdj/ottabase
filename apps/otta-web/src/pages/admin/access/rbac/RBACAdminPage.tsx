@@ -30,7 +30,7 @@ export function RBACAdminPage() {
     return (
         <div className="space-y-8">
             <div className="space-y-1.5">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">RBAC Administration</h1>
+                <h1 className="text-2xl font-semibold tracking-[-0.015em]">RBAC Administration</h1>
                 <p className="max-w-3xl text-muted-foreground">
                     Role-Based Access Control management for multi-tenant organizations
                 </p>
@@ -41,7 +41,7 @@ export function RBACAdminPage() {
                     const Icon = item.icon;
                     const content = (
                         <Card
-                            className={`h-full rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal ${
+                            className={`h-full transition-colors duration-normal ${
                                 item.disabled ? 'opacity-50' : 'group-hover:bg-muted/70'
                             }`}
                         >

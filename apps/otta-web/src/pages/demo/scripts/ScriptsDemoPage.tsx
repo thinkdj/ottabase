@@ -126,7 +126,7 @@ export function ScriptsDemoPage() {
             />
 
             {/* Overview */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Terminal className="h-5 w-5" />
@@ -153,7 +153,7 @@ pnpm clean:cache -- -y && pnpm dev:kill && pnpm dev`}</code>
 
             {/* Commands by category */}
             {categories.map((category) => (
-                <Card key={category} className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card key={category}>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">{category} Commands</CardTitle>
                         {CATEGORY_NOTES[category] && (
@@ -182,7 +182,7 @@ pnpm clean:cache -- -y && pnpm dev:kill && pnpm dev`}</code>
             ))}
 
             {/* Typical workflow */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Typical Workflows</CardTitle>
                     <CardDescription>Common command sequences for development tasks.</CardDescription>

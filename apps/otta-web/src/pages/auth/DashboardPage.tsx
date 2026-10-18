@@ -46,7 +46,7 @@ export function DashboardPage() {
         <div className="space-y-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Dashboard</h1>
                     <p className="text-muted-foreground">Welcome back, {user.name || user.email}!</p>
                 </div>
                 <Button variant="outline" onClick={handleLogout} className="shrink-0">
@@ -56,7 +56,7 @@ export function DashboardPage() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="gap-1.5">
                         <CardTitle className="text-[0.9375rem] font-semibold">Profile Information</CardTitle>
                         <CardDescription>Your authentication details</CardDescription>
@@ -112,7 +112,7 @@ export function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="gap-1.5">
                         <CardTitle className="text-[0.9375rem] font-semibold">Protected Content</CardTitle>
                         <CardDescription>This content is only visible to authenticated users</CardDescription>
@@ -148,7 +148,7 @@ export function DashboardPage() {
                 </Card>
             </div>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader className="gap-1.5">
                     <CardTitle className="text-[0.9375rem] font-semibold">Session Data</CardTitle>
                     <CardDescription>Debug information about your current session</CardDescription>

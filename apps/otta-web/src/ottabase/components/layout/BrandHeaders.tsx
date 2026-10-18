@@ -36,10 +36,10 @@ export const TopbarHeader = memo(function TopbarHeader({
                         key={link.to}
                         to={link.to}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
+                        className={`h-8 px-2.5 text-sm font-medium rounded-md inline-flex items-center transition duration-fast ease-theme ${
                             isActive
-                                ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                                ? 'bg-accent font-semibold text-accent-foreground'
+                                : 'text-subtle-foreground hover:bg-muted hover:text-foreground'
                         }`}
                     >
                         {link.label}
@@ -65,9 +65,9 @@ export const TopbarHeader = memo(function TopbarHeader({
 
     return (
         <header
-            className={`border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${sticky ? 'sticky top-0' : ''} z-40`}
+            className={`border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 ${sticky ? 'sticky top-0' : ''} z-40`}
         >
-            <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-3 ${containerClass}`}>
+            <div className={`mx-auto flex h-[52px] items-center justify-between gap-2 px-4 ${containerClass}`}>
                 {/* min-w-0 lets the app name ellipsize instead of wrapping the header onto extra lines */}
                 <div className="flex min-w-0 items-center gap-2.5">
                     {leading}
@@ -79,7 +79,7 @@ export const TopbarHeader = memo(function TopbarHeader({
                     </Link>
                     {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
                     {APP_META.tagline && (
-                        <span className="hidden whitespace-nowrap text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground md:inline">
+                        <span className="hidden whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.06em] text-faint-foreground md:inline">
                             {APP_META.tagline}
                         </span>
                     )}
@@ -122,10 +122,10 @@ export const MinimalHeader = memo(function MinimalHeader({
                         key={link.to}
                         to={link.to}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors duration-normal ${
+                        className={`h-8 px-2.5 text-sm font-medium rounded-md inline-flex items-center transition duration-fast ease-theme ${
                             isActive
-                                ? 'bg-background text-foreground font-medium ring-1 ring-border'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                                ? 'bg-accent font-semibold text-accent-foreground'
+                                : 'text-subtle-foreground hover:bg-muted hover:text-foreground'
                         }`}
                     >
                         {link.label}
@@ -149,8 +149,8 @@ export const MinimalHeader = memo(function MinimalHeader({
         ) : null;
 
     return (
-        <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-            <div className={`mx-auto flex items-center justify-between gap-2 px-4 py-2 ${containerClass}`}>
+        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+            <div className={`mx-auto flex h-12 items-center justify-between gap-2 px-4 ${containerClass}`}>
                 <div className="flex min-w-0 items-center gap-2.5">
                     {leading}
                     <Link

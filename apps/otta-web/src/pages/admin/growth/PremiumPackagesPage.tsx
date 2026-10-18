@@ -11,30 +11,29 @@
 
 import { premiumRequest } from '@/lib/premium';
 import { PremiumPackagesManager, PremiumProvider } from '@ottabase/premium/react';
-import { Gem } from 'lucide-react';
+import { PageHeader } from '@ottabase/ui-shadcn';
 
 export function PremiumPackagesPage() {
     return (
         <PremiumProvider basePath="/api/premium" request={premiumRequest}>
-            <div className="max-w-3xl space-y-8">
-                <div className="space-y-1.5">
-                    <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight md:text-3xl">
-                        <Gem className="h-6 w-6 text-muted-foreground" />
-                        Premium packages
-                    </h1>
-                    <p className="max-w-3xl text-muted-foreground">
-                        Paid add-ons installed in this app. Licenses are verified offline — no key ever leaves this
-                        deployment. A key set through an environment variable takes precedence over one pasted here.
-                    </p>
-                </div>
+            <div className="flex max-w-3xl flex-col gap-6">
+                <PageHeader
+                    title="Premium packages"
+                    description="Paid add-ons installed in this app. Licenses are verified offline; no key ever leaves this deployment. A key set through an environment variable outranks one pasted here."
+                />
 
                 <PremiumPackagesManager />
 
                 <p className="text-xs text-muted-foreground">
                     Install a package by adding its manifest to{' '}
-                    <code className="rounded bg-muted px-1 py-0.5 font-mono">ottabase/packages.ts</code>, then run
-                    migrations so its tables exist. See{' '}
-                    <code className="rounded bg-muted px-1 py-0.5 font-mono">docs/PREMIUM_PACKAGES.md</code>.
+                    <code className="rounded-[3px] border bg-muted px-1 py-0.5 font-mono text-foreground">
+                        ottabase/packages.ts
+                    </code>
+                    , then run migrations so its tables exist. See{' '}
+                    <code className="rounded-[3px] border bg-muted px-1 py-0.5 font-mono text-foreground">
+                        docs/PREMIUM_PACKAGES.md
+                    </code>
+                    .
                 </p>
             </div>
         </PremiumProvider>

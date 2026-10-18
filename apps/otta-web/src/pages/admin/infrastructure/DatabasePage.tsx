@@ -262,7 +262,7 @@ export function AdminDbPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Database Manager</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Database Manager</h1>
                     <p className="max-w-3xl text-muted-foreground">Browse tables and inspect raw rows.</p>
                 </div>
             </div>
@@ -270,7 +270,7 @@ export function AdminDbPage() {
             <div className="grid grid-cols-12 gap-6">
                 {/* Sidebar - Table List */}
                 <div className="col-span-12 md:col-span-3">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader className="gap-3 py-4">
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Database className="h-4 w-4 text-muted-foreground" />
@@ -353,14 +353,14 @@ export function AdminDbPage() {
                 {/* Main Content - Data View */}
                 <div className="col-span-12 md:col-span-9">
                     {!selectedTable ? (
-                        <Card className="flex h-full min-h-[400px] items-center justify-center rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card className="flex h-full min-h-[400px] items-center justify-center">
                             <div className="text-center text-muted-foreground">
                                 <Database className="mx-auto mb-4 h-12 w-12 opacity-40" />
                                 <p className="text-sm">Select a table to view data</p>
                             </div>
                         </Card>
                     ) : (
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                                 <div className="space-y-1">
                                     <CardTitle className="font-mono text-xl">{selectedTable}</CardTitle>

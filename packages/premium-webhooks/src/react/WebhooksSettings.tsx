@@ -17,7 +17,7 @@ import { WEBHOOKS_FEATURE_DELIVERY_LOG, WEBHOOKS_LIMIT_ENDPOINTS, WEBHOOKS_PACKA
 import { useWebhookDeliveries, useWebhookEndpoints } from './hooks';
 import type { WebhookEndpointView } from '../ottaorm-models/WebhookEndpoint';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none dark:bg-muted/20';
+const QUIET_CARD = '';
 const MICRO_LABEL = 'text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground';
 
 function EndpointRow({

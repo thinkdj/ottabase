@@ -385,7 +385,7 @@ export function UserProfilePage() {
             {/* Header */}
             <div className="space-y-4">
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Profile Settings</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Profile Settings</h1>
                     <p className="text-muted-foreground">Manage your account settings and preferences</p>
                 </div>
                 {MEDIA_LIBRARY_ENABLED && (
@@ -398,7 +398,7 @@ export function UserProfilePage() {
             </div>
 
             {/* Profile Info */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <User className="h-4 w-4 text-muted-foreground" />
@@ -618,7 +618,7 @@ export function UserProfilePage() {
             </Card>
 
             {/* Account Info */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Account Information</CardTitle>
                     <CardDescription>Your account details and status</CardDescription>
@@ -711,7 +711,7 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Linked Providers</CardTitle>
                     <CardDescription>Sign-in methods associated with this account</CardDescription>
@@ -755,7 +755,7 @@ export function UserProfilePage() {
             {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}
 
             {/* Security */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
                     <CardDescription>Manage your account security settings</CardDescription>

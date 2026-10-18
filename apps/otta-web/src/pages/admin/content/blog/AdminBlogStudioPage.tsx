@@ -258,7 +258,7 @@ export function AdminBlogStudioPage() {
             <BlogAdminNav />
 
             <div className="space-y-1.5">
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Content Studio</h1>
+                <h1 className="text-2xl font-semibold tracking-[-0.015em]">Content Studio</h1>
                 <p className="max-w-3xl text-muted-foreground">
                     Manage themes, plugins, and the languages your readers can use.
                 </p>
@@ -274,7 +274,7 @@ export function AdminBlogStudioPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Palette className="h-4 w-4 text-muted-foreground" />
@@ -325,7 +325,7 @@ export function AdminBlogStudioPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Puzzle className="h-4 w-4 text-muted-foreground" />
@@ -377,7 +377,7 @@ export function AdminBlogStudioPage() {
             )}
 
             {canSeedDemo ? (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Sparkles className="h-4 w-4 text-muted-foreground" />

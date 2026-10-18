@@ -172,7 +172,7 @@ export function CloudflareR2DemoPage() {
                 </div>
             ) : null}
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Upload File</CardTitle>
                 </CardHeader>
@@ -211,7 +211,7 @@ export function CloudflareR2DemoPage() {
                 </CardContent>
             </Card>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between gap-2">
                         <CardTitle className="text-[0.9375rem] font-semibold">Files in Bucket</CardTitle>

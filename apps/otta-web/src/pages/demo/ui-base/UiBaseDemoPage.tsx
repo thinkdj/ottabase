@@ -50,7 +50,7 @@ export function UiBaseDemoPage() {
             />
 
             {/* Overview */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Layers className="h-5 w-5" />
@@ -85,7 +85,7 @@ export function UiBaseDemoPage() {
             </Card>
 
             {/* Setup */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
                     <CardDescription>Import styles and wrap your app with the provider.</CardDescription>
@@ -110,7 +110,7 @@ function App() {
             </Card>
 
             {/* Style layers */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <RotateCcw className="h-4 w-4" />
@@ -142,7 +142,7 @@ function App() {
             </Card>
 
             {/* Animations: package CSS + Tailwind */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Sparkles className="h-4 w-4" />
@@ -202,7 +202,7 @@ function App() {
             </Card>
 
             {/* Typography defaults */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Type className="h-4 w-4" />

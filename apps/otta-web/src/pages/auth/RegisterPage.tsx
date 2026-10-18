@@ -129,7 +129,7 @@ export function RegisterPage() {
                         {APP_META.appName.charAt(0)}
                     </span>
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Create Account</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Create Account</h1>
                         <p className="text-muted-foreground">Sign up to get started</p>
                     </div>
                     {referralCode && (
@@ -146,7 +146,7 @@ export function RegisterPage() {
                     )}
                 </div>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="gap-1.5">
                         <CardTitle className="text-[0.9375rem] font-semibold">Registration</CardTitle>
                         <CardDescription>Fill in your details to create a new account</CardDescription>
@@ -218,7 +218,7 @@ export function RegisterPage() {
                     </Link>
                 </div>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="gap-1.5">
                         <CardTitle className="text-[0.9375rem] font-semibold">Security</CardTitle>
                         <CardDescription className="text-xs">Your credentials are stored securely</CardDescription>

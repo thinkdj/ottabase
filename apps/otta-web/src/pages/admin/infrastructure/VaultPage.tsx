@@ -17,7 +17,7 @@ export function VaultPage() {
         <PremiumProvider basePath="/api/premium" request={premiumRequest}>
             <div className="max-w-4xl space-y-8">
                 <div className="space-y-1.5">
-                    <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight md:text-3xl">
+                    <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-[-0.015em]">
                         <Archive className="h-6 w-6 text-muted-foreground" />
                         Vault
                     </h1>

@@ -546,7 +546,7 @@ export function AdminBrandKitDetailPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0 space-y-1.5">
                         <div className="flex items-center gap-2">
-                            <h1 className="truncate text-2xl font-bold tracking-tight md:text-3xl">
+                            <h1 className="truncate text-2xl font-semibold tracking-[-0.015em]">
                                 {draft.name || kitForView.name}
                             </h1>
                             {isDefaultKit && (

@@ -185,7 +185,7 @@ export function MigrationStatusPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Database Migration Status</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Database Migration Status</h1>
                     <p className="max-w-3xl text-muted-foreground">
                         Running database initialization and migration checks...
                     </p>
@@ -254,7 +254,7 @@ export function MigrationStatusPage() {
 
             {initResult && (
                 <div className="grid gap-6">
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 Status:{' '}

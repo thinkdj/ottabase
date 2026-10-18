@@ -1,7 +1,11 @@
 /**
  * Utilities for preset expansion in Brand Kit admin UI.
- * Keeps cursor preservation logic in one place for consistency with API handler.
+ * Mirrors the API handler (expandPresetToTokens): every token category the
+ * engine knows passes through, so a preset's v2 categories (selection, links,
+ * native, scopes, …) survive a client-side apply exactly as they do on save.
  */
+
+import { TOKEN_CATEGORY_KEYS } from '@ottabase/brand-engine';
 
 export interface ApiPresetShape {
     name: string;
@@ -12,6 +16,7 @@ export interface ApiPresetShape {
     shadows?: unknown;
     motion?: unknown;
     cursors?: Record<string, string>;
+    [category: string]: unknown;
 }
 
 /**
@@ -32,16 +37,18 @@ export function expandPresetPreservingCursors(
 
     const effectiveCursors = current.cursors ?? preset.cursors;
 
-    return {
+    const expanded: Record<string, unknown> = {
         color: {
             light: { ...preset.colors.light },
             dark: { ...preset.colors.dark },
         },
-        typography: preset.typography ?? undefined,
-        spacing: preset.spacing ?? undefined,
-        radius: preset.radius ?? '0.5rem',
-        shadow: preset.shadows ?? undefined,
-        motion: preset.motion ?? undefined,
         ...(effectiveCursors !== undefined && { cursors: effectiveCursors }),
     };
+    for (const key of TOKEN_CATEGORY_KEYS) {
+        if (key === 'color') continue;
+        const val = key === 'shadow' ? preset.shadows : preset[key];
+        if (val !== undefined) expanded[key] = val;
+    }
+    expanded.radius ??= '0.5rem';
+    return expanded;
 }

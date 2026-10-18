@@ -52,7 +52,7 @@ export function SpotlightDemoPage() {
             />
 
             <div className="grid gap-4 md:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <IconSearch className="h-5 w-5" />
@@ -81,7 +81,7 @@ export function SpotlightDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <IconCommand className="h-5 w-5" />

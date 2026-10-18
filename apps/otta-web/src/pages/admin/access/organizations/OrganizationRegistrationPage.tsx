@@ -130,7 +130,7 @@ export function OrganizationRegistrationPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-            <Card className="w-full max-w-md rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card className="w-full max-w-md">
                 <CardHeader className="text-center space-y-2">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
                         <Building2 className="h-5 w-5" />

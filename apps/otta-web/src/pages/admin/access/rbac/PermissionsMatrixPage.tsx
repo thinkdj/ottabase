@@ -125,7 +125,7 @@ export function PermissionsMatrixPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Permissions Matrix</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">Permissions Matrix</h1>
                     <p className="max-w-3xl text-muted-foreground">Manage role permissions across the hierarchy</p>
                 </div>
             </div>

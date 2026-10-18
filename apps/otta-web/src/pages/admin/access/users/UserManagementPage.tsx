@@ -104,7 +104,7 @@ export function UserManagementPage() {
                 </Button>
 
                 <div className="space-y-1.5">
-                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">User Management</h1>
+                    <h1 className="text-2xl font-semibold tracking-[-0.015em]">User Management</h1>
                     <p className="max-w-3xl text-muted-foreground">View and manage all users across the system</p>
                 </div>
             </div>

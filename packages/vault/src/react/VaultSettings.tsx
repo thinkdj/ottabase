@@ -29,7 +29,7 @@ import {
 import type { BackupManifest } from '../types';
 import { useVaultBackups } from './hooks';
 
-const QUIET_CARD = 'rounded-xl border-transparent bg-muted/40 shadow-none dark:bg-muted/20';
+const QUIET_CARD = '';
 
 export function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;

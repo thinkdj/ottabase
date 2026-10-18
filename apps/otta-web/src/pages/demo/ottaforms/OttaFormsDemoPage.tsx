@@ -150,7 +150,7 @@ export function OttaFormsDemoPage() {
                         {(Object.keys(modelConfigs) as ModelKey[]).map((key) => (
                             <Card
                                 key={key}
-                                className="cursor-pointer rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70"
+                                className="cursor-pointer transition duration-fast ease-theme hover:border-input hover:shadow-sm"
                                 onClick={() => setSelectedModel(key)}
                             >
                                 <CardHeader>
@@ -195,7 +195,7 @@ export function OttaFormsDemoPage() {
                     </div>
 
                     {/* Features Section */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Features</CardTitle>
                         </CardHeader>
@@ -230,7 +230,7 @@ export function OttaFormsDemoPage() {
                     </Card>
 
                     {/* Code Example */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">Usage Example</CardTitle>
                         </CardHeader>

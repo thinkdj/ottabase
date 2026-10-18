@@ -15,6 +15,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   png/jpg/webp, quality, viewport/scale, light/dark, `waitFor` and click/scroll/type/key steps; an optimization pass
   keeps the smaller encoding (sharp in Node: palette png, mozjpeg; the Images binding at the edge). Listed in otta-web
   with `/demo/cloudflare/screenshot`, `pnpm gen:screenshots` and a new `OBCF_IMAGES` binding.
+- Design System v1 (see `docs/DESIGN_SYSTEM.md`): the brand engine defaults and the verdant preset are now the system
+  itself (one green ramp, cool neutrals, Inter + JetBrains Mono, a fixed six-tone status language with
+  `-text`/`-soft`/`-line` tokens, eight chart slots, the text ladder `subtle-foreground`/`faint-foreground`, explicit
+  `primary-hover`/`primary-active`); `deriveColorExtras` keeps those on a kit's own hue when it sets only the base
+  tokens. `@ottabase/ui-shadcn` gains `Status`/`StatusChip`, `Tag`, `EnvName`, `CountBadge`, `PremiumMark`, `LiveDot`,
+  `PageHeader`, `Stat`, the one status map (`statusOf`), `Button variant="danger"` + `loading`,
+  `TabsList variant="segmented"`, `DropdownMenuItem variant="destructive"`, tone-driven `Alert`/`Empty`, and a
+  `terminal` room in `shadcn.css`. The admin sidebar groups pages with a lock on Premium Package entries and becomes a
+  drawer on phones; the operator Worker page, the bootstrap pages and `otta add` (`Done.` / `Next:`) use the same tokens
+  and words.
 
 - `@ottabase/kernel`: the package contract. One manifest (`definePackage`) declares a package's tables, migrations,
   models, RLS policies, routes, cron and queue handlers, event subscriptions, nav, env and health;

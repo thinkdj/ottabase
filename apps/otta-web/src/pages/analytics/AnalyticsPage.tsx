@@ -90,7 +90,7 @@ function AnalyticsResultsCard({
     valueLabel?: string;
 }) {
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-[0.9375rem] font-semibold">Results</CardTitle>
                 <CardDescription>{description}</CardDescription>
@@ -158,7 +158,7 @@ export function AnalyticsPage() {
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                         <IconChartBar className="h-7 w-7 text-primary" />
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Analytics</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Analytics</h1>
                     </div>
                     <p className="text-muted-foreground">
                         Click data from Cloudflare Analytics Engine (WAE). Data retention: 3 months.
@@ -246,7 +246,7 @@ function ShortlinkAnalyticsTab() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
@@ -366,7 +366,7 @@ function ReferralAnalyticsTab() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>
@@ -487,7 +487,7 @@ function CoreAnalyticsTab() {
 
     return (
         <div className="space-y-8">
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className={headingClass}>Filters</CardTitle>
                     <CardDescription>

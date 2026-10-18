@@ -1338,7 +1338,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </Link>
                     </Button>
                     <div className="space-y-1">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">
                             {isEditMode ? 'Edit Post' : 'New Post'}
                         </h1>
                         <p className="text-sm text-muted-foreground">
@@ -1446,7 +1446,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     )}
                     <div className={isWritingTranslation ? 'hidden' : 'space-y-6'}>
                         {/* Title & Slug */}
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardContent className="pt-6 space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="title">Title</Label>
@@ -1518,7 +1518,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </TabsList>
 
                             <TabsContent value="content" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[0.9375rem] font-semibold">Main Content</CardTitle>
                                         <CardDescription>
@@ -1584,7 +1584,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     </CardContent>
                                 </Card>
 
-                                <Card className="mt-6 rounded-xl border-transparent bg-muted/40 shadow-none">
+                                <Card className="mt-6">
                                     <CardHeader>
                                         <CardTitle className="text-[0.9375rem] font-semibold">Excerpt</CardTitle>
                                         <CardDescription>
@@ -1603,7 +1603,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </TabsContent>
 
                             <TabsContent value="notes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[0.9375rem] font-semibold">Private Notes</CardTitle>
                                         <CardDescription>
@@ -1620,7 +1620,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </TabsContent>
 
                             <TabsContent value="footnotes" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[0.9375rem] font-semibold">
                                             Footnotes & References
@@ -1639,7 +1639,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </TabsContent>
 
                             <TabsContent value="seo" className="mt-4 data-[state=inactive]:hidden">
-                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[0.9375rem] font-semibold">SEO Settings</CardTitle>
                                         <CardDescription>Optimize your post for search engines</CardDescription>
@@ -1695,7 +1695,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </TabsContent>
 
                             <TabsContent value="meta" className="mt-4 data-[state=inactive]:hidden">
-                                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                                <Card>
                                     <CardHeader>
                                         <CardTitle className="text-[0.9375rem] font-semibold">Custom Meta</CardTitle>
                                         <CardDescription>
@@ -1753,7 +1753,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         </div>
                     )}
                     {/* Hero Image */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -1889,7 +1889,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Dialog>
 
                     {/* Post Settings */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Settings className="h-4 w-4 text-muted-foreground" />
@@ -2093,7 +2093,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Series */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Layers className="h-4 w-4 text-muted-foreground" />
@@ -2139,7 +2139,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Tags */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <Tag className="h-4 w-4 text-muted-foreground" />
@@ -2224,7 +2224,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Category */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <FolderTree className="h-4 w-4 text-muted-foreground" />
@@ -2251,7 +2251,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     </Card>
 
                     {/* Version History */}
-                    <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                    <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                                 <History className="h-4 w-4 text-muted-foreground" />
@@ -2388,7 +2388,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
                     {/* Danger Zone */}
                     {isEditMode && (
-                        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                        <Card>
                             <CardHeader>
                                 <CardTitle className="text-[0.9375rem] font-semibold text-destructive">
                                     Danger Zone

@@ -51,7 +51,7 @@ export function AdminLandingLeadsPage() {
                         <ChevronLeft className="h-4 w-4" aria-hidden />
                         Landing site
                     </Link>
-                    <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight md:text-3xl">
+                    <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-[-0.015em]">
                         Form entries
                         {first?.unread ? <Badge>{first.unread} new</Badge> : null}
                     </h1>

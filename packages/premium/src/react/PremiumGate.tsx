@@ -8,7 +8,7 @@
 // click is a worse experience than an honest "this needs a license".
 // ============================================================
 
-import { Button } from '@ottabase/ui-shadcn';
+import { Button, PremiumMark } from '@ottabase/ui-shadcn';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { usePremiumEnabled, usePremiumFeature } from './hooks';
@@ -56,14 +56,20 @@ export function PremiumUpsell({
     description?: string;
 }) {
     return (
-        <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border bg-muted/40 p-6 dark:bg-muted/20">
+        // The gate: dashed, on the subtle fill, names the feature, says what it does, prints the
+        // machine reason in mono, and offers the fix. It replaces a card, never the page.
+        <div
+            data-slot="premium-gate"
+            className="flex flex-col items-start gap-3 rounded-lg border border-dashed border-input bg-muted p-5"
+        >
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Lock className="h-4 w-4 text-muted-foreground" />
+                <Lock className="size-[18px] text-muted-foreground" />
                 {title}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="max-w-[56ch] text-sm text-subtle-foreground">
                 {description ?? REASON_COPY[answer.reason] ?? 'This feature requires an active license.'}
             </p>
+            <span className="font-mono text-xs text-muted-foreground">reason: {answer.reason}</span>
             {answer.purchaseUrl ? (
                 <Button asChild size="sm" variant="default">
                     <a href={answer.purchaseUrl} target="_blank" rel="noreferrer noopener">
@@ -91,7 +97,7 @@ export function PremiumGate({
     const answer = feature ? featureAnswer : packageAnswer;
 
     if (answer.isLoading) {
-        return <>{loading ?? <div className="h-24 animate-pulse rounded-xl bg-muted/60" aria-busy="true" />}</>;
+        return <>{loading ?? <div className="h-24 rounded-lg bg-muted" aria-busy="true" />}</>;
     }
 
     if (answer.allowed) {
@@ -109,10 +115,5 @@ export function PremiumGate({
 export function PremiumBadge({ packageKey }: { packageKey: string }) {
     const answer = usePremiumEnabled(packageKey);
     if (answer.isLoading || answer.allowed) return null;
-    return (
-        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium text-muted-foreground">
-            <Lock className="h-3 w-3" />
-            Premium
-        </span>
-    );
+    return <PremiumMark />;
 }

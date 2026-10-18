@@ -63,12 +63,12 @@ export function ResetPasswordPage() {
                         {APP_META.appName.charAt(0)}
                     </span>
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Reset your password</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Reset your password</h1>
                         <p className="text-muted-foreground">Choose a new password for your account</p>
                     </div>
                 </div>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="gap-1.5">
                         <CardTitle className="text-[0.9375rem] font-semibold">New password</CardTitle>
                         <CardDescription>Enter and confirm your new password below</CardDescription>

@@ -60,6 +60,11 @@ export function CloudflareDemoIndexPage() {
             description: 'Secure static DOM capture and Cloudflare Browser Rendering',
             href: '/demo/cloudflare/pdf',
         },
+        {
+            name: 'Screenshots',
+            description: 'App pages as PNG, JPG or WebP through Browser Rendering, optimized',
+            href: '/demo/cloudflare/screenshot',
+        },
     ];
 
     return (
@@ -73,7 +78,7 @@ export function CloudflareDemoIndexPage() {
                 {demos.map((demo) => (
                     <Card
                         key={demo.href}
-                        className="rounded-xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70"
+                        className="transition duration-fast ease-theme hover:border-input hover:shadow-sm"
                     >
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">{demo.name}</CardTitle>

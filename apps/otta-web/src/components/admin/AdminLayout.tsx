@@ -1,24 +1,115 @@
 /**
  * AdminLayout
  *
- * Wraps every /admin/* page with a left sidebar built from
- * `apps/otta-web/src/ottabase/config/admin-nav.ts` (SSOT).
+ * Wraps every /admin/* page with the Design System v1 admin frame: a sticky
+ * sidebar built from `apps/otta-web/src/ottabase/config/admin-nav.ts` (SSOT),
+ * grouped the way the manifests group pages, a lock on Premium Package
+ * entries, and the page beside it. On narrow screens the sidebar becomes a
+ * left drawer behind a Menu button.
  *
- * - Sidebar shows grouped sections; the active item is highlighted.
- * - The page content sits in a content well to the right.
+ * - The active item is highlighted on the accent fill; a parent never stays
+ *   lit when a nested sibling is active (longest href wins).
+ * - Page content fades up once per navigation (the one entrance motion).
  * - The layout is intentionally thin — adding a new admin page only
  *   requires (1) a route in router.tsx and (2) one entry in admin-nav.
  */
 
 import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
-import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
-import { Input } from '@ottabase/ui-shadcn';
+import { getEnabledAdminNav, type AdminNavGroup } from '@/ottabase/config/admin-nav';
+import { Button, Input, PremiumMark, Sheet, SheetContent, SheetTitle, SheetTrigger } from '@ottabase/ui-shadcn';
 import { Link, useLocation } from '@tanstack/react-router';
-import { LayoutDashboard, Search, X } from 'lucide-react';
-import { memo, useMemo, useState, type ReactNode } from 'react';
+import { LayoutDashboard, Menu, Search, X } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 interface AdminLayoutProps {
     children: ReactNode;
+}
+
+const NAV_ITEM =
+    'flex h-[34px] shrink-0 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium transition duration-fast ease-theme';
+const NAV_ITEM_IDLE = 'text-sidebar-foreground hover:bg-muted hover:text-foreground';
+const NAV_ITEM_ACTIVE = 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground';
+
+function AdminNav({
+    groups,
+    activeHref,
+    pathname,
+    search,
+    onSearch,
+    onNavigate,
+}: {
+    groups: AdminNavGroup[];
+    activeHref: string | null;
+    pathname: string;
+    search: string;
+    onSearch: (value: string) => void;
+    onNavigate?: () => void;
+}) {
+    const isOverview = pathname === '/admin';
+    return (
+        <>
+            <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint-foreground" />
+                <Input
+                    placeholder="Filter pages"
+                    aria-label="Filter admin pages"
+                    value={search}
+                    onChange={(e) => onSearch(e.target.value)}
+                    className="h-8 pl-8 pr-8 text-sm"
+                />
+                {search && (
+                    <button
+                        type="button"
+                        onClick={() => onSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label="Clear filter"
+                    >
+                        <X className="size-3.5" />
+                    </button>
+                )}
+            </div>
+
+            {!search && (
+                <Link
+                    to={'/admin' as never}
+                    aria-current={isOverview ? 'page' : undefined}
+                    onClick={onNavigate}
+                    className={`${NAV_ITEM} ${isOverview ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE}`}
+                >
+                    <LayoutDashboard className="size-4 shrink-0" />
+                    Overview
+                </Link>
+            )}
+
+            {groups.map((group) => (
+                <div key={group.id} className="flex flex-col gap-px">
+                    <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint-foreground">
+                        {group.label}
+                    </div>
+                    {group.items.map((item) => {
+                        const isActive = item.href === activeHref;
+                        return (
+                            <Link
+                                key={item.href}
+                                to={item.href as never}
+                                aria-current={isActive ? 'page' : undefined}
+                                onClick={onNavigate}
+                                className={`${NAV_ITEM} ${isActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE}`}
+                            >
+                                <item.icon className="size-4 shrink-0" />
+                                <span className="truncate">{item.title}</span>
+                                {item.premium && <PremiumMark iconOnly className="ml-auto" />}
+                            </Link>
+                        );
+                    })}
+                </div>
+            ))}
+
+            {search && groups.length === 0 && (
+                <p className="px-2.5 py-2 text-xs text-muted-foreground">No pages match</p>
+            )}
+        </>
+    );
 }
 
 export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutProps) {
@@ -31,6 +122,8 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
     );
     const { pathname } = useLocation();
     const [search, setSearch] = useState('');
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const pageRef = useRef<HTMLElement>(null);
 
     const filteredGroups = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -70,81 +163,75 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
         return best;
     }, [groups, pathname]);
 
+    const activeTitle = useMemo(() => {
+        if (pathname === '/admin') return 'Overview';
+        for (const group of groups) {
+            const hit = group.items.find((item) => item.href === activeHref);
+            if (hit) return hit.title;
+        }
+        return 'Admin';
+    }, [groups, activeHref, pathname]);
+
+    // The one entrance: page content fades up once per navigation. Web Animations
+    // rather than a keyed remount, so a page keeps its state across nested routes.
+    useEffect(() => {
+        const el = pageRef.current;
+        if (!el || typeof el.animate !== 'function') return;
+        if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+        el.animate(
+            [
+                { opacity: 0, transform: 'translateY(8px)' },
+                { opacity: 1, transform: 'none' },
+            ],
+            {
+                duration: 360,
+                easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            },
+        );
+    }, [pathname]);
+
+    const nav = (onNavigate?: () => void) => (
+        <AdminNav
+            groups={filteredGroups}
+            activeHref={activeHref}
+            pathname={pathname}
+            search={search}
+            onSearch={setSearch}
+            onNavigate={onNavigate}
+        />
+    );
+
     return (
-        <div className="flex flex-col gap-4 md:flex-row md:gap-6 md:pt-0">
-            <aside className="w-full md:w-60 md:shrink-0">
-                <nav className="flex flex-col gap-4 md:sticky md:top-20">
-                    <div className="px-0.5">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute h-3.5 w-3.5 left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search admin..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="h-8 pl-8 pr-8 text-sm"
-                            />
-                            {search && (
-                                <button
-                                    type="button"
-                                    onClick={() => setSearch('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    aria-label="Clear filter"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {!search && (
-                        <Link
-                            to={'/admin' as never}
-                            className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                                pathname === '/admin'
-                                    ? 'bg-accent text-accent-foreground'
-                                    : 'text-foreground hover:bg-accent/50'
-                            }`}
-                        >
-                            <LayoutDashboard className="h-4 w-4" />
-                            Overview
-                        </Link>
-                    )}
-
-                    {filteredGroups.map((group) => (
-                        <div key={group.id} className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 border-b border-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                                <group.icon className="h-3.5 w-3.5" />
-                                {group.label}
-                            </div>
-                            {group.items
-                                .filter((item) => !item.external)
-                                .map((item) => {
-                                    const isActive = item.href === activeHref;
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            to={item.href as never}
-                                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
-                                                isActive
-                                                    ? 'bg-accent text-accent-foreground font-medium'
-                                                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                                            }`}
-                                        >
-                                            <item.icon className="h-4 w-4" />
-                                            {item.title}
-                                        </Link>
-                                    );
-                                })}
-                        </div>
-                    ))}
-
-                    {search && filteredGroups.length === 0 && (
-                        <p className="px-3 py-2 text-xs text-muted-foreground">No matches</p>
-                    )}
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:gap-6">
+            <aside className="hidden w-60 shrink-0 md:block" aria-label="Admin navigation">
+                <nav className="sticky top-20 flex max-h-[calc(100dvh-6rem)] flex-col gap-4 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                    {nav()}
                 </nav>
             </aside>
 
-            <main className="min-w-0 flex-1">{children}</main>
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+                <div className="flex items-center gap-3 md:hidden">
+                    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="outline" size="sm" aria-label="Open admin navigation">
+                                <Menu className="size-4" />
+                                Menu
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-72 gap-4 overflow-y-auto p-4 sm:max-w-xs">
+                            <SheetTitle className="text-sm">Admin</SheetTitle>
+                            <nav className="flex flex-col gap-4" aria-label="Admin navigation">
+                                {nav(() => setDrawerOpen(false))}
+                            </nav>
+                        </SheetContent>
+                    </Sheet>
+                    <span className="truncate text-sm font-semibold">{activeTitle}</span>
+                </div>
+
+                <main ref={pageRef} className="min-w-0 flex-1">
+                    {children}
+                </main>
+            </div>
         </div>
     );
 });

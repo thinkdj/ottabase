@@ -264,7 +264,7 @@ function TranslationEditor({
     );
 
     return (
-        <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+        <Card>
             {actionsTarget &&
                 createPortal(
                     <>
@@ -496,7 +496,7 @@ export function AdminBlogTranslationsPanel({
     }, [language, languages, selectedLanguage]);
     if (isLoading)
         return (
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading translations…
@@ -513,7 +513,7 @@ export function AdminBlogTranslationsPanel({
         );
     if (!languages.length)
         return (
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardContent className="p-6 text-sm text-muted-foreground">
                     No additional languages are enabled yet. Add languages in Content Studio.
                 </CardContent>
@@ -550,7 +550,7 @@ export function AdminBlogTranslationsPanel({
                 </div>
             )}
             {isLoadingExistingTranslation ? (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardContent className="p-6 text-sm text-muted-foreground">Loading translation…</CardContent>
                 </Card>
             ) : isSelectedTranslationError ? (

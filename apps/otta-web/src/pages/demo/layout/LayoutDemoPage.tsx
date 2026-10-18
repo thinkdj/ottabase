@@ -51,7 +51,7 @@ export function LayoutDemoPage() {
                 }
             />
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconEye className="h-4 w-4" />
@@ -79,7 +79,7 @@ export function LayoutDemoPage() {
             </Card>
 
             <div className="grid gap-4 lg:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <IconLayout className="h-4 w-4" />
@@ -109,7 +109,7 @@ export function LayoutDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <IconRoute className="h-4 w-4" />

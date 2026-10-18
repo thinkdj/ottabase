@@ -15,6 +15,18 @@ vi.mock('@/ottabase/config/admin-nav', () => ({
 }));
 
 vi.mock('@ottabase/ui-shadcn', () => ({
+    Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+    PageHeader: ({ title, description }: { title: React.ReactNode; description?: React.ReactNode }) => (
+        <header>
+            <h1>{title}</h1>
+            {description ? <p>{description}</p> : null}
+        </header>
+    ),
+    PremiumMark: () => null,
+    Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SheetTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     Card: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     CardDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -30,6 +42,7 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('lucide-react', () => ({
     ArrowRight: () => null,
     LayoutDashboard: () => null,
+    Menu: () => null,
     Search: () => null,
     X: () => null,
 }));

@@ -164,7 +164,7 @@ export function RBACRolesPage() {
 
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1.5">
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">RBAC Roles</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">RBAC Roles</h1>
                         <p className="max-w-3xl text-muted-foreground">Manage roles and their permissions</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

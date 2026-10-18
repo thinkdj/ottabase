@@ -46,7 +46,7 @@ export function UiComponentsDemoPage() {
             />
 
             {/* ConfirmDialog */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <AlertTriangle className="h-4 w-4" />
@@ -136,7 +136,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* MessageBox */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Info className="h-4 w-4" />
@@ -195,7 +195,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* Logo */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconPhoto className="h-4 w-4" aria-hidden />
@@ -219,7 +219,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* DarkModeToggle */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconMoon className="h-4 w-4" aria-hidden />
@@ -242,7 +242,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* HistoryGoBackButton */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <IconArrowLeft className="h-4 w-4" aria-hidden />
@@ -260,7 +260,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* BlogPagination */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Blocks className="h-4 w-4" />
@@ -277,7 +277,7 @@ export function UiComponentsDemoPage() {
             </Card>
 
             {/* Component list */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Blocks className="h-4 w-4" />

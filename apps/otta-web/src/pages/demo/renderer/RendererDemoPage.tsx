@@ -416,7 +416,7 @@ export function RendererDemoPage() {
                 </TabsContent>
             </Tabs>
 
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Package Features</CardTitle>
                     <CardDescription>What's included in @ottabase/ottarenderer</CardDescription>

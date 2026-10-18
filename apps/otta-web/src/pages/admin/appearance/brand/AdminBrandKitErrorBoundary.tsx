@@ -35,7 +35,7 @@ export class AdminBrandKitErrorBoundary extends React.Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Error in Brand Kit Editor</CardTitle>
                         <CardDescription className="leading-relaxed">

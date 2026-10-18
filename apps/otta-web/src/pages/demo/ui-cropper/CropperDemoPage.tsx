@@ -131,7 +131,7 @@ export function CropperDemoPage() {
             />
 
             <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Cropper</CardTitle>
                         <CardDescription>
@@ -148,7 +148,7 @@ export function CropperDemoPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Realtime Config</CardTitle>
                         <CardDescription>All capabilities – change and see effect immediately</CardDescription>
@@ -258,7 +258,7 @@ export function CropperDemoPage() {
             </div>
 
             {previewUrl && (
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Preview</CardTitle>
                         <CardDescription>

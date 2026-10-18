@@ -183,7 +183,7 @@ export function ShortlinksPage() {
                 <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                         <Link2 className="h-7 w-7 text-primary" />
-                        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Shortlinks</h1>
+                        <h1 className="text-2xl font-semibold tracking-[-0.015em]">Shortlinks</h1>
                     </div>
                     <p className="text-muted-foreground">Create and manage short URLs for easy sharing</p>
                 </div>
@@ -229,7 +229,7 @@ export function ShortlinksPage() {
 
             {/* Stats */}
             <div className="grid gap-4 md:grid-cols-2">
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Total Links
@@ -241,7 +241,7 @@ export function ShortlinksPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             Active Links
@@ -256,7 +256,7 @@ export function ShortlinksPage() {
             </div>
 
             {/* Shortlinks Table */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">

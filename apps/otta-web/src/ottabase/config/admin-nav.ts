@@ -78,6 +78,8 @@ export interface AdminNavItem {
     requiresPackage?: string;
     /** Visible only when MEDIA_LIBRARY_ENABLED is true. */
     requiresMediaLibrary?: boolean;
+    /** A Premium Package's page: the sidebar entry carries a lock. */
+    premium?: boolean;
 }
 
 /** A package's admin page (its client descriptor), as a nav item. */
@@ -89,6 +91,7 @@ function packagePageNavItem(page: AdminPageContribution & { pkg: string }): Admi
         icon: page.icon as AdminNavIcon,
         scope: page.scope,
         requiresPackage: page.pkg,
+        premium: page.premium,
     };
 }
 

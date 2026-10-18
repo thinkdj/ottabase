@@ -64,7 +64,7 @@ export function CronDemoPage() {
             />
 
             {/* Overview card */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Package Overview</CardTitle>
                     <div className="text-sm text-muted-foreground space-y-2">
@@ -92,7 +92,7 @@ export function CronDemoPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Cron expression parser */}
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Clock className="h-4 w-4" />
@@ -169,7 +169,7 @@ export function CronDemoPage() {
                 </Card>
 
                 {/* Next runs */}
-                <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                             <Calendar className="h-4 w-4" />
@@ -205,7 +205,7 @@ export function CronDemoPage() {
             </div>
 
             {/* Presets */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Zap className="h-4 w-4" />
@@ -253,7 +253,7 @@ export function CronDemoPage() {
             </Card>
 
             {/* Usage examples */}
-            <Card className="rounded-xl border-transparent bg-muted/40 shadow-none">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Usage Examples</CardTitle>
                     <CardDescription>How to use @ottabase/cron in your app.</CardDescription>
