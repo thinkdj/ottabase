@@ -206,6 +206,10 @@ repository access, with the license token deciding tiers inside it. `packages/fl
 (`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
 cockpit that watches a fleet of beacons is a private Premium Package.
 
+That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, the cockpit, and PayPort,
+operator-to-user billing, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license
+token at all because repository access is the license. See [ottabase.com/pro](https://ottabase.com/pro).
+
 ### Design notes worth copying
 
 - **Free tier that survives expiry.** A lapsed license collapses to `freeFeatures`/`freeLimits`, not to nothing. The
@@ -226,3 +230,4 @@ cockpit that watches a fleet of beacons is a private Premium Package.
 - [`packages/premium-webhooks/README.md`](../packages/premium-webhooks/README.md) — the worked example
 - [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
+- [ottabase.com/pro](https://ottabase.com/pro) — Ottabase Pro, the commercial bundle
