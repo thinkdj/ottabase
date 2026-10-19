@@ -10,7 +10,7 @@
 import { Router } from '@ottabase/ottarouter';
 import { createMemoryStateStore, createPremiumRegistry, isPremiumPackage } from '@ottabase/premium';
 import { mountPremiumPackages } from '@ottabase/premium/server';
-import { DEMO_PRO_LICENSE, WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/premium-webhooks';
+import { DEMO_PRO_LICENSE, WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks';
 import { describe, expect, it } from 'vitest';
 import { getAllSchemas, getSchemaSummary } from '../db/schemas-helper';
 import * as drizzleSchema from '../db/schema';

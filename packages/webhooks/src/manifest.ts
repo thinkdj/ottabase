@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — the manifest
+// @ottabase/webhooks — the manifest
 // ============================================================
 // The whole integration contract in one object. A host app registers THIS and gets the
 // tables, the models, the gated routes and the nav entry; nothing else in the app has to
@@ -48,8 +48,8 @@ export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>)
         description:
             'Let customers subscribe to your events. HMAC-signed deliveries, per-endpoint health, and a searchable delivery log.',
         vendor: 'Ottabase',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/premium-webhooks#readme',
-        purchaseUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/premium-webhooks#licensing',
+        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/webhooks#readme',
+        purchaseUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/webhooks#licensing',
 
         licensePublicKey: options.licensePublicKey ?? DEMO_LICENSE_PUBLIC_KEY,
         graceDays: 14,
@@ -84,15 +84,15 @@ export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>)
 
         lifecycle: {
             onInstall: ({ key, version }) => {
-                console.info(`[premium-webhooks] installed ${key} v${version}`);
+                console.info(`[webhooks] installed ${key} v${version}`);
             },
             onUpgrade: ({ previousVersion, version }) => {
-                console.info(`[premium-webhooks] upgraded ${previousVersion} → ${version}`);
+                console.info(`[webhooks] upgraded ${previousVersion} → ${version}`);
             },
             onDeactivate: ({ reason }) => {
                 // Endpoints are LEFT ALONE. A lapsed license must not silently delete a
                 // customer's configuration — they get the free tier back, not a blank page.
-                console.warn(`[premium-webhooks] license inactive (${reason}); paid features are closed`);
+                console.warn(`[webhooks] license inactive (${reason}); paid features are closed`);
             },
         },
     });

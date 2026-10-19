@@ -189,7 +189,7 @@ entitlements and lifecycle, and mounts its routes behind the license gate.
    disappears gives a bookmarked link a 404 and no way to reach the screen that fixes it.
 6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
-Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/premium-webhooks`.
+Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/webhooks`.
 
 ### Quick examples
 
@@ -574,7 +574,7 @@ if (denied) return denied; // 402 PREMIUM_REQUIRED
 import { PremiumGate } from '@ottabase/premium/react';
 ```
 
-See `docs/PREMIUM_PACKAGES.md`; `@ottabase/premium-webhooks` is the worked example.
+See `docs/PREMIUM_PACKAGES.md`; `@ottabase/webhooks` is the worked example.
 
 ### @ottabase/queue
 

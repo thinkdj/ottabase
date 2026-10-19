@@ -96,6 +96,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **`@ottabase/premium-webhooks` is now `@ottabase/webhooks`** (folder `packages/webhooks`), so the name says what it
+  does instead of reading like a paid package. It is still the worked example of `@ottabase/premium`, and nothing else
+  changes: package key `webhooks`, tables, routes, `PREMIUM_LICENSE_WEBHOOKS` and the free/licensed split are the same.
+  Rename the imports and the tsconfig/vitest aliases, then run `pnpm install`.
 - **Packages are installed by listing their manifest in `apps/otta-web/ottabase/packages.ts`**, nothing else. The four
   hand-wired files are gone (`config.migrations.ts`, `config.routes.ts`, `config.premium.ts`,
   `src/ottabase/config/premium.ts`); `db-utils`, the router, the cron and queue registries, the schema collector, the
@@ -374,15 +378,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
     - **An app with no Premium Packages is unaffected**: no routes, no middleware, no KV reads, no nav entries, no
       tables. Full guide in `docs/PREMIUM_PACKAGES.md`.
 
-- **`@ottabase/premium-webhooks` — the worked example.** A real paid add-on, not a stub: customer-registered HTTPS
-  endpoints, HMAC-SHA256 deliveries signed over `<timestamp>.<body>` (so a receiver's tolerance window actually rejects
-  replays), per-endpoint health, and a delivery log. Free tier is one endpoint with signed delivery and health; the demo
-  "pro" license raises the ceiling to 25 and unlocks retained delivery history — exercising a limit gate, a feature
-  gate, and a free tier that stays reachable when the license lapses. Destinations are validated on write (HTTPS only,
-  no credentials, literal private/loopback/link-local refused) and redirects are never followed; the documented
-  limitation is that a hostname _resolving_ to a private address cannot be caught without a resolver. Its demo keypair
-  is published in the repo on purpose so the whole activation flow can be tried in minutes — with a loud note that a
-  real vendor keeps the private key offline. Available at **Admin → Growth → Webhooks**.
+- **`@ottabase/webhooks` — the worked example.** A real paid add-on, not a stub: customer-registered HTTPS endpoints,
+  HMAC-SHA256 deliveries signed over `<timestamp>.<body>` (so a receiver's tolerance window actually rejects replays),
+  per-endpoint health, and a delivery log. Free tier is one endpoint with signed delivery and health; the demo "pro"
+  license raises the ceiling to 25 and unlocks retained delivery history — exercising a limit gate, a feature gate, and
+  a free tier that stays reachable when the license lapses. Destinations are validated on write (HTTPS only, no
+  credentials, literal private/loopback/link-local refused) and redirects are never followed; the documented limitation
+  is that a hostname _resolving_ to a private address cannot be caught without a resolver. Its demo keypair is published
+  in the repo on purpose so the whole activation flow can be tried in minutes — with a loud note that a real vendor
+  keeps the private key offline. Available at **Admin → Growth → Webhooks**.
 
 - brand-engine v2 — full design-system fidelity. The token schema grew from "shadcn colors + 3 fonts +
   radius/shadows/motion" to a complete design-system vocabulary so radical design systems port 1:1 as theme JSON:

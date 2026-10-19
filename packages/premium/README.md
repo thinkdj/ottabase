@@ -249,4 +249,4 @@ pnpm --filter @ottabase/premium test
 ## See also
 
 - `docs/PREMIUM_PACKAGES.md` — the end-to-end host-integration guide
-- `packages/premium-webhooks` — a complete working Premium Package built on this framework
+- `packages/webhooks` — a complete working Premium Package built on this framework

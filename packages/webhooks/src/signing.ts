@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — request signing
+// @ottabase/webhooks — request signing
 // ============================================================
 // HMAC-SHA256 over `<timestamp>.<body>`, in a Stripe-shaped header:
 //

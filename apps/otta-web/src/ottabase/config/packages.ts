@@ -12,7 +12,7 @@
  * fixes it. The server refuses the data either way.
  */
 import { definePackageClient, installedPackages, packageAdminPages } from '@ottabase/kernel/client';
-import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/premium-webhooks';
+import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks';
 import { Archive, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [

@@ -624,9 +624,6 @@ importers:
       '@ottabase/premium':
         specifier: workspace:*
         version: link:../../packages/premium
-      '@ottabase/premium-webhooks':
-        specifier: workspace:*
-        version: link:../../packages/premium-webhooks
       '@ottabase/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -678,6 +675,9 @@ importers:
       '@ottabase/vault':
         specifier: workspace:*
         version: link:../../packages/vault
+      '@ottabase/webhooks':
+        specifier: workspace:*
+        version: link:../../packages/webhooks
       '@tabler/icons-react':
         specifier: 'catalog:'
         version: 3.35.0(react@19.2.4)
@@ -2367,58 +2367,6 @@ importers:
         specifier: 'catalog:'
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
-  packages/premium-webhooks:
-    dependencies:
-      '@ottabase/ottaorm':
-        specifier: workspace:*
-        version: link:../ottaorm
-      '@ottabase/ottarouter':
-        specifier: workspace:*
-        version: link:../ottarouter
-      '@ottabase/premium':
-        specifier: workspace:*
-        version: link:../premium
-      '@ottabase/utils':
-        specifier: workspace:*
-        version: link:../utils
-    devDependencies:
-      '@ottabase/config':
-        specifier: workspace:*
-        version: link:../config
-      '@ottabase/ui-shadcn':
-        specifier: workspace:*
-        version: link:../ui-shadcn
-      '@tanstack/react-query':
-        specifier: 'catalog:'
-        version: 5.90.16(react@19.2.4)
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.7
-      drizzle-orm:
-        specifier: 'catalog:'
-        version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)
-      eslint:
-        specifier: 'catalog:'
-        version: 9.39.2(jiti@2.6.1)
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.468.0(react@19.2.4)
-      react:
-        specifier: 'catalog:'
-        version: 19.2.4
-      rimraf:
-        specifier: 'catalog:'
-        version: 6.1.2
-      tsup:
-        specifier: 'catalog:'
-        version: 8.5.1(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-      vitest:
-        specifier: 'catalog:'
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
-
   packages/queue:
     dependencies:
       '@ottabase/cf':
@@ -3205,6 +3153,58 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.28)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+
+  packages/webhooks:
+    dependencies:
+      '@ottabase/ottaorm':
+        specifier: workspace:*
+        version: link:../ottaorm
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../ottarouter
+      '@ottabase/premium':
+        specifier: workspace:*
+        version: link:../premium
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@ottabase/config':
+        specifier: workspace:*
+        version: link:../config
+      '@ottabase/ui-shadcn':
+        specifier: workspace:*
+        version: link:../ui-shadcn
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.16(react@19.2.4)
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.2(jiti@2.6.1)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(@swc/core@1.13.5)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.6.1)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.6))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
 packages:
 

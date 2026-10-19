@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — API routes
+// @ottabase/webhooks — API routes
 // ============================================================
 // Mounted by the framework at `/api/webhooks` with `gate: 'entitlements'`, which means
 // the license does NOT gate the whole namespace — this module owns its own gates so the

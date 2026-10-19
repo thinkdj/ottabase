@@ -87,5 +87,5 @@ export {
 // reads this module's NAMED EXPORTS and never evaluates config, so a table reachable only
 // through the runtime registry (ottabase/packages.ts) is invisible to `db:push`.
 //
-// Remove this block along with the package if you uninstall @ottabase/premium-webhooks.
-export { webhookDeliveriesTable, webhookEndpointsTable } from '@ottabase/premium-webhooks/schema';
+// Remove this block along with the package if you uninstall @ottabase/webhooks.
+export { webhookDeliveriesTable, webhookEndpointsTable } from '@ottabase/webhooks/schema';

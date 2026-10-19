@@ -2,7 +2,7 @@
 // DEMO LICENSING MATERIAL — PUBLISHED ON PURPOSE, NOT A SECRET
 // ============================================================
 // Vault ships in the public repository with its demo keypair and a "pro" license printed
-// below, like `@ottabase/premium-webhooks`. Anyone can mint a license for `vault`; that is
+// below, like `@ottabase/webhooks`. Anyone can mint a license for `vault`; that is
 // the point: the whole activation flow (unlicensed → pasted key → nightly schedule running)
 // can be tried without buying anything.
 //

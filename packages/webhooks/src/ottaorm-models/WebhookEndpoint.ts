@@ -9,7 +9,7 @@ export class WebhookEndpoint extends BaseModel {
     static entity = 'premium_webhook_endpoints';
     static table = webhookEndpointsTable;
     static primaryKey = 'id';
-    static packageName = '@ottabase/premium-webhooks';
+    static packageName = '@ottabase/webhooks';
     static packageType: PackageType = 'package';
 
     static displayName = 'Webhook Endpoint';

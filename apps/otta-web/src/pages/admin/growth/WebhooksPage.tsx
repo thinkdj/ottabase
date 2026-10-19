@@ -14,7 +14,7 @@
 
 import { premiumRequest } from '@/lib/premium';
 import { PremiumProvider } from '@ottabase/premium/react';
-import { WebhooksSettings } from '@ottabase/premium-webhooks/react';
+import { WebhooksSettings } from '@ottabase/webhooks/react';
 import { Webhook } from 'lucide-react';
 
 export function WebhooksPage() {

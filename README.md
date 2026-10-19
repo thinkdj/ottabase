@@ -380,11 +380,11 @@ free package. Rendered pages and Drizzle's static schema export are explicit bui
 app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
 An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
-| Package                      | Purpose                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
-| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
-| `@ottabase/vault`            | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
+| Package              | Purpose                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `@ottabase/premium`  | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
+| `@ottabase/webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
+| `@ottabase/vault`    | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
 
 **Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board) and PayPort (sell
 plans to your app's users), sold as source with access to a private repository as the license, one price for an

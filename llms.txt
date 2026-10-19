@@ -73,7 +73,7 @@
 - [@ottabase/ottaupload](packages/ottaupload/README.md): A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and Cloudflare Images.
 - [@ottabase/postmaster](packages/postmaster/README.md): The half of email that is not sending: inbound mail for Cloudflare Email Routing, a suppression list, signed one-click unsubscribe, and Resend/SES bounce and complaint webhooks, as one Ottabase…
 - [@ottabase/premium](packages/premium/README.md): Premium Packages framework for Ottabase apps. A server manifest declares everything a commercial add-on contributes — tables, models, routes, nav, entitlements and lifecycle hooks — and the host app…
-- [@ottabase/premium-webhooks](packages/premium-webhooks/README.md): Outbound webhooks for Ottabase apps — and the worked example of a Premium Package built on @ottabase/premium.
+- [@ottabase/webhooks](packages/webhooks/README.md): Outbound webhooks for Ottabase apps — and the worked example of a Premium Package built on @ottabase/premium.
 - [@ottabase/queue](packages/queue/README.md): Minimal queue system for Cloudflare Workers. Laravel-inspired job dispatching with modular handler registration.
 - [@ottabase/rbac](packages/rbac/README.md): Production-ready Role-Based Access Control with multi-tenant support and optimized caching.
 - [@ottabase/referrals](packages/referrals/README.md): Referral system package for Ottabase — schema, model, validation, and attribution tracking.

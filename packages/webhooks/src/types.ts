@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — public types
+// @ottabase/webhooks — public types
 // ============================================================
 
 import type { PremiumRegistry } from '@ottabase/premium';

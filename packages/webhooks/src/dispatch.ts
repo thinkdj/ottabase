@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — outbound delivery
+// @ottabase/webhooks — outbound delivery
 // ============================================================
 // One call from anywhere in the host app:
 //

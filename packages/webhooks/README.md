@@ -1,4 +1,4 @@
-# @ottabase/premium-webhooks
+# @ottabase/webhooks
 
 Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
 [`@ottabase/premium`](../premium/README.md).
@@ -64,7 +64,7 @@ const token = await issueLicense(
 
 ```typescript
 // apps/otta-web/ottabase/packages/webhooks.ts
-import { createWebhooksPackage } from '@ottabase/premium-webhooks';
+import { createWebhooksPackage } from '@ottabase/webhooks';
 
 export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
     // How the HOST authenticates. This package never reads a header to decide tenancy.
@@ -99,7 +99,7 @@ server authentication code out of the browser bundle.
 ## Sending events
 
 ```typescript
-import { dispatchWebhookEvent } from '@ottabase/premium-webhooks';
+import { dispatchWebhookEvent } from '@ottabase/webhooks';
 
 await dispatchWebhookEvent({
     registry: premium,
@@ -140,7 +140,7 @@ The signature covers `` `${timestamp}.${body}` `` — the timestamp is **inside*
 enforces a tolerance window actually rejects replays. Verify with the helper rather than re-implementing it:
 
 ```typescript
-import { verifySignatureHeader } from '@ottabase/premium-webhooks';
+import { verifySignatureHeader } from '@ottabase/webhooks';
 
 const body = await request.text();
 const valid = await verifySignatureHeader(mySecret, body, request.headers.get('X-Ottabase-Signature'));
@@ -188,12 +188,12 @@ Organization endpoints are scoped by verified `appId` and `organizationId`. Pers
 Add to the consuming app's `content` array, or the components render unstyled with no error:
 
 ```javascript
-'../../packages/premium-webhooks/src/**/*.{js,ts,jsx,tsx}';
+'../../packages/webhooks/src/**/*.{js,ts,jsx,tsx}';
 ```
 
 ## Testing
 
 ```bash
-pnpm --filter @ottabase/premium-webhooks build
-pnpm --filter @ottabase/premium-webhooks test
+pnpm --filter @ottabase/webhooks build
+pnpm --filter @ottabase/webhooks test
 ```

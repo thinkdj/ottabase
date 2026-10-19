@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — shared identifiers
+// @ottabase/webhooks — shared identifiers
 // ============================================================
 // One module so the manifest, the routes, the dispatcher and the React components all
 // name the same strings. These appear in license claims and in customer config, so they

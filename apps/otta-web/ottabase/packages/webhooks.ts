@@ -7,7 +7,7 @@
 // behind a feature gate.
 // ============================================================
 
-import { createWebhooksPackage } from '@ottabase/premium-webhooks';
+import { createWebhooksPackage } from '@ottabase/webhooks';
 import { reserveWebhookEndpointSlot, synchronizeWebhookEndpointQuota } from '../../worker/lib/webhook-endpoint-quota';
 import { resolvePackageCaller } from './caller';
 

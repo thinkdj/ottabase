@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium-webhooks/react — query hooks
+// @ottabase/webhooks/react — query hooks
 // ============================================================
 // These reuse the premium provider's `requestAbsolute` seam rather than introducing a
 // second client: the app's API client is what attaches `X-Org-Id` and `X-App-Id`, and

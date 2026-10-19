@@ -1,10 +1,10 @@
 'use client';
 
 // ============================================================
-// @ottabase/premium-webhooks/react — the drop-in settings surface
+// @ottabase/webhooks/react — the drop-in settings surface
 // ============================================================
 // TAILWIND SETUP CHECKLIST (this fails with NO ERROR): a consuming app must add
-//     '../../packages/premium-webhooks/src/**/*.{js,ts,jsx,tsx}'
+//     '../../packages/webhooks/src/**/*.{js,ts,jsx,tsx}'
 // to its Tailwind `content` array, or these components render structurally correct and
 // completely unstyled.
 // ============================================================

@@ -3,7 +3,7 @@
 How to install, build, license and operate commercial add-ons in an Ottabase app.
 
 The framework is [`@ottabase/premium`](../packages/premium/README.md); the worked example is
-[`@ottabase/premium-webhooks`](../packages/premium-webhooks/README.md).
+[`@ottabase/webhooks`](../packages/webhooks/README.md).
 
 **An app with no Premium Packages is unaffected.** List none and nothing mounts: no routes, no KV reads, no nav entries,
 no tables. Everything below is opt-in.
@@ -189,9 +189,9 @@ const { publicKey, privateKey } = await generateLicenseKeypair(); // publicKey �
 Keep the private key where release signing material lives — **never in the repo, never in the app, never in an env var
 the app can read**. Anyone holding it can mint licenses for your package forever.
 
-Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See
-`packages/premium-webhooks` for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free
-tier, and a licensed delivery log.
+Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See `packages/webhooks`
+for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free tier, and a licensed delivery
+log.
 
 `packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
 manual backup, restore and delete are free (five kept backups), the nightly schedule, retention and operator tenant
@@ -227,7 +227,7 @@ token at all because repository access is the license. See [ottabase.com/pro](ht
 ## See also
 
 - [`packages/premium/README.md`](../packages/premium/README.md) — full API
-- [`packages/premium-webhooks/README.md`](../packages/premium-webhooks/README.md) — the worked example
+- [`packages/webhooks/README.md`](../packages/webhooks/README.md) — the worked example
 - [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
 - [ottabase.com/pro](https://ottabase.com/pro) — Ottabase Pro, the commercial bundle

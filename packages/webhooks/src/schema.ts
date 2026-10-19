@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — table schemas
+// @ottabase/webhooks — table schemas
 // ============================================================
 // UPGRADE CONTRACT (the same one every Ottabase package follows): migrations are
 // ADDITIVE-ONLY across minors, and every new column is nullable or carries a default —

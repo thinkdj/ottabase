@@ -13,7 +13,7 @@ export class WebhookDelivery extends BaseModel {
     static entity = 'premium_webhook_deliveries';
     static table = webhookDeliveriesTable;
     static primaryKey = 'id';
-    static packageName = '@ottabase/premium-webhooks';
+    static packageName = '@ottabase/webhooks';
     static packageType: PackageType = 'package';
 
     static displayName = 'Webhook Delivery';

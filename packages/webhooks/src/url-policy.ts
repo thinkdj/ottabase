@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/premium-webhooks — destination URL policy
+// @ottabase/webhooks — destination URL policy
 // ============================================================
 // An outbound webhook is a customer-controlled URL that the SERVER fetches. That is the
 // textbook SSRF shape, so the destination is validated on write and the fetch never

@@ -185,8 +185,8 @@ import { vi } from 'vitest';
 
 Coverage is a report, not a CI gate (CI runs `test`, never `--coverage`). A package sets `coverage.thresholds` in its
 own `vitest.config.ts` only for a floor it currently meets, so a threshold failure means a real regression. Packages
-with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `premium-webhooks`, `ui-tailwind`.
-Every config uses `coverage.include: ['src/**/*.{ts,tsx}']` so untested source files still count (Vitest 4 removed
+with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `ui-tailwind`, `webhooks`. Every
+config uses `coverage.include: ['src/**/*.{ts,tsx}']` so untested source files still count (Vitest 4 removed
 `coverage.all`).
 
 ### Excluded from Coverage

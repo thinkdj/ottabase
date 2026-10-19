@@ -84,15 +84,9 @@ export default defineConfig({
             '@ottabase/premium/server': path.resolve(__dirname, '../../packages/premium/src/server/index.ts'),
             '@ottabase/premium/react': path.resolve(__dirname, '../../packages/premium/src/react/index.ts'),
             '@ottabase/premium': path.resolve(__dirname, '../../packages/premium/src/index.ts'),
-            '@ottabase/premium-webhooks/schema': path.resolve(
-                __dirname,
-                '../../packages/premium-webhooks/src/schema.ts',
-            ),
-            '@ottabase/premium-webhooks/react': path.resolve(
-                __dirname,
-                '../../packages/premium-webhooks/src/react/index.ts',
-            ),
-            '@ottabase/premium-webhooks': path.resolve(__dirname, '../../packages/premium-webhooks/src/index.ts'),
+            '@ottabase/webhooks/schema': path.resolve(__dirname, '../../packages/webhooks/src/schema.ts'),
+            '@ottabase/webhooks/react': path.resolve(__dirname, '../../packages/webhooks/src/react/index.ts'),
+            '@ottabase/webhooks': path.resolve(__dirname, '../../packages/webhooks/src/index.ts'),
             '@ottabase/cf-pdf/metadata': path.resolve(__dirname, '../../packages/cf-pdf/src/metadata.ts'),
             '@ottabase/cf-pdf/router': path.resolve(__dirname, '../../packages/cf-pdf/src/routes.ts'),
             '@ottabase/cf-pdf/server': path.resolve(__dirname, '../../packages/cf-pdf/src/server.ts'),

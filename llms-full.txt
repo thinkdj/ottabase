@@ -392,7 +392,7 @@ An app with no Premium Packages is completely unaffected: nothing mounts and not
 | Package                      | Purpose                                                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------ |
 | `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
-| `@ottabase/premium-webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
+| `@ottabase/webhooks`         | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
 | `@ottabase/vault`            | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
 
 See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
@@ -1863,7 +1863,7 @@ entitlements and lifecycle, and mounts its routes behind the license gate.
    disappears gives a bookmarked link a 404 and no way to reach the screen that fixes it.
 6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
-Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/premium-webhooks`.
+Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/webhooks`.
 
 ### Quick examples
 
@@ -2248,7 +2248,7 @@ if (denied) return denied; // 402 PREMIUM_REQUIRED
 import { PremiumGate } from '@ottabase/premium/react';
 ```
 
-See `docs/PREMIUM_PACKAGES.md`; `@ottabase/premium-webhooks` is the worked example.
+See `docs/PREMIUM_PACKAGES.md`; `@ottabase/webhooks` is the worked example.
 
 ### @ottabase/queue
 
@@ -6112,7 +6112,7 @@ import { ComponentName } from '@ottabase/package-name/component-name';
 How to install, build, license and operate commercial add-ons in an Ottabase app.
 
 The framework is [`@ottabase/premium`](../packages/premium/README.md); the worked example is
-[`@ottabase/premium-webhooks`](../packages/premium-webhooks/README.md).
+[`@ottabase/webhooks`](../packages/webhooks/README.md).
 
 **An app with no Premium Packages is unaffected.** List none and nothing mounts: no routes, no KV reads, no nav entries,
 no tables. Everything below is opt-in.
@@ -6299,7 +6299,7 @@ Keep the private key where release signing material lives — **never in the rep
 the app can read**. Anyone holding it can mint licenses for your package forever.
 
 Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See
-`packages/premium-webhooks` for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free
+`packages/webhooks` for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free
 tier, and a licensed delivery log.
 
 `packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
@@ -6332,7 +6332,7 @@ cockpit that watches a fleet of beacons is a private Premium Package.
 ## See also
 
 - [`packages/premium/README.md`](../packages/premium/README.md) — full API
-- [`packages/premium-webhooks/README.md`](../packages/premium-webhooks/README.md) — the worked example
+- [`packages/webhooks/README.md`](../packages/webhooks/README.md) — the worked example
 - [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
 
@@ -8253,7 +8253,7 @@ import { vi } from 'vitest';
 
 Coverage is a report, not a CI gate (CI runs `test`, never `--coverage`). A package sets `coverage.thresholds` in its
 own `vitest.config.ts` only for a floor it currently meets, so a threshold failure means a real regression. Packages
-with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `premium-webhooks`, `ui-tailwind`.
+with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `ui-tailwind`, `webhooks`.
 Every config uses `coverage.include: ['src/**/*.{ts,tsx}']` so untested source files still count (Vitest 4 removed
 `coverage.all`).
 
@@ -23286,14 +23286,14 @@ pnpm --filter @ottabase/premium test
 ## See also
 
 - `docs/PREMIUM_PACKAGES.md` — the end-to-end host-integration guide
-- `packages/premium-webhooks` — a complete working Premium Package built on this framework
+- `packages/webhooks` — a complete working Premium Package built on this framework
 
 
 ---
 
-# packages/premium-webhooks/README.md
+# packages/webhooks/README.md
 
-# @ottabase/premium-webhooks
+# @ottabase/webhooks
 
 Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
 [`@ottabase/premium`](../premium/README.md).
@@ -23359,7 +23359,7 @@ const token = await issueLicense(
 
 ```typescript
 // apps/otta-web/ottabase/packages/webhooks.ts
-import { createWebhooksPackage } from '@ottabase/premium-webhooks';
+import { createWebhooksPackage } from '@ottabase/webhooks';
 
 export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
     // How the HOST authenticates. This package never reads a header to decide tenancy.
@@ -23394,7 +23394,7 @@ server authentication code out of the browser bundle.
 ## Sending events
 
 ```typescript
-import { dispatchWebhookEvent } from '@ottabase/premium-webhooks';
+import { dispatchWebhookEvent } from '@ottabase/webhooks';
 
 await dispatchWebhookEvent({
     registry: premium,
@@ -23435,7 +23435,7 @@ The signature covers `` `${timestamp}.${body}` `` — the timestamp is **inside*
 enforces a tolerance window actually rejects replays. Verify with the helper rather than re-implementing it:
 
 ```typescript
-import { verifySignatureHeader } from '@ottabase/premium-webhooks';
+import { verifySignatureHeader } from '@ottabase/webhooks';
 
 const body = await request.text();
 const valid = await verifySignatureHeader(mySecret, body, request.headers.get('X-Ottabase-Signature'));
@@ -23483,14 +23483,14 @@ Organization endpoints are scoped by verified `appId` and `organizationId`. Pers
 Add to the consuming app's `content` array, or the components render unstyled with no error:
 
 ```javascript
-'../../packages/premium-webhooks/src/**/*.{js,ts,jsx,tsx}';
+'../../packages/webhooks/src/**/*.{js,ts,jsx,tsx}';
 ```
 
 ## Testing
 
 ```bash
-pnpm --filter @ottabase/premium-webhooks build
-pnpm --filter @ottabase/premium-webhooks test
+pnpm --filter @ottabase/webhooks build
+pnpm --filter @ottabase/webhooks test
 ```
 
 
