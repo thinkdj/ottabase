@@ -386,9 +386,11 @@ An app with no Premium Packages is completely unaffected: nothing mounts and not
 | `@ottabase/webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
 | `@ottabase/vault`    | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
 
-**Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board) and PayPort (sell
-plans to your app's users), sold as source with access to a private repository as the license, one price for an
-individual and one for a company. See [ottabase.com/pro](https://ottabase.com/pro).
+**Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board), PayPort (sell plans
+to your app's users), Blackbox (error tracking), Beacon (a status page) and Workbench (the database inside the admin),
+sold as source with access to a private repository as the license. Three yearly licenses, priced by how many people
+commit (Solo, Team, Company); cancel and the code you pulled stays yours. See
+[ottabase.com/pro](https://ottabase.com/pro).
 
 See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
