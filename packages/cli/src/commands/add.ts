@@ -24,6 +24,16 @@ import { getMonorepoRoot, log, resolveApp } from '../utils/index.js';
  * may also ship an `app/` folder mirroring the app layout (`app/ottabase/packages/<key>.ts`,
  * `app/src/pages/…`): those files are copied into the app when it lacks them.
  *
+ * Two more fields reach into the SPA shell, for packages that need it:
+ *
+ * ```json
+ * "routes": [{ "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" }],
+ * "errorReporter": { "import": "./lib/blackbox", "export": "captureException" }
+ * ```
+ *
+ * `routes` are registered in `src/router.tsx` (`access` defaults to `protected`, a signed-in page);
+ * `errorReporter` is handed every render error the root `<ErrorBoundary>` in `src/main.tsx` catches.
+ *
  * A package lives in `packages/<name>` or, inside a bundle such as Ottabase Pro, in
  * `packages/<bundle>/<name>`. `otta add <bundle>` wires every package of the bundle.
  */
@@ -40,6 +50,15 @@ export interface AdminPageDescriptor {
     export: string;
 }
 
+export interface RouteDescriptor {
+    path: string;
+    /** Page module under `src/pages`, without extension: `user/PlansPage`. */
+    page: string;
+    export: string;
+    /** `protected` (the default) needs a session; `public` does not. */
+    access?: 'public' | 'protected';
+}
+
 export interface PackageDescriptor {
     name: string;
     key: string;
@@ -50,6 +69,9 @@ export interface PackageDescriptor {
     dir: string;
     tables?: { import: string; names: string[] };
     adminPages?: AdminPageDescriptor[];
+    routes?: RouteDescriptor[];
+    /** A function the root `<ErrorBoundary>` hands every caught render error to; `import` is as `src/main.tsx` reads it. */
+    errorReporter?: { import: string; export: string };
 }
 
 export interface AddStep {
@@ -72,6 +94,10 @@ const REFERENCE_APP = 'otta-web';
 const PACKAGE_ROOTS = ['packages', 'packages/pro'];
 const NAME = /^[a-z][a-z0-9-]*$/;
 const ICON = /^[A-Z][A-Za-z0-9]*$/;
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+const ROUTE_PATH = /^\/[a-z0-9/_-]*$/;
+/** The SPA's route section header, else the array the routes join: generated route constants go above it. */
+const ROUTE_ASSEMBLY = /^\/\/ ─── Route assembly|^const coreRoutes = \[$/;
 
 function camel(key: string): string {
     return key.replace(/[-_](\w)/g, (_, char: string) => char.toUpperCase());
@@ -135,6 +161,30 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
             throw new Error(`${dir}/package.json: adminPages icon "${page.icon}" is not a lucide-react export name.`);
         }
     }
+    const routes = Array.isArray(meta.routes) ? meta.routes : [];
+    for (const route of routes) {
+        if (typeof route.path !== 'string' || !ROUTE_PATH.test(route.path)) {
+            throw new Error(`${dir}/package.json: route path "${route.path}" must be a lowercase absolute path.`);
+        }
+        if (
+            typeof route.page !== 'string' ||
+            !route.page ||
+            typeof route.export !== 'string' ||
+            !IDENTIFIER.test(route.export)
+        ) {
+            throw new Error(`${dir}/package.json: every routes entry needs path, page and an export name.`);
+        }
+        if (route.access !== undefined && route.access !== 'public' && route.access !== 'protected') {
+            throw new Error(`${dir}/package.json: route access must be "public" or "protected".`);
+        }
+    }
+    const reporter = meta.errorReporter;
+    if (
+        reporter !== undefined &&
+        (typeof reporter.import !== 'string' || !reporter.import || !IDENTIFIER.test(reporter.export ?? ''))
+    ) {
+        throw new Error(`${dir}/package.json: errorReporter needs an import path and an export name.`);
+    }
     return {
         name,
         key: meta.key,
@@ -146,6 +196,8 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
             ? { tables: { import: meta.tables.import ?? `${name}/schema`, names: meta.tables.names } }
             : {}),
         ...(adminPages.length > 0 ? { adminPages } : {}),
+        ...(routes.length > 0 ? { routes } : {}),
+        ...(reporter ? { errorReporter: { import: reporter.import, export: reporter.export } } : {}),
     };
 }
 
@@ -241,6 +293,28 @@ export const ${pkg.export} = ${pkg.factory}<CloudflareEnv>({
     // TODO: the options this package needs
 });
 `;
+}
+
+/** `beacon` + `/status` is `beaconStatusRoute`: prefixed by the package, so it never collides with the app's own. */
+function routeName(key: string, routePath: string): string {
+    const words = routePath
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+        .map((word) => word[0].toUpperCase() + word.slice(1));
+    return `${camel(key)}${words.join('')}Route`;
+}
+
+/** The route constant, in the shape the app router's own `publicRoute` / `protectedRoute` helpers take. */
+function routeConst(route: RouteDescriptor, name: string, eol: string): string {
+    const page = quote(`@/pages/${route.page}`);
+    if (route.access === 'public') {
+        return [
+            `const ${name} = publicRoute(${quote(route.path)}, () =>`,
+            `    import(${page}).then((m) => ({ default: m.${route.export} })),`,
+            ');',
+        ].join(eol);
+    }
+    return `const ${name} = protectedRoute(${quote(route.path)}, () => import(${page}), ${quote(route.export)});`;
 }
 
 /** Work out every file change, without touching anything. */
@@ -371,6 +445,63 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
         }
     }
 
+    // 7. The routes the package's pages need, in the app router.
+    if (pkg.routes) {
+        const routerFile = path.join(appDir, 'src', 'router.tsx');
+        const router = read(routerFile);
+        const missing = pkg.routes.filter((route) => !router?.includes(`Route(${quote(route.path)}`));
+        if (router === null || !/^const coreRoutes = \[\r?$/m.test(router)) {
+            const paths = pkg.routes.map((route) => route.path).join(', ');
+            steps.push({ file: rel(routerFile), action: 'skip', detail: `no coreRoutes; register ${paths} by hand` });
+        } else if (missing.length === 0) {
+            steps.push({ file: rel(routerFile), action: 'skip', detail: 'routes registered' });
+        } else {
+            const eol = eolOf(router);
+            const names = missing.map((route) => routeName(pkg.key, route.path));
+            const block = [
+                `// ${pkg.name}: added by \`otta add\`.`,
+                ...missing.map((route, index) => routeConst(route, names[index], eol)),
+                '',
+            ].join(eol);
+            const updated = insertLine(
+                insertLine(router, block, { before: ROUTE_ASSEMBLY }),
+                names.map((name) => `    ${name},`).join(eol),
+                { after: /^const coreRoutes = \[$/ },
+            );
+            const paths = missing.map((route) => route.path).join(', ');
+            steps.push({ file: rel(routerFile), action: 'edit', detail: `register ${paths}`, content: updated });
+        }
+    }
+
+    // 8. Render errors the root error boundary catches, handed to the package.
+    if (pkg.errorReporter) {
+        const mainFile = path.join(appDir, 'src', 'main.tsx');
+        const main = read(mainFile);
+        const { import: from, export: reporter } = pkg.errorReporter;
+        if (main?.includes(`${reporter}(error)`)) {
+            steps.push({ file: rel(mainFile), action: 'skip', detail: `error boundary reports to ${reporter}` });
+        } else if (main === null || !main.includes('<ErrorBoundary>')) {
+            steps.push({
+                file: rel(mainFile),
+                action: 'skip',
+                detail: `no bare <ErrorBoundary>; pass ${reporter} to its onError by hand`,
+            });
+        } else {
+            const line = `import { ${reporter} } from ${quote(from)};`;
+            const withImport = /^import \{ ErrorBoundary \} from .*;\r?$/m.test(main)
+                ? insertLine(main, line, { after: /^import \{ ErrorBoundary \} from .*;$/ })
+                : insertLine(main, line, { after: /^import .* from '.*';$/ });
+            steps.push({
+                file: rel(mainFile),
+                action: 'edit',
+                detail: `root <ErrorBoundary> reports to ${reporter}`,
+                content: withImport
+                    .split('<ErrorBoundary>')
+                    .join(`<ErrorBoundary onError={(error) => ${reporter}(error)}>`),
+            });
+        }
+    }
+
     return { app: appName, appDir, package: pkg, steps };
 }
 
@@ -442,9 +573,7 @@ export async function addPackage(
     const next = ['pnpm install', 'pnpm build:pkg'];
     const compositions = steps.filter((step) => step.action === 'create' && step.file.includes('/ottabase/packages/'));
     if (compositions.length) next.push(`Review ${compositions.map((step) => step.file).join(', ')}`);
-    next.push(
-        `Read ${descriptors.map((pkg) => `${pkg.dir}/README.md`).join(' and ')}: secrets and user routes are yours`,
-    );
+    next.push(`Read ${descriptors.map((pkg) => `${pkg.dir}/README.md`).join(' and ')}: the secrets are yours`);
     next.push(`otta type-check ${app.name} && otta test ${app.name}`);
     next.forEach((step, index) => log.dim(`  ${index + 1}. ${step}`));
     return plans;

@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- `otta add` reaches into the SPA shell when a package asks: `routes` in the `ottabase` descriptor are registered in
+  `src/router.tsx` (`<key><Path>Route` constants in `coreRoutes`, public or protected), and `errorReporter` is imported
+  into `src/main.tsx` and handed to the root `<ErrorBoundary onError>`. A router without `coreRoutes`, or a boundary
+  that already reports somewhere, is left alone and the plan says what to do by hand. `otta add pro` now installs
+  Ottabase Pro with no manual wiring left.
+
 - `@ottabase/screenshot`: automated screenshots, ported from Tuskly's docs-image script. One CDP runner (`captureShot`)
   drives a local Chrome from Node (`@ottabase/screenshot/node`: `runShots`, zero-dependency CDP over WebSocket) or a
   Cloudflare Browser Rendering session (`POST /api/screenshot/capture`, session + rate limit, same-origin paths only).

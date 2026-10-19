@@ -389,11 +389,17 @@ free package. Rendered pages and Drizzle's static schema export are explicit bui
 app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
 An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
-| Package                      | Purpose                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| `@ottabase/premium`          | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
-| `@ottabase/webhooks`         | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
-| `@ottabase/vault`            | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
+| Package              | Purpose                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `@ottabase/premium`  | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
+| `@ottabase/webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
+| `@ottabase/vault`    | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
+
+**Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board), PayPort (sell plans
+to your app's users), Blackbox (error tracking), Beacon (a status page) and Workbench (the database inside the admin),
+sold as source with access to a private repository as the license. Three yearly licenses, priced by how many people
+commit (Solo, Team, Company); cancel and the code you pulled stays yours. See
+[ottabase.com/pro](https://ottabase.com/pro).
 
 See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
@@ -1804,7 +1810,7 @@ Use this as the default decision tree when shipping new work.
     - Needs DB persistence: follow OttaORM split below.
 2. **One manifest (`@ottabase/kernel`), one list**
     - The package exports a manifest:
-      `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health, lifecycle })`
+      `definePackage({ key, name, version, tables, migrations, models, policies, routes, cron, queue, events, nav, env, health, lifecycle, errors })`
       from `packages/<pkg>/src/manifest.ts`. Expose it as `createXPackage(options)` when the host must supply something
       (routes whose handlers live in the app, a structural dial such as the blog mode). Tables are keyed by their export
       name and MUST end in `Table`.
@@ -6097,7 +6103,8 @@ import { ComponentName } from '@ottabase/package-name/component-name';
 - Declare `lint`, `type-check`, `test` and `build` scripts (exception: `./src`-exported packages omit `build`, see
   AGENTS.MD)
 - Include package sources in consumer app Tailwind config
-- Add an `ottabase` descriptor to package.json (`{ "key", "factory", "export"?, "manifestImport"?, "tables"? }`) so
+- Add an `ottabase` descriptor to package.json
+  (`{ "key", "factory", "export"?, "manifestImport"?, "tables"?, "adminPages"?, "routes"?, "errorReporter"? }`) so
   `otta add <package> <app>` can install it; see `packages/cli/README.md`
 - Prove the package in the app shape it is for: `apps/otta-web` (SPA + admin) or `apps/otta-worker` (single Worker); the
   packages-registration test in each app catches a table or client key that did not arrive
@@ -6298,9 +6305,9 @@ const { publicKey, privateKey } = await generateLicenseKeypair(); // publicKey �
 Keep the private key where release signing material lives — **never in the repo, never in the app, never in an env var
 the app can read**. Anyone holding it can mint licenses for your package forever.
 
-Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See
-`packages/webhooks` for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free
-tier, and a licensed delivery log.
+Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See `packages/webhooks`
+for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free tier, and a licensed delivery
+log.
 
 `packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
 manual backup, restore and delete are free (five kept backups), the nightly schedule, retention and operator tenant
@@ -6314,6 +6321,12 @@ and as free tiers that make clone-and-use credible. Anything meant to earn lives
 repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: the beacon
 (`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
 cockpit that watches a fleet of beacons is a private Premium Package.
+
+That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon and Workbench,
+installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token at all because
+repository access is the license. It is sold as three yearly licenses split by how many people commit (Solo, Team,
+Company); a lapsed subscription loses repository access and nothing else. See
+[ottabase.com/pro](https://ottabase.com/pro).
 
 ### Design notes worth copying
 
@@ -6335,6 +6348,7 @@ cockpit that watches a fleet of beacons is a private Premium Package.
 - [`packages/webhooks/README.md`](../packages/webhooks/README.md) — the worked example
 - [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
+- [ottabase.com/pro](https://ottabase.com/pro) — Ottabase Pro, the commercial bundle
 
 
 ---
@@ -8253,8 +8267,8 @@ import { vi } from 'vitest';
 
 Coverage is a report, not a CI gate (CI runs `test`, never `--coverage`). A package sets `coverage.thresholds` in its
 own `vitest.config.ts` only for a floor it currently meets, so a threshold failure means a real regression. Packages
-with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `ui-tailwind`, `webhooks`.
-Every config uses `coverage.include: ['src/**/*.{ts,tsx}']` so untested source files still count (Vitest 4 removed
+with thresholds today: `api`, `i18n`, `ottaai`, `ottadate`, `ottarouter`, `premium`, `ui-tailwind`, `webhooks`. Every
+config uses `coverage.include: ['src/**/*.{ts,tsx}']` so untested source files still count (Vitest 4 removed
 `coverage.all`).
 
 ### Excluded from Coverage
@@ -12700,6 +12714,7 @@ pnpm otta templates
 otta add vault                      # @ottabase/vault into the default app
 otta add @ottabase/postmaster my-app
 otta add meter my-app --dry-run     # show the file changes, write nothing
+otta add pro my-app                 # every package of a bundle (packages/pro/*), pages included
 ```
 
 One command does every wiring step the package contract needs: the `workspace:*` dependency, a composition file under
@@ -12720,6 +12735,20 @@ A package opts in with an `ottabase` field in its package.json:
 
 `export` defaults to `<key>Package`, `manifestImport` to the package name (`@ottabase/ottaai` sets it to
 `@ottabase/ottaai/manifest`), and `tables` is omitted when the package owns no Drizzle tables.
+
+A package with a user interface can say more, and `otta add` writes that too:
+
+- `adminPages`: entries for the client descriptor (path, title, icon, group, page module, export).
+- An `app/` folder mirroring the app layout (`app/ottabase/packages/<key>.ts`, `app/src/pages/…`): copied in where the
+  app has no such file yet. A shipped composition wins over the reference app's.
+- `routes`: SPA pages registered in `src/router.tsx` as `<key><Path>Route` constants listed in `coreRoutes`, e.g.
+  `{ "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" }` (`access` defaults to
+  `protected`, a signed-in page).
+- `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
+  `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
+
+A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do by
+hand.
 
 ### Starting apps and environments
 
@@ -12889,21 +12918,21 @@ pnpm otta info my-app
 `otta` is the command name the published binary installs. Inside this monorepo the root package does not link its own
 bin, so invoke it through the workspace script: `pnpm otta <command>`.
 
-| Command                      | Description                                              |
-| ---------------------------- | -------------------------------------------------------- |
-| `otta new <template> <name>` | Create a new app from a template                         |
-| `otta add <package> [app]`   | Wire a workspace package into an app (`--dry-run`)       |
-| `otta start [app]`           | Start development or a named local Wrangler environment  |
-| `otta dev [app]`             | Start the hot-reload development topology                |
-| `otta preview [app]`         | Build and start the preview Wrangler environment locally |
-| `otta build <app>`           | Build an app for production                              |
-| `otta test <app>`            | Run tests for an app                                     |
-| `otta lint <app>`            | Lint an app                                              |
-| `otta type-check <app>`      | Type check an app                                        |
-| `otta clean <app>`           | Clean build artifacts                                    |
-| `otta list`                  | List all apps in the monorepo                            |
-| `otta info <app>`            | Show detailed info about an app                          |
-| `otta templates`             | Show available templates                                 |
+| Command                      | Description                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `otta new <template> <name>` | Create a new app from a template                                                                |
+| `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`) |
+| `otta start [app]`           | Start development or a named local Wrangler environment                                         |
+| `otta dev [app]`             | Start the hot-reload development topology                                                       |
+| `otta preview [app]`         | Build and start the preview Wrangler environment locally                                        |
+| `otta build <app>`           | Build an app for production                                                                     |
+| `otta test <app>`            | Run tests for an app                                                                            |
+| `otta lint <app>`            | Lint an app                                                                                     |
+| `otta type-check <app>`      | Type check an app                                                                               |
+| `otta clean <app>`           | Clean build artifacts                                                                           |
+| `otta list`                  | List all apps in the monorepo                                                                   |
+| `otta info <app>`            | Show detailed info about an app                                                                 |
+| `otta templates`             | Show available templates                                                                        |
 
 ## Templates
 
@@ -15064,6 +15093,11 @@ export const notesPackage = definePackage<CloudflareEnv>({
 | `env`             | Required keys are checked by the health report                                     |
 | `health`          | Probed by `/api/health`                                                            |
 | `lifecycle`       | `onInstall` / `onUpgrade` run from the init route, versions recorded in KV         |
+| `errors`          | `report(incident)` receives every unhandled error the host hands to the registry   |
+
+`registry.report(incident)` fans an incident out to every `errors` reporter and never rejects. A request boundary passes
+`waitUntil` and does not wait; a scheduled task or queue batch has no `waitUntil` and must `await` it, or the reports
+die with the handler.
 
 Cron handler names and queue job types are app-wide. Namespace them (`notes:purge`); the registry throws on a clash.
 
@@ -23291,211 +23325,6 @@ pnpm --filter @ottabase/premium test
 
 ---
 
-# packages/webhooks/README.md
-
-# @ottabase/webhooks
-
-Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
-[`@ottabase/premium`](../premium/README.md).
-
-Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed deliveries. The package ships a
-genuinely usable free tier and sells the parts that cost money to run.
-
-| Tier               | Endpoints | Signed delivery | Endpoint health | Delivery history |
-| ------------------ | --------- | --------------- | --------------- | ---------------- |
-| No license         | 1         | ✓               | ✓               | ✗                |
-| Demo "pro" license | 25        | ✓               | ✓               | ✓                |
-
-That split is the point of the example: it exercises a **limit** gate, a **feature** gate, and a free tier that stays
-reachable when the license lapses.
-
-## Try it in otta-web
-
-The package is already listed in `apps/otta-web/ottabase/packages.ts` (`ottabase/packages/webhooks.ts`).
-
-1. Run migrations so the two tables exist: `curl -X POST http://localhost:3004/api/ottaorm/init`
-2. Open **Admin → Growth → Webhooks**. With no license you can add **one** endpoint; the second attempt is refused with
-   402 and the UI says why.
-3. Open **Admin → Growth → Premium packages**, paste the demo license below, and press _Activate_.
-4. Back on the webhooks page: the ceiling is now 25 and the delivery log has replaced its upsell.
-
-```text
-otta_premium_v1.eyJpZCI6ImxpY19kZW1vX3Byb18wMDAxIiwicGtnIjoid2ViaG9va3MiLCJwbGFuIjoicHJvIiwibGljZW5zZWUiOiJPdHRhYmFzZSBEZW1vIiwiZmVhdHVyZXMiOlsiZGVsaXZlcmllcy5sb2ciLCJjdXN0b20taGVhZGVycyJdLCJsaW1pdHMiOnsiZW5kcG9pbnRzIjoyNX0sImlhdCI6MTczNTY4OTYwMH0.yNy_XM1hjiwMCqOQUwC4INMt6FZ19jObyESanPU_C5hPv6cQhl0FbXwIXCvfn-smOz2ziqFIi784Mp4ErZ68mg
-```
-
-Or set it per deploy, which takes precedence over anything pasted in the UI:
-
-```bash
-PREMIUM_LICENSE_WEBHOOKS=otta_premium_v1.…
-```
-
-## Licensing
-
-**The demo keypair in `src/demo-license.ts` is published on purpose — including the private key.** Anyone can mint a
-license for `webhooks`; that is what makes the flow above try-able without buying anything.
-
-A real vendor generates its own keypair, puts only the **public** key in the manifest, and keeps the private key
-wherever release signing material lives:
-
-```typescript
-import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-tools';
-
-const { publicKey, privateKey } = await generateLicenseKeypair();
-
-const token = await issueLicense(
-    {
-        pkg: 'webhooks',
-        plan: 'pro',
-        licensee: 'Customer Inc',
-        features: ['deliveries.log'],
-        limits: { endpoints: 25 },
-    },
-    privateKey,
-    { expiresInDays: 365 },
-);
-```
-
-## Registering it in an app
-
-```typescript
-// apps/otta-web/ottabase/packages/webhooks.ts
-import { createWebhooksPackage } from '@ottabase/webhooks';
-
-export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
-    // How the HOST authenticates. This package never reads a header to decide tenancy.
-    resolveCaller: async (request, env) => {
-        const session = await getSession(request, env);
-        if (!session?.user) return null;
-        return {
-            userId: session.user.id,
-            organizationId: session.user.organizationId ?? null,
-            appId: getOttabaseConfig(env).appId,
-            canManage: hasGrantedPermission(session.user.permissions, 'org:admin'),
-        };
-    },
-    // This catalog is descriptive. Only list events your host actually dispatches.
-    events: ['ping', 'todo.created'],
-});
-
-// ottabase/packages.ts
-definePackageList(() => [corePackage, appPackage, /* … */ webhooksPackage]);
-```
-
-The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the premium registry behind
-its entitlement gate) and the nav entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
-
-`/events` is an event catalog, not an event bus. `ping` is emitted by the built-in test route; every product event must
-be dispatched from its real, tenant-scoped domain write (as shown below). The template app therefore advertises only
-`ping` until its product adds such producers.
-
-A rendered admin page still needs the explicit app-side client adapter described in `@ottabase/premium`; this keeps
-server authentication code out of the browser bundle.
-
-## Sending events
-
-```typescript
-import { dispatchWebhookEvent } from '@ottabase/webhooks';
-
-await dispatchWebhookEvent({
-    registry: premium,
-    env,
-    event: 'todo.created',
-    payload: { id: todo.id, title: todo.title },
-    tenant: { organizationId, appId, userId }, // userId is required when organizationId is null
-});
-```
-
-For a globally strict endpoint ceiling, the host should also pass an `endpointQuota` coordinator to
-`createWebhooksPackage()`. It reserves a short-lived slot using a tenant-scoped coordinator (the template app uses a
-Cloudflare Durable Object) before the OttaORM create, commits or releases it afterwards, and reconciles successful
-deletes. The package's built-in lock is intentionally only an in-isolate fallback for hosts that do not make that
-stronger promise.
-
-Safe to call unconditionally: a disabled or uninstalled package returns `[]`, while an unlicensed package delivers its
-free tier, so host code never has to ask whether the add-on is installed.
-
-**Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue — a retry loop on the request
-path turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
-consumer can own the retry policy.
-
-An unlicensed package delivers its free tier; only a disabled or uninstalled package returns no deliveries. Personal
-dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
-
-## Receiving and verifying
-
-Every request carries:
-
-| Header                 | Value                                        |
-| ---------------------- | -------------------------------------------- |
-| `X-Ottabase-Signature` | `t=<unix-seconds>,v1=<hex hmac-sha256>`      |
-| `X-Ottabase-Event`     | Event name, so you can route without parsing |
-| `X-Ottabase-Delivery`  | Delivery id, for idempotent receivers        |
-
-The signature covers `` `${timestamp}.${body}` `` — the timestamp is **inside** the signed string, so a receiver that
-enforces a tolerance window actually rejects replays. Verify with the helper rather than re-implementing it:
-
-```typescript
-import { verifySignatureHeader } from '@ottabase/webhooks';
-
-const body = await request.text();
-const valid = await verifySignatureHeader(mySecret, body, request.headers.get('X-Ottabase-Signature'));
-if (!valid) return new Response('bad signature', { status: 401 });
-```
-
-The signing secret is returned **exactly once**, in the create response. It is not retrievable afterwards; delete and
-recreate the endpoint if it is lost.
-
-## API
-
-All routes are mounted at `/api/webhooks` with `gate: 'entitlements'` — the namespace stays reachable so the free tier
-works, and each paid path guards itself.
-
-| Method   | Path          | Gate                     |
-| -------- | ------------- | ------------------------ |
-| `GET`    | `/events`     | free                     |
-| `GET`    | `/`           | free                     |
-| `POST`   | `/`           | limit `endpoints`        |
-| `PATCH`  | `/:id`        | free                     |
-| `DELETE` | `/:id`        | free                     |
-| `POST`   | `/:id/test`   | free                     |
-| `GET`    | `/deliveries` | feature `deliveries.log` |
-
-## Security notes
-
-- **HTTPS only**, no credentials in the URL, and literal private/loopback/link-local destinations are refused on write.
-- **Redirects are never followed** (`redirect: 'manual'`) — a 3xx into an internal address would re-open SSRF after the
-  URL check passed.
-- **What this cannot do:** stop a hostname that _resolves_ to a private address. That needs DNS resolution before the
-  request, which the Workers runtime does not expose. Deployments with sensitive internal services should route
-  deliveries through an egress proxy that enforces the network boundary properly.
-- **Delivery errors are summarized, never logged raw** — a fetch error can carry the signed body and the full URL into a
-  log sink.
-- The signing secret is **not encrypted at rest**. It is a per-endpoint shared secret that must be readable to sign; a
-  package needing envelope encryption should follow `@ottabase/ottaai`'s credential store instead.
-
-## Tenant isolation
-
-Organization endpoints are scoped by verified `appId` and `organizationId`. Personal endpoints are scoped by `appId`,
-`organizationId: null`, and `userId`; every query must retain all of those scope fields.
-
-## Tailwind
-
-Add to the consuming app's `content` array, or the components render unstyled with no error:
-
-```javascript
-'../../packages/webhooks/src/**/*.{js,ts,jsx,tsx}';
-```
-
-## Testing
-
-```bash
-pnpm --filter @ottabase/webhooks build
-pnpm --filter @ottabase/webhooks test
-```
-
-
----
-
 # packages/queue/README.md
 
 # @ottabase/queue
@@ -27588,3 +27417,208 @@ purchase URL, which is what the admin page renders as the upsell.
 - **Ceilings** (marked `ponytail:` in the code): a table's NDJSON is built in memory before the put, and a
   `WITHOUT ROWID` table is read in one query. Both hold comfortably for the databases D1 serves; the upgrade path is an
   R2 multipart upload per page.
+
+
+---
+
+# packages/webhooks/README.md
+
+# @ottabase/webhooks
+
+Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
+[`@ottabase/premium`](../premium/README.md).
+
+Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed deliveries. The package ships a
+genuinely usable free tier and sells the parts that cost money to run.
+
+| Tier               | Endpoints | Signed delivery | Endpoint health | Delivery history |
+| ------------------ | --------- | --------------- | --------------- | ---------------- |
+| No license         | 1         | ✓               | ✓               | ✗                |
+| Demo "pro" license | 25        | ✓               | ✓               | ✓                |
+
+That split is the point of the example: it exercises a **limit** gate, a **feature** gate, and a free tier that stays
+reachable when the license lapses.
+
+## Try it in otta-web
+
+The package is already listed in `apps/otta-web/ottabase/packages.ts` (`ottabase/packages/webhooks.ts`).
+
+1. Run migrations so the two tables exist: `curl -X POST http://localhost:3004/api/ottaorm/init`
+2. Open **Admin → Growth → Webhooks**. With no license you can add **one** endpoint; the second attempt is refused with
+   402 and the UI says why.
+3. Open **Admin → Growth → Premium packages**, paste the demo license below, and press _Activate_.
+4. Back on the webhooks page: the ceiling is now 25 and the delivery log has replaced its upsell.
+
+```text
+otta_premium_v1.eyJpZCI6ImxpY19kZW1vX3Byb18wMDAxIiwicGtnIjoid2ViaG9va3MiLCJwbGFuIjoicHJvIiwibGljZW5zZWUiOiJPdHRhYmFzZSBEZW1vIiwiZmVhdHVyZXMiOlsiZGVsaXZlcmllcy5sb2ciLCJjdXN0b20taGVhZGVycyJdLCJsaW1pdHMiOnsiZW5kcG9pbnRzIjoyNX0sImlhdCI6MTczNTY4OTYwMH0.yNy_XM1hjiwMCqOQUwC4INMt6FZ19jObyESanPU_C5hPv6cQhl0FbXwIXCvfn-smOz2ziqFIi784Mp4ErZ68mg
+```
+
+Or set it per deploy, which takes precedence over anything pasted in the UI:
+
+```bash
+PREMIUM_LICENSE_WEBHOOKS=otta_premium_v1.…
+```
+
+## Licensing
+
+**The demo keypair in `src/demo-license.ts` is published on purpose — including the private key.** Anyone can mint a
+license for `webhooks`; that is what makes the flow above try-able without buying anything.
+
+A real vendor generates its own keypair, puts only the **public** key in the manifest, and keeps the private key
+wherever release signing material lives:
+
+```typescript
+import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-tools';
+
+const { publicKey, privateKey } = await generateLicenseKeypair();
+
+const token = await issueLicense(
+    {
+        pkg: 'webhooks',
+        plan: 'pro',
+        licensee: 'Customer Inc',
+        features: ['deliveries.log'],
+        limits: { endpoints: 25 },
+    },
+    privateKey,
+    { expiresInDays: 365 },
+);
+```
+
+## Registering it in an app
+
+```typescript
+// apps/otta-web/ottabase/packages/webhooks.ts
+import { createWebhooksPackage } from '@ottabase/webhooks';
+
+export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
+    // How the HOST authenticates. This package never reads a header to decide tenancy.
+    resolveCaller: async (request, env) => {
+        const session = await getSession(request, env);
+        if (!session?.user) return null;
+        return {
+            userId: session.user.id,
+            organizationId: session.user.organizationId ?? null,
+            appId: getOttabaseConfig(env).appId,
+            canManage: hasGrantedPermission(session.user.permissions, 'org:admin'),
+        };
+    },
+    // This catalog is descriptive. Only list events your host actually dispatches.
+    events: ['ping', 'todo.created'],
+});
+
+// ottabase/packages.ts
+definePackageList(() => [corePackage, appPackage, /* … */ webhooksPackage]);
+```
+
+The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the premium registry behind
+its entitlement gate) and the nav entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
+
+`/events` is an event catalog, not an event bus. `ping` is emitted by the built-in test route; every product event must
+be dispatched from its real, tenant-scoped domain write (as shown below). The template app therefore advertises only
+`ping` until its product adds such producers.
+
+A rendered admin page still needs the explicit app-side client adapter described in `@ottabase/premium`; this keeps
+server authentication code out of the browser bundle.
+
+## Sending events
+
+```typescript
+import { dispatchWebhookEvent } from '@ottabase/webhooks';
+
+await dispatchWebhookEvent({
+    registry: premium,
+    env,
+    event: 'todo.created',
+    payload: { id: todo.id, title: todo.title },
+    tenant: { organizationId, appId, userId }, // userId is required when organizationId is null
+});
+```
+
+For a globally strict endpoint ceiling, the host should also pass an `endpointQuota` coordinator to
+`createWebhooksPackage()`. It reserves a short-lived slot using a tenant-scoped coordinator (the template app uses a
+Cloudflare Durable Object) before the OttaORM create, commits or releases it afterwards, and reconciles successful
+deletes. The package's built-in lock is intentionally only an in-isolate fallback for hosts that do not make that
+stronger promise.
+
+Safe to call unconditionally: a disabled or uninstalled package returns `[]`, while an unlicensed package delivers its
+free tier, so host code never has to ask whether the add-on is installed.
+
+**Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue — a retry loop on the request
+path turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
+consumer can own the retry policy.
+
+An unlicensed package delivers its free tier; only a disabled or uninstalled package returns no deliveries. Personal
+dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
+
+## Receiving and verifying
+
+Every request carries:
+
+| Header                 | Value                                        |
+| ---------------------- | -------------------------------------------- |
+| `X-Ottabase-Signature` | `t=<unix-seconds>,v1=<hex hmac-sha256>`      |
+| `X-Ottabase-Event`     | Event name, so you can route without parsing |
+| `X-Ottabase-Delivery`  | Delivery id, for idempotent receivers        |
+
+The signature covers `` `${timestamp}.${body}` `` — the timestamp is **inside** the signed string, so a receiver that
+enforces a tolerance window actually rejects replays. Verify with the helper rather than re-implementing it:
+
+```typescript
+import { verifySignatureHeader } from '@ottabase/webhooks';
+
+const body = await request.text();
+const valid = await verifySignatureHeader(mySecret, body, request.headers.get('X-Ottabase-Signature'));
+if (!valid) return new Response('bad signature', { status: 401 });
+```
+
+The signing secret is returned **exactly once**, in the create response. It is not retrievable afterwards; delete and
+recreate the endpoint if it is lost.
+
+## API
+
+All routes are mounted at `/api/webhooks` with `gate: 'entitlements'` — the namespace stays reachable so the free tier
+works, and each paid path guards itself.
+
+| Method   | Path          | Gate                     |
+| -------- | ------------- | ------------------------ |
+| `GET`    | `/events`     | free                     |
+| `GET`    | `/`           | free                     |
+| `POST`   | `/`           | limit `endpoints`        |
+| `PATCH`  | `/:id`        | free                     |
+| `DELETE` | `/:id`        | free                     |
+| `POST`   | `/:id/test`   | free                     |
+| `GET`    | `/deliveries` | feature `deliveries.log` |
+
+## Security notes
+
+- **HTTPS only**, no credentials in the URL, and literal private/loopback/link-local destinations are refused on write.
+- **Redirects are never followed** (`redirect: 'manual'`) — a 3xx into an internal address would re-open SSRF after the
+  URL check passed.
+- **What this cannot do:** stop a hostname that _resolves_ to a private address. That needs DNS resolution before the
+  request, which the Workers runtime does not expose. Deployments with sensitive internal services should route
+  deliveries through an egress proxy that enforces the network boundary properly.
+- **Delivery errors are summarized, never logged raw** — a fetch error can carry the signed body and the full URL into a
+  log sink.
+- The signing secret is **not encrypted at rest**. It is a per-endpoint shared secret that must be readable to sign; a
+  package needing envelope encryption should follow `@ottabase/ottaai`'s credential store instead.
+
+## Tenant isolation
+
+Organization endpoints are scoped by verified `appId` and `organizationId`. Personal endpoints are scoped by `appId`,
+`organizationId: null`, and `userId`; every query must retain all of those scope fields.
+
+## Tailwind
+
+Add to the consuming app's `content` array, or the components render unstyled with no error:
+
+```javascript
+'../../packages/webhooks/src/**/*.{js,ts,jsx,tsx}';
+```
+
+## Testing
+
+```bash
+pnpm --filter @ottabase/webhooks build
+pnpm --filter @ottabase/webhooks test
+```

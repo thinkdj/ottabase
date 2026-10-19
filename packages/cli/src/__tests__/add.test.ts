@@ -30,6 +30,22 @@ function fixture(): string {
         }),
     );
     write('packages/plain/package.json', JSON.stringify({ name: '@ottabase/plain' }));
+    // A package that reaches into the SPA shell: two routes and an error reporter.
+    write(
+        'packages/pulse/package.json',
+        JSON.stringify({
+            name: '@ottabase/pulse',
+            ottabase: {
+                key: 'pulse',
+                factory: 'createPulsePackage',
+                routes: [
+                    { path: '/status', page: 'status/StatusPage', export: 'StatusPage', access: 'public' },
+                    { path: '/plans', page: 'user/PlansPage', export: 'PlansPage' },
+                ],
+                errorReporter: { import: './lib/pulse', export: 'report' },
+            },
+        }),
+    );
     // A bundle: packages/pro has no package.json of its own, two packages inside.
     write(
         'packages/pro/tower/package.json',
@@ -106,6 +122,31 @@ function fixture(): string {
             '// Statically re-exported so drizzle-kit sees them without evaluating config.',
             "export { apiKeysTable } from '@ottabase/apikeys/schema';",
             "export { brandKitsTable } from '@ottabase/brand-engine/persistence';",
+            '',
+        ].join('\n'),
+    );
+    write(
+        'apps/bar/src/router.tsx',
+        [
+            "const indexRoute = publicRoute('/', () => import('@/pages/IndexPage'));",
+            '',
+            '// ─── Route assembly ───',
+            '',
+            'const coreRoutes = [',
+            '    indexRoute,',
+            '];',
+            '',
+        ].join('\n'),
+    );
+    write(
+        'apps/bar/src/main.tsx',
+        [
+            "import React from 'react';",
+            "import { ErrorBoundary } from './components/ErrorBoundary';",
+            "import { router } from './router';",
+            '',
+            'render(<ErrorBoundary><Embed /></ErrorBoundary>);',
+            'render(<ErrorBoundary><App router={router} /></ErrorBoundary>);',
             '',
         ].join('\n'),
     );
@@ -332,5 +373,83 @@ describe('planAdd and applyAdd', () => {
         expect(list).toContain("import { vaultPackage } from './packages/vault';\r\n");
         expect(list.includes('\n') && !/[^\r]\n/.test(list)).toBe(true);
         expect(() => planAdd(root, 'missing', readPackageDescriptor(root, 'vault'))).toThrow(/has no package.json/);
+    });
+});
+
+describe('routes and the error reporter', () => {
+    it('registers the routes and hands boundary errors to the reporter, once', () => {
+        const root = fixture();
+        const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        expect(plan.steps.slice(-2).map((step) => [step.action, step.file, step.detail])).toEqual([
+            ['edit', 'apps/bar/src/router.tsx', 'register /status, /plans'],
+            ['edit', 'apps/bar/src/main.tsx', 'root <ErrorBoundary> reports to report'],
+        ]);
+        applyAdd(root, plan);
+
+        const router = text(root, 'apps/bar/src/router.tsx');
+        expect(router).toContain(
+            [
+                '// @ottabase/pulse: added by `otta add`.',
+                "const pulseStatusRoute = publicRoute('/status', () =>",
+                "    import('@/pages/status/StatusPage').then((m) => ({ default: m.StatusPage })),",
+                ');',
+                "const pulsePlansRoute = protectedRoute('/plans', () => import('@/pages/user/PlansPage'), 'PlansPage');",
+                '',
+                '// ─── Route assembly ───',
+            ].join('\n'),
+        );
+        expect(router).toContain(
+            'const coreRoutes = [\n    pulseStatusRoute,\n    pulsePlansRoute,\n    indexRoute,\n];',
+        );
+
+        const main = text(root, 'apps/bar/src/main.tsx');
+        expect(main).toContain(
+            "import { ErrorBoundary } from './components/ErrorBoundary';\nimport { report } from './lib/pulse';\n",
+        );
+        expect(main.match(/<ErrorBoundary onError=\{\(error\) => report\(error\)\}>/g)).toHaveLength(2);
+        expect(main).not.toContain('<ErrorBoundary>');
+
+        const again = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        expect(again.steps.every((step) => step.action === 'skip')).toBe(true);
+    });
+
+    it('leaves a router without coreRoutes and a boundary that already reports to the developer', () => {
+        const root = fixture();
+        fs.writeFileSync(path.join(root, 'apps/bar/src/router.tsx'), 'export const routes = [];\n');
+        fs.writeFileSync(
+            path.join(root, 'apps/bar/src/main.tsx'),
+            'render(<ErrorBoundary onError={log}><App /></ErrorBoundary>);\n',
+        );
+        const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        expect(plan.steps.slice(-2)).toEqual([
+            {
+                file: 'apps/bar/src/router.tsx',
+                action: 'skip',
+                detail: 'no coreRoutes; register /status, /plans by hand',
+            },
+            {
+                file: 'apps/bar/src/main.tsx',
+                action: 'skip',
+                detail: 'no bare <ErrorBoundary>; pass report to its onError by hand',
+            },
+        ]);
+    });
+
+    it('refuses a route or a reporter it could not write safely', () => {
+        const root = fixture();
+        const file = path.join(root, 'packages/pulse/package.json');
+        const pkg = fs.readJsonSync(file);
+        type Meta = { routes: Record<string, string>[]; errorReporter: Record<string, string> };
+        const attempt = (change: (meta: Meta) => void) => {
+            const meta = structuredClone(pkg.ottabase);
+            change(meta);
+            fs.writeJsonSync(file, { ...pkg, ottabase: meta });
+            return () => readPackageDescriptor(root, 'pulse');
+        };
+        expect(readPackageDescriptor(root, 'pulse').routes).toHaveLength(2);
+        expect(attempt((meta) => (meta.routes[0].path = "/x');alert(1)//"))).toThrow(/lowercase absolute path/);
+        expect(attempt((meta) => (meta.routes[0].access = 'admin'))).toThrow(/"public" or "protected"/);
+        expect(attempt((meta) => delete meta.routes[1].export)).toThrow(/needs path, page and an export name/);
+        expect(attempt((meta) => (meta.errorReporter.export = 'a b'))).toThrow(/errorReporter needs/);
     });
 });

@@ -61,6 +61,20 @@ A package opts in with an `ottabase` field in its package.json:
 `export` defaults to `<key>Package`, `manifestImport` to the package name (`@ottabase/ottaai` sets it to
 `@ottabase/ottaai/manifest`), and `tables` is omitted when the package owns no Drizzle tables.
 
+A package with a user interface can say more, and `otta add` writes that too:
+
+- `adminPages`: entries for the client descriptor (path, title, icon, group, page module, export).
+- An `app/` folder mirroring the app layout (`app/ottabase/packages/<key>.ts`, `app/src/pages/…`): copied in where the
+  app has no such file yet. A shipped composition wins over the reference app's.
+- `routes`: SPA pages registered in `src/router.tsx` as `<key><Path>Route` constants listed in `coreRoutes`, e.g.
+  `{ "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" }` (`access` defaults to
+  `protected`, a signed-in page).
+- `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
+  `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
+
+A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do
+by hand.
+
 ### Starting apps and environments
 
 ```bash
