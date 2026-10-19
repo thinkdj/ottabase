@@ -142,7 +142,8 @@ describe('mounted routes', () => {
 
     it('mounts the webhooks namespace and serves its free tier without a license', async () => {
         const { app, mounted, env } = buildApp({});
-        expect([...mounted].sort()).toEqual(['/api/vault', WEBHOOKS_BASE_PATH]);
+        // Containing, not equal: an app that lists more packages (`otta add pro`) mounts more.
+        expect([...mounted]).toEqual(expect.arrayContaining(['/api/vault', WEBHOOKS_BASE_PATH]));
         const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), env);
         // The free path answers (401 from the caller resolver, since there is no session),
         // never 402: `entitlements` gating keeps the namespace reachable.
