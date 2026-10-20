@@ -11,6 +11,10 @@ import { describe, expect, it } from 'vitest';
 // EmbedApp module — we import the router internals indirectly via the module
 // ---------------------------------------------------------------------------
 
+// Each import below loads a whole React tree cold: a few seconds alone, past the 10s default when
+// the machine runs every package's suite at once.
+const COLD_IMPORT = { timeout: 30_000 };
+
 describe('Embed system', () => {
     describe('main.tsx embed detection', () => {
         it('detects /embed prefix correctly', () => {
@@ -28,7 +32,7 @@ describe('Embed system', () => {
     });
 
     describe('EmbedDocsPage', () => {
-        it('uses correct base path', async () => {
+        it('uses correct base path', COLD_IMPORT, async () => {
             // Verify the BASE_PATH constant matches the route definition
             const mod = await import('../embed/routes/EmbedDocsPage');
             // EmbedDocsPage is a function component — it should be defined
@@ -38,7 +42,7 @@ describe('Embed system', () => {
     });
 
     describe('EmbedApp', () => {
-        it('exports EmbedApp component', async () => {
+        it('exports EmbedApp component', COLD_IMPORT, async () => {
             const mod = await import('../embed/EmbedApp');
             expect(mod.EmbedApp).toBeDefined();
             expect(typeof mod.EmbedApp).toBe('function');
