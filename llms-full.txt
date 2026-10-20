@@ -396,10 +396,10 @@ An app with no Premium Packages is completely unaffected: nothing mounts and not
 | `@ottabase/vault`    | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
 
 **Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board), PayPort (sell plans
-to your app's users), Blackbox (error tracking), Beacon (a status page) and Workbench (the database inside the admin),
-sold as source with access to a private repository as the license. Three yearly licenses, priced by how many people
-commit (Solo, Team, Company); cancel and the code you pulled stays yours. See
-[ottabase.com/pro](https://ottabase.com/pro).
+to your app's users), Blackbox (error tracking), Beacon (a status page), Workbench (the database inside the admin) and
+Helpdesk (a support inbox with the customer's plan and errors beside it), sold as source with access to a private
+repository as the license. Three yearly licenses, priced by how many people commit (Solo, Team, Company); cancel and the
+code you pulled stays yours. See [ottabase.com/pro](https://ottabase.com/pro).
 
 See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
@@ -5160,11 +5160,20 @@ multi-app: same placeholder name = shared resource; different names = isolated (
             "bucket_name": "ottabase-bucket",
         },
     ],
+    // The producer fills the queue; the consumer is what runs the Worker's queue() handler on it.
+    // Without `consumers`, jobs (queued events, Beacon incident mail) are never processed.
     "queues": {
         "producers": [
             {
                 "binding": "OBCF_QUEUE",
                 "queue": "ottabase-queue",
+            },
+        ],
+        "consumers": [
+            {
+                "queue": "ottabase-queue",
+                "max_batch_size": 10,
+                "max_batch_timeout": 2,
             },
         ],
     },
@@ -5606,7 +5615,8 @@ Or find it at: https://dash.cloudflare.com → Workers & Pages (right sidebar)
 
 1. Go to https://dash.cloudflare.com/profile/api-tokens
 2. Click **"Create Token"** → Use **"Edit Cloudflare Workers"** template
-3. Ensure permissions include: Workers Scripts, KV Storage, D1, Account Settings
+3. Ensure permissions include: Workers Scripts, KV Storage, D1, Queues (the deploy attaches the Worker as the queue's
+   consumer), Account Settings
 4. **Copy the token immediately** (shown only once)
 
 ### Get Resource IDs
@@ -6270,6 +6280,12 @@ Rules that matter:
   lapses gives a bookmarked link a 404 and no explanation; render the upsell instead.
 - **Pass the app's API client** to `request`. It attaches `X-Org-Id` and `X-App-Id`, which select the tenant the server
   resolves against.
+- **One copy of `@ottabase/premium/react` in the bundle.** The provider and every hook must share one React context. In
+  a Vite host whose tsconfig `paths` send the package to source, also alias the specifier for every importer (see
+  `apps/otta-web/vite.config.ts`): a Premium Package compiled from its own source sits outside the app's tsconfig and
+  would resolve it through `exports` to `dist`, a second context. Its gates then stay closed under a mounted provider
+  and its pages render their empty state with no error. `apps/otta-web/src/__tests__/premium-single-instance.test.ts` is
+  the check to copy.
 - `otta-web` already scans `packages/premium*/src` for Tailwind classes. Other hosts should adopt the same glob rather
   than adding each Premium Package one at a time.
 
@@ -6322,10 +6338,10 @@ repository access, with the license token deciding tiers inside it. `packages/fl
 (`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
 cockpit that watches a fleet of beacons is a private Premium Package.
 
-That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon and Workbench,
-installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token at all because
-repository access is the license. It is sold as three yearly licenses split by how many people commit (Solo, Team,
-Company); a lapsed subscription loses repository access and nothing else. See
+That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench and
+Helpdesk, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token at all
+because repository access is the license. It is sold as three yearly licenses split by how many people commit (Solo,
+Team, Company); a lapsed subscription loses repository access and nothing else. See
 [ottabase.com/pro](https://ottabase.com/pro).
 
 ### Design notes worth copying
@@ -12747,8 +12763,10 @@ A package with a user interface can say more, and `otta add` writes that too:
 - `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
   `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
 
-A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do by
-hand.
+A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do
+by hand. So is a path another page already routes; a generated name the app already uses gets a numeric suffix. `page`
+is a module path under `src/pages` (letters, digits, `_`, `-`, `/`), and export names are identifiers that are not
+reserved words.
 
 ### Starting apps and environments
 
@@ -23389,6 +23407,17 @@ export default {
 };
 ```
 
+The Worker also has to be registered as the queue's **consumer** in its wrangler config, next to the producer binding.
+Without the `consumers` entry nothing runs the handler: jobs are accepted, never processed, and nothing reports an
+error. A queue has one consumer, and `env.*` sections repeat both lists (they are not inherited).
+
+```jsonc
+"queues": {
+    "producers": [{ "binding": "MY_QUEUE", "queue": "my-queue" }],
+    "consumers": [{ "queue": "my-queue", "max_batch_size": 10, "max_batch_timeout": 2 }],
+}
+```
+
 ## Deduplication
 
 Prevent duplicate jobs within a time window using KV:
@@ -24197,7 +24226,12 @@ stripping (Node 24+).
     scale: 1.5,               // device pixel ratio 1–2: 1280×800 @1.5 = 1920×1200
     theme: 'dark',            // prefers-color-scheme + the `ottabase.theme` localStorage key
     waitFor: 'Latest posts',  // text that proves the page has its data
+    ignoreSpinners: false,    // true skips the spinner wait, for a page that shows one on purpose
     steps: [{ click: 'Open menu' }, { scrollTo: 'Pricing' }, { type: 'hello' }, { key: '/' }, { wait: 500 }],
+    selector: 'section',      // capture this element's region instead of the viewport
+    selectorText: 'Pricing',  // the first match whose text starts with this (optional)
+    padding: 16,              // CSS px of page kept around it (0 to 200)
+    aspect: 16 / 9,           // width ÷ height: the region grows or shrinks down from the element's top
     optimize: true,           // run the optimization pass (default)
 }
 ```
@@ -24286,7 +24320,8 @@ served as Chrome encodes them.
 ## Limits
 
 Viewport 320–1920 × 240–1920 at scale 1–2. At most 12 steps of up to 200 characters each, and waits of up to 5 s. Each
-wait times out after 30 s (Node: 60 s, route: 20 s). The capture is viewport-only; full-page capture is not supported.
+wait times out after 30 s (Node: 60 s, route: 20 s). A shot is the viewport, or with `selector` one element's region
+(which may run past the viewport); full-page capture is not supported.
 
 
 ---
