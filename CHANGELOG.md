@@ -505,6 +505,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - brand-engine: fixed the `.dark` critical CSS silently falling back to the light palette on KV cache hits — the
   resolved dark theme was dropped by the cache-hit code path, so dark-mode users on a warm cache first-painted the light
   palette until client-side hydration corrected it.
+- otta-web: Premium Package pages (Webhooks, Vault, and every Ottabase Pro page) showed their empty state and loaded
+  nothing. A package compiled from its own source resolved `@ottabase/premium/react` to `dist` while the app's pages
+  used the source copy: two React contexts, so the provider's `mounted` never reached the package's hooks and every
+  query stayed disabled, with no error. `vite.config.ts` now aliases the specifier for every importer, and
+  `premium-single-instance.test.ts` fails if any importer resolves to a second copy.
 
 ### Security (Unreleased)
 

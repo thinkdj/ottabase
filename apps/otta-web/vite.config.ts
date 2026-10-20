@@ -55,6 +55,15 @@ export default defineConfig(({ command }) => ({
             '@': path.resolve(__dirname, './src'),
             '@ottabase/rbac/admin-guard': path.resolve(__dirname, '../../packages/rbac/src/admin-guard.ts'),
             '@ottabase/rbac/request-context': path.resolve(__dirname, '../../packages/rbac/src/request-context.ts'),
+            // @ottabase/premium/react holds a React context (PremiumProvider / usePremiumClient), so it
+            // must resolve to exactly ONE module in the browser bundle. tsconfig `paths` (above) send the
+            // app's own files to source, but a workspace package compiled from its source (webhooks,
+            // vault, every Pro package) is outside this tsconfig and resolves through the package's
+            // `exports` to dist. The page then mounts the provider of one copy while the hooks read the
+            // other's default context: `mounted` stays false and every premium query stays disabled,
+            // which shows as empty pages with no error. Aliases apply to every importer.
+            // Guard: src/__tests__/premium-single-instance.test.ts.
+            '@ottabase/premium/react': path.resolve(__dirname, '../../packages/premium/src/react/index.ts'),
             // Stub @sentry/node in browser build so Vite never bundles it (it uses node:inspector).
             // Logger's SentryTransport will catch and try @sentry/browser or show optional warning.
             '@sentry/node': path.resolve(__dirname, './src/stubs/sentry-node-stub.ts'),

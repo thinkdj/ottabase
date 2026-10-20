@@ -154,6 +154,12 @@ Rules that matter:
   lapses gives a bookmarked link a 404 and no explanation; render the upsell instead.
 - **Pass the app's API client** to `request`. It attaches `X-Org-Id` and `X-App-Id`, which select the tenant the server
   resolves against.
+- **One copy of `@ottabase/premium/react` in the bundle.** The provider and every hook must share one React context. In
+  a Vite host whose tsconfig `paths` send the package to source, also alias the specifier for every importer (see
+  `apps/otta-web/vite.config.ts`): a Premium Package compiled from its own source sits outside the app's tsconfig and
+  would resolve it through `exports` to `dist`, a second context. Its gates then stay closed under a mounted provider
+  and its pages render their empty state with no error. `apps/otta-web/src/__tests__/premium-single-instance.test.ts` is
+  the check to copy.
 - `otta-web` already scans `packages/premium*/src` for Tailwind classes. Other hosts should adopt the same glob rather
   than adding each Premium Package one at a time.
 
