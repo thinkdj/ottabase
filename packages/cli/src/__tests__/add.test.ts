@@ -449,7 +449,75 @@ describe('routes and the error reporter', () => {
         expect(readPackageDescriptor(root, 'pulse').routes).toHaveLength(2);
         expect(attempt((meta) => (meta.routes[0].path = "/x');alert(1)//"))).toThrow(/lowercase absolute path/);
         expect(attempt((meta) => (meta.routes[0].access = 'admin'))).toThrow(/"public" or "protected"/);
-        expect(attempt((meta) => delete meta.routes[1].export)).toThrow(/needs path, page and an export name/);
+        expect(attempt((meta) => delete meta.routes[1].export)).toThrow(/needs path, a page under src\/pages/);
+        expect(attempt((meta) => (meta.routes[0].page = '../../worker/secrets'))).toThrow(/a page under src\/pages/);
+        expect(attempt((meta) => (meta.routes[0].page = "x'),evil('"))).toThrow(/a page under src\/pages/);
+        expect(attempt((meta) => (meta.routes[0].export = 'default'))).toThrow(/an export name/);
         expect(attempt((meta) => (meta.errorReporter.export = 'a b'))).toThrow(/errorReporter needs/);
+        expect(attempt((meta) => (meta.errorReporter.export = 'default'))).toThrow(/errorReporter needs/);
+        expect(attempt((meta) => (meta.errorReporter.import = "./x';evil()//"))).toThrow(/errorReporter needs/);
+    });
+
+    it('a route Prettier wrapped is still registered, and a re-run adds nothing', () => {
+        const root = fixture();
+        applyAdd(root, planAdd(root, 'bar', readPackageDescriptor(root, 'pulse')));
+        const file = path.join(root, 'apps/bar/src/router.tsx');
+        fs.writeFileSync(
+            file,
+            text(root, 'apps/bar/src/router.tsx').replace(
+                "const pulsePlansRoute = protectedRoute('/plans',",
+                "const pulsePlansRoute = protectedRoute(\n    '/plans',",
+            ),
+        );
+        const again = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        expect(again.steps.every((step) => step.action === 'skip')).toBe(true);
+    });
+
+    it("never redeclares the app's own constant, and leaves a path another page owns", () => {
+        const root = fixture();
+        const file = path.join(root, 'apps/bar/src/router.tsx');
+        fs.writeFileSync(
+            file,
+            text(root, 'apps/bar/src/router.tsx').replace(
+                "const indexRoute = publicRoute('/', () => import('@/pages/IndexPage'));",
+                [
+                    "const indexRoute = publicRoute('/', () => import('@/pages/IndexPage'));",
+                    // The app's own page at /plans, and a constant that has the generated name of /status.
+                    "const billingPlansRoute = protectedRoute('/plans', () => import('@/pages/Plans'), 'Plans');",
+                    "const pulseStatusRoute = publicRoute('/health', () => import('@/pages/Health'));",
+                ].join('\n'),
+            ),
+        );
+        const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        const step = plan.steps.find((entry) => entry.file === 'apps/bar/src/router.tsx')!;
+        expect(step.detail).toBe('register /status; /plans already routed to another page');
+        applyAdd(root, plan);
+        const router = text(root, 'apps/bar/src/router.tsx');
+        expect(router).toContain("const pulseStatusRoute2 = publicRoute('/status', () =>");
+        expect(router.match(/^const pulseStatusRoute =/gm)).toHaveLength(1);
+        expect(router).not.toContain('pulsePlansRoute');
+        // Run again: the suffixed constant is recognized as this package's.
+        const again = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        expect(again.steps.find((entry) => entry.file === 'apps/bar/src/router.tsx')).toMatchObject({
+            action: 'skip',
+            detail: '/plans already routed to another page; route it by hand',
+        });
+    });
+
+    it('wires a boundary whose reporter was imported by hand, without importing it twice', () => {
+        const root = fixture();
+        const file = path.join(root, 'apps/bar/src/main.tsx');
+        fs.writeFileSync(
+            file,
+            text(root, 'apps/bar/src/main.tsx').replace(
+                "import { router } from './router';",
+                "import { router } from './router';\nimport { report } from './lib/pulse';\nreport(error);",
+            ),
+        );
+        const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
+        applyAdd(root, plan);
+        const main = text(root, 'apps/bar/src/main.tsx');
+        expect(main.match(/import \{ report \}/g)).toHaveLength(1);
+        expect(main.match(/<ErrorBoundary onError=\{\(error\) => report\(error\)\}>/g)).toHaveLength(2);
     });
 });

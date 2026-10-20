@@ -73,7 +73,9 @@ A package with a user interface can say more, and `otta add` writes that too:
   `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
 
 A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do
-by hand.
+by hand. So is a path another page already routes; a generated name the app already uses gets a numeric suffix. `page`
+is a module path under `src/pages` (letters, digits, `_`, `-`, `/`), and export names are identifiers that are not
+reserved words.
 
 ### Starting apps and environments
 

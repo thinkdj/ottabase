@@ -95,7 +95,19 @@ const PACKAGE_ROOTS = ['packages', 'packages/pro'];
 const NAME = /^[a-z][a-z0-9-]*$/;
 const ICON = /^[A-Z][A-Za-z0-9]*$/;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+/** Words an import binding cannot be: `import { default } from …` does not parse. */
+const RESERVED = new Set(
+    (
+        'break case catch class const continue debugger default delete do else enum export extends false finally for ' +
+        'function if import in instanceof new null return super switch this throw true try typeof var void while with ' +
+        'yield let static implements interface package private protected public await'
+    ).split(' '),
+);
+const isBinding = (value: unknown): value is string =>
+    typeof value === 'string' && IDENTIFIER.test(value) && !RESERVED.has(value);
 const ROUTE_PATH = /^\/[a-z0-9/_-]*$/;
+/** A page module under the app's `src/pages`: path segments only, no `..`, nothing to escape. */
+const PAGE = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/;
 /** The SPA's route section header, else the array the routes join: generated route constants go above it. */
 const ROUTE_ASSEMBLY = /^\/\/ ─── Route assembly|^const coreRoutes = \[$/;
 
@@ -157,6 +169,11 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
         if (strings.some((value) => typeof value !== 'string' || value.length === 0)) {
             throw new Error(`${dir}/package.json: every adminPages entry needs path, title, group, page and export.`);
         }
+        if (!PAGE.test(page.page) || !isBinding(page.export)) {
+            throw new Error(
+                `${dir}/package.json: adminPages page "${page.page}" or export "${page.export}" is not usable.`,
+            );
+        }
         if (page.icon !== undefined && !ICON.test(page.icon)) {
             throw new Error(`${dir}/package.json: adminPages icon "${page.icon}" is not a lucide-react export name.`);
         }
@@ -166,13 +183,10 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
         if (typeof route.path !== 'string' || !ROUTE_PATH.test(route.path)) {
             throw new Error(`${dir}/package.json: route path "${route.path}" must be a lowercase absolute path.`);
         }
-        if (
-            typeof route.page !== 'string' ||
-            !route.page ||
-            typeof route.export !== 'string' ||
-            !IDENTIFIER.test(route.export)
-        ) {
-            throw new Error(`${dir}/package.json: every routes entry needs path, page and an export name.`);
+        if (typeof route.page !== 'string' || !PAGE.test(route.page) || !isBinding(route.export)) {
+            throw new Error(
+                `${dir}/package.json: every routes entry needs path, a page under src/pages and an export name.`,
+            );
         }
         if (route.access !== undefined && route.access !== 'public' && route.access !== 'protected') {
             throw new Error(`${dir}/package.json: route access must be "public" or "protected".`);
@@ -181,7 +195,9 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
     const reporter = meta.errorReporter;
     if (
         reporter !== undefined &&
-        (typeof reporter.import !== 'string' || !reporter.import || !IDENTIFIER.test(reporter.export ?? ''))
+        (typeof reporter.import !== 'string' ||
+            !/^[@.\w][\w@./-]*$/.test(reporter.import) ||
+            !isBinding(reporter.export))
     ) {
         throw new Error(`${dir}/package.json: errorReporter needs an import path and an export name.`);
     }
@@ -250,7 +266,10 @@ function withIcons(source: string, icons: string[]): string {
     return insertLine(source, line, { after: /^import .* from '.*';$/, before: /^export const/ });
 }
 
-const quote = (value: string) => `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+const quote = (value: string) =>
+    `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n')}'`;
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The `definePackageClient(...)` entry: bare for a headless package, with its admin pages otherwise. */
 function clientEntry(pkg: PackageDescriptor, eol: string): string {
@@ -295,7 +314,7 @@ export const ${pkg.export} = ${pkg.factory}<CloudflareEnv>({
 `;
 }
 
-/** `beacon` + `/status` is `beaconStatusRoute`: prefixed by the package, so it never collides with the app's own. */
+/** `beacon` + `/status` is `beaconStatusRoute`: prefixed by the package. `planAdd` suffixes it if the app has the name. */
 function routeName(key: string, routePath: string): string {
     const words = routePath
         .split(/[^a-z0-9]+/)
@@ -449,15 +468,42 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
     if (pkg.routes) {
         const routerFile = path.join(appDir, 'src', 'router.tsx');
         const router = read(routerFile);
-        const missing = pkg.routes.filter((route) => !router?.includes(`Route(${quote(route.path)}`));
+        // Routed already, by any constant: `xRoute('/p'` (Prettier may wrap it after the paren) or `path: '/p'`.
+        const routed = (route: RouteDescriptor) =>
+            new RegExp(`Route\\(\\s*${escapeRegex(quote(route.path))}|path:\\s*${escapeRegex(quote(route.path))}`).test(
+                router ?? '',
+            );
+        // This package's own constant for that path, suffixed or not (see the naming below).
+        const ours = (route: RouteDescriptor) =>
+            new RegExp(
+                `^const ${routeName(pkg.key, route.path)}\\d*\\s*=\\s*(public|protected)Route\\(\\s*${escapeRegex(quote(route.path))}`,
+                'm',
+            ).test(router ?? '');
+        const missing = pkg.routes.filter((route) => !routed(route));
+        // Another package's or the app's own page at that path: not this command's to replace.
+        const taken = pkg.routes.filter((route) => routed(route) && !ours(route));
         if (router === null || !/^const coreRoutes = \[\r?$/m.test(router)) {
             const paths = pkg.routes.map((route) => route.path).join(', ');
             steps.push({ file: rel(routerFile), action: 'skip', detail: `no coreRoutes; register ${paths} by hand` });
         } else if (missing.length === 0) {
-            steps.push({ file: rel(routerFile), action: 'skip', detail: 'routes registered' });
+            steps.push({
+                file: rel(routerFile),
+                action: 'skip',
+                detail: taken.length
+                    ? `${taken.map((route) => route.path).join(', ')} already routed to another page; route it by hand`
+                    : 'routes registered',
+            });
         } else {
             const eol = eolOf(router);
-            const names = missing.map((route) => routeName(pkg.key, route.path));
+            // Unique against the file and each other: `/a-b` and `/a/b`, or an app's own `referralsRoute`.
+            const used = new Set<string>();
+            const names = missing.map((route) => {
+                const base = routeName(pkg.key, route.path);
+                let name = base;
+                for (let n = 2; used.has(name) || new RegExp(`\\b${name}\\b`).test(router); n++) name = `${base}${n}`;
+                used.add(name);
+                return name;
+            });
             const block = [
                 `// ${pkg.name}: added by \`otta add\`.`,
                 ...missing.map((route, index) => routeConst(route, names[index], eol)),
@@ -469,7 +515,15 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
                 { after: /^const coreRoutes = \[$/ },
             );
             const paths = missing.map((route) => route.path).join(', ');
-            steps.push({ file: rel(routerFile), action: 'edit', detail: `register ${paths}`, content: updated });
+            const conflicts = taken.length
+                ? `; ${taken.map((route) => route.path).join(', ')} already routed to another page`
+                : '';
+            steps.push({
+                file: rel(routerFile),
+                action: 'edit',
+                detail: `register ${paths}${conflicts}`,
+                content: updated,
+            });
         }
     }
 
@@ -478,7 +532,13 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
         const mainFile = path.join(appDir, 'src', 'main.tsx');
         const main = read(mainFile);
         const { import: from, export: reporter } = pkg.errorReporter;
-        if (main?.includes(`${reporter}(error)`)) {
+        // The import and the wiring are checked apart: a half-done manual setup has one without the other.
+        const name = escapeRegex(reporter);
+        const imported = new RegExp(`^import\\s*\\{[^}]*(?<![\\w$])${name}(?![\\w$])[^}]*\\}\\s*from`, 'm').test(
+            main ?? '',
+        );
+        const wired = new RegExp(`<ErrorBoundary\\s+onError=\\{[^}]*(?<![\\w$])${name}\\(`).test(main ?? '');
+        if (wired) {
             steps.push({ file: rel(mainFile), action: 'skip', detail: `error boundary reports to ${reporter}` });
         } else if (main === null || !main.includes('<ErrorBoundary>')) {
             steps.push({
@@ -488,9 +548,11 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
             });
         } else {
             const line = `import { ${reporter} } from ${quote(from)};`;
-            const withImport = /^import \{ ErrorBoundary \} from .*;\r?$/m.test(main)
-                ? insertLine(main, line, { after: /^import \{ ErrorBoundary \} from .*;$/ })
-                : insertLine(main, line, { after: /^import .* from '.*';$/ });
+            const withImport = imported
+                ? main
+                : /^import \{ ErrorBoundary \} from .*;\r?$/m.test(main)
+                  ? insertLine(main, line, { after: /^import \{ ErrorBoundary \} from .*;$/ })
+                  : insertLine(main, line, { after: /^import .* from '.*';$/ });
             steps.push({
                 file: rel(mainFile),
                 action: 'edit',

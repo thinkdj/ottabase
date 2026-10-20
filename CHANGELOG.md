@@ -13,7 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `src/router.tsx` (`<key><Path>Route` constants in `coreRoutes`, public or protected), and `errorReporter` is imported
   into `src/main.tsx` and handed to the root `<ErrorBoundary onError>`. A router without `coreRoutes`, or a boundary
   that already reports somewhere, is left alone and the plan says what to do by hand. `otta add pro` now installs
-  Ottabase Pro with no manual wiring left.
+  Ottabase Pro with no manual wiring left. A re-run adds nothing, even after Prettier wraps a route; a path another page
+  already owns is reported, never routed twice; a generated name never redeclares one of the app's constants; a reporter
+  imported by hand is wired without a second import. Page paths, import paths and export names from a descriptor are
+  validated (no `..`, no quotes, no reserved words) before they reach generated source.
 
 - `@ottabase/screenshot`: automated screenshots, ported from Tuskly's docs-image script. One CDP runner (`captureShot`)
   drives a local Chrome from Node (`@ottabase/screenshot/node`: `runShots`, zero-dependency CDP over WebSocket) or a
