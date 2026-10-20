@@ -171,11 +171,20 @@ multi-app: same placeholder name = shared resource; different names = isolated (
             "bucket_name": "ottabase-bucket",
         },
     ],
+    // The producer fills the queue; the consumer is what runs the Worker's queue() handler on it.
+    // Without `consumers`, jobs (queued events, Beacon incident mail) are never processed.
     "queues": {
         "producers": [
             {
                 "binding": "OBCF_QUEUE",
                 "queue": "ottabase-queue",
+            },
+        ],
+        "consumers": [
+            {
+                "queue": "ottabase-queue",
+                "max_batch_size": 10,
+                "max_batch_timeout": 2,
             },
         ],
     },

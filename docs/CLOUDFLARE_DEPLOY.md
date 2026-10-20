@@ -67,7 +67,8 @@ Or find it at: https://dash.cloudflare.com → Workers & Pages (right sidebar)
 
 1. Go to https://dash.cloudflare.com/profile/api-tokens
 2. Click **"Create Token"** → Use **"Edit Cloudflare Workers"** template
-3. Ensure permissions include: Workers Scripts, KV Storage, D1, Account Settings
+3. Ensure permissions include: Workers Scripts, KV Storage, D1, Queues (the deploy attaches the Worker as the queue's
+   consumer), Account Settings
 4. **Copy the token immediately** (shown only once)
 
 ### Get Resource IDs

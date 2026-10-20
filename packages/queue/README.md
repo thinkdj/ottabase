@@ -60,6 +60,17 @@ export default {
 };
 ```
 
+The Worker also has to be registered as the queue's **consumer** in its wrangler config, next to the producer binding.
+Without the `consumers` entry nothing runs the handler: jobs are accepted, never processed, and nothing reports an
+error. A queue has one consumer, and `env.*` sections repeat both lists (they are not inherited).
+
+```jsonc
+"queues": {
+    "producers": [{ "binding": "MY_QUEUE", "queue": "my-queue" }],
+    "consumers": [{ "queue": "my-queue", "max_batch_size": 10, "max_batch_timeout": 2 }],
+}
+```
+
 ## Deduplication
 
 Prevent duplicate jobs within a time window using KV:

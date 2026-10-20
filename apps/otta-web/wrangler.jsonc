@@ -139,11 +139,24 @@
     // Queue bindings for async message processing
     // Local dev: Uses local queue storage
     // Preview/Prod: Uses real Cloudflare Queue
+    //
+    // A producer only fills the queue. The `consumers` entry is what runs this Worker's `queue()`
+    // handler (cloudflare-worker.ts) on the jobs; without it every dispatched job (queued events,
+    // Beacon incident mail, ...) sits unprocessed and nothing reports an error. A queue has at most
+    // ONE consumer, and `queues` is not inherited by `env.*`, so every environment below repeats
+    // both lists (packages/scripts/src/__tests__/cf-app.test.ts keeps them paired).
     "queues": {
         "producers": [
             {
                 "binding": "OBCF_QUEUE",
                 "queue": "ottabase-queue", // Create with: wrangler queues create ottabase-queue
+            },
+        ],
+        "consumers": [
+            {
+                "queue": "ottabase-queue",
+                "max_batch_size": 10,
+                "max_batch_timeout": 2,
             },
         ],
     },
@@ -317,12 +330,20 @@
                     "bucket_name": "ottabase-bucket", // Update if using a different bucket or app-prefixed bucket for isolation (e.g. app1-ottabase-bucket)
                 },
             ],
-            // Production Queue
+            // Production Queue: producer AND consumer (see the top-level queues comment). Keep the
+            // two queue names equal, and change both when isolating per app (e.g. app1-ottabase-queue).
             "queues": {
                 "producers": [
                     {
                         "binding": "OBCF_QUEUE",
                         "queue": "ottabase-queue", // Update if using a different queue or app-prefixed queue for isolation (e.g. app1-ottabase-queue)
+                    },
+                ],
+                "consumers": [
+                    {
+                        "queue": "ottabase-queue",
+                        "max_batch_size": 10,
+                        "max_batch_timeout": 2,
                     },
                 ],
             },
@@ -406,6 +427,13 @@
                         "queue": "ottabase-queue-staging",
                     },
                 ],
+                "consumers": [
+                    {
+                        "queue": "ottabase-queue-staging",
+                        "max_batch_size": 10,
+                        "max_batch_timeout": 2,
+                    },
+                ],
             },
             "analytics_engine_datasets": [
                 {
@@ -487,6 +515,13 @@
                     {
                         "binding": "OBCF_QUEUE",
                         "queue": "ottabase-queue-preview",
+                    },
+                ],
+                "consumers": [
+                    {
+                        "queue": "ottabase-queue-preview",
+                        "max_batch_size": 10,
+                        "max_batch_timeout": 2,
                     },
                 ],
             },

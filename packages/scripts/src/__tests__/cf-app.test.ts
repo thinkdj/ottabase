@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 import { escapeRegExp, parseJsonc, resolveCfApp } from '../cli/cf-app';
 
@@ -94,5 +95,24 @@ describe('resolveCfApp', () => {
 
     it('throws a helpful error for an unknown app', () => {
         expect(() => resolveCfApp({ app: 'does-not-exist' })).toThrow(/no wrangler\.jsonc|Available/i);
+    });
+});
+
+describe('otta-web queue wiring', () => {
+    // A producer binding only fills the queue. Without a `consumers` entry for the same queue the Worker's
+    // queue() handler never runs, so queued events and Beacon incident mail are lost without any error.
+    // `queues` is not inherited by env.*, so the top level and every environment must pair them.
+    it('every scope that produces to a queue also consumes that queue', () => {
+        const config = parseJsonc<any>(fs.readFileSync(resolveCfApp({ app: 'otta-web' }).wranglerPath, 'utf8'));
+        const scopes: Record<string, any> = { default: config, ...config.env };
+        const names = (list: Array<{ queue: string }> | undefined) => (list ?? []).map((q) => q.queue).sort();
+
+        expect(names(config.queues?.producers).length).toBeGreaterThan(0);
+        for (const [scope, value] of Object.entries(scopes)) {
+            expect({ scope, consumes: names(value.queues?.consumers) }).toEqual({
+                scope,
+                consumes: names(value.queues?.producers),
+            });
+        }
     });
 });

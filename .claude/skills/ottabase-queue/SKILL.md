@@ -47,6 +47,9 @@ configure a Cloudflare dead-letter queue on the consumer). The raw `QueueAdapter
   chain is skipped with a warning. A chained job uses its own `priority`, else the parent's, else `normal`.
 - Keep job payloads small and serializable; pass IDs, re-fetch inside the handler.
 - A new queue binding must be kept in sync across `wrangler.jsonc` and `cloudflare-env.d.ts`.
+- A producer binding alone never runs a handler. The Worker must also be listed under `queues.consumers` for the same
+  queue, in the top level and in every `env.*` (they do not inherit). Without it jobs are accepted and never processed,
+  with no error anywhere.
 
 ## Authoritative sources
 

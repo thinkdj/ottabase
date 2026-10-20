@@ -510,6 +510,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   used the source copy: two React contexts, so the provider's `mounted` never reached the package's hooks and every
   query stayed disabled, with no error. `vite.config.ts` now aliases the specifier for every importer, and
   `premium-single-instance.test.ts` fails if any importer resolves to a second copy.
+- otta-web: `wrangler.jsonc` now registers the Worker as the consumer of its queue, in the top level and every
+  environment. A producer binding alone never ran the `queue()` handler, so queued jobs (events with `via: 'queue'`,
+  Beacon incident mail) were accepted and never processed. `cf-app.test.ts` requires every scope that produces to a
+  queue to consume it.
 
 ### Security (Unreleased)
 
