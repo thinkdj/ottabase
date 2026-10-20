@@ -55,6 +55,7 @@ export interface ScreenshotResponse {
     originalBytes: number;
     bytes: number;
     optimization: OptimizationResult;
+    /** The viewport in device pixels (CSS size × scale). A `selector` shot's image is its region, not this size. */
     width: number;
     height: number;
     scale: number;

@@ -35,7 +35,17 @@ export interface ScreenshotInput {
     theme?: 'light' | 'dark';
     /** Text that proves the page has its data. Without it the shot waits for load, fonts and spinners only. */
     waitFor?: string;
+    /** Skip the wait for spinners to clear, for a page that shows one on purpose (a component showcase). */
+    ignoreSpinners?: boolean;
     steps?: ScreenshotStep[];
+    /** CSS selector: capture the region of the first visible match instead of the viewport. */
+    selector?: string;
+    /** With `selector`: the first match whose text starts with this (a card's title), not just the first match. */
+    selectorText?: string;
+    /** CSS px of page kept around `selector` on every side. Default 0. */
+    padding?: number;
+    /** Width ÷ height of the `selector` region: the height follows the width, down from the element's top. */
+    aspect?: number;
     /** Run the optimization pass (when the caller has an optimizer). Default true. */
     optimize?: boolean;
 }
@@ -49,7 +59,12 @@ export interface ScreenshotShot {
     scale: number;
     theme: 'light' | 'dark';
     waitFor: string | null;
+    ignoreSpinners: boolean;
     steps: ScreenshotStep[];
+    selector: string | null;
+    selectorText: string | null;
+    padding: number;
+    aspect: number | null;
     optimize: boolean;
 }
 
@@ -62,6 +77,8 @@ export const SCREENSHOT_LIMITS = {
     maxText: 200,
     maxWaitMs: 5_000,
     maxPath: 2_048,
+    padding: [0, 200],
+    aspect: [0.25, 4],
 } as const;
 
 export const SCREENSHOT_MIME: Record<ScreenshotFormat, string> = {
@@ -152,6 +169,9 @@ export function normalizeShot(input: unknown): ScreenshotShot {
     if (theme !== 'light' && theme !== 'dark') fail('theme must be light or dark');
 
     if (input.optimize !== undefined && typeof input.optimize !== 'boolean') fail('optimize must be a boolean');
+    if (input.ignoreSpinners !== undefined && typeof input.ignoreSpinners !== 'boolean') {
+        fail('ignoreSpinners must be a boolean');
+    }
 
     const steps = input.steps ?? [];
     if (!Array.isArray(steps) || steps.length > SCREENSHOT_LIMITS.maxSteps) {
@@ -168,7 +188,18 @@ export function normalizeShot(input: unknown): ScreenshotShot {
         scale: number(input.scale, 'scale', SCREENSHOT_LIMITS.scale, 1),
         theme,
         waitFor: input.waitFor === undefined || input.waitFor === null ? null : text(input.waitFor, 'waitFor'),
+        ignoreSpinners: input.ignoreSpinners ?? false,
         steps: steps.map(step),
+        selector: input.selector === undefined || input.selector === null ? null : text(input.selector, 'selector'),
+        selectorText:
+            input.selectorText === undefined || input.selectorText === null
+                ? null
+                : text(input.selectorText, 'selectorText'),
+        padding: number(input.padding, 'padding', SCREENSHOT_LIMITS.padding, 0),
+        aspect:
+            input.aspect === undefined || input.aspect === null
+                ? null
+                : number(input.aspect, 'aspect', SCREENSHOT_LIMITS.aspect, 1),
         optimize: input.optimize ?? true,
     };
 }
@@ -253,7 +284,11 @@ async function waitUntil(send: CdpSend, expression: string, what: string, timeou
 }
 
 /** Text is on screen, nothing is loading, fonts and on-screen images are in, entrance animations done. */
-async function waitForSettled(send: CdpSend, waitFor: string | null, timeoutMs: number): Promise<void> {
+async function waitForSettled(
+    send: CdpSend,
+    { waitFor, ignoreSpinners }: ScreenshotShot,
+    timeoutMs: number,
+): Promise<void> {
     if (waitFor) {
         await waitUntil(
             send,
@@ -265,7 +300,7 @@ async function waitForSettled(send: CdpSend, waitFor: string | null, timeoutMs: 
     await waitUntil(
         send,
         `document.readyState === 'complete' &&
-         !document.querySelector('.animate-spin, [aria-busy="true"]') &&
+         ${ignoreSpinners ? '' : `!document.querySelector('.animate-spin, [aria-busy="true"]') &&`}
          document.fonts.status === 'loaded' &&
          [...document.images].every((img) => img.complete || img.getBoundingClientRect().top > innerHeight)`,
         'the page to finish loading',
@@ -335,6 +370,49 @@ async function runStep(send: CdpSend, s: ScreenshotStep): Promise<void> {
     }
 }
 
+/**
+ * The page region of `shot.selector`, in CSS px from the document's top-left, widened by `padding` and,
+ * with `aspect`, reshaped downward from the element's top. A region already on screen is left where it
+ * is; one that is not is scrolled a quarter of the way down the viewport, below any sticky header that
+ * would otherwise be painted over it. `fits` says whether it is now wholly on screen; when it is not
+ * (taller than the viewport), Chrome renders the rest.
+ */
+async function regionOf(send: CdpSend, shot: ScreenshotShot): Promise<{ clip: Record<string, number>; fits: boolean }> {
+    const box = (await evaluate(
+        send,
+        `(() => {
+            const want = ${JSON.stringify(shot.selectorText)};
+            const el = [...document.querySelectorAll(${JSON.stringify(shot.selector)})].find(
+                (node) => node.getClientRects().length > 0 && (want === null || node.innerText.trim().startsWith(want)),
+            );
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { left: r.left + scrollX, top: r.top + scrollY, width: r.width, height: r.height, scrollY, viewport: innerHeight };
+        })()`,
+    )) as { left: number; top: number; width: number; height: number; scrollY: number; viewport: number } | null;
+    if (!box) {
+        const what = shot.selectorText ? `"${shot.selector}" reading "${shot.selectorText}"` : `"${shot.selector}"`;
+        throw new ScreenshotCaptureError(`Nothing matches ${what}`, 'STEP_FAILED');
+    }
+    const width = box.width + shot.padding * 2;
+    const height = shot.aspect ? width / shot.aspect : box.height + shot.padding * 2;
+    const y = Math.max(0, box.top - shot.padding);
+    const onScreen = (scrollY: number) => y >= scrollY && y + height <= scrollY + box.viewport;
+    let { scrollY } = box;
+    if (!onScreen(scrollY)) {
+        // Document coordinates do not move with the scroll, so only scrollY needs reading back.
+        scrollY = (await evaluate(
+            send,
+            `(window.scrollTo(0, ${Math.max(0, y - box.viewport / 4)}), scrollY)`,
+        )) as number;
+        await sleep(300);
+    }
+    return {
+        clip: { x: Math.max(0, box.left - shot.padding), y, width, height, scale: 1 },
+        fits: onScreen(scrollY),
+    };
+}
+
 function decodeBase64(data: string): Uint8Array {
     return Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
 }
@@ -377,7 +455,7 @@ export async function captureShot(send: CdpSend, options: CaptureOptions): Promi
         await evaluate(send, 'window.__ottaShotStale = true').catch(() => undefined);
         await send('Page.navigate', { url: url.href });
         await waitUntil(send, '!window.__ottaShotStale', 'the page to load', timeoutMs);
-        await waitForSettled(send, shot.waitFor, timeoutMs);
+        await waitForSettled(send, shot, timeoutMs);
 
         for (const s of shot.steps) await runStep(send, s);
 
@@ -387,9 +465,12 @@ export async function captureShot(send: CdpSend, options: CaptureOptions): Promi
         }
         await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: shot.height - 1 });
 
+        // Beyond-viewport capture resizes the viewport (re-centring fixed dialogs), so only when it must.
+        const region = shot.selector ? await regionOf(send, shot) : null;
         const { data } = (await send('Page.captureScreenshot', {
             format: shot.format,
             ...(shot.format === 'png' ? {} : { quality: shot.quality }),
+            ...(region ? { clip: region.clip, captureBeyondViewport: !region.fits } : {}),
         })) as { data: string };
         return decodeBase64(data);
     } finally {

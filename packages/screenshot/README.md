@@ -23,7 +23,12 @@ stripping (Node 24+).
     scale: 1.5,               // device pixel ratio 1–2: 1280×800 @1.5 = 1920×1200
     theme: 'dark',            // prefers-color-scheme + the `ottabase.theme` localStorage key
     waitFor: 'Latest posts',  // text that proves the page has its data
+    ignoreSpinners: false,    // true skips the spinner wait, for a page that shows one on purpose
     steps: [{ click: 'Open menu' }, { scrollTo: 'Pricing' }, { type: 'hello' }, { key: '/' }, { wait: 500 }],
+    selector: 'section',      // capture this element's region instead of the viewport
+    selectorText: 'Pricing',  // the first match whose text starts with this (optional)
+    padding: 16,              // CSS px of page kept around it (0 to 200)
+    aspect: 16 / 9,           // width ÷ height: the region grows or shrinks down from the element's top
     optimize: true,           // run the optimization pass (default)
 }
 ```
@@ -112,4 +117,5 @@ served as Chrome encodes them.
 ## Limits
 
 Viewport 320–1920 × 240–1920 at scale 1–2. At most 12 steps of up to 200 characters each, and waits of up to 5 s. Each
-wait times out after 30 s (Node: 60 s, route: 20 s). The capture is viewport-only; full-page capture is not supported.
+wait times out after 30 s (Node: 60 s, route: 20 s). A shot is the viewport, or with `selector` one element's region
+(which may run past the viewport); full-page capture is not supported.

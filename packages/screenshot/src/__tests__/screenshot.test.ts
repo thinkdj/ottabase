@@ -66,6 +66,11 @@ describe('normalizeShot', () => {
         [{ path: '/', steps: [{ click: 'a', type: 'b' }] }, /exactly one/],
         [{ path: '/', steps: [{ eval: 'x' }] }, /one of/],
         [{ path: '/', steps: [{ wait: 60_000 }] }, /wait/],
+        [{ path: '/', selector: '' }, /selector/],
+        [{ path: '/', selector: 'p', selectorText: '' }, /selectorText/],
+        [{ path: '/', padding: -1 }, /padding/],
+        [{ path: '/', ignoreSpinners: 'yes' }, /ignoreSpinners/],
+        [{ path: '/', aspect: 0 }, /aspect/],
     ])('rejects %j', (input, message) => {
         expect(() => normalizeShot(input)).toThrow(message);
     });
@@ -93,6 +98,79 @@ describe('captureShot', () => {
         const page = fakePage();
         await captureShot(page.send, { origin: 'http://x.test', shot: normalizeShot({ path: '/' }) });
         expect(page.calls.find((c) => c.method === 'Page.captureScreenshot')?.params).toEqual({ format: 'png' });
+    });
+
+    it('waits for spinners unless the shot ignores them', async () => {
+        const settles = async (ignoreSpinners: boolean) => {
+            const page = fakePage();
+            await captureShot(page.send, {
+                origin: 'http://x.test',
+                shot: normalizeShot({ path: '/', ignoreSpinners }),
+            });
+            return page.calls.some((c) => String(c.params?.expression).includes('.animate-spin'));
+        };
+        expect(await settles(false)).toBe(true);
+        expect(await settles(true)).toBe(false);
+    });
+
+    /** A page whose `.card` sits at `top` (document px) in an 800px viewport; scrollTo moves scrollY. */
+    function cardPage(top: number, height = 900) {
+        const page = fakePage();
+        let scrollY = 0;
+        const send: CdpSend = async (method, params) => {
+            const expression = String(params?.expression);
+            if (method === 'Runtime.evaluate' && expression.includes('document.querySelectorAll(".card")')) {
+                return { result: { value: { left: 100, top, width: 600, height, scrollY, viewport: 800 } } };
+            }
+            if (method === 'Runtime.evaluate' && expression.startsWith('(window.scrollTo(0, ')) {
+                scrollY = Number(expression.slice('(window.scrollTo(0, '.length).split(')')[0]);
+                return { result: { value: scrollY } };
+            }
+            return page.send(method, params);
+        };
+        const capture = () => page.calls.find((c) => c.method === 'Page.captureScreenshot')?.params;
+        return { send, capture, scrolled: () => scrollY };
+    }
+
+    it('clips to an on-screen selector region with padding and aspect, without scrolling', async () => {
+        const page = cardPage(50);
+        const shot = normalizeShot({ path: '/', selector: '.card', padding: 20, aspect: 16 / 9 });
+        await captureShot(page.send, { origin: 'http://x.test', shot });
+        expect(page.scrolled()).toBe(0);
+        expect(page.capture()).toEqual({
+            format: 'png',
+            clip: { x: 80, y: 30, width: 640, height: 360, scale: 1 },
+            captureBeyondViewport: false,
+        });
+    });
+
+    it('scrolls an off-screen region a quarter down the viewport, clear of a sticky header', async () => {
+        const page = cardPage(2000);
+        const shot = normalizeShot({ path: '/', selector: '.card', padding: 20, aspect: 16 / 9 });
+        await captureShot(page.send, { origin: 'http://x.test', shot });
+        expect(page.scrolled()).toBe(1980 - 200);
+        expect(page.capture()).toMatchObject({ clip: { y: 1980, height: 360 }, captureBeyondViewport: false });
+    });
+
+    it('renders past the viewport when the region is taller than it', async () => {
+        const page = cardPage(2000, 1200);
+        await captureShot(page.send, {
+            origin: 'http://x.test',
+            shot: normalizeShot({ path: '/', selector: '.card' }),
+        });
+        expect(page.capture()).toMatchObject({ clip: { y: 2000, height: 1200 }, captureBeyondViewport: true });
+    });
+
+    it('fails the step when the selector matches nothing', async () => {
+        const page = fakePage();
+        const send: CdpSend = async (method, params) =>
+            method === 'Runtime.evaluate' && String(params?.expression).includes('document.querySelectorAll("#gone")')
+                ? { result: { value: null } }
+                : page.send(method, params);
+        const shot = normalizeShot({ path: '/', selector: '#gone', selectorText: 'Pricing' });
+        await expect(captureShot(send, { origin: 'http://x.test', shot })).rejects.toThrow(
+            'Nothing matches "#gone" reading "Pricing"',
+        );
     });
 });
 

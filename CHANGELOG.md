@@ -23,7 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Cloudflare Browser Rendering session (`POST /api/screenshot/capture`, session + rate limit, same-origin paths only).
   png/jpg/webp, quality, viewport/scale, light/dark, `waitFor` and click/scroll/type/key steps; an optimization pass
   keeps the smaller encoding (sharp in Node: palette png, mozjpeg; the Images binding at the edge). Listed in otta-web
-  with `/demo/cloudflare/screenshot`, `pnpm gen:screenshots` and a new `OBCF_IMAGES` binding.
+  with `/demo/cloudflare/screenshot`, `pnpm gen:screenshots` and a new `OBCF_IMAGES` binding. A shot can be one
+  element's region instead of the viewport (`selector`, optionally the first match whose text starts with
+  `selectorText`, plus `padding` and an `aspect` that sizes the frame down from the element's top), scrolled clear of
+  sticky headers and rendered past the viewport when taller; `ignoreSpinners` serves pages that show a spinner on
+  purpose.
 - Design System v1 (see `docs/DESIGN_SYSTEM.md`): the brand engine defaults and the verdant preset are now the system
   itself (one green ramp, cool neutrals, Inter + JetBrains Mono, a fixed six-tone status language with
   `-text`/`-soft`/`-line` tokens, eight chart slots, the text ladder `subtle-foreground`/`faint-foreground`, explicit
