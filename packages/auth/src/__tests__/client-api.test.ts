@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { changePassword, getCsrfToken, getSession, signInWithCredentials, signOut } from '../client-api';
+import {
+    changePassword,
+    getCsrfToken,
+    getSession,
+    sendMagicLink,
+    signInWithCredentials,
+    signInWithProvider,
+    signOut,
+} from '../client-api';
 
 describe('client-api changePassword', () => {
     afterEach(() => {
@@ -259,5 +267,37 @@ describe('signOut', () => {
 
         expect(result).toEqual({ success: true });
         expect(fetchMock.mock.calls[1][0]).toBe('/api/auth/signout');
+    });
+});
+
+// Where a sign-in lands when the caller names no page: the home page, which every app has.
+describe('the sign-in destination', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('sends an OAuth sign-in back to the home page unless told otherwise', async () => {
+        await expect(signInWithProvider('github')).resolves.toEqual({
+            success: true,
+            url: '/api/auth/signin/github?callbackUrl=%2F',
+        });
+        expect((await signInWithProvider('github', { redirectTo: '/profile' })).url).toBe(
+            '/api/auth/signin/github?callbackUrl=%2Fprofile',
+        );
+    });
+
+    it('asks for a magic link that lands on the home page unless told otherwise', async () => {
+        const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
+            String(url).endsWith('/csrf')
+                ? { ok: true, json: async () => ({ csrfToken: 'csrf' }) }
+                : { ok: true, json: async () => ({ success: true }) },
+        );
+        vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+        await sendMagicLink('ana@example.com');
+        await sendMagicLink('ana@example.com', { redirectTo: '/billing' });
+
+        const bodies = fetchMock.mock.calls
+            .filter(([url]) => String(url).endsWith('/signin/email'))
+            .map(([, init]) => JSON.parse(init?.body as string).callbackUrl);
+        expect(bodies).toEqual(['/', '/billing']);
     });
 });

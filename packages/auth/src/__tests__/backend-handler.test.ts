@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getSession, handleAuthRequest, hashPassword, verifyPassword } from '../backend-handler';
+import { verifyJwt } from '../jwt';
 import type { AuthEnv } from '../types';
 
 function createFakeD1() {
@@ -113,6 +114,37 @@ describe('handleAuthRequest', () => {
 
         expect(response.status).toBe(302);
         expect(response.headers.get('Location')).toBe('http://127.0.0.1:3003/auth/failed?from=oauth&error=OAuthSignin');
+    });
+
+    it('keeps only a same-site callbackUrl through OAuth sign-in, and falls back to the home page', async () => {
+        const env = createEnv({ GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' } as Partial<AuthEnv>);
+        // The callbackUrl rides in the signed state cookie and is where the callback redirects.
+        const callbackFor = async (raw?: string) => {
+            const query = raw === undefined ? '' : `?callbackUrl=${encodeURIComponent(raw)}`;
+            const response = await handleAuthRequest(request(`/api/auth/signin/github${query}`), env);
+            expect(response.status).toBe(302);
+            const cookie = (response.headers.get('Set-Cookie') || '').split(';')[0];
+            const payload = await verifyJwt<{ callbackUrl: string }>(
+                cookie.slice(cookie.indexOf('=') + 1),
+                env.AUTH_SECRET!,
+            );
+            return payload?.callbackUrl;
+        };
+
+        expect(await callbackFor()).toBe('/');
+        expect(await callbackFor('')).toBe('/');
+        expect(await callbackFor('/profile?tab=security#keys')).toBe('/profile?tab=security#keys');
+        for (const hostile of [
+            'https://evil.example',
+            '//evil.example/path',
+            '/\\evil.example',
+            '/\t/evil.example',
+            'javascript:alert(1)',
+            'evil.example',
+            ' /profile',
+        ]) {
+            expect(await callbackFor(hostile), hostile).toBe('/');
+        }
     });
 
     // --- CSRF + Origin backstop -------------------------------------------------------

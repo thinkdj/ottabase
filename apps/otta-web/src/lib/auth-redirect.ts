@@ -2,7 +2,7 @@
 const AUTH_ROUTE_PATHS = new Set(['/login', '/register', '/verify-email', '/reset-password']);
 
 const RETURN_PATH_KEY = 'ottabase.auth.returnTo';
-export const DEFAULT_AUTH_REDIRECT = '/dashboard';
+export const DEFAULT_AUTH_REDIRECT = '/profile';
 
 /**
  * Validates and normalizes a redirect target path
@@ -12,8 +12,8 @@ function normalizeRedirectTarget(path: string | null): string | null {
     if (!path) return null;
 
     const target = path.trim();
-    // Only allow local paths, not protocol-relative URLs
-    if (!target.startsWith('/') || target.startsWith('//')) return null;
+    // Only allow local paths, not protocol-relative URLs (browsers read `/\` as `//`)
+    if (!target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) return null;
 
     // Extract pathname from full path (may include search/hash)
     const pathname = target.split('?')[0].split('#')[0];
