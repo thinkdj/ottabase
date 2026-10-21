@@ -573,6 +573,17 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
 
+## OSS vs Pro
+
+One rule decides where a package lives: **OSS helps you build, Pro helps you operate.**
+
+- **OSS (MIT, this repo):** everything needed to build and ship an app. The framework, ORM, auth, RBAC, UI, content and
+  utilities. Nothing published here ever moves behind a paywall.
+- **Pro (paid, sold as source):** the operations layer for a running business. Billing, fleet health, error tracking,
+  status pages, support, compliance. See [ottabase.com/pro](https://ottabase.com/pro).
+
+Litmus test: needed on day one of building, OSS. Needed once paying customers arrive, Pro.
+
 ## Docs
 
 - [Architecture](./ARCHITECTURE.md)
