@@ -8,7 +8,8 @@
  * Ottabase app (or a bare Worker) unchanged.
  */
 
-import type { BlogLanguageConfig, ContentType, EditorJSData, HeroImage, SeoMeta } from '../types';
+import type { BlogExportPost } from '../import-export';
+import type { BlogLanguageConfig, ContentType, HeroImage, SeoMeta } from '../types';
 import type { SecurityContext } from '@ottabase/ottaorm';
 
 /** The minimal request context every blog handler receives. */
@@ -45,22 +46,19 @@ export interface BlogEditorialWriteResult extends BlogAdminResult {
     securityContext: SecurityContext;
 }
 
-/** A static, trusted post used to populate an empty demo deployment. */
-export interface BlogDemoPostSeed {
-    title: string;
+/**
+ * A static, trusted post used to populate an empty demo deployment.
+ *
+ * The same shape as one post in an import file, so a seed can do anything an import can: any
+ * content type, tags, categories and a series by name, footnotes, an original date, and an
+ * editorial `publishedAt` (defaults to now). Seeds always publish, so status, schedule and
+ * protection do not apply. Media must be public absolute URLs or app-served paths: a fresh
+ * install has no uploaded media to point at.
+ */
+export type BlogDemoPostSeed = Omit<BlogExportPost, 'status' | 'publishAt' | 'isProtected' | 'slug' | 'contentType'> & {
     slug: string;
-    excerpt: string;
-    content: EditorJSData;
     contentType: ContentType;
-    isFeatured?: boolean;
-    /**
-     * Optional hero/featured image, matching the `heroImage` column shape on Post.
-     * Seeds are trusted, static app fixtures, so the URL must be a public absolute
-     * URL (or an app-served path) that resolves on a fresh deployment — a demo
-     * install has no uploaded media to point at.
-     */
-    heroImage?: { url: string; alt?: string; caption?: string };
-}
+};
 
 export interface BlogTranslationBody {
     language?: unknown;

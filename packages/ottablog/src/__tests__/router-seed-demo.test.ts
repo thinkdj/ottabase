@@ -4,7 +4,7 @@
  * package's relative model imports.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createBlogHandlers } from '../router';
+import { createBlogHandlers, demoSeedProblems } from '../router';
 
 vi.mock('../ottaorm-models', () => ({
     Post: {
@@ -12,11 +12,23 @@ vi.mock('../ottaorm-models', () => ({
         first: vi.fn(async () => null),
         create: vi.fn(),
     },
-    PostCategory: { findBySlug: vi.fn(async () => null) },
-    PostCategoryLink: { where: vi.fn(async () => []) },
-    PostSeries: { findBySlug: vi.fn(async () => null) },
-    PostTag: { findBySlug: vi.fn(async () => null) },
-    PostTagLink: { where: vi.fn(async () => []) },
+    PostCategory: {
+        findBySlug: vi.fn(async () => null),
+        first: vi.fn(async () => null),
+        create: vi.fn(async () => ({ get: () => 'category-1' })),
+    },
+    PostCategoryLink: { where: vi.fn(async () => []), create: vi.fn() },
+    PostSeries: {
+        findBySlug: vi.fn(async () => null),
+        first: vi.fn(async () => null),
+        create: vi.fn(async () => ({ get: () => 'series-1' })),
+    },
+    PostTag: {
+        findBySlug: vi.fn(async () => null),
+        first: vi.fn(async () => null),
+        create: vi.fn(async () => ({ get: () => 'tag-1' })),
+    },
+    PostTagLink: { where: vi.fn(async () => []), create: vi.fn() },
     OttablogSettings: { forScope: vi.fn(async () => null), forScopeOrPlatform: vi.fn(async () => null) },
     PostTranslation: {
         forPost: vi.fn(async () => []),
@@ -29,7 +41,7 @@ vi.mock('../ottaorm-models', () => ({
 
 vi.mock('../studio', () => ({ StudioManager: { getState: vi.fn(async () => ({ themes: [], plugins: [] })) } }));
 
-import { Post, PostCategory, PostSeries, PostTag } from '../ottaorm-models';
+import { Post, PostCategory, PostCategoryLink, PostSeries, PostTag, PostTagLink } from '../ottaorm-models';
 
 type Env = { marker?: string };
 const env: Env = {};
@@ -159,6 +171,92 @@ describe('handleBlogDemoSeed', () => {
         // same-slug row in another tenant and turn the insert into a hard
         // constraint failure instead of a clean "already exists".
         expect(Post.first).toHaveBeenCalledWith({ slug: 'sample-article', appId: 'test-app' });
+    });
+
+    it('keeps the seed publish date and links its taxonomy by name', async () => {
+        vi.mocked(Post.create).mockResolvedValue(postRow({ id: 'post-1' }) as any);
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            demoPosts: [
+                {
+                    ...DEMO_POSTS[0],
+                    publishedAt: Date.UTC(2026, 3, 9),
+                    tags: ['Norway', 'norway', 'Winter'],
+                    categories: ['Travel'],
+                    series: 'Field Notes',
+                    seriesOrder: 2,
+                },
+            ],
+        });
+
+        const response = await handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }));
+
+        expect(response.status).toBe(200);
+        expect(vi.mocked(Post.create).mock.calls[0][0]).toEqual(
+            expect.objectContaining({
+                status: 'published',
+                publishedAt: Date.UTC(2026, 3, 9),
+                seriesId: 'series-1',
+                seriesOrder: 2,
+            }),
+        );
+        // Taxonomy never lands on the post row itself.
+        expect(vi.mocked(Post.create).mock.calls[0][0]).not.toHaveProperty('tags');
+        // "Norway" and "norway" are one tag; platform mode keeps the vocabulary app-wide.
+        expect(PostTag.create).toHaveBeenCalledTimes(2);
+        expect(PostTag.create).toHaveBeenCalledWith(
+            expect.objectContaining({ appId: 'test-app', type: 'post', organizationId: null, name: 'Norway' }),
+        );
+        expect(PostTagLink.create).toHaveBeenCalledTimes(1);
+        expect(PostCategoryLink.create).toHaveBeenCalledWith({ postId: 'post-1', categoryId: 'category-1' });
+    });
+
+    it('rejects a malformed seed instead of skipping it', async () => {
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            demoPosts: [{ ...DEMO_POSTS[0], publishedAt: 'yesterday' as unknown as number }],
+        });
+
+        await expect(handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }))).rejects.toThrow(
+            'publishedAt must be a number',
+        );
+        expect(Post.create).not.toHaveBeenCalled();
+    });
+
+    it('checks every seed before writing any, even one whose row already exists', async () => {
+        // The first seed is fine and new, the second already exists: neither may hide a bad third.
+        vi.mocked(Post.first).mockImplementation((async (where: { slug: string }) =>
+            where.slug === 'sample-release-note' ? postRow({ id: 'existing' }) : null) as any);
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            demoPosts: [...DEMO_POSTS, { ...DEMO_POSTS[1], slug: 'third', heroimage: { url: '/x.webp' } } as never],
+        });
+
+        await expect(handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }))).rejects.toThrow(
+            '"third": unknown field "heroimage"',
+        );
+        expect(Post.first).not.toHaveBeenCalled();
+        expect(Post.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('demoSeedProblems', () => {
+    it('is empty for sound seeds', () => {
+        expect(demoSeedProblems(DEMO_POSTS)).toEqual([]);
+    });
+
+    it('names a refused seed, a key the seed would drop, and a slug used twice', () => {
+        expect(
+            demoSeedProblems([
+                { ...DEMO_POSTS[0], title: ' ' },
+                { ...DEMO_POSTS[1], tagz: ['typo'] } as never,
+                { ...DEMO_POSTS[1], title: 'Again' },
+            ]),
+        ).toEqual([
+            '"sample-article": Each post needs a title',
+            '"sample-release-note": unknown field "tagz"',
+            '"sample-release-note": slug used twice',
+        ]);
     });
 
     it('leaves existing rows untouched on a repeat seed', async () => {

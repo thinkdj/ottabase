@@ -5,7 +5,7 @@
  * this subpath in worker code so the package's React components stay out of
  * the bundle graph.
  */
-export { createBlogHandlers } from './handlers';
+export { createBlogHandlers, demoSeedProblems } from './handlers';
 export { buildBlogRouter, createBlogRouter } from './router';
 export type { BuildBlogRouterOptions } from './router';
 export type { BlogAdminResult, BlogDemoPostSeed, BlogHandlers, BlogRequestContext, BlogRouterConfig } from './types';

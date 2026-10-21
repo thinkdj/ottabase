@@ -49,6 +49,7 @@ import {
     type PostStatus,
 } from '../types';
 import type {
+    BlogDemoPostSeed,
     BlogEditorialWriteResult,
     BlogHandlers,
     BlogRequestContext,
@@ -211,6 +212,79 @@ function importSlug(slug: unknown, title: unknown): string {
     const given = typeof slug === 'string' ? slug.trim().toLowerCase() : '';
     if (IMPORT_SLUG.test(given)) return given;
     return generateSlug(given || (typeof title === 'string' ? title : ''));
+}
+
+/** The keys a demo seed may carry: the import fields, plus the taxonomy named by name. */
+const DEMO_SEED_KEYS = new Set([...Object.keys(IMPORT_FIELD_TYPES), 'tags', 'categories', 'series']);
+
+/**
+ * Every reason the demo seeds cannot run as written: a seed the import check refuses, a key it
+ * would silently drop (a typo such as `heroimage`), a slug used twice. Empty when they are sound.
+ * The seed refuses to write anything until it is; an app's fixture test calls it too.
+ */
+export function demoSeedProblems(seeds: readonly BlogDemoPostSeed[]): string[] {
+    const problems: string[] = [];
+    const slugs = new Set<string>();
+    for (const seed of seeds) {
+        const item = readImportPost(seed);
+        if (typeof item === 'string') problems.push(`"${seed.slug}": ${item}`);
+        for (const key of Object.keys(seed)) {
+            if (!DEMO_SEED_KEYS.has(key)) problems.push(`"${seed.slug}": unknown field "${key}"`);
+        }
+        if (slugs.has(seed.slug)) problems.push(`"${seed.slug}": slug used twice`);
+        slugs.add(seed.slug);
+    }
+    return problems;
+}
+
+type WriteCheck = (entity: typeof Post.entity, data: Record<string, unknown>) => void;
+
+/**
+ * Taxonomy by NAME, for import and the demo seed: find-or-create a tag, category or series in the
+ * blog's vocabulary, then link terms to a post. `tenantOrg` is undefined in platform mode (one
+ * app-wide vocabulary) and the organization in org mode. `check` runs before every write; import
+ * passes its RLS check, the platform-owner seed writes trusted fixtures and passes none.
+ */
+function taxonomyByName(appId: string, tenantOrg: string | null | undefined, check: WriteCheck = () => {}) {
+    const termIds = new Map<string, string>();
+    const ensureTerm = async (kind: 'tag' | 'category' | 'series', name: string): Promise<string> => {
+        const key = `${kind}:${name.toLowerCase()}`;
+        const cached = termIds.get(key);
+        if (cached) return cached;
+        const Model = (kind === 'tag' ? PostTag : kind === 'category' ? PostCategory : PostSeries) as typeof PostTag;
+        const nameField = kind === 'series' ? 'title' : 'name';
+        const where: Record<string, unknown> = { appId };
+        if (kind !== 'series') where.type = 'post';
+        if (tenantOrg !== undefined) where.organizationId = tenantOrg;
+        const slug = generateSlug(name);
+        let term = await Model.first(slug ? { ...where, slug } : { ...where, [nameField]: name });
+        if (!term) {
+            const data = { ...where, organizationId: tenantOrg ?? null, [nameField]: name };
+            check(Model.entity, data);
+            term = await Model.create(data);
+        }
+        const id = term.get('id') as string;
+        termIds.set(key, id);
+        return id;
+    };
+    const linkTerms = async (postId: string, tags: string[], categories: string[]) => {
+        // A Set: "JS" and "js" resolve to one tag, and the link tables are unique per pair.
+        const tagIds = new Set<string>();
+        for (const name of tags) tagIds.add(await ensureTerm('tag', name));
+        for (const tagId of tagIds) {
+            const link = { postId, tagId };
+            check(PostTagLink.entity, link);
+            await PostTagLink.create(link);
+        }
+        const categoryIds = new Set<string>();
+        for (const name of categories) categoryIds.add(await ensureTerm('category', name));
+        for (const categoryId of categoryIds) {
+            const link = { postId, categoryId };
+            check(PostCategoryLink.entity, link);
+            await PostCategoryLink.create(link);
+        }
+    };
+    return { ensureTerm, linkTerms };
 }
 
 /**
@@ -2491,6 +2565,10 @@ ${urls}
         if (!seeds?.length) {
             return errorResponse('Demo content is not configured', 404, { code: 'NOT_FOUND' });
         }
+        // Seeds are app fixtures, so a malformed one is a bug to surface, and before any write:
+        // never a half-seeded blog, never a bad seed hidden behind a row that already exists.
+        const problems = demoSeedProblems(seeds);
+        if (problems.length > 0) throw new Error(`Demo posts: ${problems.join('; ')}`);
 
         const connectError = config.connect(context.env);
         if (connectError) return connectError;
@@ -2505,7 +2583,9 @@ ${urls}
         // like posts that admin creates by hand.
         const organizationId = resolveOrgId(context.request, auth.session?.user?.organizationId ?? null);
         const userId = auth.session?.user?.id ?? null;
-        const publishedAt = new Date().toISOString();
+        const now = Date.now();
+        // Same vocabulary scope as import: app-wide in platform mode, per organization in org mode.
+        const taxonomy = taxonomyByName(appId, resolveMode(context.env) === 'org' ? organizationId : undefined);
         const created: Array<{ id: unknown; slug: string; contentType: string }> = [];
         const existing: string[] = [];
 
@@ -2521,26 +2601,23 @@ ${urls}
                 continue;
             }
 
+            const item = readImportPost(seed) as ImportPostInput; // checked above
+
+            let post: Post;
             try {
-                const post = await Post.create({
-                    title: seed.title,
-                    slug: seed.slug,
-                    excerpt: seed.excerpt,
-                    content: { ...seed.content, time: Date.now() },
-                    contentType: seed.contentType,
+                const seriesId = item.series ? await taxonomy.ensureTerm('series', item.series) : undefined;
+                // Absent columns stay absent (never nulled), so each keeps its own default.
+                post = await Post.create({
+                    ...item.data,
+                    ...(item.data.content ? { content: { ...(item.data.content as EditorJSData), time: now } } : {}),
                     status: 'published',
-                    isFeatured: seed.isFeatured ?? false,
-                    // Omitted rather than nulled when a seed has no hero, so the
-                    // column keeps its own default instead of being force-cleared.
-                    ...(seed.heroImage ? { heroImage: seed.heroImage } : {}),
-                    publishedAt,
-                    postedAt: publishedAt,
+                    publishedAt: item.data.publishedAt ?? now,
+                    ...(seriesId ? { seriesId } : {}),
                     userId,
                     authorId: userId,
                     appId,
                     organizationId,
                 });
-                created.push({ id: post.get('id'), slug: seed.slug, contentType: seed.contentType });
             } catch (error) {
                 // A concurrent seed request may win after our lookup. Re-check
                 // only for a uniqueness conflict; all other failures must remain visible.
@@ -2549,7 +2626,11 @@ ${urls}
                     throw error;
                 }
                 existing.push(seed.slug);
+                continue;
             }
+            const postId = post.get('id') as string;
+            created.push({ id: postId, slug: seed.slug, contentType: seed.contentType });
+            await taxonomy.linkTerms(postId, item.tags, item.categories);
         }
 
         return jsonResponse({ created, existing, total: seeds.length });
@@ -2780,30 +2861,9 @@ ${urls}
         // Platform mode: one app-wide vocabulary and app-wide slugs. Org mode: per-organization.
         const tenantOrg = resolveMode(context.env) === 'org' ? scope.organizationId : undefined;
         const languageConfig = await languageConfigFor(context, scope.appId, tenantOrg);
-
-        const termIds = new Map<string, string>();
-        const ensureTerm = async (kind: 'tag' | 'category' | 'series', name: string): Promise<string> => {
-            const key = `${kind}:${name.toLowerCase()}`;
-            const cached = termIds.get(key);
-            if (cached) return cached;
-            const Model = (
-                kind === 'tag' ? PostTag : kind === 'category' ? PostCategory : PostSeries
-            ) as typeof PostTag;
-            const nameField = kind === 'series' ? 'title' : 'name';
-            const where: Record<string, unknown> = { appId: scope.appId };
-            if (kind !== 'series') where.type = 'post';
-            if (tenantOrg !== undefined) where.organizationId = tenantOrg;
-            const slug = generateSlug(name);
-            let term = await Model.first(slug ? { ...where, slug } : { ...where, [nameField]: name });
-            if (!term) {
-                const data = { ...where, organizationId: tenantOrg ?? null, [nameField]: name };
-                globalRLS.validateWrite(Model.entity, securityContext, data, 'create');
-                term = await Model.create(data);
-            }
-            const id = term.get('id') as string;
-            termIds.set(key, id);
-            return id;
-        };
+        const taxonomy = taxonomyByName(scope.appId, tenantOrg, (entity, data) =>
+            globalRLS.validateWrite(entity, securityContext, data, 'create'),
+        );
 
         const result: BlogImportResult = { created: [], skipped: [], warnings: [] };
         for (const raw of body.posts) {
@@ -2851,7 +2911,8 @@ ${urls}
 
             let post: Post;
             try {
-                const seriesId = linkTaxonomy && item.series ? await ensureTerm('series', item.series) : undefined;
+                const seriesId =
+                    linkTaxonomy && item.series ? await taxonomy.ensureTerm('series', item.series) : undefined;
                 post = await Post.create({
                     ...item.data,
                     slug,
@@ -2876,21 +2937,7 @@ ${urls}
 
             if (!linkTaxonomy) continue;
             try {
-                // A Set: "JS" and "js" resolve to one tag, and the link tables are unique per pair.
-                const tagIds = new Set<string>();
-                for (const name of item.tags) tagIds.add(await ensureTerm('tag', name));
-                for (const tagId of tagIds) {
-                    const link = { postId, tagId };
-                    globalRLS.validateWrite(PostTagLink.entity, securityContext, link, 'create');
-                    await PostTagLink.create(link);
-                }
-                const categoryIds = new Set<string>();
-                for (const name of item.categories) categoryIds.add(await ensureTerm('category', name));
-                for (const categoryId of categoryIds) {
-                    const link = { postId, categoryId };
-                    globalRLS.validateWrite(PostCategoryLink.entity, securityContext, link, 'create');
-                    await PostCategoryLink.create(link);
-                }
+                await taxonomy.linkTerms(postId, item.tags, item.categories);
             } catch (error) {
                 if (!(error instanceof RLSError)) throw error;
                 result.warnings.push({ slug, message: 'Tags or categories could not be linked: access denied.' });

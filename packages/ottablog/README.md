@@ -1013,6 +1013,13 @@ Gated by `requireAdmin`, which apps should wire at **system scope** so only the 
 creates only missing rows in the resolved app/organization scope and leaves existing content unchanged, so it is safe
 for a fresh deployment and safe to repeat after an administrator edits the seeded content.
 
+A seed has the same shape as one post in an import file (`BlogExportPost`), so it can be any content type (blurbs and
+photo journals included) and carry `tags`, `categories` and a `series` by name, `footnotes`, an `originalDate`,
+`seoMeta` and an editorial `publishedAt` (defaults to now). Seeds always publish; taxonomy terms are found or created in
+the same scope import uses. A malformed seed throws instead of being skipped, since seeds are app fixtures. otta-web's
+seed lives in `apps/otta-web/worker/fixtures/` (`demo-blog-content.ts` for the blog, `demo-whats-new.ts` for release
+notes).
+
 ```jsonc
 // 200 response
 { "created": [{ "id": "...", "slug": "welcome", "contentType": "blog" }], "existing": ["kitchensink"], "total": 2 }
