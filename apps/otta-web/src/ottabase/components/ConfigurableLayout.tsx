@@ -6,9 +6,16 @@
 import { ReferralTracker } from '@/components/ReferralTracker';
 import { PACKAGES_ENABLED } from '@/ottabase/config';
 import type { LayoutConfig } from '@ottabase/ottalayout';
-import { contentWidthClass, containerPaddingClass, densityPadding, sidebarWidthClass } from '@ottabase/ottalayout';
+import {
+    accountPlacement,
+    contentWidthClass,
+    containerPaddingClass,
+    densityPadding,
+    sidebarWidthClass,
+} from '@ottabase/ottalayout';
 import { LayoutSlot } from '@ottabase/ottalayout/react';
 import { memo, useMemo } from 'react';
+import { AccountMenu } from './layout/AccountMenu';
 import { BrandFooter } from './layout/BrandFooter';
 import { MinimalHeader, TopbarHeader } from './layout/BrandHeaders';
 import { DrawerNav } from './layout/DrawerNav';
@@ -40,7 +47,8 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
     const hasSidebar = navigation === 'sidebar';
     const hasDrawer = navigation === 'drawer';
     const navInHeader = navigation === 'topbar';
-    const noNav = navigation === 'none';
+    // The account menu sits in the first chrome the layout has; without a header that is the sidebar or drawer.
+    const account = accountPlacement({ header, navigation, floatingAccount: config?.floatingAccount });
 
     const drawerTrigger = useMemo(() => (hasDrawer ? <DrawerNav /> : undefined), [hasDrawer]);
 
@@ -62,12 +70,22 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
             )}
             {header === 'none' && hasDrawer && (
                 <div className="fixed top-4 left-4 z-40">
-                    <DrawerNav />
+                    <DrawerNav withAccount={account === 'drawer'} />
+                </div>
+            )}
+            {account === 'floating' && (
+                <div className="fixed top-4 right-4 z-40">
+                    <AccountMenu variant="floating" />
                 </div>
             )}
 
             <div className="flex flex-col md:flex-row flex-1">
-                {hasSidebar && <SidebarNav widthClass={sidebarWidthClass(config?.sidebarWidth)} />}
+                {hasSidebar && (
+                    <SidebarNav
+                        widthClass={sidebarWidthClass(config?.sidebarWidth)}
+                        withAccount={account === 'sidebar'}
+                    />
+                )}
 
                 <main
                     className={`flex-1 min-w-0 mx-auto ${cPaddingClass} ${paddingClass} ${hasSidebar ? 'max-w-none w-full' : cwClass}`}

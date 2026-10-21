@@ -1,4 +1,4 @@
-import { isAdminUser, useSession } from '@/lib/auth';
+import { useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu/render';
 import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
@@ -6,7 +6,7 @@ import { APP_META } from '@/ottabase/config';
 import { Link, useLocation } from '@tanstack/react-router';
 import { memo } from 'react';
 import { ControlsSection } from './ControlsSection';
-import { UserSection } from './UserSection';
+import { AccountMenu } from './AccountMenu';
 import { getNavLinks } from './layout.constants';
 
 export const TopbarHeader = memo(function TopbarHeader({
@@ -20,12 +20,11 @@ export const TopbarHeader = memo(function TopbarHeader({
     leading?: React.ReactNode;
     sticky?: boolean;
 }) {
-    const { isAuthenticated, user } = useSession();
+    const { isAuthenticated } = useSession();
     const location = useLocation();
     const { config } = useBrand();
 
-    const isAdmin = isAdminUser(user);
-    const navLinks = getNavLinks({ isAuthenticated, isAdmin });
+    const navLinks = getNavLinks();
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
@@ -89,7 +88,7 @@ export const TopbarHeader = memo(function TopbarHeader({
 
                 <div className="flex shrink-0 items-center gap-2">
                     <ControlsSection />
-                    <UserSection />
+                    <AccountMenu />
                 </div>
             </div>
         </header>
@@ -106,12 +105,11 @@ export const MinimalHeader = memo(function MinimalHeader({
     /** When true, render header-nav menu slot (or static nav) — e.g. homepage with navigation: topbar */
     showNav?: boolean;
 }) {
-    const { isAuthenticated, user } = useSession();
+    const { isAuthenticated } = useSession();
     const location = useLocation();
     const { config } = useBrand();
 
-    const isAdmin = isAdminUser(user);
-    const navLinks = getNavLinks({ isAuthenticated, isAdmin });
+    const navLinks = getNavLinks();
     const staticNav = (
         <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
@@ -163,7 +161,7 @@ export const MinimalHeader = memo(function MinimalHeader({
                 {headerNav}
                 <div className="flex shrink-0 items-center gap-2">
                     <ControlsSection />
-                    <UserSection compact />
+                    <AccountMenu variant="compact" />
                 </div>
             </div>
         </header>

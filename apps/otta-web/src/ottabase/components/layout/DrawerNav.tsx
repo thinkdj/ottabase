@@ -1,4 +1,4 @@
-import { isAdminUser, useSession } from '@/lib/auth';
+import { useSession } from '@/lib/auth';
 import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu/render';
 import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
@@ -8,16 +8,17 @@ import { Link, useLocation } from '@tanstack/react-router';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { AccountLinks } from './AccountMenu';
 import { getNavLinks } from './layout.constants';
 
-export function DrawerNav() {
-    const { isAuthenticated, user } = useSession();
+/** `withAccount` is the headerless layout: the drawer is the only chrome, so it lists the account links too. */
+export function DrawerNav({ withAccount = false }: { withAccount?: boolean }) {
+    const { isAuthenticated } = useSession();
     const location = useLocation();
     const { config } = useBrand();
     const [open, setOpen] = useState(false);
 
-    const isAdmin = isAdminUser(user);
-    const links = getNavLinks({ isAuthenticated, isAdmin });
+    const links = getNavLinks();
     const staticNav = links.map((link) => {
         const isActive = location.pathname === link.to || (link.to !== '/' && location.pathname.startsWith(link.to));
         return (
@@ -84,6 +85,11 @@ export function DrawerNav() {
                                 </Button>
                             </div>
                             <nav className="flex flex-col gap-0.5 p-3 overflow-y-auto flex-1">{navContent}</nav>
+                            {withAccount && (
+                                <div className="border-t border-border/60 p-3">
+                                    <AccountLinks onNavigate={() => setOpen(false)} />
+                                </div>
+                            )}
                         </div>
                     </>,
                     document.body,

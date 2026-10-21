@@ -69,21 +69,22 @@ flowchart TD
 
 ## Repository layout
 
-| Area                                | Path                                                                                               |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Package (schema, model, validation) | `packages/referrals/`                                                                              |
-| Worker API                          | `apps/otta-web/worker/routes/referrals.ts`                                                         |
-| Router wiring                       | `apps/otta-web/worker/routes/router.ts`                                                            |
-| Signup attribution                  | `apps/otta-web/worker/routes/auth.ts` (calls `processReferralAttribution`)                         |
-| Attribution helper                  | `apps/otta-web/ottabase/helpers/referral-attribution.ts`                                           |
-| Client utilities                    | `apps/otta-web/src/lib/referrals.ts`                                                               |
-| Tracker component                   | `apps/otta-web/src/components/ReferralTracker.tsx`                                                 |
-| Layout mount                        | `ConfigurableLayout` / `BrandLayout` (renders `ReferralTracker` when `PACKAGES_ENABLED.referrals`) |
-| Dashboard page                      | `apps/otta-web/src/pages/referrals/ReferralsPage.tsx`                                              |
-| Dashboard UI                        | `apps/otta-web/src/components/ReferralDashboard.tsx`                                               |
-| App config                          | `apps/otta-web/ottabase/ottabase.config.ts` (`features.referrals`, `packages.referrals`)           |
-| Resolved client config              | `apps/otta-web/ottabase/config.loader.ts` (`REFERRALS_CONFIG`)                                     |
-| Model registration                  | `apps/otta-web/worker/lib/db-utils.ts` (includes `ReferralTracking` when package enabled)          |
+| Area                                | Path                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Package (schema, model, validation) | `packages/referrals/`                                                                             |
+| Worker API                          | `apps/otta-web/worker/routes/referrals.ts`                                                        |
+| Router wiring                       | `apps/otta-web/worker/routes/router.ts`                                                           |
+| Signup attribution                  | `apps/otta-web/worker/routes/auth.ts` (calls `processReferralAttribution`)                        |
+| Attribution helper                  | `apps/otta-web/ottabase/helpers/referral-attribution.ts`                                          |
+| Client utilities                    | `apps/otta-web/src/lib/referrals.ts`                                                              |
+| Tracker component                   | `apps/otta-web/src/components/ReferralTracker.tsx`                                                |
+| Layout mount                        | `ConfigurableLayout` (renders `ReferralTracker` when `PACKAGES_ENABLED.referrals`)                |
+| Dashboard page                      | `apps/otta-web/src/pages/referrals/ReferralsPage.tsx`                                             |
+| Route and account-menu link         | the `referrals` entry in `apps/otta-web/src/ottabase/config/packages.ts` (signed-in `/referrals`) |
+| Dashboard UI                        | `apps/otta-web/src/components/ReferralDashboard.tsx`                                              |
+| App config                          | `apps/otta-web/ottabase/ottabase.config.ts` (`features.referrals`, `packages.referrals`)          |
+| Resolved client config              | `apps/otta-web/ottabase/config.loader.ts` (`REFERRALS_CONFIG`)                                    |
+| Model registration                  | `apps/otta-web/worker/lib/db-utils.ts` (includes `ReferralTracking` when package enabled)         |
 
 ---
 
@@ -226,8 +227,7 @@ Prefer setting it before launch, or keep supporting the previous key downstream 
 
 ### Automatic tracking
 
-`ReferralTracker` is mounted from **`ConfigurableLayout`** / **`BrandLayout`** when `PACKAGES_ENABLED.referrals` is
-true. It:
+`ReferralTracker` is mounted from **`ConfigurableLayout`** when `PACKAGES_ENABLED.referrals` is true. It:
 
 1. Respects `features.referrals.enabled`
 2. Reads the configured referral param from the URL (default `?ref=`, see `features.referrals.referralParam`)

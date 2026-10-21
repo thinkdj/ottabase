@@ -36,18 +36,18 @@ mounts its routes behind the license gate (`mountPremiumPackages(apiRouter, prem
 
 ### Client descriptor
 
-The manifest remains server-only. For a package with rendered admin pages, add a client descriptor
-(`definePackageClient` from `@ottabase/kernel/client`) to `src/ottabase/config/packages.ts` with the page's path, nav
-group, icon and lazy loader, and re-export its tables from `ottabase/db/schema.ts` for drizzle-kit. `otta-web` scans
-every `packages/premium*/src` directory for Tailwind, so premium package styles need no separate configuration. The
-app's packages-registration test asserts that the server list, the client list and the Drizzle schema exports stay in
-sync.
+The manifest remains server-only. For a package that renders pages, add a client descriptor (`definePackageClient` from
+`@ottabase/kernel/client`) to `src/ottabase/config/packages.ts`: admin pages with their path, nav group, icon and lazy
+loader, other pages under `routes` (with a `menu` entry to link one from the account menu), and re-export its tables
+from `ottabase/db/schema.ts` for drizzle-kit. `otta-web` scans every `packages/premium*/src` directory for Tailwind, so
+premium package styles need no separate configuration. The app's packages-registration test asserts that the server
+list, the client list and the Drizzle schema exports stay in sync.
 
 ### Uninstalling
 
-Delete the entry from the list. Routes and nav disappear on the next deploy. **Tables are left alone** — dropping
-customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a migration that
-says so.
+Delete the entry from both lists. Routes, nav and menu links disappear on the next deploy. **Tables are left alone** —
+dropping customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a
+migration that says so.
 
 ---
 
@@ -212,10 +212,10 @@ repository access, with the license token deciding tiers inside it. `packages/fl
 (`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
 cockpit that watches a fleet of beacons is a private Premium Package.
 
-That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench and
-Helpdesk, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token at all
-because repository access is the license. It is sold as three yearly licenses split by how many people commit (Solo,
-Team, Company); a lapsed subscription loses repository access and nothing else. See
+That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench,
+Helpdesk and Privacy, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token
+at all because repository access is the license. It is sold as three yearly licenses split by how many people commit
+(Solo, Team, Company); a lapsed subscription loses repository access and nothing else. See
 [ottabase.com/pro](https://ottabase.com/pro).
 
 ### Design notes worth copying

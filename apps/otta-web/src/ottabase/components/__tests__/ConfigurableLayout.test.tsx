@@ -1,5 +1,5 @@
 import type { LayoutConfig } from '@ottabase/ottalayout';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +17,6 @@ vi.mock('@tanstack/react-router', () => ({
             {children}
         </a>
     ),
-    Outlet: () => <div data-testid="outlet">Page Content</div>,
     useLocation: () => mockUseLocation(),
     useNavigate: () => mockUseNavigate(),
 }));
@@ -37,21 +36,7 @@ vi.mock('@/lib/auth', () => ({
     isOrgAdmin: () => false,
 }));
 
-// Mock theme context
-const mockThemeState = {
-    theme: 'default',
-    config: {} as any,
-    resolved: null,
-    layout: null as LayoutConfig | null,
-    layoutOverrides: {},
-    setLayoutOverrides: vi.fn(),
-    resetLayoutOverrides: vi.fn(),
-};
-vi.mock('@/ottabase/providers/ThemeContext', () => ({
-    useTheme: () => mockThemeState,
-}));
-
-// Mock components used inside BrandLayout
+// Mock components used inside the layout
 vi.mock('@ottabase/ui-components/dark-mode-toggle', () => ({
     DarkModeToggle: (props: any) => <button data-testid="dark-mode-toggle" {...props} />,
 }));
@@ -71,7 +56,9 @@ vi.mock('@/ottabase/config', () => ({
     APP_META: { appName: 'Test App', tagline: 'Test Tagline' },
     APP_ID: 'test-app',
     APP_NAME: 'Test App',
+    MEDIA_LIBRARY_ENABLED: true,
     PACKAGES_ENABLED: { ottablog: true, shortlinks: true, referrals: true },
+    PACKAGE_ACCOUNT_LINKS: [{ path: '/referrals', title: 'Referrals', icon: () => null, pkg: 'referrals' }],
 }));
 vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },
@@ -103,8 +90,21 @@ vi.mock('@ottabase/ui-shadcn', () => ({
             {children}
         </button>
     )),
+    // Account menu: render everything inline so menu items are queryable without opening
+    DropdownMenu: ({ children }: any) => <div data-testid="account-menu">{children}</div>,
+    DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
+    DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
+    DropdownMenuItem: ({ children, asChild, onSelect }: any) =>
+        asChild ? children : <button onClick={onSelect}>{children}</button>,
+    DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
+    DropdownMenuSeparator: () => <hr />,
 }));
 vi.mock('lucide-react', () => ({
+    ChevronsUpDown: () => null,
+    Images: () => null,
+    PenLine: () => null,
+    ShieldCheck: () => null,
+    UserRound: () => null,
     LogIn: () => <span data-testid="icon-login" />,
     LogOut: () => <span data-testid="icon-logout" />,
     Menu: () => <span data-testid="icon-menu" />,
@@ -121,14 +121,16 @@ vi.mock('@ottabase/brand-engine-react', () => ({
     useBrand: () => ({ config: null, isLoading: false, error: null, refresh: vi.fn() }),
 }));
 
-import { BrandLayout } from '../BrandLayout';
+import { ConfigurableLayout } from '../ConfigurableLayout';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+let layout: LayoutConfig | null = null;
+
 function setLayout(overrides: Partial<LayoutConfig>) {
-    mockThemeState.layout = {
+    layout = {
         header: 'topbar',
         navigation: 'topbar',
         contentWidth: 'md',
@@ -138,13 +140,26 @@ function setLayout(overrides: Partial<LayoutConfig>) {
     };
 }
 
+function renderLayout() {
+    return render(
+        <ConfigurableLayout config={layout as LayoutConfig}>
+            <div data-testid="outlet">Page Content</div>
+        </ConfigurableLayout>,
+    );
+}
+
+function signIn() {
+    mockSession.isAuthenticated = true;
+    mockSession.user = { name: 'Test User', email: 'test@example.com' } as any;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('BrandLayout', () => {
+describe('ConfigurableLayout', () => {
     beforeEach(() => {
-        mockThemeState.layout = null;
+        layout = null;
         mockSession.isAuthenticated = false;
         mockSession.user = null;
         mockUseLocation.mockReturnValue({ pathname: '/' });
@@ -157,20 +172,20 @@ describe('BrandLayout', () => {
     describe('header variants', () => {
         it('renders topbar header with app name', () => {
             setLayout({ header: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByText('Test App')).toBeTruthy();
         });
 
         it('renders the configured meta.tagline beside the app name, not a framework name', () => {
             setLayout({ header: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByText('Test Tagline')).toBeTruthy();
             expect(screen.queryByText('TanStack')).toBeNull();
         });
 
         it('renders topbar header with navigation when navigation is topbar', () => {
             setLayout({ header: 'topbar', navigation: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             // "/" link appears twice: logo link + nav "Home" link
             expect(screen.getAllByTestId('link-/').length).toBeGreaterThanOrEqual(2);
             expect(screen.getByTestId('link-/blog')).toBeTruthy();
@@ -179,13 +194,13 @@ describe('BrandLayout', () => {
 
         it('renders minimal header', () => {
             setLayout({ header: 'minimal', navigation: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByText('Test App')).toBeTruthy();
         });
 
         it('renders no header when header is none', () => {
             setLayout({ header: 'none', navigation: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             // The outlet still renders
             expect(screen.getByTestId('outlet')).toBeTruthy();
         });
@@ -198,28 +213,28 @@ describe('BrandLayout', () => {
     describe('navigation variants', () => {
         it('renders sidebar navigation for sidebar layout', () => {
             setLayout({ navigation: 'sidebar' });
-            const { container } = render(<BrandLayout />);
+            const { container } = renderLayout();
             const aside = container.querySelector('aside');
             expect(aside).toBeTruthy();
         });
 
         it('sidebar contains nav links', () => {
             setLayout({ navigation: 'sidebar' });
-            render(<BrandLayout />);
-            // Sidebar links present (public links — admin link is gated behind adminOnly)
+            renderLayout();
+            // Sidebar links present: the public ones only
             expect(screen.getByTestId('link-/blog')).toBeTruthy();
             expect(screen.getByTestId('link-/changelog')).toBeTruthy();
         });
 
         it('renders drawer trigger for drawer navigation', () => {
             setLayout({ header: 'topbar', navigation: 'drawer' });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByTestId('icon-menu')).toBeTruthy();
         });
 
         it('does not render sidebar for topbar navigation', () => {
             setLayout({ navigation: 'topbar' });
-            const { container } = render(<BrandLayout />);
+            const { container } = renderLayout();
             const aside = container.querySelector('aside');
             expect(aside).toBeNull();
         });
@@ -232,13 +247,13 @@ describe('BrandLayout', () => {
     describe('footer', () => {
         it('renders footer when footer is true', () => {
             setLayout({ footer: true });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByText('Built with Ottabase')).toBeTruthy();
         });
 
         it('does not render footer when footer is false', () => {
             setLayout({ footer: false });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.queryByText('Built with Ottabase')).toBeNull();
         });
     });
@@ -250,13 +265,13 @@ describe('BrandLayout', () => {
     describe('content area', () => {
         it('always renders the Outlet', () => {
             setLayout({});
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByTestId('outlet')).toBeTruthy();
         });
 
         it('renders referral tracker', () => {
             setLayout({});
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByTestId('referral-tracker')).toBeTruthy();
         });
     });
@@ -268,7 +283,7 @@ describe('BrandLayout', () => {
     describe('responsive sidebar classes', () => {
         it('sidebar has full-width class for mobile and CSS custom property for desktop width', () => {
             setLayout({ navigation: 'sidebar' });
-            const { container } = render(<BrandLayout />);
+            const { container } = renderLayout();
             const aside = container.querySelector('aside');
             expect(aside?.className).toContain('w-full');
             // Desktop width is now set via CSS custom property instead of a Tailwind class
@@ -277,7 +292,7 @@ describe('BrandLayout', () => {
 
         it('body container uses flex-col on mobile and flex-row on desktop', () => {
             setLayout({ navigation: 'sidebar' });
-            const { container } = render(<BrandLayout />);
+            const { container } = renderLayout();
             // The flex container wrapping sidebar + main
             const flexContainer = container.querySelector('.flex.flex-col.md\\:flex-row');
             expect(flexContainer).toBeTruthy();
@@ -285,7 +300,7 @@ describe('BrandLayout', () => {
 
         it('sidebar nav is horizontal on mobile (flex) and vertical on desktop (md:flex-col)', () => {
             setLayout({ navigation: 'sidebar' });
-            const { container } = render(<BrandLayout />);
+            const { container } = renderLayout();
             const nav = container.querySelector('aside nav');
             expect(nav?.className).toContain('flex');
             expect(nav?.className).toContain('md:flex-col');
@@ -297,27 +312,31 @@ describe('BrandLayout', () => {
     // =======================================================================
 
     describe('auth-dependent navigation', () => {
-        it('hides auth-required links when not authenticated', () => {
+        it('keeps the nav visitor-facing: no signed-in destinations when not authenticated', () => {
             mockSession.isAuthenticated = false;
             setLayout({ navigation: 'sidebar' });
-            render(<BrandLayout />);
-            expect(screen.queryByTestId('link-/dashboard')).toBeNull();
+            renderLayout();
+            expect(screen.queryByTestId('link-/profile')).toBeNull();
             expect(screen.queryByTestId('link-/referrals')).toBeNull();
         });
 
-        it('shows auth-required links when authenticated', () => {
+        it('shows signed-in destinations in the account menu, not the nav, when authenticated', () => {
             mockSession.isAuthenticated = true;
             mockSession.user = { name: 'Test User', email: 'test@example.com' } as any;
             setLayout({ navigation: 'sidebar' });
-            render(<BrandLayout />);
-            expect(screen.getByTestId('link-/dashboard')).toBeTruthy();
-            expect(screen.getByTestId('link-/referrals')).toBeTruthy();
+            renderLayout();
+            const accountMenu = screen.getByTestId('account-menu');
+            expect(accountMenu.querySelector('[data-testid="link-/profile"]')).toBeTruthy();
+            expect(accountMenu.querySelector('[data-testid="link-/referrals"]')).toBeTruthy();
+            // The sidebar nav itself stays public
+            const aside = document.querySelector('aside');
+            expect(aside?.querySelector('[data-testid="link-/referrals"]')).toBeNull();
         });
 
         it('shows login button when not authenticated', () => {
             mockSession.isAuthenticated = false;
             setLayout({});
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByTestId('link-/login')).toBeTruthy();
         });
     });
@@ -329,13 +348,13 @@ describe('BrandLayout', () => {
     describe('controls', () => {
         it('renders dark mode toggle', () => {
             setLayout({ header: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByTestId('dark-mode-toggle')).toBeTruthy();
         });
 
         it('renders language switcher', () => {
             setLayout({ header: 'topbar' });
-            render(<BrandLayout />);
+            renderLayout();
             expect(screen.getByTestId('language-switcher')).toBeTruthy();
         });
     });
@@ -346,11 +365,78 @@ describe('BrandLayout', () => {
 
     describe('default layout when config is null', () => {
         it('renders with defaults when layout is null', () => {
-            mockThemeState.layout = null;
-            render(<BrandLayout />);
+            layout = null;
+            renderLayout();
             // Should still render with topbar header default
             expect(screen.getByText('Test App')).toBeTruthy();
             expect(screen.getByTestId('outlet')).toBeTruthy();
+        });
+    });
+
+    // =======================================================================
+    // Where the account menu goes
+    // =======================================================================
+
+    describe('account placement', () => {
+        const accountMenus = () => screen.queryAllByTestId('account-menu');
+
+        it('has one account menu, in the header, when there is a header', () => {
+            signIn();
+            setLayout({ header: 'topbar', navigation: 'sidebar' });
+            renderLayout();
+            expect(accountMenus()).toHaveLength(1);
+            expect(document.querySelector('aside [data-testid="account-menu"]')).toBeNull();
+            expect(screen.getByTestId('link-/referrals')).toBeTruthy();
+        });
+
+        it('moves it to the foot of the sidebar when there is no header', () => {
+            signIn();
+            setLayout({ header: 'none', navigation: 'sidebar' });
+            renderLayout();
+            expect(document.querySelector('header')).toBeNull();
+            const menu = document.querySelector('aside [data-testid="account-menu"]');
+            expect(menu?.querySelector('[data-testid="link-/profile"]')).toBeTruthy();
+            expect(document.querySelector('aside')?.className).toContain('md:h-dvh');
+        });
+
+        it('offers Login at the foot of a headerless sidebar to a visitor', () => {
+            setLayout({ header: 'none', navigation: 'sidebar' });
+            renderLayout();
+            expect(document.querySelector('aside [data-testid="link-/login"]')).toBeTruthy();
+        });
+
+        it('lists the account links in the drawer when there is no header', () => {
+            signIn();
+            setLayout({ header: 'none', navigation: 'drawer' });
+            renderLayout();
+            fireEvent.click(screen.getByTitle('Open menu'));
+            const drawer = screen.getByRole('dialog', { name: 'Navigation Menu' });
+            const account = within(drawer).getByRole('navigation', { name: 'Account' });
+            expect(within(account).getByTestId('link-/profile')).toBeTruthy();
+            expect(within(account).getByTestId('link-/referrals')).toBeTruthy();
+            expect(within(account).getByText('Log out')).toBeTruthy();
+        });
+
+        it('keeps the drawer to the nav when the header holds the account menu', () => {
+            signIn();
+            setLayout({ header: 'topbar', navigation: 'drawer' });
+            renderLayout();
+            fireEvent.click(screen.getByTitle('Open menu'));
+            const drawer = screen.getByRole('dialog', { name: 'Navigation Menu' });
+            expect(within(drawer).queryByRole('navigation', { name: 'Account' })).toBeNull();
+        });
+
+        it('renders no account menu on a chrome-free layout unless it asks for the floating button', () => {
+            signIn();
+            setLayout({ header: 'none', navigation: 'none' });
+            const { unmount } = renderLayout();
+            expect(accountMenus()).toHaveLength(0);
+            unmount();
+
+            setLayout({ header: 'none', navigation: 'none', floatingAccount: true });
+            renderLayout();
+            expect(accountMenus()).toHaveLength(1);
+            expect(screen.getByTestId('account-menu').closest('.fixed')?.className).toContain('right-4');
         });
     });
 });

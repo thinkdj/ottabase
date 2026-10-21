@@ -1,4 +1,4 @@
-import { PACKAGES_ENABLED } from '@/ottabase/config';
+import { PACKAGE_ROUTES, PACKAGES_ENABLED } from '@/ottabase/config';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Button,
@@ -125,6 +125,8 @@ export function AnalyticsPage() {
     const search = useSearch({ strict: false }) as { tab?: string };
     const shortlinksEnabled = PACKAGES_ENABLED.shortlinks;
     const referralsEnabled = PACKAGES_ENABLED.referrals;
+    // The referral dashboard is the referrals package's page, mounted from its client descriptor.
+    const referralsPage = PACKAGE_ROUTES.find((route) => route.pkg === 'referrals');
 
     // Resolve valid tab from URL; fallback to core if package disabled
     const resolveTab = (): 'shortlinks' | 'referrals' | 'core' => {
@@ -143,7 +145,7 @@ export function AnalyticsPage() {
 
     const handleTabChange = (v: string) => {
         setTab(v as 'shortlinks' | 'referrals' | 'core');
-        navigate({ to: '/analytics', search: { tab: v } });
+        navigate({ to: '/admin/growth/analytics', search: { tab: v } });
     };
 
     const tabsList = [
@@ -167,15 +169,15 @@ export function AnalyticsPage() {
                 <div className="flex shrink-0 gap-2">
                     {shortlinksEnabled && (
                         <Button variant="outline" asChild>
-                            <Link to="/shortlinks">
+                            <Link to="/admin/growth/shortlinks">
                                 <IconLink className="mr-2 h-4 w-4" />
                                 Shortlinks
                             </Link>
                         </Button>
                     )}
-                    {referralsEnabled && (
+                    {referralsPage && (
                         <Button variant="outline" asChild>
-                            <Link to="/referrals">
+                            <Link to={referralsPage.path}>
                                 <IconUsers className="mr-2 h-4 w-4" />
                                 Referrals
                             </Link>
@@ -325,7 +327,7 @@ function ShortlinkAnalyticsTab() {
                 }
                 groupBy={groupBy}
                 formatDimension={formatDimension}
-                linkTo="/shortlinks"
+                linkTo="/admin/growth/shortlinks"
             />
         </div>
     );
@@ -564,7 +566,7 @@ function CoreAnalyticsTab() {
                 }
                 groupBy={groupBy}
                 formatDimension={formatDimension}
-                linkTo="/analytics"
+                linkTo="/admin/growth/analytics"
                 dimensionLabel={groupBy === 'event' ? 'Event' : undefined}
                 valueLabel="Events"
             />

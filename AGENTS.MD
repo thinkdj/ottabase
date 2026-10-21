@@ -488,7 +488,7 @@ if (!session) return errorResponse('Unauthorized', 401);
 
 **Client — `useSession()` is the single global source of truth** (module-level Jotai atoms, shared by every caller; the
 app wraps it in `@/lib/auth` to also sync `@ottabase/state`). Import `useSession` from `@/lib/auth` in app code. Never
-keep a private copy of `user` — read it from the hook so the header (`UserSection`), guards, and every consumer
+keep a private copy of `user`: read it from the hook so the account menu (`AccountMenu`), guards, and every consumer
 re-render together.
 
 ```typescript

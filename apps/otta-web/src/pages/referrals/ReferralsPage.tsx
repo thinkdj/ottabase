@@ -1,21 +1,17 @@
 /**
  * Referrals Page
  *
- * Protected page that shows the referral dashboard for the authenticated user.
+ * The referral dashboard for the signed-in user. The route requires a session (see the referrals
+ * entry in `src/ottabase/config/packages.ts`).
  */
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { ReferralDashboard } from '@/components/ReferralDashboard';
 import { useSession } from '@/lib/auth';
 
 export function ReferralsPage() {
     const { user } = useSession();
 
-    return (
-        <ProtectedRoute>
-            {user?.id ? <ReferralDashboard userId={user.id} /> : <ReferralsLoadingSkeleton />}
-        </ProtectedRoute>
-    );
+    return user?.id ? <ReferralDashboard userId={user.id} /> : <ReferralsLoadingSkeleton />;
 }
 
 /** Quiet placeholder shown while the session user resolves — mirrors the dashboard's stat-card + list shape. */

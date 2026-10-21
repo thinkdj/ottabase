@@ -3,14 +3,12 @@ import { PACKAGES_ENABLED } from '@/ottabase/config';
 export interface NavLink {
     to: string;
     label: string;
-    authRequired?: boolean;
-    /** When true, only render for users with admin permission. */
-    adminOnly?: boolean;
 }
 
 /**
- * Top-level app navigation. Admin users see an extra `Admin` entry that
- * deep-links into the dedicated `/admin` console (which has its own sidebar).
+ * Top-level app navigation: the public, visitor-facing surface only.
+ * Signed-in destinations (Profile, Media Library, package pages such as Referrals,
+ * Studio, Admin) live in the account menu (`AccountMenu`), not here.
  */
 const NAV_LINKS_ALL: NavLink[] = [
     { to: '/', label: 'Home' },
@@ -18,30 +16,16 @@ const NAV_LINKS_ALL: NavLink[] = [
     { to: '/docs', label: 'Docs' },
     { to: '/blog', label: 'Blog' },
     { to: '/changelog', label: "What's New" },
-    { to: '/shortlinks', label: 'Shortlinks' },
-    { to: '/dashboard', label: 'Profile Information', authRequired: true },
-    { to: '/referrals', label: 'Referrals', authRequired: true },
-    { to: '/analytics', label: 'Analytics', authRequired: true, adminOnly: true },
-    { to: '/admin', label: 'Admin', authRequired: true, adminOnly: true },
 ];
 
 const PACKAGE_ROUTE_MAP: Partial<Record<string, keyof typeof PACKAGES_ENABLED>> = {
     '/blog': 'ottablog',
-    '/shortlinks': 'shortlinks',
-    '/referrals': 'referrals',
 };
 
-/**
- * Returns the visible nav links for the current viewer.
- * Filters by enabled package, auth state, and admin permission.
- */
-export function getNavLinks(opts: { isAuthenticated?: boolean; isAdmin?: boolean } = {}): NavLink[] {
-    const { isAuthenticated = false, isAdmin = false } = opts;
+/** Returns the visible nav links, filtered by enabled package. */
+export function getNavLinks(): NavLink[] {
     return NAV_LINKS_ALL.filter((link) => {
         const pkg = PACKAGE_ROUTE_MAP[link.to];
-        if (pkg && !PACKAGES_ENABLED[pkg]) return false;
-        if (link.authRequired && !isAuthenticated) return false;
-        if (link.adminOnly && !isAdmin) return false;
-        return true;
+        return !pkg || PACKAGES_ENABLED[pkg];
     });
 }

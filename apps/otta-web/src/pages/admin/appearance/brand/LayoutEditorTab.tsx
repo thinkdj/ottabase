@@ -1,5 +1,6 @@
 import { useBrand } from '@ottabase/brand-engine-react';
 import {
+    accountPlacement,
     isValidPathPattern,
     LAYOUT_PRESETS,
     mergeLayoutConfig,
@@ -302,6 +303,25 @@ function LayoutConfigEditor({ config, onChange }: { config: LayoutConfig; onChan
                         onCheckedChange={(v) => onChange({ ...config, centerContent: v })}
                     />
                 </div>
+                {/* No header, sidebar or drawer: nothing holds the account menu unless the floating button does */}
+                {accountPlacement({ ...config, floatingAccount: false }) === null && (
+                    <>
+                        <div className="flex items-center justify-between">
+                            <Label htmlFor="layoutFloatingAccount">Floating account button</Label>
+                            <Switch
+                                id="layoutFloatingAccount"
+                                checked={config.floatingAccount ?? false}
+                                onCheckedChange={(v) => onChange({ ...config, floatingAccount: v })}
+                            />
+                        </div>
+                        {!config.floatingAccount && (
+                            <p className="text-xs text-warning">
+                                Signed-in users get no account menu on this layout: no Profile, Admin or Log out. Right
+                                for embeds and kiosk pages.
+                            </p>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );

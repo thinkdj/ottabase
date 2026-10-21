@@ -4,16 +4,18 @@
  * The authoritative list is `ottabase/packages.ts`, which cannot be imported here: a
  * manifest carries server wiring (session resolution, route factories, model classes) that
  * has no place in a browser bundle. So each package also has a small client descriptor:
- * its key, and the admin pages it renders. `ottabase/__tests__/packages-registration.test.ts`
- * fails if the two lists drift, which is what keeps the duplication honest.
+ * its key, the admin pages it renders and its other pages. The router mounts them and the
+ * account menu links the pages that carry a `menu` entry, so `otta add` writes this file
+ * and nothing else in `src/`. `ottabase/__tests__/packages-registration.test.ts` fails if
+ * the two lists drift, which is what keeps the duplication honest.
  *
  * INSTALLED, NOT LICENSED: a Premium Package's page stays reachable with its license
  * lapsed, rendering its upsell, because the operator needs a route to the screen that
  * fixes it. The server refuses the data either way.
  */
-import { definePackageClient, installedPackages, packageAdminPages } from '@ottabase/kernel/client';
+import { definePackageClient, installedPackages, packageAdminPages, packageRoutes } from '@ottabase/kernel/client';
 import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks';
-import { Archive, Webhook } from 'lucide-react';
+import { Archive, Gift, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'core' }),
@@ -23,7 +25,17 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'comments' }),
     definePackageClient({ key: 'ottalanding' }),
     definePackageClient({ key: 'shortlinks' }),
-    definePackageClient({ key: 'referrals' }),
+    definePackageClient({
+        key: 'referrals',
+        routes: [
+            {
+                path: '/referrals',
+                load: () => import('@/pages/referrals/ReferralsPage'),
+                exportName: 'ReferralsPage',
+                menu: { title: 'Referrals', icon: Gift },
+            },
+        ],
+    }),
     definePackageClient({ key: 'ottaai' }),
     definePackageClient({ key: 'flags' }),
     definePackageClient({ key: 'meter' }),
@@ -75,3 +87,11 @@ export function isPackageInstalled(key: string): boolean {
 
 /** Every admin page a package renders, tagged with its package key. Drives the router and the nav. */
 export const PACKAGE_ADMIN_PAGES = packageAdminPages(CLIENT_PACKAGES);
+
+/** Every other page a package renders. Drives the router. */
+export const PACKAGE_ROUTES = packageRoutes(CLIENT_PACKAGES);
+
+/** The package pages linked from the signed-in account menu, in list order. */
+export const PACKAGE_ACCOUNT_LINKS = PACKAGE_ROUTES.flatMap((route) =>
+    route.menu ? [{ path: route.path, title: route.menu.title, icon: route.menu.icon, pkg: route.pkg }] : [],
+);

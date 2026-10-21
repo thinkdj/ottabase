@@ -5,7 +5,7 @@ import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
-import { PACKAGE_ADMIN_PAGES, PACKAGES_ENABLED } from '@/ottabase/config/packages';
+import { PACKAGE_ADMIN_PAGES, PACKAGE_ROUTES, PACKAGES_ENABLED } from '@/ottabase/config/packages';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import { BrandScope } from '@ottabase/ui-shadcn';
@@ -231,43 +231,11 @@ const resetPasswordRoute = publicRoute('/reset-password', () =>
 
 // ─── User app surface ────────────────────────────────────────────────────────
 
-const dashboardRoute = protectedRoute('/dashboard', () => import('@/pages/auth/DashboardPage'), 'DashboardPage');
 const userProfileRoute = protectedRoute('/profile', () => import('@/pages/user/UserProfilePage'), 'UserProfilePage');
 const userMediaLibraryRoute = protectedRoute(
     '/media-library',
     () => import('@/pages/user/UserMediaLibraryPage'),
     'UserMediaLibraryPage',
-);
-
-const analyticsRoute = new Route({
-    getParentRoute: () => rootRoute,
-    path: '/analytics',
-    validateSearch: (search: Record<string, unknown>) => ({
-        tab:
-            (search.tab as string) === 'referrals'
-                ? 'referrals'
-                : (search.tab as string) === 'shortlinks'
-                  ? 'shortlinks'
-                  : 'core',
-    }),
-    // Analytics Engine totals are platform-wide (no org), so the worker APIs are system-admin only;
-    // this gate just avoids rendering a page whose data would 403.
-    component: lazyRouteComponent(() =>
-        import('@/pages/analytics/AnalyticsPage').then(({ AnalyticsPage }) => ({
-            default: () => (
-                <ProtectedRoute requirePlatformAdmin fallback={<AdminPrivilegeFallback />}>
-                    <AnalyticsPage />
-                </ProtectedRoute>
-            ),
-        })),
-    ),
-});
-
-const shortlinksRoute = publicRoute('/shortlinks', () =>
-    import('@/pages/shortlinks/ShortlinksPage').then((m) => ({ default: m.ShortlinksPage })),
-);
-const referralsRoute = publicRoute('/referrals', () =>
-    import('@/pages/referrals/ReferralsPage').then((m) => ({ default: m.ReferralsPage })),
 );
 
 // ─── Public content (blog, changelog) ────────────────────────────────────────
@@ -615,12 +583,28 @@ const adminAiGatewayRoute = makeAdminRoute(
 
 // ─── /admin/growth ───────────────────────────────────────────────────────────
 
-// Referrals dashboard shows the viewer's OWN referral stats (user-scoped), so any admin may open it.
-const adminReferralsRoute = makeAdminRoute(
-    '/admin/growth/referrals',
-    () => import('@/pages/admin/growth/ReferralsPage'),
-    'AdminReferralsPage',
-    { scope: 'org' },
+// Analytics Engine totals are platform-wide (no org), so the worker APIs are system-admin only.
+const adminAnalyticsRoute = makeAdminRoute(
+    '/admin/growth/analytics',
+    () => import('@/pages/analytics/AnalyticsPage'),
+    'AnalyticsPage',
+    {
+        validateSearch: (search: Record<string, unknown>) => ({
+            tab:
+                (search.tab as string) === 'referrals'
+                    ? 'referrals'
+                    : (search.tab as string) === 'shortlinks'
+                      ? 'shortlinks'
+                      : 'core',
+        }),
+    },
+);
+
+// Shortlink management: the CRUD APIs are system-admin only (requireAdminAccess, system scope).
+const adminShortlinksRoute = makeAdminRoute(
+    '/admin/growth/shortlinks',
+    () => import('@/pages/shortlinks/ShortlinksPage'),
+    'ShortlinksPage',
 );
 
 // AI providers: an ORG admin manages the workspace key, and any admin manages their own.
@@ -765,11 +749,10 @@ const coreRoutes = [
     registerRoute,
     verifyEmailRoute,
     resetPasswordRoute,
-    dashboardRoute,
     userProfileRoute,
-    analyticsRoute,
     // Admin
     adminRoute,
+    adminAnalyticsRoute,
     adminBrandKitsRoute,
     adminBrandKitNewRoute,
     adminBrandKitDetailRoute,
@@ -809,10 +792,19 @@ const packageAdminRoutes = PACKAGE_ADMIN_PAGES.map((page) =>
     makeAdminRoute(page.path, page.load, page.exportName, { scope: page.scope }),
 );
 
+// The other pages packages contribute (`/billing`, `/status`), from the same descriptors.
+const packagePageRoutes = PACKAGE_ROUTES.map((page) =>
+    page.access === 'public'
+        ? publicRoute(page.path, () =>
+              page.load().then((m) => ({ default: pageComponent(m, page.exportName) as ComponentType<unknown> })),
+          )
+        : protectedRoute(page.path, page.load, page.exportName),
+);
+
 // Routes that depend on optional packages.
 const packageRoutes = [
-    { route: shortlinksRoute, pkg: 'shortlinks' as const },
-    { route: referralsRoute, pkg: 'referrals' as const },
+    { route: adminShortlinksRoute, pkg: 'shortlinks' as const },
+
     { route: blogListRoute, pkg: 'ottablog' as const },
     { route: blogDetailRoute, pkg: 'ottablog' as const },
     { route: blogTagArchiveRoute, pkg: 'ottablog' as const },
@@ -838,17 +830,28 @@ const packageRoutes = [
     { route: adminLandingRoute, pkg: 'ottalanding' as const },
     { route: adminLandingLeadsRoute, pkg: 'ottalanding' as const },
     { route: adminLandingPageRoute, pkg: 'ottalanding' as const },
-    { route: adminReferralsRoute, pkg: 'referrals' as const },
     { route: adminAiProvidersRoute, pkg: 'ottaai' as const },
     { route: adminAiGatewayRoute, pkg: 'ottaai' as const },
 ];
 
-const routeTree = rootRoute.addChildren([
+const routes = [
     ...coreRoutes,
     ...packageRoutes.filter((r) => PACKAGES_ENABLED[r.pkg]).map((r) => r.route),
     ...packageAdminRoutes,
+    ...packagePageRoutes,
     ...(MEDIA_LIBRARY_ENABLED ? [userMediaLibraryRoute, adminMediaLibraryRoute] : []),
-]);
+];
+
+// A package page at a path the app already routes would be shadowed without a word: refuse at boot.
+const routedPaths = new Set<string>();
+for (const route of routes) {
+    const { path } = route.options as { path: string };
+    if (routedPaths.has(path))
+        throw new Error(`[router] Two pages route ${path}; a package and the app cannot share it.`);
+    routedPaths.add(path);
+}
+
+const routeTree = rootRoute.addChildren(routes);
 
 export const router = new Router({
     routeTree,
