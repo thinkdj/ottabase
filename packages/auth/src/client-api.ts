@@ -168,7 +168,7 @@ export async function signInWithCredentials(
         }
 
         if (options?.redirect && typeof window !== 'undefined') {
-            window.location.href = options.redirectTo ?? '/dashboard';
+            window.location.href = options.redirectTo ?? '/';
         }
 
         return { success: true, session: data.session };
@@ -185,7 +185,7 @@ export async function signInWithProvider(
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
-        const params = new URLSearchParams({ callbackUrl: options?.redirectTo ?? '/dashboard' });
+        const params = new URLSearchParams({ callbackUrl: options?.redirectTo ?? '/' });
         const signInUrl = `${baseUrl}/signin/${providerId}?${params.toString()}`;
 
         if (typeof window !== 'undefined') {
@@ -212,7 +212,7 @@ export async function sendMagicLink(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ email, csrfToken, callbackUrl: options?.redirectTo ?? '/dashboard' }),
+            body: JSON.stringify({ email, csrfToken, callbackUrl: options?.redirectTo ?? '/' }),
         });
 
         const data = await readJsonSafe(response);

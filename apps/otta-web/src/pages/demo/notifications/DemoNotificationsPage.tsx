@@ -453,8 +453,8 @@ await manager.notify({
   payload: {
     title: 'Welcome!',
     message: 'Thanks for signing up',
-    actionUrl: '/dashboard',
-    actionText: 'Go to Dashboard'
+    actionUrl: '/profile',
+    actionText: 'Go to your profile'
   },
   options: {
     priority: 'high'

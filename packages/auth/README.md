@@ -69,6 +69,9 @@ owns. Everything else stays in the host app.
 | `/api/auth/callback/email`       | GET    | Verifies the magic-link token, creates a session, redirects              |
 | `/api/auth/signout`              | POST   | `{ csrfToken }` → revokes the current session only, clears the cookie    |
 
+`callbackUrl` must be a relative path (`/profile`). A missing or off-site one falls back to `/`, which is also where the
+client helpers send the user when `redirectTo` is omitted.
+
 ### Owned by the host app (not part of this package)
 
 These routes live in the app and call `hashPassword` / `verifyPassword` / `getSession` / `revokeAllUserSessions` from

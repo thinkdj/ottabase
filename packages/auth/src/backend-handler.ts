@@ -101,7 +101,7 @@ function resolveFrontendUrl(env: AuthEnv): string {
 }
 
 /** Only relative, single-leading-slash paths are accepted; anything else falls back, blocking open redirects. */
-function sanitizeCallbackPath(raw: string | null | undefined, fallback = '/dashboard'): string {
+function sanitizeCallbackPath(raw: string | null | undefined, fallback = '/'): string {
     if (typeof raw !== 'string' || !raw) return fallback;
     if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return fallback;
     try {
