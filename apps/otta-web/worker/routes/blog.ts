@@ -17,6 +17,7 @@ import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { demoBlogPosts } from '../fixtures/demo-blog-content';
+import { demoWhatsNewPosts } from '../fixtures/demo-whats-new';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { canManagePostInOrg, requireContentPermission, requireStudioAdminForScope } from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
@@ -128,7 +129,7 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     checkCronAuth,
     verifyPassword: (password, hash) => verifyPassword(password, hash),
     // Demo seeding is platform-owner-only via the system-scoped requireAdmin above.
-    demoPosts: demoBlogPosts,
+    demoPosts: [...demoBlogPosts, ...demoWhatsNewPosts],
 });
 
 export const {
