@@ -48,7 +48,7 @@ Secrets; it does not modify wrangler.jsonc.
 | -------------- | ----------------- | ------------------------- | ------------------------------------------------------------- |
 | **Hyperdrive** | `OBCF_HYPERDRIVE` | External database pooling | `wrangler hyperdrive create <name> --connection-string="..."` |
 
-**For /analytics page:** The `/analytics` dashboard requires `CLOUDFLARE_ACCOUNT_ID` (set as a `var` in
+**For the analytics page:** The `/admin/growth/analytics` dashboard requires `CLOUDFLARE_ACCOUNT_ID` (set as a `var` in
 `wrangler.jsonc`) and `CLOUDFLARE_ANALYTICS_API_TOKEN` (set as a Worker secret).
 
 **Creating `CLOUDFLARE_ANALYTICS_API_TOKEN`:**
@@ -70,7 +70,8 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=your-token-here
 # PS: Analytics will NOT work locally.
 ```
 
-Without this token, the `/analytics` page returns `503`. Analytics datasets are auto-created on first write.
+Without this token, the `/admin/growth/analytics` page returns `503`. Analytics datasets are auto-created on first
+write.
 
 ---
 
@@ -102,7 +103,7 @@ GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 # ============================================================
 # CLOUDFLARE ACCOUNT (runtime features that call the Cloudflare API)
 # ============================================================
-# Read by the worker for /analytics, Workers AI and Cloudflare Images.
+# Read by the worker for the analytics dashboard, Workers AI and Cloudflare Images.
 # R2, KV, D1 and Queues are reached through Worker bindings and need no credentials.
 CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
 ```
@@ -127,7 +128,7 @@ wrangler secret put GOOGLE_CLIENT_SECRET
 # Schema migrations outside development (POST /api/ottaorm/init)
 wrangler secret put MIGRATION_SECRET
 
-# /analytics dashboard (optional, see above)
+# Analytics dashboard (optional, see above)
 wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 ```
 
@@ -544,7 +545,7 @@ pnpm --filter @ottabase/otta-web cf-typegen
 | `CLOUDFLARE_ACCOUNT_ID`          | Yes (deploy)  | Wrangler CLI / CI; worker var for analytics & AI |
 | `AUTH_SECRET`                    | If using auth | Session signing secret                           |
 | `MIGRATION_SECRET`               | Recommended   | Authorizes `/api/ottaorm/init` outside dev       |
-| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | `/analytics` dashboard                           |
+| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | Analytics dashboard                              |
 
 ---
 

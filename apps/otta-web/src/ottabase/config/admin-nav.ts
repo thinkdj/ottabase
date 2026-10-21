@@ -18,6 +18,7 @@ import type { AdminPageContribution } from '@ottabase/kernel/client';
 import { IconMenu2 } from '@tabler/icons-react';
 import {
     Activity,
+    BarChart3,
     BookOpen,
     Building2,
     Clock,
@@ -29,6 +30,7 @@ import {
     LayoutTemplate,
     Layers,
     Layout,
+    Link2,
     Mail,
     Megaphone,
     Palette,
@@ -41,7 +43,6 @@ import {
     ShieldCheck,
     ShieldEllipsis,
     UserCog,
-    UserPlus,
     Users,
     type LucideIcon,
 } from 'lucide-react';
@@ -294,12 +295,17 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: Rocket,
         items: [
             {
-                title: 'Referrals',
-                description: 'Referral statistics, usernames, and conversion tracking.',
-                href: '/admin/growth/referrals',
-                icon: UserPlus,
-                scope: 'org',
-                requiresPackage: 'referrals',
+                title: 'Analytics',
+                description: 'Page views, shortlink clicks, and referral conversions from Analytics Engine.',
+                href: '/admin/growth/analytics',
+                icon: BarChart3,
+            },
+            {
+                title: 'Shortlinks',
+                description: 'Create and manage short URLs with edge click tracking.',
+                href: '/admin/growth/shortlinks',
+                icon: Link2,
+                requiresPackage: 'shortlinks',
             },
             {
                 title: 'AI providers',

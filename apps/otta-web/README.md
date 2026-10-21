@@ -90,7 +90,7 @@ await api('/api/email/test', {
 
 This template ships with a custom, dependency-free auth implementation + D1 integration and tighter session handling:
 
-- **UI**: `/login`, `/register`, `/dashboard`, `/profile`
+- **UI**: `/login`, `/register`, `/profile`
 - **Backend**: `/api/auth/*`, `/api/auth/register`, `/api/users/me`
 - **Session freshness**: Profile edits bump `auth:usr:{userId}:profile:version` in KV so the next `/api/auth/session`
   refresh pulls the updated name/image without polling D1 constantly.
@@ -166,7 +166,7 @@ ALLOW_NULL_TENANT=true            # allow system-scope (single-founder) admin
 MULTI_TENANT_ENABLED=true         # create personal org on first user (default true)
 BOOTSTRAP_OWNER_SECRET=supersecret-token
 
-# Analytics (for /analytics - shortlinks + referrals WAE queries)
+# Analytics (for /admin/growth/analytics - shortlinks + referrals WAE queries)
 CLOUDFLARE_ACCOUNT_ID=            # 32-char account ID (wrangler vars)
 CLOUDFLARE_ANALYTICS_API_TOKEN=  # Secret: Account Analytics Read; set via: pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 # Bindings: OBCF_ANALYTICS_SHORTLINKS (shortlink_clicks), OBCF_ANALYTICS_REFERRALS (referral_clicks)
@@ -430,7 +430,7 @@ apps/otta-web/
 - `/demo` - Demo gallery index
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
-- `/dashboard` - Protected route
+- `/profile` - Account management (protected)
 - `/admin/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and drag-and-drop
   image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
 - `/admin/appearance/brand-kits` - Brand Kit gallery (admin only). Each card is a live specimen rendered in the kit's
@@ -458,8 +458,8 @@ apps/otta-web/
 - `/demo/cloudflare/rate-limiting` - Rate limiting demo
 - `/demo/cloudflare/realtime` - Durable Objects realtime demo
 - `/admin/infrastructure/cron` - DB-driven scheduled-task management (platform admin)
-- `/shortlinks` - Shortlink management
-- `/analytics` - Unified analytics (Core + Shortlinks + Referrals tabs, WAE) — platform admins only
+- `/admin/growth/shortlinks` - Shortlink management (platform admin)
+- `/admin/growth/analytics` - Unified analytics (Core + Shortlinks + Referrals tabs, WAE) — platform admins only
 
 ### API Endpoints
 
@@ -471,7 +471,7 @@ apps/otta-web/
 - `/api/auth/config` - Auth UI configuration
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
 - `/api/analytics/core`, `/api/shortlinks/analytics`, `/api/referrals/analytics` - Core events, shortlink clicks and
-  referral clicks for the /analytics tabs. System-admin only: Analytics Engine rows carry no organization, so the totals
+  referral clicks for the analytics tabs. System-admin only: Analytics Engine rows carry no organization, so the totals
   are platform-wide
 - `/api/admin/cron` - Platform-admin task list/create API; manual runs use the same locked executor as scheduled ticks
 
@@ -588,7 +588,7 @@ See [CLOUDFLARE_DEPLOY.md](../../docs/CLOUDFLARE_DEPLOY.md) for the full setup g
 #### 3. Analytics (optional)
 
 Shortlink and referral click tracking uses **Cloudflare Analytics Engine** (WAE). Clicks are written automatically; the
-unified analytics page at `/analytics` requires:
+unified analytics page at `/admin/growth/analytics` requires:
 
 1. **CLOUDFLARE_ACCOUNT_ID** – Set in `wrangler.jsonc` vars (32-char account ID from Cloudflare dashboard).
 
@@ -598,7 +598,7 @@ unified analytics page at `/analytics` requires:
     pnpm wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
     ```
 
-    When prompted, paste your token. Without this, `/analytics` returns 503.
+    When prompted, paste your token. Without this, the analytics page returns 503.
 
 #### 4. Deploy
 

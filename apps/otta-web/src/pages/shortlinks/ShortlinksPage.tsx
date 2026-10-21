@@ -189,7 +189,7 @@ export function ShortlinksPage() {
                 </div>
                 <div className="flex shrink-0 gap-2">
                     <Button variant="outline" asChild>
-                        <Link to="/analytics" search={{ tab: 'shortlinks' }}>
+                        <Link to="/admin/growth/analytics" search={{ tab: 'shortlinks' }}>
                             <BarChart3 className="mr-2 h-4 w-4" />
                             Click Analytics
                         </Link>
