@@ -5,7 +5,7 @@
 // Used by layout components to translate config into styles.
 // ---------------------------------------------------------------------------
 
-import type { ContainerPadding, ContentWidth, Density, SidebarWidth } from './types';
+import type { ContainerPadding, ContentWidth, Density, LayoutConfig, SidebarWidth } from './types';
 
 /** Returns a Tailwind max-width class for the given content width strategy. */
 export function contentWidthClass(contentWidth: ContentWidth): string {
@@ -75,4 +75,21 @@ export function containerPaddingClass(padding: ContainerPadding = 'md'): string 
         default:
             return 'px-4';
     }
+}
+
+/** Where a layout puts the signed-in account menu. */
+export type AccountPlacement = 'header' | 'sidebar' | 'drawer' | 'floating';
+
+/**
+ * The first chrome the layout has: the header, else the sidebar, else the drawer, else the
+ * floating button when `floatingAccount` asks for it. `null` means signed-in users get no account
+ * menu on the layout, which suits an embed or a kiosk page and nothing else.
+ */
+export function accountPlacement(
+    config: Pick<LayoutConfig, 'header' | 'navigation' | 'floatingAccount'>,
+): AccountPlacement | null {
+    if (config.header !== 'none') return 'header';
+    if (config.navigation === 'sidebar') return 'sidebar';
+    if (config.navigation === 'drawer') return 'drawer';
+    return config.floatingAccount ? 'floating' : null;
 }

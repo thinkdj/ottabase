@@ -57,4 +57,5 @@ export {
 } from './validators';
 
 // ── Utilities ──────────────────────────────────────────────────────────────
-export { containerPaddingClass, contentWidthClass, densityPadding, sidebarWidthClass } from './utils';
+export { accountPlacement, containerPaddingClass, contentWidthClass, densityPadding, sidebarWidthClass } from './utils';
+export type { AccountPlacement } from './utils';

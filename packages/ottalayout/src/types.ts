@@ -60,6 +60,11 @@ export interface LayoutConfig {
     containerPadding?: ContainerPadding;
     /** Center content vertically – for auth / splash pages (default: false) */
     centerContent?: boolean;
+    /**
+     * A floating avatar button for the account menu, on a layout with no header and no sidebar or
+     * drawer to hold it (default: false). See `accountPlacement`.
+     */
+    floatingAccount?: boolean;
 
     // ── Dimension tokens (optional CSS lengths, emitted as --layout-* vars) ──
 
@@ -86,6 +91,7 @@ export const DEFAULT_LAYOUT: LayoutConfig = {
     sidebarPosition: 'left',
     containerPadding: 'md',
     centerContent: false,
+    floatingAccount: false,
 };
 
 /** Defaults for optional fields — used by mergeLayoutConfig */
@@ -98,6 +104,7 @@ export const LAYOUT_FIELD_DEFAULTS: Required<
         | 'sidebarPosition'
         | 'containerPadding'
         | 'centerContent'
+        | 'floatingAccount'
     >
 > = {
     headerSticky: true,
@@ -106,6 +113,7 @@ export const LAYOUT_FIELD_DEFAULTS: Required<
     sidebarPosition: 'left',
     containerPadding: 'md',
     centerContent: false,
+    floatingAccount: false,
 };
 
 // ── Route mapping ──────────────────────────────────────────────────────────

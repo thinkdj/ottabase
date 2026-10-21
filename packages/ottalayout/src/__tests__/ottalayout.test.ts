@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BuiltInMenuSlotName, MenuSlotConfig } from '../index';
 import {
+    accountPlacement,
     BUILT_IN_MENU_SLOTS,
     containerPaddingClass,
     contentWidthClass,
@@ -39,6 +40,7 @@ describe('DEFAULT_LAYOUT', () => {
         expect(DEFAULT_LAYOUT.sidebarPosition).toBe('left');
         expect(DEFAULT_LAYOUT.containerPadding).toBe('md');
         expect(DEFAULT_LAYOUT.centerContent).toBe(false);
+        expect(DEFAULT_LAYOUT.floatingAccount).toBe(false);
     });
 });
 
@@ -258,6 +260,31 @@ describe('mergeLayoutConfig', () => {
         expect(result.headerSticky).toBe(LAYOUT_FIELD_DEFAULTS.headerSticky);
         expect(result.sidebarWidth).toBe(LAYOUT_FIELD_DEFAULTS.sidebarWidth);
         expect(result.centerContent).toBe(LAYOUT_FIELD_DEFAULTS.centerContent);
+        expect(result.floatingAccount).toBe(false);
+    });
+
+    it('keeps floatingAccount only as a boolean', () => {
+        expect(mergeLayoutConfig({ floatingAccount: true }).floatingAccount).toBe(true);
+        expect(mergeLayoutConfig({ floatingAccount: 'yes' } as never).floatingAccount).toBe(false);
+    });
+});
+
+describe('accountPlacement', () => {
+    it('puts the account menu in the first chrome the layout has', () => {
+        expect(accountPlacement({ header: 'minimal', navigation: 'none' })).toBe('header');
+        expect(accountPlacement({ header: 'sidebar', navigation: 'drawer' })).toBe('header');
+        expect(accountPlacement({ header: 'none', navigation: 'sidebar', floatingAccount: true })).toBe('sidebar');
+        expect(accountPlacement({ header: 'none', navigation: 'drawer' })).toBe('drawer');
+        // No header and no nav to hold it: a nav "topbar" has no header to sit in either.
+        expect(accountPlacement({ header: 'none', navigation: 'topbar' })).toBeNull();
+        expect(accountPlacement({ header: 'none', navigation: 'none' })).toBeNull();
+        expect(accountPlacement({ header: 'none', navigation: 'none', floatingAccount: true })).toBe('floating');
+    });
+
+    it('leaves the chrome-free presets without one', () => {
+        for (const id of ['minimal', 'fullscreen'] as const) {
+            expect(accountPlacement(LAYOUT_PRESETS[id].config)).toBeNull();
+        }
     });
 });
 

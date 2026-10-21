@@ -66,6 +66,10 @@ export function mergeLayoutConfig(
             typeof partial.centerContent === 'boolean'
                 ? partial.centerContent
                 : (defaults.centerContent ?? LAYOUT_FIELD_DEFAULTS.centerContent),
+        floatingAccount:
+            typeof partial.floatingAccount === 'boolean'
+                ? partial.floatingAccount
+                : (defaults.floatingAccount ?? LAYOUT_FIELD_DEFAULTS.floatingAccount),
     };
 }
 

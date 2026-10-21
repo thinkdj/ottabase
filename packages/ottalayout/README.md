@@ -36,8 +36,13 @@ const myLayout: LayoutConfig = {
     sidebarPosition: 'left',
     containerPadding: 'md',
     centerContent: false,
+    floatingAccount: false, // an avatar button when there is no header, sidebar or drawer
 };
 ```
+
+The signed-in account menu goes in the first chrome a layout has: the header, else the sidebar, else the drawer, else
+the floating button. `accountPlacement(config)` returns which, or `null` when signed-in users get none (the `minimal`
+and `fullscreen` presets, built for embeds and kiosks).
 
 ### Built-in Presets
 
