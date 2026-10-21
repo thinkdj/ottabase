@@ -27,12 +27,18 @@ import { getMonorepoRoot, log, resolveApp } from '../utils/index.js';
  * Two more fields reach into the SPA shell, for packages that need it:
  *
  * ```json
- * "routes": [{ "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" }],
+ * "routes": [
+ *     { "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" },
+ *     { "path": "/billing", "page": "user/BillingPage", "export": "BillingPage",
+ *       "menu": { "title": "Billing", "icon": "CreditCard" } }
+ * ],
  * "errorReporter": { "import": "./lib/blackbox", "export": "captureException" }
  * ```
  *
- * `routes` are registered in `src/router.tsx` (`access` defaults to `protected`, a signed-in page);
- * `errorReporter` is handed every render error the root `<ErrorBoundary>` in `src/main.tsx` catches.
+ * `routes` join the client descriptor next to `adminPages`, and the app router mounts them from
+ * there (`access` defaults to `protected`, a signed-in page); `menu` links the page from the
+ * signed-in account menu. `errorReporter` is handed every render error the root `<ErrorBoundary>`
+ * in `src/main.tsx` catches.
  *
  * A package lives in `packages/<name>` or, inside a bundle such as Ottabase Pro, in
  * `packages/<bundle>/<name>`. `otta add <bundle>` wires every package of the bundle.
@@ -57,6 +63,8 @@ export interface RouteDescriptor {
     export: string;
     /** `protected` (the default) needs a session; `public` does not. */
     access?: 'public' | 'protected';
+    /** A link in the signed-in account menu; `icon` is a lucide-react icon name. */
+    menu?: { title: string; icon: string };
 }
 
 export interface PackageDescriptor {
@@ -108,8 +116,6 @@ const isBinding = (value: unknown): value is string =>
 const ROUTE_PATH = /^\/[a-z0-9/_-]*$/;
 /** A page module under the app's `src/pages`: path segments only, no `..`, nothing to escape. */
 const PAGE = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/;
-/** The SPA's route section header, else the array the routes join: generated route constants go above it. */
-const ROUTE_ASSEMBLY = /^\/\/ ─── Route assembly|^const coreRoutes = \[$/;
 
 function camel(key: string): string {
     return key.replace(/[-_](\w)/g, (_, char: string) => char.toUpperCase());
@@ -183,6 +189,9 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
         if (typeof route.path !== 'string' || !ROUTE_PATH.test(route.path)) {
             throw new Error(`${dir}/package.json: route path "${route.path}" must be a lowercase absolute path.`);
         }
+        if (route.path === '/admin' || route.path.startsWith('/admin/')) {
+            throw new Error(`${dir}/package.json: route "${route.path}" is an admin page; declare it in adminPages.`);
+        }
         if (typeof route.page !== 'string' || !PAGE.test(route.page) || !isBinding(route.export)) {
             throw new Error(
                 `${dir}/package.json: every routes entry needs path, a page under src/pages and an export name.`,
@@ -190,6 +199,18 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
         }
         if (route.access !== undefined && route.access !== 'public' && route.access !== 'protected') {
             throw new Error(`${dir}/package.json: route access must be "public" or "protected".`);
+        }
+        const { menu } = route;
+        if (
+            menu !== undefined &&
+            (typeof menu?.title !== 'string' ||
+                !menu.title.trim() ||
+                typeof menu.icon !== 'string' ||
+                !ICON.test(menu.icon))
+        ) {
+            throw new Error(
+                `${dir}/package.json: route "${route.path}" menu needs a title and a lucide-react icon name.`,
+            );
         }
     }
     const reporter = meta.errorReporter;
@@ -271,10 +292,10 @@ const quote = (value: string) =>
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** The `definePackageClient(...)` entry: bare for a headless package, with its admin pages otherwise. */
+/** The `definePackageClient(...)` entry: bare for a headless package, with its pages otherwise. */
 function clientEntry(pkg: PackageDescriptor, eol: string): string {
-    if (!pkg.adminPages) return `    definePackageClient({ key: ${quote(pkg.key)} }),`;
-    const pages = pkg.adminPages.map((page) =>
+    if (!pkg.adminPages && !pkg.routes) return `    definePackageClient({ key: ${quote(pkg.key)} }),`;
+    const pages = (pkg.adminPages ?? []).map((page) =>
         [
             '            {',
             `                path: ${quote(page.path)},`,
@@ -288,12 +309,24 @@ function clientEntry(pkg: PackageDescriptor, eol: string): string {
             '            },',
         ].join(eol),
     );
+    const routes = (pkg.routes ?? []).map((route) =>
+        [
+            '            {',
+            `                path: ${quote(route.path)},`,
+            ...(route.access === 'public' ? ["                access: 'public',"] : []),
+            `                load: () => import('@/pages/${route.page}'),`,
+            `                exportName: ${quote(route.export)},`,
+            ...(route.menu
+                ? [`                menu: { title: ${quote(route.menu.title)}, icon: ${route.menu.icon} },`]
+                : []),
+            '            },',
+        ].join(eol),
+    );
     return [
         '    definePackageClient({',
         `        key: ${quote(pkg.key)},`,
-        '        adminPages: [',
-        ...pages,
-        '        ],',
+        ...(pages.length ? ['        adminPages: [', ...pages, '        ],'] : []),
+        ...(routes.length ? ['        routes: [', ...routes, '        ],'] : []),
         '    }),',
     ].join(eol);
 }
@@ -312,28 +345,6 @@ export const ${pkg.export} = ${pkg.factory}<CloudflareEnv>({
     // TODO: the options this package needs
 });
 `;
-}
-
-/** `beacon` + `/status` is `beaconStatusRoute`: prefixed by the package. `planAdd` suffixes it if the app has the name. */
-function routeName(key: string, routePath: string): string {
-    const words = routePath
-        .split(/[^a-z0-9]+/)
-        .filter(Boolean)
-        .map((word) => word[0].toUpperCase() + word.slice(1));
-    return `${camel(key)}${words.join('')}Route`;
-}
-
-/** The route constant, in the shape the app router's own `publicRoute` / `protectedRoute` helpers take. */
-function routeConst(route: RouteDescriptor, name: string, eol: string): string {
-    const page = quote(`@/pages/${route.page}`);
-    if (route.access === 'public') {
-        return [
-            `const ${name} = publicRoute(${quote(route.path)}, () =>`,
-            `    import(${page}).then((m) => ({ default: m.${route.export} })),`,
-            ');',
-        ].join(eol);
-    }
-    return `const ${name} = protectedRoute(${quote(route.path)}, () => import(${page}), ${quote(route.export)});`;
 }
 
 /** Work out every file change, without touching anything. */
@@ -398,7 +409,7 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
         steps.push({ file: rel(listFile), action: 'edit', detail: `list ${pkg.export}`, content: updated });
     }
 
-    // 4. The client mirror: the key, plus the admin pages the package declares.
+    // 4. The client mirror: the key, plus the pages the package declares. The router and the menus read them there.
     const clientFile = path.join(appDir, 'src', 'ottabase', 'config', 'packages.ts');
     const client = read(clientFile);
     if (client === null) {
@@ -406,7 +417,10 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
     } else if (new RegExp(`key:\\s*'${pkg.key}'`).test(client)) {
         steps.push({ file: rel(clientFile), action: 'skip', detail: 'client key present' });
     } else {
-        const icons = (pkg.adminPages ?? []).map((page) => page.icon).filter((icon): icon is string => !!icon);
+        const icons = [
+            ...(pkg.adminPages ?? []).map((page) => page.icon),
+            ...(pkg.routes ?? []).map((route) => route.menu?.icon),
+        ].filter((icon): icon is string => !!icon);
         const updated = withIcons(
             insertLine(client, clientEntry(pkg, eolOf(client)), {
                 after: /^\s*definePackageClient\(\{ key: '[a-z0-9-]+' \}\),$/,
@@ -414,7 +428,11 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
             }),
             icons,
         );
-        const pages = pkg.adminPages?.length ? ` with ${pkg.adminPages.length} admin page(s)` : '';
+        const counts = [
+            pkg.adminPages?.length ? `${pkg.adminPages.length} admin page(s)` : '',
+            pkg.routes?.length ? `${pkg.routes.length} route(s)` : '',
+        ].filter(Boolean);
+        const pages = counts.length ? ` with ${counts.join(' and ')}` : '';
         steps.push({
             file: rel(clientFile),
             action: 'edit',
@@ -464,70 +482,7 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
         }
     }
 
-    // 7. The routes the package's pages need, in the app router.
-    if (pkg.routes) {
-        const routerFile = path.join(appDir, 'src', 'router.tsx');
-        const router = read(routerFile);
-        // Routed already, by any constant: `xRoute('/p'` (Prettier may wrap it after the paren) or `path: '/p'`.
-        const routed = (route: RouteDescriptor) =>
-            new RegExp(`Route\\(\\s*${escapeRegex(quote(route.path))}|path:\\s*${escapeRegex(quote(route.path))}`).test(
-                router ?? '',
-            );
-        // This package's own constant for that path, suffixed or not (see the naming below).
-        const ours = (route: RouteDescriptor) =>
-            new RegExp(
-                `^const ${routeName(pkg.key, route.path)}\\d*\\s*=\\s*(public|protected)Route\\(\\s*${escapeRegex(quote(route.path))}`,
-                'm',
-            ).test(router ?? '');
-        const missing = pkg.routes.filter((route) => !routed(route));
-        // Another package's or the app's own page at that path: not this command's to replace.
-        const taken = pkg.routes.filter((route) => routed(route) && !ours(route));
-        if (router === null || !/^const coreRoutes = \[\r?$/m.test(router)) {
-            const paths = pkg.routes.map((route) => route.path).join(', ');
-            steps.push({ file: rel(routerFile), action: 'skip', detail: `no coreRoutes; register ${paths} by hand` });
-        } else if (missing.length === 0) {
-            steps.push({
-                file: rel(routerFile),
-                action: 'skip',
-                detail: taken.length
-                    ? `${taken.map((route) => route.path).join(', ')} already routed to another page; route it by hand`
-                    : 'routes registered',
-            });
-        } else {
-            const eol = eolOf(router);
-            // Unique against the file and each other: `/a-b` and `/a/b`, or an app's own `referralsRoute`.
-            const used = new Set<string>();
-            const names = missing.map((route) => {
-                const base = routeName(pkg.key, route.path);
-                let name = base;
-                for (let n = 2; used.has(name) || new RegExp(`\\b${name}\\b`).test(router); n++) name = `${base}${n}`;
-                used.add(name);
-                return name;
-            });
-            const block = [
-                `// ${pkg.name}: added by \`otta add\`.`,
-                ...missing.map((route, index) => routeConst(route, names[index], eol)),
-                '',
-            ].join(eol);
-            const updated = insertLine(
-                insertLine(router, block, { before: ROUTE_ASSEMBLY }),
-                names.map((name) => `    ${name},`).join(eol),
-                { after: /^const coreRoutes = \[$/ },
-            );
-            const paths = missing.map((route) => route.path).join(', ');
-            const conflicts = taken.length
-                ? `; ${taken.map((route) => route.path).join(', ')} already routed to another page`
-                : '';
-            steps.push({
-                file: rel(routerFile),
-                action: 'edit',
-                detail: `register ${paths}${conflicts}`,
-                content: updated,
-            });
-        }
-    }
-
-    // 8. Render errors the root error boundary catches, handed to the package.
+    // 7. Render errors the root error boundary catches, handed to the package.
     if (pkg.errorReporter) {
         const mainFile = path.join(appDir, 'src', 'main.tsx');
         const main = read(mainFile);

@@ -106,11 +106,11 @@ for premium packages, the premium registry (`premiumRegistryOf(host)`).
 ## The client half
 
 A server manifest carries session resolution and route factories, which have no place in a browser bundle. A package
-with rendered admin pages also ships a client descriptor from `@ottabase/kernel/client`:
+that renders pages also ships a client descriptor from `@ottabase/kernel/client`:
 
 ```typescript
 import { definePackageClient } from '@ottabase/kernel/client';
-import { StickyNote } from 'lucide-react';
+import { NotebookPen, StickyNote } from 'lucide-react';
 
 export const notesClient = definePackageClient({
     key: 'notes',
@@ -126,11 +126,22 @@ export const notesClient = definePackageClient({
             exportName: 'NotesAdminPage',
         },
     ],
+    routes: [
+        {
+            path: '/notes',
+            load: () => import('./react/MyNotesPage'),
+            exportName: 'MyNotesPage',
+            menu: { title: 'Notes', icon: NotebookPen },
+        },
+    ],
 });
 ```
 
-The app lists client descriptors next to the server manifests; `installedPackages(clients)` gives the browser the same
-`{ [key]: true }` map `registry.installed()` gives the Worker, and a parity test keeps the two lists honest.
+`adminPages` join the admin nav. `routes` are the package's other pages: `access` is `protected` (a signed-in page, the
+default) or `public`, and `menu` puts a link in the signed-in account menu. The app lists client descriptors next to the
+server manifests and derives everything from them: `installedPackages(clients)` gives the browser the same
+`{ [key]: true }` map `registry.installed()` gives the Worker, `packageAdminPages` and `packageRoutes` give the router
+and the menus their pages (two packages routing one path throw), and a parity test keeps the two lists honest.
 
 ## Lifecycle
 

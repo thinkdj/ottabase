@@ -40,7 +40,12 @@ function fixture(): string {
                 factory: 'createPulsePackage',
                 routes: [
                     { path: '/status', page: 'status/StatusPage', export: 'StatusPage', access: 'public' },
-                    { path: '/plans', page: 'user/PlansPage', export: 'PlansPage' },
+                    {
+                        path: '/plans',
+                        page: 'user/PlansPage',
+                        export: 'PlansPage',
+                        menu: { title: 'Plans', icon: 'Sparkles' },
+                    },
                 ],
                 errorReporter: { import: './lib/pulse', export: 'report' },
             },
@@ -125,19 +130,7 @@ function fixture(): string {
             '',
         ].join('\n'),
     );
-    write(
-        'apps/bar/src/router.tsx',
-        [
-            "const indexRoute = publicRoute('/', () => import('@/pages/IndexPage'));",
-            '',
-            '// ─── Route assembly ───',
-            '',
-            'const coreRoutes = [',
-            '    indexRoute,',
-            '];',
-            '',
-        ].join('\n'),
-    );
+
     write(
         'apps/bar/src/main.tsx',
         [
@@ -377,29 +370,43 @@ describe('planAdd and applyAdd', () => {
 });
 
 describe('routes and the error reporter', () => {
-    it('registers the routes and hands boundary errors to the reporter, once', () => {
+    it('lists the routes in the client entry with their menu icons, and hands boundary errors to the reporter, once', () => {
         const root = fixture();
         const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
-        expect(plan.steps.slice(-2).map((step) => [step.action, step.file, step.detail])).toEqual([
-            ['edit', 'apps/bar/src/router.tsx', 'register /status, /plans'],
-            ['edit', 'apps/bar/src/main.tsx', 'root <ErrorBoundary> reports to report'],
+        expect(plan.steps.map((step) => [step.action, step.file])).toEqual([
+            ['edit', 'apps/bar/package.json'],
+            ['create', 'apps/bar/ottabase/packages/pulse.ts'],
+            ['edit', 'apps/bar/ottabase/packages.ts'],
+            ['edit', 'apps/bar/src/ottabase/config/packages.ts'],
+            ['edit', 'apps/bar/src/main.tsx'],
         ]);
+        expect(plan.steps[3].detail).toBe("client key 'pulse' with 2 route(s)");
         applyAdd(root, plan);
 
-        const router = text(root, 'apps/bar/src/router.tsx');
-        expect(router).toContain(
-            [
-                '// @ottabase/pulse: added by `otta add`.',
-                "const pulseStatusRoute = publicRoute('/status', () =>",
-                "    import('@/pages/status/StatusPage').then((m) => ({ default: m.StatusPage })),",
-                ');',
-                "const pulsePlansRoute = protectedRoute('/plans', () => import('@/pages/user/PlansPage'), 'PlansPage');",
-                '',
-                '// ─── Route assembly ───',
-            ].join('\n'),
+        const client = text(root, 'apps/bar/src/ottabase/config/packages.ts');
+        expect(client.startsWith("import { Sparkles } from 'lucide-react';\nexport const CLIENT_PACKAGES = [")).toBe(
+            true,
         );
-        expect(router).toContain(
-            'const coreRoutes = [\n    pulseStatusRoute,\n    pulsePlansRoute,\n    indexRoute,\n];',
+        expect(client).toContain(
+            [
+                '    definePackageClient({',
+                "        key: 'pulse',",
+                '        routes: [',
+                '            {',
+                "                path: '/status',",
+                "                access: 'public',",
+                "                load: () => import('@/pages/status/StatusPage'),",
+                "                exportName: 'StatusPage',",
+                '            },',
+                '            {',
+                "                path: '/plans',",
+                "                load: () => import('@/pages/user/PlansPage'),",
+                "                exportName: 'PlansPage',",
+                "                menu: { title: 'Plans', icon: Sparkles },",
+                '            },',
+                '        ],',
+                '    }),',
+            ].join('\n'),
         );
 
         const main = text(root, 'apps/bar/src/main.tsx');
@@ -413,33 +420,25 @@ describe('routes and the error reporter', () => {
         expect(again.steps.every((step) => step.action === 'skip')).toBe(true);
     });
 
-    it('leaves a router without coreRoutes and a boundary that already reports to the developer', () => {
+    it('leaves a boundary that already reports to the developer', () => {
         const root = fixture();
-        fs.writeFileSync(path.join(root, 'apps/bar/src/router.tsx'), 'export const routes = [];\n');
         fs.writeFileSync(
             path.join(root, 'apps/bar/src/main.tsx'),
             'render(<ErrorBoundary onError={log}><App /></ErrorBoundary>);\n',
         );
         const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
-        expect(plan.steps.slice(-2)).toEqual([
-            {
-                file: 'apps/bar/src/router.tsx',
-                action: 'skip',
-                detail: 'no coreRoutes; register /status, /plans by hand',
-            },
-            {
-                file: 'apps/bar/src/main.tsx',
-                action: 'skip',
-                detail: 'no bare <ErrorBoundary>; pass report to its onError by hand',
-            },
-        ]);
+        expect(plan.steps.at(-1)).toEqual({
+            file: 'apps/bar/src/main.tsx',
+            action: 'skip',
+            detail: 'no bare <ErrorBoundary>; pass report to its onError by hand',
+        });
     });
 
-    it('refuses a route or a reporter it could not write safely', () => {
+    it('refuses a route, a menu link or a reporter it could not write safely', () => {
         const root = fixture();
         const file = path.join(root, 'packages/pulse/package.json');
         const pkg = fs.readJsonSync(file);
-        type Meta = { routes: Record<string, string>[]; errorReporter: Record<string, string> };
+        type Meta = { routes: Record<string, any>[]; errorReporter: Record<string, string> };
         const attempt = (change: (meta: Meta) => void) => {
             const meta = structuredClone(pkg.ottabase);
             change(meta);
@@ -448,60 +447,30 @@ describe('routes and the error reporter', () => {
         };
         expect(readPackageDescriptor(root, 'pulse').routes).toHaveLength(2);
         expect(attempt((meta) => (meta.routes[0].path = "/x');alert(1)//"))).toThrow(/lowercase absolute path/);
+        expect(attempt((meta) => (meta.routes[0].path = '/admin/plans'))).toThrow(/declare it in adminPages/);
         expect(attempt((meta) => (meta.routes[0].access = 'admin'))).toThrow(/"public" or "protected"/);
         expect(attempt((meta) => delete meta.routes[1].export)).toThrow(/needs path, a page under src\/pages/);
         expect(attempt((meta) => (meta.routes[0].page = '../../worker/secrets'))).toThrow(/a page under src\/pages/);
         expect(attempt((meta) => (meta.routes[0].page = "x'),evil('"))).toThrow(/a page under src\/pages/);
         expect(attempt((meta) => (meta.routes[0].export = 'default'))).toThrow(/an export name/);
+        expect(attempt((meta) => (meta.routes[1].menu.icon = 'alert(1)'))).toThrow(/menu needs a title and a lucide/);
+        expect(attempt((meta) => (meta.routes[1].menu.title = ' '))).toThrow(/menu needs a title/);
+        expect(attempt((meta) => (meta.routes[1].menu = null))).toThrow(/menu needs a title/);
         expect(attempt((meta) => (meta.errorReporter.export = 'a b'))).toThrow(/errorReporter needs/);
         expect(attempt((meta) => (meta.errorReporter.export = 'default'))).toThrow(/errorReporter needs/);
         expect(attempt((meta) => (meta.errorReporter.import = "./x';evil()//"))).toThrow(/errorReporter needs/);
     });
 
-    it('a route Prettier wrapped is still registered, and a re-run adds nothing', () => {
+    it('quotes a menu title rather than splicing it', () => {
         const root = fixture();
+        const file = path.join(root, 'packages/pulse/package.json');
+        const pkg = fs.readJsonSync(file);
+        pkg.ottabase.routes[1].menu.title = "Plans' }), evil({ x: '";
+        fs.writeJsonSync(file, pkg);
         applyAdd(root, planAdd(root, 'bar', readPackageDescriptor(root, 'pulse')));
-        const file = path.join(root, 'apps/bar/src/router.tsx');
-        fs.writeFileSync(
-            file,
-            text(root, 'apps/bar/src/router.tsx').replace(
-                "const pulsePlansRoute = protectedRoute('/plans',",
-                "const pulsePlansRoute = protectedRoute(\n    '/plans',",
-            ),
+        expect(text(root, 'apps/bar/src/ottabase/config/packages.ts')).toContain(
+            "menu: { title: 'Plans\\' }), evil({ x: \\'', icon: Sparkles },",
         );
-        const again = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
-        expect(again.steps.every((step) => step.action === 'skip')).toBe(true);
-    });
-
-    it("never redeclares the app's own constant, and leaves a path another page owns", () => {
-        const root = fixture();
-        const file = path.join(root, 'apps/bar/src/router.tsx');
-        fs.writeFileSync(
-            file,
-            text(root, 'apps/bar/src/router.tsx').replace(
-                "const indexRoute = publicRoute('/', () => import('@/pages/IndexPage'));",
-                [
-                    "const indexRoute = publicRoute('/', () => import('@/pages/IndexPage'));",
-                    // The app's own page at /plans, and a constant that has the generated name of /status.
-                    "const billingPlansRoute = protectedRoute('/plans', () => import('@/pages/Plans'), 'Plans');",
-                    "const pulseStatusRoute = publicRoute('/health', () => import('@/pages/Health'));",
-                ].join('\n'),
-            ),
-        );
-        const plan = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
-        const step = plan.steps.find((entry) => entry.file === 'apps/bar/src/router.tsx')!;
-        expect(step.detail).toBe('register /status; /plans already routed to another page');
-        applyAdd(root, plan);
-        const router = text(root, 'apps/bar/src/router.tsx');
-        expect(router).toContain("const pulseStatusRoute2 = publicRoute('/status', () =>");
-        expect(router.match(/^const pulseStatusRoute =/gm)).toHaveLength(1);
-        expect(router).not.toContain('pulsePlansRoute');
-        // Run again: the suffixed constant is recognized as this package's.
-        const again = planAdd(root, 'bar', readPackageDescriptor(root, 'pulse'));
-        expect(again.steps.find((entry) => entry.file === 'apps/bar/src/router.tsx')).toMatchObject({
-            action: 'skip',
-            detail: '/plans already routed to another page; route it by hand',
-        });
     });
 
     it('wires a boundary whose reporter was imported by hand, without importing it twice', () => {

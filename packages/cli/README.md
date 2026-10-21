@@ -66,16 +66,18 @@ A package with a user interface can say more, and `otta add` writes that too:
 - `adminPages`: entries for the client descriptor (path, title, icon, group, page module, export).
 - An `app/` folder mirroring the app layout (`app/ottabase/packages/<key>.ts`, `app/src/pages/…`): copied in where the
   app has no such file yet. A shipped composition wins over the reference app's.
-- `routes`: SPA pages registered in `src/router.tsx` as `<key><Path>Route` constants listed in `coreRoutes`, e.g.
+- `routes`: the package's other SPA pages, written into the client descriptor next to `adminPages`; the app router
+  mounts them from there.
   `{ "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" }` (`access` defaults to
-  `protected`, a signed-in page).
+  `protected`, a signed-in page). Add `"menu": { "title": "Billing", "icon": "CreditCard" }` to link the page from the
+  signed-in account menu.
 - `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
   `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
 
-A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do
-by hand. So is a path another page already routes; a generated name the app already uses gets a numeric suffix. `page`
-is a module path under `src/pages` (letters, digits, `_`, `-`, `/`), and export names are identifiers that are not
-reserved words.
+A boundary that already has an `onError` is left alone and the plan says what to do by hand. Two packages routing one
+path, or a package routing a path the app owns, stop the app at boot with both names. `page` is a module path under
+`src/pages` (letters, digits, `_`, `-`, `/`), export names are identifiers that are not reserved words, and icons are
+lucide-react export names.
 
 ### Starting apps and environments
 

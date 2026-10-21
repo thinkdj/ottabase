@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { definePackageClient, installedPackages, packageAdminPages } from '../client';
+import { definePackageClient, installedPackages, packageAdminPages, packageRoutes } from '../client';
 
 const Icon = () => null;
 const page = {
@@ -10,6 +10,12 @@ const page = {
     group: 'growth',
     load: async () => ({ WebhooksPage: () => null }),
     exportName: 'WebhooksPage',
+};
+const route = {
+    path: '/billing',
+    load: async () => ({ BillingPage: () => null }),
+    exportName: 'BillingPage',
+    menu: { title: 'Billing', icon: Icon },
 };
 
 describe('definePackageClient', () => {
@@ -26,12 +32,35 @@ describe('definePackageClient', () => {
         expect(definePackageClient(client)).toBe(client);
     });
 
-    it('derives the installed map and the flat page list', () => {
+    it('validates every route and its menu link', () => {
+        const attempt = (changes: object) => () =>
+            definePackageClient({ key: 'ok', routes: [{ ...route, ...changes }] });
+        expect(attempt({ path: '/admin/billing' })).toThrow(/outside \/admin/);
+        expect(attempt({ path: '/admin' })).toThrow(/outside \/admin/);
+        expect(attempt({ path: 'billing' })).toThrow(/lowercase path/);
+        expect(attempt({ path: '/Billing' })).toThrow(/lowercase path/);
+        expect(attempt({ exportName: ' ' })).toThrow(/load\(\) and exportName/);
+        expect(attempt({ menu: { title: '', icon: Icon } })).toThrow(/a title and an icon/);
+        expect(attempt({ menu: { title: 'Billing' } })).toThrow(/a title and an icon/);
+        expect(attempt({ menu: undefined, access: 'public' })).not.toThrow();
+    });
+
+    it('derives the installed map and the flat page lists', () => {
         const clients = [
             definePackageClient({ key: 'webhooks', adminPages: [page] }),
+            definePackageClient({ key: 'payport', routes: [route] }),
             definePackageClient({ key: 'notes' }),
         ];
-        expect(installedPackages(clients)).toEqual({ webhooks: true, notes: true });
+        expect(installedPackages(clients)).toEqual({ webhooks: true, payport: true, notes: true });
         expect(packageAdminPages(clients)).toEqual([{ ...page, pkg: 'webhooks' }]);
+        expect(packageRoutes(clients)).toEqual([{ ...route, pkg: 'payport' }]);
+    });
+
+    it('refuses two packages routing the same path', () => {
+        const clients = [
+            definePackageClient({ key: 'payport', routes: [route] }),
+            definePackageClient({ key: 'stripe', routes: [{ ...route, menu: undefined }] }),
+        ];
+        expect(() => packageRoutes(clients)).toThrow('"payport" and "stripe" both route /billing.');
     });
 });
