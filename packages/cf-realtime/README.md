@@ -120,7 +120,7 @@ async function validatePublisher(request: Request, env: CloudflareEnv): Promise<
         "bindings": [{ "name": "OBCF_REALTIME", "class_name": "RealtimeActor" }],
     },
     "kv_namespaces": [{ "binding": "API_KEYS", "id": "your-api-keys-kv" }],
-    "migrations": [{ "tag": "v1", "new_classes": ["RealtimeActor"] }],
+    "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeActor"] }],
 }
 ```
 

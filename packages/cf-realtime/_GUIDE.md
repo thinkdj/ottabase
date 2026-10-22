@@ -113,7 +113,7 @@ class_name = "RealtimeActor"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RealtimeActor"]
+new_sqlite_classes = ["RealtimeActor"]
 ```
 
 Set the broadcast secret:
@@ -261,7 +261,7 @@ Make sure you've added the migration in wrangler.toml:
 ```toml
 [[migrations]]
 tag = "v1"
-new_classes = ["RealtimeActor"]
+new_sqlite_classes = ["RealtimeActor"]
 ```
 
 ### WebSocket upgrade fails

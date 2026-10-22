@@ -19,7 +19,7 @@ class_name = "RealtimeActor"
 # Migration to create the Durable Object class
 [[migrations]]
 tag = "v1"
-new_classes = ["RealtimeActor"]
+new_sqlite_classes = ["RealtimeActor"]
 
 # Optional: Environment variables
 [env.production.vars]

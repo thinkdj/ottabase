@@ -225,7 +225,7 @@
     "migrations": [
         {
             "tag": "v1",
-            "new_classes": ["RealtimeActor"],
+            "new_sqlite_classes": ["RealtimeActor"],
         },
         {
             "tag": "v2",

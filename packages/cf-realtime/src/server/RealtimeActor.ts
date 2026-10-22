@@ -542,8 +542,9 @@ export class RealtimeActor extends Actor<RealtimeEnv> {
     }
 
     /**
-     * Durable Object alarm entry point. Overrides Actor.alarm, whose scheduler needs
-     * SQLite-backed storage this (KV-backed) class does not declare.
+     * Durable Object alarm entry point. Overrides Actor.alarm so the cleanup runs without the
+     * Actor scheduler. The class is declared with `new_sqlite_classes`: the Actor base needs SQLite
+     * storage to serve a request at all, and the KV calls above work on it unchanged.
      */
     async alarm() {
         await this.onAlarm();

@@ -128,6 +128,8 @@ export default defineConfig(({ command }) => ({
                     target: `http://127.0.0.1:${process.env.PORT_BE || 3004}`,
                     changeOrigin: true,
                     secure: false,
+                    // The realtime demo upgrades /api/cloudflare/realtime/ws; without this the proxy drops it.
+                    ws: true,
                 },
             ]),
         ),
