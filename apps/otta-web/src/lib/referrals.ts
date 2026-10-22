@@ -176,13 +176,12 @@ export function cleanReferralFromUrl(): void {
 }
 
 /**
- * Build a shareable referral link for a username using the configured param key.
+ * Build the shareable referral link: `/r/{username}`, which the worker 302s to
+ * `/?{referralParam}={username}`.
  */
 export function buildReferralLink(referralUsername: string, origin?: string): string {
     const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : '');
-    const url = new URL(base || 'http://localhost');
-    url.searchParams.set(getReferralParamKey(), referralUsername);
-    return base ? url.toString() : `${url.pathname}${url.search}`;
+    return `${base}/r/${encodeURIComponent(referralUsername)}`;
 }
 
 /**

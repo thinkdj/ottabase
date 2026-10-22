@@ -38,17 +38,13 @@ describe('referral param client helpers', () => {
     });
 
     describe('buildReferralLink', () => {
-        it('uses the default param key', () => {
-            expect(buildReferralLink('john', 'https://app.example.com')).toBe('https://app.example.com/?ref=john');
-        });
-
-        it('uses the configured param key', () => {
+        it('builds the short /r/ link (the worker 302s it to the configured param)', () => {
             cfg.referralParam = 'invite';
-            expect(buildReferralLink('john', 'https://app.example.com')).toBe('https://app.example.com/?invite=john');
+            expect(buildReferralLink('john', 'https://app.example.com')).toBe('https://app.example.com/r/john');
         });
 
         it('url-encodes the username', () => {
-            expect(buildReferralLink('a b', 'https://x.com')).toBe('https://x.com/?ref=a+b');
+            expect(buildReferralLink('a b', 'https://x.com')).toBe('https://x.com/r/a%20b');
         });
     });
 });

@@ -193,6 +193,7 @@ vi.mock('../referrals', () => ({
     handleReferralTrackingList: handlerMock('handleReferralTrackingList'),
     handleReferralUser: handlerMock('handleReferralUser'),
     handleReferralUsernameUpdate: handlerMock('handleReferralUsernameUpdate'),
+    handleReferralVanityRedirect: handlerMock('handleReferralVanityRedirect'),
     handleReferralsAnalytics: handlerMock('handleReferralsAnalytics'),
 }));
 
@@ -328,6 +329,7 @@ import {
     handleReferralTrackingList,
     handleReferralUser,
     handleReferralUsernameUpdate,
+    handleReferralVanityRedirect,
     handleReferralsAnalytics,
 } from '../referrals';
 import { apiRouter, handleApiRequest, makeApiRouteContext } from '../router';
@@ -765,6 +767,15 @@ describe('router dispatch parity', () => {
             const { response } = await dispatch('PUT', '/api/referrals/username');
             expect(handleReferralUsernameUpdate).toHaveBeenCalledWith(expect.objectContaining({ method: 'PUT' }));
             expect(await response!.text()).toBe('handleReferralUsernameUpdate');
+        });
+
+        it('GET /r/{username} (outside /api) dispatches to the short-link redirect', async () => {
+            const { response } = await dispatch('GET', '/r/jane');
+            expect(handleReferralVanityRedirect).toHaveBeenCalledWith(
+                expect.objectContaining({ method: 'GET' }),
+                'jane',
+            );
+            expect(await response!.text()).toBe('handleReferralVanityRedirect');
         });
     });
 

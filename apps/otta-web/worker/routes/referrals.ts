@@ -4,10 +4,11 @@ import { getSession } from '@ottabase/auth/backend';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { User } from '@ottabase/ottaorm/models';
-import { ReferralTracking } from '@ottabase/referrals';
+import { generateReferralUsername, ReferralTracking, validateReferralUsername } from '@ottabase/referrals';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
 import { readJson } from '../lib/utils';
@@ -71,6 +72,30 @@ export async function handleReferralTrack(context: ReferralRouteContext): Promis
     });
 }
 
+/**
+ * GET /r/{username} — shareable referral link. A 302 to the home page carrying the code in the
+ * configured param (`/?ref=username`), so the client's ReferralTracker records it as usual.
+ * Unknown usernames resolve null and fall through to the SPA's 404.
+ */
+export async function handleReferralVanityRedirect(
+    context: ReferralRouteContext,
+    username: string,
+): Promise<Response | null> {
+    const { env, url } = context;
+    const { enabled, referralParam } = getOttabaseConfig(env).features.referrals;
+    if (!enabled || !env.OBCF_D1 || !validateReferralUsername(username).valid) return null;
+
+    registerConnection('default', createD1Driver(env.OBCF_D1));
+    const referrer = await User.findByReferralUsername(username);
+    if (!referrer) return null;
+
+    // Keep any UTM or other params the sharer added: /r/jane?utm_source=x → /?utm_source=x&ref=jane
+    const destination = new URL('/', url);
+    destination.search = url.search;
+    destination.searchParams.set(referralParam || 'ref', referrer.get('referralUsername'));
+    return Response.redirect(destination.toString(), 302);
+}
+
 export async function handleReferralStats(context: ReferralRouteContext): Promise<Response> {
     const { request, env } = context;
     if (!env.OBCF_D1) {
@@ -114,6 +139,26 @@ export async function handleReferralUser(context: ReferralRouteContext): Promise
         return errorResponse('User not found', 404);
     }
 
+    // First visit to the dashboard: hand out a default username so the link is ready to share.
+    // Assigned here rather than at signup because this one spot covers every way a user is created.
+    if (!user.get('referralUsername')) {
+        try {
+            const referralUsername = await generateReferralUsername(
+                { id: userId, name: user.get('name'), email: user.get('email') },
+                async (candidate) => {
+                    const holder = await User.findByReferralUsername(candidate);
+                    return !!holder && holder.get('id') !== userId;
+                },
+            );
+            user.set('referralUsername', referralUsername);
+            await user.save();
+        } catch (error) {
+            // Non-fatal: the dashboard still lets the user pick one by hand.
+            console.warn('Could not assign a default referral username:', error);
+            user.set('referralUsername', null);
+        }
+    }
+
     const stats = await ReferralTracking.getStats(userId);
     const trackingRecords = await ReferralTracking.forUser(userId, {
         limit: 100,
@@ -153,7 +198,6 @@ export async function handleReferralUsernameUpdate(context: ReferralRouteContext
         return errorResponse('referralUsername is required', 400);
     }
 
-    const { validateReferralUsername } = await import('@ottabase/referrals');
     const validation = validateReferralUsername(body.referralUsername);
 
     if (!validation.valid) {
