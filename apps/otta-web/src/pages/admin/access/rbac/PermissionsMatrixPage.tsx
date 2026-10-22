@@ -14,6 +14,7 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui-shadcn';
+import { permissionMatches } from '@ottabase/utils/permissions';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
@@ -24,34 +25,23 @@ import { useRoles, useTogglePermission } from '@/hooks/useRBAC';
 const CHIP_CLASS =
     'rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border';
 
-// Predefined permissions for the system
-const SYSTEM_PERMISSIONS = [
-    // Organization permissions
-    { id: 'org:read', name: 'View Organization', category: 'Organization' },
-    { id: 'org:write', name: 'Manage Organization', category: 'Organization' },
-    { id: 'org:delete', name: 'Delete Organization', category: 'Organization' },
-
-    // Member permissions
-    { id: 'member:read', name: 'View Members', category: 'Members' },
-    { id: 'member:invite', name: 'Invite Members', category: 'Members' },
-    { id: 'member:write', name: 'Manage Members', category: 'Members' },
-    { id: 'member:delete', name: 'Remove Members', category: 'Members' },
-
-    // Role permissions
-    { id: 'role:read', name: 'View Roles', category: 'RBAC' },
-    { id: 'role:write', name: 'Manage Roles', category: 'RBAC' },
-    { id: 'role:delete', name: 'Delete Roles', category: 'RBAC' },
-    { id: 'permission:grant', name: 'Grant Permissions', category: 'RBAC' },
-    { id: 'permission:revoke', name: 'Revoke Permissions', category: 'RBAC' },
-
-    // Audit permissions
-    { id: 'audit:read', name: 'View Audit Logs', category: 'Audit' },
-
-    // App permissions
-    { id: 'app:read', name: 'View Apps', category: 'Apps' },
-    { id: 'app:write', name: 'Manage Apps', category: 'Apps' },
-    { id: 'app:delete', name: 'Delete Apps', category: 'Apps' },
-];
+/**
+ * The permissions the matrix lists: every `resource:action` any role holds, so the rows are the
+ * vocabulary this deployment actually authorizes on (the Role model's defaults plus whatever an
+ * operator granted), never a fixed list that drifts from it. `*` rows come first in each group.
+ */
+function permissionCatalog(roles: RoleRecord[]) {
+    const ids = [...new Set(roles.flatMap((role) => role.permissions ?? []))].sort((a, b) =>
+        a.replace(/^\*/, ' ').localeCompare(b.replace(/^\*/, ' ')),
+    );
+    return ids.map((id) => {
+        const [resource = '', action = ''] = id.split(':');
+        const subject = resource === '*' ? 'any resource' : resource;
+        const name =
+            action === '*' ? `Everything on ${subject}` : `${action[0]?.toUpperCase()}${action.slice(1)} ${subject}`;
+        return { id, name, category: resource === '*' ? 'All resources' : resource };
+    });
+}
 
 export function PermissionsMatrixPage() {
     const toast = useRBACToast();
@@ -79,6 +69,11 @@ export function PermissionsMatrixPage() {
     const hasPermission = (role: RoleRecord, permissionId: string): boolean => {
         return role.permissions?.includes(permissionId) || false;
     };
+    /** The wildcard that already covers a permission the role does not hold by name (`*:read` for `posts:read`). */
+    const coveredBy = (role: RoleRecord, permissionId: string): string | undefined =>
+        hasPermission(role, permissionId)
+            ? undefined
+            : role.permissions?.find((granted) => granted !== permissionId && permissionMatches(granted, permissionId));
 
     // Optimistic permission toggle with instant UI feedback
     const handleToggle = async (role: RoleRecord, permissionId: string) => {
@@ -101,8 +96,9 @@ export function PermissionsMatrixPage() {
         );
     };
 
-    // Group permissions by category
-    const permissionsByCategory = SYSTEM_PERMISSIONS.reduce(
+    // Group permissions by resource
+    const catalog = permissionCatalog(roles);
+    const permissionsByCategory = catalog.reduce(
         (acc, perm) => {
             if (!acc[perm.category]) {
                 acc[perm.category] = [];
@@ -110,7 +106,7 @@ export function PermissionsMatrixPage() {
             acc[perm.category].push(perm);
             return acc;
         },
-        {} as Record<string, typeof SYSTEM_PERMISSIONS>,
+        {} as Record<string, typeof catalog>,
     );
 
     return (
@@ -212,14 +208,22 @@ export function PermissionsMatrixPage() {
                                                                 </TableCell>
                                                                 {filteredRoles.map((role) => {
                                                                     const hasIt = hasPermission(role, permission.id);
+                                                                    const via = coveredBy(role, permission.id);
                                                                     return (
                                                                         <TableCell
                                                                             key={role.id}
                                                                             className="px-4 py-3 text-center"
                                                                         >
-                                                                            <div className="flex justify-center">
+                                                                            <div
+                                                                                className="flex justify-center"
+                                                                                title={
+                                                                                    via
+                                                                                        ? `Granted by ${via}`
+                                                                                        : undefined
+                                                                                }
+                                                                            >
                                                                                 <Checkbox
-                                                                                    checked={hasIt}
+                                                                                    checked={hasIt || Boolean(via)}
                                                                                     onCheckedChange={() =>
                                                                                         handleToggle(
                                                                                             role,
@@ -227,7 +231,8 @@ export function PermissionsMatrixPage() {
                                                                                         )
                                                                                     }
                                                                                     disabled={
-                                                                                        togglePermission.isPending
+                                                                                        togglePermission.isPending ||
+                                                                                        Boolean(via)
                                                                                     }
                                                                                     aria-label={`Toggle ${permission.name} for ${role.name}`}
                                                                                 />
