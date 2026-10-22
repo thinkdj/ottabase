@@ -1,7 +1,7 @@
 import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
-import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { rememberReturnPath, resolveAuthRedirect } from '@/lib/auth-redirect';
 import { getLoginConfig } from '@ottabase/auth/config';
 import { LoginForm } from '@ottabase/auth/components';
 import {
@@ -296,13 +296,20 @@ export function LoginPage() {
                     title="Sign in to your account"
                     description="Choose your preferred login method"
                     showSignUp
-                    onSignUpClick={() => navigate({ to: '/register' })}
+                    onSignUpClick={() => {
+                        rememberReturnPath(redirectTarget.current);
+                        navigate({ to: '/register' });
+                    }}
                 />
 
                 {/* Sign Up Link */}
                 <div className="rounded-xl bg-muted/40 p-4 text-center text-sm text-muted-foreground">
                     Don't have an account?{' '}
-                    <Link to="/register" className="font-medium text-foreground hover:underline">
+                    <Link
+                        to="/register"
+                        onClick={() => rememberReturnPath(redirectTarget.current)}
+                        className="font-medium text-foreground hover:underline"
+                    >
                         Create one now
                     </Link>
                 </div>

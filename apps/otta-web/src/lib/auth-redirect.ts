@@ -24,13 +24,14 @@ function normalizeRedirectTarget(path: string | null): string | null {
 }
 
 /**
- * Saves current path to sessionStorage for post-login redirect
+ * Saves a path (default: the current one) to sessionStorage for the post-login redirect. Login and
+ * register consume it on mount, so the link between them hands their target on with this.
  */
-export function rememberReturnPath(): void {
+export function rememberReturnPath(path?: string): void {
     if (typeof window === 'undefined') return;
 
-    const path = window.location.pathname + window.location.search + window.location.hash;
-    const normalized = normalizeRedirectTarget(path);
+    const target = path ?? window.location.pathname + window.location.search + window.location.hash;
+    const normalized = normalizeRedirectTarget(target);
     if (!normalized) return;
 
     try {

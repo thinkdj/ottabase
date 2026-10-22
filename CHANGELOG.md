@@ -109,6 +109,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- The login and register pages hand the return path on when you switch between them, so a visitor sent to sign in from a
+  page lands back on it after creating an account.
 - **`@ottabase/premium-webhooks` is now `@ottabase/webhooks`** (folder `packages/webhooks`), so the name says what it
   does instead of reading like a paid package. It is still the worked example of `@ottabase/premium`, and nothing else
   changes: package key `webhooks`, tables, routes, `PREMIUM_LICENSE_WEBHOOKS` and the free/licensed split are the same.

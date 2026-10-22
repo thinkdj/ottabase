@@ -1,7 +1,7 @@
 import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
-import { resolveAuthRedirect } from '@/lib/auth-redirect';
+import { rememberReturnPath, resolveAuthRedirect } from '@/lib/auth-redirect';
 import {
     clearStoredReferralCode,
     extractUtmParams,
@@ -213,7 +213,11 @@ export function RegisterPage() {
 
                 <div className="rounded-xl bg-muted/40 p-4 text-center text-sm text-muted-foreground">
                     Already have an account?{' '}
-                    <Link to="/login" className="font-medium text-foreground hover:underline">
+                    <Link
+                        to="/login"
+                        onClick={() => rememberReturnPath(redirectTarget.current)}
+                        className="font-medium text-foreground hover:underline"
+                    >
                         Sign in
                     </Link>
                 </div>

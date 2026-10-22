@@ -24,6 +24,22 @@ describe('the post-auth redirect', () => {
         expect(resolveAuthRedirect()).toBe('/profile');
     });
 
+    it('survives the hop from login to register when the link hands the target on', () => {
+        visit('/demo/cloudflare/realtime');
+        rememberReturnPath();
+        visit('/login');
+        const loginTarget = resolveAuthRedirect(); // consumed on mount
+        rememberReturnPath(loginTarget); // "Create one now"
+        visit('/register');
+
+        expect(resolveAuthRedirect()).toBe('/demo/cloudflare/realtime');
+    });
+
+    it('refuses a handed-on target that leaves the site', () => {
+        rememberReturnPath('//evil.example');
+        expect(resolveAuthRedirect()).toBe('/profile');
+    });
+
     it('never returns to an auth page', () => {
         visit('/login?next=1');
         rememberReturnPath();
