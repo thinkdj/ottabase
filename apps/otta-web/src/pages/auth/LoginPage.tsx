@@ -260,7 +260,10 @@ export function LoginPage() {
 
                 {/* Configuration Warnings — dev only */}
                 {import.meta.env.DEV && warnings.length > 0 && (
-                    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                    <div
+                        data-login-warnings
+                        className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
+                    >
                         <p className="flex items-center gap-2 font-medium">
                             <AlertCircle className="h-4 w-4" />
                             Configuration Warnings

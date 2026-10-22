@@ -321,9 +321,10 @@ async function clickText(send: CdpSend, want: string): Promise<void> {
             const want = ${JSON.stringify(want)};
             const visible = (node) => node.getClientRects().length > 0;
             const firstLine = (node) => node.innerText.trim().split('\\n')[0].trim();
-            const controls = [...document.querySelectorAll('button, a, [role="button"], [role="tab"]')].filter(
+            const controls = [...document.querySelectorAll('button, a, input, textarea, [role="button"], [role="tab"]')].filter(
                 (node) => visible(node) &&
-                    (firstLine(node) === want || node.getAttribute('aria-label') === want || node.getAttribute('title') === want),
+                    (firstLine(node) === want || node.getAttribute('aria-label') === want || node.getAttribute('title') === want ||
+                        node.getAttribute('placeholder') === want),
             );
             const anyText = () => [...document.querySelectorAll('body *')].filter((node) => visible(node) && node.innerText?.trim() === want);
             const el = controls.pop() ?? anyText().pop();
@@ -372,10 +373,11 @@ async function runStep(send: CdpSend, s: ScreenshotStep): Promise<void> {
 
 /**
  * The page region of `shot.selector`, in CSS px from the document's top-left, widened by `padding` and,
- * with `aspect`, reshaped downward from the element's top. A region already on screen is left where it
- * is; one that is not is scrolled a quarter of the way down the viewport, below any sticky header that
- * would otherwise be painted over it. `fits` says whether it is now wholly on screen; when it is not
- * (taller than the viewport), Chrome renders the rest.
+ * with `aspect`, reshaped downward from the element's top. A region on screen and clear of the top
+ * quarter of the viewport is left where it is; any other (off screen, or scrolled up under a sticky
+ * header by an earlier step) is scrolled a quarter of the way down, below any header that would
+ * otherwise be painted over it. `fits` says whether it is now wholly on screen; when it is not (taller
+ * than the viewport), Chrome renders the rest.
  */
 async function regionOf(send: CdpSend, shot: ScreenshotShot): Promise<{ clip: Record<string, number>; fits: boolean }> {
     const box = (await evaluate(
@@ -399,7 +401,7 @@ async function regionOf(send: CdpSend, shot: ScreenshotShot): Promise<{ clip: Re
     const y = Math.max(0, box.top - shot.padding);
     const onScreen = (scrollY: number) => y >= scrollY && y + height <= scrollY + box.viewport;
     let { scrollY } = box;
-    if (!onScreen(scrollY)) {
+    if (!onScreen(scrollY) || (scrollY > 0 && y < scrollY + box.viewport / 4)) {
         // Document coordinates do not move with the scroll, so only scrollY needs reading back.
         scrollY = (await evaluate(
             send,

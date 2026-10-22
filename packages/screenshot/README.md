@@ -35,8 +35,9 @@ stripping (Node 24+).
 
 Before the shot the runner waits for the page to load, for `waitFor`, for fonts, for on-screen images, and for spinners
 (`.animate-spin`, `[aria-busy]`) to clear. Motion is reduced. Steps match text exactly: a control's first line, its
-`aria-label` or its `title`, with the last match winning, so an open dialog beats the nav. The runner hides devtools and
-toasts, makes the caret transparent, and blurs focus unless a step typed into a field.
+`aria-label`, its `title` or a field's `placeholder` (so `click` can focus the field `type` fills), with the last match
+winning, so an open dialog beats the nav. The runner hides devtools and toasts, makes the caret transparent, and blurs
+focus unless a step typed into a field.
 
 ## From a script (automation)
 
@@ -56,7 +57,13 @@ const results = await runShots({
 ```
 
 Each shot is written to `<outDir>/<name>.<png|jpg|webp>`. A failed shot comes back with its `error` and does not stop
-the run. otta-web's `pnpm gen:screenshots [filter]` is a working example (`apps/otta-web/scripts/gen-screenshots.mjs`).
+the run.
+
+Committing the shots? Rendering noise changes the bytes on every run. Pass `sizeTolerance: 0.005` and an existing file
+within ±0.5% of the new shot's size is left untouched (its result says `kept: true`), so git only sees the pages that
+changed. Size is a proxy: a one-word change can hide inside it, so give your script a `--force` that omits the option
+and overwrites everything. otta-web's `pnpm gen:screenshots [filter]` is a working example
+(`apps/otta-web/scripts/gen-screenshots.mjs`).
 
 The Node optimizer is `sharpOptimizer`, and `sharp` is an optional peer dependency:
 

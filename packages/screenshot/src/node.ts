@@ -10,7 +10,7 @@
 // ============================================================
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -155,6 +155,12 @@ export interface RunShotsOptions {
     themeStorageKey?: string;
     /** Default `sharpOptimizer`; `null` writes Chrome's bytes as they are. */
     optimizer?: ImageOptimizer | null;
+    /**
+     * Rendering noise changes a shot's bytes on every run. With a tolerance (a fraction, e.g. `0.005` for ±0.5%),
+     * an existing file whose size is within it of the new shot is left untouched and the result says `kept`, so
+     * committed screenshots only change when the page does. Omit it to always overwrite.
+     */
+    sizeTolerance?: number;
     timeoutMs?: number;
     /** Chrome or Chromium executable; found automatically when omitted. */
     chromePath?: string;
@@ -165,6 +171,8 @@ export interface RunShotsResult {
     file?: string;
     originalBytes?: number;
     bytes?: number;
+    /** The file on disk was within `sizeTolerance` of the new shot, so it was not rewritten. */
+    kept?: boolean;
     error?: string;
 }
 
@@ -193,8 +201,15 @@ export async function runShots(options: RunShotsOptions): Promise<RunShotsResult
                 });
                 const { bytes } = await optimizeShot(raw, shot, optimizer);
                 const file = join(options.outDir, `${name}.${SCREENSHOT_EXTENSION[shot.format]}`);
-                writeFileSync(file, bytes);
-                results.push({ name, file, originalBytes: raw.byteLength, bytes: bytes.byteLength });
+                // ponytail: size is a proxy, a tiny real change (one label) can hide in it; omit the tolerance to force.
+                const tolerance = options.sizeTolerance;
+                const previous = tolerance !== undefined && existsSync(file) ? statSync(file).size : 0;
+                const kept =
+                    tolerance !== undefined &&
+                    previous > 0 &&
+                    Math.abs(bytes.byteLength - previous) / previous <= tolerance;
+                if (!kept) writeFileSync(file, bytes);
+                results.push({ name, file, originalBytes: raw.byteLength, bytes: bytes.byteLength, kept });
             } catch (error) {
                 results.push({ name, error: error instanceof Error ? error.message : String(error) });
             }

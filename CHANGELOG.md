@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (`DEMO_CTA_LABEL`, `DEMO_CTA_URL`, read via `GET /api/demo/mode`). On every deploy, the metered demos (Realtime,
   Screenshots, OttaAI, the PDF playground, File upload) show an anonymous visitor a sign-up teaser that returns them to
   the page, and `/demo/pro` tours the Ottabase Pro packages, linking the pages a user can open when they are installed.
+- `@ottabase/screenshot/node`: `runShots({ sizeTolerance })` leaves an existing file alone when the new shot's size is
+  within that fraction of it (result `kept: true`), so committed screenshots stop churning on rendering noise.
+  otta-web's `gen:screenshots` uses ±0.5% and takes `--force` to overwrite everything.
 - `@ottabase/discover`: AI-readable by default. One `ProductFacts` object (`defineProduct`) becomes a `robots.txt` that
   names the AI search crawlers one by one (`OAI-SearchBot`, `PerplexityBot`, `Claude-SearchBot`, Googlebot, Bingbot)
   with a switch for the training crawlers, a sitemap, `/.well-known/otta.json` (the product's facts in the
