@@ -58,13 +58,17 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
-  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and
+  `comments`, `shortlinks`, `ottalanding`, `discover`) has no build output, so it defines `lint`/`type-check`/`test` and
   deliberately NO `build`. Adding one there emits a `dist/` nothing imports — and for any package with module-level
   singletons that dist becomes a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its
   source is still compiled (and therefore CI-covered) by the app build.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
 - **No noise docs**: do not create stray summary files (for example, `SUMMARY.MD`).
 - **KISS + DRY by default**: prefer the simplest maintainable implementation and reuse existing repo primitives.
+- **Integrations between our products are great to have, never mandatory.** Ottabase, Ottabuzz, Imageine and Tuskly each
+  work alone. When another one is present we use it (a context.json import, a `/.well-known/otta.json`, a render handed
+  across by URL); when it is absent nothing breaks, nothing nags and no feature is gated on it. Share data by plain
+  files and URLs, never by shared logins or shared databases.
 - **Type-safe only**: use TypeScript; do not invent APIs or rely on implicit behavior.
 - **Ask when uncertain**: if architecture or behavior is unclear, ask rather than guessing.
 

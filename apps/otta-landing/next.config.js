@@ -33,7 +33,7 @@ const nextConfig = {
 
     // Enable transpilation of packages
     // @ottabase/ottalanding ships TypeScript source (no build step)
-    transpilePackages: ['@ottabase/ottalanding', '@ottabase/ui-tailwind'],
+    transpilePackages: ['@ottabase/discover', '@ottabase/ottalanding', '@ottabase/ui-tailwind'],
 
     // Enable React strict mode
     reactStrictMode: true,

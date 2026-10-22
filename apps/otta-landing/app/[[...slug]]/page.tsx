@@ -1,7 +1,9 @@
+import { ProductJsonLd } from '@ottabase/discover/next';
 import { LandingView } from '@ottabase/ottalanding/react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getPage, getSite, toPath } from '../../lib/content';
+import { getPage, getSite, siteOrigin, toPath } from '../../lib/content';
+import { productFacts } from '../../lib/product';
 import { SetupNotice } from '../setup-notice';
 
 type Props = {
@@ -63,7 +65,16 @@ export default async function LandingRoute({ params, searchParams }: Props) {
     if (!page) notFound();
 
     const view = <LandingView site={site} sections={page.sections} currentPath={path} title={page.title} />;
-    if (page.published) return view;
+    if (page.published) {
+        // The home page carries the product's JSON-LD (Organization, WebSite, SoftwareApplication); no other page repeats it.
+        if (path !== '/') return view;
+        return (
+            <>
+                <ProductJsonLd facts={productFacts(site, page, await siteOrigin(site))} />
+                {view}
+            </>
+        );
+    }
     return (
         <>
             <p role="status" className="bg-foreground px-4 py-2 text-center text-sm font-medium text-background">

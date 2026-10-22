@@ -42,6 +42,7 @@
     "dependencies": {
         "@ottabase/config": "workspace:*",
         "@ottabase/db": "workspace:*",
+        "@ottabase/discover": "workspace:*",
         "@ottabase/ottalanding": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottaupload": "workspace:*",

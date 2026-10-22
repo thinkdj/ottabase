@@ -15,6 +15,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (`DEMO_CTA_LABEL`, `DEMO_CTA_URL`, read via `GET /api/demo/mode`). On every deploy, the metered demos (Realtime,
   Screenshots, OttaAI, the PDF playground, File upload) show an anonymous visitor a sign-up teaser that returns them to
   the page, and `/demo/pro` tours the Ottabase Pro packages, linking the pages a user can open when they are installed.
+- `@ottabase/discover`: AI-readable by default. One `ProductFacts` object (`defineProduct`) becomes a `robots.txt` that
+  names the AI search crawlers one by one (`OAI-SearchBot`, `PerplexityBot`, `Claude-SearchBot`, Googlebot, Bingbot)
+  with a switch for the training crawlers, a sitemap, `/.well-known/otta.json` (the product's facts in the
+  `otta-context` shape Ottabuzz serves as `context.json` and Imageine imports; `parseOttaJson` reads one back),
+  Organization, WebSite and SoftwareApplication JSON-LD, and the one canonical paragraph to paste into every profile.
+  `@ottabase/discover/next` gives `app/robots.ts`, `app/.well-known/otta.json/route.ts` and `<ProductJsonLd>` to a
+  Next.js app; `@ottabase/discover/manifest` mounts the three files on a Worker. `apps/otta-landing` is the worked
+  example: the facts come from the site settings and the published home page, so nothing is typed twice.
 - `otta add` reaches into the SPA shell when a package asks: `routes` in the `ottabase` descriptor are registered in
   `src/router.tsx` (`<key><Path>Route` constants in `coreRoutes`, public or protected), and `errorReporter` is imported
   into `src/main.tsx` and handed to the root `<ErrorBoundary onError>`. A router without `coreRoutes`, or a boundary

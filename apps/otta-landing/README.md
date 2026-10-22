@@ -65,8 +65,15 @@ Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes).
   origin (`siteOrigin()` in `lib/content.ts`) so image URLs are still absolute.
 - **Social images:** each page shares its own social image, or else the site's, as `og:image` (1200×630, with alt text)
   and a `summary_large_image` Twitter card. The images are drawn and uploaded by the admin; see the package README.
-- **Sitemap and robots:** `/sitemap.xml` lists every published page with its last change. `/robots.txt` allows crawling
-  and points at the sitemap in production only. Every other deployment disallows everything, matching its `noindex`.
+- **Sitemap and robots:** `/sitemap.xml` lists every published page with its last change. `/robots.txt` (from
+  `@ottabase/discover`) allows crawling in production only, naming the AI search crawlers (`OAI-SearchBot`,
+  `PerplexityBot`, `Claude-SearchBot`, Googlebot, Bingbot) one by one so a crawler control that splits search from
+  training keeps them allowed, keeps every bot out of `/api/`, and points at the sitemap. Every other deployment
+  disallows everything, matching its `noindex`.
+- **The product's facts, for machines:** `/.well-known/otta.json` serves the site name, tagline, hero, features and
+  plans from the published home page in the `otta-context` shape Ottabuzz and Imageine read (any origin may fetch it),
+  and the home page carries Organization, WebSite and SoftwareApplication JSON-LD built from the same facts
+  (`lib/product.ts`). Nothing is typed twice: edit the site or the home page in the admin and both follow.
 
 ## Draft previews
 

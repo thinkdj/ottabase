@@ -47,8 +47,10 @@ import { POST as postLead } from '../app/api/leads/route';
 import NotFound from '../app/not-found';
 import robots from '../app/robots';
 import sitemap from '../app/sitemap';
+import { GET as ottaJson } from '../app/.well-known/otta.json/route';
 import { DomainValidationError } from '@ottabase/ottaorm';
 import { getSite, toPath } from '../lib/content';
+import { money } from '../lib/product';
 
 const site = { getSettings: () => ({ ...DEFAULT_SITE, theme: 'editorial' }) };
 const home = {
@@ -249,14 +251,85 @@ describe('sitemap and robots', () => {
         expect(await sitemap()).toEqual([]);
     });
 
-    it('invites crawlers only in production, pointing them at the sitemap', async () => {
+    it('invites crawlers only in production, naming the AI search crawlers and pointing them at the sitemap', async () => {
         env.value = { ...env.value, ENVIRONMENT: 'preview' };
-        expect(await robots()).toEqual({ rules: { userAgent: '*', disallow: '/' } });
+        expect(await robots()).toEqual({ rules: [{ userAgent: '*', disallow: '/' }] });
         env.value = { ...env.value, ENVIRONMENT: 'production' };
-        expect(await robots()).toEqual({
-            rules: { userAgent: '*', allow: '/' },
-            sitemap: 'https://landing.acme.test/sitemap.xml',
+        const out = await robots();
+        expect(out.sitemap).toBe('https://landing.acme.test/sitemap.xml');
+        const rules = out.rules as { userAgent: string | string[]; allow?: string; disallow?: string | string[] }[];
+        const agents = rules.flatMap((r) => r.userAgent);
+        expect(agents).toEqual(
+            expect.arrayContaining(['OAI-SearchBot', 'PerplexityBot', 'Claude-SearchBot', 'Googlebot', 'Bingbot', '*']),
+        );
+        // The uploads route sits under /api/; the longer allow keeps logos and social images fetchable.
+        expect(rules.find((r) => r.userAgent === 'OAI-SearchBot')).toEqual({
+            userAgent: 'OAI-SearchBot',
+            allow: ['/', '/api/upload/file/'],
+            disallow: ['/api/'],
         });
+    });
+});
+
+describe('the product for machines', () => {
+    it('serves the facts from the published home page at /.well-known/otta.json, for any origin', async () => {
+        store.findPage.mockResolvedValue(home);
+        const res = await ottaJson(new Request('https://landing.acme.test/.well-known/otta.json?x=1'));
+        expect(res.status).toBe(200);
+        expect(res.headers.get('access-control-allow-origin')).toBe('*');
+        const body = await res.json();
+        expect(body).toMatchObject({
+            kind: 'otta-context',
+            version: 1,
+            from: 'https://landing.acme.test/.well-known/otta.json',
+        });
+        expect(body.product).toMatchObject({
+            name: 'Ottabase',
+            url: 'https://landing.acme.test/',
+            tagline: 'Ship the product, not the plumbing.',
+            hero: { line: 'Ship the product, not the plumbing.', button: 'Get started' },
+            neverClaim: [],
+        });
+        expect(body.product.features[0]).toMatch(/^Auth & RBAC: /);
+        expect(body.product.pricing).toMatch(/^Hobby free; /);
+        expect(store.findPage).toHaveBeenCalledWith('acme', '/');
+    });
+
+    it('answers 404 until there is a site with a published home page', async () => {
+        store.findPage.mockResolvedValue(null);
+        expect((await ottaJson(new Request('https://landing.acme.test/.well-known/otta.json'))).status).toBe(404);
+        store.findSite.mockResolvedValue(null);
+        store.findPage.mockResolvedValue(home);
+        expect((await ottaJson(new Request('https://landing.acme.test/.well-known/otta.json'))).status).toBe(404);
+    });
+
+    it('reads a plan price only when the text is plainly one amount', () => {
+        expect(money('$19')).toEqual({ price: 19, currency: 'USD' });
+        expect(money('€9.50')).toEqual({ price: 9.5, currency: 'EUR' });
+        expect(money('9,50 €')).toEqual({ price: 9.5, currency: 'EUR' });
+        expect(money('USD 1,000/mo')).toEqual({ price: 1000, currency: 'USD' });
+        expect(money('$0.00')).toEqual({ price: 'free', currency: 'USD' });
+        for (const text of ['from $5', '$19–$49', 'Contact us', '$ USD 5', '1.000,50']) {
+            expect(money(text), text).toBeNull();
+        }
+    });
+
+    it('leaves out an image address it cannot resolve instead of failing the home page', async () => {
+        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, logoUrl: 'https://[' }) });
+        store.findPage.mockResolvedValue(home);
+        const res = await ottaJson(new Request('https://landing.acme.test/.well-known/otta.json'));
+        expect((await res.json()).product.logo).toBeNull();
+        expect(html(await LandingRoute(params()))).toContain('application/ld+json');
+    });
+
+    it('puts the JSON-LD on the home page and nowhere else', async () => {
+        store.findPage.mockResolvedValue(home);
+        const out = html(await LandingRoute(params()));
+        expect(out).toContain('<script type="application/ld+json">');
+        expect(out).toContain('"@type":"SoftwareApplication"');
+        expect(out).toContain('"name":"Ottabase"');
+        store.findPage.mockResolvedValue({ toPage: () => ({ ...home.toPage(), path: '/about' }) });
+        expect(html(await LandingRoute(params(['about'])))).not.toContain('application/ld+json');
     });
 });
 

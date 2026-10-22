@@ -45,6 +45,7 @@
 - [@ottabase/config](packages/config/README.md): Shared configuration utilities for Ottabase applications with environment variable support.
 - [@ottabase/cron](packages/cron/README.md): Minimal cron handler for Cloudflare Workers scheduled events.
 - [@ottabase/db](packages/db/README.md): Shared database layer for Ottabase applications using Drizzle ORM.
+- [@ottabase/discover](packages/discover/README.md): AI-readable by default: one ProductFacts object becomes a robots.txt that names the AI search crawlers, a sitemap, /.well-known/otta.json in the otta-context shape Ottabuzz reads, Organization and SoftwareApplication JSON-LD, and the one canonical paragraph to paste everywhere.
 - [@ottabase/docs](packages/docs/README.md): Minimal, reusable documentation viewer for Markdown files. Clean layout with left navigation, content area, and right table of contents. Colors from Brand Kit; layout themes control spacing and…
 - [@ottabase/email](packages/email/README.md): Edge-friendly email templating + mailer helpers for Ottabase.
 - [@ottabase/events](packages/events/README.md): Typed in-process event bus for Ottabase apps and packages, with optional queue fan-out for slow subscribers.

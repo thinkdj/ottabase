@@ -370,6 +370,7 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                             |
 | `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                        |
 | `@ottabase/fleet`      | The beacon: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
+| `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
 
 ### Premium Packages

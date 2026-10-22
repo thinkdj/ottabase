@@ -1,0 +1,66 @@
+{
+    "name": "@ottabase/discover",
+    "version": "0.1.0",
+    "description": "AI-readable by default: one ProductFacts object becomes robots.txt that names the AI search crawlers, a sitemap, /.well-known/otta.json (the product's facts in the otta-context shape Ottabuzz reads), Organization and SoftwareApplication JSON-LD, and the one canonical paragraph to paste everywhere",
+    "ottabase": {
+        "key": "discover",
+        "factory": "createDiscoverPackage",
+        "manifestImport": "@ottabase/discover/manifest"
+    },
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./next": {
+            "types": "./src/next.tsx",
+            "default": "./src/next.tsx"
+        },
+        "./manifest": {
+            "types": "./src/manifest.ts",
+            "default": "./src/manifest.ts"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/discover"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/discover#readme"
+}
