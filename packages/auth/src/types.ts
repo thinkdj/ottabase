@@ -96,6 +96,10 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
     errorPage?: string;
     /** Called after a user signs out (session revoked). Use to clear app-level caches. */
     onSignOut?: (userId: string) => Promise<void> | void;
-    /** Called right after a session is created (sign-in, register+auto-login, magic link, OAuth). */
+    /**
+     * Called on every sign-in (credentials, magic link, OAuth) just before the session is issued.
+     * A throw refuses the sign-in with `ACCOUNT_PROVISIONING_FAILED` / `?error=AccountProvisioning`,
+     * so use it to finish an account (its workspace) and catch anything that is merely best-effort.
+     */
     onSignIn?: (params: { userId: string; email?: string | null }) => Promise<void> | void;
 }

@@ -12,6 +12,7 @@
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Account, User, VerificationToken } from '@ottabase/ottaorm/models';
+import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import { bootstrapFirstUser } from './bootstrap';
 import { serializeCookie, parseCookies, clearCookie } from './cookies';
 import { hashPassword, verifyPassword, randomToken, getDummyPasswordHash, hashToken } from './crypto';
@@ -123,6 +124,24 @@ function errorPageUrl(env: AuthEnv, options: CreateAuthConfigOptions | undefined
 
 function errorRedirect(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string): Response {
     return Response.redirect(errorPageUrl(env, options, code), 302);
+}
+
+/**
+ * Runs the app's `onSignIn` hook before the session is issued. False when it threw: the app could
+ * not finish the account (its workspace, say), so the caller refuses the sign-in instead of
+ * issuing a session for a half-provisioned account.
+ */
+async function runSignInHook(
+    options: CreateAuthConfigOptions,
+    params: { userId: string; email?: string | null },
+): Promise<boolean> {
+    try {
+        await options.onSignIn?.(params);
+        return true;
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'auth_sign_in_hook_failed', error: redactErrorForLog(error) }));
+        return false;
+    }
 }
 
 async function defaultCredentialsAuthorize(
@@ -253,7 +272,15 @@ async function handleCredentialsCallback(
             500,
         );
     }
-    await options.onSignIn?.({ userId: user.id, email: user.email });
+    if (!(await runSignInHook(options, { userId: user.id, email: user.email }))) {
+        return jsonResponse(
+            {
+                error: 'Account setup could not be completed. Please try again.',
+                code: 'ACCOUNT_PROVISIONING_FAILED',
+            },
+            500,
+        );
+    }
 
     const { cookie, session } = await createSessionCookieForUser(
         { id: user.id, email: user.email, name: user.name, image: user.image, emailVerified: user.emailVerified },
@@ -471,7 +498,9 @@ async function handleOAuthCallback(
         console.error(`First-user account provisioning failed for OAuth provider "${providerId}":`, error);
         return oauthErrorRedirect(env, options, 'AccountProvisioning', request);
     }
-    await options.onSignIn?.({ userId, email: userEmail });
+    if (!(await runSignInHook(options, { userId, email: userEmail }))) {
+        return oauthErrorRedirect(env, options, 'AccountProvisioning', request);
+    }
 
     const { cookie } = await createSessionCookieForUser(
         { id: userId, email: userEmail, name: userName, image: userImage, emailVerified: emailVerifiedAt },
@@ -599,7 +628,9 @@ async function handleMagicLinkCallback(
         console.error('First-user account provisioning failed during magic-link sign-in:', error);
         return errorRedirect(env, options, 'AccountProvisioning');
     }
-    await options.onSignIn?.({ userId, email });
+    if (!(await runSignInHook(options, { userId, email }))) {
+        return errorRedirect(env, options, 'AccountProvisioning');
+    }
 
     const { cookie } = await createSessionCookieForUser(
         { id: userId, email, name: userName, image: userImage, emailVerified: Date.now() },

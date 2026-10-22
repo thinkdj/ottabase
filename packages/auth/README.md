@@ -100,6 +100,19 @@ original user, and the error is surfaced to the sign-in flow. If a request stops
 same owner's next sign-in repairs the missing organization; another user cannot take over that claim. Set
 `MULTI_TENANT_ENABLED=false` only when the deployment intentionally does not require a personal organization.
 
+Everyone after the first user is the app's to finish, through `onSignIn`. It runs on every credentials, OAuth and
+magic-link sign-in, after `bootstrapFirstUser()` and before the session is issued. A throw refuses the sign-in the same
+way: credentials answer 500 `ACCOUNT_PROVISIONING_FAILED`, OAuth and magic links redirect to the error page with
+`?error=AccountProvisioning`, and no session cookie is set. Catch anything in the hook that is only best-effort.
+
+```typescript
+const options: CreateAuthConfigOptions = {
+    onSignIn: async ({ userId, email }) => {
+        await ensureWorkspace(userId, email); // throws: the sign-in is refused
+    },
+};
+```
+
 ## Session Model
 
 The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained
