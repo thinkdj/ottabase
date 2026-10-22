@@ -379,6 +379,7 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                             |
 | `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                        |
 | `@ottabase/fleet`      | The beacon: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
+| `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
 
 ### Premium Packages
@@ -581,6 +582,17 @@ pnpm deploy
 curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
+
+## OSS vs Pro
+
+One rule decides where a package lives: **OSS helps you build, Pro helps you operate.**
+
+- **OSS (MIT, this repo):** everything needed to build and ship an app. The framework, ORM, auth, RBAC, UI, content and
+  utilities. Nothing published here ever moves behind a paywall.
+- **Pro (paid, sold as source):** the operations layer for a running business. Billing, fleet health, error tracking,
+  status pages, support, compliance. See [ottabase.com/pro](https://ottabase.com/pro).
+
+Litmus test: needed on day one of building, OSS. Needed once paying customers arrive, Pro.
 
 ## Docs
 
@@ -1739,13 +1751,17 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
 - **Every workspace defines `lint`, `type-check`, `test`, and `build`**: `turbo` silently skips a task a package does
   not declare, so a missing script is indistinguishable from a passing one. A new app or package without these is
   invisible to CI. **One carve-out:** a package whose `exports` point at `./src` (`ottablog`, `ottaai`, `medialibrary`,
-  `comments`, `shortlinks`, `ottalanding`) has no build output, so it defines `lint`/`type-check`/`test` and
+  `comments`, `shortlinks`, `ottalanding`, `discover`) has no build output, so it defines `lint`/`type-check`/`test` and
   deliberately NO `build`. Adding one there emits a `dist/` nothing imports — and for any package with module-level
   singletons that dist becomes a SECOND copy of the registry, which is a silent correctness bug, not just waste. Its
   source is still compiled (and therefore CI-covered) by the app build.
 - **Docs + tests are mandatory**: update README/docs and tests for every meaningful code change.
 - **No noise docs**: do not create stray summary files (for example, `SUMMARY.MD`).
 - **KISS + DRY by default**: prefer the simplest maintainable implementation and reuse existing repo primitives.
+- **Integrations between our products are great to have, never mandatory.** Ottabase, Ottabuzz, Imageine and Tuskly each
+  work alone. When another one is present we use it (a context.json import, a `/.well-known/otta.json`, a render handed
+  across by URL); when it is absent nothing breaks, nothing nags and no feature is gated on it. Share data by plain
+  files and URLs, never by shared logins or shared databases.
 - **Type-safe only**: use TypeScript; do not invent APIs or rely on implicit behavior.
 - **Ask when uncertain**: if architecture or behavior is unclear, ask rather than guessing.
 
@@ -2169,7 +2185,7 @@ if (!session) return errorResponse('Unauthorized', 401);
 
 **Client — `useSession()` is the single global source of truth** (module-level Jotai atoms, shared by every caller; the
 app wraps it in `@/lib/auth` to also sync `@ottabase/state`). Import `useSession` from `@/lib/auth` in app code. Never
-keep a private copy of `user` — read it from the hook so the header (`UserSection`), guards, and every consumer
+keep a private copy of `user`: read it from the hook so the account menu (`AccountMenu`), guards, and every consumer
 re-render together.
 
 ```typescript
@@ -5038,7 +5054,7 @@ Secrets; it does not modify wrangler.jsonc.
 | -------------- | ----------------- | ------------------------- | ------------------------------------------------------------- |
 | **Hyperdrive** | `OBCF_HYPERDRIVE` | External database pooling | `wrangler hyperdrive create <name> --connection-string="..."` |
 
-**For /analytics page:** The `/analytics` dashboard requires `CLOUDFLARE_ACCOUNT_ID` (set as a `var` in
+**For the analytics page:** The `/admin/growth/analytics` dashboard requires `CLOUDFLARE_ACCOUNT_ID` (set as a `var` in
 `wrangler.jsonc`) and `CLOUDFLARE_ANALYTICS_API_TOKEN` (set as a Worker secret).
 
 **Creating `CLOUDFLARE_ANALYTICS_API_TOKEN`:**
@@ -5060,7 +5076,8 @@ CLOUDFLARE_ANALYTICS_API_TOKEN=your-token-here
 # PS: Analytics will NOT work locally.
 ```
 
-Without this token, the `/analytics` page returns `503`. Analytics datasets are auto-created on first write.
+Without this token, the `/admin/growth/analytics` page returns `503`. Analytics datasets are auto-created on first
+write.
 
 ---
 
@@ -5092,7 +5109,7 @@ GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 # ============================================================
 # CLOUDFLARE ACCOUNT (runtime features that call the Cloudflare API)
 # ============================================================
-# Read by the worker for /analytics, Workers AI and Cloudflare Images.
+# Read by the worker for the analytics dashboard, Workers AI and Cloudflare Images.
 # R2, KV, D1 and Queues are reached through Worker bindings and need no credentials.
 CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
 ```
@@ -5117,7 +5134,7 @@ wrangler secret put GOOGLE_CLIENT_SECRET
 # Schema migrations outside development (POST /api/ottaorm/init)
 wrangler secret put MIGRATION_SECRET
 
-# /analytics dashboard (optional, see above)
+# Analytics dashboard (optional, see above)
 wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 ```
 
@@ -5534,7 +5551,7 @@ pnpm --filter @ottabase/otta-web cf-typegen
 | `CLOUDFLARE_ACCOUNT_ID`          | Yes (deploy)  | Wrangler CLI / CI; worker var for analytics & AI |
 | `AUTH_SECRET`                    | If using auth | Session signing secret                           |
 | `MIGRATION_SECRET`               | Recommended   | Authorizes `/api/ottaorm/init` outside dev       |
-| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | `/analytics` dashboard                           |
+| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | Analytics dashboard                              |
 
 ---
 
@@ -6163,18 +6180,18 @@ mounts its routes behind the license gate (`mountPremiumPackages(apiRouter, prem
 
 ### Client descriptor
 
-The manifest remains server-only. For a package with rendered admin pages, add a client descriptor
-(`definePackageClient` from `@ottabase/kernel/client`) to `src/ottabase/config/packages.ts` with the page's path, nav
-group, icon and lazy loader, and re-export its tables from `ottabase/db/schema.ts` for drizzle-kit. `otta-web` scans
-every `packages/premium*/src` directory for Tailwind, so premium package styles need no separate configuration. The
-app's packages-registration test asserts that the server list, the client list and the Drizzle schema exports stay in
-sync.
+The manifest remains server-only. For a package that renders pages, add a client descriptor (`definePackageClient` from
+`@ottabase/kernel/client`) to `src/ottabase/config/packages.ts`: admin pages with their path, nav group, icon and lazy
+loader, other pages under `routes` (with a `menu` entry to link one from the account menu), and re-export its tables
+from `ottabase/db/schema.ts` for drizzle-kit. `otta-web` scans every `packages/premium*/src` directory for Tailwind, so
+premium package styles need no separate configuration. The app's packages-registration test asserts that the server
+list, the client list and the Drizzle schema exports stay in sync.
 
 ### Uninstalling
 
-Delete the entry from the list. Routes and nav disappear on the next deploy. **Tables are left alone** — dropping
-customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a migration that
-says so.
+Delete the entry from both lists. Routes, nav and menu links disappear on the next deploy. **Tables are left alone** —
+dropping customer data as a side effect of removing an import is not recoverable. Drop them deliberately, with a
+migration that says so.
 
 ---
 
@@ -7725,21 +7742,22 @@ flowchart TD
 
 ## Repository layout
 
-| Area                                | Path                                                                                               |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Package (schema, model, validation) | `packages/referrals/`                                                                              |
-| Worker API                          | `apps/otta-web/worker/routes/referrals.ts`                                                         |
-| Router wiring                       | `apps/otta-web/worker/routes/router.ts`                                                            |
-| Signup attribution                  | `apps/otta-web/worker/routes/auth.ts` (calls `processReferralAttribution`)                         |
-| Attribution helper                  | `apps/otta-web/ottabase/helpers/referral-attribution.ts`                                           |
-| Client utilities                    | `apps/otta-web/src/lib/referrals.ts`                                                               |
-| Tracker component                   | `apps/otta-web/src/components/ReferralTracker.tsx`                                                 |
-| Layout mount                        | `ConfigurableLayout` / `BrandLayout` (renders `ReferralTracker` when `PACKAGES_ENABLED.referrals`) |
-| Dashboard page                      | `apps/otta-web/src/pages/referrals/ReferralsPage.tsx`                                              |
-| Dashboard UI                        | `apps/otta-web/src/components/ReferralDashboard.tsx`                                               |
-| App config                          | `apps/otta-web/ottabase/ottabase.config.ts` (`features.referrals`, `packages.referrals`)           |
-| Resolved client config              | `apps/otta-web/ottabase/config.loader.ts` (`REFERRALS_CONFIG`)                                     |
-| Model registration                  | `apps/otta-web/worker/lib/db-utils.ts` (includes `ReferralTracking` when package enabled)          |
+| Area                                | Path                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Package (schema, model, validation) | `packages/referrals/`                                                                             |
+| Worker API                          | `apps/otta-web/worker/routes/referrals.ts`                                                        |
+| Router wiring                       | `apps/otta-web/worker/routes/router.ts`                                                           |
+| Signup attribution                  | `apps/otta-web/worker/routes/auth.ts` (calls `processReferralAttribution`)                        |
+| Attribution helper                  | `apps/otta-web/ottabase/helpers/referral-attribution.ts`                                          |
+| Client utilities                    | `apps/otta-web/src/lib/referrals.ts`                                                              |
+| Tracker component                   | `apps/otta-web/src/components/ReferralTracker.tsx`                                                |
+| Layout mount                        | `ConfigurableLayout` (renders `ReferralTracker` when `PACKAGES_ENABLED.referrals`)                |
+| Dashboard page                      | `apps/otta-web/src/pages/referrals/ReferralsPage.tsx`                                             |
+| Route and account-menu link         | the `referrals` entry in `apps/otta-web/src/ottabase/config/packages.ts` (signed-in `/referrals`) |
+| Dashboard UI                        | `apps/otta-web/src/components/ReferralDashboard.tsx`                                              |
+| App config                          | `apps/otta-web/ottabase/ottabase.config.ts` (`features.referrals`, `packages.referrals`)          |
+| Resolved client config              | `apps/otta-web/ottabase/config.loader.ts` (`REFERRALS_CONFIG`)                                    |
+| Model registration                  | `apps/otta-web/worker/lib/db-utils.ts` (includes `ReferralTracking` when package enabled)         |
 
 ---
 
@@ -7882,8 +7900,7 @@ Prefer setting it before launch, or keep supporting the previous key downstream 
 
 ### Automatic tracking
 
-`ReferralTracker` is mounted from **`ConfigurableLayout`** / **`BrandLayout`** when `PACKAGES_ENABLED.referrals` is
-true. It:
+`ReferralTracker` is mounted from **`ConfigurableLayout`** when `PACKAGES_ENABLED.referrals` is true. It:
 
 1. Respects `features.referrals.enabled`
 2. Reads the configured referral param from the URL (default `?ref=`, see `features.referrals.referralParam`)
@@ -10824,6 +10841,9 @@ owns. Everything else stays in the host app.
 | `/api/auth/callback/email`       | GET    | Verifies the magic-link token, creates a session, redirects              |
 | `/api/auth/signout`              | POST   | `{ csrfToken }` → revokes the current session only, clears the cookie    |
 
+`callbackUrl` must be a relative path (`/profile`). A missing or off-site one falls back to `/`, which is also where the
+client helpers send the user when `redirectTo` is omitted.
+
 ### Owned by the host app (not part of this package)
 
 These routes live in the app and call `hashPassword` / `verifyPassword` / `getSession` / `revokeAllUserSessions` from
@@ -10851,6 +10871,19 @@ Critical provisioning failures are fail-closed: no session is issued, the platfo
 original user, and the error is surfaced to the sign-in flow. If a request stops after committing the system claim, the
 same owner's next sign-in repairs the missing organization; another user cannot take over that claim. Set
 `MULTI_TENANT_ENABLED=false` only when the deployment intentionally does not require a personal organization.
+
+Everyone after the first user is the app's to finish, through `onSignIn`. It runs on every credentials, OAuth and
+magic-link sign-in, after `bootstrapFirstUser()` and before the session is issued. A throw refuses the sign-in the same
+way: credentials answer 500 `ACCOUNT_PROVISIONING_FAILED`, OAuth and magic links redirect to the error page with
+`?error=AccountProvisioning`, and no session cookie is set. Catch anything in the hook that is only best-effort.
+
+```typescript
+const options: CreateAuthConfigOptions = {
+    onSignIn: async ({ userId, email }) => {
+        await ensureWorkspace(userId, email); // throws: the sign-in is refused
+    },
+};
+```
 
 ## Session Model
 
@@ -12314,7 +12347,7 @@ async function validatePublisher(request: Request, env: CloudflareEnv): Promise<
         "bindings": [{ "name": "OBCF_REALTIME", "class_name": "RealtimeActor" }],
     },
     "kv_namespaces": [{ "binding": "API_KEYS", "id": "your-api-keys-kv" }],
-    "migrations": [{ "tag": "v1", "new_classes": ["RealtimeActor"] }],
+    "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeActor"] }],
 }
 ```
 
@@ -12758,16 +12791,18 @@ A package with a user interface can say more, and `otta add` writes that too:
 - `adminPages`: entries for the client descriptor (path, title, icon, group, page module, export).
 - An `app/` folder mirroring the app layout (`app/ottabase/packages/<key>.ts`, `app/src/pages/…`): copied in where the
   app has no such file yet. A shipped composition wins over the reference app's.
-- `routes`: SPA pages registered in `src/router.tsx` as `<key><Path>Route` constants listed in `coreRoutes`, e.g.
+- `routes`: the package's other SPA pages, written into the client descriptor next to `adminPages`; the app router
+  mounts them from there.
   `{ "path": "/status", "page": "status/StatusPage", "export": "StatusPage", "access": "public" }` (`access` defaults to
-  `protected`, a signed-in page).
+  `protected`, a signed-in page). Add `"menu": { "title": "Billing", "icon": "CreditCard" }` to link the page from the
+  signed-in account menu.
 - `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
   `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
 
-A router without `coreRoutes`, or a boundary that already has an `onError`, is left alone and the plan says what to do
-by hand. So is a path another page already routes; a generated name the app already uses gets a numeric suffix. `page`
-is a module path under `src/pages` (letters, digits, `_`, `-`, `/`), and export names are identifiers that are not
-reserved words.
+A boundary that already has an `onError` is left alone and the plan says what to do by hand. Two packages routing one
+path, or a package routing a path the app owns, stop the app at boot with both names. `page` is a module path under
+`src/pages` (letters, digits, `_`, `-`, `/`), export names are identifiers that are not reserved words, and icons are
+lucide-react export names.
 
 ### Starting apps and environments
 
@@ -13837,6 +13872,148 @@ console.log(inserted.meta?.changes); // rows affected
 
 - **`@ottabase/db`**: Database layer (Drizzle support)
 - **`@ottabase/cf`**: Cloudflare bindings (D1, KV, R2, Queues, etc.)
+
+
+---
+
+# packages/discover/README.md
+
+# @ottabase/discover
+
+AI-readable by default. One `ProductFacts` object becomes everything a product's site needs to be found and understood
+by the answer engines and the search engines alike: a `robots.txt` that names the AI search crawlers one by one, a
+sitemap, `/.well-known/otta.json` with the product's facts in the shape Ottabuzz and Imageine read, Organization and
+SoftwareApplication JSON-LD, and the one paragraph to paste into every profile. No model calls, no dependencies beyond
+the repo's own utils, no database.
+
+## Why these files and not others
+
+What was measured in 2026, in one breath (sources in Ottabuzz's `RESEARCH_PALMATA.MD`):
+
+- A site that blocks `OAI-SearchBot` is not shown in ChatGPT search answers, by OpenAI's own docs; Perplexity and
+  Anthropic say the same of `PerplexityBot` and `Claude-SearchBot`. Cloudflare's crawler controls now split Search,
+  Agent and Training and apply the most restrictive rule to a bot that does more than one, so the search bots are
+  allowed by name, each in its own group.
+- The engines fetch the official site for facts: ChatGPT's searches for "price" rose 47% in a year and 84% of factual
+  answers cite an official source. Prices and a plain description in the HTML text are what gets read.
+- Google says no special structured data is needed for AI features, and the one causal test of JSON-LD found no AI
+  citation lift. Fifteen minutes of Organization and SoftwareApplication markup for rich results is the whole of it.
+- Google ignores `llms.txt`; no engine commits to reading it. It earns its keep only on developer documentation read by
+  coding agents, so it is here as a function and not as a default.
+
+## Install
+
+```bash
+otta add discover my-worker        # a Worker-served app, or by hand below
+pnpm add @ottabase/discover         # a Next.js app uses the /next entry directly
+```
+
+## The facts
+
+```typescript
+import { defineProduct } from '@ottabase/discover';
+
+export const product = defineProduct({
+    name: 'Alpha',
+    url: 'https://alpha.test',
+    tagline: 'A SaaS starter for Cloudflare.',
+    whatItIs: 'Auth and billing in the box, on one Worker.',
+    whoItIsFor: 'founders who ship alone',
+    features: ['Auth in the box', 'Billing in the box', 'One Worker'],
+    pricing: {
+        plans: [
+            { name: 'Hobby', price: 'free' },
+            { name: 'Pro', price: 15, currency: 'USD', period: 'month', includes: ['8 projects'] },
+        ],
+        note: 'No card to start.',
+    },
+    founder: { name: 'Dj', url: 'https://think.dj' },
+    logo: 'https://alpha.test/logo.png',
+    sameAs: ['https://github.com/thinkdj/alpha'],
+    launched: '2026-03-01',
+    neverClaim: ['Enterprise ready'], // never published; for tools that write copy
+});
+```
+
+`defineProduct` clamps every field, drops what it cannot use and throws only without a name or an absolute URL. It never
+fills a blank: a missing fact stays missing in every file below.
+
+## Next.js (App Router)
+
+`apps/otta-landing` is the worked example. Its facts come from the site settings and the published home page the admin
+already edits (`lib/product.ts`), so nothing is typed twice.
+
+```typescript
+// app/robots.ts
+import { discoverRobots } from '@ottabase/discover/next';
+export default async () => discoverRobots({ sitemap: 'https://alpha.test/sitemap.xml', disallow: ['/api/'] });
+// off production: discoverRobots({ closed: true })
+// images served under a disallowed prefix: add allow: ['/api/upload/file/'], the longer path wins
+
+// app/.well-known/otta.json/route.ts
+import { ottaJsonHandler } from '@ottabase/discover/next';
+export const GET = ottaJsonHandler(async () => product); // or null until there is a product
+
+// app/page.tsx, the home page only
+import { ProductJsonLd } from '@ottabase/discover/next';
+<ProductJsonLd facts={product} />;
+```
+
+Add `@ottabase/discover` to `transpilePackages`: it ships TypeScript source, like `@ottabase/ottalanding`.
+`app/sitemap.ts` needs nothing from here; Next writes the XML from the entries it already returns.
+
+## A Worker (otta-worker shape)
+
+```typescript
+// ottabase/packages/discover.ts
+import { createDiscoverPackage } from '@ottabase/discover/manifest';
+import { product } from './product';
+
+export const discoverPackage = createDiscoverPackage<CloudflareEnv>({
+    facts: product, // or (env) => readFromD1(env)
+    robots: (env) => ({ closed: env.ENVIRONMENT !== 'production', sitemap: `${product.url}sitemap.xml` }),
+    sitemap: async () => [{ url: product.url }],
+});
+```
+
+List it in `ottabase/packages.ts`. The Worker then answers `/robots.txt`, `/.well-known/otta.json` and `/sitemap.xml`,
+mounted at `/` on static paths that never shadow the host's own routes, and the health report gains one line,
+`discover:facts`, saying whether there are facts to serve.
+
+## Every generator, by hand
+
+| Function                          | Gives                                                                                                                             |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `robotsTxt(opts)` / `robotsRules` | The text file, or the same rules as data in the shape `app/robots.ts` returns. `training: 'block'` blocks the training bots only. |
+| `sitemapXml(entries)`             | XML with `lastmod`, escaped.                                                                                                      |
+| `ottaJson(facts, { from })`       | The `otta-context` v1 document. `parseOttaJson(raw)` reads one back, leniently, from any source.                                  |
+| `jsonLd(facts)` / `jsonLdScript`  | Organization, WebSite and SoftwareApplication (with offers) as one graph, or as the escaped `<script>` string.                    |
+| `canonicalParagraph(facts)`       | "Alpha is a SaaS starter for Cloudflare. It is for founders who ship alone. Made by Dj, since 2026. https://alpha.test/"          |
+| `llmsTxt(facts, sections)`        | For a docs site only.                                                                                                             |
+
+## The training crawlers
+
+`GPTBot`, `ClaudeBot`, `anthropic-ai`, `Google-Extended`, `CCBot` and `Bytespider` collect training data. Blocking them
+does not change what the search crawlers see or what the answer engines say today; allowing them is the only road into
+the "memory" path, where a model names a product without searching. Nothing measures how wide that road is. So it is a
+switch, `training: 'allow' | 'block'`, and the default is allow.
+
+## otta.json and the other products
+
+`/.well-known/otta.json` is the same document Ottabuzz serves for a project as `/b/<slug>/context.json`, written here
+from the product's own site. Ottabuzz reads `/.well-known/otta.json` when it exists and reads the page when it does not;
+Imageine's Liftoff imports either. The file carries nothing the site does not already show: `neverClaim` is always empty
+in it, since it sits on the open web. Integrations between our products are great to have, never mandatory: this package
+is complete on its own, and a site without Ottabuzz or Imageine anywhere near it loses nothing.
+
+## The checklist the package cannot do for you
+
+1. Crawlers allowed: deploy, then fetch `/robots.txt` as a stranger. On Cloudflare, check the Search, Agent and Training
+   toggles in the dashboard; they override the file.
+2. Prices and a features page in plain text, rendered without JavaScript. No AI crawler except Gemini's runs scripts.
+3. One canonical paragraph (`canonicalParagraph`) pasted verbatim into G2, Capterra, AlternativeTo, GitHub and LinkedIn.
+4. Google Search Console and Bing Webmaster Tools verified, the sitemap submitted. Bing's AI Performance report and
+   Search Console's generative AI report are the only free, first-party views of being cited.
 
 
 ---
@@ -15147,11 +15324,11 @@ for premium packages, the premium registry (`premiumRegistryOf(host)`).
 ## The client half
 
 A server manifest carries session resolution and route factories, which have no place in a browser bundle. A package
-with rendered admin pages also ships a client descriptor from `@ottabase/kernel/client`:
+that renders pages also ships a client descriptor from `@ottabase/kernel/client`:
 
 ```typescript
 import { definePackageClient } from '@ottabase/kernel/client';
-import { StickyNote } from 'lucide-react';
+import { NotebookPen, StickyNote } from 'lucide-react';
 
 export const notesClient = definePackageClient({
     key: 'notes',
@@ -15167,11 +15344,22 @@ export const notesClient = definePackageClient({
             exportName: 'NotesAdminPage',
         },
     ],
+    routes: [
+        {
+            path: '/notes',
+            load: () => import('./react/MyNotesPage'),
+            exportName: 'MyNotesPage',
+            menu: { title: 'Notes', icon: NotebookPen },
+        },
+    ],
 });
 ```
 
-The app lists client descriptors next to the server manifests; `installedPackages(clients)` gives the browser the same
-`{ [key]: true }` map `registry.installed()` gives the Worker, and a parity test keeps the two lists honest.
+`adminPages` join the admin nav. `routes` are the package's other pages: `access` is `protected` (a signed-in page, the
+default) or `public`, and `menu` puts a link in the signed-in account menu. The app lists client descriptors next to the
+server manifests and derives everything from them: `installedPackages(clients)` gives the browser the same
+`{ [key]: true }` map `registry.installed()` gives the Worker, `packageAdminPages` and `packageRoutes` give the router
+and the menus their pages (two packages routing one path throw), and a parity test keeps the two lists honest.
 
 ## Lifecycle
 
@@ -18238,6 +18426,13 @@ Gated by `requireAdmin`, which apps should wire at **system scope** so only the 
 creates only missing rows in the resolved app/organization scope and leaves existing content unchanged, so it is safe
 for a fresh deployment and safe to repeat after an administrator edits the seeded content.
 
+A seed has the same shape as one post in an import file (`BlogExportPost`), so it can be any content type (blurbs and
+photo journals included) and carry `tags`, `categories` and a `series` by name, `footnotes`, an `originalDate`,
+`seoMeta` and an editorial `publishedAt` (defaults to now). Seeds always publish; taxonomy terms are found or created in
+the same scope import uses. A malformed seed throws instead of being skipped, since seeds are app fixtures. otta-web's
+seed lives in `apps/otta-web/worker/fixtures/` (`demo-blog-content.ts` for the blog, `demo-whats-new.ts` for release
+notes).
+
 ```jsonc
 // 200 response
 { "created": [{ "id": "...", "slug": "welcome", "contentType": "blog" }], "existing": ["kitchensink"], "total": 2 }
@@ -19539,8 +19734,13 @@ const myLayout: LayoutConfig = {
     sidebarPosition: 'left',
     containerPadding: 'md',
     centerContent: false,
+    floatingAccount: false, // an avatar button when there is no header, sidebar or drawer
 };
 ```
+
+The signed-in account menu goes in the first chrome a layout has: the header, else the sidebar, else the drawer, else
+the floating button. `accountPlacement(config)` returns which, or `null` when signed-in users get none (the `minimal`
+and `fullscreen` presets, built for embeds and kiosks).
 
 ### Built-in Presets
 
@@ -24239,8 +24439,9 @@ stripping (Node 24+).
 
 Before the shot the runner waits for the page to load, for `waitFor`, for fonts, for on-screen images, and for spinners
 (`.animate-spin`, `[aria-busy]`) to clear. Motion is reduced. Steps match text exactly: a control's first line, its
-`aria-label` or its `title`, with the last match winning, so an open dialog beats the nav. The runner hides devtools and
-toasts, makes the caret transparent, and blurs focus unless a step typed into a field.
+`aria-label`, its `title` or a field's `placeholder` (so `click` can focus the field `type` fills), with the last match
+winning, so an open dialog beats the nav. The runner hides devtools and toasts, makes the caret transparent, and blurs
+focus unless a step typed into a field.
 
 ## From a script (automation)
 
@@ -24260,7 +24461,13 @@ const results = await runShots({
 ```
 
 Each shot is written to `<outDir>/<name>.<png|jpg|webp>`. A failed shot comes back with its `error` and does not stop
-the run. otta-web's `pnpm gen:screenshots [filter]` is a working example (`apps/otta-web/scripts/gen-screenshots.mjs`).
+the run.
+
+Committing the shots? Rendering noise changes the bytes on every run. Pass `sizeTolerance: 0.005` and an existing file
+within ±0.5% of the new shot's size is left untouched (its result says `kept: true`), so git only sees the pages that
+changed. Size is a proxy: a one-word change can hide inside it, so give your script a `--force` that omits the option
+and overwrites everything. otta-web's `pnpm gen:screenshots [filter]` is a working example
+(`apps/otta-web/scripts/gen-screenshots.mjs`).
 
 The Node optimizer is `sharpOptimizer`, and `sharp` is an optional peer dependency:
 
