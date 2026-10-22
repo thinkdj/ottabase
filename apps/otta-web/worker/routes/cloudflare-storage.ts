@@ -7,6 +7,8 @@ import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { getAuthOptions } from '../lib/auth-utils';
+import { enforceRateLimit } from '../lib/rate-limiting';
+import { isDemoMode } from '../lib/utils';
 import { persistUploadedMediaRecord } from './media-library';
 import type { ApiRouteContext } from './router';
 
@@ -159,6 +161,12 @@ export async function handleUpload(context: ApiRouteContext): Promise<Response> 
         const session = await getSession(request, env as any, getAuthOptions(env));
         if (!session?.user?.id) {
             return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
+        }
+
+        // A public demo caps uploads per account; a normal deploy leaves bulk uploads alone.
+        if (isDemoMode(env)) {
+            const limited = await enforceRateLimit(request, env, `upload:${session.user.id}`);
+            if (limited) return limited;
         }
 
         const contentLength = Number(request.headers.get('Content-Length'));

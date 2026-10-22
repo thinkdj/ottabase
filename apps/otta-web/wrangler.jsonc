@@ -364,6 +364,102 @@
                 },
             ],
         },
+        // Public demo (worker `otta-web-demo`): `wrangler deploy --env demo`. Its own D1, KV, R2,
+        // queue and rate-limit namespace, so a demo never shares rows with production.
+        // DEMO_MODE holds mail to strangers, rate-limits uploads, welcomes sign-ups and shows the
+        // demo banner (apps/otta-web/README.md "Public demo"). Placeholders = GitHub Secret names
+        // of the repository that deploys it; set the auth/mail secrets with `wrangler secret put --env demo`.
+        "demo": {
+            "vars": {
+                "ENVIRONMENT": "demo",
+                "NODE_ENV": "production",
+                "OTTAORM_MAX_ALL_ROWS": "5000",
+                "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
+                "DEMO_MODE": "true",
+                // The banner's and the welcome mail's call to action. Point them at your own page.
+                "DEMO_CTA_LABEL": "Get Ottabase Pro",
+                "DEMO_CTA_URL": "https://ottabase.com/pro",
+                // PayPort (Ottabase Pro), when installed: a demo never takes real payments.
+                "POLAR_ENV": "sandbox",
+            },
+            "unsafe": {
+                "bindings": [
+                    {
+                        "name": "OBCF_RATE_LIMITER",
+                        "type": "ratelimit",
+                        "namespace_id": "1004",
+                        "simple": {
+                            "limit": 10,
+                            "period": 60,
+                        },
+                    },
+                ],
+            },
+            "durable_objects": {
+                "bindings": [
+                    {
+                        "name": "OBCF_REALTIME",
+                        "class_name": "RealtimeActor",
+                    },
+                    {
+                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
+                        "class_name": "WebhookEndpointQuota",
+                    },
+                ],
+            },
+            "assets": {
+                "binding": "OBCF_ASSETS",
+                "directory": "dist",
+            },
+            "d1_databases": [
+                {
+                    "binding": "OBCF_D1",
+                    "database_name": "ottabase-db-demo",
+                    "database_id": "DEMO_D1_DATABASE_ID",
+                },
+            ],
+            "kv_namespaces": [
+                {
+                    "binding": "OBCF_KV",
+                    "id": "DEMO_KV_NAMESPACE_ID",
+                },
+            ],
+            "r2_buckets": [
+                {
+                    "binding": "OBCF_R2",
+                    "bucket_name": "ottabase-bucket-demo",
+                },
+            ],
+            "queues": {
+                "producers": [
+                    {
+                        "binding": "OBCF_QUEUE",
+                        "queue": "ottabase-queue-demo",
+                    },
+                ],
+                "consumers": [
+                    {
+                        "queue": "ottabase-queue-demo",
+                        "max_batch_size": 10,
+                        "max_batch_timeout": 2,
+                    },
+                ],
+            },
+            "analytics_engine_datasets": [
+                {
+                    "binding": "OBCF_ANALYTICS_CORE",
+                    "dataset": "core_events_demo",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_SHORTLINKS",
+                    "dataset": "shortlink_clicks_demo",
+                },
+                {
+                    "binding": "OBCF_ANALYTICS_REFERRALS",
+                    "dataset": "referral_clicks_demo",
+                },
+            ],
+        },
         // Local staging topology. The app launcher always runs this with --local;
         // wiring these resource names into deployment CI is a separate operation.
         "staging": {

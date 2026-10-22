@@ -262,7 +262,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
             },
             {
                 title: 'Dev Mail',
-                description: 'Inspect locally captured emails (magic links, resets, queue sends).',
+                description:
+                    'Locally captured emails (magic links, resets, queue sends), and the mail a public demo held back.',
                 href: '/admin/infrastructure/dev-mail',
                 icon: Inbox,
             },

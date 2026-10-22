@@ -1,6 +1,6 @@
 import { DEFAULT_ROUTE_MAPPINGS } from '@ottabase/brand-engine';
 import { BrandKit, LayoutRouteMapping } from '@ottabase/brand-engine/persistence';
-import { Organization, OrganizationMember, Role } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, Role, User } from '@ottabase/ottaorm/models';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import { makeSlug } from '@ottabase/utils/url';
 
@@ -231,4 +231,36 @@ export async function provisionDefaultOrganizationForUser(params: {
         organizationRole: resolvedOrganizationRole,
         assignedRole,
     };
+}
+
+/**
+ * Give a user who belongs to no organization a workspace of their own, as credentials sign-up does.
+ * @ottabase/auth creates OAuth and magic-link accounts itself and provisions only the first
+ * (platform owner) one, so the app's sign-in hook calls this for everyone else. Returns the new
+ * organization id, or null when the user already has an active membership (an accepted invite, an
+ * earlier sign-up). Throws when provisioning fails: an account without a workspace is not signed in.
+ */
+export async function ensurePersonalOrganization(params: {
+    userId: string;
+    email: string | null;
+    appId: string | null;
+}): Promise<string | null> {
+    const { userId, email, appId } = params;
+    const memberships = await OrganizationMember.where({ userId, status: 'active' }, { limit: 1 });
+    if (memberships.length > 0) return null;
+
+    const user = (await User.find(userId)) as (UserLike & User) | null;
+    if (!user) throw new Error('User not found for organization provisioning');
+
+    // ponytail: two first sign-ins racing for one account can both provision; a unique
+    // owner-membership constraint is the fix if that ever shows up.
+    const provisioned = await provisionDefaultOrganizationForUser({
+        user,
+        email,
+        name: (user.get('name') as string | null) ?? null,
+        organizationRole: 'owner',
+        roleFallbacks: ['owner'],
+        appId,
+    });
+    return provisioned.organizationId;
 }

@@ -31,6 +31,7 @@ vi.mock('../../../ottabase/config.loader', () => ({
     getOttabaseConfig: vi.fn(() => ({ appId: 'test-app' })),
 }));
 vi.mock('../email-provider', () => ({ resolveAppMailer: vi.fn() }));
+vi.mock('../user-provisioning', () => ({ ensurePersonalOrganization: vi.fn() }));
 
 import {
     bumpProfileVersion,

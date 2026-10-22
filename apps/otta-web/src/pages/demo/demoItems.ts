@@ -31,6 +31,7 @@ import {
     ScanSearch,
     Settings,
     ShieldCheck,
+    Sparkles,
     SplitSquareHorizontal,
     Terminal,
     Timer,
@@ -62,6 +63,15 @@ export const DEMO_ITEMS: DemoItem[] = [
         title: 'Theming Configurator',
         description: 'Theme presets and light/dark mode. Admin-configured Brand Engine themes with live preview.',
         buttonVariant: 'outline',
+    },
+    {
+        to: '/demo/pro',
+        icon: Sparkles,
+        label: 'Ottabase Pro',
+        title: 'Ottabase Pro',
+        description:
+            'Seven commercial packages: status page, error tracking, helpdesk, billing, privacy requests, a database console and a fleet board.',
+        buttonVariant: 'default',
     },
     {
         to: '/demo/layout',

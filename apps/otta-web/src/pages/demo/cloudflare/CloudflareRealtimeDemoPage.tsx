@@ -191,7 +191,9 @@ export function CloudflareRealtimeDemoPage() {
             ) : (
                 <div className="rounded-xl bg-muted/40 p-4">
                     <p className="text-sm text-muted-foreground">
-                        Durable Objects may require deployment to test (depending on your local Wrangler setup).
+                        Your account has a room of its own (one Durable Object per user): open this page in a second
+                        tab, subscribe there, and broadcast from here. Durable Objects may require deployment to test,
+                        depending on your local Wrangler setup.
                     </p>
                 </div>
             )}

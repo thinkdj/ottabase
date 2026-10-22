@@ -170,7 +170,10 @@ export function AdminDevMailPage() {
             {isError && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                     <p className="font-semibold">Dev trap unavailable</p>
-                    <p>{error?.message ?? 'Enable DEV_EMAIL_TRAP_ENABLED and OBCF_KV to capture mail locally.'}</p>
+                    <p>
+                        {error?.message ??
+                            'Enable DEV_EMAIL_TRAP_ENABLED and OBCF_KV to capture mail locally. A DEMO_MODE deploy lists the mail it held here.'}
+                    </p>
                 </div>
             )}
 

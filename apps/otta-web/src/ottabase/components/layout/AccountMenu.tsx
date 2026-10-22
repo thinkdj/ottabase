@@ -1,5 +1,7 @@
+import { useDemoMode } from '@/hooks/useDemoMode';
 import { isAdminUser, useSession } from '@/lib/auth';
 import { MEDIA_LIBRARY_ENABLED, PACKAGE_ACCOUNT_LINKS, PACKAGES_ENABLED } from '@/ottabase/config';
+import { PRO_PACKAGE_KEYS } from '@/pages/demo/pro/proPackages';
 import type { PackageIcon } from '@ottabase/kernel/client';
 import { ConfirmDialog } from '@ottabase/ui-components';
 import {
@@ -31,15 +33,23 @@ interface AccountLink {
     to: string;
     label: string;
     icon: PackageIcon;
+    /** An Ottabase Pro package's page, marked as such on a public demo. */
+    pro?: boolean;
 }
 
 /** The signed-in destinations, in groups: the person's own pages, then the work surfaces. */
 function useAccountLinks(): AccountLink[][] {
     const { user } = useSession();
+    const demo = useDemoMode();
     const own: AccountLink[] = [
         { to: '/profile', label: 'Profile', icon: UserRound },
         ...(MEDIA_LIBRARY_ENABLED ? [{ to: '/media-library', label: 'Media Library', icon: Images }] : []),
-        ...PACKAGE_ACCOUNT_LINKS.map((link) => ({ to: link.path, label: link.title, icon: link.icon })),
+        ...PACKAGE_ACCOUNT_LINKS.map((link) => ({
+            to: link.path,
+            label: link.title,
+            icon: link.icon,
+            pro: demo.enabled && PRO_PACKAGE_KEYS.has(link.pkg),
+        })),
     ];
     const work: AccountLink[] = [
         ...(PACKAGES_ENABLED.ottablog && hasGrantedPermission(user?.permissions, 'posts:update')
@@ -48,6 +58,12 @@ function useAccountLinks(): AccountLink[][] {
         ...(isAdminUser(user) ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
     ];
     return [own, work].filter((group) => group.length > 0);
+}
+
+function ProMark() {
+    return (
+        <span className="ml-auto text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">Pro</span>
+    );
 }
 
 /** Log out behind a confirmation: `ask` opens it, `dialog` renders it; `onDone` runs once signed out. */
@@ -189,6 +205,7 @@ export const AccountMenu = memo(function AccountMenu({ variant = 'header' }: { v
                                         <Link to={link.to}>
                                             <link.icon />
                                             {link.label}
+                                            {link.pro ? <ProMark /> : null}
                                         </Link>
                                     </DropdownMenuItem>
                                 ))}
@@ -245,6 +262,7 @@ export function AccountLinks({ onNavigate }: { onNavigate?: () => void }) {
                     <Link key={link.to} to={link.to} onClick={onNavigate} className={LIST_ITEM}>
                         <link.icon />
                         {link.label}
+                        {link.pro ? <ProMark /> : null}
                     </Link>
                 ))}
                 <button type="button" onClick={logout.ask} className={LIST_ITEM}>

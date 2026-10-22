@@ -15,6 +15,12 @@ const mockSession = {
     logout: vi.fn(),
 };
 
+const mockDemoMode = { enabled: false, ctaLabel: null, ctaUrl: null };
+
+vi.mock('@/hooks/useDemoMode', () => ({
+    useDemoMode: () => mockDemoMode,
+}));
+
 vi.mock('@/lib/auth', () => ({
     useSession: () => mockSession,
     isAdminUser: (user: { permissions?: string[] } | null) => !!user?.permissions?.includes('org:admin'),
@@ -144,6 +150,7 @@ describe('AccountMenu', () => {
         };
         mockSession.logout.mockReset();
         mockNavigate.mockReset();
+        mockDemoMode.enabled = false;
     });
 
     it('shows login and sign up when not authenticated', () => {
@@ -172,6 +179,15 @@ describe('AccountMenu', () => {
             .getAllByRole('link')
             .map((link) => link.textContent);
         expect(labels).toEqual(['Profile', 'Media Library', 'Referrals', 'Billing']);
+    });
+
+    it('marks the Ottabase Pro pages, and only on a public demo', () => {
+        mockDemoMode.enabled = true;
+        render(<AccountMenu />);
+
+        const menu = within(screen.getByRole('menu'));
+        expect(menu.getByRole('link', { name: /^Billing\s*Pro$/ })).toHaveAttribute('href', '/billing');
+        expect(menu.getByRole('link', { name: 'Referrals' })).toBeInTheDocument();
     });
 
     it('offers a visitor Login from the sidebar and the floating button', () => {

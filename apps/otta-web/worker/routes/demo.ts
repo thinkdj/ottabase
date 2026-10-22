@@ -1,6 +1,6 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { readJson } from '../lib/utils';
+import { isDemoMode, readJson } from '../lib/utils';
 
 export interface DemoRouteContext {
     request: Request;
@@ -38,6 +38,20 @@ export async function handleDemo(context: DemoRouteContext): Promise<Response> {
 
     return errorResponse('Method not allowed', 405, {
         code: 'METHOD_NOT_ALLOWED',
+    });
+}
+
+/**
+ * Public: whether this deploy is a public demo, and the banner's call to action
+ * (`DEMO_CTA_LABEL` / `DEMO_CTA_URL`, both optional). Read once per visit by `useDemoMode()`.
+ */
+export function handleDemoMode(context: DemoRouteContext): Response {
+    const { env } = context;
+    if (!isDemoMode(env)) return jsonResponse({ enabled: false, ctaLabel: null, ctaUrl: null });
+    return jsonResponse({
+        enabled: true,
+        ctaLabel: env.DEMO_CTA_LABEL?.trim() || null,
+        ctaUrl: env.DEMO_CTA_URL?.trim() || null,
     });
 }
 

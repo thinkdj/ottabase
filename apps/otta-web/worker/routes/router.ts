@@ -94,7 +94,7 @@ import {
     handleUploadFile,
 } from './cloudflare-storage';
 import { handleCoreAnalytics } from './core-analytics';
-import { handleDemo, handleDemoError } from './demo';
+import { handleDemo, handleDemoError, handleDemoMode } from './demo';
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
@@ -289,6 +289,7 @@ apiRouter.delete('/api/admin/dev-mail/:messageId', (c) => handleAdminDevMailDele
 // -------------------------------------------------------
 apiRouter.all('/api/demo', h(handleDemo));
 apiRouter.all('/api/demo/error', () => handleDemoError());
+apiRouter.get('/api/demo/mode', h(handleDemoMode));
 apiRouter.all('/api/cloudflare/queues', h(handleCloudflareQueue));
 apiRouter.post('/api/cloudflare/d1/init', h(handleD1Init));
 apiRouter.all('/api/cloudflare/d1/todos', h(handleD1Todos));

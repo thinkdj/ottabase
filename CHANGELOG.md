@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- otta-web runs as a public demo: `wrangler deploy --env demo` (worker `otta-web-demo`, its own D1, KV, R2 and queue)
+  sets `DEMO_MODE`. Mail then goes out only to people with an account (the rest is held at Admin → Dev mail), uploads
+  are rate-limited per account, new accounts get a welcome mail, and a banner carries the deploy's call to action
+  (`DEMO_CTA_LABEL`, `DEMO_CTA_URL`, read via `GET /api/demo/mode`). On every deploy, the metered demos (Realtime,
+  Screenshots, OttaAI, the PDF playground, File upload) show an anonymous visitor a sign-up teaser that returns them to
+  the page, and `/demo/pro` tours the Ottabase Pro packages, linking the pages a user can open when they are installed.
 - `otta add` reaches into the SPA shell when a package asks: `routes` in the `ottabase` descriptor are registered in
   `src/router.tsx` (`<key><Path>Route` constants in `coreRoutes`, public or protected), and `errorReporter` is imported
   into `src/main.tsx` and handed to the root `<ErrorBoundary onError>`. A router without `coreRoutes`, or a boundary
@@ -109,6 +115,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- The realtime demo is open to every signed-in user, each in a Durable Object of their own (`user:<id>`), with connects
+  and broadcasts rate-limited and a broadcast capped at 10 channels and 8 KB. It was platform-admin only.
+- Every account gets a workspace on sign-in: otta-web's `onSignIn` provisions one for a GitHub, OAuth or magic-link
+  account that belongs to no organization, as credentials sign-up already did. `@ottabase/auth` now refuses the sign-in
+  when `onSignIn` throws (`ACCOUNT_PROVISIONING_FAILED`, `?error=AccountProvisioning`) instead of failing with an
+  unhandled error.
 - The login and register pages hand the return path on when you switch between them, so a visitor sent to sign in from a
   page lands back on it after creating an account.
 - **`@ottabase/premium-webhooks` is now `@ottabase/webhooks`** (folder `packages/webhooks`), so the name says what it

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     userDelete: vi.fn(),
     provisionOrganization: vi.fn(),
     enforceRateLimit: vi.fn(),
+    sendDemoWelcomeEmail: vi.fn(),
 }));
 
 vi.mock('@ottabase/auth/backend', () => ({
@@ -63,6 +64,7 @@ vi.mock('../../lib/auth-utils', () => ({
     getAuthOptions: vi.fn(() => ({})),
     getUserLinkedAccounts: vi.fn(),
     resolveMailer: vi.fn(),
+    sendDemoWelcomeEmail: mocks.sendDemoWelcomeEmail,
 }));
 
 vi.mock('../../lib/rate-limiting', () => ({
@@ -124,5 +126,28 @@ describe('handleAuthRegister provisioning boundary', () => {
         });
         expect(body.success).not.toBe(true);
         expect(mocks.userDelete).toHaveBeenCalledWith('user-1');
+    });
+
+    it('sends the demo welcome once the workspace is provisioned (a no-op outside DEMO_MODE)', async () => {
+        mocks.provisionOrganization.mockResolvedValue({
+            organizationId: 'org-1',
+            organizationRole: 'owner',
+            assignedRole: 'owner',
+        });
+        const request = new Request('https://app.example.com/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'founder@example.com', password: 'Str0ng!Password', name: 'Founder' }),
+        });
+
+        const response = await handleAuthRegister({
+            request,
+            env: { OBCF_D1: {}, APP_ID: 'otta-web' } as any,
+            url: new URL(request.url),
+            withAuthCors: (value) => value,
+        });
+
+        expect(response.status).toBe(200);
+        expect(mocks.sendDemoWelcomeEmail).toHaveBeenCalledWith(expect.anything(), 'founder@example.com');
     });
 });

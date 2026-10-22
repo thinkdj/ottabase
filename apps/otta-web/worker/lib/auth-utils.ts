@@ -5,13 +5,54 @@ import { invalidateCache, invalidateCacheByPrefix } from '@ottabase/cf/kv-cache'
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection, SecurityContext } from '@ottabase/ottaorm';
 import { Account, OrganizationMember, UserGroup, UserGroupMember, VerificationToken } from '@ottabase/ottaorm/models';
+import { sendTemplatedEmail } from '@ottabase/email';
 import { redactErrorForLog, ServiceError } from '@ottabase/utils/http-errors';
+import { sanitizeInlineHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { registerAppEmailTemplates } from '../../src/email/templates';
 import { resolveAppMailer } from './email-provider';
-import { createSecureToken } from './utils';
+import { ensurePersonalOrganization } from './user-provisioning';
+import { createSecureToken, isDemoMode } from './utils';
 
 export async function resolveMailer(env: CloudflareEnv) {
     return resolveAppMailer(env, 'auto');
+}
+
+/**
+ * Public demo only: a short welcome to a new account, pointing at what signing in unlocked and at
+ * the deploy's call to action (`DEMO_CTA_LABEL` / `DEMO_CTA_URL`). Best-effort: a mail failure
+ * never fails the sign-up that triggered it.
+ */
+export async function sendDemoWelcomeEmail(env: CloudflareEnv, to: string): Promise<void> {
+    if (!isDemoMode(env)) return;
+    try {
+        const { mailer, from } = await resolveMailer(env);
+        if (!mailer) return;
+        const appName = sanitizeInlineHtml(getOttabaseConfig(env).appName || 'the demo');
+        const origin = env.AUTH_URL?.replace(/\/+$/, '');
+        const demoLink = origin ? `<p><a href="${sanitizeUrl(`${origin}/demo`)}">Open the demo</a></p>` : '';
+        const cta =
+            env.DEMO_CTA_URL && env.DEMO_CTA_LABEL
+                ? `<p><a href="${sanitizeUrl(env.DEMO_CTA_URL)}">${sanitizeInlineHtml(env.DEMO_CTA_LABEL)}</a></p>`
+                : '';
+
+        registerAppEmailTemplates();
+        await sendTemplatedEmail(mailer, {
+            from,
+            to,
+            template: 'minimalist',
+            subject: `Welcome to ${appName}`,
+            variables: {
+                subject: `Welcome to ${appName}`,
+                header: 'Your demo account is ready',
+                body: `<p>You have a workspace of your own, and the demos that need an account are open to you now: realtime pub/sub, screenshots, AI, PDF rendering and uploads.</p>
+${demoLink}${cta}`,
+                footer: `<p>This is a public demo. Treat what you store here as temporary.</p>`,
+            },
+        });
+    } catch (error) {
+        console.warn(JSON.stringify({ event: 'demo_welcome_email_failed', error: redactErrorForLog(error) }));
+    }
 }
 
 export async function createVerificationToken(
@@ -91,6 +132,19 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
                     error: redactErrorForLog(error),
                 }),
             );
+        }
+
+        // Every account gets a workspace, whichever way it signed in (credentials sign-up already
+        // provisions one). Not caught: @ottabase/auth turns a throw here into a refused sign-in,
+        // because an account without its organization is not a successful sign-in.
+        const organizationId = await ensurePersonalOrganization({
+            userId,
+            email,
+            appId: getOttabaseConfig(env).appId,
+        });
+        if (organizationId) {
+            await invalidateMembershipCache(env.OBCF_KV, userId);
+            await sendDemoWelcomeEmail(env, email);
         }
     };
 

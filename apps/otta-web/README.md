@@ -239,6 +239,10 @@ to inspect cache, logging, and rate limits on the gateway itself.
 - If `MULTI_TENANT_ENABLED` is true (default), session issuance also requires a personal organization, active owner
   membership, and matching org-scoped `owner` grant. Those tenant records are transactional; failed setup is surfaced
   instead of returning a partial account, and the same owner can safely retry.
+- Every later account gets a workspace of its own too, whichever way it signs in: credentials sign-up provisions it, and
+  the sign-in hook (`getAuthOptions().onSignIn`) provisions one for a GitHub, OAuth or magic-link account that belongs
+  to no organization once its pending invites are activated. If that fails, the sign-in is refused
+  (`?error=AccountProvisioning`).
 - Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
 - Manual recovery: `POST /api/admin/platform-owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET`
   and body `{ "userId": "..." }` or `{ "email": "..." }` to provision the owner's workspace (in multi-tenant mode) and
@@ -611,13 +615,40 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer ${MIGRATION_SECRET}"
 ```
 
+## Public demo (`DEMO_MODE`)
+
+Run the app as a public demo by deploying the `demo` environment: `wrangler deploy --env demo` (worker `otta-web-demo`,
+with its own D1, KV, R2, queue and rate-limit namespace). Its `vars` set `DEMO_MODE=true` and the call to action,
+`DEMO_CTA_LABEL` and `DEMO_CTA_URL`. Set `DEMO_MODE=true` in `.env.local` to try it locally.
+
+| With `DEMO_MODE`                                                                                              | Where                                       |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Mail goes out only when every recipient has an account; anything else is held and listed at Admin → Dev mail. | `holdMailToStrangers`, `email-provider.ts`  |
+| Uploads are rate-limited per account.                                                                         | `handleUpload`                              |
+| A new account gets a welcome mail with a link to `/demo` and the call to action.                              | `sendDemoWelcomeEmail`, `auth-utils.ts`     |
+| A strip across the top says the data is a sandbox, invites visitors to sign up and shows the call to action.  | `DemoBanner`, read via `GET /api/demo/mode` |
+| Account-menu pages from Ottabase Pro packages carry a "Pro" mark.                                             | `AccountMenu`                               |
+
+These hold on every deploy, demo or not:
+
+- **Demos that need an account.** Realtime, Screenshots, the OttaAI playground, the PDF playground and File upload run
+  on metered Cloudflare services. Their worker routes require a session, and `DEMO_ACCOUNT_GATES`
+  (`src/pages/demo/demoAccountGates.ts`) shows an anonymous visitor a teaser with one-click social sign-in, sign-up and
+  sign-in instead of the page, returning them to it afterwards. The gallery marks them "Free account".
+- **Realtime is per account.** Each signed-in user gets a Durable Object of their own (`user:<id>`), so two tabs of one
+  account talk to each other and nobody reads another account's channels. Connects and broadcasts are rate-limited; a
+  broadcast takes at most 10 channels, names of at most 64 characters and an 8 KB body.
+- **`/demo/pro`** tours the Ottabase Pro packages, with screenshots served from `public/ottabase-demo/screenshots`.
+  Where they are installed, it links to the pages a signed-in user can open (`/plans`, `/support`, `/my-data`,
+  `/status`).
+
 ## Deleting Demo Content
 
 In production apps, you can safely delete:
 
 - `src/pages/demo/` - All demo pages
 - Demo routes in `src/router.tsx` (`/demo*`)
-- Demo-only API handlers in `worker/routes/demo.ts`
+- Demo-only API handlers in `worker/routes/demo.ts` (without `GET /api/demo/mode` the demo banner simply stays off)
 
 ## Documentation
 

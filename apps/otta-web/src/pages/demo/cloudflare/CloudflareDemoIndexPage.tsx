@@ -1,6 +1,8 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
 import { Link } from '@tanstack/react-router';
 import { DemoPageHeader } from '../DemoPageHeader';
+import { DEMO_ACCOUNT_GATES } from '../demoAccountGates';
+import { FreeAccountBadge } from '../FreeAccountBadge';
 
 export function CloudflareDemoIndexPage() {
     const demos = [
@@ -81,7 +83,10 @@ export function CloudflareDemoIndexPage() {
                         className="transition duration-fast ease-theme hover:border-input hover:shadow-sm"
                     >
                         <CardHeader>
-                            <CardTitle className="text-[0.9375rem] font-semibold">{demo.name}</CardTitle>
+                            <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                                {demo.name}
+                                {DEMO_ACCOUNT_GATES[demo.href] ? <FreeAccountBadge /> : null}
+                            </CardTitle>
                             <CardDescription className="leading-relaxed">{demo.description}</CardDescription>
                         </CardHeader>
                         <CardContent>

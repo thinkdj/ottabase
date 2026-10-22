@@ -97,6 +97,16 @@ export function isDevEnvironment(env: { ENVIRONMENT?: string }): boolean {
 }
 
 /**
+ * Whether this deploy is a public demo (`DEMO_MODE=true`). A demo holds mail to strangers in the
+ * dev-mail trap, rate-limits uploads, sends sign-ups a welcome note and shows the demo banner.
+ * Unset means a normal deploy.
+ */
+export function isDemoMode(env: { DEMO_MODE?: string }): boolean {
+    const value = (env.DEMO_MODE || '').trim().toLowerCase();
+    return value === 'true' || value === '1';
+}
+
+/**
  * Auth for endpoints that only require an authenticated session (not admin). Returns the 401
  * response to short-circuit on, or null to continue. There is deliberately no dev bypass:
  * wrangler.jsonc's top-level vars set ENVIRONMENT=development, so a deploy without --env would

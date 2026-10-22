@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { provisionDefaultOrganizationForUser } from '../user-provisioning';
+import { ensurePersonalOrganization, provisionDefaultOrganizationForUser } from '../user-provisioning';
 
 const mocks = vi.hoisted(() => ({
     organizationFindBySlug: vi.fn(),
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     brandKitCreate: vi.fn(),
     mappingWhere: vi.fn(),
     mappingCreate: vi.fn(),
+    userFind: vi.fn(),
 }));
 
 vi.mock('@ottabase/brand-engine', () => ({
@@ -43,6 +44,9 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     Role: {
         ensureDefaultRoles: mocks.ensureDefaultRoles,
         findByName: mocks.roleFindByName,
+    },
+    User: {
+        find: mocks.userFind,
     },
 }));
 
@@ -170,5 +174,49 @@ describe('provisionDefaultOrganizationForUser', () => {
 
         expect(user.assignRole).toHaveBeenCalledWith('owner-role', undefined, 'org-1');
         expect(mocks.organizationDelete).not.toHaveBeenCalled();
+    });
+});
+
+describe('ensurePersonalOrganization', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.organizationFindBySlug.mockResolvedValue(undefined);
+        mocks.organizationCreate.mockResolvedValue(model({ id: 'org-new' }));
+        mocks.membershipCreate.mockResolvedValue(model({ id: 'membership-1' }));
+        mocks.ensureDefaultRoles.mockResolvedValue([]);
+        mocks.roleFindByName.mockResolvedValue(model({ id: 'owner-role', name: 'owner' }));
+        mocks.brandKitFirst.mockResolvedValue(model({ id: 'brand-kit-1' }));
+        mocks.mappingWhere.mockResolvedValue([model({ id: 'mapping-1' })]);
+    });
+
+    it('leaves a user with any active membership alone (an accepted invite, an earlier sign-up)', async () => {
+        mocks.membershipWhere.mockResolvedValue([model({ organizationId: 'org-invited', role: 'member' })]);
+
+        await expect(
+            ensurePersonalOrganization({ userId: 'user-1', email: 'a@example.com', appId: 'app' }),
+        ).resolves.toBeNull();
+        expect(mocks.userFind).not.toHaveBeenCalled();
+        expect(mocks.organizationCreate).not.toHaveBeenCalled();
+    });
+
+    it('gives a user with no membership an owned workspace', async () => {
+        mocks.membershipWhere.mockResolvedValue([]);
+        mocks.userFind.mockResolvedValue(createUser());
+
+        await expect(
+            ensurePersonalOrganization({ userId: 'user-1', email: 'a@example.com', appId: 'app' }),
+        ).resolves.toBe('org-new');
+        expect(mocks.membershipCreate).toHaveBeenCalledWith(
+            expect.objectContaining({ userId: 'user-1', organizationId: 'org-new', role: 'owner', status: 'active' }),
+        );
+    });
+
+    it('throws when the user cannot be loaded, so the sign-in is refused', async () => {
+        mocks.membershipWhere.mockResolvedValue([]);
+        mocks.userFind.mockResolvedValue(null);
+
+        await expect(ensurePersonalOrganization({ userId: 'ghost', email: null, appId: null })).rejects.toThrow(
+            'User not found',
+        );
     });
 });

@@ -1,4 +1,5 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { DemoBanner } from '@/components/DemoBanner';
 import { NotFoundPage } from '@/components/NotFoundPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
@@ -6,6 +7,7 @@ import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
 import { PACKAGE_ADMIN_PAGES, PACKAGE_ROUTES, PACKAGES_ENABLED } from '@/ottabase/config/packages';
+import { DEMO_ACCOUNT_GATES } from '@/pages/demo/demoAccountGates';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
 import { BrandScope } from '@ottabase/ui-shadcn';
@@ -29,6 +31,7 @@ function RootLayout() {
     return (
         <>
             <BrandPathSync pathname={pathname} />
+            <DemoBanner />
             <LayoutResolver router={tanstackRouterAdapter} layoutComponent={ConfigurableLayout}>
                 <Outlet />
             </LayoutResolver>
@@ -633,17 +636,34 @@ const demoLayoutRoute = new Route({
     component: lazyRouteComponent(() => import('@/pages/demo/DemoLayout').then((m) => ({ default: m.DemoLayout }))),
 });
 
-/** Compact helper for the (very repetitive) /demo child routes. */
+/**
+ * Compact helper for the (very repetitive) /demo child routes. A demo listed in
+ * DEMO_ACCOUNT_GATES renders behind DemoAccountGate: the page when signed in, a sign-up teaser
+ * otherwise.
+ */
 function demoChild<const TPath extends string>(path: TPath, loader: () => Promise<PageModule>, exportName: string) {
+    const gate = DEMO_ACCOUNT_GATES[path === '/' ? '/demo' : `/demo/${path}`];
     return new Route({
         getParentRoute: () => demoLayoutRoute,
         path,
-        component: lazyRouteComponent(() => loader().then((m) => ({ default: pageComponent(m, exportName) }))),
+        component: lazyRouteComponent(async () => {
+            if (!gate) return { default: pageComponent(await loader(), exportName) };
+            const [m, { DemoAccountGate }] = await Promise.all([loader(), import('@/pages/demo/DemoAccountGate')]);
+            const Page = pageComponent(m, exportName);
+            return {
+                default: () => (
+                    <DemoAccountGate gate={gate}>
+                        <Page />
+                    </DemoAccountGate>
+                ),
+            };
+        }),
     });
 }
 
 const demoChildren = [
     demoChild('/', () => import('@/pages/demo/DemoIndexPage'), 'DemoIndexPage'),
+    demoChild('pro', () => import('@/pages/demo/pro/ProDemoPage'), 'ProDemoPage'),
     demoChild('mantine', () => import('@/pages/demo/mantine/MantineDemoRoute'), 'MantineDemoRoute'),
     demoChild('shadcn', () => import('@/pages/demo/shadcn/ShadcnDemoPage'), 'ShadcnDemoPage'),
     demoChild('ottaeditor', () => import('@/pages/demo/ottaeditor/OttaEditorDemoPage'), 'OttaEditorDemoPage'),

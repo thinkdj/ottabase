@@ -26,6 +26,7 @@ import {
     getAuthOptions,
     getUserLinkedAccounts,
     resolveMailer,
+    sendDemoWelcomeEmail,
 } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
 import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
@@ -796,6 +797,9 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 },
             });
             verificationSent = true;
+        } else {
+            // Public demo: the verification mail doubles as the welcome when one is required.
+            await sendDemoWelcomeEmail(env, email);
         }
 
         const userJson = newUser.toJson();

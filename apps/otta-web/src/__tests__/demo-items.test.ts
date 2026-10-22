@@ -12,6 +12,7 @@ describe('Demo gallery coverage', () => {
             '/demo/auth',
             '/demo/brand-engine',
             '/demo/layout',
+            '/demo/pro',
         ];
 
         requiredPaths.forEach((path) => {

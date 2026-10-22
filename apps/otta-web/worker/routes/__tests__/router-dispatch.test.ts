@@ -170,6 +170,7 @@ vi.mock('../core-analytics', () => ({
 vi.mock('../demo', () => ({
     handleDemo: handlerMock('handleDemo'),
     handleDemoError: handlerMock('handleDemoError'),
+    handleDemoMode: handlerMock('handleDemoMode'),
 }));
 
 vi.mock('../email', () => ({
@@ -317,7 +318,7 @@ import {
     handleUploadFile,
 } from '../cloudflare-storage';
 import { handleCoreAnalytics } from '../core-analytics';
-import { handleDemo, handleDemoError } from '../demo';
+import { handleDemo, handleDemoError, handleDemoMode } from '../demo';
 import { handleEmailProviders, handleEmailTest } from '../email';
 import { handleOttaormCrud } from '../ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from '../ottaorm-init';
@@ -445,6 +446,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleCoreAnalytics,
     handleDemo,
     handleDemoError,
+    handleDemoMode,
     handleEmailProviders,
     handleEmailTest,
     handleOttaormCrud,
@@ -916,6 +918,13 @@ describe('router dispatch parity', () => {
             const { response } = await dispatch('HEAD', '/api/demo');
             expect(handleDemo).toHaveBeenCalledWith(expect.objectContaining({ method: 'HEAD' }));
             expect(response).not.toBeNull();
+        });
+
+        it('GET /api/demo/mode dispatches to handleDemoMode, not the /api/demo handler', async () => {
+            const { response } = await dispatch('GET', '/api/demo/mode');
+            expect(handleDemoMode).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }));
+            expect(handleDemo).not.toHaveBeenCalled();
+            expect(await response!.text()).toBe('handleDemoMode');
         });
 
         it('POST /api/upload/file/x/y dispatches to the upload-file prefix handler', async () => {
