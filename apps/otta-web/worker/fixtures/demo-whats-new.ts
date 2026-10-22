@@ -3,8 +3,9 @@ import { checklist, code, doc, h, on, p, table, ul, warning } from './demo-block
 
 /**
  * The demo's "What's new" timeline: real Ottabase release notes, dated by the commits that
- * shipped them. Highlighted entries carry screenshots served from `public/ottabase-demo/`, so
- * they resolve on any deployment without uploads.
+ * shipped them. A release with a `hero` shows the screen it describes, captured from the real app
+ * by `pnpm screenshots --whatsnew` in ottabase.homepage into `public/ottabase-demo/whats-new/<slug>.webp`,
+ * so it resolves on any deployment without uploads.
  */
 
 const REPO = 'https://github.com/thinkdj/ottabase';
@@ -14,10 +15,18 @@ const cta = (text: string, url: string) => ({
     data: { text, url, style: 'secondary', alignment: 'left', openInNewTab: true, icon: '' },
 });
 
-/** A release note. Everything here is `changelog` and tagged by area. */
-const release = (seed: Omit<BlogDemoPostSeed, 'contentType' | 'publishedAt'> & { date: string }): BlogDemoPostSeed => {
-    const { date, ...rest } = seed;
-    return { ...rest, contentType: 'changelog', publishedAt: on(date), categories: ['Release notes'] };
+/** A release note. Everything here is `changelog` and tagged by area; `hero` is the screenshot's alt text. */
+const release = (
+    seed: Omit<BlogDemoPostSeed, 'contentType' | 'publishedAt' | 'heroImage'> & { date: string; hero?: string },
+): BlogDemoPostSeed => {
+    const { date, hero, ...rest } = seed;
+    return {
+        ...rest,
+        ...(hero ? { heroImage: { url: `/ottabase-demo/whats-new/${seed.slug}.webp`, alt: hero } } : {}),
+        contentType: 'changelog',
+        publishedAt: on(date),
+        categories: ['Release notes'],
+    };
 };
 
 export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
@@ -28,10 +37,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         isFeatured: true,
         excerpt:
             'Tower, PayPort, Blackbox, Beacon, Workbench, Helpdesk and Privacy: the operations layer a running SaaS needs, sold as source. No license keys, nothing gated.',
-        heroImage: {
-            url: '/ottabase-demo/whats-new/pro.webp',
-            alt: 'The Tower admin page showing every deployment on one board, with health, cron and backup columns',
-        },
+        hero: 'The Tower board: three deployments with their health, cron, backup and package state, one unreachable',
         tags: ['Pro', 'Packages'],
         content: doc(
             p(
@@ -95,10 +101,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         isFeatured: true,
         excerpt:
             'A package contract in @ottabase/kernel, nine new platform packages, and otta add to install any of them with one command.',
-        heroImage: {
-            url: '/ottabase-demo/whats-new/packages.webp',
-            alt: 'The ottabase/packages.ts file listing package manifests in one array',
-        },
+        hero: 'The ottabase/packages.ts file listing package manifests in one array',
         tags: ['Packages', 'CLI'],
         content: doc(
             p(
@@ -144,6 +147,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'landing-sites-from-the-database',
         excerpt:
             'Landing sites are now edited in the admin and rendered from the shared database: three themes, lead forms with an inbox, social cards and private previews.',
+        hero: 'The landing site admin: published pages with their section counts, beside the design, navigation and settings tabs',
         tags: ['Ottalanding'],
         content: doc(
             p(
@@ -169,6 +173,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'ottaai-vision-and-json',
         excerpt:
             'Chat takes images and can return JSON against a schema. Plus blog import and export, author archives, a swipeable lightbox and a security sweep.',
+        hero: 'The OttaAI playground: the resolved route for the signed-in tenant, from its own key to the platform fallback',
         tags: ['OttaAI', 'Ottablog', 'Security'],
         content: doc(
             h('OttaAI', 3),
@@ -209,6 +214,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'multilingual-blog',
         excerpt:
             'Each blog picks its languages, each post carries translations with their own title, slug and schedule, and readers get the right one automatically.',
+        hero: 'The blog studio’s Languages card: the languages this blog publishes in and its default',
         tags: ['Ottablog', 'i18n'],
         content: doc(
             p(
@@ -234,6 +240,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'archives-fuzzy-dates-sharing',
         excerpt:
             'Browse the blog by month, record when something was originally written even if you only roughly know, and share any post in one tap.',
+        hero: 'The 2026 date archive of the blog',
         tags: ['Ottablog'],
         content: doc(
             ul(
@@ -252,6 +259,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'llms-txt-and-claude-skills',
         excerpt:
             'llms.txt and llms-full.txt index the whole repository for language models, and fourteen skills teach coding agents how Ottabase is built.',
+        hero: 'The in-app docs: the guides and package references that llms-full.txt is generated from',
         tags: ['Docs', 'AI'],
         content: doc(
             p(
@@ -296,10 +304,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         isFeatured: true,
         excerpt:
             'The blog learns two new shapes: blurbs for a quick thought and photo journals for stories told in pictures. Plus crossposts, a proper masthead and HTML to PDF.',
-        heroImage: {
-            url: '/ottabase-demo/whats-new/blog.webp',
-            alt: 'The blog listing page with its Write menu and featured posts',
-        },
+        hero: 'A photo journal: the masthead of Three days of light in Lofoten above its album',
         tags: ['Ottablog'],
         content: doc(
             p('A blog is not only articles. Two new content types now share the timeline with them.'),
@@ -324,6 +329,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'ottadate-fuzzy-dates',
         excerpt:
             'A date picker that lets people say “early 90s” or “summer 98”, and stores exactly how sure they were.',
+        hero: 'The inline fuzzy picker: decades first, then a year, a part of it, and the precision that follows',
         tags: ['Ottadate'],
         content: doc(
             p(
@@ -357,6 +363,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'brand-engine-v2-platform-owner',
         excerpt:
             'Brand kits now shape far more than colour, with no flash of the wrong theme. And admin access is decided by permission and scope, never by the name of a role.',
+        hero: 'A brand kit in the admin: its specimen gallery with the light and dark toggle',
         tags: ['Brand Engine', 'RBAC'],
         content: doc(
             h('Brand Engine v2', 3),
@@ -383,6 +390,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
         slug: 'in-house-auth',
         excerpt:
             'Authentication is now a small package built on Web Crypto: sessions, passwords, OAuth with PKCE and magic links, with no dependencies.',
+        hero: 'The sign-in page: email and password beside the magic link option',
         tags: ['Auth', 'Security'],
         content: doc(
             p(
