@@ -47,7 +47,7 @@ import {
     Tag,
     User,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { partitionBlogTimeline } from './blogTimeline';
 
 interface BlogPostTag {
@@ -378,13 +378,43 @@ export function BlogListPage() {
     );
 }
 
+/**
+ * A card's hero image as a second way into the post: the title is a small target, the image is
+ * the obvious one. Out of the tab order and hidden from assistive tech, so keyboard and screen
+ * reader users meet one link per post (the title), not two.
+ */
+function PostImageLink({
+    post,
+    activeLanguage,
+    className,
+    children,
+}: {
+    post: BlogPost;
+    activeLanguage?: string;
+    className: string;
+    children: ReactNode;
+}) {
+    return (
+        <Link
+            to="/blog/$slug"
+            params={{ slug: post.slug }}
+            search={localizedPostSearch(post, activeLanguage)}
+            tabIndex={-1}
+            aria-hidden="true"
+            className={`block ${className}`}
+        >
+            {children}
+        </Link>
+    );
+}
+
 function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
         <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
             {heroUrl !== '#' && (
-                <div className="relative h-48 overflow-hidden">
+                <PostImageLink post={post} activeLanguage={activeLanguage} className="relative h-48 overflow-hidden">
                     <img
                         src={heroUrl}
                         alt={post.heroImage?.alt || post.title}
@@ -395,7 +425,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
                     <div className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                         {post.contentType === 'photo' ? `Featured · ${photoCount} frames` : 'Featured'}
                     </div>
-                </div>
+                </PostImageLink>
             )}
             <CardContent className="p-6">
                 {post.contentType !== 'blog' && (
@@ -485,7 +515,11 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                 // Print-edge frame, matching the photo journal's tiles and the article hero:
                 // a fixed ratio so the timeline does not reflow as images arrive, a hairline so
                 // a pale photo still has an edge, and the same slow lift on hover.
-                <div className="relative aspect-[16/9] overflow-hidden bg-muted/40">
+                <PostImageLink
+                    post={post}
+                    activeLanguage={activeLanguage}
+                    className="relative aspect-[16/9] overflow-hidden bg-muted/40"
+                >
                     <img
                         src={heroUrl}
                         alt={post.heroImage?.alt || post.title}
@@ -497,7 +531,7 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                         className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5"
                         aria-hidden="true"
                     />
-                </div>
+                </PostImageLink>
             )}
             <CardContent className="p-5">
                 {post.contentType !== 'blog' && (
