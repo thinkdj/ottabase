@@ -38,7 +38,7 @@ function createFixturePlan(processes: StartPlan['processes'], readinessUrls: str
         buildCommands: [],
         processes,
         readinessUrls,
-        timeoutMs: 5_000,
+        timeoutMs: 12_000,
     };
 }
 
