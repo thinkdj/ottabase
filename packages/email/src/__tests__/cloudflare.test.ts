@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCloudflareMailer } from '../providers/cloudflare';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { createCloudflareMailer, type CloudflareMailerOptions } from '../providers/cloudflare';
 import type { SendEmailInput } from '../types';
 
 describe('Cloudflare Mailer', () => {
-    let mockSend: ReturnType<typeof vi.fn>;
+    // Typed as the option it stands in for, so it can be passed as `send` and its resolved values are checked
+    let mockSend: Mock<CloudflareMailerOptions['send']>;
 
     beforeEach(() => {
-        mockSend = vi.fn();
+        mockSend = vi.fn<CloudflareMailerOptions['send']>();
     });
 
     it('should create a mailer with default provider name', () => {

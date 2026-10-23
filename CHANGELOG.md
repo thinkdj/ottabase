@@ -313,6 +313,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   silently break. The package type-checks clean again: `preserveSymlinks` made Radix's types unresolvable under pnpm
   (185 errors). A test now checks the sources against the build entries and the `exports` map, so a relative import that
   `dist` lacks fails in CI instead of in a consumer.
+- Type-check is green across the workspace again: the cron and email test mocks are typed against the current
+  `workers-types` and Vitest, `hello-world` resolves Storybook's exports-only types, and `ottamenu` has a
+  `tsconfig.json` of its own (it was being checked as part of the root project and failing on its references).
+- otta-web's build no longer warns about a CSS syntax error: Tailwind was reading a vault test's `/[-:.]/` as the
+  utility `.[-:.]`, so tests and stories are excluded from its content scan.
 - `BlogPagination` buttons are `type="button"` (they submitted an enclosing form), the current page carries
   `aria-current="page"`, and the unused `perPage` prop is gone.
 - **Generic CRUD is now DEFAULT-DENY (allowlist).** `/api/ottaorm/*` previously allowed any registered model except an

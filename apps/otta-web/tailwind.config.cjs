@@ -33,6 +33,11 @@ module.exports = {
         // Without this entry those classes are invisible to Tailwind's static scanner and
         // will be purged in production builds unless they happen to appear elsewhere.
         '../../packages/ottalayout/src/**/*.{js,ts,jsx,tsx}',
+        // Tests and stories hold regexes and fixture strings that Tailwind reads as class names: a vault test's
+        // /[-:.]/ became the invalid utility `.[-:.]`, which the CSS minifier warned about on every build.
+        '!./src/**/__tests__/**',
+        '!../../packages/**/__tests__/**',
+        '!../../packages/**/*.{test,spec,stories}.{js,ts,jsx,tsx}',
     ],
     theme: {
         extend: {

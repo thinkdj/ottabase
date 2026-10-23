@@ -9,11 +9,14 @@ const createMockEvent = (cron: string): ScheduledController => ({
     noRetry: vi.fn(),
 });
 
-const createMockCtx = (): ExecutionContext => ({
-    waitUntil: vi.fn(),
-    passThroughOnException: vi.fn(),
-    props: undefined,
-});
+// Only the members the handler touches. The runtime type also carries `tracing`, `cache` and `access`, which grow
+// with every workers-types release, so the mock is cast rather than kept in step with them.
+const createMockCtx = (): ExecutionContext =>
+    ({
+        waitUntil: vi.fn(),
+        passThroughOnException: vi.fn(),
+        props: undefined,
+    }) as unknown as ExecutionContext;
 
 interface TestEnv {
     DB: { query: () => Promise<void> };
