@@ -6,7 +6,7 @@
  */
 import { isOrgAdmin, useSession } from '@/lib/auth';
 import { Link, useLocation } from '@tanstack/react-router';
-import { FileText, FolderTree, Layers, Palette, Tag } from 'lucide-react';
+import { FileText, FolderTree, Layers, Settings, Tag } from 'lucide-react';
 import { useBlogSurface } from './blogAdminPaths';
 
 export function BlogAdminNav() {
@@ -27,7 +27,7 @@ export function BlogAdminNav() {
         // would otherwise see a nav item that 403s on every action — hide it for them instead.
         ...(surface.inStudio && !isOrgAdmin(user)
             ? []
-            : [{ to: surface.themesPath, label: 'Content Studio', icon: Palette, exact: false }]),
+            : [{ to: surface.settingsPath, label: 'Settings', icon: Settings, exact: false }]),
     ] as const;
 
     const isActive = (to: string, exact?: boolean) => {

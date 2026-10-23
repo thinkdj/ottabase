@@ -134,11 +134,11 @@ Multilingual support is part of the core blog model. A blog has one language pol
 `language` plus zero or more localized rows in `post_translations`. Translation bodies are stored separately so normal
 post lists stay small and the large EditorJS payloads remain deferred.
 
-Configure the policy from the admin Content Studio or by updating the Studio endpoint:
+Configure the policy from the admin content settings page or by updating the Studio endpoint:
 
-In organization mode, a blog inherits its platform language policy until that organization saves its own Content Studio
-policy. An organization-specific save is therefore an explicit override, rather than a requirement to duplicate the
-platform's enabled languages.
+In organization mode, a blog inherits its platform language policy until that organization saves its own content
+settings policy. An organization-specific save is therefore an explicit override, rather than a requirement to duplicate
+the platform's enabled languages.
 
 ```http
 GET  /api/blog/studio/languages
@@ -1103,7 +1103,7 @@ The app includes admin pages for managing blog content:
 | Tags       | `/admin/blog/tags`                            | Table view with right-panel Sheet for create/edit                                  |
 | Categories | `/admin/blog/categories`                      | Tree view with hierarchy, right-panel Sheet for create/edit                        |
 | Series     | `/admin/blog/series`                          | Table view with right-panel Sheet for create/edit                                  |
-| Studio     | `/admin/blog/studio`                          | Theme and plugin management                                                        |
+| Settings   | `/admin/blog/settings`                        | Theme, plugins, languages and demo content                                         |
 
 All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quick switching between sections.
 

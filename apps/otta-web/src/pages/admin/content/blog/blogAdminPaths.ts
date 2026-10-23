@@ -21,8 +21,8 @@ export interface BlogSurfacePaths {
     tagsPath: string;
     categoriesPath: string;
     seriesPath: string;
-    /** Theme/plugin management (named 'studio' under admin, 'themes' under /studio). */
-    themesPath: string;
+    /** Content settings: theme, plugins, languages, demo content. */
+    settingsPath: string;
 }
 
 /** Build a safe public URL for saved blog content. */
@@ -48,7 +48,7 @@ export function resolveBlogSurface(pathname: string): BlogSurfacePaths {
         tagsPath: `${base}/tags`,
         categoriesPath: `${base}/categories`,
         seriesPath: `${base}/series`,
-        themesPath: inStudio ? '/studio/themes' : '/admin/content/blog/studio',
+        settingsPath: inStudio ? '/studio/settings' : '/admin/content/blog/settings',
     };
 }
 

@@ -112,8 +112,8 @@ callers fail closed and operators retain an accurate failure signal.
 ## Multilingual publishing
 
 Studio also owns the blog language policy. `OttablogSettings` stores the default language, the supported BCP-47 language
-catalog, and whether public requests fall back to the default language. The admin Content Studio Languages card
-validates codes, labels, duplicates, and the default-language selection.
+catalog, and whether public requests fall back to the default language. The Languages card on the admin content settings
+page validates codes, labels, duplicates, and the default-language selection.
 
 The post editor exposes the canonical language in Settings. Existing posts expose a Languages tab with a separate rich
 editor for each enabled non-canonical language. Authors can save draft, published, scheduled, or archived translations;

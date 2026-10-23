@@ -90,11 +90,11 @@ vi.mock('@ottabase/ui', () => {
     };
 });
 
-import { AdminBlogStudioPage } from '../AdminBlogStudioPage';
+import { AdminBlogSettingsPage } from '../AdminBlogSettingsPage';
 
 const seedButton = () => screen.queryByRole('button', { name: /seed demo content/i });
 
-describe('Content Studio demo seeding', () => {
+describe('Content settings demo seeding', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mutationOptionsFor.clear();
@@ -104,7 +104,7 @@ describe('Content Studio demo seeding', () => {
     it('hides the demo card from a non-platform admin', () => {
         isPlatformAdminMock.mockReturnValue(false);
 
-        render(<AdminBlogStudioPage />);
+        render(<AdminBlogSettingsPage />);
 
         expect(seedButton()).toBeNull();
         expect(screen.queryByText('Demo Content')).toBeNull();
@@ -113,7 +113,7 @@ describe('Content Studio demo seeding', () => {
     it('explains what seeding does before the platform owner runs it', () => {
         isPlatformAdminMock.mockReturnValue(true);
 
-        render(<AdminBlogStudioPage />);
+        render(<AdminBlogSettingsPage />);
 
         expect(screen.getByText('Demo Content')).toBeTruthy();
         expect(screen.getByText(/kitchensink/i)).toBeTruthy();
@@ -124,7 +124,7 @@ describe('Content Studio demo seeding', () => {
     it('targets the consolidated endpoint and refreshes the content list', () => {
         isPlatformAdminMock.mockReturnValue(true);
 
-        render(<AdminBlogStudioPage />);
+        render(<AdminBlogSettingsPage />);
         fireEvent.click(seedButton()!);
 
         expect(seedMutate).toHaveBeenCalledTimes(1);
@@ -136,7 +136,7 @@ describe('Content Studio demo seeding', () => {
     it('reports how many rows a run created', () => {
         isPlatformAdminMock.mockReturnValue(true);
 
-        render(<AdminBlogStudioPage />);
+        render(<AdminBlogSettingsPage />);
         act(() =>
             mutationOptionsFor.get('/api/blog/seed-demo').mutationOptions.onSuccess({
                 created: [{ id: 'p1', slug: 'welcome', contentType: 'blog' }],
@@ -151,7 +151,7 @@ describe('Content Studio demo seeding', () => {
     it('reports an already-seeded run without claiming new rows', () => {
         isPlatformAdminMock.mockReturnValue(true);
 
-        render(<AdminBlogStudioPage />);
+        render(<AdminBlogSettingsPage />);
         act(() =>
             mutationOptionsFor.get('/api/blog/seed-demo').mutationOptions.onSuccess({
                 created: [],

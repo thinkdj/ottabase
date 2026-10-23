@@ -39,6 +39,7 @@ import {
     Rocket,
     Sparkles,
     Server,
+    Settings,
     Shield,
     ShieldCheck,
     ShieldEllipsis,
@@ -163,10 +164,10 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 requiresPackage: 'ottablog',
             },
             {
-                title: 'Content Theme',
-                description: 'Manage content themes and renderer plugins.',
-                href: '/admin/content/blog/studio',
-                icon: Palette,
+                title: 'Content settings',
+                description: 'Content theme, renderer plugins, languages and demo content.',
+                href: '/admin/content/blog/settings',
+                icon: Settings,
                 requiresPackage: 'ottablog',
             },
             {

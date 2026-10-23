@@ -32,7 +32,7 @@ export function BlogLanguageSettingsCard({ config, onSaved }: Props) {
     >({
         endpoint: '/api/blog/studio/languages',
         method: 'POST',
-        invalidateEntities: ['blog_studio', 'blog_translations'],
+        invalidateEntities: ['blog_settings', 'blog_translations'],
         mutationOptions: {
             onSuccess: () => {
                 setSaveError(null);

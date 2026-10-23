@@ -389,7 +389,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
     // Form state - initialized from props
     const { data: studioState } = useApiQuery<{ languageConfig: BlogLanguageConfig }>({
-        entity: 'blog_studio',
+        entity: 'blog_settings',
         queryKey: ['state'],
         endpoint: '/api/blog/studio/state',
     });

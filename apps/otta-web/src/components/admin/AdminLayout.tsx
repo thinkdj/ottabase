@@ -149,7 +149,7 @@ export const AdminLayout = memo(function AdminLayout({ children }: AdminLayoutPr
     }, [groups, search]);
 
     // Longest matching href wins, so a parent (/admin/content/blog) doesn't stay
-    // highlighted when a nested sibling (/admin/content/blog/studio) is active.
+    // highlighted when a nested sibling (/admin/content/blog/settings) is active.
     const activeHref = useMemo(() => {
         let best: string | null = null;
         for (const group of groups) {

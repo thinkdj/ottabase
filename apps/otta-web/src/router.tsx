@@ -380,11 +380,11 @@ const adminLandingPageRoute = makeAdminRoute(
     () => import('@/pages/admin/content/landing/AdminLandingPageEditorPage'),
     'AdminLandingPageEditorPage',
 );
-// Blog Studio manages APP-GLOBAL theme + renderer plugins → platform scope (default).
-const adminBlogStudioRoute = makeAdminRoute(
-    '/admin/content/blog/studio',
-    () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
-    'AdminBlogStudioPage',
+// Content settings manage APP-GLOBAL theme + renderer plugins → platform scope (default).
+const adminBlogSettingsRoute = makeAdminRoute(
+    '/admin/content/blog/settings',
+    () => import('@/pages/admin/content/blog/AdminBlogSettingsPage'),
+    'AdminBlogSettingsPage',
 );
 const adminBlogTagsRoute = makeAdminRoute(
     '/admin/content/blog/tags',
@@ -441,10 +441,10 @@ const studioSeriesRoute = makeStudioRoute(
     () => import('@/pages/admin/content/blog/AdminBlogSeriesPage'),
     'AdminBlogSeriesPage',
 );
-const studioThemesRoute = makeStudioRoute(
-    '/studio/themes',
-    () => import('@/pages/admin/content/blog/AdminBlogStudioPage'),
-    'AdminBlogStudioPage',
+const studioSettingsRoute = makeStudioRoute(
+    '/studio/settings',
+    () => import('@/pages/admin/content/blog/AdminBlogSettingsPage'),
+    'AdminBlogSettingsPage',
     // Theme/plugin management is studio-ADMIN only server-side (requireStudioAdminForScope:
     // platform admin, or org:admin of the target org) — a plain author/editor otherwise gets a
     // page that silently degrades to a read-only skeleton and 403s on every action.
@@ -834,7 +834,7 @@ const packageRoutes = [
     { route: adminBlogRoute, pkg: 'ottablog' as const },
     { route: adminBlogNewRoute, pkg: 'ottablog' as const },
     { route: adminBlogEditRoute, pkg: 'ottablog' as const },
-    { route: adminBlogStudioRoute, pkg: 'ottablog' as const },
+    { route: adminBlogSettingsRoute, pkg: 'ottablog' as const },
     { route: adminBlogTagsRoute, pkg: 'ottablog' as const },
     { route: adminBlogCategoriesRoute, pkg: 'ottablog' as const },
     { route: adminBlogSeriesRoute, pkg: 'ottablog' as const },
@@ -844,7 +844,7 @@ const packageRoutes = [
     { route: studioTagsRoute, pkg: 'ottablog' as const },
     { route: studioCategoriesRoute, pkg: 'ottablog' as const },
     { route: studioSeriesRoute, pkg: 'ottablog' as const },
-    { route: studioThemesRoute, pkg: 'ottablog' as const },
+    { route: studioSettingsRoute, pkg: 'ottablog' as const },
     { route: adminLandingRoute, pkg: 'ottalanding' as const },
     { route: adminLandingLeadsRoute, pkg: 'ottalanding' as const },
     { route: adminLandingPageRoute, pkg: 'ottalanding' as const },

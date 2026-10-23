@@ -70,18 +70,21 @@ export const TopbarHeader = memo(function TopbarHeader({
                 {/* min-w-0 lets the app name ellipsize instead of wrapping the header onto extra lines */}
                 <div className="flex min-w-0 items-center gap-2.5">
                     {leading}
-                    <Link
-                        to="/"
-                        className="truncate text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground sm:text-base"
-                    >
-                        {APP_META.appName}
-                    </Link>
-                    {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
-                    {APP_META.tagline && (
-                        <span className="hidden whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.06em] text-faint-foreground md:inline">
-                            {APP_META.tagline}
-                        </span>
-                    )}
+                    {/* Baseline, not center: the small caps tagline floats above the name when centered */}
+                    <div className="flex min-w-0 items-baseline gap-2.5">
+                        <Link
+                            to="/"
+                            className="truncate text-sm font-semibold tracking-tight transition-colors duration-normal hover:text-foreground sm:text-base"
+                        >
+                            {APP_META.appName}
+                        </Link>
+                        {/* Optional positioning line from ottabase.config meta.tagline — omitted when unset */}
+                        {APP_META.tagline && (
+                            <span className="hidden whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.06em] text-faint-foreground md:inline">
+                                {APP_META.tagline}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {headerNav}

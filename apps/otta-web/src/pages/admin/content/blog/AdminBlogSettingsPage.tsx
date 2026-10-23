@@ -1,5 +1,5 @@
 /**
- * Admin Content Studio Page
+ * Admin Content Settings Page
  *
  * Manage content themes and plugins, and run the one-time demo content seed.
  */
@@ -43,7 +43,7 @@ import { BlogAdminNav } from './BlogAdminNav';
 import { BlogLanguageSettingsCard } from './BlogLanguageSettingsCard';
 import { useBlogSurface } from './blogAdminPaths';
 
-const STUDIO_ENTITY = 'blog_studio' as const;
+const SETTINGS_ENTITY = 'blog_settings' as const;
 
 interface StudioStateResponse {
     activeThemeId: string | null;
@@ -99,7 +99,7 @@ function formToPluginConfig(form: ContentInjectorConfigForm): Record<string, unk
     };
 }
 
-export function AdminBlogStudioPage() {
+export function AdminBlogSettingsPage() {
     const surface = useBlogSurface();
     const {
         data: state,
@@ -107,7 +107,7 @@ export function AdminBlogStudioPage() {
         isError,
         error,
     } = useApiQuery<StudioStateResponse>({
-        entity: STUDIO_ENTITY,
+        entity: SETTINGS_ENTITY,
         queryKey: ['state'],
         endpoint: '/api/blog/studio/state?full=1',
     });
@@ -126,7 +126,7 @@ export function AdminBlogStudioPage() {
     const activateThemeMutation = useApiMutation<unknown, { themeId: string }>({
         endpoint: '/api/blog/studio/theme/activate',
         method: 'POST',
-        invalidateEntities: [STUDIO_ENTITY],
+        invalidateEntities: [SETTINGS_ENTITY],
         mutationOptions: {
             onError: () =>
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' }),
@@ -136,7 +136,7 @@ export function AdminBlogStudioPage() {
     const setPluginEnabledMutation = useApiMutation<unknown, { pluginId: string; enabled: boolean }>({
         endpoint: '/api/blog/studio/plugin/enable',
         method: 'POST',
-        invalidateEntities: [STUDIO_ENTITY],
+        invalidateEntities: [SETTINGS_ENTITY],
         mutationOptions: {
             onError: () =>
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' }),
@@ -171,7 +171,7 @@ export function AdminBlogStudioPage() {
     const savePluginConfigMutation = useApiMutation<unknown, { pluginId: string; config: Record<string, unknown> }>({
         endpoint: '/api/blog/studio/plugin/config',
         method: 'POST',
-        invalidateEntities: [STUDIO_ENTITY],
+        invalidateEntities: [SETTINGS_ENTITY],
         mutationOptions: {
             onSuccess: () => closeConfigModal(),
             onError: () =>
@@ -258,7 +258,7 @@ export function AdminBlogStudioPage() {
             <BlogAdminNav />
 
             <div className="space-y-1.5">
-                <h1 className="text-2xl font-semibold tracking-[-0.015em]">Content Studio</h1>
+                <h1 className="text-2xl font-semibold tracking-[-0.015em]">Content settings</h1>
                 <p className="max-w-3xl text-muted-foreground">
                     Manage themes, plugins, and the languages your readers can use.
                 </p>
