@@ -48,7 +48,7 @@ export function LanguageSwitcher({
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant={variant} size={size} className="gap-2">
+                <Button variant={variant} size={showLabel ? size : 'icon-sm'} className="gap-2">
                     {showIcon && <Languages size={16} />}
                     {showLabel && (languageNames[currentLanguage] || t('language'))}
                 </Button>

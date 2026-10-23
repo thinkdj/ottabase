@@ -252,7 +252,7 @@ describe('AccountMenu', () => {
 
     it('gates Studio on posts:update and Admin on admin access', () => {
         render(<AccountMenu />);
-        expect(screen.queryByRole('link', { name: 'Studio' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Blog Studio' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
     });
 
@@ -261,7 +261,7 @@ describe('AccountMenu', () => {
 
         render(<AccountMenu />);
 
-        expect(screen.getByRole('link', { name: 'Studio' })).toHaveAttribute('href', '/studio');
+        expect(screen.getByRole('link', { name: 'Blog Studio' })).toHaveAttribute('href', '/studio');
         expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
     });
 

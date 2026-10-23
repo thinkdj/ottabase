@@ -53,7 +53,7 @@ function useAccountLinks(): AccountLink[][] {
     ];
     const work: AccountLink[] = [
         ...(PACKAGES_ENABLED.ottablog && hasGrantedPermission(user?.permissions, 'posts:update')
-            ? [{ to: '/studio', label: 'Studio', icon: PenLine }]
+            ? [{ to: '/studio', label: 'Blog Studio', icon: PenLine }]
             : []),
         ...(isAdminUser(user) ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
     ];
