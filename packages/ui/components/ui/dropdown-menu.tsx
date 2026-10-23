@@ -40,7 +40,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-sub-trigger"
         className={cn(
-            'flex cursor-default select-none items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm focus-visible:outline-none focus:bg-muted data-[state=open]:bg-muted [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground',
+            'flex cursor-default select-none items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm focus-visible:outline-hidden focus:bg-muted data-[state=open]:bg-muted [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground',
             inset && 'pl-8',
             className,
         )}
@@ -100,7 +100,7 @@ const DropdownMenuItem = React.forwardRef<
         data-slot="dropdown-menu-item"
         data-variant={variant}
         className={cn(
-            'relative flex cursor-default select-none items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm text-foreground transition duration-fast ease-theme focus:bg-muted focus-visible:outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[variant=destructive]:text-destructive-text data-[variant=destructive]:focus:bg-destructive-soft [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground data-[variant=destructive]:[&_svg]:text-current',
+            'relative flex cursor-default select-none items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm text-foreground transition duration-fast ease-theme focus:bg-muted focus-visible:outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[variant=destructive]:text-destructive-text data-[variant=destructive]:focus:bg-destructive-soft [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground data-[variant=destructive]:[&_svg]:text-current',
             inset && 'pl-8',
             className,
         )}
@@ -117,7 +117,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-checkbox-item"
         className={cn(
-            'relative flex cursor-default select-none items-center gap-2.5 rounded-sm py-2 pl-8 pr-2.5 text-sm transition duration-fast ease-theme focus:bg-muted focus-visible:outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'relative flex cursor-default select-none items-center gap-2.5 rounded-sm py-2 pl-8 pr-2.5 text-sm transition duration-fast ease-theme focus:bg-muted focus-visible:outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
             className,
         )}
         checked={checked}
@@ -144,7 +144,7 @@ const DropdownMenuRadioItem = React.forwardRef<
         ref={ref}
         data-slot="dropdown-menu-radio-item"
         className={cn(
-            'relative flex cursor-default select-none items-center gap-2.5 rounded-sm py-2 pl-8 pr-2.5 text-sm transition duration-fast ease-theme focus:bg-muted focus-visible:outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+            'relative flex cursor-default select-none items-center gap-2.5 rounded-sm py-2 pl-8 pr-2.5 text-sm transition duration-fast ease-theme focus:bg-muted focus-visible:outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
             className,
         )}
         {...props}

@@ -177,7 +177,7 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
                         href={sanitizeUrl(linkUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring rounded-sm"
+                        className="block no-underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring rounded-sm"
                         aria-label={caption || altFinal}
                     >
                         {imageComponent}

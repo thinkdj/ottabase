@@ -536,7 +536,7 @@ function KeyInput({
                         cancel();
                     }
                 }}
-                className="bg-transparent border-b border-primary focus:outline-none text-primary min-w-[2ch] px-0.5 h-6 leading-6 py-0 box-border"
+                className="bg-transparent border-b border-primary focus:outline-hidden text-primary min-w-[2ch] px-0.5 h-6 leading-6 py-0 box-border"
                 style={{ width: `${Math.max(draft.length, 2) + 1}ch` }}
                 spellCheck={false}
             />
@@ -647,7 +647,7 @@ function ValueInput({
                 }
             }}
             className={cn(
-                'bg-transparent border-b focus:outline-none px-0.5 min-w-[4ch] h-6 leading-6 py-0 box-border',
+                'bg-transparent border-b focus:outline-hidden px-0.5 min-w-[4ch] h-6 leading-6 py-0 box-border',
                 type === 'string' && 'text-success border-success',
                 type === 'number' && 'text-info border-info',
             )}
@@ -686,7 +686,7 @@ function TypeSelector({ type, onChange }: { type: JsonType; onChange: (t: JsonTy
             className={cn(
                 'text-[10px] uppercase tracking-wide rounded px-1 py-0 border bg-muted',
                 'border-border text-muted-foreground',
-                'focus:outline-none focus:ring-1 focus:ring-ring',
+                'focus:outline-hidden focus:ring-1 focus:ring-ring',
                 // Hidden until row hover for a cleaner default view
                 'opacity-0 group-hover/node:opacity-100 focus:opacity-100 transition-opacity',
             )}
@@ -812,7 +812,7 @@ function RawEditor({
                 }}
                 className={cn(
                     'font-mono text-[13px] leading-5 p-3 w-full resize-y min-h-[180px]',
-                    'bg-transparent text-foreground focus:outline-none',
+                    'bg-transparent text-foreground focus:outline-hidden',
                     error && 'text-foreground',
                 )}
             />

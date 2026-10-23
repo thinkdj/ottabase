@@ -23,7 +23,7 @@ const btnSmall = `inline-flex h-9 items-center justify-center rounded-full bg-pr
 const btnPrimary = `${btn} bg-primary text-primary-foreground hover:bg-primary/90`;
 const btnSecondary = `${btn} border border-border bg-background text-foreground hover:bg-muted`;
 const form: LeadFormClasses = {
-    input: 'w-full rounded-xl border border-input bg-background px-4 py-2.5 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    input: 'w-full rounded-xl border border-input bg-background px-4 py-2.5 text-base placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
     button: `${btnPrimary} disabled:opacity-60`,
     label: 'text-sm font-medium',
     note: 'rounded-xl bg-muted/60 p-4 text-center font-medium',

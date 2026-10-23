@@ -495,7 +495,7 @@ export function AdminBrandKitDetailPage() {
                     <div className="h-9 w-64 animate-pulse rounded-xl bg-muted/40" />
                     <div className="h-9 w-48 animate-pulse rounded-xl bg-muted/40" />
                 </div>
-                <div className="grid gap-8 lg:grid-cols-[1fr,340px]">
+                <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
                     <div className="h-96 animate-pulse rounded-xl bg-muted/40" />
                     <div className="space-y-4">
                         <div className="h-48 animate-pulse rounded-xl bg-muted/40" />
@@ -557,7 +557,7 @@ export function AdminBrandKitDetailPage() {
                         {!isNew ? (
                             <Link
                                 to="/admin/appearance/layouts"
-                                className="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="group inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors duration-normal hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 Configure layouts & route mappings
                                 <IconArrowRight className="h-3.5 w-3.5 transition-transform duration-normal group-hover:translate-x-0.5" />
@@ -605,7 +605,7 @@ export function AdminBrandKitDetailPage() {
                 </div>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[1fr,340px]">
+            <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
                 <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof VALID_TABS)[number])} className="w-full">
                     {/* Underline tabs: scroll horizontally instead of wrapping into a grid */}
                     <TabsList className="mb-2 h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
@@ -725,7 +725,7 @@ export function AdminBrandKitDetailPage() {
                                     type="button"
                                     onClick={() => setPreviewMode(m)}
                                     aria-pressed={previewMode === m}
-                                    className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium capitalize transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium capitalize transition-colors duration-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                                         previewMode === m
                                             ? 'bg-background text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground'

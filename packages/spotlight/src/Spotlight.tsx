@@ -274,7 +274,7 @@ export function Spotlight({
             <DialogPrimitive.Portal>
                 <DialogOverlay
                     className={cn(
-                        'bg-overlay/40 backdrop-blur-sm supports-[backdrop-filter]:bg-overlay/30',
+                        'bg-overlay/40 backdrop-blur-xs supports-[backdrop-filter]:bg-overlay/30',
                         overlayClassName,
                     )}
                 />
@@ -303,7 +303,7 @@ export function Spotlight({
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder={placeholder}
-                            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+                            className="flex-1 bg-transparent outline-hidden text-sm placeholder:text-muted-foreground"
                             autoFocus
                         />
                         {query && (

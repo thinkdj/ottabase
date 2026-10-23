@@ -68,7 +68,7 @@ export function LeadForm({ kind, buttonLabel, successMessage, classes }: LeadFor
 
     if (state === 'sent') {
         return (
-            <p ref={thanks} tabIndex={-1} role="status" className={`${classes.note} outline-none`}>
+            <p ref={thanks} tabIndex={-1} role="status" className={`${classes.note} outline-hidden`}>
                 {successMessage || THANKS[kind]}
             </p>
         );

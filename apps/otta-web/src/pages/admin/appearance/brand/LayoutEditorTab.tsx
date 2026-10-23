@@ -532,7 +532,7 @@ function CreateTemplateDialog({ templates }: { templates: LayoutTemplateItem[] }
                                     type="button"
                                     onClick={() => setBasePreset(id)}
                                     aria-pressed={basePreset === id}
-                                    className={`rounded-lg border p-2 text-center text-xs transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    className={`rounded-lg border p-2 text-center text-xs transition-all duration-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                                         basePreset === id
                                             ? 'border-transparent bg-primary/5 font-medium ring-2 ring-primary'
                                             : 'border-transparent bg-muted/40 hover:bg-muted/70'
@@ -863,7 +863,7 @@ function MappingsEditor({
                                     type="button"
                                     onClick={() => setLayoutTemplateId(selected ? '' : option.id)}
                                     aria-pressed={selected}
-                                    className={`rounded-lg p-2 text-left transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    className={`rounded-lg p-2 text-left transition-all duration-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                                         selected
                                             ? 'bg-primary/5 ring-2 ring-primary'
                                             : 'ring-1 ring-border/60 hover:bg-muted/40 hover:ring-border'
@@ -1064,7 +1064,7 @@ const MappingRow = memo(function MappingRow({
                                 )}
                             </div>
                             <textarea
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 rows={5}
                                 value={overrideText}
                                 onChange={(e) => setOverrideText(e.target.value)}

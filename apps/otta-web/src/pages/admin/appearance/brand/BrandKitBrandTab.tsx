@@ -73,7 +73,7 @@ export function BrandKitBrandTab({
                     {parentBrandKitId && (
                         <button
                             type="button"
-                            className="inline-flex items-center rounded-md p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="inline-flex items-center rounded-md p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => onChange({ parentBrandKitId: null })}
                             title="Remove parent (make standalone)"
                         >

@@ -38,7 +38,7 @@ export function FormField({
     const baseInputClasses = clsx(
         'w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground transition-colors duration-normal',
         'placeholder:text-muted-foreground',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent',
         error ? 'border-destructive/60' : 'border-border/60 hover:border-border',
         disabled && 'opacity-50 cursor-not-allowed bg-muted/40',
     );

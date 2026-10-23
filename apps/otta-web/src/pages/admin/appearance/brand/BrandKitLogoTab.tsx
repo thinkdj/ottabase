@@ -214,7 +214,7 @@ export function BrandKitLogoTab({ kitId, logos, logoBaseUrl = '', onChanged }: B
                                     onDragLeave={(e) => {
                                         if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null);
                                     }}
-                                    className={`relative flex h-28 w-full items-center justify-center overflow-hidden rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    className={`relative flex h-28 w-full items-center justify-center overflow-hidden rounded-lg border transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                                         isDragTarget
                                             ? 'border-primary bg-primary/5'
                                             : hasAsset

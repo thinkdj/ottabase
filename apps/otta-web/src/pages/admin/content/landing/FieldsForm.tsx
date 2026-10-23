@@ -366,7 +366,7 @@ function ListEditor(props: ListProps) {
                                         onClick={() =>
                                             setOpen((o) => items.map((_, j) => (j === i ? !expanded : Boolean(o[j]))))
                                         }
-                                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 text-left text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                     >
                                         <ChevronRight
                                             className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}

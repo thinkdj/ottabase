@@ -93,7 +93,7 @@ describe('MediaGallery Renderer', () => {
 
         // Right-edge fade gradient overlay
         const fade = wrapper?.querySelector('[aria-hidden="true"]');
-        expect(fade?.className).toContain('bg-gradient-to-l');
+        expect(fade?.className).toContain('bg-linear-to-l');
 
         // No scroll hint text (gradient provides the affordance)
         expect(container.textContent).not.toContain('scroll');

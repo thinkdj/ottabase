@@ -255,7 +255,7 @@ export function AdminDevMailPage() {
                                                 key={message.id}
                                                 type="button"
                                                 onClick={() => setSelectedId(message.id)}
-                                                className={`w-full min-w-0 overflow-hidden px-4 py-3 text-left outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+                                                className={`w-full min-w-0 overflow-hidden px-4 py-3 text-left outline-hidden transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
                                                     isSelected ? 'bg-background' : 'hover:bg-muted/70'
                                                 }`}
                                             >

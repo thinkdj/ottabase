@@ -39,7 +39,7 @@ export function AdminIndexPage() {
                                 to={item.href}
                                 target={item.external ? '_blank' : undefined}
                                 aria-label={item.title}
-                                className="group rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                className="group rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <Card className="h-full transition duration-fast ease-theme group-hover:border-input group-hover:shadow-sm">
                                     <CardHeader className="gap-2 pb-4">

@@ -292,7 +292,7 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                                             type="button"
                                             onClick={() => toggle(section.id)}
                                             aria-expanded={expanded}
-                                            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                         >
                                             <ChevronRight
                                                 className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -374,7 +374,7 @@ function Editor({ state, page }: { state: LandingState; page: LandingPageData })
                                     role="radio"
                                     aria-checked={previewScheme === scheme}
                                     onClick={() => setPreviewScheme(scheme)}
-                                    className={`rounded px-2.5 py-1 text-xs font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${previewScheme === scheme ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    className={`rounded px-2.5 py-1 text-xs font-medium capitalize focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${previewScheme === scheme ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                 >
                                     {scheme}
                                 </button>

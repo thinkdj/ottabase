@@ -33,7 +33,7 @@ function Actions({ actions }: { actions?: Action[] }) {
 }
 
 const form: LeadFormClasses = {
-    input: 'w-full border-0 border-b-2 border-border bg-transparent px-0 py-3 font-heading text-xl placeholder:text-muted-foreground/70 focus:border-foreground focus:outline-none',
+    input: 'w-full border-0 border-b-2 border-border bg-transparent px-0 py-3 font-heading text-xl placeholder:text-muted-foreground/70 focus:border-foreground focus:outline-hidden',
     button: `inline-flex items-center justify-center bg-foreground px-7 py-3 font-heading text-lg font-semibold text-background transition-opacity hover:opacity-85 disabled:opacity-60 ${focusRing}`,
     label: 'text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground',
     note: 'border-l-4 border-primary py-2 pl-5 font-heading text-2xl italic',

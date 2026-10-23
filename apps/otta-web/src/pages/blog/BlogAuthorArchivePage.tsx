@@ -128,7 +128,7 @@ export function BlogAuthorArchivePage() {
                             to="/blog/$slug"
                             params={{ slug: post.slug }}
                             search={localizedPostSearch(post, requestedLanguage)}
-                            className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="group block rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             {renderCard ? (
                                 renderCard(post, {

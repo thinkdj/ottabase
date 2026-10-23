@@ -35,7 +35,7 @@ export function DataTableColumnHeader<TData, TValue>({
     return (
         <button
             className={clsx(
-                'group -ml-2 flex items-center gap-1 rounded-md px-2 py-1 transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'group -ml-2 flex items-center gap-1 rounded-md px-2 py-1 transition-colors duration-normal hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                 headerClassName,
                 className,
             )}

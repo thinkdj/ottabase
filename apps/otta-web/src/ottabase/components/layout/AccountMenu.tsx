@@ -173,7 +173,7 @@ export const AccountMenu = memo(function AccountMenu({ variant = 'header' }: { v
             <Button
                 variant="outline"
                 size="sm"
-                className="h-10 w-10 rounded-full bg-background/95 p-0 shadow-md backdrop-blur"
+                className="h-10 w-10 rounded-full bg-background/95 p-0 shadow-md backdrop-blur-sm"
                 title="Account menu"
             >
                 <UserAvatar className="h-8 w-8" />

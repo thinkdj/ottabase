@@ -350,7 +350,7 @@ export function MediaLibraryBrowser({
         <div ref={rootRef} className="relative space-y-6">
             {/* Global upload overlay: blocks the full browser (grid + details panel) during serial uploads */}
             {isUploading && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-xs">
                     <IconLoader2 className="h-8 w-8 animate-spin text-primary" />
                     <p className="text-sm font-medium text-foreground">
                         {uploadProgress && uploadProgress.total > 1
@@ -443,7 +443,7 @@ export function MediaLibraryBrowser({
                                             type="button"
                                             aria-label="Clear search"
                                             onClick={() => setSearchValue('')}
-                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded text-muted-foreground transition-colors duration-normal hover:text-foreground focus:outline-none"
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded text-muted-foreground transition-colors duration-normal hover:text-foreground focus:outline-hidden"
                                         >
                                             <IconX className="h-4 w-4" />
                                         </button>

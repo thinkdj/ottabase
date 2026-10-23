@@ -39,7 +39,7 @@ export function ImageField({ id, value, onChange, label, ...aria }: ImageFieldPr
                     // A bigger click target for the button beside it; one control is enough for keyboards and screen readers.
                     tabIndex={-1}
                     aria-hidden
-                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[repeating-conic-gradient(hsl(var(--muted))_0%_25%,transparent_0%_50%)] bg-[length:10px_10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[repeating-conic-gradient(hsl(var(--muted))_0%_25%,transparent_0%_50%)] bg-[length:10px_10px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     {value ? (
                         <img src={value} alt="" className="h-full w-full object-contain" />

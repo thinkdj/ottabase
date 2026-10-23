@@ -1809,7 +1809,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             ) : (
                                 <button
                                     type="button"
-                                    className={`w-full rounded-lg border-2 border-dashed p-6 text-center outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                                    className={`w-full rounded-lg border-2 border-dashed p-6 text-center outline-hidden transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                         isHeroDropActive
                                             ? 'border-primary bg-primary/5'
                                             : 'border-border bg-background hover:bg-muted/40'

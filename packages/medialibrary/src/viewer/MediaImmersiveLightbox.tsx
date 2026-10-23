@@ -514,7 +514,7 @@ export function MediaImmersiveLightbox({
                             e.stopPropagation();
                             toggleFullscreen();
                         }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/60"
                         aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                     >
                         {isFullscreen ? <IconMinimize className="h-5 w-5" /> : <IconMaximize className="h-5 w-5" />}
@@ -525,7 +525,7 @@ export function MediaImmersiveLightbox({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/60"
                         aria-label="Download"
                     >
                         <IconArrowBarToDown className="h-5 w-5" />
@@ -536,7 +536,7 @@ export function MediaImmersiveLightbox({
                             e.stopPropagation();
                             handleClose();
                         }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors duration-normal hover:bg-white/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/60"
                         aria-label="Close gallery"
                     >
                         <IconX className="h-5 w-5" />
@@ -557,7 +557,7 @@ export function MediaImmersiveLightbox({
                                 onPrevious();
                             }}
                             disabled={!canGoPrevious || isBusy}
-                            className={`absolute left-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:left-5 md:h-12 md:w-12 ${controlsClass}`}
+                            className={`absolute left-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:left-5 md:h-12 md:w-12 ${controlsClass}`}
                             aria-label="Previous"
                         >
                             <IconChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
@@ -570,7 +570,7 @@ export function MediaImmersiveLightbox({
                                 onNext();
                             }}
                             disabled={!canGoNext || isBusy}
-                            className={`absolute right-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:right-5 md:h-12 md:w-12 ${controlsClass}`}
+                            className={`absolute right-2 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition-all duration-normal hover:bg-white/25 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-default disabled:opacity-0 md:right-5 md:h-12 md:w-12 ${controlsClass}`}
                             aria-label="Next"
                         >
                             <IconChevronRight className="h-5 w-5 md:h-6 md:w-6" />
@@ -658,7 +658,7 @@ export function MediaImmersiveLightbox({
                                         onSelectIndex(index);
                                     }}
                                     disabled={isBusy}
-                                    className={`h-12 w-12 shrink-0 overflow-hidden bg-white/10 transition-all duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 md:h-14 md:w-14 ${
+                                    className={`h-12 w-12 shrink-0 overflow-hidden bg-white/10 transition-all duration-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/60 md:h-14 md:w-14 ${
                                         isActive
                                             ? 'ring-2 ring-white'
                                             : 'opacity-50 ring-1 ring-white/30 hover:opacity-80'

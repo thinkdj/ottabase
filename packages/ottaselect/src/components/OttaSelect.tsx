@@ -709,7 +709,7 @@ export function OttaSelect({
                     'text-foreground',
                     'rounded-[var(--otta-select-radius)]',
                     'hover:border-ring/50',
-                    'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
+                    'focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent',
                     'transition-colors duration-fast ease-theme',
                     'flex items-center justify-between gap-[var(--otta-select-chip-gap)] text-[length:var(--otta-select-font-size)]',
                     disabled && 'cursor-not-allowed',
@@ -782,7 +782,7 @@ export function OttaSelect({
                                         'border border-input',
                                         'text-foreground',
                                         'placeholder:text-muted-foreground',
-                                        'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
+                                        'focus:outline-hidden focus:ring-2 focus:ring-ring focus:border-transparent',
                                     )}
                                 />
                             </div>

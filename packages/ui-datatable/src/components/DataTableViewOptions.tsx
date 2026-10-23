@@ -43,7 +43,7 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
                 onClick={() => setOpen(!open)}
                 className={clsx(
                     'inline-flex h-9 items-center gap-1.5 rounded-md bg-background px-3 text-sm font-medium ring-1 ring-border transition-colors duration-normal',
-                    'hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                     open && 'bg-muted/70 text-foreground',
                 )}
             >

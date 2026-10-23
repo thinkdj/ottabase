@@ -97,7 +97,7 @@ function DemoAccountTeaser({ gate }: { gate: DemoAccountGateConfig }) {
                         loading="lazy"
                         className="hidden w-full dark:block"
                     />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-background to-transparent" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-linear-to-t from-background to-transparent" />
                 </div>
             ) : null}
         </div>

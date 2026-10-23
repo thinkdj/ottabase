@@ -367,7 +367,7 @@ function App() {
 ## Styling
 
 The component uses Tailwind CSS and automatically adapts to dark/light mode via the `dark:` variant. The background blur
-effect uses `backdrop-blur` with semi-transparent backgrounds.
+effect uses `backdrop-blur-sm` with semi-transparent backgrounds.
 
 ## License
 

@@ -25,7 +25,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
              * stacking below it, so it starts one header-height down and stays under the
              * outer header's z-40 (z-30) since it is the nested, not the outer, chrome.
              */}
-            <header className="sticky top-14 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+            <header className="sticky top-14 z-30 border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/75">
                 <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4">
                     <Link to={PATHS.studio} className="inline-flex items-center gap-2 font-semibold">
                         <PenLine className="h-4 w-4" />

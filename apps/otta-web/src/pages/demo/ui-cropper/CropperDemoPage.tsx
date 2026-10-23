@@ -130,7 +130,7 @@ export function CropperDemoPage() {
                 description="Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drop or click to load, drag to move, resize with handles. Zero React dependency."
             />
 
-            <div className="grid gap-6 lg:grid-cols-[1fr,300px]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Cropper</CardTitle>

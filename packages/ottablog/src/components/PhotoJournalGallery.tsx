@@ -119,7 +119,7 @@ function PhotoTile({
             <span className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" aria-hidden="true" />
             {(item.caption || item.location) && (
                 <span
-                    className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent px-4 pb-3 pt-10 text-left text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/25 to-transparent px-4 pb-3 pt-10 text-left text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
                     aria-hidden="true"
                 >
                     {item.caption && <span className="block text-sm leading-snug">{item.caption}</span>}
@@ -143,7 +143,7 @@ function PhotoTile({
             {interactive ? (
                 <button
                     type="button"
-                    className={`${frameClass} cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+                    className={`${frameClass} cursor-zoom-in outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
                     onClick={isEnabled ? open : undefined}
                     aria-label={`Open photograph ${index + 1}${item.caption ? `: ${item.caption}` : ''}`}
                 >

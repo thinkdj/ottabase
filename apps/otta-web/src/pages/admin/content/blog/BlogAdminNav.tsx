@@ -47,7 +47,7 @@ export function BlogAdminNav() {
                         key={to}
                         to={to}
                         aria-current={active ? 'page' : undefined}
-                        className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium outline-hidden transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
                             active
                                 ? 'bg-background text-foreground ring-1 ring-border'
                                 : 'text-muted-foreground hover:text-foreground'

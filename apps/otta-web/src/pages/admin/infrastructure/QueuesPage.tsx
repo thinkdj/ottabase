@@ -431,7 +431,7 @@ export function AdminQueuePage() {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm outline-none transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm outline-hidden transition-colors duration-normal focus-visible:ring-2 focus-visible:ring-ring ${
                             activeTab === tab.id
                                 ? 'bg-background font-medium text-foreground ring-1 ring-border'
                                 : 'text-muted-foreground hover:text-foreground'

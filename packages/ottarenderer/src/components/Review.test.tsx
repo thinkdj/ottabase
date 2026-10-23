@@ -121,7 +121,7 @@ describe('Review Renderer', () => {
         it('should not render summary when not provided', () => {
             const { container } = render(<Review data={{ title: 'Test' }} />);
             // The new design uses a gradient container only when summary is present
-            const verdictBox = Array.from(container.querySelectorAll('[class*="bg-gradient-to-r"]')).find((el) =>
+            const verdictBox = Array.from(container.querySelectorAll('[class*="bg-linear-to-r"]')).find((el) =>
                 el.textContent?.includes('Verdict'),
             );
             expect(verdictBox).toBeFalsy();

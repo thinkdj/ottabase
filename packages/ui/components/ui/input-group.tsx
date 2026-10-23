@@ -14,7 +14,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
             data-slot="input-group"
             role="group"
             className={cn(
-                'group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-none',
+                'group/input-group border-input dark:bg-input/30 relative flex w-full items-center rounded-md border shadow-xs transition-[color,box-shadow] outline-hidden',
                 'h-9 min-w-0 has-[>textarea]:h-auto',
                 'has-[>[data-align=inline-start]]:[&>input]:pl-2',
                 'has-[>[data-align=inline-end]]:[&>input]:pr-2',
@@ -119,10 +119,10 @@ function InputGroupInput({ className, ...props }: React.ComponentProps<'input'>)
     return (
         <Input
             data-slot="input-group-control"
-            /* focus-visible:outline-none: the group wrapper renders the focus
+            /* focus-visible:outline-hidden: the group wrapper renders the focus
                ring (has-[…:focus-visible] recipe above), not the inner control */
             className={cn(
-                'flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:outline-none focus-visible:ring-0 dark:bg-transparent',
+                'flex-1 rounded-none border-0 bg-transparent shadow-none focus-visible:outline-hidden focus-visible:ring-0 dark:bg-transparent',
                 className,
             )}
             {...props}
@@ -134,10 +134,10 @@ function InputGroupTextarea({ className, ...props }: React.ComponentProps<'texta
     return (
         <Textarea
             data-slot="input-group-control"
-            /* focus-visible:outline-none: the group wrapper renders the focus
+            /* focus-visible:outline-hidden: the group wrapper renders the focus
                ring (has-[…:focus-visible] recipe above), not the inner control */
             className={cn(
-                'flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:outline-none focus-visible:ring-0 dark:bg-transparent',
+                'flex-1 resize-none rounded-none border-0 bg-transparent py-3 shadow-none focus-visible:outline-hidden focus-visible:ring-0 dark:bg-transparent',
                 className,
             )}
             {...props}

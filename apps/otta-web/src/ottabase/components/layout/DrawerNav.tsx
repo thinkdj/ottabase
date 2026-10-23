@@ -57,7 +57,7 @@ export function DrawerNav({ withAccount = false }: { withAccount?: boolean }) {
             </Button>
 
             {/* Portal to document.body so the overlay is not clipped by the
-                sticky header's backdrop-blur stacking context */}
+                sticky header's backdrop-blur-sm stacking context */}
             {open &&
                 createPortal(
                     <>

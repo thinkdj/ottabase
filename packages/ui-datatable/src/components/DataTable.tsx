@@ -120,7 +120,7 @@ export function DataTable<TData extends Record<string, unknown>>({
                         <thead
                             className={clsx(
                                 'bg-muted/40 [&_tr]:border-b [&_tr]:border-border/60',
-                                stickyHeader && 'sticky top-0 z-10 bg-muted/95 backdrop-blur-sm',
+                                stickyHeader && 'sticky top-0 z-10 bg-muted/95 backdrop-blur-xs',
                             )}
                         >
                             {headerGroups.map((headerGroup) => (

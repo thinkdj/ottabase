@@ -167,7 +167,7 @@ function KitCard({
                 to="/admin/appearance/brand-kits/$kitId"
                 params={{ kitId: kit.id }}
                 aria-label={`Edit ${kit.name}`}
-                className="absolute inset-0 z-[1] rounded-[inherit] outline-none"
+                className="absolute inset-0 z-[1] rounded-[inherit] outline-hidden"
             />
 
             <KitSpecimen kit={kit} logoBaseUrl={logoBaseUrl} />
@@ -259,7 +259,7 @@ function NewKitTile() {
     return (
         <Link
             to="/admin/appearance/brand-kits/new"
-            className="group flex min-h-[13.75rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-muted-foreground outline-none transition-colors duration-normal hover:border-foreground/25 hover:bg-muted/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="group flex min-h-[13.75rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border text-muted-foreground outline-hidden transition-colors duration-normal hover:border-foreground/25 hover:bg-muted/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted transition-colors duration-normal group-hover:bg-background group-hover:ring-1 group-hover:ring-border">
                 <IconPlus className="h-4 w-4" />

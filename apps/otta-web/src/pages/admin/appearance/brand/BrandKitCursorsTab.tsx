@@ -353,8 +353,8 @@ function PreviewSurface({ config, dark }: { config: Partial<TokenCursors>; dark?
         <div
             className={`flex-1 min-w-0 rounded-xl border p-3 transition-colors ${
                 dark
-                    ? 'border-neutral-700 bg-gradient-to-b from-neutral-900 to-neutral-950 text-neutral-200'
-                    : 'border-border bg-gradient-to-b from-white to-neutral-50 text-neutral-800'
+                    ? 'border-neutral-700 bg-linear-to-b from-neutral-900 to-neutral-950 text-neutral-200'
+                    : 'border-border bg-linear-to-b from-white to-neutral-50 text-neutral-800'
             }`}
             style={{ cursor: resolve('default').css }}
             onMouseLeave={() => {

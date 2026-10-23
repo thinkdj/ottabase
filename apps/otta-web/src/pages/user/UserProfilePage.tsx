@@ -414,7 +414,7 @@ export function UserProfilePage() {
                                 <button
                                     type="button"
                                     onClick={() => setAvatarPreviewOpen(true)}
-                                    className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     aria-label="View profile picture"
                                 >
                                     <Avatar className="h-20 w-20 cursor-pointer ring-1 ring-border ring-offset-2 ring-offset-background transition-opacity duration-normal hover:opacity-90">
@@ -434,7 +434,7 @@ export function UserProfilePage() {
                                     e.stopPropagation();
                                     setAvatarModalOpen(true);
                                 }}
-                                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-background text-muted-foreground shadow-sm ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 aria-label="Edit profile picture"
                             >
                                 <IconPencil className="h-3.5 w-3.5" />

@@ -51,7 +51,7 @@ export function Toaster({ style, ...props }: ToasterProps) {
 
     // Render the toaster as a direct child of <body>. Sonner mounts its toast container inline
     // where <Toaster /> sits in the tree, so any ancestor that creates a stacking context
-    // (transform, filter, backdrop-blur, isolate, etc. on an app-shell/provider wrapper) traps it.
+    // (transform, filter, backdrop-blur-sm, isolate, etc. on an app-shell/provider wrapper) traps it.
     // Radix Dialog/Sheet portal to <body> at z-50, so a trapped toaster (even at z-index
     // 999999999) paints behind them, because z-index cannot cross stacking contexts. Portaling to
     // <body> lifts it out so its z-index wins.
