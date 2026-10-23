@@ -173,7 +173,7 @@ describe('app start planning', () => {
 
     it('fails before building when a named Wrangler environment is not configured', () => {
         expect(() => createStartPlan('otta-web', { environment: 'qa' })).toThrow(
-            /environment "qa" is not defined.*Available: preview, production, staging/,
+            /environment "qa" is not defined.*Available: demo, preview, production, staging/,
         );
     });
 
