@@ -29,7 +29,7 @@ import {
     Input,
     NativeSelect,
     NativeSelectOption,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useSearch } from '@tanstack/react-router';

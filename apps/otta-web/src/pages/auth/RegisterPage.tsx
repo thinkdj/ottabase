@@ -9,7 +9,7 @@ import {
     getStoredReferralCode,
 } from '@/lib/referrals';
 import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';

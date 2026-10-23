@@ -19,7 +19,7 @@ import {
     DialogTitle,
     Input,
     Label,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';

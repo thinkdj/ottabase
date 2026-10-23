@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { APP_META } from '@/ottabase/config';
 import { verifyEmail } from '@/lib/auth-api';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 
 export function VerifyEmailPage() {
     const navigate = useNavigate();

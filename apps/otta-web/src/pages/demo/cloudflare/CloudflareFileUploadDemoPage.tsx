@@ -1,5 +1,5 @@
 import { FileUploader } from '@ottabase/ottaupload/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { DemoPageHeader } from '../DemoPageHeader';

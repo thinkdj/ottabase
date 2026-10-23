@@ -2,16 +2,7 @@ import { api, isApiError } from '@/lib/api';
 import { APP_ID } from '@/ottabase/config';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
 import { ShortlinkTypes } from '@ottabase/shortlinks';
-import {
-    Button,
-    Input,
-    Label,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@ottabase/ui-shadcn';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ottabase/ui';
 import { useEffect, useState } from 'react';
 
 interface ShortlinkFormProps {

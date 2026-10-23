@@ -57,7 +57,7 @@ vi.mock('@/components/media-library/MediaLibraryBrowser', () => ({
         </button>
     ),
 }));
-vi.mock('@ottabase/ui-shadcn', async (importOriginal) => {
+vi.mock('@ottabase/ui', async (importOriginal) => {
     const real = await importOriginal<object>();
     const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
     return {

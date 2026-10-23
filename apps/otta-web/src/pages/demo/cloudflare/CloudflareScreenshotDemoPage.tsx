@@ -14,7 +14,7 @@ import {
     NativeSelect,
     NativeSelectOption,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Camera, Download, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

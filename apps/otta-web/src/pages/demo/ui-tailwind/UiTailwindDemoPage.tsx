@@ -2,7 +2,7 @@
  * Tailwind Preset Demo Page
  * Demonstrates @ottabase/ui-tailwind: shared Tailwind preset with theme CSS variables.
  */
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Moon, Paintbrush, Palette, Sun } from 'lucide-react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

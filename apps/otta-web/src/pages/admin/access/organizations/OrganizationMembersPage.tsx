@@ -12,9 +12,9 @@ import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import type { MemberRole, OrganizationMemberRecord } from '@/types/rbac';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -30,7 +30,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link, useParams } from '@tanstack/react-router';
 import { useSetAtom } from 'jotai';
 import { ArrowLeft, ChevronLeft, ChevronRight, Edit, RefreshCw, Trash2, UserPlus } from 'lucide-react';

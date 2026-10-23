@@ -12,8 +12,17 @@ import {
     getStoredReferralCode,
 } from '@/lib/referrals';
 import { validateReferralUsername } from '@ottabase/referrals';
-import { ConfirmDialog } from '@ottabase/ui-components';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    ConfirmDialog,
+    Input,
+} from '@ottabase/ui';
 import { Copy, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';

@@ -144,11 +144,9 @@ ottabase/
 │   ├── config/           # App config, env vars, storage keys
 │   ├── scripts/          # CLI: cf:setup, cf:validate, cf:login, clean:*
 │   ├── state/            # Jotai atoms (theme, user, sidebar)
-│   ├── ui-shadcn/        # shadcn/ui components
-│   ├── ui-mantine/       # Mantine provider + themes
-│   ├── ui-components/    # Shared components (DarkModeToggle, Logo)
+│   ├── ui/               # The UI kit: shadcn/ui primitives, DS v1 pieces, ConfirmDialog, SplitPane, tokens
+│   ├── ui-mantine/       # Mantine provider + themes (optional adapter)
 │   ├── ui-code-highlight/ # Code syntax highlighting
-│   ├── ui-split-pane/    # Resizable split pane
 │   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
 │   ├── ottaupload/       # File uploads (R2, CF Images)
 │   ├── ottarenderer/     # EditorJS block renderer
@@ -407,22 +405,19 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
 ### UI Components
 
-| Package                       | Purpose                                                  |
-| ----------------------------- | -------------------------------------------------------- |
-| `@ottabase/ui-shadcn`         | shadcn/ui components, ShadcnProviders                    |
-| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes                       |
-| `@ottabase/ui-base`           | Framework-agnostic base styles                           |
-| `@ottabase/ui-components`     | Shared components: DarkModeToggle, Logo                  |
-| `@ottabase/ui-code-highlight` | Code syntax highlighting (Prism/Shiki)                   |
-| `@ottabase/ui-split-pane`     | Resizable split-pane layout component                    |
-| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review) |
-| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)            |
-| `@ottabase/ottarenderer`      | EditorJS block renderer for React                        |
-| `@ottabase/ottaselect`        | Headless select/combobox component                       |
-| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)            |
-| `@ottabase/spotlight`         | Spotlight/command palette component                      |
-| `@ottabase/docs`              | Markdown doc viewer with layout themes                   |
-| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models            |
+| Package                       | Purpose                                                                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ottabase/ui`                | The UI kit: shadcn/ui primitives, Design System v1 pieces, ConfirmDialog, MessageBox, DarkModeToggle, SplitPane, JsonEditor, UIProviders, tokens and base styles |
+| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes (optional adapter)                                                                                                            |
+| `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                          |
+| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                         |
+| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                    |
+| `@ottabase/ottarenderer`      | EditorJS block renderer for React                                                                                                                                |
+| `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                               |
+| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)                                                                                                                    |
+| `@ottabase/spotlight`         | Spotlight/command palette component                                                                                                                              |
+| `@ottabase/docs`              | Markdown doc viewer with layout themes                                                                                                                           |
+| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models                                                                                                                    |
 
 ### Features & Realtime
 

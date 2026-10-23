@@ -22,7 +22,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconChartBar, IconLink, IconLoader2, IconRefresh, IconUsers } from '@tabler/icons-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';

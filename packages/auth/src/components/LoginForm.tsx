@@ -9,7 +9,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import type { SocialProvider } from './helpers';
 import { SocialLoginButtons, SocialLoginDivider } from './SocialLoginButtons';
 import { CredentialsForm } from './CredentialsForm';

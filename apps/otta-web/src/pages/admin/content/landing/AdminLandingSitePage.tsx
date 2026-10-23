@@ -14,10 +14,10 @@ import {
     type ThemeId,
 } from '@ottabase/ottalanding';
 import { LandingPreview } from '@ottabase/ottalanding/react';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -30,7 +30,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Check, ExternalLink, Inbox, Plus, Trash2 } from 'lucide-react';

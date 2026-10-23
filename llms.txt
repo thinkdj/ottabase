@@ -82,14 +82,11 @@
 - [@ottabase/shortlinks](packages/shortlinks/README.md): URL shortening system for Cloudflare D1 — redirect handling, interstitial pages, expiry, and click analytics.
 - [@ottabase/spotlight](packages/spotlight/README.md): Lightweight spotlight/command palette component with dark mode support, background blur effects, and configurable search.
 - [@ottabase/state](packages/state/README.md): Layout structure in ThemeInfo.layout uses and re-exports the canonical LayoutConfig from @ottabase/ottalayout; state does not maintain a narrower copy of the layout variants.
-- [@ottabase/ui-base](packages/ui-base/README.md): Base UI styles and utilities for Ottabase applications. This package contains framework-agnostic CSS reset, animations, and base styles.
+- [@ottabase/ui](packages/ui/README.md): The Ottabase UI kit: every component the apps and package panels render, on the Design System v1 tokens. It holds the shadcn/ui primitives (Radix underneath), the Design System v1 pieces (PageHeader,…
 - [@ottabase/ui-code-highlight](packages/ui-code-highlight/README.md): A lightweight, standalone code highlighting component for React applications with automatic light/dark mode support.
-- [@ottabase/ui-components](packages/ui-components/README.md): Shared UI components for Ottabase applications.
 - [@ottabase/ui-cropper](packages/ui-cropper/README.md): Advanced vanilla image cropper: crop, flip, rotate, zoom with smooth transitions. Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~3–4 KB gzipped.
 - [@ottabase/ui-datatable](packages/ui-datatable/README.md): Advanced, headless-first data table built on TanStack Table v8 for ottabase. Supports server-side sort/filter/pagination (via OttaORM), column visibility, row selection, inline editing, bulk actions,…
 - [@ottabase/ui-mantine](packages/ui-mantine/README.md): Mantine UI components and providers for Ottabase applications. This package provides a comprehensive Mantine integration with pre-built themes and configuration utilities.
-- [@ottabase/ui-shadcn](packages/ui-shadcn/README.md): Shared shadcn/ui components and helpers used across Ottabase applications. The package provides:
-- [@ottabase/ui-split-pane](packages/ui-split-pane/README.md): Minimal, clean split-pane component for React applications with no frills.
 - [@ottabase/ui-tailwind](packages/ui-tailwind/README.md): Shared Tailwind CSS preset and base styles for Ottabase apps. The preset maps theme CSS variables (shadcn-style HSL tokens, radii, fonts, charts, sidebar, etc.) to Tailwind utilities and registers…
 - [@ottabase/utils](packages/utils/README.md): A set of utility functions for file operations, string manipulation, URL handling, environment detection, currency formatting, email parsing, JSON handling, git operations, and more.
 - [@ottabase/vault](packages/vault/README.md): Backups, restore and per-tenant export for an Ottabase app. Every D1 table goes to R2 as NDJSON, comes back in one transaction, and any one tenant's rows can be streamed out when a customer asks for…

@@ -10,7 +10,7 @@ import type { PostAuthor } from '@/types/blog';
 import type { HeroImage } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { IconArrowRight, IconPlus, IconStarFilled } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 

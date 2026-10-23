@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { Spotlight } from '@ottabase/spotlight/react';
 import { useSpotlight, type SpotlightResult } from '@ottabase/spotlight';
 import { IconBolt, IconCommand, IconSearch, IconSparkles } from '@tabler/icons-react';

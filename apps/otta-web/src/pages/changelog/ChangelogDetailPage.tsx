@@ -13,7 +13,7 @@ import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
-import { Badge, Button } from '@ottabase/ui-shadcn';
+import { Badge, Button } from '@ottabase/ui';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { Link, useParams } from '@tanstack/react-router';
 

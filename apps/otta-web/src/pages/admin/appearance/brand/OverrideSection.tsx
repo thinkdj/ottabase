@@ -4,7 +4,7 @@
 // Only used when the brand kit has a parent (inherited kit).
 // ---------------------------------------------------------------------------
 
-import { Label, Switch } from '@ottabase/ui-shadcn';
+import { Label, Switch } from '@ottabase/ui';
 import { IconGitBranch } from '@tabler/icons-react';
 
 interface OverrideSectionProps {

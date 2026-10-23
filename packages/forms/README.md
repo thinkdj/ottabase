@@ -8,10 +8,10 @@ ModelCrud.
 This package ships as two subpaths so a consumer that only needs config/schema logic never pulls in the React UI (or its
 UI dependencies):
 
-| Import                  | Contents                                                                                     | Deps pulled in                                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI — only `@ottabase/ottaorm` + `zod`                                                     |
-| `@ottabase/forms/react` | **Rendered UI.** `ModelForm`, `ModelCrud`, `ModelTable`, `ModelDetail`, `FormField`          | React + the UI packages (`@ottabase/ui-components`, `-datatable`, `ottaselect`, `lucide-react`, `clsx`) |
+| Import                  | Contents                                                                                     | Deps pulled in                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI — only `@ottabase/ottaorm` + `zod`                                            |
+| `@ottabase/forms/react` | **Rendered UI.** `ModelForm`, `ModelCrud`, `ModelTable`, `ModelDetail`, `FormField`          | React + the UI packages (`@ottabase/ui`, `ui-datatable`, `ottaselect`, `lucide-react`, `clsx`) |
 
 The UI packages are declared as **optional peer dependencies**, so installing `@ottabase/forms` for headless use does
 not force them into your dependency tree. Install them only when you import from `@ottabase/forms/react`.
@@ -35,7 +35,7 @@ import { ModelCrud, ModelForm } from '@ottabase/forms/react';
 - **Standalone Forms**: Use `action` prop to POST/PATCH directly to any endpoint.
 - **Model Defaults**: Respects `static defaults` from OttaORM models in create forms.
 - **OttaSelect**: Relationship fields use `@ottabase/ottaselect` for single/multi-select.
-- **JSON Editor**: JSON fields use the in-house `JsonEditor` from `@ottabase/ui-components` (Tree + Raw modes, inline
+- **JSON Editor**: JSON fields use the in-house `JsonEditor` from `@ottabase/ui/json-editor` (Tree + Raw modes, inline
   editing, live validation).
 - **Type-safe**: Full TypeScript, seamlessly integrates with OttaORM types.
 
@@ -262,8 +262,8 @@ const config = defineModelConfig({
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed):
-  every field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
+- **Accessibility** — rendered components build on the `@ottabase/ui` form primitives (react-hook-form backed): every
+  field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
   `aria-describedby`. Keyboard and focus behavior come from those primitives; you don't re-implement them.
 - **SSR** — components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema
   (`buildZodSchema`) runs client-side for UX and server-side as the trust boundary (see
@@ -271,7 +271,7 @@ const config = defineModelConfig({
 - **Performance** — the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config
   builders never pulls in React components. **Caveat:** the generated `ModelForm` currently holds field state in
   `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
-  ui-shadcn react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
+  `@ottabase/ui` react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
 
 ## Exports
 

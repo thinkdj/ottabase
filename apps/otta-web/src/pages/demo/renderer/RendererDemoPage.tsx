@@ -11,7 +11,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 // Sample EditorJS data with rich content

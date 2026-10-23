@@ -66,8 +66,7 @@ Each package has its own `vitest.config.ts`:
 - `packages/api/` - Node.js environment
 - `packages/auth/` - Node.js environment
 - `packages/state/` - Node.js environment
-- `packages/ui-components/` - Browser/jsdom environment
-- `packages/ui-shadcn/` - Browser/jsdom environment
+- `packages/ui/` - Browser/jsdom environment
 - `packages/forms/` - Browser/jsdom environment
 - `packages/db/` - Node.js environment
 - `packages/cf/` - Node.js environment
@@ -109,10 +108,10 @@ describe('String Utilities', () => {
 Use `@testing-library/react` for component testing:
 
 ```typescript
-// packages/ui-components/src/__tests__/Button.test.tsx
+// packages/ui/src/__tests__/button.test.tsx
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Button } from '../Button';
+import { Button } from '../../components/ui/button';
 
 describe('Button Component', () => {
   it('should render button', () => {

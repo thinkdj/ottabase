@@ -80,11 +80,7 @@ vi.mock('@tanstack/react-router', () => ({
     useParams: mocks.useParams,
 }));
 
-vi.mock('@ottabase/ui-components', () => ({
-    ConfirmDialog: () => null,
-}));
-
-vi.mock('@ottabase/ui-shadcn', () => {
+vi.mock('@ottabase/ui', () => {
     const Button = ({ asChild, children, ...props }: any) => {
         if (asChild) return children;
         return <button {...props}>{children}</button>;
@@ -103,6 +99,7 @@ vi.mock('@ottabase/ui-shadcn', () => {
         AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
         AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
         Button,
+        ConfirmDialog: () => null,
         Card: Div,
         CardContent: Div,
         CardDescription: Div,

@@ -9,7 +9,7 @@ import { createModelConfig, defineModelConfig } from '@ottabase/forms';
 import { ModelCrud } from '@ottabase/forms/react';
 import { Post } from '@ottabase/ottablog';
 import { Tag, User } from '@ottabase/ottaorm/models';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

@@ -12,7 +12,7 @@ export function escapeHtml(value: unknown): string {
 
 // The operator page in Design System v1: the same tokens as the admin, system
 // fallbacks for the two faces (no outbound font request), light and dark from
-// the OS, one table, one footer line. Values mirror ui-shadcn/styles/shadcn.css.
+// the OS, one table, one footer line. Values mirror packages/ui/styles/ui.css.
 const STYLES = `
 :root { color-scheme: light dark;
   --bg: #f6f8f7; --surface: #ffffff; --surface-2: #eef2ef; --line: #e0e7e3; --fg: #121a15; --fg-2: #4b5a52; --muted: #5d6c64; --accent: #216a4d;

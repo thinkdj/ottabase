@@ -3,7 +3,7 @@
  * Demonstrates @ottabase/scripts: CLI tools for command discovery, Cloudflare setup, local env
  * secrets, and cache/state cleanup.
  */
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Cloud, Database, Key, Plug, RotateCcw, Terminal, Trash2 } from 'lucide-react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

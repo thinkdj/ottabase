@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { DemoPageHeader } from '../DemoPageHeader';
 import { DEMO_ACCOUNT_GATES } from '../demoAccountGates';

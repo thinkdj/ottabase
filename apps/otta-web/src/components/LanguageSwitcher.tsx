@@ -6,7 +6,7 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Check, Languages } from 'lucide-react';
 
 export interface LanguageSwitcherProps {

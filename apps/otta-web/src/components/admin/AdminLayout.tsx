@@ -16,7 +16,7 @@
 
 import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
 import { getEnabledAdminNav, type AdminNavGroup } from '@/ottabase/config/admin-nav';
-import { Button, Input, PremiumMark, Sheet, SheetContent, SheetTitle, SheetTrigger } from '@ottabase/ui-shadcn';
+import { Button, Input, PremiumMark, Sheet, SheetContent, SheetTitle, SheetTrigger } from '@ottabase/ui';
 import { Link, useLocation } from '@tanstack/react-router';
 import { LayoutDashboard, Menu, Search, X } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';

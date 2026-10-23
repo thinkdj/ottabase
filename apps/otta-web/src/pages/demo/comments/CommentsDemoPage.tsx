@@ -4,7 +4,7 @@
  * Supports in-memory (default) and database-backed modes via a toggle.
  */
 import { DEFAULT_REACTIONS } from '@ottabase/comments';
-import { Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui';
 import {
     IconDatabase,
     IconFlag,

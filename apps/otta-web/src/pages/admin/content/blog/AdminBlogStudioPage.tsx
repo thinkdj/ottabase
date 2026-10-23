@@ -35,7 +35,7 @@ import {
     SelectTrigger,
     SelectValue,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Loader2, Palette, Puzzle, Settings, Sparkles } from 'lucide-react';
 import { useCallback, useState } from 'react';

@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { TokenDisabledFlags } from '@ottabase/brand-engine';
-import { Label, Switch } from '@ottabase/ui-shadcn';
+import { Label, Switch } from '@ottabase/ui';
 import { useMemo, type ReactNode } from 'react';
 
 interface TabDisableToggleProps {

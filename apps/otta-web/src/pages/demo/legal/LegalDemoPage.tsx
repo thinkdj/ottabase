@@ -1,7 +1,7 @@
 import { listLegalDocuments, validateLegalConfig, type LegalDocId, type LegalFeatures } from '@ottabase/legal';
 import { LegalDocument } from '@ottabase/legal/react';
 import '@ottabase/legal/styles.css';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Switch } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Switch } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ExternalLink, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';

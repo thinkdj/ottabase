@@ -25,8 +25,8 @@ Two families of categories:
 - **Defaulted** (`color`, `typography`, `spacing`, `radius`, `shadow`, `motion`) — engine defaults are merged under
   theme values; their vars are always emitted.
 - **Sparse** (everything below) — emitted **only when the theme defines them**. Fallbacks live in the consumers
-  (`tailwind.base.cjs` utilities + static rules in `ui-shadcn/styles/shadcn.css`), so a theme that defines none of them
-  renders pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
+  (`tailwind.base.cjs` utilities + static rules in `ui/styles/ui.css`), so a theme that defines none of them renders
+  pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
   `var(--specific, var(--global, <today's literal>))`.
 
 | Category      | Shape (in `tokensJson`)                                                     | Emission                                                                      |
@@ -67,10 +67,10 @@ Notes:
   `.dark`/scope re-binding is pure CSS cascade. The root entry has no DOM globals, so Workers use it to build the same
   stylesheets server-side; only `/dom` (`applyBrandTheme`, `injectFont`, `upsertStyleElement`) touches `document`.
 
-### Component hooks (ui-shadcn)
+### Component hooks (@ottabase/ui)
 
-Injected theme CSS comes after the bundled CSS, so equal-specificity selectors win: every ui-shadcn primitive stamps
-`data-slot` (CVA components also stamp `data-variant`/`data-size`), which makes
+Injected theme CSS comes after the bundled CSS, so equal-specificity selectors win: every `@ottabase/ui` primitive
+stamps `data-slot` (CVA components also stamp `data-variant`/`data-size`), which makes
 `[data-slot='button'][data-variant='outline']:hover { … }` the component restyling API. Button/Card also ship an empty
 `[data-decor]` span (hidden by default) for shine/ornament layers. For components whose **DOM** must differ, register a
 React override: `<BrandComponentsProvider overrides={{ button: UppButton }}>` (Tier-2 escape hatch — prefer CSS).

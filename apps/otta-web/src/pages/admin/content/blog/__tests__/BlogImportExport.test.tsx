@@ -15,7 +15,7 @@ vi.mock('@ottabase/ottaorm/client', () => ({ useApiClient: () => apiClient }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }));
 
 // Passthrough primitives; the dialog renders its children only while open, like Radix.
-vi.mock('@ottabase/ui-shadcn', () => {
+vi.mock('@ottabase/ui', () => {
     const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
     return {
         Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (

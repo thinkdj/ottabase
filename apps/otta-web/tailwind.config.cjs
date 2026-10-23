@@ -14,10 +14,8 @@ module.exports = {
     content: [
         './index.html',
         './src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-base/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ui-code-highlight/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ui/components/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/spotlight/src/**/*.{js,ts,jsx,tsx}',
         '../../packages/ottarenderer/src/**/*.{js,ts,jsx,tsx}',

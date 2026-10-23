@@ -54,48 +54,75 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mockNavigate,
 }));
 
-vi.mock('@ottabase/ui-shadcn', () => {
+vi.mock('@ottabase/ui', () => {
     const AlertDialogContext = React.createContext<{
         open: boolean;
         onOpenChange?: (open: boolean) => void;
     }>({ open: false });
 
+    const AlertDialog = ({ open, onOpenChange, children }: any) => (
+        <AlertDialogContext.Provider value={{ open, onOpenChange }}>{children}</AlertDialogContext.Provider>
+    );
+    const AlertDialogAction = ({ children, onClick, ...props }: any) => (
+        <button type="button" onClick={onClick} {...props}>
+            {children}
+        </button>
+    );
+    const AlertDialogCancel = ({ children, onClick, ...props }: any) => {
+        const dialog = React.useContext(AlertDialogContext);
+
+        return (
+            <button
+                type="button"
+                onClick={(event) => {
+                    onClick?.(event);
+                    dialog.onOpenChange?.(false);
+                }}
+                {...props}
+            >
+                {children}
+            </button>
+        );
+    };
+    const AlertDialogContent = ({ children }: any) => {
+        const dialog = React.useContext(AlertDialogContext);
+
+        return dialog.open ? <div role="alertdialog">{children}</div> : null;
+    };
+    const AlertDialogDescription = ({ children }: any) => <p>{children}</p>;
+    const AlertDialogTitle = ({ children }: any) => <h2>{children}</h2>;
+
     return {
         cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
         buttonVariants: () => '',
-        AlertDialog: ({ open, onOpenChange, children }: any) => (
-            <AlertDialogContext.Provider value={{ open, onOpenChange }}>{children}</AlertDialogContext.Provider>
-        ),
-        AlertDialogAction: ({ children, onClick, ...props }: any) => (
-            <button type="button" onClick={onClick} {...props}>
-                {children}
-            </button>
-        ),
-        AlertDialogCancel: ({ children, onClick, ...props }: any) => {
-            const dialog = React.useContext(AlertDialogContext);
-
-            return (
-                <button
-                    type="button"
-                    onClick={(event) => {
-                        onClick?.(event);
-                        dialog.onOpenChange?.(false);
-                    }}
-                    {...props}
-                >
-                    {children}
-                </button>
-            );
-        },
-        AlertDialogContent: ({ children }: any) => {
-            const dialog = React.useContext(AlertDialogContext);
-
-            return dialog.open ? <div role="alertdialog">{children}</div> : null;
-        },
-        AlertDialogDescription: ({ children }: any) => <p>{children}</p>,
+        AlertDialog,
+        AlertDialogAction,
+        AlertDialogCancel,
+        AlertDialogContent,
+        AlertDialogDescription,
         AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
         AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
-        AlertDialogTitle: ({ children }: any) => <h2>{children}</h2>,
+        AlertDialogTitle,
+        // The real ConfirmDialog, reduced to the props the account menu passes
+        ConfirmDialog: ({
+            open,
+            onOpenChange,
+            title,
+            description,
+            primaryActionText,
+            secondaryActionText,
+            onConfirm,
+            onCancel,
+        }: any) => (
+            <AlertDialog open={open} onOpenChange={onOpenChange}>
+                <AlertDialogContent>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>{description}</AlertDialogDescription>
+                    <AlertDialogCancel onClick={onCancel}>{secondaryActionText}</AlertDialogCancel>
+                    <AlertDialogAction onClick={onConfirm}>{primaryActionText}</AlertDialogAction>
+                </AlertDialogContent>
+            </AlertDialog>
+        ),
         Avatar: ({ children, className }: any) => <div className={className}>{children}</div>,
         AvatarFallback: ({ children, className }: any) => <span className={className}>{children}</span>,
         AvatarImage: ({ src }: any) => <img src={src} alt="" />,

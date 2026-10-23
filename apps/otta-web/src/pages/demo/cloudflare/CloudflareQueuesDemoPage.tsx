@@ -10,7 +10,7 @@ import {
     NativeSelect,
     NativeSelectOption,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useEffect, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

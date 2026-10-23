@@ -1,7 +1,7 @@
 import { useSession } from '@/lib/auth';
 import { getCsrfToken } from '@/lib/auth-api';
 import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { IconKey, IconLogin, IconRefresh, IconShieldLock, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Separator } from '@ottabase/ui-shadcn';
+import { Button, Separator } from '@ottabase/ui';
 import type { SocialProvider } from './helpers';
 
 export interface SocialLoginButtonsProps {

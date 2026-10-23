@@ -11,7 +11,7 @@
 //                        registry-backed effect utilities
 //
 // Fixed-shape rules (focus ring, ::selection, scrollbar, press physics, body
-// backdrop) are NOT generated — they live statically in ui-shadcn's shadcn.css
+// backdrop) are NOT generated — they live statically in @ottabase/ui's styles/ui.css
 // reading vars with pixel-identical fallbacks.
 //
 // Specificity discipline: every generated selector is wrapped in :where() so
@@ -231,10 +231,10 @@ function buildLinksCSS(theme: ResolvedBrandTheme): string {
 
 /**
  * Interaction press extras — only the pieces that CANNOT live as static rules
- * in shadcn.css because they lack a safe identity fallback (box-shadow: none
+ * in @ottabase/ui styles/ui.css because they lack a safe identity fallback (box-shadow: none
  * would kill a component's own shadow while pressed; transition overrides
  * would fight per-component duration utilities). The hover/press transforms
- * themselves ARE static (shadcn.css) since `none` is a true identity.
+ * themselves ARE static (@ottabase/ui styles/ui.css) since `none` is a true identity.
  * A reduced-motion guard neutralizes the physics vars.
  */
 function buildInteractionCSS(theme: ResolvedBrandTheme): string {
@@ -257,7 +257,7 @@ function buildInteractionCSS(theme: ResolvedBrandTheme): string {
     if (active.length > 0) rules.push(`${sel}:active {\n${active.join('\n')}\n}`);
 
     // Physics respect reduced motion (the duration tokens are already zeroed
-    // by the shadcn.css guard; transforms/shadows are neutralized here).
+    // by the styles/ui.css guard; transforms/shadows are neutralized here).
     rules.push(
         '@media (prefers-reduced-motion: reduce) {\n' +
             '  :root {\n' +

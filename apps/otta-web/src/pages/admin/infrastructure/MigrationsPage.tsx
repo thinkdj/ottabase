@@ -1,5 +1,5 @@
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardHeader, CardTitle, Checkbox, Input, Label } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';

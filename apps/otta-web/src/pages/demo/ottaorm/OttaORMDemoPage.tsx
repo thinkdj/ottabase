@@ -9,7 +9,7 @@ import {
     Input,
     NativeSelect,
     NativeSelectOption,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

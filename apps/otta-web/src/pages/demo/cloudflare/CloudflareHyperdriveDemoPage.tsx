@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 export function CloudflareHyperdriveDemoPage() {

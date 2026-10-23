@@ -65,8 +65,7 @@
         "@tanstack/react-query": "catalog:",
         "drizzle-orm": "catalog:",
         "react": "catalog:",
-        "@ottabase/ui-components": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "lucide-react": "catalog:"
     },
     "peerDependenciesMeta": {
@@ -76,10 +75,7 @@
         "react": {
             "optional": true
         },
-        "@ottabase/ui-components": {
-            "optional": true
-        },
-        "@ottabase/ui-shadcn": {
+        "@ottabase/ui": {
             "optional": true
         },
         "lucide-react": {
@@ -87,8 +83,7 @@
         }
     },
     "devDependencies": {
-        "@ottabase/ui-components": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@testing-library/react": "catalog:",
         "@types/react": "catalog:",

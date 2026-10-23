@@ -1,9 +1,9 @@
 import { APP_META, appConfig } from '@/ottabase/config';
 import { appStateAtom, sidebarStateAtom, themeAtom } from '@/ottabase/state/appState';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { BlogPagination } from '@ottabase/ui-components';
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
-import { Logo } from '@ottabase/ui-components/logo';
+import { BlogPagination } from '@ottabase/ottablog/pagination';
+import { DarkModeToggle } from '@ottabase/ui';
+import { Logo } from '@/components/Logo';
 import {
     Badge,
     Button,
@@ -90,8 +90,8 @@ export function MantineDemoPage() {
                         </p>
                     </div>
                     {/* <Group mt="lg">
-                        <Button component="a" href="/demo/shadcn" variant="outline">
-                            Explore shadcn/ui demo
+                        <Button component="a" href="/demo/ui" variant="outline">
+                            Explore the UI kit demo
                         </Button>
                         <Button component="a" href="/demo/ottaeditor" variant="outline">
                             Explore OttaEditor demo
@@ -200,14 +200,13 @@ export function MantineDemoPage() {
 
                 <Card shadow="sm" padding="lg" radius="md" withBorder>
                     <Title order={2} size="h3" mb="md">
-                        UI Components Demo
+                        Ottabase Components in a Mantine Page
                     </Title>
 
                     <BlogPagination
                         onPageChange={(page) => console.log('Page changed to:', page)}
                         page={1}
                         lastPage={10}
-                        perPage={10}
                     />
 
                     <Stack gap="md" mt="md">

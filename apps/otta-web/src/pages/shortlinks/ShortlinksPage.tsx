@@ -2,7 +2,6 @@ import { api, isApiError } from '@/lib/api';
 import type { PaginatedResponse } from '@/lib/api-types';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import type { ShortlinkRecord } from '@ottabase/shortlinks';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import { formatShortDate, type DateInput } from '@ottabase/utils/timezone';
 import {
     Button,
@@ -11,6 +10,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -28,7 +28,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import {
     BarChart3,
     ChevronLeft,

@@ -281,8 +281,8 @@ Next.js landing page with Cloudflare Workers deployment. Includes:
 
 - Next.js for SSR/SSG
 - OpenNext for Cloudflare deployment
-- Tailwind CSS
-- shadcn/ui components
+- Tailwind CSS on the shared `@ottabase/ui-tailwind` preset
+- The landing themes from `@ottabase/ottalanding`
 
 ### `worker`
 

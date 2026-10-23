@@ -1,4 +1,4 @@
-import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@ottabase/ui-shadcn';
+import { Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@ottabase/ui';
 
 interface BrandKitAdvancedTabProps {
     defaultColorScheme: 'light' | 'dark' | 'system';

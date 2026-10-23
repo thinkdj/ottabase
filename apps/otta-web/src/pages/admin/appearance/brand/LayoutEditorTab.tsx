@@ -8,7 +8,6 @@ import {
     type LayoutPresetId,
 } from '@ottabase/ottalayout';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -17,6 +16,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -31,7 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconAdjustments, IconChevronDown, IconEdit, IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';

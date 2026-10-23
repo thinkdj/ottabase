@@ -17,7 +17,7 @@ import {
     NativeSelectOption,
     StatusChip,
     Tag,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Check, Copy, KeyRound } from 'lucide-react';
 import { useState } from 'react';

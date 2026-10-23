@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useApiMutation } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,7 +16,8 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@ottabase/ui-shadcn';
+    ConfirmDialog,
+} from '@ottabase/ui';
 import { api, isApiError } from '@/lib/api';
 import {
     ArrowLeft,

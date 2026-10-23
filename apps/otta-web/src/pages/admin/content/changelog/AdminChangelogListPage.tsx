@@ -7,10 +7,9 @@
 import { ADMIN_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatShortDate, POST_STATUSES, type PostStatus } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { Badge, Button } from '@ottabase/ui-shadcn';
+import { Badge, Button, ConfirmDialog } from '@ottabase/ui';
 import { IconEdit, IconEye, IconPlus, IconStar, IconStarFilled, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import { useState } from 'react';
 
 const CHIP_CLASS =

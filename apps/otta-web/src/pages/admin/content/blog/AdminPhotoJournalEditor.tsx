@@ -26,7 +26,6 @@ import {
 } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -41,6 +40,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -51,7 +51,7 @@ import {
     NativeSelect,
     NativeSelectOption,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {

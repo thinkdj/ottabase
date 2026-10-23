@@ -9,9 +9,25 @@ description:
 
 # Building a first-class component the Ottabase way
 
-`@ottabase/ui-shadcn` components follow a consistent recipe. There is **no `styled()` / `createPolymorphicComponent`
-factory** in ui-shadcn — you assemble the pieces by hand (that's the convention, not a gap). Match it and your component
+`@ottabase/ui` components follow a consistent recipe. There is **no `styled()` / `createPolymorphicComponent` factory**
+in `@ottabase/ui`: you assemble the pieces by hand (that's the convention, not a gap). Match it and your component
 participates in theming like a built-in.
+
+## Where it lives
+
+A component more than one package or app can use goes in `@ottabase/ui`, whether it is a primitive or composed from
+primitives (`ConfirmDialog`, `MessageBox`, `SplitPane` are examples). There is no separate shared-components package.
+
+1. One file per component: `packages/ui/components/ui/<kebab-name>.tsx`, named exports only. Import siblings relatively
+   (`./button`) and `cn` from `@ottabase/ui/lib/utils`.
+2. Start the file with `'use client'` when it holds state, runs effects or reads context.
+3. Register it three times: the barrel `components/ui/index.ts` (skip it for a large, rarely used component, which then
+   ships only on its own entry, as `JsonEditor` does), the `componentEntries` list in `tsup.config.ts`, and an `exports`
+   entry in `package.json`.
+4. Tests go in `packages/ui/src/__tests__/`, stories in `packages/ui/stories/`.
+
+A component that only one app or one package renders stays in that app or package (`Logo` lives in otta-web,
+`BlogPagination` in `@ottabase/ottablog/pagination`).
 
 ## The recipe
 
@@ -26,7 +42,7 @@ participates in theming like a built-in.
 5. **Make it replaceable (Tier 2, optional)** — read the brand override registry so a fork can swap the whole
    implementation:
     ```tsx
-    import { useBrandComponent } from '@ottabase/ui-shadcn/brand-components';
+    import { useBrandComponent } from '@ottabase/ui/brand-components';
     const Override = useBrandComponent('my-widget'); // called unconditionally
     if (Override) return <Override {...props} />;
     // else render the native element with data-slot stamps
@@ -41,13 +57,14 @@ participates in theming like a built-in.
 
 ## Gotchas
 
-- Don't reach for Mantine's `factory`/`createPolymorphicComponent` inside ui-shadcn work — that's the separate
-  `@ottabase/ui-mantine` stack. Pick one stack per surface (ui-shadcn is the documented default).
+- Don't reach for Mantine's `factory`/`createPolymorphicComponent` inside `@ottabase/ui` work: that's the separate
+  `@ottabase/ui-mantine` stack. Pick one stack per surface (`@ottabase/ui` is the documented default).
+- Icons come from `lucide-react`, the set `@ottabase/ui` itself uses.
 - Accessibility: build on Radix/cmdk primitives so focus trap / Escape / ARIA come for free; a hand-rolled interactive
   component owns all of that itself.
 - Always ship dark-mode-correct styling (tokens make this automatic).
 
 ## Authoritative sources
 
-`packages/ui-shadcn/providers/brand-components.tsx`, `components/ui/button.tsx` + `input.tsx` (the reference
-implementations), `AGENTS.MD` → "Theme-safe UI". Full docs: `/llms-full.txt`.
+`packages/ui/providers/brand-components.tsx`, `components/ui/button.tsx` + `input.tsx` (the reference implementations),
+`AGENTS.MD` → "Theme-safe UI". Full docs: `/llms-full.txt`.

@@ -18,7 +18,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconEye, IconLayout, IconRoute } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';

@@ -36,7 +36,7 @@ flowchart TB
     Core --> CF["@ottabase/cf"]
     Core --> Auth["@ottabase/auth"]
 
-    UI --> Shadcn["@ottabase/ui-shadcn"]
+    UI --> UiKit["@ottabase/ui"]
     UI --> Mantine["@ottabase/ui-mantine"]
     UI --> Forms["@ottabase/forms"]
 
@@ -88,7 +88,7 @@ flowchart TD
         db
         cfRealtime["cf-realtime"]
         ottarouter
-        uiShadcn["ui-shadcn"]
+        uiKit["ui"]
         state
         utils
     end
@@ -113,7 +113,7 @@ lower layer.
 **Rules:**
 
 - Circular dependencies between packages are forbidden.
-- UI packages (`ui-shadcn`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies — they are leaf packages.
+- UI packages (`ui`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies: they are leaf packages.
 - `@ottabase/db` is the lowest data layer; `@ottabase/ottaorm` depends on it, not the reverse.
 - Feature packages (`shortlinks`, `referrals`, `ottablog`) depend on `ottaorm` for persistence but not on each other.
 

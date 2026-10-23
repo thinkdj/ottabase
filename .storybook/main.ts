@@ -149,15 +149,11 @@ const config: StorybookConfig = {
             ['@ottabase/utils', 'packages/utils', 'src'],
             ['@ottabase/scripts', 'packages/scripts', 'src'],
             // ============ UI PACKAGES ============
-            // Main UI packages
-            ['@ottabase/ui-core', 'packages/ui-core', 'src'],
-            ['@ottabase/ui-components', 'packages/ui-components', 'src'],
+            // @ottabase/ui: the subpaths that live outside src/ first, then the package itself
+            ['@ottabase/ui/brand-components', 'packages/ui/providers', 'brand-components.tsx'],
+            ['@ottabase/ui/json-editor', 'packages/ui/components/ui', 'json-editor.tsx'],
+            ['@ottabase/ui', 'packages/ui', 'src'],
             ['@ottabase/ui-code-highlight', 'packages/ui-code-highlight', 'src'],
-            ['@ottabase/ui-shadcn', 'packages/ui-shadcn', 'src'],
-            // UI Core sub-exports
-            ['@ottabase/ui-core/styles', 'packages/ui-core', 'styles'],
-            ['@ottabase/ui-core/themes', 'packages/ui-core', 'themes'],
-            ['@ottabase/ui-core/provider', 'packages/ui-core', 'provider'],
             // Tailwind UI
             ['@ottabase/ui-tailwind', 'packages/ui-tailwind', 'src'],
             ['@ottabase/ui-tailwind/styles', 'packages/ui-tailwind', 'styles'],

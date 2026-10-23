@@ -11,7 +11,7 @@ import {
     Label,
     NativeSelect,
     NativeSelectOption,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Languages, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

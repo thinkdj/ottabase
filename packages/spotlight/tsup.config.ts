@@ -12,7 +12,7 @@ export default defineConfig({
     clean: true,
     treeshake: true,
     external: [
-        '@ottabase/ui-shadcn',
+        '@ottabase/ui',
         '@ottabase/config',
         '@ottabase/api',
         '@radix-ui/react-dialog',

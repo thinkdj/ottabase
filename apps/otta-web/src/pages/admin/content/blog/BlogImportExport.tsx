@@ -22,7 +22,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, Loader2, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent } from 'react';

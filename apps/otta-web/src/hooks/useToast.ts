@@ -1,4 +1,4 @@
-import { toast } from '@ottabase/ui-shadcn';
+import { toast } from '@ottabase/ui';
 
 /**
  * Enhanced toast hook with common patterns for RBAC UI

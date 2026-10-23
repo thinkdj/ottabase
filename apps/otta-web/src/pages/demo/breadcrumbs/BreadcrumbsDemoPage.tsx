@@ -1,5 +1,5 @@
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Slash } from 'lucide-react';
 import { DemoPageHeader } from '../DemoPageHeader';

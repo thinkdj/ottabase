@@ -8,7 +8,7 @@
 // click is a worse experience than an honest "this needs a license".
 // ============================================================
 
-import { Button, PremiumMark } from '@ottabase/ui-shadcn';
+import { Button, PremiumMark } from '@ottabase/ui';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { usePremiumEnabled, usePremiumFeature } from './hooks';

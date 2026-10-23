@@ -37,9 +37,6 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 // Mock components used inside the layout
-vi.mock('@ottabase/ui-components/dark-mode-toggle', () => ({
-    DarkModeToggle: (props: any) => <button data-testid="dark-mode-toggle" {...props} />,
-}));
 vi.mock('@/components/LanguageSwitcher', () => ({
     LanguageSwitcher: () => <div data-testid="language-switcher" />,
 }));
@@ -63,7 +60,7 @@ vi.mock('@/ottabase/config', () => ({
 vi.mock('@/ottabase/config/i18n.config', () => ({
     i18nConfig: { enabledLanguages: ['en'] },
 }));
-vi.mock('@ottabase/ui-shadcn', () => ({
+vi.mock('@ottabase/ui', () => ({
     cn: (...inputs: unknown[]) => inputs.filter(Boolean).join(' '),
     buttonVariants: () => '',
     AlertDialog: ({ children }: any) => <div data-testid="alert-dialog">{children}</div>,
@@ -90,6 +87,9 @@ vi.mock('@ottabase/ui-shadcn', () => ({
             {children}
         </button>
     )),
+    // The account menu's logout confirmation is covered by AccountMenu.test
+    ConfirmDialog: () => null,
+    DarkModeToggle: (props: any) => <button data-testid="dark-mode-toggle" {...props} />,
     // Account menu: render everything inline so menu items are queryable without opening
     DropdownMenu: ({ children }: any) => <div data-testid="account-menu">{children}</div>,
     DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,

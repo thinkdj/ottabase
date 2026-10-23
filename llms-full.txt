@@ -153,11 +153,9 @@ ottabase/
 │   ├── config/           # App config, env vars, storage keys
 │   ├── scripts/          # CLI: cf:setup, cf:validate, cf:login, clean:*
 │   ├── state/            # Jotai atoms (theme, user, sidebar)
-│   ├── ui-shadcn/        # shadcn/ui components
-│   ├── ui-mantine/       # Mantine provider + themes
-│   ├── ui-components/    # Shared components (DarkModeToggle, Logo)
+│   ├── ui/               # The UI kit: shadcn/ui primitives, DS v1 pieces, ConfirmDialog, SplitPane, tokens
+│   ├── ui-mantine/       # Mantine provider + themes (optional adapter)
 │   ├── ui-code-highlight/ # Code syntax highlighting
-│   ├── ui-split-pane/    # Resizable split pane
 │   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
 │   ├── ottaupload/       # File uploads (R2, CF Images)
 │   ├── ottarenderer/     # EditorJS block renderer
@@ -416,22 +414,19 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
 ### UI Components
 
-| Package                       | Purpose                                                  |
-| ----------------------------- | -------------------------------------------------------- |
-| `@ottabase/ui-shadcn`         | shadcn/ui components, ShadcnProviders                    |
-| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes                       |
-| `@ottabase/ui-base`           | Framework-agnostic base styles                           |
-| `@ottabase/ui-components`     | Shared components: DarkModeToggle, Logo                  |
-| `@ottabase/ui-code-highlight` | Code syntax highlighting (Prism/Shiki)                   |
-| `@ottabase/ui-split-pane`     | Resizable split-pane layout component                    |
-| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review) |
-| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)            |
-| `@ottabase/ottarenderer`      | EditorJS block renderer for React                        |
-| `@ottabase/ottaselect`        | Headless select/combobox component                       |
-| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)            |
-| `@ottabase/spotlight`         | Spotlight/command palette component                      |
-| `@ottabase/docs`              | Markdown doc viewer with layout themes                   |
-| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models            |
+| Package                       | Purpose                                                                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ottabase/ui`                | The UI kit: shadcn/ui primitives, Design System v1 pieces, ConfirmDialog, MessageBox, DarkModeToggle, SplitPane, JsonEditor, UIProviders, tokens and base styles |
+| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes (optional adapter)                                                                                                            |
+| `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                          |
+| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                         |
+| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                    |
+| `@ottabase/ottarenderer`      | EditorJS block renderer for React                                                                                                                                |
+| `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                               |
+| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)                                                                                                                    |
+| `@ottabase/spotlight`         | Spotlight/command palette component                                                                                                                              |
+| `@ottabase/docs`              | Markdown doc viewer with layout themes                                                                                                                           |
+| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models                                                                                                                    |
 
 ### Features & Realtime
 
@@ -946,7 +941,7 @@ set.
     - `@ottabase/ottaorm` — Fat model ORM (core)
     - `@ottabase/auth` — Lightweight custom auth
     - `@ottabase/rbac` — Role-based access control
-    - `@ottabase/ui-shadcn` — UI component library
+    - `@ottabase/ui` — UI component library
     - (and 43 more...)
 
 ### 5. **Workspace Protocol**
@@ -1138,7 +1133,7 @@ flowchart TB
     Core --> CF["@ottabase/cf"]
     Core --> Auth["@ottabase/auth"]
 
-    UI --> Shadcn["@ottabase/ui-shadcn"]
+    UI --> UiKit["@ottabase/ui"]
     UI --> Mantine["@ottabase/ui-mantine"]
     UI --> Forms["@ottabase/forms"]
 
@@ -1190,7 +1185,7 @@ flowchart TD
         db
         cfRealtime["cf-realtime"]
         ottarouter
-        uiShadcn["ui-shadcn"]
+        uiKit["ui"]
         state
         utils
     end
@@ -1215,7 +1210,7 @@ lower layer.
 **Rules:**
 
 - Circular dependencies between packages are forbidden.
-- UI packages (`ui-shadcn`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies — they are leaf packages.
+- UI packages (`ui`, `ui-mantine`, `state`) have zero `@ottabase/*` dependencies: they are leaf packages.
 - `@ottabase/db` is the lowest data layer; `@ottabase/ottaorm` depends on it, not the reverse.
 - Feature packages (`shortlinks`, `referrals`, `ottablog`) depend on `ottaorm` for persistence but not on each other.
 
@@ -1721,8 +1716,8 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
    D1 — the only ORM/backend.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
-4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
-   for UI components before creating new ones.
+4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui` for UI
+   components before creating new ones.
 5. **Edge Runtime**: This is a Cloudflare Workers project. Avoid Node.js-only APIs (fs, child_process) in app code.
 6. **Fat Models**: Encapsulate logic in models. E.g., `user.activate()` instead of `authService.activate(user)`.
 7. **Sanitize Untrusted Content**: For user/editor-provided HTML or URL values, always use `sanitizeInlineHtml`,
@@ -1802,7 +1797,7 @@ Use this as the default decision tree when shipping new work.
 2. **Keep data logic in models**
     - Put domain logic in model methods, not page/component handlers.
 3. **Theme-safe UI**
-    - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui-shadcn`, `@ottabase/ui-tailwind`).
+    - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui`, `@ottabase/ui-tailwind`).
     - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
     - Icons: Lucide Icons, and Tabler, Radix as fallback. Charts: Tremor where applicable.
     - Always add dark mode classes for new UI.
@@ -2585,9 +2580,9 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 - Use consistent formatting and indentation in code snippets (check `.prettierrc` — 4 spaces, single quotes, LF).
 - When adding new packages, ensure they follow the same structure and conventions as existing ones for consistency.
 - **Type Safety** — TypeScript only.
-- UI must follow minimal design, and use components from `@ottabase/ui-shadcn` where possible to maintain a cohesive
-  look and feel across the app. If a new Component that requires design is to be made, add tailwind classes in the
-  component, and avoid adding new CSS files unless absolutely necessary.
+- UI must follow minimal design, and use components from `@ottabase/ui` where possible to maintain a cohesive look and
+  feel across the app. If a new Component that requires design is to be made, add tailwind classes in the component, and
+  avoid adding new CSS files unless absolutely necessary.
 - New UI created should feel native to the app, and not like a separate module. Design like GitHub's or Notion's pages -
   simple, clean, and functional.
 - Golden Rule throughout the repo: KISS, DRY, SIMPLEST SOLUTIONS, and always think about the developer experience for
@@ -5890,10 +5885,10 @@ person will copy it, it is mono. If a license lapses, the page stays.**
 | ------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Engine defaults    | `packages/brand-engine/src/defaults.ts`               | The system as the values every theme merges on top of                                    |
 | The preset         | `packages/brand-engine/src/themes/verdant.json`       | The same values as the seeded brand kit (`themePresetId: 'verdant'`)                     |
-| Static fallbacks   | `packages/ui-shadcn/styles/shadcn.css`                | `:root` / `.dark`, the tone map (`[data-tone]`), the terminal room, the focus halo       |
+| Static fallbacks   | `packages/ui/styles/ui.css`                           | `:root` / `.dark`, the tone map (`[data-tone]`), the terminal room, the focus halo       |
 | Tailwind utilities | `packages/ui-tailwind/tailwind.base.cjs`              | `text-subtle-foreground`, `bg-success-soft`, `hover:bg-primary-hover`, `animate-page-in` |
-| Components         | `packages/ui-shadcn/components/ui/*`                  | The recipes, each stamping `data-slot` for theme CSS                                     |
-| Status language    | `packages/ui-shadcn/components/ui/status-language.ts` | Every enum → tone, label, icon (`statusOf('license', 'grace')`)                          |
+| Components         | `packages/ui/components/ui/*`                         | The recipes, each stamping `data-slot` for theme CSS                                     |
+| Status language    | `packages/ui/components/ui/status-language.ts`        | Every enum → tone, label, icon (`statusOf('license', 'grace')`)                          |
 | Operator page, CLI | `apps/otta-worker/worker/lib/html.ts`, `packages/cli` | The same words, no chrome; `Done.` / `Next:` / `Failed:`                                 |
 
 ## Tokens
@@ -7631,11 +7626,11 @@ Read the columns as:
 | **Data model**             | Fat `BaseModel` (`@ottabase/ottaorm`); logic as model methods                                   | Model + custom methods for domain logic                                             | Raw Drizzle / SQL — only for a measured perf need                       |
 | **CRUD API**               | Generic route via registered model (`/api/ottaorm/{entity}`)                                    | A route in the app package manifest (`ottabase/packages/app.ts`) for non-CRUD needs | Hand-rolled endpoint — avoid                                            |
 | **CRUD UI**                | `createModelConfig(Model)` + `<ModelCrud>` (`@ottabase/forms/react`)                            | `<DataTable>` / `useDataTable` primitives                                           | Build the table by hand                                                 |
-| **Forms**                  | `createModelConfig` → `<ModelForm>` (model-driven)                                              | `ui-shadcn` `Form`/`FormField` (react-hook-form) for custom forms                   | Native `<form>` + `FormData`                                            |
+| **Forms**                  | `createModelConfig` → `<ModelForm>` (model-driven)                                              | `@ottabase/ui` `Form`/`FormField` (react-hook-form) for custom forms                | Native `<form>` + `FormData`                                            |
 | **Client data fetching**   | Query/mutation hooks (`createModelHooks`, `useApiQuery`, `useApiMutation`)                      | `queryClient.fetchQuery` for imperative reads                                       | ~~Raw `fetch()`~~ — **lint-banned** in `apps/*/src/**`                  |
 | **API error responses**    | `errorResponse(...)` / `jsonResponse(...)` (`@ottabase/utils/http-errors`)                      | —                                                                                   | ~~`new Response(JSON.stringify(...))`~~ — **lint-banned** on the server |
 | **Env access (edge)**      | `getOttabaseConfig(env)`                                                                        | —                                                                                   | ~~`process.env`~~ — **lint-banned** in edge code                        |
-| **Styling / components**   | `@ottabase/ui-shadcn` (static Tailwind + design tokens)                                         | `@ottabase/ui-mantine` (Mantine) where its ergonomics help                          | One-off CSS / inline styles that bypass tokens — avoid for repeated UI  |
+| **Styling / components**   | `@ottabase/ui` (static Tailwind + design tokens)                                                | `@ottabase/ui-mantine` (Mantine) where its ergonomics help                          | One-off CSS / inline styles that bypass tokens — avoid for repeated UI  |
 | **Theming**                | Brand Engine design tokens → CSS variables                                                      | Component slot overrides (`data-slot`, `BrandComponentsProvider`)                   | Per-route `tokenOverridesJson` for a localized override                 |
 | **State**                  | Jotai (`@ottabase/state`)                                                                       | Local component state                                                               | (No competing global-state lib — don't add one)                         |
 | **Auth**                   | In-house `@ottabase/auth` (`getSession` / `useSession`)                                         | Generic OAuth2/OIDC + magic links via the same package                              | (No Auth.js/NextAuth — deliberately removed)                            |
@@ -8182,8 +8177,7 @@ Each package has its own `vitest.config.ts`:
 - `packages/api/` - Node.js environment
 - `packages/auth/` - Node.js environment
 - `packages/state/` - Node.js environment
-- `packages/ui-components/` - Browser/jsdom environment
-- `packages/ui-shadcn/` - Browser/jsdom environment
+- `packages/ui/` - Browser/jsdom environment
 - `packages/forms/` - Browser/jsdom environment
 - `packages/db/` - Node.js environment
 - `packages/cf/` - Node.js environment
@@ -8225,10 +8219,10 @@ describe('String Utilities', () => {
 Use `@testing-library/react` for component testing:
 
 ```typescript
-// packages/ui-components/src/__tests__/Button.test.tsx
+// packages/ui/src/__tests__/button.test.tsx
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Button } from '../Button';
+import { Button } from '../../components/ui/button';
 
 describe('Button Component', () => {
   it('should render button', () => {
@@ -10786,7 +10780,7 @@ Workers implements natively. No Auth.js, no Node crypto, no third-party crypto o
   Auth0
 - **Magic link sign-in** - Short-lived (15 min) passwordless email links, with dev-trap / SMTP / Resend senders
   auto-selected from env vars
-- **UI components** - Ready-to-use login/register forms built on `@ottabase/ui-shadcn`
+- **UI components** - Ready-to-use login/register forms built on `@ottabase/ui`
 - **Framework-agnostic client** - Plain `fetch`-based client API and a Jotai-backed React hook
 
 ## Installation
@@ -11212,10 +11206,10 @@ const config = getLoginConfig(env);
 
 ## UI Components
 
-Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). This is the package's
-**only** rendered-UI subpath: `@ottabase/ui-shadcn` and `lucide-react` are declared as **optional** peer dependencies
-and are pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
-stay free of them. The components take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
+Framework-agnostic React components built on `@ottabase/ui` (`@ottabase/auth/components`). This is the package's
+**only** rendered-UI subpath: `@ottabase/ui` and `lucide-react` are declared as **optional** peer dependencies and are
+pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …) stay free
+of them. The components take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
 
 ```typescript
 import { LoginForm } from '@ottabase/auth/components';
@@ -11268,8 +11262,8 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui-shadcn` primitives, so
-  labels, focus, and error semantics come from there.
+- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui` primitives, so labels,
+  focus, and error semantics come from there.
 - **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
   `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly
   flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to
@@ -11298,19 +11292,19 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 │   └── types.ts           Shared provider types
 ├── client-api.ts          fetch-based frontend client
 ├── react-hooks.ts         useSession + useSessionBootstrap (Jotai-backed)
-└── components/            Framework-agnostic login/register UI (shadcn/ui) — the `./components` subpath
+└── components/            Framework-agnostic login/register UI (@ottabase/ui) — the `./components` subpath
     └── helpers.ts         Pure, type-only env→login-config helpers — the `./config` subpath (no UI deps)
 ```
 
 ### Subpath purity
 
-Every subpath is strictly pure **or** UI-only — never mixed. `@ottabase/ui-shadcn` and `lucide-react` are optional peer
+Every subpath is strictly pure **or** UI-only — never mixed. `@ottabase/ui` and `lucide-react` are optional peer
 dependencies that only `@ottabase/auth/components` pulls in:
 
-| Subpath                                                                         | Rendered UI? | Notable deps                                           |
-| ------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------ |
-| `.`, `./providers`, `./session`, `./backend`, `./client`, `./react`, `./config` | No (pure)    | none of the UI packages                                |
-| `./components`                                                                  | Yes          | `@ottabase/ui-shadcn`, `lucide-react` (optional peers) |
+| Subpath                                                                         | Rendered UI? | Notable deps                                    |
+| ------------------------------------------------------------------------------- | ------------ | ----------------------------------------------- |
+| `.`, `./providers`, `./session`, `./backend`, `./client`, `./react`, `./config` | No (pure)    | none of the UI packages                         |
+| `./components`                                                                  | Yes          | `@ottabase/ui`, `lucide-react` (optional peers) |
 
 DB access goes through the existing OttaORM models (`User`, `Account`, `VerificationToken`, `OrganizationMember` from
 `@ottabase/ottaorm/models`) — there is no hand-rolled adapter layer. Every cryptographic primitive runs on
@@ -11353,8 +11347,8 @@ Two families of categories:
 - **Defaulted** (`color`, `typography`, `spacing`, `radius`, `shadow`, `motion`) — engine defaults are merged under
   theme values; their vars are always emitted.
 - **Sparse** (everything below) — emitted **only when the theme defines them**. Fallbacks live in the consumers
-  (`tailwind.base.cjs` utilities + static rules in `ui-shadcn/styles/shadcn.css`), so a theme that defines none of them
-  renders pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
+  (`tailwind.base.cjs` utilities + static rules in `ui/styles/ui.css`), so a theme that defines none of them renders
+  pixel-identical to a pre-v2 app. That is the **fallback-chain law**: every consumer reads
   `var(--specific, var(--global, <today's literal>))`.
 
 | Category      | Shape (in `tokensJson`)                                                     | Emission                                                                      |
@@ -11395,10 +11389,10 @@ Notes:
   `.dark`/scope re-binding is pure CSS cascade. The root entry has no DOM globals, so Workers use it to build the same
   stylesheets server-side; only `/dom` (`applyBrandTheme`, `injectFont`, `upsertStyleElement`) touches `document`.
 
-### Component hooks (ui-shadcn)
+### Component hooks (@ottabase/ui)
 
-Injected theme CSS comes after the bundled CSS, so equal-specificity selectors win: every ui-shadcn primitive stamps
-`data-slot` (CVA components also stamp `data-variant`/`data-size`), which makes
+Injected theme CSS comes after the bundled CSS, so equal-specificity selectors win: every `@ottabase/ui` primitive
+stamps `data-slot` (CVA components also stamp `data-variant`/`data-size`), which makes
 `[data-slot='button'][data-variant='outline']:hover { … }` the component restyling API. Button/Card also ship an empty
 `[data-decor]` span (hidden by default) for shine/ornament layers. For components whose **DOM** must differ, register a
 React override: `<BrandComponentsProvider overrides={{ button: UppButton }}>` (Tier-2 escape hatch — prefer CSS).
@@ -11720,13 +11714,13 @@ base-theme-then-retheme flash. `apps/otta-web/src/__tests__/brand-theme-parity.t
 
 ### Swapping components per design system (two tiers)
 
-Theming components lives in `@ottabase/ui-shadcn`, not this package, but forks land here first, so the pointer:
+Theming components lives in `@ottabase/ui`, not this package, but forks land here first, so the pointer:
 
-1. **Tier 1 (CSS — covers ~90%):** every ui-shadcn primitive stamps `data-slot` (+ `data-variant`/`data-size`); theme
-   CSS like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
+1. **Tier 1 (CSS — covers ~90%):** every `@ottabase/ui` primitive stamps `data-slot` (+ `data-variant`/`data-size`);
+   theme CSS like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
 2. **Tier 2 (React — DOM-level differences):** register replacement implementations via
-   `<BrandComponentsProvider overrides={{ button: UppButton }}>` from `@ottabase/ui-shadcn`. Reserve for components
-   whose DOM must genuinely differ; prefer Tier 1.
+   `<BrandComponentsProvider overrides={{ button: UppButton }}>` from `@ottabase/ui`. Reserve for components whose DOM
+   must genuinely differ; prefer Tier 1.
 
 ## LayoutResolver
 
@@ -13006,8 +13000,8 @@ Next.js landing page with Cloudflare Workers deployment. Includes:
 
 - Next.js for SSR/SSG
 - OpenNext for Cloudflare deployment
-- Tailwind CSS
-- shadcn/ui components
+- Tailwind CSS on the shared `@ottabase/ui-tailwind` preset
+- The landing themes from `@ottabase/ottalanding`
 
 ### `worker`
 
@@ -14696,10 +14690,10 @@ ModelCrud.
 This package ships as two subpaths so a consumer that only needs config/schema logic never pulls in the React UI (or its
 UI dependencies):
 
-| Import                  | Contents                                                                                     | Deps pulled in                                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI — only `@ottabase/ottaorm` + `zod`                                                     |
-| `@ottabase/forms/react` | **Rendered UI.** `ModelForm`, `ModelCrud`, `ModelTable`, `ModelDetail`, `FormField`          | React + the UI packages (`@ottabase/ui-components`, `-datatable`, `ottaselect`, `lucide-react`, `clsx`) |
+| Import                  | Contents                                                                                     | Deps pulled in                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `@ottabase/forms`       | **Headless.** `createModelConfig`, `defineModelConfig`, Zod schema generation, and all types | Zero rendered UI — only `@ottabase/ottaorm` + `zod`                                            |
+| `@ottabase/forms/react` | **Rendered UI.** `ModelForm`, `ModelCrud`, `ModelTable`, `ModelDetail`, `FormField`          | React + the UI packages (`@ottabase/ui`, `ui-datatable`, `ottaselect`, `lucide-react`, `clsx`) |
 
 The UI packages are declared as **optional peer dependencies**, so installing `@ottabase/forms` for headless use does
 not force them into your dependency tree. Install them only when you import from `@ottabase/forms/react`.
@@ -14723,7 +14717,7 @@ import { ModelCrud, ModelForm } from '@ottabase/forms/react';
 - **Standalone Forms**: Use `action` prop to POST/PATCH directly to any endpoint.
 - **Model Defaults**: Respects `static defaults` from OttaORM models in create forms.
 - **OttaSelect**: Relationship fields use `@ottabase/ottaselect` for single/multi-select.
-- **JSON Editor**: JSON fields use the in-house `JsonEditor` from `@ottabase/ui-components` (Tree + Raw modes, inline
+- **JSON Editor**: JSON fields use the in-house `JsonEditor` from `@ottabase/ui/json-editor` (Tree + Raw modes, inline
   editing, live validation).
 - **Type-safe**: Full TypeScript, seamlessly integrates with OttaORM types.
 
@@ -14950,8 +14944,8 @@ const config = defineModelConfig({
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — rendered components build on the `@ottabase/ui-shadcn` form primitives (react-hook-form backed):
-  every field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
+- **Accessibility** — rendered components build on the `@ottabase/ui` form primitives (react-hook-form backed): every
+  field gets a label association, `aria-invalid` / `data-error` on the control, and an error message wired via
   `aria-describedby`. Keyboard and focus behavior come from those primitives; you don't re-implement them.
 - **SSR** — components are client-rendered (TanStack Query). Validation is isomorphic: the same Zod schema
   (`buildZodSchema`) runs client-side for UX and server-side as the trust boundary (see
@@ -14959,7 +14953,7 @@ const config = defineModelConfig({
 - **Performance** — the root `@ottabase/forms` entry is headless (zero rendered UI, tree-shakeable), so importing config
   builders never pulls in React components. **Caveat:** the generated `ModelForm` currently holds field state in
   `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
-  ui-shadcn react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
+  `@ottabase/ui` react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
 
 ## Exports
 
@@ -17454,8 +17448,8 @@ pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
 # Only needed if you render posts (i.e. import from @ottabase/ottablog/renderer)
 pnpm add @ottabase/ottarenderer @ottabase/medialibrary
 
-# Only needed if you import the standalone ShareButton
-pnpm add @ottabase/ui-shadcn lucide-react
+# Only needed if you import the standalone ShareButton (BlogPagination needs only lucide-react)
+pnpm add @ottabase/ui lucide-react
 ```
 
 ## Module Entry Points
@@ -17463,13 +17457,14 @@ pnpm add @ottabase/ui-shadcn lucide-react
 The package is split so the pure core never pulls in rendered UI or `@ottabase/ottarenderer` (an **optional** peer
 dependency — install it only if you render). Importing the pure root loads zero React components.
 
-| Import                        | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| `@ottabase/ottablog`          | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
-| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `Crossposts` / `CrosspostsRow`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                      | Yes                   |
-| `@ottabase/ottablog/share`    | Standalone rendered `ShareButton`; requires the app's `@ottabase/ui-shadcn` and `lucide-react` peers.                                                                                                                                                                                                                                                                                | No                    |
-| `@ottabase/ottablog/router`   | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
-| `@ottabase/ottablog/seo`      | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
+| Import                          | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `@ottabase/ottablog`            | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
+| `@ottabase/ottablog/renderer`   | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `Crossposts` / `CrosspostsRow`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                      | Yes                   |
+| `@ottabase/ottablog/share`      | Standalone rendered `ShareButton`; requires the app's `@ottabase/ui` and `lucide-react` peers.                                                                                                                                                                                                                                                                                       | No                    |
+| `@ottabase/ottablog/pagination` | Standalone rendered `BlogPagination` (previous/next plus numbered pages with an ellipsis); requires the `lucide-react` peer.                                                                                                                                                                                                                                                         | No                    |
+| `@ottabase/ottablog/router`     | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
+| `@ottabase/ottablog/seo`        | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
 
 Register a custom theme (pure) from the root and render it from `/renderer`:
 
@@ -18247,12 +18242,12 @@ Apps that keep their own handler module as a test/mock seam (like `otta-web`) ca
 Blog themes can carry data, not just code: each `ottablog_themes` row has a sparse `tokens` JSON column
 (`{ light?: Record<cssVar, value>, dark?: ... }`). `blogThemeTokensToCss(tokens)` serializes them into a
 `[data-brand-scope="blog"]` room block, which the consuming app applies around its blog pages (otta-web wraps them in
-`<BrandScope name="blog">` from `@ottabase/ui-shadcn` and injects the CSS at the edge plus client-side via studio
-state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
-no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
-(unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
-Malformed JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content;
-unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
+`<BrandScope name="blog">` from `@ottabase/ui` and injects the CSS at the edge plus client-side via studio state). CSS
+variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with no tokens
+renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization (unsafe
+names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy. Malformed
+JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content; unrelated
+database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
 
 ## Edge SEO Meta
 
@@ -21712,7 +21707,7 @@ React renderer for [Editor.js](https://editorjs.io/) content and generic HTML.
 - **Custom Blocks**: Includes renderers for `@ottabase/ottaeditor` custom blocks (AdvancedImage, CTA, Disclosure,
   Layout, Review, Spoiler, Steps, etc.).
 - **HTML Renderer**: Safe HTML rendering utility.
-- **Tailwind Configured**: Styled with Tailwind CSS via `@ottabase/ui-base`.
+- **Tailwind Configured**: Styled with Tailwind utilities on the shared `@ottabase/ui-tailwind` preset.
 - **Global Theming**: Components use semantic theme token classes (`bg-primary`, `text-foreground`, `border-border`) and
   adapt to light/dark mode.
 - **Extensible**: Supports custom block injectors.
@@ -24948,12 +24943,12 @@ The package ships two entry points so consumers only pull in UI dependencies whe
 - `@ottabase/spotlight` — **pure**. Context, hooks and API helpers (`useSpotlight`, `useSpotlightSearch`,
   `createApiSearchHandler`, `createApiSearchHandlerWithSignal`) plus all types. No UI dependencies.
 - `@ottabase/spotlight/react` — the **rendered** components (`SpotlightProvider`, `Spotlight`). These pull in the
-  optional peer dependencies `@ottabase/ui-shadcn`, `@radix-ui/react-dialog` and `@tabler/icons-react`.
+  optional peer dependencies `@ottabase/ui`, `@radix-ui/react-dialog` and `@tabler/icons-react`.
 
 Install the UI peers alongside the package when you render components:
 
 ```bash
-pnpm add @ottabase/spotlight @ottabase/ui-shadcn @radix-ui/react-dialog @tabler/icons-react
+pnpm add @ottabase/spotlight @ottabase/ui @radix-ui/react-dialog @tabler/icons-react
 ```
 
 ## Usage
@@ -25444,81 +25439,269 @@ MIT
 
 ---
 
-# packages/ui-base/README.md
+# packages/ui/README.md
 
-# @ottabase/ui-base
+# @ottabase/ui
 
-Base UI styles and utilities for Ottabase applications. This package contains framework-agnostic CSS reset, animations,
-and base styles.
+The Ottabase UI kit: every component the apps and package panels render, on the Design System v1 tokens. It holds the
+[shadcn/ui](https://ui.shadcn.com/) primitives (Radix underneath), the Design System v1 pieces (`PageHeader`, `Stat`,
+`Status`, `Tag`), the composed components built from them (`ConfirmDialog`, `MessageBox`, `DarkModeToggle`, `SplitPane`,
+`JsonEditor`), the theme and brand providers, and the stylesheet with the tokens and base styles.
 
-## Features
-
-- **CSS Reset**: Modern CSS reset for consistent cross-browser styling
-- **Animations**: Reusable animation utilities
-- **Base Styles**: Foundation styles for Ottabase applications
-- **Framework-Agnostic**: No React, Mantine, or other framework dependencies
-
-## Installation
-
-```bash
-pnpm add @ottabase/ui-base
-# or
-pnpm add @ottabase/ui-base
-```
+It started as a copy of shadcn/ui and is now its own variant: there is no upstream sync, so change the recipes here
+directly. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the shadcn/ui license.
 
 ## Usage
 
-### Use the Provider (Recommended)
+Add the package to an app:
 
-```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
-
-function App({ children }) {
-    return <ProviderUIBase>{children}</ProviderUIBase>;
+```jsonc
+// apps/<app>/package.json
+{
+    "dependencies": {
+        "@ottabase/ui": "workspace:*",
+    },
 }
 ```
 
-The ProviderUIBase component automatically imports all base styles:
-
-- CSS reset (reset.css)
-- Ottabase-specific utilities (ottabase.css)
-- Animation utilities (animations.css)
-
-### Direct Style Import (Alternative)
-
-If you prefer not to use the provider, you can import styles directly:
+Wrap the app in the providers to get the theme (next-themes), tooltips and toasts:
 
 ```tsx
-import '@ottabase/ui-base/styles';
+// app/providers.tsx
+import { UIProviders } from '@ottabase/ui';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+    return <UIProviders enableToaster>{children}</UIProviders>;
+}
 ```
+
+Pass `enableThemeProvider={false}` when the app already supplies its own next-themes provider higher up (otta-web does).
+
+Use the components anywhere:
+
+```tsx
+import { Button, Card, CardContent, CardHeader } from '@ottabase/ui';
+
+export function Example() {
+    return (
+        <Card>
+            <CardHeader>Example</CardHeader>
+            <CardContent>
+                <Button>Click me</Button>
+            </CardContent>
+        </Card>
+    );
+}
+```
+
+Make Tailwind scan the package and load the stylesheet:
+
+1. Add `'../../packages/ui/components/**/*.{js,ts,jsx,tsx}'` to the app's Tailwind `content` list.
+2. Import the stylesheet in the app's global CSS, after the Tailwind base:
+
+    ```css
+    @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+    @import '@ottabase/ui/styles.css';
+    ```
+
+## Entry points
+
+| Import                          | Contents                                                                                            |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `@ottabase/ui`                  | Every component except `JsonEditor`, plus `cn`, `toast`, the providers and the brand override hooks |
+| `@ottabase/ui/<component>`      | One component per entry (`button`, `dialog`, `confirm-dialog`, `split-pane`, …)                     |
+| `@ottabase/ui/json-editor`      | `JsonEditor` and its JSON types. Kept off the root entry: it is large and few screens need it       |
+| `@ottabase/ui/providers`        | `UIProviders` and `ThemeProvider` on their own                                                      |
+| `@ottabase/ui/brand-components` | The Tier-2 component override registry on its own                                                   |
+| `@ottabase/ui/lib/utils`        | `cn` on its own                                                                                     |
+| `@ottabase/ui/styles.css`       | Tokens (light and dark), base styles, the tone map, the focus ring, interaction physics             |
+
+## Composed components
+
+Built from the primitives, so they follow the tokens and the brand engine like everything else.
+
+### ConfirmDialog
+
+The one confirmation dialog: an `AlertDialog` with a title, an optional description and a cancel/confirm pair.
+
+```tsx
+import { Button, ConfirmDialog } from '@ottabase/ui';
+
+<ConfirmDialog
+    open={open}
+    onOpenChange={setOpen}
+    title="Delete post?"
+    description="This action cannot be undone."
+    tone="destructive"
+    confirmLabel="Delete"
+    onConfirm={handleDelete}
+/>;
+
+// Uncontrolled, with its own trigger
+<ConfirmDialog title="Archive?" trigger={<Button variant="outline">Archive</Button>} onConfirm={archive} />;
+```
+
+- `tone`: `default`, `destructive` (solid red confirm) or `unsaved-changes` (copy defaults to leave/stay and the leave
+  action comes first)
+- `primaryActionText` / `secondaryActionText` win over `confirmLabel` / `cancelLabel`
+- Without a `title` the dialog keeps an accessible, visually hidden one (`a11yTitle`, default `Confirm action`);
+  `hideTitle` hides a given title the same way
+- `contentProps`, `confirmProps`, `cancelProps` reach the underlying parts
+
+### MessageBox
+
+A centered status panel: one icon and one message for an empty, failed, locked or loading region. Use `Alert` for an
+inline notice inside a form or card instead.
+
+```tsx
+import { MessageBox } from '@ottabase/ui';
+
+<MessageBox message="Operation completed!" messageType="success" />
+<MessageBox message={error} />                       // an Error shows as an error
+<MessageBox isLoading />                             // the spinner
+<MessageBox isLoading loadingType="skeleton" width={320} />
+```
+
+`messageType` is `info`, `error`, `warning`, `success`, `help`, `loginRequired`, `disconnected` or `loading`. A plain
+object message is shown as formatted JSON. A numeric or CSS-length `width` is applied inline (a runtime `w-[300px]`
+class would never be generated); any other string is used as a Tailwind class.
+
+### DarkModeToggle
+
+A theme switch on next-themes, as a switch or an icon button. The icon shows where it goes (a moon in light mode), and
+flipping adds `.theming` to `<html>` for the length of the switch so every colour eases once instead of snapping.
+
+```tsx
+import { DarkModeToggle } from '@ottabase/ui';
+
+<DarkModeToggle type="toggle-switch" />
+<DarkModeToggle type="button" title="Switch theme" />
+```
+
+It needs a next-themes provider above it (`UIProviders`, `ThemeProvider`, or the app's own).
+
+### SplitPane
+
+Two resizable panes, side by side or stacked. Drag or use the keyboard on the divider (arrows step 1% or 10px, Home/End
+jump to the bounds); it reports itself as a `separator` with its current value.
+
+```tsx
+import { SplitPane } from '@ottabase/ui';
+
+<SplitPane split="vertical" defaultSize="30%" minWidth={200} onChange={setSize}>
+    <Sidebar />
+    <SplitPane split="horizontal" defaultSize={240} snapPoints={[120, 240, 360]}>
+        <Editor />
+        <Console />
+    </SplitPane>
+</SplitPane>;
+```
+
+| Prop                                                   | Default      | Description                                       |
+| ------------------------------------------------------ | ------------ | ------------------------------------------------- |
+| `split`                                                | `'vertical'` | `'vertical'` (left/right) or `'horizontal'`       |
+| `defaultSize`                                          | `'50%'`      | First pane size: `'30%'`, `'200px'` or `200` (px) |
+| `minWidth` / `maxWidth`                                | `50` / none  | Bounds in px for a vertical split                 |
+| `minHeight` / `maxHeight`                              | `50` / none  | Bounds in px for a horizontal split               |
+| `snapPoints` / `snapThreshold`                         | `[]` / `20`  | Pixel positions to snap to, and how close counts  |
+| `onChange`                                             | none         | Called with the new size                          |
+| `className` / `resizerClassName`                       | none         | Classes for the container and the divider         |
+| `style` / `pane1Style` / `pane2Style` / `resizerStyle` | none         | Inline style overrides                            |
+
+Reach for `ResizablePanelGroup` (react-resizable-panels) when you need more than two panes or persisted layouts.
+
+### JsonEditor
+
+A dual-mode JSON editor with no external editor dependency: a Tree mode with inline key and value editing, type
+switching and add/remove, and a Raw mode with live validation and format/minify.
+
+```tsx
+import { JsonEditor, type JsonValue } from '@ottabase/ui/json-editor';
+
+const [value, setValue] = useState<JsonValue>({ hello: 'world', count: 1 });
+
+<JsonEditor value={value} onChange={setValue} rootLabel="meta" collapseAtDepth={3} />;
+```
+
+Props: `value`, `onChange`, `readOnly`, `defaultMode` (`'tree' | 'raw'`), `collapseAtDepth`, `rootLabel`, `className`.
+`Enter` commits an inline edit and `Escape` cancels; in Raw mode `Ctrl/Cmd+S` formats. `@ottabase/forms` uses it for
+`fieldType: 'json'` fields and the blog editor for its Custom Meta tab: use it rather than adding a JSON editor
+dependency.
+
+## Design System v1 pieces
+
+The recipes implement Ottabase Design System v1 (`docs/DESIGN_SYSTEM.md`). Beyond the primitives, the package ships the
+record-level pieces the admin and every package panel share:
+
+```tsx
+import { Status, Tag, EnvName, PageHeader, Stat, Button } from '@ottabase/ui';
+
+<PageHeader title="Vault" description="Backups to R2, restore, per-tenant export." actions={<Button>Run backup</Button>} />
+<Stat label="Backups kept" value={3} unit=" of 5" foot="newest 9h ago" />
+<Status domain="license" value="grace" withIcon />   // tone, label and icon from the one status map
+<Tag mono>v1.0.0</Tag> <EnvName>PREMIUM_LICENSE_VAULT</EnvName>
+<Button variant="danger">Remove app</Button>        // outline in place; `destructive` (solid) only inside a confirm
+<Button loading>Run backup</Button>                 // the one spinner
+```
+
+Tones are a CSS map: any element with `data-tone="green|amber|red|blue|smoke|neutral|brand"` can read `--t-fg`,
+`--t-bg`, `--t-line` and `--t-solid`. Code and CLI output sit in the always-dark `terminal` room:
+`<BrandScope name="terminal">` or `data-brand-scope="terminal"`.
+
+## Theming hooks (Brand Engine)
+
+Components are fully themeable by the brand engine without forking:
+
+- **`data-slot` everywhere**: every primitive stamps `data-slot="button"`, `data-slot="dialog-content"`, and so on; CVA
+  components also stamp `data-variant`/`data-size`. Because brand stylesheets are injected after the bundle, theme CSS
+  restyles anything at equal specificity:
+
+    ```css
+    [data-slot='button'][data-variant='outline']:hover {
+        border-color: var(--link);
+    }
+    ```
+
+- **Global focus ring**: components carry no per-component `focus-visible:ring-*` recipes; one global rule in
+  `styles/ui.css` reads `--focus-ring-{width,style,color,offset}`.
+- **Interaction physics**: interactive elements use bare `transition`, so `--hover-transform` / `--press-transform` /
+  `--press-shadow` tokens animate hover-lift and press states globally. Opt any custom element in with `data-press`.
+- **Decor carriers**: `Button` and `Card` render an empty `aria-hidden` `[data-decor]` span (hidden by default) that
+  theme CSS can enable for shine sweeps, ornaments or texture layers.
+- **Scrims**: overlays use the `--overlay` color token (`bg-overlay/80`), not hardcoded black.
+- **Token rooms**: wrap a subtree in `<BrandScope name="afterdark">…</BrandScope>` (or put `data-brand-scope` on any
+  element) and every child re-reads the re-bound semantic vars for that room. No dark-mode props needed.
+- **Tier-2 component overrides**: when a design system needs genuinely different DOM, register replacements:
+
+    ```tsx
+    import { BrandComponentsProvider } from '@ottabase/ui';
+
+    <BrandComponentsProvider overrides={{ button: UppButton }}>{children}</BrandComponentsProvider>;
+    ```
+
+    `button`, `badge`, `card` and `input` resolve overrides from context, receiving their original props. Prefer the CSS
+    path; reserve overrides for DOM-level differences. These primitives declare explicit React client boundaries because
+    resolving an override reads context; the package build preserves those directives for Next.js/RSC consumers.
+
+## Base styles
+
+`styles/ui.css` also carries the few base rules Tailwind's reset leaves out: the body fills the viewport, the app root
+(`#root`, `#__next`) is its own stacking context so portals stack above it, long words and URLs wrap in paragraphs and
+headings, German and French text hyphenates, and in-page anchors scroll smoothly unless the person asked for reduced
+motion.
 
 ## Development
 
 ```bash
-# Build the package
-pnpm build
-
-# Watch for changes
-pnpm dev
-
-# Clean build artifacts
-pnpm clean
+pnpm --filter @ottabase/ui build
+pnpm --filter @ottabase/ui lint
+pnpm --filter @ottabase/ui type-check
+pnpm --filter @ottabase/ui test
 ```
 
-## Package Structure
-
-```
-ui-base/
-├── src/
-│   ├── index.ts       # Main entry point
-│   └── styles.ts      # Style exports
-├── styles/
-│   ├── index.css      # Main styles aggregator
-│   ├── reset.css      # CSS reset
-│   ├── ottabase.css   # Ottabase utilities
-│   └── animations.css # Animation utilities
-└── package.json
-```
+Components live in `components/ui/` (one file each, kebab-case) and are built one entry per file so `'use client'` stays
+at the top of each. A component that holds state or effects starts with `'use client'`; the client-boundary test checks
+the ones that must. Stories live in `stories/`.
 
 
 ---
@@ -25719,213 +25902,6 @@ If you need additional languages, you can extend the component by importing and 
 ## License
 
 MIT
-
-
----
-
-# packages/ui-components/README.md
-
-# @ottabase/ui-components
-
-Shared UI components for Ottabase applications.
-
-## Components
-
-### ConfirmDialog
-
-A shared confirmation dialog wrapper built on top of `@ottabase/ui-shadcn`'s alert dialog primitives.
-
-#### Props
-
-- `open?: boolean` - Controlled open state
-- `onOpenChange?: (open: boolean) => void` - Controlled state callback
-- `title?: React.ReactNode` - Dialog title (optional; defaults to a screen-reader-only title)
-- `hideTitle?: boolean` - Hide the title visually while keeping it for accessibility
-- `a11yTitle?: React.ReactNode` - Accessible fallback title when `title` is omitted (default: `Confirm action`)
-- `description?: React.ReactNode` - Optional supporting copy
-- `trigger?: React.ReactElement` - Optional trigger element for uncontrolled usage
-- `tone?: 'default' | 'destructive' | 'unsaved-changes'` - Confirmation behavior and styling
-- `primaryActionText?: React.ReactNode` - Semantic alias for the primary action button text
-- `secondaryActionText?: React.ReactNode` - Semantic alias for the secondary action button text
-- `confirmLabel?: React.ReactNode` - Confirm button label override
-- `cancelLabel?: React.ReactNode` - Cancel button label override
-- `onConfirm?: MouseEventHandler<HTMLButtonElement>` - Confirm action
-- `onCancel?: MouseEventHandler<HTMLButtonElement>` - Cancel action
-
-`primaryActionText` and `secondaryActionText` take precedence over `confirmLabel` and `cancelLabel` when both are
-provided.
-
-#### Usage
-
-```tsx
-import { ConfirmDialog } from '@ottabase/ui-components';
-
-<ConfirmDialog
-    open={open}
-    onOpenChange={setOpen}
-    title="Delete post?"
-    description="This action cannot be undone."
-    tone="destructive"
-    confirmLabel="Delete"
-    onConfirm={handleDelete}
-/>;
-```
-
-### JsonEditor
-
-A clean, minimal, dual-mode JSON editor with a Tree view (inline key/value editing, type switching, add/remove nodes)
-and a Raw mode (live validation, format/minify). No external JSON editor dependencies; Tailwind-only styling with
-dark-mode support.
-
-#### Props
-
-- `value: JsonValue` - Current JSON value (object, array, or primitive)
-- `onChange?: (value: JsonValue) => void` - Fires when the user edits
-- `readOnly?: boolean` - Disable editing (expand/collapse still works)
-- `defaultMode?: 'tree' | 'raw'` - Starting mode (default: `'tree'`)
-- `collapseAtDepth?: number` - Auto-collapse nodes at or beyond this depth
-- `rootLabel?: string` - Label shown next to the root node (e.g. `"meta"`)
-- `className?: string` - Extra className on the outer wrapper
-
-#### Usage
-
-```tsx
-import { JsonEditor } from '@ottabase/ui-components';
-
-const [value, setValue] = useState({ hello: 'world', count: 1 });
-
-<JsonEditor value={value} onChange={setValue} rootLabel="meta" collapseAtDepth={3} />;
-```
-
-Keyboard: `Enter` commits an inline edit, `Escape` cancels. In Raw mode, `Ctrl/Cmd+S` formats.
-
-This is the canonical JSON editor in the monorepo. `@ottabase/forms` uses it internally for `fieldType: 'json'` fields
-and the admin blog editor uses it for the Custom Meta tab — reach for this component instead of adding a third-party
-JSON editor dependency.
-
-### DarkModeToggle
-
-A versatile component that provides both toggle switch and button interfaces for switching between light and dark
-themes. It integrates with both Mantine's color scheme and next-themes for Tailwind CSS.
-
-#### Props
-
-- `type`: `'toggle-switch' | 'button'` - The visual type of the toggle
-- `title?: string` - Tooltip text for the button type (default: "Toggle color scheme")
-
-#### Usage
-
-```tsx
-// Import from main entry (all components)
-import { DarkModeToggle } from '@ottabase/ui-components';
-
-// Import atomically (better for tree shaking)
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
-
-// Toggle switch variant
-<DarkModeToggle type="toggle-switch" />
-
-// Button variant
-<DarkModeToggle type="button" title="Switch theme" />
-```
-
-#### Dependencies
-
-This component requires:
-
-- `@mantine/core` - For UI components and color scheme management
-- `@tabler/icons-react` - For sun and moon icons
-- `next-themes` - For Tailwind CSS theme synchronization
-
-### Logo
-
-A flexible logo component that can display app name, logo image, optional dark mode toggle, and can be wrapped with a
-link. Uses the @ottabase/config package for default values.
-
-#### Props
-
-- `size?: number` - Logo image size in pixels (default: 32)
-- `darkModeSwitcher?: boolean` - Whether to show dark mode toggle (default: false)
-- `logoUrl?: string` - URL/path to logo image (falls back to config.meta.logoUrl)
-- `appName?: string` - Application name to display (falls back to config.meta.appName)
-- `linkUrl?: string` - Optional URL to wrap logo as link
-- `appConfig?: AppConfig` - Optional app config object (creates default if not provided)
-
-#### Usage
-
-```tsx
-import { Logo } from '@ottabase/ui-components/logo';
-import { createAppConfig } from '@ottabase/config';
-
-// Simple logo with app name (uses default config)
-<Logo appName="My App" />
-
-// Logo with image and dark mode toggle
-<Logo
-  logoUrl="/logo.png"
-  appName="My App"
-  darkModeSwitcher={true}
-  size={40}
-/>
-
-// Logo as link
-<Logo
-  appName="My App"
-  linkUrl="/"
-/>
-
-// Logo with custom config
-const config = createAppConfig({
-  appName: 'My Custom App',
-  defaults: {
-    meta: {
-      logoUrl: '/custom-logo.png'
-    }
-  }
-});
-
-<Logo appConfig={config} darkModeSwitcher={true} />
-```
-
-#### Dependencies
-
-This component requires:
-
-- `@mantine/core` - For UI components and layout
-- `@ottabase/config` - For configuration management
-- `next/link` - For optional link functionality (**Next.js only**; if using TanStack Router or another framework, wrap
-  the Logo in your router's `<Link>` component instead and omit `linkUrl`)
-- Internal DarkModeToggle component (if darkModeSwitcher is true)
-
-## Tree Shaking
-
-This package supports atomic imports for optimal tree shaking. Each component can be imported individually:
-
-```tsx
-// ✅ Tree-shakeable - only bundles DarkModeToggle
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
-
-// ❌ Imports all components (less optimal)
-import { DarkModeToggle } from '@ottabase/ui-components';
-```
-
-## Available Atomic Imports
-
-- `@ottabase/ui-components/dark-mode-toggle` - DarkModeToggle component
-- `@ottabase/ui-components/confirm-dialog` - ConfirmDialog component
-- `@ottabase/ui-components/logo` - Logo component
-
-## Installation
-
-```bash
-pnpm add @ottabase/ui-components
-```
-
-For monorepo workspaces, use `workspace:*`:
-
-```json
-{ "dependencies": { "@ottabase/ui-components": "workspace:*" } }
-```
 
 
 ---
@@ -26469,7 +26445,7 @@ custom editors and filter server-side via `useServerTable`.
 
 ## Theming
 
-The rendered `/react` components style themselves with theme CSS variables (the same names `@ottabase/ui-shadcn` /
+The rendered `/react` components style themselves with theme CSS variables (the same names `@ottabase/ui` /
 `@ottabase/ui-tailwind` define). This package does **not** depend on those design-system packages — it just consumes the
 variables the host app already provides, so it works out of the box in light and dark mode. Key variables used:
 
@@ -26577,15 +26553,19 @@ with pre-built themes and configuration utilities.
 - **Pre-built Themes**: Slate, Graphite, Azure, and Aurora presets
 - **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
-- **FOUC Prevention**: Flash of unstyled content prevention helpers
+
+This is an optional adapter. `@ottabase/ui` is the default UI kit; mount Mantine only on the routes that use it
+(otta-web wraps `/demo/mantine` in its own layout so nothing else pays for it).
 
 ## Installation
 
 ```bash
-pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
-# or
-pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
+pnpm add @ottabase/ui-mantine @mantine/core @mantine/hooks @mantine/modals @mantine/notifications @mantine/carousel
 ```
+
+Mantine's component CSS ships precompiled and the provider imports it. Add
+[`postcss-preset-mantine`](https://mantine.dev/styles/postcss-preset/) to the app's PostCSS config only if the app
+writes its own CSS with Mantine's mixins and functions (`rem()`, `light-dark()`, `@mixin smaller-than`).
 
 ## Usage
 
@@ -26595,7 +26575,6 @@ pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 the theme value to this provider's `colorScheme` prop to keep it in sync.
 
 ```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, MANTINE_DEMO_THEME_COLORS, MANTINE_DEMO_COLOR_DEFAULT } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState'; // Adjust path as needed
@@ -26604,17 +26583,15 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIBase>
-            <ProviderUIMantine
-                storagePrefix="ottabase"
-                themeColors={MANTINE_DEMO_THEME_COLORS}
-                primaryColor={MANTINE_DEMO_COLOR_DEFAULT}
-                // Pass the global theme to the provider
-                colorScheme={theme as 'light' | 'dark'}
-            >
-                {children}
-            </ProviderUIMantine>
-        </ProviderUIBase>
+        <ProviderUIMantine
+            storagePrefix="ottabase"
+            themeColors={MANTINE_DEMO_THEME_COLORS}
+            primaryColor={MANTINE_DEMO_COLOR_DEFAULT}
+            // Pass the global theme to the provider
+            colorScheme={theme as 'light' | 'dark'}
+        >
+            {children}
+        </ProviderUIMantine>
     );
 }
 ```
@@ -26628,7 +26605,6 @@ source of truth for theme state (e.g., a Jotai atom); no separate sync component
 ### Using Pre-built Themes
 
 ```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, mantineSlate, mantineGraphite, mantineAzure, mantineAurora } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState';
@@ -26637,11 +26613,9 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIBase>
-            <ProviderUIMantine themeOverride={mantineSlate} colorScheme={theme as 'light' | 'dark'}>
-                {children}
-            </ProviderUIMantine>
-        </ProviderUIBase>
+        <ProviderUIMantine themeOverride={mantineSlate} colorScheme={theme as 'light' | 'dark'}>
+            {children}
+        </ProviderUIMantine>
     );
 }
 ```
@@ -26649,8 +26623,9 @@ function App({ children }) {
 ### Creating Custom Themes
 
 ```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, createMantineTheme, mantineSlate, type MantineThemeConfig } from '@ottabase/ui-mantine';
+import { useAtomValue } from 'jotai';
+import { themeAtom } from '@/ottabase/state/appGlobalState';
 
 const myThemeConfig: MantineThemeConfig = {
     baseTheme: 'mantine-slate',
@@ -26685,11 +26660,9 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIBase>
-            <ProviderUIMantine themeOverride={customTheme} colorScheme={theme as 'light' | 'dark'}>
-                {children}
-            </ProviderUIMantine>
-        </ProviderUIBase>
+        <ProviderUIMantine themeOverride={customTheme} colorScheme={theme as 'light' | 'dark'}>
+            {children}
+        </ProviderUIMantine>
     );
 }
 ```
@@ -26723,7 +26696,8 @@ This package requires the following peer dependencies:
 - `@mantine/notifications` ^8.3.1
 - `@mantine/carousel` ^8.3.1
 
-**Note:** This package requires `@ottabase/ui-base` and `@ottabase/state` to be installed.
+The examples read the theme from `@ottabase/state`'s `themeAtom`, but the provider is controlled: pass `colorScheme`
+from whatever holds your app's theme.
 
 ## Development
 
@@ -26758,231 +26732,6 @@ ui-mantine/
 
 ---
 
-# packages/ui-shadcn/README.md
-
-# @ottabase/ui-shadcn
-
-Shared [shadcn/ui](https://ui.shadcn.com/) components and helpers used across Ottabase applications. The package
-provides:
-
-- A ready-to-use theme provider built on top of <code>next-themes</code>
-- Pre-configured Radix-based components aligned with shadcn defaults
-- A Tailwind-compatible utility <code>cn</code> helper
-- Optional Sonner toaster integration
-
-## Usage
-
-Install the dependency via the workspace catalog and add the package to any app:
-
-```jsonc
-// apps/<app>/package.json
-{
-    "dependencies": {
-        "@ottabase/ui-shadcn": "workspace:*",
-    },
-}
-```
-
-Import the provider in your root layout to enable dark mode, tooltips, and toasts:
-
-```tsx
-// app/providers.tsx
-import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
-
-export function Providers({ children }: { children: React.ReactNode }) {
-    return <ShadcnProviders enableToaster>{children}</ShadcnProviders>;
-}
-```
-
-Use the components anywhere in your app:
-
-```tsx
-import { Button, Card, CardHeader, CardContent } from '@ottabase/ui-shadcn';
-
-export function Example() {
-    return (
-        <Card>
-            <CardHeader>Example</CardHeader>
-            <CardContent>
-                <Button>Click me</Button>
-            </CardContent>
-        </Card>
-    );
-}
-```
-
-Finally, ensure Tailwind scans the package and that the shared CSS variables are loaded:
-
-1. Add "../../packages/ui-shadcn/components/\*_/_.{ts,tsx}" to the consuming app's <code>tailwind.config</code> content
-   list.
-2. Import the shared stylesheet in the app's global CSS file:
-
-    ```css
-    @import '@ottabase/ui-shadcn/styles.css';
-    ```
-
-## Theming hooks (BrandEngine)
-
-Components are fully themeable by the brand engine without forking:
-
-- **`data-slot` everywhere** — every primitive stamps `data-slot="button"`, `data-slot="dialog-content"`, …; CVA
-  components also stamp `data-variant`/`data-size`. Because brand stylesheets are injected after the bundle, theme CSS
-  restyles anything at equal specificity:
-
-    ```css
-    [data-slot='button'][data-variant='outline']:hover {
-        border-color: var(--link);
-    }
-    ```
-
-- **Global focus ring** — components carry no per-component `focus-visible:ring-*` recipes; one global rule in
-  `styles/shadcn.css` reads `--focus-ring-{width,style,color,offset}` (defaults look identical to the old ring).
-- **Interaction physics** — interactive elements use bare `transition`, so `--hover-transform` / `--press-transform` /
-  `--press-shadow` tokens animate hover-lift and press states globally. Opt any custom element in with `data-press`.
-- **Decor carriers** — `Button` and `Card` render an empty `aria-hidden` `[data-decor]` span (hidden by default) that
-  theme CSS can enable for shine sweeps, ornaments or texture layers.
-- **Scrims** — overlays use the `--overlay` color token (`bg-overlay/80`), not hardcoded black.
-- **Token rooms** — wrap a subtree in `<BrandScope name="afterdark">…</BrandScope>` (or put `data-brand-scope` on any
-  element) and every child re-reads the re-bound semantic vars for that room. No dark-mode props needed.
-- **Tier-2 component overrides** — when a design system needs genuinely different DOM, register replacements:
-
-    ```tsx
-    import { BrandComponentsProvider } from '@ottabase/ui-shadcn';
-
-    <BrandComponentsProvider overrides={{ button: UppButton }}>{children}</BrandComponentsProvider>;
-    ```
-
-    `button`, `badge`, `card` and `input` resolve overrides from context, receiving their original props. Prefer the CSS
-    path — reserve overrides for DOM-level differences. These primitives declare explicit React client boundaries
-    because resolving an override reads context; the package build preserves those directives for Next.js/RSC consumers.
-
-## Development
-
-```bash
-pnpm --filter @ottabase/ui-shadcn build
-pnpm --filter @ottabase/ui-shadcn lint
-pnpm --filter @ottabase/ui-shadcn type-check
-```
-
-## Design System v1 pieces
-
-The recipes implement Ottabase Design System v1 (`docs/DESIGN_SYSTEM.md`). Beyond the shadcn set, the package ships the
-record-level pieces the admin and every package panel share:
-
-```tsx
-import { Status, Tag, EnvName, PageHeader, Stat, Button } from '@ottabase/ui-shadcn';
-
-<PageHeader title="Vault" description="Backups to R2, restore, per-tenant export." actions={<Button>Run backup</Button>} />
-<Stat label="Backups kept" value={3} unit=" of 5" foot="newest 9h ago" />
-<Status domain="license" value="grace" withIcon />   // tone, label and icon from the one status map
-<Tag mono>v1.0.0</Tag> <EnvName>PREMIUM_LICENSE_VAULT</EnvName>
-<Button variant="danger">Remove app</Button>        // outline in place; `destructive` (solid) only inside a confirm
-<Button loading>Run backup</Button>                 // the one spinner
-```
-
-Tones are a CSS map: any element with `data-tone="green|amber|red|blue|smoke|neutral|brand"` can read `--t-fg`,
-`--t-bg`, `--t-line` and `--t-solid`. Code and CLI output sit in the always-dark `terminal` room:
-`<BrandScope name="terminal">` or `data-brand-scope="terminal"`.
-
-
----
-
-# packages/ui-split-pane/README.md
-
-# @ottabase/ui-split-pane
-
-Minimal, clean split-pane component for React applications with no frills.
-
-## Features
-
-- **Basic Split-Pane**: Horizontal and vertical split layouts
-- **Nested Support**: Create complex layouts with nested split panes
-- **Styled**: Customizable appearance with clean, minimal UI
-- **Snap Points**: Configure snap positions for panes
-- **Percentage Config**: Support for percentage-based sizing
-
-## Installation
-
-```bash
-pnpm add @ottabase/ui-split-pane
-```
-
-## Usage
-
-### Basic Example
-
-```tsx
-import { SplitPane } from '@ottabase/ui-split-pane';
-
-function App() {
-    return (
-        <SplitPane split="vertical" defaultSize="50%">
-            <div>Left Pane</div>
-            <div>Right Pane</div>
-        </SplitPane>
-    );
-}
-```
-
-### Nested Split Panes
-
-```tsx
-import { SplitPane } from '@ottabase/ui-split-pane';
-
-function App() {
-    return (
-        <SplitPane split="vertical" defaultSize="50%">
-            <div>Left Pane</div>
-            <SplitPane split="horizontal" defaultSize="50%">
-                <div>Top Right</div>
-                <div>Bottom Right</div>
-            </SplitPane>
-        </SplitPane>
-    );
-}
-```
-
-### With Snap Points
-
-```tsx
-import { SplitPane } from '@ottabase/ui-split-pane';
-
-function App() {
-    return (
-        <SplitPane split="vertical" defaultSize="50%" snapPoints={[100, 200, 300]}>
-            <div>Left Pane</div>
-            <div>Right Pane</div>
-        </SplitPane>
-    );
-}
-```
-
-## API
-
-### SplitPane Props
-
-| Prop               | Type                         | Default      | Description                                     |
-| ------------------ | ---------------------------- | ------------ | ----------------------------------------------- |
-| `split`            | `'vertical' \| 'horizontal'` | `'vertical'` | Direction of the split                          |
-| `defaultSize`      | `string \| number`           | `'50%'`      | Initial size: `'30%'`, `'200px'` or `200` (px)  |
-| `minWidth`         | `number`                     | `50`         | Minimum width in pixels (for vertical split)    |
-| `maxWidth`         | `number`                     | `undefined`  | Maximum width in pixels (for vertical split)    |
-| `minHeight`        | `number`                     | `50`         | Minimum height in pixels (for horizontal split) |
-| `maxHeight`        | `number`                     | `undefined`  | Maximum height in pixels (for horizontal split) |
-| `snapPoints`       | `number[]`                   | `[]`         | Array of snap positions in pixels               |
-| `snapThreshold`    | `number`                     | `20`         | Distance to snap point before snapping          |
-| `onChange`         | `(size: number) => void`     | `undefined`  | Callback when size changes                      |
-| `className`        | `string`                     | `undefined`  | Additional CSS class for the container          |
-| `resizerClassName` | `string`                     | `undefined`  | Additional CSS class for the resizer            |
-| `children`         | `ReactNode`                  | required     | Two child elements to split                     |
-
-## License
-
-MIT
-
-
----
-
 # packages/ui-tailwind/README.md
 
 # @ottabase/ui-tailwind
@@ -27004,8 +26753,7 @@ module.exports = {
     presets: [sharedPreset],
     content: [
         './src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ui/components/**/*.{js,ts,jsx,tsx}',
         // …other workspace paths that use Tailwind classes
     ],
 };
@@ -27017,7 +26765,7 @@ module.exports = {
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 ```
 
-**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + Brand Engine tokens applied by
+**3. Runtime** — load your app’s theme CSS (e.g. `@ottabase/ui/styles.css` tokens + Brand Engine tokens applied by
 `BrandThemeApplicator`) _before_ or alongside the above so the preset’s `hsl(var(--…))` references resolve.
 
 ## Peer dependencies
@@ -27029,7 +26777,6 @@ Declare these in the consuming app (versions are usually taken from the monorepo
 - `postcss`
 - `@tailwindcss/forms`
 - `@tailwindcss/typography`
-- `postcss-preset-mantine`
 
 The package also depends on `tailwind-merge` for class merging when used from TS/React layers that consume it.
 

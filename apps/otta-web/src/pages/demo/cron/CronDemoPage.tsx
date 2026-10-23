@@ -3,7 +3,7 @@
  * Demonstrates @ottabase/cron: cron expression parsing, schedule presets, and next-run calculation.
  */
 import { CronPresets, getNextRun, matchesCron, parseCron, type ParsedCron } from '@ottabase/cron';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Calendar, CheckCircle, Clock, XCircle, Zap } from 'lucide-react';
 import { useState } from 'react';

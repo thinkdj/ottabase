@@ -99,11 +99,6 @@ export function createAppConfig(options: ConfigOptions = {}): AppConfig {
         uiFramework: getEnv('UI_FRAMEWORK', defaults.uiFramework ?? 'mantine') as SupportedUIFramework,
 
         ui: {
-            preventFOUC: getBoolEnv('PREVENT_FOUC', defaults.ui?.preventFOUC ?? false),
-            preventFOUCInsideIframe: getBoolEnv(
-                'PREVENT_FOUC_INSIDE_IFRAME',
-                defaults.ui?.preventFOUCInsideIframe ?? false,
-            ),
             debounceMs: getNumberEnv('UI_DEBOUNCE_MS', defaults.ui?.debounceMs ?? 500),
             layout: {
                 minWidth: getNumberEnv('UI_LAYOUT_MIN_WIDTH', defaults.ui?.layout?.minWidth ?? 320),

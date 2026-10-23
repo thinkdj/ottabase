@@ -3,10 +3,10 @@ import { useCreateOrganization, useDeleteOrganization, useOrganizations, useUpda
 import { useRBACToast } from '@/hooks/useToast';
 import { isApiError } from '@/lib/api';
 import type { OrganizationRecord } from '@/types/rbac';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -18,7 +18,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Edit, Plus, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';

@@ -1,4 +1,4 @@
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { IconHome, IconMapPinOff } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { SplitPane } from '@ottabase/ui-split-pane';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, SplitPane } from '@ottabase/ui';
 import { DemoPageHeader } from '../DemoPageHeader';
 
 export function SplitPaneDemoPage() {

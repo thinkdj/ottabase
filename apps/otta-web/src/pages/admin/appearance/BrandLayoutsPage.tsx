@@ -2,7 +2,7 @@
 // Layouts & Route Mappings – Layout templates + path → layout + Brand Kit
 // ---------------------------------------------------------------------------
 
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { LayoutEditorTab } from './brand/LayoutEditorTab';

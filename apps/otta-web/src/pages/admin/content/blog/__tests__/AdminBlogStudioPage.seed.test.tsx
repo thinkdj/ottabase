@@ -48,7 +48,7 @@ vi.mock('../blogAdminPaths', () => ({ useBlogSurface: () => ({ contentPath: '/ad
 
 // Passthrough shadcn primitives — assertions target text and the click handler.
 // `asChild` is a Radix slot hint, never a DOM attribute, so it is dropped.
-vi.mock('@ottabase/ui-shadcn', () => {
+vi.mock('@ottabase/ui', () => {
     const Pass = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
     return {
         AlertDialog: Pass,

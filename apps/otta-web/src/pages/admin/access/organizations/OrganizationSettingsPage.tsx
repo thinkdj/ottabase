@@ -9,7 +9,6 @@ import { useDeleteOrganization, useOrganization, useUpdateOrganization } from '@
 import { useRBACToast } from '@/hooks/useToast';
 import type { OrganizationPlan, OrganizationStatus } from '@/types/rbac';
 import { organizationIdAtom } from '@/ottabase/state/appState';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Card,
@@ -17,6 +16,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Label,
     Select,
@@ -25,7 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
     Separator,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link, useParams } from '@tanstack/react-router';
 import { useSetAtom } from 'jotai';
 import { AlertTriangle, ArrowLeft, Building2, Loader2, Trash2 } from 'lucide-react';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Label, Alert, AlertDescription, Spinner, Checkbox } from '@ottabase/ui-shadcn';
+import { Button, Input, Label, Alert, AlertDescription, Spinner, Checkbox } from '@ottabase/ui';
 
 export interface CredentialsFormProps {
     onSubmit: (credentials: { email: string; password: string; rememberMe: boolean }) => Promise<void>;

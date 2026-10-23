@@ -3,7 +3,7 @@
  * Demonstrates @ottabase/ottaselect component
  */
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem, type OttaSelectSize } from '@ottabase/ottaselect';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

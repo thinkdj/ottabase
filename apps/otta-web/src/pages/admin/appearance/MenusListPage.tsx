@@ -2,8 +2,14 @@
 // Menus list – Create, navigate to detail, assign to slots (Ottamenu)
 // ---------------------------------------------------------------------------
 
-import { ConfirmDialog } from '@ottabase/ui-components';
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@ottabase/ui-shadcn';
+import {
+    Button,
+    ConfirmDialog,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@ottabase/ui';
 import { IconArrowRight, IconDotsVertical, IconMenu2, IconPlus, IconPuzzle } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';

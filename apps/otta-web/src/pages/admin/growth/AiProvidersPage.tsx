@@ -29,7 +29,7 @@ import {
     CardTitle,
     NativeSelect,
     Separator,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Sparkles, Stethoscope } from 'lucide-react';

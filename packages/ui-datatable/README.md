@@ -256,7 +256,7 @@ custom editors and filter server-side via `useServerTable`.
 
 ## Theming
 
-The rendered `/react` components style themselves with theme CSS variables (the same names `@ottabase/ui-shadcn` /
+The rendered `/react` components style themselves with theme CSS variables (the same names `@ottabase/ui` /
 `@ottabase/ui-tailwind` define). This package does **not** depend on those design-system packages — it just consumes the
 variables the host app already provides, so it works out of the box in light and dark mode. Key variables used:
 

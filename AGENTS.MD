@@ -28,8 +28,8 @@ build/deployment infrastructure outside the product runtime: it does not use Ott
    D1 — the only ORM/backend.
 3. **Workspace Protocol**: Always use `workspace:*` for internal package dependencies. Use `catalog:` for shared
    external dependencies (React, Drizzle, etc.).
-4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui-shadcn`
-   for UI components before creating new ones.
+4. **Don't Reinvent**: Check `@ottabase/utils` for internal helpers (date, string, currency) and `@ottabase/ui` for UI
+   components before creating new ones.
 5. **Edge Runtime**: This is a Cloudflare Workers project. Avoid Node.js-only APIs (fs, child_process) in app code.
 6. **Fat Models**: Encapsulate logic in models. E.g., `user.activate()` instead of `authService.activate(user)`.
 7. **Sanitize Untrusted Content**: For user/editor-provided HTML or URL values, always use `sanitizeInlineHtml`,
@@ -109,7 +109,7 @@ Use this as the default decision tree when shipping new work.
 2. **Keep data logic in models**
     - Put domain logic in model methods, not page/component handlers.
 3. **Theme-safe UI**
-    - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui-shadcn`, `@ottabase/ui-tailwind`).
+    - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui`, `@ottabase/ui-tailwind`).
     - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
     - Icons: Lucide Icons, and Tabler, Radix as fallback. Charts: Tremor where applicable.
     - Always add dark mode classes for new UI.
@@ -892,9 +892,9 @@ Install recommended extensions in `.vscode/extensions.json` for Prettier format-
 - Use consistent formatting and indentation in code snippets (check `.prettierrc` — 4 spaces, single quotes, LF).
 - When adding new packages, ensure they follow the same structure and conventions as existing ones for consistency.
 - **Type Safety** — TypeScript only.
-- UI must follow minimal design, and use components from `@ottabase/ui-shadcn` where possible to maintain a cohesive
-  look and feel across the app. If a new Component that requires design is to be made, add tailwind classes in the
-  component, and avoid adding new CSS files unless absolutely necessary.
+- UI must follow minimal design, and use components from `@ottabase/ui` where possible to maintain a cohesive look and
+  feel across the app. If a new Component that requires design is to be made, add tailwind classes in the component, and
+  avoid adding new CSS files unless absolutely necessary.
 - New UI created should feel native to the app, and not like a separate module. Design like GitHub's or Notion's pages -
   simple, clean, and functional.
 - Golden Rule throughout the repo: KISS, DRY, SIMPLEST SOLUTIONS, and always think about the developer experience for

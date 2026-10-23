@@ -10,7 +10,7 @@ import { PACKAGE_ADMIN_PAGES, PACKAGE_ROUTES, PACKAGES_ENABLED } from '@/ottabas
 import { DEMO_ACCOUNT_GATES } from '@/pages/demo/demoAccountGates';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
-import { BrandScope } from '@ottabase/ui-shadcn';
+import { BrandScope } from '@ottabase/ui';
 import { createBrowserHistory, lazyRouteComponent, Outlet, RootRoute, Route, Router } from '@tanstack/react-router';
 
 import { type ComponentType, type ReactNode } from 'react';
@@ -665,7 +665,7 @@ const demoChildren = [
     demoChild('/', () => import('@/pages/demo/DemoIndexPage'), 'DemoIndexPage'),
     demoChild('pro', () => import('@/pages/demo/pro/ProDemoPage'), 'ProDemoPage'),
     demoChild('mantine', () => import('@/pages/demo/mantine/MantineDemoRoute'), 'MantineDemoRoute'),
-    demoChild('shadcn', () => import('@/pages/demo/shadcn/ShadcnDemoPage'), 'ShadcnDemoPage'),
+    demoChild('ui', () => import('@/pages/demo/ui/UiDemoPage'), 'UiDemoPage'),
     demoChild('ottaeditor', () => import('@/pages/demo/ottaeditor/OttaEditorDemoPage'), 'OttaEditorDemoPage'),
     demoChild('ottaorm', () => import('@/pages/demo/ottaorm/OttaORMDemoPage'), 'OttaORMDemoPage'),
     demoChild('ottaforms', () => import('@/pages/demo/ottaforms/OttaFormsDemoPage'), 'OttaFormsDemoPage'),
@@ -747,8 +747,6 @@ const demoChildren = [
     demoChild('comments', () => import('@/pages/demo/comments/CommentsDemoPage'), 'CommentsDemoPage'),
     demoChild('cron', () => import('@/pages/demo/cron/CronDemoPage'), 'CronDemoPage'),
     demoChild('ui-tailwind', () => import('@/pages/demo/ui-tailwind/UiTailwindDemoPage'), 'UiTailwindDemoPage'),
-    demoChild('ui-components', () => import('@/pages/demo/ui-components/UiComponentsDemoPage'), 'UiComponentsDemoPage'),
-    demoChild('ui-base', () => import('@/pages/demo/ui-base/UiBaseDemoPage'), 'UiBaseDemoPage'),
     demoChild('scripts', () => import('@/pages/demo/scripts/ScriptsDemoPage'), 'ScriptsDemoPage'),
     demoChild('config', () => import('@/pages/demo/config/ConfigDemoPage'), 'ConfigDemoPage'),
 ];

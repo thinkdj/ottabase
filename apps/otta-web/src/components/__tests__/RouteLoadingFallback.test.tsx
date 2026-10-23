@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@ottabase/ui-shadcn', () => ({
+vi.mock('@ottabase/ui', () => ({
     Spinner: ({ 'aria-label': ariaLabel, ...props }: any) => (
         <div data-testid="spinner" role="status" aria-label={ariaLabel} {...props} />
     ),

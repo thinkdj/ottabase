@@ -5,8 +5,8 @@
 // ============================================================
 // Built on the house primitives: quiet `bg-muted/40` cards, semantic tokens only
 // (no `dark:` variants needed — every colour utility is `hsl(var(--x))`), motion
-// via `duration-normal ease-theme`, and `ConfirmDialog` from
-// `@ottabase/ui-components` for the destructive path.
+// via `duration-normal ease-theme`, and `ConfirmDialog` from `@ottabase/ui`
+// for the destructive path.
 //
 // WHAT THIS DOES NOT SHIP, on purpose: education/spotlight, illustrations,
 // benefit copy, feature marketing. Those are app product surface. It DOES ship
@@ -14,7 +14,6 @@
 // copy read the same declaration.
 // ============================================================
 
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
@@ -23,11 +22,12 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Label,
     NativeSelect,
     Separator,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { AlertTriangle, CheckCircle2, KeyRound, Loader2, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { buildCustodyDisclosure } from '../disclosure';

@@ -25,7 +25,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { useSetAtom } from 'jotai';
 import { Building2, Loader2 } from 'lucide-react';

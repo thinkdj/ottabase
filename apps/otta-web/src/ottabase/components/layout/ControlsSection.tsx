@@ -6,7 +6,7 @@ import { useSession } from '@/lib/auth';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
 import { organizationIdAtom } from '@/ottabase/state/appState';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
-import { DarkModeToggle } from '@ottabase/ui-components/dark-mode-toggle';
+import { DarkModeToggle } from '@ottabase/ui';
 import { useSetAtom } from 'jotai';
 
 function useOrganizationSelection() {

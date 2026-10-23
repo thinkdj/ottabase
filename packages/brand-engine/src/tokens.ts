@@ -8,7 +8,7 @@
 //   • SPARSE categories (palette, typeScale, border, focus, interaction, links,
 //     selection, scrollbar, native, zIndex, textStyles, fontFaces, effects,
 //     scopes, surface) emit ONLY what a theme defines. Their fallbacks live in
-//     the consumers (tailwind utilities / static shadcn.css rules) so a theme
+//     the consumers (tailwind utilities / static @ottabase/ui styles/ui.css rules) so a theme
 //     that defines none of them renders pixel-identical to the pre-v2 app.
 // ---------------------------------------------------------------------------
 
@@ -260,7 +260,7 @@ export interface TokenBorder {
     style?: string;
 }
 
-/** Focus-visible ring tokens – consumed by the global focus rule in shadcn.css */
+/** Focus-visible ring tokens – consumed by the global focus rule in @ottabase/ui styles/ui.css */
 export interface TokenFocus {
     /** Ring thickness (default 2px) */
     width?: string;

@@ -9,15 +9,19 @@ with pre-built themes and configuration utilities.
 - **Pre-built Themes**: Slate, Graphite, Azure, and Aurora presets
 - **Theme Management**: Syncs with global theme state (themeAtom from @ottabase/state)
 - **Theme Configuration**: Utilities for creating and validating custom themes
-- **FOUC Prevention**: Flash of unstyled content prevention helpers
+
+This is an optional adapter. `@ottabase/ui` is the default UI kit; mount Mantine only on the routes that use it
+(otta-web wraps `/demo/mantine` in its own layout so nothing else pays for it).
 
 ## Installation
 
 ```bash
-pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
-# or
-pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
+pnpm add @ottabase/ui-mantine @mantine/core @mantine/hooks @mantine/modals @mantine/notifications @mantine/carousel
 ```
+
+Mantine's component CSS ships precompiled and the provider imports it. Add
+[`postcss-preset-mantine`](https://mantine.dev/styles/postcss-preset/) to the app's PostCSS config only if the app
+writes its own CSS with Mantine's mixins and functions (`rem()`, `light-dark()`, `@mixin smaller-than`).
 
 ## Usage
 
@@ -27,7 +31,6 @@ pnpm add @ottabase/ui-mantine @ottabase/ui-base @ottabase/state
 the theme value to this provider's `colorScheme` prop to keep it in sync.
 
 ```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, MANTINE_DEMO_THEME_COLORS, MANTINE_DEMO_COLOR_DEFAULT } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState'; // Adjust path as needed
@@ -36,17 +39,15 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIBase>
-            <ProviderUIMantine
-                storagePrefix="ottabase"
-                themeColors={MANTINE_DEMO_THEME_COLORS}
-                primaryColor={MANTINE_DEMO_COLOR_DEFAULT}
-                // Pass the global theme to the provider
-                colorScheme={theme as 'light' | 'dark'}
-            >
-                {children}
-            </ProviderUIMantine>
-        </ProviderUIBase>
+        <ProviderUIMantine
+            storagePrefix="ottabase"
+            themeColors={MANTINE_DEMO_THEME_COLORS}
+            primaryColor={MANTINE_DEMO_COLOR_DEFAULT}
+            // Pass the global theme to the provider
+            colorScheme={theme as 'light' | 'dark'}
+        >
+            {children}
+        </ProviderUIMantine>
     );
 }
 ```
@@ -60,7 +61,6 @@ source of truth for theme state (e.g., a Jotai atom); no separate sync component
 ### Using Pre-built Themes
 
 ```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, mantineSlate, mantineGraphite, mantineAzure, mantineAurora } from '@ottabase/ui-mantine';
 import { useAtomValue } from 'jotai';
 import { themeAtom } from '@/ottabase/state/appGlobalState';
@@ -69,11 +69,9 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIBase>
-            <ProviderUIMantine themeOverride={mantineSlate} colorScheme={theme as 'light' | 'dark'}>
-                {children}
-            </ProviderUIMantine>
-        </ProviderUIBase>
+        <ProviderUIMantine themeOverride={mantineSlate} colorScheme={theme as 'light' | 'dark'}>
+            {children}
+        </ProviderUIMantine>
     );
 }
 ```
@@ -81,8 +79,9 @@ function App({ children }) {
 ### Creating Custom Themes
 
 ```tsx
-import { ProviderUIBase } from '@ottabase/ui-base';
 import { ProviderUIMantine, createMantineTheme, mantineSlate, type MantineThemeConfig } from '@ottabase/ui-mantine';
+import { useAtomValue } from 'jotai';
+import { themeAtom } from '@/ottabase/state/appGlobalState';
 
 const myThemeConfig: MantineThemeConfig = {
     baseTheme: 'mantine-slate',
@@ -117,11 +116,9 @@ function App({ children }) {
     const theme = useAtomValue(themeAtom);
 
     return (
-        <ProviderUIBase>
-            <ProviderUIMantine themeOverride={customTheme} colorScheme={theme as 'light' | 'dark'}>
-                {children}
-            </ProviderUIMantine>
-        </ProviderUIBase>
+        <ProviderUIMantine themeOverride={customTheme} colorScheme={theme as 'light' | 'dark'}>
+            {children}
+        </ProviderUIMantine>
     );
 }
 ```
@@ -155,7 +152,8 @@ This package requires the following peer dependencies:
 - `@mantine/notifications` ^8.3.1
 - `@mantine/carousel` ^8.3.1
 
-**Note:** This package requires `@ottabase/ui-base` and `@ottabase/state` to be installed.
+The examples read the theme from `@ottabase/state`'s `themeAtom`, but the provider is controlled: pass `colorScheme`
+from whatever holds your app's theme.
 
 ## Development
 

@@ -126,6 +126,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- One UI kit: `@ottabase/ui-shadcn` is now `@ottabase/ui` (`packages/ui`), and it absorbs `@ottabase/ui-components`,
+  `@ottabase/ui-split-pane` and `@ottabase/ui-base`, which are gone. `ConfirmDialog`, `MessageBox`, `DarkModeToggle` and
+  `SplitPane` import from `@ottabase/ui`; `JsonEditor` from its own entry, `@ottabase/ui/json-editor`. `BlogPagination`
+  moved to `@ottabase/ottablog/pagination`, `Logo` into otta-web (`src/components/Logo.tsx`), and `HistoryGoBackButton`
+  was dropped (only its demo used it). The moved components draw their icons from lucide, like the rest of the kit.
+  `ShadcnProviders` is `UIProviders` (`ShadcnThemeProviderProps` is `UIProvidersProps`), the stylesheet is
+  `styles/ui.css` (still imported as `@ottabase/ui/styles.css`), and the package ships the shadcn/ui MIT notice in
+  `THIRD_PARTY_NOTICES.md`. The demo moved from `/demo/shadcn` to `/demo/ui` and gained the composed components; the
+  `ui-components` and `ui-base` demo pages are gone.
+- `ProviderUIBase` and the `ui.preventFOUC` / `ui.preventFOUCInsideIframe` config (`PREVENT_FOUC`,
+  `PREVENT_FOUC_INSIDE_IFRAME`) are removed. The wrapper's font stack was already set by the Tailwind preset and
+  `ProviderFont`; the base rules Tailwind's reset leaves out (viewport-tall body, isolated app root, wrapping long
+  words, hyphenation, smooth anchor scrolling) now live in `@ottabase/ui`'s stylesheet.
+- otta-web and Storybook no longer run `postcss-preset-mantine` or `postcss-simple-vars` (no CSS used their mixins), and
+  `@ottabase/ui-tailwind` drops its `postcss-preset-mantine` peer. Mantine stays an optional adapter in
+  `@ottabase/ui-mantine`.
 - The realtime demo is open to every signed-in user, each in a Durable Object of their own (`user:<id>`), with connects
   and broadcasts rate-limited and a broadcast capped at 10 channels and 8 KB. It was platform-admin only.
 - Every account gets a workspace on sign-in: otta-web's `onSignIn` provisions one for a GitHub, OAuth or magic-link
@@ -288,6 +304,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- UI base styles: native controls and scrollbars no longer turn dark on a light page when the OS is in dark mode (the
+  old `ui-base` rule keyed `color-scheme` off the OS, not the app theme), and pages no longer force a 380px minimum
+  width, which made 375px phones scroll sideways.
+- `@ottabase/ui`: the `sidebar` entry's built file imported a hook from outside the package (`../../hooks/use-mobile`);
+  the hook now sits beside it. `next-themes`, which the theme provider and `DarkModeToggle` import, is a declared peer
+  dependency: the toggle has to talk to the same copy as the app's provider, which a second installed version would
+  silently break. The package type-checks clean again: `preserveSymlinks` made Radix's types unresolvable under pnpm
+  (185 errors). A test now checks the sources against the build entries and the `exports` map, so a relative import that
+  `dist` lacks fails in CI instead of in a consumer.
+- `BlogPagination` buttons are `type="button"` (they submitted an enclosing form), the current page carries
+  `aria-current="page"`, and the unused `perPage` prop is gone.
 - **Generic CRUD is now DEFAULT-DENY (allowlist).** `/api/ottaorm/*` previously allowed any registered model except an
   explicit denylist — which repeatedly missed sensitive tables (`user_roles`, then `user_group_members`). It now serves
   ONLY an allow-list of app-data models (posts/taxonomy/media/comments/organizations/todos); every other model —

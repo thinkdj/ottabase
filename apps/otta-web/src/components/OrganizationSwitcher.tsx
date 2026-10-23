@@ -16,7 +16,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { Building2, Check, ChevronsUpDown, Globe, Plus, Settings } from 'lucide-react';
 import { useState } from 'react';

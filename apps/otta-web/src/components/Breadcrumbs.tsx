@@ -5,7 +5,7 @@ import {
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Home } from 'lucide-react';
 import { useMemo } from 'react';
@@ -41,7 +41,7 @@ const ROUTE_LABELS: Record<string, string> = {
     '/changelog': "What's New",
     '/demo': 'Demos',
     '/demo/mantine': 'Mantine UI',
-    '/demo/shadcn': 'shadcn/ui',
+    '/demo/ui': 'UI Kit',
     '/demo/ottaeditor': 'OttaEditor',
     '/demo/ottaorm': 'OttaORM',
     '/demo/ottaforms': 'OttaForms',

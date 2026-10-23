@@ -1,7 +1,7 @@
 ---
 name: ottabase-form
 description:
-    The Ottabase way to build forms — model-driven CRUD forms via @ottabase/forms, or custom forms via the ui-shadcn
+    The Ottabase way to build forms — model-driven CRUD forms via @ottabase/forms, or custom forms via the @ottabase/ui
     Form primitives. Use for "build a form", "edit/create screen", "form validation", "field metadata", "a form for this
     model". Steers to the config-driven path and away from per-keystroke controlled state.
 ---
@@ -29,7 +29,7 @@ the model, not in the form.
 
 ## Custom forms (not model-shaped)
 
-Use the `@ottabase/ui-shadcn/form` primitives (react-hook-form backed): `Form`, `FormField`, `FormItem`, `FormLabel`,
+Use the `@ottabase/ui/form` primitives (react-hook-form backed): `Form`, `FormField`, `FormItem`, `FormLabel`,
 `FormControl`, `FormDescription`, `FormMessage`, and the `useFormField` context hook. These are uncontrolled/ref-based —
 a large admin form does **not** re-render on every keystroke. Native `<form>` submission + `FormData` are supported.
 

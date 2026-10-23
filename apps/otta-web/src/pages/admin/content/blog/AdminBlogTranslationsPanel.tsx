@@ -9,7 +9,6 @@ import {
 } from '@ottabase/ottablog';
 import { useOttaEditor, type OutputData } from '@ottabase/ottaeditor';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Card,
@@ -17,6 +16,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Label,
     NativeSelect,
@@ -27,7 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Eye, Languages, Loader2, Save, Trash2 } from 'lucide-react';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { getPublicContentPath } from './blogAdminPaths';

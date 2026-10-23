@@ -9,7 +9,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 
 /**
  * Table skeleton loader with configurable rows

@@ -8,7 +8,7 @@ import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, Tag } from 'lucide-react';

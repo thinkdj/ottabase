@@ -17,7 +17,7 @@ import {
     NativeSelectOption,
     Slider,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconCircle, IconDownload, IconRectangle } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

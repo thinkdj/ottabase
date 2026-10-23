@@ -1,4 +1,4 @@
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Lock, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';

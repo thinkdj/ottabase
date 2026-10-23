@@ -14,7 +14,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useEffect, useState } from 'react';
 
 export interface InviteMemberFormProps {

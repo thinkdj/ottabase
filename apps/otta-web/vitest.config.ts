@@ -66,19 +66,23 @@ export default defineConfig({
                 __dirname,
                 '../../packages/ottablog/src/components/ShareButton.tsx',
             ),
+            '@ottabase/ottablog/pagination': path.resolve(
+                __dirname,
+                '../../packages/ottablog/src/components/BlogPagination.tsx',
+            ),
             '@ottabase/ottamenu/render': path.resolve(__dirname, '../../packages/ottamenu/src/render/index.tsx'),
             '@ottabase/brand-engine-react/routers': path.resolve(
                 __dirname,
                 '../../packages/brand-engine-react/src/routers/tanstack.ts',
             ),
-            '@ottabase/ui-shadcn/lib/utils': path.resolve(__dirname, '../../packages/ui-shadcn/src/lib/utils.ts'),
-            '@ottabase/ui-shadcn/providers': path.resolve(__dirname, '../../packages/ui-shadcn/src/providers.ts'),
-            '@ottabase/ui-shadcn/brand-components': path.resolve(
+            '@ottabase/ui/lib/utils': path.resolve(__dirname, '../../packages/ui/src/lib/utils.ts'),
+            '@ottabase/ui/json-editor': path.resolve(__dirname, '../../packages/ui/components/ui/json-editor.tsx'),
+            '@ottabase/ui/brand-components': path.resolve(
                 __dirname,
-                '../../packages/ui-shadcn/providers/brand-components.tsx',
+                '../../packages/ui/providers/brand-components.tsx',
             ),
             '@ottabase/brand-engine-react': path.resolve(__dirname, '../../packages/brand-engine-react/src/index.tsx'),
-            '@ottabase/ui-shadcn': path.resolve(__dirname, '../../packages/ui-shadcn/src/index.ts'),
+            '@ottabase/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
             '@ottabase/api': path.resolve(__dirname, '../../packages/api/src/index.ts'),
             // Premium Packages (ottabase/packages.ts) — subpaths before the bare specifier.
             '@ottabase/premium/server': path.resolve(__dirname, '../../packages/premium/src/server/index.ts'),

@@ -19,9 +19,7 @@ import {
     type DateRange,
     type FuzzyDateTime,
 } from '@ottabase/ottadate';
-import { Input } from '@ottabase/ui-shadcn/input';
-import { Button } from '@ottabase/ui-shadcn/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn/card';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 // Styles are imported once at the app level or here

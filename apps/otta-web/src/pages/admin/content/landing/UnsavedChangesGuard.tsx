@@ -1,7 +1,7 @@
 // Asks before leaving with unsaved edits: in-app navigation gets a confirm dialog, and
 // reload / tab close gets the browser's own prompt.
 
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { ConfirmDialog } from '@ottabase/ui';
 import { useBlocker } from '@tanstack/react-router';
 
 export function UnsavedChangesGuard({ when }: { when: boolean }) {

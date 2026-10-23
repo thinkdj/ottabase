@@ -18,15 +18,16 @@
             /* Pattern-based path mapping for all packages */
             "@ottabase/*": ["./packages/*/src"],
             /* Individual package mappings for direct imports */
-            "@ottabase/ui-base": ["./packages/ui-base/src"],
             "@ottabase/config": ["./packages/config/src"],
             "@ottabase/state": ["./packages/state/src"],
             "@ottabase/scripts": ["./packages/scripts/src"],
             "@ottabase/db": ["./packages/db/src"],
             "@ottabase/ui-code-highlight": ["./packages/ui-code-highlight/src"],
             "@ottabase/ui-tailwind": ["./packages/ui-tailwind/src"],
-            "@ottabase/ui-components": ["./packages/ui-components/src"],
-            "@ottabase/ui-components/*": ["./packages/ui-components/src/*"],
+            /* @ottabase/ui subpaths that live outside its src/ (the pattern above would miss them) */
+            "@ottabase/ui/json-editor": ["./packages/ui/components/ui/json-editor.tsx"],
+            "@ottabase/ui/lib/utils": ["./packages/ui/src/lib/utils.ts"],
+            "@ottabase/ui/brand-components": ["./packages/ui/providers/brand-components.tsx"],
             "@ottabase/utils": ["./packages/utils/src"],
             "@ottabase/utils/*": ["./packages/utils/src/*"],
             "@ottabase/cron": ["./packages/cron/src"]
@@ -35,9 +36,6 @@
     "include": ["./packages/**/src/**/*.ts", "./packages/**/src/**/*.tsx"],
     "exclude": ["node_modules"],
     "references": [
-        {
-            "path": "./packages/ui-base"
-        },
         {
             "path": "./packages/config"
         },
@@ -60,13 +58,10 @@
             "path": "./packages/ui-tailwind"
         },
         {
-            "path": "./packages/ui-components"
-        },
-        {
             "path": "./packages/utils"
         },
         {
-            "path": "./packages/ui-shadcn"
+            "path": "./packages/ui"
         },
         {
             "path": "./packages/cron"

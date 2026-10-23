@@ -5,10 +5,10 @@
  */
 import { generateSlug } from '@ottabase/ottablog';
 import { createModelHooks } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
+    ConfirmDialog,
     Input,
     Label,
     Sheet,
@@ -16,7 +16,7 @@ import {
     SheetDescription,
     SheetHeader,
     SheetTitle,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Edit, Loader2, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';

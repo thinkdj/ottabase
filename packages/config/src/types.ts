@@ -63,8 +63,6 @@ export interface AppConfig {
 
     // UI Configuration
     ui: {
-        preventFOUC: boolean;
-        preventFOUCInsideIframe: boolean;
         debounceMs: number;
         layout: UILayout;
         enforceGoogleFonts: boolean;

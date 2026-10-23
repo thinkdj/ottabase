@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 // Import the source module that backs the pure `@ottabase/auth/config` subpath.
 // These helpers use type-only imports, so this entry must stay free of any UI deps
-// (@ottabase/ui-shadcn / lucide-react live only on `@ottabase/auth/components`).
+// (@ottabase/ui / lucide-react live only on `@ottabase/auth/components`).
 import {
     getConfiguredSocialProviders,
     getLoginConfig,

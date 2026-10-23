@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Switch } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Switch } from '@ottabase/ui';
 import { MenuRenderer, type MenuForRender } from '@ottabase/ottamenu/render';
 import { type MenuItemDto, type MenuRenderType } from '@ottabase/ottamenu';
 import { IconLayoutNavbar, IconMenu2 } from '@tabler/icons-react';
@@ -9,7 +9,7 @@ const DEMO_ITEMS: MenuItemDto[] = [
     { id: 'home', menuId: 'demo-menu', name: 'Home', link: '/' },
     { id: 'docs', menuId: 'demo-menu', name: 'Docs', link: '/docs' },
     { id: 'products', menuId: 'demo-menu', name: 'Products', link: '#', sortOrder: 1 },
-    { id: 'ui-kit', menuId: 'demo-menu', parentId: 'products', name: 'UI Kit', link: '/demo/shadcn' },
+    { id: 'ui-kit', menuId: 'demo-menu', parentId: 'products', name: 'UI Kit', link: '/demo/ui' },
     { id: 'forms', menuId: 'demo-menu', parentId: 'products', name: 'Forms', link: '/demo/ottaforms' },
     { id: 'advanced', menuId: 'demo-menu', parentId: 'products', name: 'Advanced', link: '#', sortOrder: 3 },
     { id: 'renderer', menuId: 'demo-menu', parentId: 'advanced', name: 'Renderer', link: '/demo/renderer' },

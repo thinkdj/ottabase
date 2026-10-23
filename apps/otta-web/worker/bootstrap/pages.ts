@@ -8,7 +8,7 @@
 //
 // DESIGN — the palette, radius, shadow and motion tokens below are Design
 // System v1 (packages/brand-engine/src/themes/verdant.json, the framework
-// default) and the component recipes mirror @ottabase/ui-shadcn (button
+// default) and the component recipes mirror @ottabase/ui (button
 // h-9/rounded-md, input h-9, card rounded-lg + border, the global 2px focus
 // ring). First-run setup should look like the product it is installing. Light
 // and dark come from prefers-color-scheme — there is no theme store to read yet.
@@ -135,7 +135,7 @@ const STYLES = `
 
   .page { width: 100%; max-width: 60rem; margin: 0 auto; }
 
-  /* Focus: the app's single global focus-visible rule (shadcn.css) */
+  /* Focus: the app's single global focus-visible rule (@ottabase/ui styles/ui.css) */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;

@@ -42,8 +42,8 @@ branding work.
   (`@ottabase/brand-engine-react`). It resolves the path-scoped theme and `applyBrandTheme()` writes the critical CSS.
 - **Per-route override**: a `RouteMapping.tokenOverridesJson` (JSON, `deepMerge`d onto the kit; malformed JSON silently
   falls back).
-- **Per-subtree override**: `<BrandScope name="…">` (`@ottabase/ui-shadcn/brand-components`) re-binds `scopes.{name}`
-  vars for a subtree (e.g. an always-dark hero) without `dark:` classes.
+- **Per-subtree override**: `<BrandScope name="…">` (`@ottabase/ui/brand-components`) re-binds `scopes.{name}` vars for
+  a subtree (e.g. an always-dark hero) without `dark:` classes.
 - **Per-component look**: target `[data-slot="…"]` in theme CSS (Tier 1); see `ottabase-component` for replacing a
   component's DOM (Tier 2).
 

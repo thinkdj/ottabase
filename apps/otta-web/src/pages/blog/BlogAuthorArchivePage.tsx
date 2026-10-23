@@ -10,7 +10,7 @@ import type { PostAuthor } from '@/types/blog';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
 import { defaultTheme } from '@ottabase/ottablog/renderer';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui-shadcn';
+import { Avatar, AvatarFallback, AvatarImage, Button } from '@ottabase/ui';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';

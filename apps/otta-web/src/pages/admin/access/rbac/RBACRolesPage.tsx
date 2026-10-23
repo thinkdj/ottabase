@@ -1,10 +1,10 @@
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import type { RoleRecord } from '@/types/rbac';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -12,14 +12,14 @@ import {
     DialogTitle,
     Input,
     Label,
-    Textarea,
     Table,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+    Textarea,
+} from '@ottabase/ui';
 import { ArrowLeft, Edit, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';

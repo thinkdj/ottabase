@@ -10,32 +10,32 @@
 import { useInviteMember, useOrganizations, useRemoveMember, useUpdateMemberRole } from '@/hooks/useRBAC';
 import { useRBACToast } from '@/hooks/useToast';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Avatar,
     AvatarFallback,
     AvatarImage,
     Badge,
     Button,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    Label,
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-    Label,
     Table,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import type { MemberRole, OrganizationMemberRecord } from '@/types/rbac';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';

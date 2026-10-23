@@ -3,7 +3,6 @@ import { api, isApiError } from '@/lib/api';
 import type { MediaKind, MediaLibraryItemLike } from '@ottabase/medialibrary';
 import { formatMediaFileSize, getMediaDisplayTitle, toMediaSelectionPayload } from '@ottabase/medialibrary';
 import { MediaPreview } from '@ottabase/medialibrary/react';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Card,
@@ -11,9 +10,10 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import {
     IconCheck,
     IconCopy,

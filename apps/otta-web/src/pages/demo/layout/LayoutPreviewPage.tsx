@@ -1,7 +1,6 @@
 import { LAYOUT_PRESETS, LAYOUT_PRESET_IDS, type LayoutPresetId } from '@ottabase/ottalayout';
 import { useLayoutMeta } from '@ottabase/ottalayout/react';
-import { Button } from '@ottabase/ui-shadcn';
-import { cn } from '@ottabase/ui-shadcn/lib/utils';
+import { Button, cn } from '@ottabase/ui';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 

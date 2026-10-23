@@ -72,13 +72,13 @@ base-theme-then-retheme flash. `apps/otta-web/src/__tests__/brand-theme-parity.t
 
 ### Swapping components per design system (two tiers)
 
-Theming components lives in `@ottabase/ui-shadcn`, not this package, but forks land here first, so the pointer:
+Theming components lives in `@ottabase/ui`, not this package, but forks land here first, so the pointer:
 
-1. **Tier 1 (CSS — covers ~90%):** every ui-shadcn primitive stamps `data-slot` (+ `data-variant`/`data-size`); theme
-   CSS like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
+1. **Tier 1 (CSS — covers ~90%):** every `@ottabase/ui` primitive stamps `data-slot` (+ `data-variant`/`data-size`);
+   theme CSS like `[data-slot='button'][data-variant='outline']:hover { … }` restyles anything without forking.
 2. **Tier 2 (React — DOM-level differences):** register replacement implementations via
-   `<BrandComponentsProvider overrides={{ button: UppButton }}>` from `@ottabase/ui-shadcn`. Reserve for components
-   whose DOM must genuinely differ; prefer Tier 1.
+   `<BrandComponentsProvider overrides={{ button: UppButton }}>` from `@ottabase/ui`. Reserve for components whose DOM
+   must genuinely differ; prefer Tier 1.
 
 ## LayoutResolver
 

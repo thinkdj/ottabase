@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as core from '../index';
 import * as rendered from '../renderer';
 import * as share from '../components/ShareButton';
+import * as pagination from '../components/BlogPagination';
 
 describe('ottablog entrypoint boundaries', () => {
     it('keeps rendered UI out of the headless package root', () => {
@@ -20,5 +21,11 @@ describe('ottablog entrypoint boundaries', () => {
 
     it('exposes ShareButton from its standalone subpath', () => {
         expect(share.ShareButton).toBeTypeOf('function');
+    });
+
+    it('exposes BlogPagination from its standalone subpath only', () => {
+        expect(pagination.BlogPagination).toBeTypeOf('function');
+        expect(core).not.toHaveProperty('BlogPagination');
+        expect(rendered).not.toHaveProperty('BlogPagination');
     });
 });

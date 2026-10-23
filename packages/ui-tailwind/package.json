@@ -12,8 +12,7 @@
         "tailwindcss-animate": "catalog:",
         "postcss": "catalog:",
         "@tailwindcss/forms": "catalog:",
-        "@tailwindcss/typography": "catalog:",
-        "postcss-preset-mantine": "catalog:"
+        "@tailwindcss/typography": "catalog:"
     },
     "dependencies": {
         "tailwind-merge": "catalog:"

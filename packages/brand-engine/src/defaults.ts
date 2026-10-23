@@ -202,7 +202,7 @@ export const DEFAULT_SHADOWS: Record<string, string> = {
     xl: '0 24px 56px -12px rgb(18 26 21 / 0.28)',
 };
 
-/** Default shadow elevation scale (dark) – must match shadcn.css .dark */
+/** Default shadow elevation scale (dark) – must match @ottabase/ui styles/ui.css .dark */
 export const DEFAULT_SHADOWS_DARK: Record<string, string> = {
     xs: '0 1px 2px rgb(0 0 0 / 0.32)',
     sm: '0 1px 2px rgb(0 0 0 / 0.3), 0 2px 8px rgb(0 0 0 / 0.26)',

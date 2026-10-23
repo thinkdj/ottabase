@@ -44,7 +44,7 @@ import { createModelHooks, useApiClient, useApiQuery } from '@ottabase/ottaorm/c
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { ConfirmDialog, JsonEditor, type JsonValue } from '@ottabase/ui-components';
+import { JsonEditor, type JsonValue } from '@ottabase/ui/json-editor';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -59,6 +59,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
@@ -77,7 +78,7 @@ import {
     TabsList,
     TabsTrigger,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as Diff from 'diff';
@@ -438,7 +439,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const [seoKeywords, setSeoKeywords] = useState(initialData?.seoMeta?.keywords?.join(', ') || '');
     const [seoNoIndex, setSeoNoIndex] = useState(initialData?.seoMeta?.noIndex || false);
 
-    // Custom meta: free-form k/v JSON, not used by the engine. Tree-edited via @ottabase/ui-components JsonEditor.
+    // Custom meta: free-form k/v JSON, not used by the engine. Tree-edited via the @ottabase/ui/json-editor JsonEditor.
     const [meta, setMeta] = useState<Record<string, unknown>>(
         (initialData?.meta as Record<string, unknown> | null) ?? {},
     );

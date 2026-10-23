@@ -6,7 +6,7 @@ import {
     CardTitle,
     NativeSelect,
     NativeSelectOption,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import {
     convertTimezone,
     formatCompactDateTime,

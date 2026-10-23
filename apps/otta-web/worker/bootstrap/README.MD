@@ -90,8 +90,8 @@ These are the rules that make the pages work at all — break them and setup bre
 The palette, radius, shadow and motion tokens in `pages.ts` are transcribed from the **verdant** theme
 (`packages/brand-engine/src/themes/verdant.json`, mirrored in `src/defaults.ts`), which is the framework default and is
 what `ensureAppBrandDefaults` seeds as `themePresetId` during step two. The wizard therefore looks like the brand kit it
-just created. The component CSS mirrors `@ottabase/ui-shadcn`: button `h-10` / `rounded-md`, input `h-10`, card
-`rounded-lg` with a border, and the global `2px solid hsl(var(--ring))` focus ring.
+just created. The component CSS mirrors `@ottabase/ui`: button `h-10` / `rounded-md`, input `h-10`, card `rounded-lg`
+with a border, and the global `2px solid hsl(var(--ring))` focus ring.
 
 Two values are not copied verbatim. Verdant's light `--muted-foreground` (`142 8% 46%`) measures 4.03:1 on its own
 background and misses AA, so it is darkened to `142 8% 40%` (4.9:1). And `--danger` / `--success` / `--warning` are

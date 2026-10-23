@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { isApiError, type ApiError } from '@ottabase/api';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui';
 
 interface ErrorBoundaryProps {
     children: ReactNode;

@@ -10,7 +10,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { AlertCircle, Archive, Bell, CheckCircle2, Clock, Inbox, Mail, Radio } from 'lucide-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

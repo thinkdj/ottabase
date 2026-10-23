@@ -7,9 +7,10 @@ module.exports = {
     content: [
         // Storybook files (specific to avoid node_modules)
         path.resolve(__dirname, '*.{js,ts,jsx,tsx,mdx}'),
-        // All package sources
+        // All package sources (@ottabase/ui keeps its components and stories outside src/)
         path.resolve(projectRoot, 'packages/*/src/**/*.{js,ts,jsx,tsx}'),
         path.resolve(projectRoot, 'packages/*/provider/**/*.{js,ts,jsx,tsx}'),
+        path.resolve(projectRoot, 'packages/ui/{components,providers,stories}/**/*.{js,ts,jsx,tsx}'),
         // All app sources
         path.resolve(projectRoot, 'apps/*/app/**/*.{js,ts,jsx,tsx}'),
         path.resolve(projectRoot, 'apps/*/components/**/*.{js,ts,jsx,tsx}'),

@@ -2,7 +2,7 @@
 // descriptors that type and validate the content, so form, types and validation can't drift.
 
 import type { Fields, ListField, ScalarField } from '@ottabase/ottalanding';
-import { Button, Input, Label, NativeSelect, NativeSelectOption, Switch, Textarea } from '@ottabase/ui-shadcn';
+import { Button, Input, Label, NativeSelect, NativeSelectOption, Switch, Textarea } from '@ottabase/ui';
 import { ArrowDown, ArrowUp, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { createContext, useContext, useId, useState } from 'react';
 import { ImageField } from './ImageField';

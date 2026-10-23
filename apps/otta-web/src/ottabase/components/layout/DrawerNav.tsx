@@ -3,7 +3,7 @@ import { useBrand } from '@ottabase/brand-engine-react';
 import type { ResolvedMenuSlotData } from '@ottabase/ottamenu/render';
 import { MenuSlotRenderer } from '@ottabase/ottamenu/render';
 import { APP_META } from '@/ottabase/config';
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { Link, useLocation } from '@tanstack/react-router';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';

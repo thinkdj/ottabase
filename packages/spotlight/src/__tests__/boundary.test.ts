@@ -6,7 +6,7 @@ import * as root from '../index';
  *
  * Rendered React UI (Spotlight, SpotlightProvider) lives exclusively behind
  * the '@ottabase/spotlight/react' subpath so that pure consumers never pull in
- * the optional UI peers (@ottabase/ui-shadcn, @radix-ui/react-dialog,
+ * the optional UI peers (@ottabase/ui, @radix-ui/react-dialog,
  * @tabler/icons-react). Importing the root here loads NO UI dependency, which
  * is exactly the property this test protects.
  */

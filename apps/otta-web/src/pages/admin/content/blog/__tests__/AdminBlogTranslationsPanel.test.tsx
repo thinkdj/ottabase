@@ -36,7 +36,7 @@ vi.mock('@ottabase/ottaorm/client', () => ({
     },
 }));
 
-vi.mock('@ottabase/ui-shadcn', () => {
+vi.mock('@ottabase/ui', () => {
     const Box = ({ children, ...props }: any) => <div {...props}>{children}</div>;
     return {
         AlertDialog: ({ open, children }: any) => (open ? <div>{children}</div> : null),
@@ -73,20 +73,25 @@ vi.mock('@ottabase/ui-shadcn', () => {
         SelectValue: () => <span />,
         Textarea: (props: any) => <textarea {...props} />,
         cn: (...classes: any[]) => classes.filter(Boolean).join(' '),
+        ConfirmDialog: ({
+            open,
+            title,
+            description,
+            primaryActionText,
+            secondaryActionText,
+            onConfirm,
+            onCancel,
+        }: any) =>
+            open ? (
+                <div role="dialog">
+                    <h2>{title}</h2>
+                    <p>{description}</p>
+                    <button onClick={onConfirm}>{primaryActionText}</button>
+                    <button onClick={onCancel}>{secondaryActionText}</button>
+                </div>
+            ) : null,
     };
 });
-
-vi.mock('@ottabase/ui-components', () => ({
-    ConfirmDialog: ({ open, title, description, primaryActionText, secondaryActionText, onConfirm, onCancel }: any) =>
-        open ? (
-            <div role="dialog">
-                <h2>{title}</h2>
-                <p>{description}</p>
-                <button onClick={onConfirm}>{primaryActionText}</button>
-                <button onClick={onCancel}>{secondaryActionText}</button>
-            </div>
-        ) : null,
-}));
 
 vi.mock('lucide-react', () => ({
     Languages: () => null,

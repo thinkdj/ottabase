@@ -38,7 +38,7 @@ import {
     Input,
     Skeleton,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostPath, localizedPostSearch } from './blogLinks';
 import {

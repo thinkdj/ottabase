@@ -6,16 +6,16 @@
 
 import { api } from '@/lib/api';
 import { Cropper } from '@ottabase/ui-cropper';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 // Styles are imported once at the app level or here

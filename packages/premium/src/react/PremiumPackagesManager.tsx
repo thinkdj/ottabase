@@ -19,7 +19,7 @@ import {
     Input,
     Status,
     Tag,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { ExternalLink, KeyRound, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { usePremiumLicense, usePremiumPackages } from './hooks';

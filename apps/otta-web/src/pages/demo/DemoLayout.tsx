@@ -1,6 +1,5 @@
 import { Breadcrumbs } from '@/components/Breadcrumbs';
-import { Button, Input } from '@ottabase/ui-shadcn';
-import { cn } from '@ottabase/ui-shadcn/lib/utils';
+import { Button, cn, Input } from '@ottabase/ui';
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { Layout, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';

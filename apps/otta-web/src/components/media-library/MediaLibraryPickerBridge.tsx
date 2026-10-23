@@ -1,6 +1,6 @@
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import type { MediaKind, toMediaSelectionPayload } from '@ottabase/medialibrary';
-import { Dialog, DialogContent } from '@ottabase/ui-shadcn';
+import { Dialog, DialogContent } from '@ottabase/ui';
 import { useEffect, useRef, useState } from 'react';
 
 interface MediaLibraryOpenDetail {

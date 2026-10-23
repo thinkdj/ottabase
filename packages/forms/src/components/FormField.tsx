@@ -5,7 +5,7 @@
 // ============================================================
 
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { JsonEditor, type JsonValue } from '@ottabase/ui-components';
+import { JsonEditor, type JsonValue } from '@ottabase/ui/json-editor';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { clsx } from 'clsx';
 import { AlertCircle, Calendar, Check, Eye, EyeOff, Loader2, Upload, X } from 'lucide-react';
@@ -340,7 +340,7 @@ export function FormField({
 // ============================================================
 
 /**
- * JSON field: wraps `@ottabase/ui-components` JsonEditor (Tree + Raw modes,
+ * JSON field: wraps `@ottabase/ui/json-editor` JsonEditor (Tree + Raw modes,
  * inline editing, live validation). Used for fieldType 'json' and for
  * arbitrary object values (instead of rendering [Object]).
  *

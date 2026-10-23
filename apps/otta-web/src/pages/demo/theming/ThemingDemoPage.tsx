@@ -12,7 +12,7 @@ import {
     CardTitle,
     Input,
     Label,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useTheme as useNextTheme } from 'next-themes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

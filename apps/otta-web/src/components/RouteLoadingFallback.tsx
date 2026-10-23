@@ -1,4 +1,4 @@
-import { Spinner } from '@ottabase/ui-shadcn';
+import { Spinner } from '@ottabase/ui';
 
 /**
  * Shown while a lazy route chunk loads (e.g. /docs, /demo).

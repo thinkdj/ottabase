@@ -224,8 +224,6 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
             sesRegion: input.email?.sesRegion ?? 'us-east-1',
         },
         ui: {
-            preventFOUC: input.ui?.preventFOUC ?? false,
-            preventFOUCInsideIframe: input.ui?.preventFOUCInsideIframe ?? false,
             debounceMs: input.ui?.debounceMs ?? 500,
             layout: input.ui?.layout ?? { minWidth: 320, maxWidth: 1280 },
             enforceGoogleFonts: input.ui?.enforceGoogleFonts ?? true,

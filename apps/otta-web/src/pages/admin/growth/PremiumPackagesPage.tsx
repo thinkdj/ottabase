@@ -11,7 +11,7 @@
 
 import { premiumRequest } from '@/lib/premium';
 import { PremiumPackagesManager, PremiumProvider } from '@ottabase/premium/react';
-import { PageHeader } from '@ottabase/ui-shadcn';
+import { PageHeader } from '@ottabase/ui';
 
 export function PremiumPackagesPage() {
     return (

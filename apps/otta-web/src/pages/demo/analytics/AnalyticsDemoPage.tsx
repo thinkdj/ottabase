@@ -13,7 +13,7 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconActivity, IconChartBar, IconSend } from '@tabler/icons-react';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

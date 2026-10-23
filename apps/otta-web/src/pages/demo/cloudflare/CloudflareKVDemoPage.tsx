@@ -1,5 +1,5 @@
 import { api, isApiError } from '@/lib/api';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea } from '@ottabase/ui';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

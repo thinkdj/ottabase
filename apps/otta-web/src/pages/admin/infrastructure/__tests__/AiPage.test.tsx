@@ -113,7 +113,7 @@ vi.mock('lucide-react', () => ({
     Waypoints: () => null,
 }));
 
-vi.mock('@ottabase/ui-shadcn', () => ({
+vi.mock('@ottabase/ui', () => ({
     Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
     Button: ({
         children,

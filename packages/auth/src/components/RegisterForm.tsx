@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Label, Alert, AlertDescription, Spinner } from '@ottabase/ui-shadcn';
+import { Button, Input, Label, Alert, AlertDescription, Spinner } from '@ottabase/ui';
 import { CheckCircle2 } from 'lucide-react';
 
 export interface RegisterFormData {

@@ -15,17 +15,7 @@ import {
 } from '@ottabase/brand-engine';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { OttaSelect, type ItemRendererProps, type OttaSelectItem } from '@ottabase/ottaselect';
-import {
-    Button,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    Input,
-    Label,
-    Switch,
-} from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Switch } from '@ottabase/ui';
 import { IconPalette, IconRefresh } from '@tabler/icons-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';

@@ -219,8 +219,6 @@ export interface OttabaseEmailConfig {
 }
 
 export interface OttabaseUIConfig {
-    preventFOUC?: boolean;
-    preventFOUCInsideIframe?: boolean;
     debounceMs?: number;
     layout?: { minWidth: number; maxWidth: number };
     enforceGoogleFonts?: boolean;

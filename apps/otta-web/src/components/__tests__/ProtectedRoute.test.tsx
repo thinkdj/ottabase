@@ -24,7 +24,7 @@ vi.mock('@/lib/auth-redirect', () => ({ rememberReturnPath }));
 
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigate }));
 
-vi.mock('@ottabase/ui-shadcn', () => ({
+vi.mock('@ottabase/ui', () => ({
     Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
         <button {...props}>{children}</button>
     ),

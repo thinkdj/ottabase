@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MediaGalleryConfirmBridge } from '../MediaGalleryConfirmBridge';
 
-vi.mock('@ottabase/ui-components', () => ({
+vi.mock('@ottabase/ui', () => ({
     ConfirmDialog: () => null,
 }));
 

@@ -2,7 +2,7 @@
 // address. Uploads are stored as /api/upload/file/<key>, which the landing site serves too.
 
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
-import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Input } from '@ottabase/ui-shadcn';
+import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Input } from '@ottabase/ui';
 import { ImageIcon, Link2 } from 'lucide-react';
 import { useState, type ComponentProps } from 'react';
 

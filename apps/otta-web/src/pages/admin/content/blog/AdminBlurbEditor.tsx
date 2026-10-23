@@ -12,7 +12,6 @@ import {
 import { BlurbRenderer } from '@ottabase/ottablog/renderer';
 import { createModelHooks, useApiMutation } from '@ottabase/ottaorm/client';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,12 +26,13 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Label,
     NativeSelect,
     NativeSelectOption,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Loader2, Save, Send, Tag, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';

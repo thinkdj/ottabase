@@ -13,7 +13,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { permissionMatches } from '@ottabase/utils/permissions';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { useState } from 'react';

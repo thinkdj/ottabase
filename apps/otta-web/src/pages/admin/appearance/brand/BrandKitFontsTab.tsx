@@ -13,7 +13,7 @@ import {
     NativeSelect,
     NativeSelectOption,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useCallback, useEffect, useMemo } from 'react';
 import { OverrideSection } from './OverrideSection';
 

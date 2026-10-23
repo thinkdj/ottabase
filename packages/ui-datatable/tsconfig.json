@@ -12,8 +12,8 @@
         "skipLibCheck": true,
         "strict": true,
         "paths": {
-            "@ottabase/ui-shadcn": ["../ui-shadcn/src/index.ts"],
-            "@ottabase/ui-shadcn/*": ["../ui-shadcn/src/*"]
+            "@ottabase/ui": ["../ui/src/index.ts"],
+            "@ottabase/ui/*": ["../ui/src/*"]
         }
     },
     "include": ["src/**/*"],

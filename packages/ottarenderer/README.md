@@ -8,7 +8,7 @@ React renderer for [Editor.js](https://editorjs.io/) content and generic HTML.
 - **Custom Blocks**: Includes renderers for `@ottabase/ottaeditor` custom blocks (AdvancedImage, CTA, Disclosure,
   Layout, Review, Spoiler, Steps, etc.).
 - **HTML Renderer**: Safe HTML rendering utility.
-- **Tailwind Configured**: Styled with Tailwind CSS via `@ottabase/ui-base`.
+- **Tailwind Configured**: Styled with Tailwind utilities on the shared `@ottabase/ui-tailwind` preset.
 - **Global Theming**: Components use semantic theme token classes (`bg-primary`, `text-foreground`, `border-border`) and
   adapt to light/dark mode.
 - **Extensible**: Supports custom block injectors.

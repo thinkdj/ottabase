@@ -6,8 +6,7 @@ import { buildCSSVarMap, buildPreviewTheme } from '@ottabase/brand-engine';
 import { injectFont } from '@ottabase/brand-engine/dom';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui-shadcn';
+import { Button, ConfirmDialog, Tabs, TabsContent, TabsList, TabsTrigger } from '@ottabase/ui';
 import {
     IconActivity,
     IconArrowLeft,

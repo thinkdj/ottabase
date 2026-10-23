@@ -7,7 +7,7 @@
 import type { DataTableBulkAction, DataTablePaginationState, DataTableSortingState } from '@ottabase/ui-datatable';
 import { useDataTable } from '@ottabase/ui-datatable';
 import { actionsColumn, createColumns, DataTable, selectColumn } from '@ottabase/ui-datatable/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { CheckCircle2, Edit2, Info, Trash2, X, XCircle } from 'lucide-react';
 import { createContext, useCallback, useContext, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
@@ -272,7 +272,7 @@ return (
                         />
                         <FeatureItem
                             title="Theme-Aware"
-                            description="Uses CSS variables from @ottabase/ui-shadcn — light/dark mode ready"
+                            description="Uses CSS variables from @ottabase/ui — light/dark mode ready"
                         />
                     </div>
                 </CardContent>

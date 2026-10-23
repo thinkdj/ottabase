@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,6 +15,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Label,
     Select,
@@ -24,9 +24,9 @@ import {
     SelectTrigger,
     SelectValue,
     Stat,
-    Textarea,
     Switch,
-} from '@ottabase/ui-shadcn';
+    Textarea,
+} from '@ottabase/ui';
 import { isApiError } from '@/lib/api';
 import { clampCronPage, formatCronPayload } from './cron-page-utils';
 import {

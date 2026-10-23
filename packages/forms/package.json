@@ -34,7 +34,7 @@
     "peerDependencies": {
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
-        "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@ottabase/ui-datatable": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "clsx": "catalog:",
@@ -47,7 +47,7 @@
         "@ottabase/ottaselect": {
             "optional": true
         },
-        "@ottabase/ui-components": {
+        "@ottabase/ui": {
             "optional": true
         },
         "@ottabase/ui-datatable": {
@@ -63,7 +63,7 @@
     "devDependencies": {
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottaselect": "workspace:*",
-        "@ottabase/ui-components": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@ottabase/ui-datatable": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@types/react": "catalog:",

@@ -146,9 +146,6 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
         },
         ui: {
             ...config.ui,
-            preventFOUC: bool(env, ENV_KEYS.PREVENT_FOUC) ?? config.ui?.preventFOUC,
-            preventFOUCInsideIframe:
-                bool(env, ENV_KEYS.PREVENT_FOUC_INSIDE_IFRAME) ?? config.ui?.preventFOUCInsideIframe,
             debounceMs: num(env, ENV_KEYS.UI_DEBOUNCE_MS) ?? config.ui?.debounceMs,
             enforceGoogleFonts: bool(env, ENV_KEYS.ENFORCE_GOOGLE_FONTS) ?? config.ui?.enforceGoogleFonts,
         },

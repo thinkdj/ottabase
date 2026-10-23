@@ -17,8 +17,7 @@ module.exports = {
     presets: [sharedPreset],
     content: [
         './src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-        '../../packages/ui-shadcn/components/**/*.{js,ts,jsx,tsx}',
+        '../../packages/ui/components/**/*.{js,ts,jsx,tsx}',
         // …other workspace paths that use Tailwind classes
     ],
 };
@@ -30,7 +29,7 @@ module.exports = {
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 ```
 
-**3. Runtime** — load your app’s theme CSS (e.g. shadcn variables + Brand Engine tokens applied by
+**3. Runtime** — load your app’s theme CSS (e.g. `@ottabase/ui/styles.css` tokens + Brand Engine tokens applied by
 `BrandThemeApplicator`) _before_ or alongside the above so the preset’s `hsl(var(--…))` references resolve.
 
 ## Peer dependencies
@@ -42,7 +41,6 @@ Declare these in the consuming app (versions are usually taken from the monorepo
 - `postcss`
 - `@tailwindcss/forms`
 - `@tailwindcss/typography`
-- `postcss-preset-mantine`
 
 The package also depends on `tailwind-merge` for class merging when used from TS/React layers that consume it.
 

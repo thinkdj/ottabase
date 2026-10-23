@@ -17,7 +17,6 @@ import {
     type PostStatus,
 } from '@ottabase/ottablog';
 import { createModelHooks, useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,6 +26,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     Button,
+    ConfirmDialog,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -41,7 +41,7 @@ import {
     TableHeader,
     TableRow,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import {
     ChevronDown,

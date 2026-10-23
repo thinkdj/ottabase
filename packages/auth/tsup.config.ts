@@ -24,7 +24,7 @@ export default defineConfig({
     clean: true,
     external: [
         // Externalize all @ottabase packages to use their built types
-        '@ottabase/ui-shadcn',
+        '@ottabase/ui',
         '@ottabase/ottaorm',
         '@ottabase/email',
         // Externalize React to avoid type resolution issues during DTS build

@@ -15,7 +15,7 @@ import {
     zoomAtom,
     type AppUser,
 } from '@/ottabase/state/appState';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { useAtom, useAtomValue } from 'jotai';
 import { useTheme as useNextTheme } from 'next-themes';
 import { DemoPageHeader } from '../DemoPageHeader';

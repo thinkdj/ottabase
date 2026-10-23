@@ -44,14 +44,14 @@
         "@ottabase/config": "workspace:*"
     },
     "peerDependencies": {
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@radix-ui/react-dialog": "^1.1.4",
         "@tabler/icons-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
     },
     "peerDependenciesMeta": {
-        "@ottabase/ui-shadcn": {
+        "@ottabase/ui": {
             "optional": true
         },
         "@radix-ui/react-dialog": {

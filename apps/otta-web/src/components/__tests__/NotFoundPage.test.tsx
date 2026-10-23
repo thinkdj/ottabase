@@ -9,7 +9,7 @@ vi.mock('@tanstack/react-router', () => ({
     ),
 }));
 
-vi.mock('@ottabase/ui-shadcn', () => ({
+vi.mock('@ottabase/ui', () => ({
     Button: ({ children, asChild, variant, ...props }: any) => (
         <button data-variant={variant} {...props}>
             {children}

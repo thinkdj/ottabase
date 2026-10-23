@@ -5,7 +5,6 @@
 import type { MenuItemTreeNode } from '@ottabase/ottamenu';
 import { buildItemTree } from '@ottabase/ottamenu';
 import { renderMenu } from '@ottabase/ottamenu/render';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Button,
     Card,
@@ -13,6 +12,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Input,
     Label,
     Select,
@@ -21,7 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconArrowLeft, IconEye, IconPlus, IconTrash, IconUpload, IconX } from '@tabler/icons-react';
 import { useBrand } from '@ottabase/brand-engine-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

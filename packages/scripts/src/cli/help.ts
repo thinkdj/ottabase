@@ -77,7 +77,7 @@ const COMMAND_REGISTRY: CommandDoc[] = [
         desc: 'Free every dev port declared by apps/* (--app=<name> or --ports=a,b to narrow)',
     },
     { name: 'dev:kill:web', group: 'Development', desc: 'Free only otta-web ports (3003/3004)' },
-    { name: 'dev:ui', group: 'Development', desc: 'Watch otta-web plus every ui-* package' },
+    { name: 'dev:ui', group: 'Development', desc: 'Watch otta-web plus @ottabase/ui and every ui-* package' },
     { name: 'dev:pkg', group: 'Development', desc: 'Watch every @ottabase/* package' },
     { name: 'dev:full', group: 'Development', desc: 'Install, build packages, test, then start dev' },
 

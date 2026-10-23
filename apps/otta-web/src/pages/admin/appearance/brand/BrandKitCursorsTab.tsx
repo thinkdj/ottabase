@@ -19,7 +19,7 @@ import {
     PopoverContent,
     PopoverTrigger,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import {
     IconArrowsMove,
     IconBan,

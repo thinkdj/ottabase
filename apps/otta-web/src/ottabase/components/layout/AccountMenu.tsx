@@ -3,19 +3,19 @@ import { isAdminUser, useSession } from '@/lib/auth';
 import { MEDIA_LIBRARY_ENABLED, PACKAGE_ACCOUNT_LINKS, PACKAGES_ENABLED } from '@/ottabase/config';
 import { PRO_PACKAGE_KEYS } from '@/pages/demo/pro/proPackages';
 import type { PackageIcon } from '@ottabase/kernel/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Avatar,
     AvatarFallback,
     AvatarImage,
     Button,
+    ConfirmDialog,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, Images, LogIn, LogOut, PenLine, ShieldCheck, UserRound } from 'lucide-react';

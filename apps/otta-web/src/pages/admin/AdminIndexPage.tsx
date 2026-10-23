@@ -1,6 +1,6 @@
 import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
-import { Card, CardDescription, CardHeader, CardTitle, PageHeader, PremiumMark } from '@ottabase/ui-shadcn';
+import { Card, CardDescription, CardHeader, CardTitle, PageHeader, PremiumMark } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
 import { useMemo } from 'react';

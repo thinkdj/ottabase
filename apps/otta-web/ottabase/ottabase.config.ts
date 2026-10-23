@@ -128,8 +128,6 @@ export default defineOttabaseConfig({
 
     // ── UI ────────────────────────────────────────────────────
     ui: {
-        preventFOUC: false,
-        preventFOUCInsideIframe: false,
         debounceMs: 500,
         layout: { minWidth: 320, maxWidth: 1280 },
         enforceGoogleFonts: true,

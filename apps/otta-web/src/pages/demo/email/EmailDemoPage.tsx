@@ -15,7 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
 import { useEffect, useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

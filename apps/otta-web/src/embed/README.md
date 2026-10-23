@@ -40,7 +40,7 @@ main.tsx
 | BlogStudioProvider                   | —                                                |
 | BrandProvider (fetches `/api/brand`) | —                                                |
 | OttaQueryProvider                    | QueryClient (static config, no refetch on focus) |
-| ProviderUIBase + ProviderFont        | —                                                |
+| ProviderFont                         | —                                                |
 | ProviderNextThemes                   | NextThemesProvider                               |
 | ThemeProvider + BrandThemeApplicator | —                                                |
 | SpotlightProvider                    | —                                                |

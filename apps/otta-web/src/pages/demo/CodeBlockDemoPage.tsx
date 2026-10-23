@@ -1,5 +1,5 @@
 import { CodeBlock } from '@ottabase/ui-code-highlight';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { DemoPageHeader } from './DemoPageHeader';
 
 export function CodeBlockDemoPage() {
@@ -61,7 +61,7 @@ const createUser = async (data: Omit<User, 'id'>): Promise<User> => {
             title: 'React Component with Line Numbers',
             description: 'React/TSX code with line numbers enabled',
             code: `import { useState } from 'react';
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 
 export function Counter() {
     const [count, setCount] = useState(0);

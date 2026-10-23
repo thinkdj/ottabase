@@ -50,8 +50,6 @@ export const appConfig: AppConfig = {
     meta: APP_META,
     uiFramework: 'mantine',
     ui: {
-        preventFOUC: baseCfg.ui?.preventFOUC ?? false,
-        preventFOUCInsideIframe: baseCfg.ui?.preventFOUCInsideIframe ?? false,
         debounceMs: baseCfg.ui?.debounceMs ?? 500,
         layout: baseCfg.ui?.layout ?? { minWidth: 320, maxWidth: 1280 },
         enforceGoogleFonts: baseCfg.ui?.enforceGoogleFonts ?? true,

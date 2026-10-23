@@ -17,7 +17,7 @@ All 14 skills from design principle #26 are authored.
 | ----------------------- | --------------------------------------------------------------------------------------------------------- |
 | `ottabase-create-model` | Add an OttaORM fat model + all the registration steps (schema, schemas-helper, db-utils, migrations)      |
 | `ottabase-crud`         | Generic CRUD: OttaORM route + `createModelHooks` + `ModelCrud`/`createModelConfig`                        |
-| `ottabase-form`         | Model-driven forms (`createModelConfig` → `ModelForm`) + custom forms via ui-shadcn primitives            |
+| `ottabase-form`         | Model-driven forms (`createModelConfig` → `ModelForm`) + custom forms via @ottabase/ui primitives         |
 | `ottabase-rbac`         | Permission checks + RLS security-context provenance + fail-closed rules + making changes take effect live |
 | `ottabase-upload`       | File uploads over R2: client hook + server handler + the ownership/tenant rule                            |
 | `ottabase-email`        | Provider-agnostic mailer (`resolveAppMailer` + `sendTemplatedEmail`) + template registry                  |

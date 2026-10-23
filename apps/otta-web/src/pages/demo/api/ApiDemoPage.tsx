@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui';
 import { api, isApiError } from '@/lib/api';
 import { DemoPageHeader } from '../DemoPageHeader';
 

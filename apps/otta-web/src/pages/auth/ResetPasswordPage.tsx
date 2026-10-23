@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { APP_META } from '@/ottabase/config';
 import { resetPassword } from '@/lib/auth-api';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui';
 
 export function ResetPasswordPage() {
     const navigate = useNavigate();

@@ -19,7 +19,6 @@ import {
     Highlighter,
     KeyRound,
     Languages,
-    Layers,
     Layout,
     List,
     Mail,
@@ -113,7 +112,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'Split Pane',
         title: 'Split Pane',
         description:
-            'Minimal, clean split-pane component with support for nested layouts, snap points, and percentage-based sizing',
+            'Resizable split pane from @ottabase/ui: nested layouts, snap points, keyboard resizing, and percentage-based sizing.',
         buttonVariant: 'outline',
     },
     {
@@ -362,11 +361,12 @@ export const DEMO_ITEMS: DemoItem[] = [
         buttonVariant: 'outline',
     },
     {
-        to: '/demo/shadcn',
+        to: '/demo/ui',
         icon: Palette,
-        label: 'shadcn/ui',
-        title: 'shadcn/ui Demo',
-        description: 'Explore shadcn/ui primitives with Tailwind utilities and shared theme providers',
+        label: 'UI Kit',
+        title: 'UI Kit (@ottabase/ui)',
+        description:
+            'Every component in @ottabase/ui: the shadcn/ui primitives, the Design System v1 pieces, and the composed ConfirmDialog, MessageBox and DarkModeToggle.',
         buttonVariant: 'outline',
     },
     {
@@ -385,23 +385,6 @@ export const DEMO_ITEMS: DemoItem[] = [
         title: 'Tailwind (Preset)',
         description:
             'Shared Tailwind CSS preset mapping HSL CSS variables to utilities. Live token swatches and dark mode preview.',
-        buttonVariant: 'outline',
-    },
-    {
-        to: '/demo/ui-components',
-        icon: Blocks,
-        label: 'UI Components',
-        title: 'UI Components',
-        description: 'Shared React components: ConfirmDialog, MessageBox, Logo, DarkModeToggle, and BlogPagination.',
-        buttonVariant: 'outline',
-    },
-    {
-        to: '/demo/ui-base',
-        icon: Layers,
-        label: 'UI Base',
-        title: 'UI Base',
-        description:
-            'Framework-agnostic CSS foundation: reset, base styles, animations, and the ProviderUIBase provider.',
         buttonVariant: 'outline',
     },
     {

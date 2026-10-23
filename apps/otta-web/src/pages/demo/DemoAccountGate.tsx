@@ -3,7 +3,7 @@ import { useSession } from '@/lib/auth';
 import { signInWithProvider } from '@/lib/auth-api';
 import { rememberReturnPath } from '@/lib/auth-redirect';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Lock } from 'lucide-react';
 import { useState, type ReactNode } from 'react';

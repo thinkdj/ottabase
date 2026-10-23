@@ -33,7 +33,7 @@ import {
     SheetTitle,
     Switch,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, Plus, Settings2, Trash2 } from 'lucide-react';

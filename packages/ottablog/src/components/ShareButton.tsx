@@ -11,7 +11,7 @@ import {
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Check, Copy, ExternalLink, Mail, Share2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 

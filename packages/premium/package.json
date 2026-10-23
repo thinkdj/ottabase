@@ -46,13 +46,13 @@
         "@ottabase/utils": "workspace:*"
     },
     "peerDependencies": {
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "lucide-react": "catalog:",
         "react": "catalog:"
     },
     "peerDependenciesMeta": {
-        "@ottabase/ui-shadcn": {
+        "@ottabase/ui": {
             "optional": true
         },
         "@tanstack/react-query": {
@@ -67,7 +67,7 @@
     },
     "devDependencies": {
         "@ottabase/config": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@tanstack/react-query": "catalog:",
         "@testing-library/react": "catalog:",
         "@types/react": "catalog:",

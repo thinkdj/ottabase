@@ -13,10 +13,10 @@ person will copy it, it is mono. If a license lapses, the page stays.**
 | ------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Engine defaults    | `packages/brand-engine/src/defaults.ts`               | The system as the values every theme merges on top of                                    |
 | The preset         | `packages/brand-engine/src/themes/verdant.json`       | The same values as the seeded brand kit (`themePresetId: 'verdant'`)                     |
-| Static fallbacks   | `packages/ui-shadcn/styles/shadcn.css`                | `:root` / `.dark`, the tone map (`[data-tone]`), the terminal room, the focus halo       |
+| Static fallbacks   | `packages/ui/styles/ui.css`                           | `:root` / `.dark`, the tone map (`[data-tone]`), the terminal room, the focus halo       |
 | Tailwind utilities | `packages/ui-tailwind/tailwind.base.cjs`              | `text-subtle-foreground`, `bg-success-soft`, `hover:bg-primary-hover`, `animate-page-in` |
-| Components         | `packages/ui-shadcn/components/ui/*`                  | The recipes, each stamping `data-slot` for theme CSS                                     |
-| Status language    | `packages/ui-shadcn/components/ui/status-language.ts` | Every enum → tone, label, icon (`statusOf('license', 'grace')`)                          |
+| Components         | `packages/ui/components/ui/*`                         | The recipes, each stamping `data-slot` for theme CSS                                     |
+| Status language    | `packages/ui/components/ui/status-language.ts`        | Every enum → tone, label, icon (`statusOf('license', 'grace')`)                          |
 | Operator page, CLI | `apps/otta-worker/worker/lib/html.ts`, `packages/cli` | The same words, no chrome; `Done.` / `Next:` / `Failed:`                                 |
 
 ## Tokens

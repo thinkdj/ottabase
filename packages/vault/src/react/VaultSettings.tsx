@@ -14,7 +14,7 @@
 // ============================================================
 
 import { PremiumGate, PremiumUpsell, usePremiumLimit } from '@ottabase/premium/react';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { Archive, Download, Play, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import {

@@ -1,0 +1,22 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@ottabase/ui": ["./src/index.ts"],
+            "@ottabase/ui/brand-components": ["./providers/brand-components"],
+            "@ottabase/ui/*": ["./src/*"]
+        },
+        "outDir": "dist",
+        "jsx": "react-jsx",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "skipLibCheck": true,
+        "strict": false,
+        "isolatedModules": false,
+        "noImplicitAny": false
+    },
+    "include": ["src/**/*", "components/**/*", "providers/**/*", "stories/**/*"],
+    "exclude": ["dist", "node_modules", "**/*.test.*", "**/*.spec.*"]
+}

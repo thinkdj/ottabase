@@ -327,7 +327,7 @@ set.
     - `@ottabase/ottaorm` — Fat model ORM (core)
     - `@ottabase/auth` — Lightweight custom auth
     - `@ottabase/rbac` — Role-based access control
-    - `@ottabase/ui-shadcn` — UI component library
+    - `@ottabase/ui` — UI component library
     - (and 43 more...)
 
 ### 5. **Workspace Protocol**

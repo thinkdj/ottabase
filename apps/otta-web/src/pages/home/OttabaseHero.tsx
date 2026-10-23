@@ -1,4 +1,4 @@
-import { Button } from '@ottabase/ui-shadcn';
+import { Button } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, Boxes, ShieldCheck, Zap } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';

@@ -15,7 +15,8 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Custom Auth** - OAuth, Magic Link, and Credentials authentication via a lightweight, dependency-free implementation
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects
-- **Mantine + shadcn/ui** - Flexible UI component libraries
+- **@ottabase/ui** - The UI kit (shadcn/ui primitives on the Design System v1 tokens); Mantine stays an optional adapter
+  scoped to its demo route
 - **Jotai** - Global state management
 - **Three.js landing hero** - A theme-aware, drag-spinnable WebGL network scene that respects reduced-motion
   preferences; the rest of the home page remains rendered from its Editor.js blocks
@@ -443,7 +444,7 @@ apps/otta-web/
   with a light/dark toggleable live preview, unsaved-change detection, and Ctrl+S to save.
 - `/admin/appearance/layouts` - Layout templates & route mappings (map path patterns to layouts + Brand Kits)
 - `/demo/mantine` - Mantine UI components demo
-- `/demo/shadcn` - shadcn/ui components demo
+- `/demo/ui` - The @ottabase/ui kit: every component, including the composed ones
 - `/demo/ottaeditor` - Rich text editor demo
 - `/demo/ottaorm` - OttaORM (User/Post CRUD) demo
 - `/demo/spotlight` - Command palette and keyboard shortcuts demo

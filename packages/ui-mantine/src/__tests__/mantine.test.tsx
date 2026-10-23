@@ -65,7 +65,7 @@ describe('Mantine UI Components', () => {
                 </MockMantineProvider>,
             );
             const button = screen.getByRole('button');
-            expect(button).toHaveClass('mantine-button');
+            expect(button.className).toContain('mantine-button');
         });
     });
 

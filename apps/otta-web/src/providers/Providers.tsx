@@ -6,13 +6,7 @@ import { APP_ID, MEDIA_LIBRARY_ENABLED, appConfig, PACKAGES_ENABLED } from '@/ot
 import { MediaLibraryPickerBridge } from '@/components/media-library/MediaLibraryPickerBridge';
 import { MediaGalleryConfirmBridge } from '@/components/editor/MediaGalleryConfirmBridge';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
-import {
-    headingFontFamily,
-    monospaceFontFamily,
-    primaryFontFamily,
-    ProviderFont,
-    ProviderNextThemes,
-} from '@/ottabase/providers';
+import { ProviderFont, ProviderNextThemes } from '@/ottabase/providers';
 import { BrandThemeApplicator } from '@/ottabase/providers/BrandThemeApplicator';
 import { LanguageManager } from '@/ottabase/providers/LanguageManager';
 import { ThemeProvider } from '@/ottabase/providers/ProviderTheme';
@@ -28,8 +22,7 @@ import { I18nProvider } from '@ottabase/i18n/react';
 import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { SpotlightProvider } from '@ottabase/spotlight/react';
 import { ProviderState } from '@ottabase/state';
-import { ProviderUIBase } from '@ottabase/ui-base';
-import { ShadcnProviders } from '@ottabase/ui-shadcn/providers';
+import { UIProviders } from '@ottabase/ui';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useAtomValue } from 'jotai';
 import React from 'react';
@@ -61,29 +54,14 @@ export function readInjectedBrandConfig(): FullBrandConfig | undefined {
 const injectedBrandConfig = readInjectedBrandConfig();
 
 export function Providers({ children }: { children: React.ReactNode }) {
-    const fontFamilies = {
-        primary: primaryFontFamily.style.fontFamily,
-        heading: headingFontFamily.style.fontFamily,
-        monospace: monospaceFontFamily.style.fontFamily,
-    };
     return (
         <ProviderState store={globalStore}>
-            <ProvidersContent fontFamilies={fontFamilies}>{children}</ProvidersContent>
+            <ProvidersContent>{children}</ProvidersContent>
         </ProviderState>
     );
 }
 
-function ProvidersContent({
-    children,
-    fontFamilies,
-}: {
-    children: React.ReactNode;
-    fontFamilies: {
-        primary: string;
-        heading: string;
-        monospace: string;
-    };
-}) {
+function ProvidersContent({ children }: { children: React.ReactNode }) {
     return (
         <I18nProvider
             defaultLanguage={i18nConfig.defaultLanguage}
@@ -94,22 +72,16 @@ function ProvidersContent({
             <LanguageManager />
             {PACKAGES_ENABLED.ottablog ? (
                 <BlogStudioProvider>
-                    <ProvidersInner fontFamilies={fontFamilies}>{children}</ProvidersInner>
+                    <ProvidersInner>{children}</ProvidersInner>
                 </BlogStudioProvider>
             ) : (
-                <ProvidersInner fontFamilies={fontFamilies}>{children}</ProvidersInner>
+                <ProvidersInner>{children}</ProvidersInner>
             )}
         </I18nProvider>
     );
 }
 
-function ProvidersInner({
-    children,
-    fontFamilies,
-}: {
-    children: React.ReactNode;
-    fontFamilies: { primary: string; heading: string; monospace: string };
-}) {
+function ProvidersInner({ children }: { children: React.ReactNode }) {
     return (
         <BrandProvider
             apiEndpoint="/api/brand"
@@ -119,18 +91,12 @@ function ProvidersInner({
             appId={injectedBrandConfig?.appId ?? APP_ID}
             initialConfig={injectedBrandConfig}
         >
-            <ProvidersCore fontFamilies={fontFamilies}>{children}</ProvidersCore>
+            <ProvidersCore>{children}</ProvidersCore>
         </BrandProvider>
     );
 }
 
-function ProvidersCore({
-    children,
-    fontFamilies,
-}: {
-    children: React.ReactNode;
-    fontFamilies: { primary: string; heading: string; monospace: string };
-}) {
+function ProvidersCore({ children }: { children: React.ReactNode }) {
     const appId = useAtomValue(appIdAtom) ?? APP_ID;
     const organizationId = useAtomValue(organizationIdAtom) ?? null;
     const user = useAtomValue(userAtom);
@@ -157,35 +123,28 @@ function ProvidersCore({
                 }}
                 errorReporter={reportApiError}
             >
-                <ProviderUIBase
-                    preventFOUC={appConfig.ui.preventFOUC}
-                    preventFOUCInsideIframe={appConfig.ui.preventFOUCInsideIframe}
-                    fontFamilies={fontFamilies}
-                    fontVarsFromRoot
-                >
-                    <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
-                        <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
-                            <ThemeProvider>
-                                <BrandThemeApplicator />
-                                <ThemeManager />
-                                <ZoomManager />
-                                <ScaleManager />
-                                <SidebarStateManager />
-                                <ShadcnProviders enableThemeProvider={false} enableToaster>
-                                    <SpotlightProvider
-                                        enabled={appConfig.features.spotlight.enabled}
-                                        shortcuts={appConfig.features.spotlight.shortcuts}
-                                    >
-                                        {children}
-                                        {MEDIA_LIBRARY_ENABLED && <MediaLibraryPickerBridge />}
-                                        {/* Provides shadcn AlertDialog confirmation for MediaGalleryTool delete/clear actions */}
-                                        <MediaGalleryConfirmBridge />
-                                    </SpotlightProvider>
-                                </ShadcnProviders>
-                            </ThemeProvider>
-                        </ProviderNextThemes>
-                    </ProviderFont>
-                </ProviderUIBase>
+                <ProviderFont enforceGoogleFonts={appConfig.ui.enforceGoogleFonts}>
+                    <ProviderNextThemes storagePrefix={appConfig.storage.prefix}>
+                        <ThemeProvider>
+                            <BrandThemeApplicator />
+                            <ThemeManager />
+                            <ZoomManager />
+                            <ScaleManager />
+                            <SidebarStateManager />
+                            <UIProviders enableThemeProvider={false} enableToaster>
+                                <SpotlightProvider
+                                    enabled={appConfig.features.spotlight.enabled}
+                                    shortcuts={appConfig.features.spotlight.shortcuts}
+                                >
+                                    {children}
+                                    {MEDIA_LIBRARY_ENABLED && <MediaLibraryPickerBridge />}
+                                    {/* Provides the ConfirmDialog for MediaGalleryTool delete/clear actions */}
+                                    <MediaGalleryConfirmBridge />
+                                </SpotlightProvider>
+                            </UIProviders>
+                        </ThemeProvider>
+                    </ProviderNextThemes>
+                </ProviderFont>
                 <ReactQueryDevtools initialIsOpen={false} />
             </OttaQueryProvider>
         </>

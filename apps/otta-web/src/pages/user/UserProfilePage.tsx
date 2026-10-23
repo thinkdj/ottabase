@@ -12,7 +12,6 @@ import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
 import { changePassword, requestEmailVerification } from '@/lib/auth-api';
 import { AiPersonalProviders } from './AiPersonalProviders';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Avatar,
     AvatarFallback,
@@ -24,13 +23,14 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    ConfirmDialog,
     Dialog,
     DialogContent,
     DialogTitle,
     Input,
     Label,
     Separator,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { invalidateAuthSession } from '@ottabase/auth/react';
 import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';

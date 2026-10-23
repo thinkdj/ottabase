@@ -15,7 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { listEmailTemplates } from '@ottabase/email';
 import { AlertCircle, Mail } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';

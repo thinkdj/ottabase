@@ -1,5 +1,5 @@
 import { APP_META } from '@/ottabase/config';
-import { Badge, Button, Card, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { DEMO_ACCOUNT_GATES } from './demoAccountGates';
@@ -65,9 +65,10 @@ export function DemoIndexPage() {
             <div className="rounded-xl bg-muted/40 p-6">
                 <h2 className="mb-1.5 text-sm font-semibold">About this template</h2>
                 <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                    This template uses <strong className="font-medium text-foreground">UI Base</strong> as the
-                    foundation, with optional UI libraries layered on top. The main app providers only include UI Base,
-                    fonts, state management, and shadcn/ui.
+                    This template is built on <strong className="font-medium text-foreground">@ottabase/ui</strong>, the
+                    one UI kit: shadcn/ui primitives on the Design System v1 tokens. The main app providers only add
+                    fonts, state management and the Brand Engine on top; other UI libraries such as Mantine stay scoped
+                    to the routes that use them.
                 </p>
             </div>
         </div>

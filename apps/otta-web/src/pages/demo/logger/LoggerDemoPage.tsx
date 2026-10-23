@@ -11,7 +11,7 @@ import {
     MemoryTransport,
     simpleFormatter,
 } from '@ottabase/logger';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

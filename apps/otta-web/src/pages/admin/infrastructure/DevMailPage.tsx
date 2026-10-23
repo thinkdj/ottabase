@@ -1,8 +1,8 @@
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
-import { ConfirmDialog } from '@ottabase/ui-components';
 import {
     Badge,
     Button,
+    ConfirmDialog,
     NativeSelect,
     NativeSelectOption,
     ScrollArea,
@@ -10,7 +10,7 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
 import { stripHtml } from '@ottabase/utils/string';
 import { Link } from '@tanstack/react-router';

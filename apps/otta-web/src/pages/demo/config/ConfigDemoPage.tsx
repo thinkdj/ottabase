@@ -3,7 +3,7 @@
  * Demonstrates @ottabase/config: app configuration, ottabase.config.ts, and environment resolution.
  */
 import { createAppConfig } from '@ottabase/config';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Key, Layers, Package, Settings } from 'lucide-react';
 import { useMemo } from 'react';
 import { PACKAGES_ENABLED } from '@/ottabase/config/packages';

@@ -1,5 +1,4 @@
-import { ConfirmDialog } from '@ottabase/ui-components';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardHeader, CardTitle, ConfirmDialog, Input } from '@ottabase/ui';
 import { useEffect, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

@@ -6,7 +6,7 @@
  * window.confirm(). This React component listens, shows the dialog, then fires
  * `media-gallery-confirm-result` with { id, confirmed } so the tool can proceed.
  */
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { ConfirmDialog } from '@ottabase/ui';
 import { useEffect, useState } from 'react';
 
 // Marker key read by MediaGalleryTool to detect whether the bridge is mounted.

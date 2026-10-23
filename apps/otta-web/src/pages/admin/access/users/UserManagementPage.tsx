@@ -18,7 +18,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import type { PaginatedResponse } from '@ottabase/utils/pagination';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Mail, Search, Shield } from 'lucide-react';

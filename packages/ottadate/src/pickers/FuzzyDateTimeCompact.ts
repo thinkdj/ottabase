@@ -136,7 +136,7 @@ export function createFuzzyDateTimeCompact(
         }
     }
 
-    /** Themed <select> with a custom chevron (mirrors ui-shadcn's NativeSelect) */
+    /** Themed <select> with a custom chevron (mirrors @ottabase/ui's NativeSelect) */
     function createSelect(
         className: string,
         optionItems: { value: string; label: string }[],

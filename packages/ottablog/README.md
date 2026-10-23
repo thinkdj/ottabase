@@ -41,8 +41,8 @@ pnpm add @ottabase/ottablog @ottabase/ottaorm @ottabase/db drizzle-orm
 # Only needed if you render posts (i.e. import from @ottabase/ottablog/renderer)
 pnpm add @ottabase/ottarenderer @ottabase/medialibrary
 
-# Only needed if you import the standalone ShareButton
-pnpm add @ottabase/ui-shadcn lucide-react
+# Only needed if you import the standalone ShareButton (BlogPagination needs only lucide-react)
+pnpm add @ottabase/ui lucide-react
 ```
 
 ## Module Entry Points
@@ -50,13 +50,14 @@ pnpm add @ottabase/ui-shadcn lucide-react
 The package is split so the pure core never pulls in rendered UI or `@ottabase/ottarenderer` (an **optional** peer
 dependency — install it only if you render). Importing the pure root loads zero React components.
 
-| Import                        | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| `@ottabase/ottablog`          | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
-| `@ottabase/ottablog/renderer` | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `Crossposts` / `CrosspostsRow`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                      | Yes                   |
-| `@ottabase/ottablog/share`    | Standalone rendered `ShareButton`; requires the app's `@ottabase/ui-shadcn` and `lucide-react` peers.                                                                                                                                                                                                                                                                                | No                    |
-| `@ottabase/ottablog/router`   | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
-| `@ottabase/ottablog/seo`      | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
+| Import                          | Contents                                                                                                                                                                                                                                                                                                                                                                             | Needs `ottarenderer`? |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `@ottabase/ottablog`            | **Pure core:** models + schema, slug utilities, migrations, preview tokens, blog theme tokens, SEO builders, hooks, plugins, studio, and the **pure theme registry** (`registerTheme`, `setActiveTheme`, `getActiveTheme`, `getAllThemes`, `getTheme`, `hasTheme`, `themeRegistry`) plus type-only shapes (`Theme`, `BlogPostData`, `BlogRendererProps`, `BlogExcerptCardProps`, …). | No                    |
+| `@ottabase/ottablog/renderer`   | **Rendered UI:** `BlogRenderer`, `BlurbRenderer`, `PhotoJournalRenderer`, `PhotoJournalGallery`, `BlurbText`, `Crossposts` / `CrosspostsRow`, `BlogExcerptCard`, `BlogRendererErrorBoundary`, the built-in `defaultTheme` / `minimalTheme`, and `initOttablog`.                                                                                                                      | Yes                   |
+| `@ottabase/ottablog/share`      | Standalone rendered `ShareButton`; requires the app's `@ottabase/ui` and `lucide-react` peers.                                                                                                                                                                                                                                                                                       | No                    |
+| `@ottabase/ottablog/pagination` | Standalone rendered `BlogPagination` (previous/next plus numbered pages with an ellipsis); requires the `lucide-react` peer.                                                                                                                                                                                                                                                         | No                    |
+| `@ottabase/ottablog/router`     | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
+| `@ottabase/ottablog/seo`        | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
 
 Register a custom theme (pure) from the root and render it from `/renderer`:
 
@@ -834,12 +835,12 @@ Apps that keep their own handler module as a test/mock seam (like `otta-web`) ca
 Blog themes can carry data, not just code: each `ottablog_themes` row has a sparse `tokens` JSON column
 (`{ light?: Record<cssVar, value>, dark?: ... }`). `blogThemeTokensToCss(tokens)` serializes them into a
 `[data-brand-scope="blog"]` room block, which the consuming app applies around its blog pages (otta-web wraps them in
-`<BrandScope name="blog">` from `@ottabase/ui-shadcn` and injects the CSS at the edge plus client-side via studio
-state). CSS variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with
-no tokens renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization
-(unsafe names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy.
-Malformed JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content;
-unrelated database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
+`<BrandScope name="blog">` from `@ottabase/ui` and injects the CSS at the edge plus client-side via studio state). CSS
+variables ARE the contract with `@ottabase/brand-engine` — this package never imports it, and a theme with no tokens
+renders pixel-identical to the unthemed baseline. Token names and values are validated at serialization (unsafe
+names/values are skipped), and `POST /api/blog/studio/theme/tokens` (admin-gated) edits them without a deploy. Malformed
+JSON in Studio `tokens` or `config` is isolated to that field as `null` and logged without its stored content; unrelated
+database, schema, and RLS failures still propagate instead of masquerading as empty Studio state.
 
 ## Edge SEO Meta
 

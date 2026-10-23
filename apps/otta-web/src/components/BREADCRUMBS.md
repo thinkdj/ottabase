@@ -139,7 +139,7 @@ const ROUTE_LABELS: Record<string, string> = {
 ## Dependencies
 
 - `@tanstack/react-router` - For routing context
-- `@ottabase/ui-shadcn` - For breadcrumb UI components
+- `@ottabase/ui` - For breadcrumb UI components
 - `lucide-react` - For icons
 
 ## File Location

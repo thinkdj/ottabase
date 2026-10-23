@@ -14,7 +14,7 @@ vi.mock('@/ottabase/config/admin-nav', () => ({
     getEnabledAdminNav: () => [],
 }));
 
-vi.mock('@ottabase/ui-shadcn', () => ({
+vi.mock('@ottabase/ui', () => ({
     Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
     PageHeader: ({ title, description }: { title: React.ReactNode; description?: React.ReactNode }) => (
         <header>

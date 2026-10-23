@@ -4,7 +4,7 @@ const defaultTheme = require('tailwindcss/defaultTheme');
  * Ottabase shared Tailwind preset
  *
  * Maps every CSS custom-property produced by the theme engine
- * (shadcn.css defaults + theme.loader.ts runtime overrides)
+ * (@ottabase/ui styles/ui.css defaults + theme.loader.ts runtime overrides)
  * into Tailwind utility classes.
  *
  * Colour values are kept as raw HSL channels so the

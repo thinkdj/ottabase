@@ -1,6 +1,6 @@
 import { IconGitBranch, IconX } from '@tabler/icons-react';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ottabase/ui-shadcn';
+import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ottabase/ui';
 import { brandKitApi, type BrandKitItem } from './brandApi';
 
 interface BrandKitBrandTabProps {

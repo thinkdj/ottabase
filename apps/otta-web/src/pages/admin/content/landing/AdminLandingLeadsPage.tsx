@@ -3,8 +3,7 @@
 
 import { getErrorMessage } from '@/lib/api';
 import type { LeadData, LeadKind } from '@ottabase/ottalanding';
-import { ConfirmDialog } from '@ottabase/ui-components';
-import { Badge, Button } from '@ottabase/ui-shadcn';
+import { Badge, Button, ConfirmDialog } from '@ottabase/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronLeft, Download, Inbox, Mail, Trash2 } from 'lucide-react';

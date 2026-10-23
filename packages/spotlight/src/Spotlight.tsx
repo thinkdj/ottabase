@@ -1,4 +1,4 @@
-import { cn, Dialog, DialogOverlay, DialogTitle } from '@ottabase/ui-shadcn';
+import { cn, Dialog, DialogOverlay, DialogTitle } from '@ottabase/ui';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { IconAlertCircle, IconSearch, IconX } from '@tabler/icons-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';

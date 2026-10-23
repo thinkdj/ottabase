@@ -14,7 +14,7 @@ Workers implements natively. No Auth.js, no Node crypto, no third-party crypto o
   Auth0
 - **Magic link sign-in** - Short-lived (15 min) passwordless email links, with dev-trap / SMTP / Resend senders
   auto-selected from env vars
-- **UI components** - Ready-to-use login/register forms built on `@ottabase/ui-shadcn`
+- **UI components** - Ready-to-use login/register forms built on `@ottabase/ui`
 - **Framework-agnostic client** - Plain `fetch`-based client API and a Jotai-backed React hook
 
 ## Installation
@@ -440,10 +440,10 @@ const config = getLoginConfig(env);
 
 ## UI Components
 
-Framework-agnostic React components built on `@ottabase/ui-shadcn` (`@ottabase/auth/components`). This is the package's
-**only** rendered-UI subpath: `@ottabase/ui-shadcn` and `lucide-react` are declared as **optional** peer dependencies
-and are pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …)
-stay free of them. The components take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
+Framework-agnostic React components built on `@ottabase/ui` (`@ottabase/auth/components`). This is the package's
+**only** rendered-UI subpath: `@ottabase/ui` and `lucide-react` are declared as **optional** peer dependencies and are
+pulled in **only** when you import from here — the pure subpaths (`.`, `./react`, `./config`, `./backend`, …) stay free
+of them. The components take plain callback props, so you wire them to `@ottabase/auth/client` yourself.
 
 ```typescript
 import { LoginForm } from '@ottabase/auth/components';
@@ -496,8 +496,8 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 
 ## Accessibility, SSR & performance
 
-- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui-shadcn` primitives, so
-  labels, focus, and error semantics come from there.
+- **Accessibility** — the bundled UI components (`LoginForm`, etc.) build on `@ottabase/ui` primitives, so labels,
+  focus, and error semantics come from there.
 - **SSR** — server routes read identity via `getSession(request, env)` (fails closed without KV). On the **client**,
   `useSession()` fetches `/api/auth` on mount with an optimistic value from `localStorage`, so auth-gated UI can briefly
   flash the logged-out (or stale) state before the session resolves. Unlike theme/brand (which are edge-hydrated to
@@ -526,19 +526,19 @@ the production wrangler environment, e.g. `wrangler deploy --env production`, so
 │   └── types.ts           Shared provider types
 ├── client-api.ts          fetch-based frontend client
 ├── react-hooks.ts         useSession + useSessionBootstrap (Jotai-backed)
-└── components/            Framework-agnostic login/register UI (shadcn/ui) — the `./components` subpath
+└── components/            Framework-agnostic login/register UI (@ottabase/ui) — the `./components` subpath
     └── helpers.ts         Pure, type-only env→login-config helpers — the `./config` subpath (no UI deps)
 ```
 
 ### Subpath purity
 
-Every subpath is strictly pure **or** UI-only — never mixed. `@ottabase/ui-shadcn` and `lucide-react` are optional peer
+Every subpath is strictly pure **or** UI-only — never mixed. `@ottabase/ui` and `lucide-react` are optional peer
 dependencies that only `@ottabase/auth/components` pulls in:
 
-| Subpath                                                                         | Rendered UI? | Notable deps                                           |
-| ------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------ |
-| `.`, `./providers`, `./session`, `./backend`, `./client`, `./react`, `./config` | No (pure)    | none of the UI packages                                |
-| `./components`                                                                  | Yes          | `@ottabase/ui-shadcn`, `lucide-react` (optional peers) |
+| Subpath                                                                         | Rendered UI? | Notable deps                                    |
+| ------------------------------------------------------------------------------- | ------------ | ----------------------------------------------- |
+| `.`, `./providers`, `./session`, `./backend`, `./client`, `./react`, `./config` | No (pure)    | none of the UI packages                         |
+| `./components`                                                                  | Yes          | `@ottabase/ui`, `lucide-react` (optional peers) |
 
 DB access goes through the existing OttaORM models (`User`, `Account`, `VerificationToken`, `OrganizationMember` from
 `@ottabase/ottaorm/models`) — there is no hand-rolled adapter layer. Every cryptographic primitive runs on

@@ -13,7 +13,7 @@ import {
     DialogTitle,
     Input,
     Label,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { useMutation } from '@tanstack/react-query';
 import { Copy, Link2 } from 'lucide-react';
 import { useState } from 'react';

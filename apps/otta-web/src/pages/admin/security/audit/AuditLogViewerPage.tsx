@@ -26,7 +26,7 @@ import {
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import {
     AlertTriangle,

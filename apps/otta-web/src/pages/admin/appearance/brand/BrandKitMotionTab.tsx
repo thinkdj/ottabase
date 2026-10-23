@@ -11,7 +11,7 @@ import {
     NativeSelect,
     NativeSelectOption,
     Switch,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { IconPlayerPlayFilled } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 

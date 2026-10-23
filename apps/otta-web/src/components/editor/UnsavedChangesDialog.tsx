@@ -11,7 +11,7 @@
  *   <UnsavedChangesDialog blocker={blocker} />
  */
 import type { EditorLeaveBlocker } from '@/hooks/useEditorLeaveGuard';
-import { ConfirmDialog } from '@ottabase/ui-components';
+import { ConfirmDialog } from '@ottabase/ui';
 
 interface UnsavedChangesDialogProps {
     blocker: EditorLeaveBlocker;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 
 interface Props {
     children: React.ReactNode;

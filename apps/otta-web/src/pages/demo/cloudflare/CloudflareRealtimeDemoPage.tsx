@@ -1,7 +1,7 @@
 import { ApiErrorDisplay } from '@/components/ErrorBoundary';
 import { api, ApiError, isApiError } from '@/lib/api';
 import { ConnectionState, RealtimeClient } from '@ottabase/cf-realtime';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Textarea, toast } from '@ottabase/ui';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

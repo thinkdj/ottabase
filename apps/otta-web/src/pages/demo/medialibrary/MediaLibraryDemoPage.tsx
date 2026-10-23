@@ -1,6 +1,6 @@
 import { formatMediaFileSize, toMediaViewerItem, type MediaLibraryItemLike } from '@ottabase/medialibrary';
 import { MediaLightboxProvider, MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { IconPhoto, IconPlayerPlay, IconZoomIn } from '@tabler/icons-react';
 import { DemoPageHeader } from '../DemoPageHeader';
 

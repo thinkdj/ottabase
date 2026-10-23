@@ -3,7 +3,7 @@
 /* ======================================= */
 
 /* Package-level defaults for consumers that don't load a theme; :where() keeps
-   specificity zero so any loaded theme (shadcn.css :root/.dark or runtime
+   specificity zero so any loaded theme (@ottabase/ui styles/ui.css :root/.dark or runtime
    themes) always wins. */
 :where(:root) {
     --background: 0 0% 100%;

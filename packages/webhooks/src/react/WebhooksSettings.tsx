@@ -10,7 +10,7 @@
 // ============================================================
 
 import { PremiumGate, usePremiumLimit } from '@ottabase/premium/react';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { CheckCircle2, Plus, Send, Trash2, TriangleAlert, Webhook } from 'lucide-react';
 import { useState } from 'react';
 import { WEBHOOKS_FEATURE_DELIVERY_LOG, WEBHOOKS_LIMIT_ENDPOINTS, WEBHOOKS_PACKAGE_KEY } from '../constants';

@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { IconAlertTriangle, IconLoader2, IconPhotoUp, IconTrash } from '@tabler/icons-react';
 import { useCallback, useState, type CSSProperties } from 'react';
 import { toast } from 'sonner';

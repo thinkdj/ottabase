@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight, Key, Shield, Users } from 'lucide-react';
 

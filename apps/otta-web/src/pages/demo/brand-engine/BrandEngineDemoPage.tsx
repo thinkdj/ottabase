@@ -1,6 +1,6 @@
 import { useBrand } from '@ottabase/brand-engine-react';
 import { pathPatternToRegex } from '@ottabase/ottalayout';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { IconPalette, IconRefresh, IconRoute } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';

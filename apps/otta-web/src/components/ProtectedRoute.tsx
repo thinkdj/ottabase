@@ -1,6 +1,6 @@
 import { isPlatformAdmin, useSession } from '@/lib/auth';
 import { rememberReturnPath } from '@/lib/auth-redirect';
-import { Button, Spinner } from '@ottabase/ui-shadcn';
+import { Button, Spinner } from '@ottabase/ui';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { useNavigate } from '@tanstack/react-router';
 import { type ReactNode, useEffect, useRef } from 'react';

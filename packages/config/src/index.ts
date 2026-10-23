@@ -80,8 +80,6 @@ export const DEFAULT_THEME_COLORS: ThemeColors = {
 };
 
 export const DEFAULT_UI_CONFIG = {
-    preventFOUC: false,
-    preventFOUCInsideIframe: false,
     debounceMs: 500,
     layout: {
         minWidth: 320,

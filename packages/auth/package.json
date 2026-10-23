@@ -85,14 +85,14 @@
         "@ottabase/cf": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "jotai": "catalog:",
         "lucide-react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:"
     },
     "peerDependenciesMeta": {
-        "@ottabase/ui-shadcn": {
+        "@ottabase/ui": {
             "optional": true
         },
         "lucide-react": {
@@ -108,7 +108,7 @@
         "@cloudflare/workers-types": "catalog:",
         "@ottabase/db": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
-        "@ottabase/ui-shadcn": "workspace:*",
+        "@ottabase/ui": "workspace:*",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",

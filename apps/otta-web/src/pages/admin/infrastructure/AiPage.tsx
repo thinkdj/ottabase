@@ -10,7 +10,7 @@
  */
 
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui-shadcn';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link } from '@tanstack/react-router';
 import { AlertTriangle, CheckCircle2, Copy, ExternalLink, KeyRound, Server, Sparkles, Waypoints } from 'lucide-react';

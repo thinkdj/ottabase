@@ -1,5 +1,5 @@
 import { MAX_CROSSPOSTS, type PostCrosspost } from '@ottabase/ottablog';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui-shadcn';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from '@ottabase/ui';
 import { Link2, Plus, X } from 'lucide-react';
 import { useId } from 'react';
 

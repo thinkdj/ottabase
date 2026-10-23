@@ -29,7 +29,7 @@ import {
     TabsList,
     TabsTrigger,
     Textarea,
-} from '@ottabase/ui-shadcn';
+} from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import {
     ArrowRight,
