@@ -1,18 +1,10 @@
 const path = require('node:path');
 
-const storybookTailwindConfig = path.resolve(__dirname, 'tailwind.config.cjs');
-
 module.exports = {
     plugins: {
-        'tailwindcss/nesting': {},
-        tailwindcss: {
-            config: process.env.TAILWIND_CONFIG || storybookTailwindConfig,
-        },
-        autoprefixer: {},
-        'postcss-preset-env': {
-            features: {
-                'nesting-rules': false,
-            },
-        },
+        // Scan from .storybook (not the repo root); tailwind.css names the package and app sources.
+        '@tailwindcss/postcss': { base: __dirname },
+        // Tailwind 3's space-x/space-y placement, which the layouts were built against
+        [path.resolve(__dirname, '../packages/ui-tailwind/space-compat.cjs')]: {},
     },
 };

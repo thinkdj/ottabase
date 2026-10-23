@@ -12,13 +12,6 @@ const __dirname = dirname(__filename);
 
 const projectRoot = path.resolve(__dirname, '..');
 const storybookPostCssConfig = path.resolve(__dirname, 'postcss.config.cjs');
-const storybookTailwindConfig = path.resolve(__dirname, 'tailwind.config.cjs');
-
-// Use Storybook-specific Tailwind config by default
-if (!process.env.TAILWIND_CONFIG) {
-    process.env.TAILWIND_CONFIG = storybookTailwindConfig;
-}
-
 if (process.env.DEBUG || process.env.STORYBOOK_DEBUG_SCOPE) {
     // eslint-disable-next-line no-console
     console.info('[storybook] packages:', scope.selectedPackages.map((pkg) => pkg.dirName).join(', ') || 'none');

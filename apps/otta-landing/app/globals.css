@@ -1,2 +1,12 @@
-/* Tailwind base (design tokens come from the landing theme, injected in app/layout.tsx) */
+/* Tailwind v4 with the shared Ottabase token theme (design tokens come from the landing theme, injected in app/layout.tsx) */
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+
+/* The landing themes live in the package; Tailwind must see their class names */
+@source '../../../packages/ottalanding/src';
+
+/* Theme-aware spacing (p-theme-section, gap-theme-card, ...) */
+@theme inline reference {
+    --spacing-theme-section: var(--spacing-section);
+    --spacing-theme-card: var(--spacing-card);
+    --spacing-theme-element: var(--spacing-element);
+}

@@ -85,8 +85,8 @@ export function UiTailwindDemoPage() {
     return (
         <div className="space-y-8">
             <DemoPageHeader
-                title="Tailwind Preset"
-                description="Shared Tailwind CSS preset that maps HSL CSS variables (shadcn-style tokens) to Tailwind utilities. All colors, radii, fonts, chart tokens, and sidebar tokens are defined centrally."
+                title="Tailwind (v4 theme)"
+                description="Shared Tailwind CSS v4 theme that maps HSL CSS variables (shadcn-style tokens) to Tailwind utilities. All colors, radii, fonts, chart tokens, and sidebar tokens are defined centrally."
                 actions={
                     <Badge variant="secondary" className="uppercase">
                         @ottabase/ui-tailwind
@@ -129,18 +129,16 @@ export function UiTailwindDemoPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-[0.9375rem] font-semibold">Setup</CardTitle>
-                    <CardDescription>Add the preset to your Tailwind config.</CardDescription>
+                    <CardDescription>Import the shared stylesheet and name the packages to scan.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <pre className="overflow-x-auto rounded-lg bg-background p-4 text-xs ring-1 ring-border">
-                        <code>{`// tailwind.config.cjs
-const sharedPreset = require('@ottabase/ui-tailwind/tailwind.base.cjs');
+                        <code>{`/* globals.css */
+@import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+@import '@ottabase/ui/styles.css';
 
-module.exports = {
-    darkMode: sharedPreset.darkMode,
-    presets: [sharedPreset],
-    content: ['./src/**/*.{js,ts,jsx,tsx}'],
-};`}</code>
+/* packages whose class names Tailwind must scan */
+@source '../../../../packages/ui/components';`}</code>
                     </pre>
                 </CardContent>
             </Card>

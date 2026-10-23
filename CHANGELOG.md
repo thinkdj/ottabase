@@ -135,6 +135,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `styles/ui.css` (still imported as `@ottabase/ui/styles.css`), and the package ships the shadcn/ui MIT notice in
   `THIRD_PARTY_NOTICES.md`. The demo moved from `/demo/shadcn` to `/demo/ui` and gained the composed components; the
   `ui-components` and `ui-base` demo pages are gone.
+- Tailwind CSS v4. `tailwindcss` 4.3, `@tailwindcss/postcss`, `tw-animate-css` (for `tailwindcss-animate`) and
+  `tailwind-merge` 3; `autoprefixer`, `postcss-preset-env` and `tailwindcss/nesting` are gone because v4 does that
+  itself. There is no `tailwind.config.cjs` and no JavaScript preset: `@ottabase/ui-tailwind/styles/tailwind.base.css`
+  maps every token (`@theme inline reference`), each app names the packages Tailwind should scan with `@source` lines in
+  its stylesheet, and `@ottabase/ui`'s stylesheet no longer carries Tailwind itself (its zero-specificity rules, the
+  focus ring among them, sit in `@layer base` so utilities still win). Renamed: `outline-none` is `outline-hidden`,
+  `backdrop-blur-sm` is `backdrop-blur-xs` (and bare `backdrop-blur` is `-sm`), `bg-gradient-to-*` is `bg-linear-to-*`;
+  grid templates written with a comma (`grid-cols-[1fr,340px]`) take an underscore. The optional PostCSS plugin
+  `@ottabase/ui-tailwind/space-compat.cjs` keeps Tailwind 3's `space-x/space-y` placement, which the layouts were built
+  against (v4's differs for inline children, such as a bare label above a field). Where v3 let a responsive `text-*`
+  reset `leading-*` and `tracking-*`, v4 keeps them at every breakpoint, as written: headings with `tracking-tight` are
+  tight on desktop too (the home hero keeps its old look). 35 screens, light and dark, were compared before and after (a
+  new `pages` shot set and `--out` option in ottabase.homepage's screenshot script); about half are pixel-identical and
+  the rest differ by a few pixels of spacing, or by the tracking and line height above. Storybook's config moved too but
+  could not be built here (it already failed on `react` not resolving from the repo root).
 - `ProviderUIBase` and the `ui.preventFOUC` / `ui.preventFOUCInsideIframe` config (`PREVENT_FOUC`,
   `PREVENT_FOUC_INSIDE_IFRAME`) are removed. The wrapper's font stack was already set by the Tailwind preset and
   `ProviderFont`; the base rules Tailwind's reset leaves out (viewport-tall body, isolated app root, wrapping long

@@ -1,0 +1,21 @@
+/* Storybook stylesheet: Tailwind v4, the shared token theme and the UI kit's tokens */
+@import '../packages/ui-tailwind/styles/tailwind.base.css';
+@import '../packages/ui/styles/ui.css';
+
+/* Class sources for every story. This directory is scanned automatically; the packages and apps are named here
+   (@ottabase/ui keeps its components and stories outside src/). Tailwind's detection skips node_modules itself. */
+@source '../packages/*/src';
+@source '../packages/*/provider';
+@source '../packages/ui/components';
+@source '../packages/ui/providers';
+@source '../packages/ui/stories';
+@source '../apps/*/app';
+@source '../apps/*/components';
+@source '../apps/*/ottabase';
+
+/* Theme-aware spacing (p-theme-section, gap-theme-card, ...) */
+@theme inline reference {
+    --spacing-theme-section: var(--spacing-section);
+    --spacing-theme-card: var(--spacing-card);
+    --spacing-theme-element: var(--spacing-element);
+}

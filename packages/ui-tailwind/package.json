@@ -1,24 +1,26 @@
 {
     "name": "@ottabase/ui-tailwind",
     "version": "0.0.0",
-    "main": "tailwind.base.cjs",
+    "main": "styles/tailwind.base.css",
     "files": [
-        "tailwind.base.cjs",
+        "space-compat.cjs",
         "styles",
         "README.md"
     ],
     "peerDependencies": {
-        "tailwindcss": "catalog:",
-        "tailwindcss-animate": "catalog:",
-        "postcss": "catalog:",
-        "@tailwindcss/forms": "catalog:",
-        "@tailwindcss/typography": "catalog:"
+        "tailwindcss": "catalog:"
     },
     "dependencies": {
-        "tailwind-merge": "catalog:"
+        "@tailwindcss/forms": "catalog:",
+        "@tailwindcss/typography": "catalog:",
+        "tailwind-merge": "catalog:",
+        "tw-animate-css": "catalog:"
     },
     "devDependencies": {
+        "@tailwindcss/postcss": "catalog:",
         "@types/node": "catalog:",
+        "postcss": "catalog:",
+        "tailwindcss": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"
     },

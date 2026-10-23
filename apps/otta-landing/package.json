@@ -55,20 +55,16 @@
         "@cloudflare/workers-types": "catalog:",
         "@opennextjs/cloudflare": "^1.11.0",
         "@ottabase/ui-tailwind": "workspace:*",
-        "@tailwindcss/forms": "catalog:",
-        "@tailwindcss/typography": "catalog:",
+        "@tailwindcss/postcss": "catalog:",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
-        "autoprefixer": "catalog:",
         "eslint": "catalog:",
+        "localflare": "catalog:",
         "postcss": "catalog:",
-        "postcss-preset-env": "catalog:",
         "tailwindcss": "catalog:",
-        "tailwindcss-animate": "catalog:",
         "typescript": "catalog:",
-        "wrangler": "catalog:",
-        "localflare": "catalog:"
+        "wrangler": "catalog:"
     },
     "license": "MIT",
     "repository": {

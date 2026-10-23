@@ -423,8 +423,8 @@ apps/otta-web/
 │   └── providers/         # App providers wrapper
 ├── index.html             # HTML template
 ├── vite.config.ts         # Vite configuration
-├── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
-└── tailwind.config.cjs    # Tailwind CSS config
+├── postcss.config.cjs     # Tailwind 4 PostCSS plugin (the Tailwind setup is CSS: src/styles/globals.css)
+└── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
 ```
 
 ## Routes

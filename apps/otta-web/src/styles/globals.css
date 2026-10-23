@@ -1,9 +1,40 @@
-/* Import: Tailwind */
+/* Import: Tailwind (v4) with the shared Ottabase token theme */
 @import '@ottabase/ui-tailwind/styles/tailwind.base.css';
 /* Import: ShadCN */
 @import '@ottabase/ui/styles.css';
 /* Import: Code highlight (syntax colors for docs & CodeBlock) */
 @import '@ottabase/ui-code-highlight/styles.css';
+
+/* Class sources. Tailwind finds the app's own files itself; the workspace packages that render with Tailwind
+   classes are named here. One narrow glob covers every Premium Package and every Pro package, so adding one needs no
+   edit. Tests and stories hold regexes and fixture strings that would be read as class names (a vault test's
+   /[-:.]/ became the invalid utility .[-:.]), so they are left out. */
+@source '../../../../packages/ui-code-highlight/src';
+@source '../../../../packages/ui/components';
+@source '../../../../packages/ottaselect/src';
+@source '../../../../packages/spotlight/src';
+@source '../../../../packages/ottarenderer/src';
+@source '../../../../packages/ottablog/src';
+@source '../../../../packages/medialibrary/src';
+@source '../../../../packages/ottaai/src';
+@source '../../../../packages/ottalanding/src';
+@source '../../../../packages/cf-pdf/src';
+@source '../../../../packages/vault/src';
+@source '../../../../packages/premium*/src/**/*.{js,ts,jsx,tsx}';
+@source '../../../../packages/pro/*/src/**/*.{js,ts,jsx,tsx}';
+/* ottalayout returns class names as strings from helpers (densityPadding, containerPaddingClass, contentWidthClass,
+   sidebarWidthClass); without this entry they would be missing from the build. */
+@source '../../../../packages/ottalayout/src';
+@source not '../**/__tests__';
+@source not '../../../../packages/**/__tests__';
+@source not '../../../../packages/**/*.{test,spec,stories}.{js,ts,jsx,tsx}';
+
+/* Theme-aware spacing (p-theme-section, gap-theme-card, ...) mapped from the theme loader's CSS vars */
+@theme inline reference {
+    --spacing-theme-section: var(--spacing-section);
+    --spacing-theme-card: var(--spacing-card);
+    --spacing-theme-element: var(--spacing-element);
+}
 
 /* App-specific styles */
 
@@ -39,78 +70,81 @@
     --cursor-move: move;
 }
 
-/* Apply cursors to appropriate elements */
-body {
-    cursor: var(--cursor-default);
-}
+/* Cursor bindings sit in the base layer so cursor utilities (cursor-not-allowed, ...) still win. */
+@layer base {
+    /* Apply cursors to appropriate elements */
+    body {
+        cursor: var(--cursor-default);
+    }
 
-/* Interactive elements */
-a,
-button,
-[role='button'],
-[role='link'],
-summary,
-.clickable {
-    cursor: var(--cursor-pointer);
-}
+    /* Interactive elements */
+    a,
+    button,
+    [role='button'],
+    [role='link'],
+    summary,
+    .clickable {
+        cursor: var(--cursor-pointer);
+    }
 
-/* Text input elements */
-input[type='text'],
-input[type='email'],
-input[type='search'],
-input[type='password'],
-input[type='url'],
-input[type='tel'],
-input[type='number'],
-textarea,
-[contenteditable='true'] {
-    cursor: var(--cursor-text);
-}
+    /* Text input elements */
+    input[type='text'],
+    input[type='email'],
+    input[type='search'],
+    input[type='password'],
+    input[type='url'],
+    input[type='tel'],
+    input[type='number'],
+    textarea,
+    [contenteditable='true'] {
+        cursor: var(--cursor-text);
+    }
 
-/* Draggable elements */
-[draggable='true'],
-.draggable {
-    cursor: var(--cursor-grab);
-}
+    /* Draggable elements */
+    [draggable='true'],
+    .draggable {
+        cursor: var(--cursor-grab);
+    }
 
-[draggable='true']:active,
-.draggable:active {
-    cursor: var(--cursor-grabbing);
-}
+    [draggable='true']:active,
+    .draggable:active {
+        cursor: var(--cursor-grabbing);
+    }
 
-/* Disabled elements */
-[disabled],
-.disabled,
-[aria-disabled='true'],
-button:disabled,
-input:disabled,
-select:disabled,
-textarea:disabled {
-    cursor: var(--cursor-not-allowed);
-}
+    /* Disabled elements */
+    [disabled],
+    .disabled,
+    [aria-disabled='true'],
+    button:disabled,
+    input:disabled,
+    select:disabled,
+    textarea:disabled {
+        cursor: var(--cursor-not-allowed);
+    }
 
-/* Help/tooltip elements */
-[title],
-.has-tooltip,
-abbr,
-[aria-describedby] {
-    cursor: var(--cursor-help);
-}
+    /* Help/tooltip elements */
+    [title],
+    .has-tooltip,
+    abbr,
+    [aria-describedby] {
+        cursor: var(--cursor-help);
+    }
 
-/* Loading states */
-.loading,
-[aria-busy='true'] {
-    cursor: var(--cursor-wait);
-}
+    /* Loading states */
+    .loading,
+    [aria-busy='true'] {
+        cursor: var(--cursor-wait);
+    }
 
-/* Precision/crosshair elements */
-.crosshair,
-canvas.interactive {
-    cursor: var(--cursor-crosshair);
-}
+    /* Precision/crosshair elements */
+    .crosshair,
+    canvas.interactive {
+        cursor: var(--cursor-crosshair);
+    }
 
-/* Movable elements */
-.movable,
-[data-movable='true'] {
-    cursor: var(--cursor-move);
+    /* Movable elements */
+    .movable,
+    [data-movable='true'] {
+        cursor: var(--cursor-move);
+    }
 }

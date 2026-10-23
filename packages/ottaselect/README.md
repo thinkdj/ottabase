@@ -313,12 +313,10 @@ const items4 = [
 
 The component fully supports dark mode via Tailwind's `dark:` variant:
 
-```javascript
-// tailwind.config.js
-module.exports = {
-    darkMode: 'class',
-    content: ['../../packages/ottaselect/src/**/*.{js,ts,jsx,tsx}'],
-};
+```css
+/* globals.css: class-based dark mode comes with @ottabase/ui-tailwind; name the package to scan */
+@import '@ottabase/ui-tailwind/styles/tailwind.base.css';
+@source '../../packages/ottaselect/src';
 ```
 
 ## License

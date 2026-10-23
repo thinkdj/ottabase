@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Import this after @ottabase/ui-tailwind/styles/tailwind.base.css (it carries Tailwind itself). */
 
 /*
  * Ottabase Design Tokens — Design System v1 (verdant) as the static defaults.
@@ -286,7 +284,7 @@
 
 @layer base {
     * {
-        @apply border-border;
+        border-color: hsl(var(--border));
     }
 
     /* Global default border-style — themes may set e.g. `dashed`/`ridge`.
@@ -298,7 +296,8 @@
     }
 
     body {
-        @apply bg-background text-foreground;
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
         /* The backdrop and background fill the viewport even on a short page */
         min-height: 100vh;
         /* Theme backdrop layer (gradients/textures behind all content) */
@@ -421,40 +420,49 @@
 /* ── Unified focus ring ─────────────────────────────────────────────────────
    One global focus-visible treatment driven by --focus-ring-* tokens. Zero
    specificity (:where) so any component utility (focus-visible:ring-*,
-   focus-visible:outline-none) still wins — components migrating off their
+   focus-visible:outline-hidden) still wins — components migrating off their
    per-component ring recipes simply drop those classes. */
-:where(
-    a,
-    button,
-    input,
-    select,
-    textarea,
-    summary,
-    [tabindex],
-    [role='button'],
-    [role='link'],
-    [contenteditable]
-):focus-visible {
-    outline: var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, hsl(var(--ring)));
-    outline-offset: var(--focus-ring-offset, 2px);
+@layer base {
+    :where(
+        a,
+        button,
+        input,
+        select,
+        textarea,
+        summary,
+        [tabindex],
+        [role='button'],
+        [role='link'],
+        [contenteditable]
+    ):focus-visible {
+        outline: var(--focus-ring-width, 2px) var(--focus-ring-style, solid) var(--focus-ring-color, hsl(var(--ring)));
+        outline-offset: var(--focus-ring-offset, 2px);
+    }
 }
 
-/* Text fields take a 3px soft halo instead of the offset ring (focus, not
-   focus-visible: a click into a field should show where typing lands). */
-:where([data-slot='input'], [data-slot='textarea'], [data-slot='native-select'], [data-slot='select-trigger']):focus,
-:where(
-    [data-slot='input'],
-    [data-slot='textarea'],
-    [data-slot='native-select'],
-    [data-slot='select-trigger']
-):focus-visible {
-    outline: none;
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--ring)) 22%, transparent);
-}
-:where([data-slot='input'], [data-slot='textarea'])[aria-invalid='true']:focus {
-    border-color: hsl(var(--destructive));
-    box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--destructive)) 22%, transparent);
+@layer base {
+    /* Text fields take a 3px soft halo instead of the offset ring (focus, not
+       focus-visible: a click into a field should show where typing lands). */
+    :where(
+        [data-slot='input'],
+        [data-slot='textarea'],
+        [data-slot='native-select'],
+        [data-slot='select-trigger']
+    ):focus,
+    :where(
+        [data-slot='input'],
+        [data-slot='textarea'],
+        [data-slot='native-select'],
+        [data-slot='select-trigger']
+    ):focus-visible {
+        outline: none;
+        border-color: hsl(var(--ring));
+        box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--ring)) 22%, transparent);
+    }
+    :where([data-slot='input'], [data-slot='textarea'])[aria-invalid='true']:focus {
+        border-color: hsl(var(--destructive));
+        box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--destructive)) 22%, transparent);
+    }
 }
 
 /* ── Theme flip ─────────────────────────────────────────────────────────────
@@ -481,13 +489,15 @@
    transform unless the theme sets a distinct press transform. Extra press
    properties that have no safe static default (box-shadow, durations) are
    emitted per-theme in the generated effects stylesheet. */
-:where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):hover {
-    transform: var(--hover-transform, none);
-    filter: var(--hover-filter, none);
-}
+@layer base {
+    :where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):hover {
+        transform: var(--hover-transform, none);
+        filter: var(--hover-filter, none);
+    }
 
-:where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):active {
-    transform: var(--press-transform, var(--hover-transform, none));
+    :where([data-slot='button'], [data-slot='toggle'], [data-press]):not(:disabled, [aria-disabled='true']):active {
+        transform: var(--press-transform, var(--hover-transform, none));
+    }
 }
 
 /* ── Effect decor carriers ──────────────────────────────────────────────────

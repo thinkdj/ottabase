@@ -124,11 +124,11 @@
         "storybook": "catalog:",
         "style-loader": "catalog:",
         "tailwindcss": "catalog:",
-        "tailwindcss-animate": "catalog:",
         "tsup": "catalog:",
         "turbo": "^2.9.5",
         "vitest": "catalog:",
-        "webpack": "^5.104.1"
+        "webpack": "^5.104.1",
+        "tw-animate-css": "catalog:"
     },
     "packageManager": "pnpm@10.27.0",
     "engines": {

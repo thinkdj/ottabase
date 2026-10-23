@@ -1,13 +1,415 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ * Ottabase shared Tailwind (v4) entry
+ *
+ * Import this ONCE at the top of an app's root stylesheet. It loads Tailwind, the forms and typography plugins and
+ * tw-animate-css, then maps every CSS custom property produced by the theme engine (@ottabase/ui styles/ui.css
+ * defaults + Brand Engine runtime overrides) onto Tailwind utilities.
+ *
+ * Why `@theme inline reference`:
+ *  - `inline`    utilities embed the var() expression itself (bg-primary is hsl(var(--primary))), so a token resolves
+ *                on the element that uses it and scoped overrides (.dark, a brand scope) keep working.
+ *  - `reference` these keys are NOT emitted as :root variables. Several engine tokens share Tailwind's own names
+ *                (--radius-sm, --shadow-md, --text-base, --font-mono, --ease-spring ...); emitting them would shadow
+ *                or self-reference the runtime values. Utilities read the engine variable directly, with the stock
+ *                value as the fallback where the engine may omit it.
+ *
+ * Colour tokens stay raw HSL channels (`--primary: 222 47% 11%`), so opacity modifiers work:
+ * bg-primary/50 is color-mix(in oklab, hsl(var(--primary)) 50%, transparent).
+ *
+ * Apps add `@source` lines for the workspace packages Tailwind should scan: its automatic detection only covers the
+ * app's own directory.
+ */
 
-:root {
-    /* --color-brand-500: #0ea5a5;
-    --space-1: 4px; */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* Class-based dark mode: Brand Engine and next-themes toggle `.dark` on <html> */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline reference {
+    /* ── Colours ─────────────────────────────────────────────────────── */
+    /* core surfaces */
+    --color-border: hsl(var(--border));
+    --color-input: hsl(var(--input));
+    --color-ring: hsl(var(--ring));
+    --color-background: hsl(var(--background));
+    --color-foreground: hsl(var(--foreground));
+
+    /* semantic pairs */
+    --color-primary: hsl(var(--primary));
+    --color-primary-foreground: hsl(var(--primary-foreground));
+    /* explicit hover/active stops: alpha hover (bg-primary/90) composites toward the surface and drops the label
+       under AA */
+    --color-primary-hover: hsl(var(--primary-hover, var(--primary)));
+    --color-primary-active: hsl(var(--primary-active, var(--primary)));
+    --color-secondary: hsl(var(--secondary));
+    --color-secondary-foreground: hsl(var(--secondary-foreground));
+    --color-muted: hsl(var(--muted));
+    --color-muted-foreground: hsl(var(--muted-foreground));
+    /* text ladder: foreground > subtle > muted > faint (placeholder, disabled) */
+    --color-subtle-foreground: hsl(var(--subtle-foreground, var(--muted-foreground)));
+    --color-faint-foreground: hsl(var(--faint-foreground, var(--muted-foreground)));
+    --color-accent: hsl(var(--accent));
+    --color-accent-foreground: hsl(var(--accent-foreground));
+    --color-accent-line: hsl(var(--accent-line, var(--border)));
+
+    /* layered surfaces */
+    --color-popover: hsl(var(--popover));
+    --color-popover-foreground: hsl(var(--popover-foreground));
+    --color-card: hsl(var(--card));
+    --color-card-foreground: hsl(var(--card-foreground));
+
+    /* status tones (Design System v1): solid, text on the solid, text on a surface, soft fill, border. Meaning is
+       fixed across every theme. */
+    --color-success: hsl(var(--success));
+    --color-success-foreground: hsl(var(--success-foreground));
+    --color-success-text: hsl(var(--success-text, var(--success)));
+    --color-success-soft: hsl(var(--success-soft));
+    --color-success-line: hsl(var(--success-line));
+    --color-warning: hsl(var(--warning));
+    --color-warning-foreground: hsl(var(--warning-foreground));
+    --color-warning-text: hsl(var(--warning-text, var(--warning)));
+    --color-warning-soft: hsl(var(--warning-soft));
+    --color-warning-line: hsl(var(--warning-line));
+    --color-destructive: hsl(var(--destructive));
+    --color-destructive-foreground: hsl(var(--destructive-foreground));
+    --color-destructive-text: hsl(var(--destructive-text, var(--destructive)));
+    --color-destructive-soft: hsl(var(--destructive-soft));
+    --color-destructive-line: hsl(var(--destructive-line));
+    --color-info: hsl(var(--info));
+    --color-info-foreground: hsl(var(--info-foreground));
+    --color-info-text: hsl(var(--info-text, var(--info)));
+    --color-info-soft: hsl(var(--info-soft));
+    --color-info-line: hsl(var(--info-line));
+    --color-smoke: hsl(var(--smoke));
+    --color-smoke-foreground: hsl(var(--smoke-foreground));
+    --color-smoke-text: hsl(var(--smoke-text, var(--smoke)));
+    --color-smoke-soft: hsl(var(--smoke-soft));
+    --color-smoke-line: hsl(var(--smoke-line));
+    --color-neutral: hsl(var(--neutral));
+    --color-neutral-foreground: hsl(var(--neutral-foreground));
+    --color-neutral-text: hsl(var(--neutral-text, var(--neutral)));
+    --color-neutral-soft: hsl(var(--neutral-soft));
+    --color-neutral-line: hsl(var(--neutral-line));
+
+    /* sidebar chrome */
+    --color-sidebar: hsl(var(--sidebar-background));
+    --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+    --color-sidebar-border: hsl(var(--sidebar-border));
+    --color-sidebar-accent: hsl(var(--sidebar-accent));
+    --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+    --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+    /* data-viz palette (8 categorical slots, assigned in order) + chrome */
+    --color-chart-1: hsl(var(--chart-1));
+    --color-chart-2: hsl(var(--chart-2));
+    --color-chart-3: hsl(var(--chart-3));
+    --color-chart-4: hsl(var(--chart-4));
+    --color-chart-5: hsl(var(--chart-5));
+    --color-chart-6: hsl(var(--chart-6));
+    --color-chart-7: hsl(var(--chart-7));
+    --color-chart-8: hsl(var(--chart-8));
+    --color-chart-grid: hsl(var(--chart-grid, var(--border)));
+    --color-chart-axis: hsl(var(--chart-axis, var(--input)));
+    --color-chart-label: hsl(var(--chart-label, var(--muted-foreground)));
+
+    /* dialog/sheet/drawer scrim (bg-overlay/80 replaces bg-black/80) */
+    --color-overlay: hsl(var(--overlay));
+
+    /* ── Radius ──────────────────────────────────────────────────────── */
+    /* Themes may set per-size --radius-{size}; the calc chain over the scalar --radius is the fallback, so
+       scalar-only themes render as before. `full` is themeable too (Visited sets --radius-full: 2px: no pills). */
+    --radius: var(--radius-sm, calc(var(--radius) - 4px)); /* bare `rounded` */
+    --radius-sm: var(--radius-sm, calc(var(--radius) - 4px));
+    --radius-md: var(--radius-md, calc(var(--radius) - 2px));
+    --radius-lg: var(--radius-lg, var(--radius));
+    --radius-xl: var(--radius-xl, calc(var(--radius) + 4px));
+    --radius-2xl: var(--radius-2xl, calc(var(--radius) + 8px));
+    --radius-full: var(--radius-full, 9999px);
+
+    /* ── Fonts ───────────────────────────────────────────────────────── */
+    --font-sans:
+        var(--font-body), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-heading:
+        var(--font-heading), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-handwriting: var(--font-handwriting), cursive;
+    --font-mono:
+        var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+        monospace;
+
+    /* ── Type scale ──────────────────────────────────────────────────── */
+    /* Every text-{step} reads --text-{step} with the stock value as the fallback, so a theme redefines the whole
+       ramp (fluid clamp() included) without touching call sites. Tracking falls back to `inherit` so a parent
+       tracking-* keeps cascading when a theme defines no per-step tracking. */
+    --text-xs: var(--text-xs, 0.75rem);
+    --text-xs--line-height: var(--text-xs-lh, 1rem);
+    --text-xs--letter-spacing: var(--text-xs-ls, inherit);
+    --text-sm: var(--text-sm, 0.875rem);
+    --text-sm--line-height: var(--text-sm-lh, 1.25rem);
+    --text-sm--letter-spacing: var(--text-sm-ls, inherit);
+    --text-base: var(--text-base, 1rem);
+    --text-base--line-height: var(--text-base-lh, 1.5rem);
+    --text-base--letter-spacing: var(--text-base-ls, inherit);
+    --text-lg: var(--text-lg, 1.125rem);
+    --text-lg--line-height: var(--text-lg-lh, 1.75rem);
+    --text-lg--letter-spacing: var(--text-lg-ls, inherit);
+    --text-xl: var(--text-xl, 1.25rem);
+    --text-xl--line-height: var(--text-xl-lh, 1.75rem);
+    --text-xl--letter-spacing: var(--text-xl-ls, inherit);
+    --text-2xl: var(--text-2xl, 1.5rem);
+    --text-2xl--line-height: var(--text-2xl-lh, 2rem);
+    --text-2xl--letter-spacing: var(--text-2xl-ls, inherit);
+    --text-3xl: var(--text-3xl, 1.875rem);
+    --text-3xl--line-height: var(--text-3xl-lh, 2.25rem);
+    --text-3xl--letter-spacing: var(--text-3xl-ls, inherit);
+    --text-4xl: var(--text-4xl, 2.25rem);
+    --text-4xl--line-height: var(--text-4xl-lh, 2.5rem);
+    --text-4xl--letter-spacing: var(--text-4xl-ls, inherit);
+    --text-5xl: var(--text-5xl, 3rem);
+    --text-5xl--line-height: var(--text-5xl-lh, 1);
+    --text-5xl--letter-spacing: var(--text-5xl-ls, inherit);
+    --text-6xl: var(--text-6xl, 3.75rem);
+    --text-6xl--line-height: var(--text-6xl-lh, 1);
+    --text-6xl--letter-spacing: var(--text-6xl-ls, inherit);
+    --text-7xl: var(--text-7xl, 4.5rem);
+    --text-7xl--line-height: var(--text-7xl-lh, 1);
+    --text-7xl--letter-spacing: var(--text-7xl-ls, inherit);
+    --text-8xl: var(--text-8xl, 6rem);
+    --text-8xl--line-height: var(--text-8xl-lh, 1);
+    --text-8xl--letter-spacing: var(--text-8xl-ls, inherit);
+    --text-9xl: var(--text-9xl, 8rem);
+    --text-9xl--line-height: var(--text-9xl-lh, 1);
+    --text-9xl--letter-spacing: var(--text-9xl-ls, inherit);
+
+    /* ── Elevation ───────────────────────────────────────────────────── */
+    /* Bare `shadow` is the sm token, never a stock value. */
+    --shadow: var(--shadow-sm);
+    --shadow-xs: var(--shadow-xs);
+    --shadow-sm: var(--shadow-sm);
+    --shadow-md: var(--shadow-md);
+    --shadow-lg: var(--shadow-lg);
+    --shadow-xl: var(--shadow-xl);
+
+    /* ── Spacing tokens (p-section, gap-card, m-element ...) ─────────── */
+    --spacing-section: var(--spacing-section);
+    --spacing-card: var(--spacing-card);
+    --spacing-element: var(--spacing-element);
+
+    /* ── Motion ──────────────────────────────────────────────────────── */
+    --default-transition-duration: var(--duration-normal);
+    --default-transition-timing-function: var(--ease);
+    --ease-theme: var(--ease);
+    --ease-theme-enter: var(--ease-enter);
+    --ease-theme-exit: var(--ease-exit);
+    --ease-spring: var(--ease-spring);
+
+    --animate-accordion-down: accordion-down var(--duration-normal) var(--ease);
+    --animate-accordion-up: accordion-up var(--duration-normal) var(--ease);
+    --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+    --animate-page-in: page-in var(--duration-slow) var(--ease-enter) both;
+    --animate-shimmer: shimmer 1.4s linear infinite;
+}
+
+@keyframes accordion-down {
+    from {
+        height: 0;
+    }
+    to {
+        height: var(--radix-accordion-content-height);
+    }
+}
+@keyframes accordion-up {
+    from {
+        height: var(--radix-accordion-content-height);
+    }
+    to {
+        height: 0;
+    }
+}
+/* input-otp caret */
+@keyframes caret-blink {
+    0%,
+    70%,
+    100% {
+        opacity: 1;
+    }
+    20%,
+    50% {
+        opacity: 0;
+    }
+}
+/* page content fades up once on mount (Design System v1 motion) */
+@keyframes page-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+/* skeleton shimmer: a gradient sweeping across the placeholder */
+@keyframes shimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+/* ── Defaults Tailwind 3 had and 4 dropped ─────────────────────────────
+ * v4 draws borders in currentColor, shows placeholders at 50% of the text colour and leaves buttons with the
+ * default cursor. @ottabase/ui's stylesheet points borders at the --border token right after this. */
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--color-gray-400);
+    }
+
+    button:not(:disabled),
+    [role='button']:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
+/* ── Border chrome ─────────────────────────────────────────────────────
+ * Bare border/divide width is themeable (--border-width); `border-strong` is the heavier rule. Declared after the
+ * built-ins, so these win. */
+@utility border {
+    border-width: var(--border-width, 1px);
+}
+@utility border-x {
+    border-inline-width: var(--border-width, 1px);
+}
+@utility border-y {
+    border-block-width: var(--border-width, 1px);
+}
+@utility border-t {
+    border-top-width: var(--border-width, 1px);
+}
+@utility border-r {
+    border-right-width: var(--border-width, 1px);
+}
+@utility border-b {
+    border-bottom-width: var(--border-width, 1px);
+}
+@utility border-l {
+    border-left-width: var(--border-width, 1px);
+}
+/* ponytail: the divide overrides ignore divide-*-reverse; add it if anyone uses reverse */
+@utility divide-x {
+    & > :not(:last-child) {
+        border-inline-start-width: 0;
+        border-inline-end-width: var(--border-width, 1px);
+    }
+}
+@utility divide-y {
+    & > :not(:last-child) {
+        border-top-width: 0;
+        border-bottom-width: var(--border-width, 1px);
+    }
+}
+@utility border-strong {
+    border-style: var(--tw-border-style);
+    border-width: var(--border-width-strong, 2px);
+}
+
+/* ── Motion durations (duration-fast/normal/slow/press/theme) ───────── */
+@utility duration-fast {
+    --tw-duration: var(--duration-fast);
+    transition-duration: var(--duration-fast);
+}
+@utility duration-normal {
+    --tw-duration: var(--duration-normal);
+    transition-duration: var(--duration-normal);
+}
+@utility duration-slow {
+    --tw-duration: var(--duration-slow);
+    transition-duration: var(--duration-slow);
+}
+@utility duration-press {
+    --tw-duration: var(--duration-press, var(--duration-fast));
+    transition-duration: var(--duration-press, var(--duration-fast));
+}
+@utility duration-theme {
+    --tw-duration: var(--duration-theme, 320ms);
+    transition-duration: var(--duration-theme, 320ms);
+}
+
+/* ── Z-index ladder (overlay components; themes may re-stack) ───────── */
+@utility z-header {
+    z-index: var(--z-header, 40);
+}
+@utility z-sticky {
+    z-index: var(--z-sticky, 30);
+}
+@utility z-dropdown {
+    z-index: var(--z-dropdown, 50);
+}
+@utility z-overlay {
+    z-index: var(--z-overlay, 50);
+}
+@utility z-modal {
+    z-index: var(--z-modal, 50);
+}
+@utility z-popover {
+    z-index: var(--z-popover, 50);
+}
+@utility z-toast {
+    z-index: var(--z-toast, 100);
+}
+
+/* ── Prose wired to design tokens ──────────────────────────────────────
+ * Bare `prose` is theme-adaptive: it flips with light/dark and inherits brand colours. `dark:prose-invert` remaps to
+ * the -invert- variables, kept identical so a manually toggled .dark class stays token-driven. Declared after the
+ * plugin's own `prose`, so these values win. */
+@utility prose {
+    --tw-prose-body: hsl(var(--foreground));
+    --tw-prose-headings: hsl(var(--foreground));
+    --tw-prose-lead: hsl(var(--muted-foreground));
+    --tw-prose-links: hsl(var(--primary));
+    --tw-prose-bold: hsl(var(--foreground));
+    --tw-prose-counters: hsl(var(--muted-foreground));
+    --tw-prose-bullets: hsl(var(--border));
+    --tw-prose-hr: hsl(var(--border));
+    --tw-prose-quotes: hsl(var(--foreground));
+    --tw-prose-quote-borders: hsl(var(--border));
+    --tw-prose-captions: hsl(var(--muted-foreground));
+    --tw-prose-code: hsl(var(--foreground));
+    --tw-prose-pre-code: hsl(var(--muted-foreground));
+    --tw-prose-pre-bg: hsl(var(--muted));
+    --tw-prose-th-borders: hsl(var(--border));
+    --tw-prose-td-borders: hsl(var(--border));
+    --tw-prose-invert-body: hsl(var(--foreground));
+    --tw-prose-invert-headings: hsl(var(--foreground));
+    --tw-prose-invert-lead: hsl(var(--muted-foreground));
+    --tw-prose-invert-links: hsl(var(--primary));
+    --tw-prose-invert-bold: hsl(var(--foreground));
+    --tw-prose-invert-counters: hsl(var(--muted-foreground));
+    --tw-prose-invert-bullets: hsl(var(--border));
+    --tw-prose-invert-hr: hsl(var(--border));
+    --tw-prose-invert-quotes: hsl(var(--foreground));
+    --tw-prose-invert-quote-borders: hsl(var(--border));
+    --tw-prose-invert-captions: hsl(var(--muted-foreground));
+    --tw-prose-invert-code: hsl(var(--foreground));
+    --tw-prose-invert-pre-code: hsl(var(--muted-foreground));
+    --tw-prose-invert-pre-bg: hsl(var(--muted));
+    --tw-prose-invert-th-borders: hsl(var(--border));
+    --tw-prose-invert-td-borders: hsl(var(--border));
 }
 
 /* small reusable classes */
-.btn-tw {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium;
+@utility btn-tw {
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium;
 }
