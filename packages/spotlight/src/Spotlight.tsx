@@ -285,9 +285,8 @@ export function Spotlight({
                         'border shadow-lg rounded-lg',
                         'data-[state=open]:animate-in data-[state=closed]:animate-out',
                         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-                        'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-                        'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[10%]',
-                        'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[10%]',
+                        'data-[state=closed]:zoom-out-98 data-[state=open]:zoom-in-98',
+                        'data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2',
                         'duration-100',
                         className,
                     )}

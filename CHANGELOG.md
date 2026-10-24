@@ -327,6 +327,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- `@ottabase/ui` Dialog and AlertDialog fade up into place (8px rise from 98%) instead of swooping in from the top left.
+  Their Tailwind 3 `slide-in-from-left-1/2` / `-top-[48%]` offsets stacked on Tailwind 4's separate `translate`
+  centring. Spotlight's palette had the same offsets. Popovers, menus, selects, hover cards and tooltips now zoom from
+  the side they open on (Radix's transform-origin) instead of their own centre.
 - `@ottabase/ui` Command: a page with an inline command list below the fold no longer jumps down to it on load. cmdk
   scrolled the item it selects by itself on mount into view; items now follow the selection only while focus is inside
   the command.
