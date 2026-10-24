@@ -1,15 +1,9 @@
 import { clsx } from 'clsx';
-import { Check, ChevronDown, Loader2, Search, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { labelKey, normalizeItem, type OttaCreateResult, type OttaSelectInputItem, type OttaSelectItem } from './items';
 
-// Output format - always standardized with id and name
-export interface OttaSelectItem extends Record<string, any> {
-    id: string;
-    name: string;
-}
-
-// Input can be any object with id and name/label/title
-export type OttaSelectInputItem = Record<string, any>;
+export type { OttaCreateResult, OttaSelectInputItem, OttaSelectItem } from './items';
 
 export type OttaSelectSize = 'xs' | 'sm' | 'md' | 'lg';
 
@@ -32,6 +26,15 @@ export interface OttaSelectProps {
     // Data source - accepts any object with id and name/label/title
     items?: OttaSelectInputItem[];
     fetchCollection?: (searchQuery: string) => Promise<OttaSelectInputItem[]>;
+
+    /**
+     * Lets a person add an option that is not in the list. When the search text matches no option
+     * exactly, a "Create" row appears; choosing it calls this with the text. Return the new item
+     * (it is selected; a promise works too) or null to refuse it. Needs `searchable`.
+     */
+    onCreate?: (label: string) => OttaCreateResult | Promise<OttaCreateResult>;
+    /** The create row's text. Default: Create "label" */
+    createLabel?: (label: string) => React.ReactNode;
 
     // Search configuration
     searchable?: boolean;
@@ -199,22 +202,6 @@ const OTTA_SELECT_SIZE_CLASSES: Record<OttaSelectSize, string> = {
     ].join(' '),
 };
 
-// Helper function to normalize input items to standard format
-const normalizeItem = (item: OttaSelectInputItem): OttaSelectItem => {
-    // Extract id - must exist
-    const id = item.id?.toString() || '';
-
-    // Extract display name with fallbacks: name -> label -> title
-    const name = item.name || item.label || item.title || '';
-
-    // Return the original object with normalized id and name
-    return {
-        ...item,
-        id,
-        name: String(name),
-    };
-};
-
 // Chip component for multi-select display
 const Chip = ({
     item,
@@ -264,6 +251,8 @@ export function OttaSelect({
     onChange,
     items = [],
     fetchCollection,
+    onCreate,
+    createLabel,
     searchable = true,
     searchDebounceMs = 300,
     searchPlaceholder = 'Search...',
@@ -292,6 +281,7 @@ export function OttaSelect({
     const [fetchedItems, setFetchedItems] = useState<OttaSelectItem[]>([]);
     const [focusedIndex, setFocusedIndex] = useState(-1);
     const [visibleChipCount, setVisibleChipCount] = useState<number | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -403,6 +393,16 @@ export function OttaSelect({
         return allItems.filter((item) => item.name.toLowerCase().includes(query)).slice(0, maxDisplayItems);
     }, [allItems, searchQuery, fetchCollection, maxDisplayItems]);
 
+    // The "Create" row: offered when the search text names no option exactly
+    const createQuery = searchQuery.trim();
+    const canCreate =
+        !!onCreate &&
+        searchable &&
+        createQuery.length > 0 &&
+        !allItems.some((item) => labelKey(item.name) === labelKey(createQuery));
+    // Keyboard focus runs over the options, then the create row
+    const optionCount = filteredItems.length + (canCreate ? 1 : 0);
+
     // Check if item is selected
     const isItemSelected = useCallback(
         (item: OttaSelectItem) => {
@@ -445,6 +445,23 @@ export function OttaSelect({
         [mode, onChange, selectedItems, isItemSelected],
     );
 
+    // Handle creating an option from the search text
+    const handleCreate = useCallback(async () => {
+        if (!onCreate || isCreating || !createQuery) return;
+        setIsCreating(true);
+        try {
+            const created = await onCreate(createQuery);
+            if (created) {
+                handleSelect(normalizeItem(created));
+                setSearchQuery('');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : errorMessage);
+        } finally {
+            setIsCreating(false);
+        }
+    }, [onCreate, isCreating, createQuery, handleSelect, errorMessage]);
+
     // Handle clear
     const handleClear = useCallback(
         (e: React.MouseEvent) => {
@@ -471,7 +488,7 @@ export function OttaSelect({
             switch (e.key) {
                 case 'ArrowDown':
                     e.preventDefault();
-                    setFocusedIndex((prev) => (prev < filteredItems.length - 1 ? prev + 1 : prev));
+                    setFocusedIndex((prev) => (prev < optionCount - 1 ? prev + 1 : prev));
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
@@ -481,6 +498,9 @@ export function OttaSelect({
                     e.preventDefault();
                     if (focusedIndex >= 0 && focusedIndex < filteredItems.length) {
                         handleSelect(filteredItems[focusedIndex]);
+                    } else if (canCreate && (focusedIndex === filteredItems.length || filteredItems.length === 0)) {
+                        // The create row, or Enter on a search that matches nothing
+                        void handleCreate();
                     }
                     break;
                 case 'Escape':
@@ -490,7 +510,7 @@ export function OttaSelect({
                     break;
             }
         },
-        [isOpen, filteredItems, focusedIndex, handleSelect],
+        [isOpen, filteredItems, focusedIndex, handleSelect, optionCount, canCreate, handleCreate],
     );
 
     // Scroll focused item into view
@@ -800,7 +820,7 @@ export function OttaSelect({
                             <div className="px-[var(--otta-select-section-padding-x)] py-[var(--otta-select-dropdown-empty-py)] text-center text-[length:var(--otta-select-font-size)] text-destructive">
                                 {error}
                             </div>
-                        ) : filteredItems.length === 0 ? (
+                        ) : filteredItems.length === 0 && !canCreate ? (
                             <div className="px-[var(--otta-select-section-padding-x)] py-[var(--otta-select-dropdown-empty-py)] text-center text-[length:var(--otta-select-font-size)] text-muted-foreground">
                                 {emptyMessage}
                             </div>
@@ -836,6 +856,40 @@ export function OttaSelect({
                                         </button>
                                     );
                                 })}
+                                {canCreate && (
+                                    <button
+                                        type="button"
+                                        data-index={filteredItems.length}
+                                        data-slot="otta-select-create"
+                                        disabled={isCreating}
+                                        onClick={() => void handleCreate()}
+                                        className={clsx(
+                                            'w-full px-[var(--otta-select-item-padding-x)] py-[var(--otta-select-item-padding-y)] text-left text-[length:var(--otta-select-font-size)]',
+                                            'text-muted-foreground',
+                                            'hover:bg-accent hover:text-accent-foreground transition-colors duration-fast ease-theme',
+                                            'flex items-center gap-[var(--otta-select-chip-gap)]',
+                                            focusedIndex === filteredItems.length && 'bg-accent text-accent-foreground',
+                                        )}
+                                    >
+                                        {isCreating ? (
+                                            <Loader2 className="h-[var(--otta-select-icon-size)] w-[var(--otta-select-icon-size)] flex-shrink-0 animate-spin" />
+                                        ) : (
+                                            <Plus className="h-[var(--otta-select-icon-size)] w-[var(--otta-select-icon-size)] flex-shrink-0" />
+                                        )}
+                                        <span className="truncate">
+                                            {createLabel ? (
+                                                createLabel(createQuery)
+                                            ) : (
+                                                <>
+                                                    Create{' '}
+                                                    <span className="font-medium text-foreground">
+                                                        &ldquo;{createQuery}&rdquo;
+                                                    </span>
+                                                </>
+                                            )}
+                                        </span>
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

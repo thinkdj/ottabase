@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `TreeView` (the WAI-ARIA tree pattern, flat, with roving focus, type-ahead and indent guides), `AvatarGroup` (overlap,
   "+N" past `max`, `total`, three sizes), `Rating` (the WAI-ARIA rating slider, half steps, fractional read-only
   display, `--rating-color`) and `VisuallyHidden`. Each has its own entry, tests and a story; `/demo/ui` shows them.
+- `@ottabase/ottaselect`: `OttaTagsInput`, a Design System field of tags. Pick from suggestions (static or
+  `fetchCollection`) or type new ones: Enter or a comma adds, a paste with commas or line breaks adds each part,
+  Backspace highlights then removes, `onCreate` can save or refuse a tag, `maxTags`, form `name`, an ARIA combobox with
+  announced changes. `OttaSelect` gets `onCreate` too: a "Create" row for search text that matches nothing.
 - otta-web runs as a public demo: `wrangler deploy --env demo` (worker `otta-web-demo`, its own D1, KV, R2 and queue)
   sets `DEMO_MODE`. Mail then goes out only to people with an account (the rest is held at Admin → Dev mail), uploads
   are rate-limited per account, new accounts get a welcome mail, and a banner carries the deploy's call to action

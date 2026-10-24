@@ -445,7 +445,9 @@
    Every text-entry surface takes the same treatment: a focus-coloured edge and
    a 3px soft halo instead of the offset ring (focus, not focus-visible: a click
    into a field should show where typing lands). Fields, input groups, OTP
-   slots and the calendar's month/year dropdowns all route through here, so
+   slots, the calendar's month/year dropdowns and @ottabase/ottaselect's tags
+   field (it carries the data-slots, so it needs no CSS of its own) all route
+   through here, so
    there is one recipe and no per-component ring classes.
 
    It lives in the utilities layer, after Tailwind's own, on purpose: the
@@ -455,6 +457,7 @@
 @layer utilities {
     :is([data-slot='input'], [data-slot='textarea'], [data-slot='native-select'], [data-slot='select-trigger']):focus,
     [data-slot='input-group']:has([data-slot='input-group-control']:focus),
+    [data-slot='tags-input']:has([data-slot='tags-input-control']:focus),
     [data-slot='input-otp-slot'][data-active='true'],
     [data-slot='calendar'] .rdp-dropdown_root:has(:focus) {
         --field-focus: var(--focus-ring-color, hsl(var(--ring)));
@@ -469,6 +472,7 @@
             [data-slot='select-trigger']
         )[aria-invalid='true']:focus,
     [data-slot='input-group']:has([data-slot='input-group-control'][aria-invalid='true']:focus),
+    [data-slot='tags-input']:has([data-slot='tags-input-control'][aria-invalid='true']:focus),
     [data-slot='input-otp-slot'][data-active='true'][aria-invalid='true'] {
         --field-focus: hsl(var(--destructive));
     }

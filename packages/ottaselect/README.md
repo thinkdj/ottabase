@@ -17,6 +17,8 @@ applications with dynamic data sources and CrudHub integration.
 - **CrudHub Integration** - Built-in async collection fetching support
 - **Loading & Error states** - Beautiful loading indicators and error handling
 - **Keyboard navigation** - Full keyboard support (Arrow keys, Enter, Escape)
+- **Create options** - `onCreate` adds a "Create" row for search text that matches nothing, in either mode
+- **Tags input** - `OttaTagsInput`: a Design System field of tags, picked from suggestions or typed in
 - **Dark mode** - Full dark mode support with Tailwind CSS
 
 ## Installation
@@ -214,6 +216,54 @@ async function fetchUsers(searchQuery: string) {
 />;
 ```
 
+## Creating Options
+
+With `onCreate`, a search that names no option exactly (case and surrounding spaces ignored) offers a "Create" row after
+the matches; Enter on a search with no matches creates too. Return the new item and it is selected (added, in multiple
+mode); return `null` to refuse; a promise works, for a POST. `createLabel` changes the row's text.
+
+```tsx
+<OttaSelect
+    mode="multiple"
+    items={topics}
+    value={value}
+    onChange={setValue}
+    onCreate={async (label) => {
+        const topic = await api.topics.create({ name: label });
+        setTopics((current) => [...current, topic]);
+        return topic;
+    }}
+/>
+```
+
+## Tags Input
+
+`OttaTagsInput` is a field of tags: pick from suggestions or type something new. It looks like an `@ottabase/ui` `Input`
+(36px, the strong edge, the field focus halo from `@ottabase/ui/styles.css`, which it gets through its `data-slot`s) and
+each tag is a Design System Tag chip.
+
+```tsx
+import { OttaTagsInput, type OttaSelectItem } from '@ottabase/ottaselect';
+
+const [tags, setTags] = useState<OttaSelectItem[]>([]);
+
+<label htmlFor="topics">Topics</label>
+<OttaTagsInput id="topics" items={topics} value={tags} onChange={setTags} maxTags={6} />
+```
+
+- **Typing** filters the suggestions, exact and prefix matches first, "Create" last. Enter takes the highlighted row,
+  which starts on the best match, so a prefix picks the existing tag rather than minting a near duplicate.
+- **A comma** (`delimiters`) commits the text exactly as typed; **a paste** with commas or line breaks adds each part.
+- **Backspace** on an empty field highlights the last tag, and a second press removes it. Left and Right walk the tags,
+  Delete removes the highlighted one, and each tag has a remove button.
+- **`onCreate`** turns typed text into a tag (await a POST, or return `null` to refuse; refused text stays in the
+  field). Without it a new tag is `{ id: text, name: text }`. `creatable={false}` allows only suggestions.
+- **`fetchCollection`** loads suggestions from an API, debounced (`searchDebounceMs`).
+- `maxTags` (the field shows `n/max`), `name` (each tag id is submitted under it), `disabled`, `aria-invalid`,
+  `renderTag`, `renderItem`, `placeholder` and the messages are props. `value`/`onChange` control it, or use
+  `defaultValue` and let it hold the tags.
+- The input is an ARIA combobox over a listbox, and every add and remove is announced in a polite live region.
+
 ## Props Reference
 
 ```typescript
@@ -228,6 +278,10 @@ interface OttaSelectProps {
     // Data source
     items?: OttaSelectInputItem[];
     fetchCollection?: (searchQuery: string) => Promise<OttaSelectInputItem[]>;
+
+    // Creating options (needs searchable)
+    onCreate?: (label: string) => OttaSelectInputItem | null | Promise<OttaSelectInputItem | null>;
+    createLabel?: (label: string) => React.ReactNode; // Default: Create "label"
 
     // Search
     searchable?: boolean; // Default: true
