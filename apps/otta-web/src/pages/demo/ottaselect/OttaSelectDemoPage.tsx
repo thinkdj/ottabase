@@ -6,6 +6,7 @@ import { OttaSelect, type ItemRendererProps, type OttaSelectItem, type OttaSelec
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
+import { TagsInputDemoCard } from './TagsInputDemoCard';
 
 // Sample data with various formats
 const fruitsAndVegetables = [
@@ -461,6 +462,8 @@ export function OttaSelectDemoPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <TagsInputDemoCard />
 
             {/* Features */}
             <Card>

@@ -14,6 +14,7 @@ import {
     // Display & Media
     Avatar,
     AvatarFallback,
+    AvatarGroup,
     AvatarImage,
     Badge,
     // Navigation
@@ -178,6 +179,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { DemoPageHeader } from '../DemoPageHeader';
 import { ComposedComponentsSection } from './ComposedComponentsSection';
+import { DataDisplaySection } from './DataDisplaySection';
 
 const formSchema = z.object({
     username: z.string().min(2, 'Username must be at least 2 characters'),
@@ -849,17 +851,49 @@ export function UiDemoPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Avatar</CardTitle>
-                            <CardDescription>User avatars</CardDescription>
+                            <CardTitle>Avatar and AvatarGroup</CardTitle>
+                            <CardDescription>
+                                A photo with initials behind it. In a group they overlap; past <code>max</code> the rest
+                                fold into +N, and <code>total</code> counts members that are not loaded.
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex items-center gap-4">
-                            <Avatar>
-                                <AvatarImage src="https://github.com/shadcn.png" />
-                                <AvatarFallback>CN</AvatarFallback>
-                            </Avatar>
-                            <Avatar>
-                                <AvatarFallback>JD</AvatarFallback>
-                            </Avatar>
+                        <CardContent className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-4 text-sm">
+                            <span className="text-muted-foreground">Avatar</span>
+                            <div className="flex items-center gap-3">
+                                <Avatar>
+                                    <AvatarImage src="https://github.com/thinkdj.png" alt="thinkdj" />
+                                    <AvatarFallback>DT</AvatarFallback>
+                                </Avatar>
+                                <Avatar>
+                                    <AvatarFallback>JD</AvatarFallback>
+                                </Avatar>
+                            </div>
+
+                            <span className="text-muted-foreground">Group</span>
+                            <div className="flex flex-wrap items-center gap-5">
+                                {(['sm', 'default', 'lg'] as const).map((size) => (
+                                    <AvatarGroup key={size} size={size} max={4} aria-label={`Members, ${size}`}>
+                                        <Avatar>
+                                            <AvatarImage src="https://github.com/thinkdj.png" alt="thinkdj" />
+                                            <AvatarFallback>DT</AvatarFallback>
+                                        </Avatar>
+                                        {['RK', 'AM', 'JS', 'LW', 'PN', 'OE'].map((initials) => (
+                                            <Avatar key={initials}>
+                                                <AvatarFallback>{initials}</AvatarFallback>
+                                            </Avatar>
+                                        ))}
+                                    </AvatarGroup>
+                                ))}
+                            </div>
+
+                            <span className="text-muted-foreground">With total</span>
+                            <AvatarGroup max={2} total={128} aria-label="Organization members">
+                                {['DT', 'RK'].map((initials) => (
+                                    <Avatar key={initials}>
+                                        <AvatarFallback>{initials}</AvatarFallback>
+                                    </Avatar>
+                                ))}
+                            </AvatarGroup>
                         </CardContent>
                     </Card>
 
@@ -1216,6 +1250,8 @@ export function UiDemoPage() {
                     </Card>
                 </div>
             </section>
+
+            <DataDisplaySection />
 
             <ComposedComponentsSection />
         </div>
