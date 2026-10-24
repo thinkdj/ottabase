@@ -1,7 +1,7 @@
 # @ottabase/ui-tailwind
 
-The shared **Tailwind CSS v4** entry for Ottabase apps. One stylesheet loads Tailwind, the forms and typography plugins
-and `tw-animate-css`, and maps the theme engine's CSS variables (shadcn-style HSL tokens, radii, fonts, the type scale,
+The shared **Tailwind CSS v4** entry for Ottabase apps. One stylesheet loads Tailwind, the typography plugin and
+`tw-animate-css`, and maps the theme engine's CSS variables (shadcn-style HSL tokens, radii, fonts, the type scale,
 shadows, charts, status tones, sidebar, motion) onto Tailwind utilities, so Vite and Next apps stay aligned.
 
 There is no JavaScript preset and no `tailwind.config`: Tailwind 4 is configured in CSS.
@@ -92,9 +92,13 @@ children are just a little tighter. New code should use flex or grid with `gap`.
 
 ## Dependencies
 
-The stylesheet resolves `tailwindcss`, `@tailwindcss/forms`, `@tailwindcss/typography` and `tw-animate-css` from this
-package, so they are its dependencies; an app only brings `tailwindcss`, `postcss` and `@tailwindcss/postcss`. The
-package also depends on `tailwind-merge` (v3, for Tailwind 4 class names) for the class merging the UI kit does.
+The stylesheet resolves `tailwindcss`, `@tailwindcss/typography` and `tw-animate-css` from this package, so they are its
+dependencies; an app only brings `tailwindcss`, `postcss` and `@tailwindcss/postcss`. The package also depends on
+`tailwind-merge` (v3, for Tailwind 4 class names) for the class merging the UI kit does.
+
+There is deliberately no `@tailwindcss/forms`: its global preset paints a fixed blue focus ring, blue checkboxes and its
+own select chevron on every native control, over the theme. Fields take their look from `@ottabase/ui` and native
+checkboxes, radios and ranges are tinted by `accent-color`, which `@ottabase/ui/styles.css` points at the brand.
 
 ## Tests
 

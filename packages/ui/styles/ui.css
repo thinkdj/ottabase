@@ -340,9 +340,10 @@
     }
 
     :root {
-        /* Native form-control tinting + scrollbars; `auto` = browser default.
+        /* Native form-control tinting (the brand green, not the browser's blue)
+           + scrollbars; `auto` = browser default.
            scrollbar-color needs BOTH colors — define thumb AND track or neither. */
-        accent-color: var(--accent-color, auto);
+        accent-color: var(--accent-color, hsl(var(--primary)));
         scrollbar-width: var(--scrollbar-width, auto);
         scrollbar-color: var(--scrollbar-thumb, auto) var(--scrollbar-track, auto);
     }
@@ -354,10 +355,10 @@
         caret-color: var(--caret-color, auto);
     }
 
-    /* Text selection — system Highlight colors when the theme doesn't opt in */
+    /* Text selection — a soft wash of the focus colour unless the theme sets its own */
     ::selection {
-        background-color: var(--selection-bg, Highlight);
-        color: var(--selection-fg, HighlightText);
+        background-color: var(--selection-bg, color-mix(in srgb, hsl(var(--ring)) 24%, transparent));
+        color: var(--selection-fg, hsl(var(--foreground)));
     }
 
     /* Numbers in tables and stats are tabular in either face */
@@ -440,28 +441,36 @@
     }
 }
 
-@layer base {
-    /* Text fields take a 3px soft halo instead of the offset ring (focus, not
-       focus-visible: a click into a field should show where typing lands). */
-    :where(
-        [data-slot='input'],
-        [data-slot='textarea'],
-        [data-slot='native-select'],
-        [data-slot='select-trigger']
-    ):focus,
-    :where(
-        [data-slot='input'],
-        [data-slot='textarea'],
-        [data-slot='native-select'],
-        [data-slot='select-trigger']
-    ):focus-visible {
+/* ── Field focus ────────────────────────────────────────────────────────────
+   Every text-entry surface takes the same treatment: a focus-coloured edge and
+   a 3px soft halo instead of the offset ring (focus, not focus-visible: a click
+   into a field should show where typing lands). Fields, input groups, OTP
+   slots and the calendar's month/year dropdowns all route through here, so
+   there is one recipe and no per-component ring classes.
+
+   It lives in the utilities layer, after Tailwind's own, on purpose: the
+   fields carry border-input / shadow-xs / hover:border-* utilities, and a
+   base-layer rule loses to every one of them. The colour is the theme's
+   --focus-ring-color, the same one every other control's outline uses. */
+@layer utilities {
+    :is([data-slot='input'], [data-slot='textarea'], [data-slot='native-select'], [data-slot='select-trigger']):focus,
+    [data-slot='input-group']:has([data-slot='input-group-control']:focus),
+    [data-slot='input-otp-slot'][data-active='true'],
+    [data-slot='calendar'] .rdp-dropdown_root:has(:focus) {
+        --field-focus: var(--focus-ring-color, hsl(var(--ring)));
         outline: none;
-        border-color: hsl(var(--ring));
-        box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--ring)) 22%, transparent);
+        border-color: var(--field-focus);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--field-focus) 22%, transparent);
     }
-    :where([data-slot='input'], [data-slot='textarea'])[aria-invalid='true']:focus {
-        border-color: hsl(var(--destructive));
-        box-shadow: 0 0 0 3px color-mix(in srgb, hsl(var(--destructive)) 22%, transparent);
+    :is(
+            [data-slot='input'],
+            [data-slot='textarea'],
+            [data-slot='native-select'],
+            [data-slot='select-trigger']
+        )[aria-invalid='true']:focus,
+    [data-slot='input-group']:has([data-slot='input-group-control'][aria-invalid='true']:focus),
+    [data-slot='input-otp-slot'][data-active='true'][aria-invalid='true'] {
+        --field-focus: hsl(var(--destructive));
     }
 }
 

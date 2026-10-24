@@ -222,7 +222,13 @@ Components are fully themeable by the brand engine without forking:
     ```
 
 - **Global focus ring**: components carry no per-component `focus-visible:ring-*` recipes; one global rule in
-  `styles/ui.css` reads `--focus-ring-{width,style,color,offset}`.
+  `styles/ui.css` reads `--focus-ring-{width,style,color,offset}`. Text-entry surfaces (`Input`, `Textarea`,
+  `NativeSelect`, `SelectTrigger`, `InputGroup`, the active `InputOTPSlot`, the calendar's dropdowns) instead take a
+  focus-coloured edge and a 3px halo from one shared rule, red when `aria-invalid="true"`. That rule sits in the
+  utilities layer so the fields' own border and shadow utilities cannot hide it; a theme restyles it from
+  `[data-slot=…]:focus`.
+- **Native fallbacks follow the brand**: without theme overrides, `accent-color` is the primary and `::selection` is a
+  soft wash of the focus colour, never the browser's blue.
 - **Interaction physics**: interactive elements use bare `transition`, so `--hover-transform` / `--press-transform` /
   `--press-shadow` tokens animate hover-lift and press states globally. Opt any custom element in with `data-press`.
 - **Decor carriers**: `Button` and `Card` render an empty `aria-hidden` `[data-decor]` span (hidden by default) that

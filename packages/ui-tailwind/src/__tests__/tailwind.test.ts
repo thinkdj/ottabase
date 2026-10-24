@@ -44,12 +44,14 @@ describe('@ottabase/ui-tailwind package boundary', () => {
     it('owns the plugins its stylesheet loads; apps only bring tailwindcss', () => {
         expect(Object.keys(packageJson.peerDependencies)).toEqual(['tailwindcss']);
         expect(Object.keys(packageJson.dependencies)).toEqual(
-            expect.arrayContaining(['@tailwindcss/forms', '@tailwindcss/typography', 'tw-animate-css']),
+            expect.arrayContaining(['@tailwindcss/typography', 'tw-animate-css']),
         );
         const css = readFileSync(stylesheet, 'utf8');
         expect(css).toContain(`@import 'tailwindcss';`);
         expect(css).toContain(`@import 'tw-animate-css';`);
-        expect(css).toContain(`@plugin '@tailwindcss/forms';`);
+        // No forms plugin: its global preset paints a fixed blue focus ring on every field
+        expect(css).not.toContain('@tailwindcss/forms');
+        expect(packageJson.dependencies).not.toHaveProperty('@tailwindcss/forms');
         expect(css).toContain(`@plugin '@tailwindcss/typography';`);
     });
 

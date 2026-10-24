@@ -62,7 +62,8 @@ function Calendar({
                     defaultClassNames.dropdowns,
                 ),
                 dropdown_root: cn(
-                    'relative has-[:focus]:border-ring border border-input shadow-xs has-[:focus]:ring-ring/50 has-[:focus]:ring-[3px] rounded-md',
+                    // focus edge + halo: the field-focus rule in styles/ui.css
+                    'relative border border-input bg-card shadow-xs transition duration-fast ease-theme hover:border-faint-foreground rounded-md',
                     defaultClassNames.dropdown_root,
                 ),
                 dropdown: cn('absolute bg-popover inset-0 opacity-0', defaultClassNames.dropdown),
@@ -162,7 +163,7 @@ function CalendarDayButton({ className, day, modifiers, ...props }: React.Compon
             data-range-end={modifiers.range_end}
             data-range-middle={modifiers.range_middle}
             className={cn(
-                'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex size-auto w-full min-w-[var(--cell-size)] flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] [&>span]:text-xs [&>span]:opacity-70',
+                'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground dark:hover:text-accent-foreground flex size-auto w-full min-w-[var(--cell-size)] flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 [&>span]:text-xs [&>span]:opacity-70',
                 defaultClassNames.day,
                 className,
             )}

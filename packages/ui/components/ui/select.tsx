@@ -33,7 +33,7 @@ const SelectTrigger = React.forwardRef<
         ref={ref}
         data-slot="select-trigger"
         className={cn(
-            'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs transition duration-fast ease-theme hover:border-faint-foreground data-[placeholder]:text-faint-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-faint-foreground [&>span]:line-clamp-1',
+            'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs transition duration-fast ease-theme hover:border-faint-foreground data-[placeholder]:text-faint-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-faint-foreground aria-[invalid=true]:border-destructive [&>span]:line-clamp-1',
             className,
         )}
         {...props}

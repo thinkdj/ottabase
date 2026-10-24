@@ -1,7 +1,7 @@
 /*
  * Ottabase shared Tailwind (v4) entry
  *
- * Import this ONCE at the top of an app's root stylesheet. It loads Tailwind, the forms and typography plugins and
+ * Import this ONCE at the top of an app's root stylesheet. It loads Tailwind, the typography plugin and
  * tw-animate-css, then maps every CSS custom property produced by the theme engine (@ottabase/ui styles/ui.css
  * defaults + Brand Engine runtime overrides) onto Tailwind utilities.
  *
@@ -23,7 +23,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
 /* Class-based dark mode: Brand Engine and next-themes toggle `.dark` on <html> */
