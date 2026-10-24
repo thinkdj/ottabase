@@ -66,9 +66,9 @@ export function DemoIndexPage() {
                 <h2 className="mb-1.5 text-sm font-semibold">About this template</h2>
                 <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
                     This template is built on <strong className="font-medium text-foreground">@ottabase/ui</strong>, the
-                    one UI kit: shadcn/ui primitives on the Design System v1 tokens. The main app providers only add
-                    fonts, state management and the Brand Engine on top; other UI libraries such as Mantine stay scoped
-                    to the routes that use them.
+                    one UI kit: Radix primitives on the Design System v1 tokens. The main app providers only add fonts,
+                    state management and the Brand Engine on top; other UI libraries such as Mantine stay scoped to the
+                    routes that use them.
                 </p>
             </div>
         </div>

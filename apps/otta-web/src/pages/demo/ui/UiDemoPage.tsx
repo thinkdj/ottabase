@@ -214,7 +214,7 @@ export function UiDemoPage() {
                 title="Complete Component Showcase"
                 description={
                     <>
-                        Every component in <code>@ottabase/ui</code> by category: the shadcn/ui primitives, the Design
+                        Every component in <code>@ottabase/ui</code> by category: the Radix primitives, the Design
                         System v1 pieces and the composed components.
                     </>
                 }

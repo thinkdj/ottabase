@@ -153,7 +153,7 @@ ottabase/
 │   ├── config/           # App config, env vars, storage keys
 │   ├── scripts/          # CLI: cf:setup, cf:validate, cf:login, clean:*
 │   ├── state/            # Jotai atoms (theme, user, sidebar)
-│   ├── ui/               # The UI kit: shadcn/ui primitives, DS v1 pieces, ConfirmDialog, SplitPane, tokens
+│   ├── ui/               # The UI kit: Radix primitives, DS v1 pieces, ConfirmDialog, SplitPane, tokens
 │   ├── ui-mantine/       # Mantine provider + themes (optional adapter)
 │   ├── ui-code-highlight/ # Code syntax highlighting
 │   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
@@ -414,19 +414,19 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
 ### UI Components
 
-| Package                       | Purpose                                                                                                                                                          |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ottabase/ui`                | The UI kit: shadcn/ui primitives, Design System v1 pieces, ConfirmDialog, MessageBox, DarkModeToggle, SplitPane, JsonEditor, UIProviders, tokens and base styles |
-| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes (optional adapter)                                                                                                            |
-| `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                          |
-| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                         |
-| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                    |
-| `@ottabase/ottarenderer`      | EditorJS block renderer for React                                                                                                                                |
-| `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                               |
-| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)                                                                                                                    |
-| `@ottabase/spotlight`         | Spotlight/command palette component                                                                                                                              |
-| `@ottabase/docs`              | Markdown doc viewer with layout themes                                                                                                                           |
-| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models                                                                                                                    |
+| Package                       | Purpose                                                                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@ottabase/ui`                | The UI kit: Radix primitives, Design System v1 pieces, ConfirmDialog, MessageBox, DarkModeToggle, SplitPane, JsonEditor, UIProviders, tokens and base styles |
+| `@ottabase/ui-mantine`        | Mantine provider, pre-built themes (optional adapter)                                                                                                        |
+| `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                      |
+| `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                     |
+| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                |
+| `@ottabase/ottarenderer`      | EditorJS block renderer for React                                                                                                                            |
+| `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                           |
+| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)                                                                                                                |
+| `@ottabase/spotlight`         | Spotlight/command palette component                                                                                                                          |
+| `@ottabase/docs`              | Markdown doc viewer with layout themes                                                                                                                       |
+| `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models                                                                                                                |
 
 ### Features & Realtime
 
@@ -17541,11 +17541,11 @@ Multilingual support is part of the core blog model. A blog has one language pol
 `language` plus zero or more localized rows in `post_translations`. Translation bodies are stored separately so normal
 post lists stay small and the large EditorJS payloads remain deferred.
 
-Configure the policy from the admin Content Studio or by updating the Studio endpoint:
+Configure the policy from the admin content settings page or by updating the Studio endpoint:
 
-In organization mode, a blog inherits its platform language policy until that organization saves its own Content Studio
-policy. An organization-specific save is therefore an explicit override, rather than a requirement to duplicate the
-platform's enabled languages.
+In organization mode, a blog inherits its platform language policy until that organization saves its own content
+settings policy. An organization-specific save is therefore an explicit override, rather than a requirement to duplicate
+the platform's enabled languages.
 
 ```http
 GET  /api/blog/studio/languages
@@ -18510,7 +18510,7 @@ The app includes admin pages for managing blog content:
 | Tags       | `/admin/blog/tags`                            | Table view with right-panel Sheet for create/edit                                  |
 | Categories | `/admin/blog/categories`                      | Tree view with hierarchy, right-panel Sheet for create/edit                        |
 | Series     | `/admin/blog/series`                          | Table view with right-panel Sheet for create/edit                                  |
-| Studio     | `/admin/blog/studio`                          | Theme and plugin management                                                        |
+| Settings   | `/admin/blog/settings`                        | Theme, plugins, languages and demo content                                         |
 
 All admin blog pages share a persistent navigation bar (`BlogAdminNav`) for quick switching between sections.
 
@@ -22463,6 +22463,8 @@ applications with dynamic data sources and CrudHub integration.
 - **CrudHub Integration** - Built-in async collection fetching support
 - **Loading & Error states** - Beautiful loading indicators and error handling
 - **Keyboard navigation** - Full keyboard support (Arrow keys, Enter, Escape)
+- **Create options** - `onCreate` adds a "Create" row for search text that matches nothing, in either mode
+- **Tags input** - `OttaTagsInput`: a Design System field of tags, picked from suggestions or typed in
 - **Dark mode** - Full dark mode support with Tailwind CSS
 
 ## Installation
@@ -22660,6 +22662,54 @@ async function fetchUsers(searchQuery: string) {
 />;
 ```
 
+## Creating Options
+
+With `onCreate`, a search that names no option exactly (case and surrounding spaces ignored) offers a "Create" row after
+the matches; Enter on a search with no matches creates too. Return the new item and it is selected (added, in multiple
+mode); return `null` to refuse; a promise works, for a POST. `createLabel` changes the row's text.
+
+```tsx
+<OttaSelect
+    mode="multiple"
+    items={topics}
+    value={value}
+    onChange={setValue}
+    onCreate={async (label) => {
+        const topic = await api.topics.create({ name: label });
+        setTopics((current) => [...current, topic]);
+        return topic;
+    }}
+/>
+```
+
+## Tags Input
+
+`OttaTagsInput` is a field of tags: pick from suggestions or type something new. It looks like an `@ottabase/ui` `Input`
+(36px, the strong edge, the field focus halo from `@ottabase/ui/styles.css`, which it gets through its `data-slot`s) and
+each tag is a Design System Tag chip.
+
+```tsx
+import { OttaTagsInput, type OttaSelectItem } from '@ottabase/ottaselect';
+
+const [tags, setTags] = useState<OttaSelectItem[]>([]);
+
+<label htmlFor="topics">Topics</label>
+<OttaTagsInput id="topics" items={topics} value={tags} onChange={setTags} maxTags={6} />
+```
+
+- **Typing** filters the suggestions, exact and prefix matches first, "Create" last. Enter takes the highlighted row,
+  which starts on the best match, so a prefix picks the existing tag rather than minting a near duplicate.
+- **A comma** (`delimiters`) commits the text exactly as typed; **a paste** with commas or line breaks adds each part.
+- **Backspace** on an empty field highlights the last tag, and a second press removes it. Left and Right walk the tags,
+  Delete removes the highlighted one, and each tag has a remove button.
+- **`onCreate`** turns typed text into a tag (await a POST, or return `null` to refuse; refused text stays in the
+  field). Without it a new tag is `{ id: text, name: text }`. `creatable={false}` allows only suggestions.
+- **`fetchCollection`** loads suggestions from an API, debounced (`searchDebounceMs`).
+- `maxTags` (the field shows `n/max`), `name` (each tag id is submitted under it), `disabled`, `aria-invalid`,
+  `renderTag`, `renderItem`, `placeholder` and the messages are props. `value`/`onChange` control it, or use
+  `defaultValue` and let it hold the tags.
+- The input is an ARIA combobox over a listbox, and every add and remove is announced in a polite live region.
+
 ## Props Reference
 
 ```typescript
@@ -22674,6 +22724,10 @@ interface OttaSelectProps {
     // Data source
     items?: OttaSelectInputItem[];
     fetchCollection?: (searchQuery: string) => Promise<OttaSelectInputItem[]>;
+
+    // Creating options (needs searchable)
+    onCreate?: (label: string) => OttaSelectInputItem | null | Promise<OttaSelectInputItem | null>;
+    createLabel?: (label: string) => React.ReactNode; // Default: Create "label"
 
     // Search
     searchable?: boolean; // Default: true
@@ -25442,8 +25496,8 @@ MIT
 # @ottabase/ui
 
 The Ottabase UI kit: every component the apps and package panels render, on the Design System v1 tokens. It holds the
-[shadcn/ui](https://ui.shadcn.com/) primitives (Radix underneath), the Design System v1 pieces (`PageHeader`, `Stat`,
-`Status`, `Tag`), the composed components built from them (`ConfirmDialog`, `MessageBox`, `DarkModeToggle`, `SplitPane`,
+[Radix](https://www.radix-ui.com/primitives) primitives, the Design System v1 pieces (`PageHeader`, `Stat`, `Status`,
+`Tag`), the composed components built from them (`ConfirmDialog`, `MessageBox`, `DarkModeToggle`, `SplitPane`,
 `JsonEditor`), the theme and brand providers, and the stylesheet with the tokens and base styles.
 
 It started as a copy of shadcn/ui and is now its own variant: there is no upstream sync, so change the recipes here
@@ -25648,6 +25702,52 @@ Tones are a CSS map: any element with `data-tone="green|amber|red|blue|smoke|neu
 `--t-bg`, `--t-line` and `--t-solid`. Code and CLI output sit in the always-dark `terminal` room:
 `<BrandScope name="terminal">` or `data-brand-scope="terminal"`.
 
+## Data display
+
+```tsx
+import {
+    Timeline, TimelineItem, TimelineHeader, TimelineTitle, TimelineTime, TimelineDescription,
+    TreeView, type TreeNode, AvatarGroup, Avatar, AvatarFallback, Rating, VisuallyHidden,
+} from '@ottabase/ui';
+
+<Timeline aria-label="Recent events">
+    <TimelineItem tone="red" icon={X}>
+        <TimelineHeader>
+            <TimelineTitle>job.failed</TimelineTitle>
+            <TimelineTime dateTime="2026-10-24T09:41:00Z">09:41 UTC</TimelineTime>
+        </TimelineHeader>
+        <TimelineDescription>email.send moved to the dead-letter queue</TimelineDescription>
+    </TimelineItem>
+</Timeline>
+
+<TreeView aria-label="Admin" items={nodes} defaultExpanded={['content']} selected={id} onSelectedChange={setId} />
+<AvatarGroup max={4} total={members.length} aria-label="Members">{members.map(…<Avatar>…)}</AvatarGroup>
+<Rating aria-label="Your rating" value={stars} onValueChange={setStars} step={0.5} />
+<Rating readOnly value={4.3} aria-label="Average rating" />
+<Button size="icon"><X /><VisuallyHidden>Close</VisuallyHidden></Button>
+```
+
+- **Timeline** is the Design System's event rail (`ob-tl`), an `<ol>`. A marker is a ringed dot, or a soft disc with
+  `icon`; only an event that needs someone takes a `tone`. Items are subgrid rows, so dots and discs mixed in one list
+  keep one straight rail. Give `TimelineTime` a `dateTime`.
+- **TreeView** is the WAI-ARIA tree pattern rendered flat: one tab stop, Up/Down, Right opens or steps in, Left closes
+  or steps out, Home/End, Enter selects and toggles, Space selects, typed letters jump (the same letter cycles). A click
+  selects, the chevron or a double click opens. `expanded` and `selected` are controlled or not (`default*`);
+  `selectable={false}` makes a reading tree; `renderItem` adds a count or a badge; a `disabled` node stays focusable but
+  cannot be selected or opened. Indent guides are drawn per row, a hairline per ancestor.
+- **AvatarGroup** overlaps its avatars (ringed in the surface colour), folds everything past `max` into "+N" (from
+  `total` when only some are loaded) and sizes its children (`sm` 24px, `default` 32px, `lg` 40px). Pass plain
+  `<Avatar>`s as its only children.
+- **Rating** is the WAI-ARIA rating slider when interactive: arrows step by `step` (1 or 0.5, the pointer picks halves
+  too), Home clears, End is the top mark, a digit jumps, hovering previews and clicking the current value clears it
+  (`allowClear`). Read-only it is an image whose label carries the value, and fractions fill as they are. Stars read
+  `--rating-color` (amber by default); `max`, `size`, `name` (form value) and `getValueText` (what a screen reader
+  hears) are props. The mark is any SVG: `icon` takes a Lucide icon, your own SVG component (it must pass `className` to
+  its `<svg>`) or an `<svg>` element, and `emptyIcon` draws the empty part with a shape of its own. Halves and fractions
+  work for every mark (a filled copy is clipped over the empty one). A path with no fill takes the rating's colours, one
+  in `currentColor` follows the theme, and a fixed fill is kept for multicolour marks.
+- **VisuallyHidden** keeps text for screen readers only (`sr-only`); `asChild` hides your own element.
+
 ## Theming hooks (Brand Engine)
 
 Components are fully themeable by the brand engine without forking:
@@ -25663,7 +25763,13 @@ Components are fully themeable by the brand engine without forking:
     ```
 
 - **Global focus ring**: components carry no per-component `focus-visible:ring-*` recipes; one global rule in
-  `styles/ui.css` reads `--focus-ring-{width,style,color,offset}`.
+  `styles/ui.css` reads `--focus-ring-{width,style,color,offset}`. Text-entry surfaces (`Input`, `Textarea`,
+  `NativeSelect`, `SelectTrigger`, `InputGroup`, the active `InputOTPSlot`, the calendar's dropdowns) instead take a
+  focus-coloured edge and a 3px halo from one shared rule, red when `aria-invalid="true"`. That rule sits in the
+  utilities layer so the fields' own border and shadow utilities cannot hide it; a theme restyles it from
+  `[data-slot=…]:focus`.
+- **Native fallbacks follow the brand**: without theme overrides, `accent-color` is the primary and `::selection` is a
+  soft wash of the focus colour, never the browser's blue.
 - **Interaction physics**: interactive elements use bare `transition`, so `--hover-transform` / `--press-transform` /
   `--press-shadow` tokens animate hover-lift and press states globally. Opt any custom element in with `data-press`.
 - **Decor carriers**: `Button` and `Card` render an empty `aria-hidden` `[data-decor]` span (hidden by default) that
@@ -26736,8 +26842,8 @@ ui-mantine/
 
 # @ottabase/ui-tailwind
 
-The shared **Tailwind CSS v4** entry for Ottabase apps. One stylesheet loads Tailwind, the forms and typography plugins
-and `tw-animate-css`, and maps the theme engine's CSS variables (shadcn-style HSL tokens, radii, fonts, the type scale,
+The shared **Tailwind CSS v4** entry for Ottabase apps. One stylesheet loads Tailwind, the typography plugin and
+`tw-animate-css`, and maps the theme engine's CSS variables (shadcn-style HSL tokens, radii, fonts, the type scale,
 shadows, charts, status tones, sidebar, motion) onto Tailwind utilities, so Vite and Next apps stay aligned.
 
 There is no JavaScript preset and no `tailwind.config`: Tailwind 4 is configured in CSS.
@@ -26828,9 +26934,13 @@ children are just a little tighter. New code should use flex or grid with `gap`.
 
 ## Dependencies
 
-The stylesheet resolves `tailwindcss`, `@tailwindcss/forms`, `@tailwindcss/typography` and `tw-animate-css` from this
-package, so they are its dependencies; an app only brings `tailwindcss`, `postcss` and `@tailwindcss/postcss`. The
-package also depends on `tailwind-merge` (v3, for Tailwind 4 class names) for the class merging the UI kit does.
+The stylesheet resolves `tailwindcss`, `@tailwindcss/typography` and `tw-animate-css` from this package, so they are its
+dependencies; an app only brings `tailwindcss`, `postcss` and `@tailwindcss/postcss`. The package also depends on
+`tailwind-merge` (v3, for Tailwind 4 class names) for the class merging the UI kit does.
+
+There is deliberately no `@tailwindcss/forms`: its global preset paints a fixed blue focus ring, blue checkboxes and its
+own select chevron on every native control, over the theme. Fields take their look from `@ottabase/ui` and native
+checkboxes, radios and ranges are tinted by `accent-color`, which `@ottabase/ui/styles.css` points at the brand.
 
 ## Tests
 

@@ -366,7 +366,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'UI Kit',
         title: 'UI Kit (@ottabase/ui)',
         description:
-            'Every component in @ottabase/ui: the shadcn/ui primitives, the Design System v1 pieces, and the composed ConfirmDialog, MessageBox and DarkModeToggle.',
+            'Every component in @ottabase/ui: the Radix primitives, the Design System v1 pieces, and the composed ConfirmDialog, MessageBox and DarkModeToggle.',
         buttonVariant: 'outline',
     },
     {

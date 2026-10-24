@@ -15,7 +15,7 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Custom Auth** - OAuth, Magic Link, and Credentials authentication via a lightweight, dependency-free implementation
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects
-- **@ottabase/ui** - The UI kit (shadcn/ui primitives on the Design System v1 tokens); Mantine stays an optional adapter
+- **@ottabase/ui** - The UI kit (Radix primitives on the Design System v1 tokens); Mantine stays an optional adapter
   scoped to its demo route
 - **Jotai** - Global state management
 - **Three.js landing hero** - A theme-aware, drag-spinnable WebGL network scene that respects reduced-motion

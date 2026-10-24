@@ -1,8 +1,8 @@
 # @ottabase/ui
 
 The Ottabase UI kit: every component the apps and package panels render, on the Design System v1 tokens. It holds the
-[shadcn/ui](https://ui.shadcn.com/) primitives (Radix underneath), the Design System v1 pieces (`PageHeader`, `Stat`,
-`Status`, `Tag`), the composed components built from them (`ConfirmDialog`, `MessageBox`, `DarkModeToggle`, `SplitPane`,
+[Radix](https://www.radix-ui.com/primitives) primitives, the Design System v1 pieces (`PageHeader`, `Stat`, `Status`,
+`Tag`), the composed components built from them (`ConfirmDialog`, `MessageBox`, `DarkModeToggle`, `SplitPane`,
 `JsonEditor`), the theme and brand providers, and the stylesheet with the tokens and base styles.
 
 It started as a copy of shadcn/ui and is now its own variant: there is no upstream sync, so change the recipes here
