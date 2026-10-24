@@ -340,6 +340,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   off-centre icon.
 - `@ottabase/ui` ResizablePanel keeps at least 10% of its group unless `minSize` says otherwise, so a handle can no
   longer squeeze a pane to nothing.
+- `@ottabase/medialibrary`: a video that cannot play (a blocked host, a codec the browser lacks, a page served instead
+  of a file) shows its poster, a plain message and a link to the file instead of the browser's error text, and the
+  thumbnail is the poster while a video loads.
 - `@ottabase/ui` Command: a page with an inline command list below the fold no longer jumps down to it on load. cmdk
   scrolled the item it selects by itself on mount into view; items now follow the selection only while focus is inside
   the command.

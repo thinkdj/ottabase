@@ -1,4 +1,12 @@
-import { IconArchive, IconFileDescription, IconFileMusic, IconPhoto, IconPlayerPlay } from '@tabler/icons-react';
+import {
+    IconArchive,
+    IconExternalLink,
+    IconFileDescription,
+    IconFileMusic,
+    IconPhoto,
+    IconPlayerPlay,
+} from '@tabler/icons-react';
+import { useState } from 'react';
 import type { MediaViewerItem } from '../types';
 import { getMediaDisplayTitle, getMediaKindFromMimeType, isDocumentMedia } from '../utils';
 import { ZoomableImage, type ZoomStartGesture } from './ZoomableImage';
@@ -58,6 +66,82 @@ function getShellStyle(mode: NonNullable<MediaPreviewProps['mode']>): React.CSSP
     // `--radius` is the app's runtime theme token. Keep a package-safe fallback for consumers
     // that render the component without the app theme stylesheet.
     return { borderRadius: 'var(--radius, 0.75rem)' };
+}
+
+interface VideoPreviewProps {
+    src: string;
+    poster?: string;
+    title: string;
+    className: string;
+    style?: React.CSSProperties;
+    controls: boolean;
+    muted: boolean;
+    preload: NonNullable<MediaPreviewProps['preload']>;
+    compact: boolean;
+}
+
+/*
+ * A video that cannot play (a codec the browser lacks, a host a content blocker or privacy setting stops,
+ * a URL that answers with a page instead of a file) would show the browser's own error text, such as
+ * Firefox's "No video with supported format and MIME type found". It shows its poster with a plain
+ * message and a link to the file instead. The poster also stands in while the first frame loads.
+ */
+function VideoPreview({ src, poster, title, className, style, controls, muted, preload, compact }: VideoPreviewProps) {
+    const [failed, setFailed] = useState(false);
+
+    if (failed) {
+        return (
+            <div
+                data-slot="media-video-unplayable"
+                className={`relative flex h-full w-full items-center justify-center overflow-hidden ${className}`}
+                style={style}
+            >
+                {poster ? (
+                    <img
+                        src={poster}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 h-full w-full object-cover opacity-40"
+                    />
+                ) : null}
+                <div className="relative flex flex-col items-center gap-2 p-4 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
+                        <IconPlayerPlay className="h-5 w-5" />
+                    </div>
+                    {compact ? null : (
+                        <>
+                            <p className="max-w-[18rem] text-sm font-medium text-foreground">
+                                This browser can&rsquo;t play {title}
+                            </p>
+                            <a
+                                href={src}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                            >
+                                Open the file
+                                <IconExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                            </a>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <video
+            src={src}
+            poster={poster}
+            className={`h-full w-full ${className}`}
+            style={style}
+            controls={controls}
+            muted={muted}
+            playsInline
+            preload={preload}
+            onError={() => setFailed(true)}
+        />
+    );
 }
 
 export function MediaPreview({
@@ -122,14 +206,18 @@ export function MediaPreview({
     if (mediaKind === 'video' && previewUrl) {
         return (
             <div className={shellClassName} style={shellStyle}>
-                <video
+                {/* keyed by source, so moving to another video forgets an earlier failure */}
+                <VideoPreview
+                    key={previewUrl}
                     src={previewUrl}
-                    className={`h-full w-full ${objectFitClassName}`}
+                    poster={item.thumbnailUrl ?? undefined}
+                    title={title}
+                    className={objectFitClassName}
                     style={shellStyle}
                     controls={controls || mode === 'detail' || mode === 'lightbox'}
                     muted={muted}
-                    playsInline
                     preload={preload}
+                    compact={mode === 'thumb'}
                 />
             </div>
         );
