@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
-import { Circle } from 'lucide-react';
 
 import { cn } from '@ottabase/ui/lib/utils';
 
@@ -33,18 +32,19 @@ const RadioGroupItem = React.forwardRef<
         <RadioGroupPrimitive.Item
             ref={ref}
             data-slot="radio-group-item"
+            // Mirrors Checkbox: the field edge on the surface, the brand fill once chosen. shrink-0 keeps a
+            // flex row from squeezing it into an oval; the dot is a CSS circle centred by the grid, crisp
+            // at any zoom where an icon would sit off-centre and blur.
             className={cn(
-                'aspect-square h-4 w-4 rounded-full border border-primary text-primary disabled:cursor-not-allowed disabled:opacity-50',
+                'grid size-4 shrink-0 place-items-center rounded-full border border-input bg-card shadow-xs transition duration-fast ease-theme hover:border-faint-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive data-[state=checked]:border-primary data-[state=checked]:bg-primary',
                 className,
             )}
             {...props}
         >
             <RadioGroupPrimitive.Indicator
                 data-slot="radio-group-indicator"
-                className="flex items-center justify-center"
-            >
-                <Circle className="h-2.5 w-2.5 fill-current text-current" />
-            </RadioGroupPrimitive.Indicator>
+                className="block size-1.5 rounded-full bg-primary-foreground"
+            />
         </RadioGroupPrimitive.Item>
     );
 });

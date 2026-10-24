@@ -331,6 +331,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Their Tailwind 3 `slide-in-from-left-1/2` / `-top-[48%]` offsets stacked on Tailwind 4's separate `translate`
   centring. Spotlight's palette had the same offsets. Popovers, menus, selects, hover cards and tooltips now zoom from
   the side they open on (Radix's transform-origin) instead of their own centre.
+- `@ottabase/ui` Toggle: a toggle on its own is visible again. Its default look was a segmented-control segment (the
+  pressed one lifts onto the surface), which needs a ToggleGroup's track and vanishes on a card. A standalone toggle now
+  has a hover fill and the soft brand fill when pressed, and stands as tall as a segmented control of its size; a
+  default ToggleGroup's items take the new `segment` variant. The selected Tabs underline is 3px.
+- `@ottabase/ui` RadioGroup: items are true circles that a flex row cannot squeeze (they were missing `shrink-0`), on
+  the field edge like Checkbox, filled with the brand colour when chosen, with a centred CSS dot in place of an
+  off-centre icon.
+- `@ottabase/ui` ResizablePanel keeps at least 10% of its group unless `minSize` says otherwise, so a handle can no
+  longer squeeze a pane to nothing.
 - `@ottabase/ui` Command: a page with an inline command list below the fold no longer jumps down to it on load. cmdk
   scrolled the item it selects by itself on mount into view; items now follow the selection only while focus is inside
   the command.

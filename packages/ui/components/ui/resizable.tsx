@@ -16,8 +16,13 @@ function ResizablePanelGroup({ className, ...props }: React.ComponentProps<typeo
     );
 }
 
-function ResizablePanel({ ...props }: React.ComponentProps<typeof ResizablePrimitive.Panel>) {
-    return <ResizablePrimitive.Panel data-slot="resizable-panel" {...props} />;
+/*
+ * A panel keeps at least 10% of its group (minSize, a percentage) unless the
+ * caller sets its own, so dragging a handle never squeezes a pane to nothing.
+ * A pane that should fold away entirely says so with `collapsible`.
+ */
+function ResizablePanel({ minSize = 10, ...props }: React.ComponentProps<typeof ResizablePrimitive.Panel>) {
+    return <ResizablePrimitive.Panel data-slot="resizable-panel" minSize={minSize} {...props} />;
 }
 
 /*

@@ -545,7 +545,7 @@ export function UiDemoPage() {
                         <CardTitle>Toggle & Toggle Group</CardTitle>
                         <CardDescription>Toggle buttons for selections</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="flex flex-wrap items-center gap-6">
                         <Toggle>Toggle me</Toggle>
 
                         <ToggleGroup type="single">
@@ -1021,17 +1021,20 @@ export function UiDemoPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Resizable Panels</CardTitle>
-                        <CardDescription>Adjustable panel layout</CardDescription>
+                        <CardDescription>
+                            Drag the handle. Each panel keeps a minimum width: 20% here via <code>minSize</code>, 10%
+                            when none is given.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ResizablePanelGroup direction="horizontal" className="min-h-[200px] rounded-lg border">
-                            <ResizablePanel defaultSize={50}>
+                            <ResizablePanel defaultSize={50} minSize={20}>
                                 <div className="flex h-full items-center justify-center p-6">
                                     <span className="font-semibold">Panel 1</span>
                                 </div>
                             </ResizablePanel>
-                            <ResizableHandle />
-                            <ResizablePanel defaultSize={50}>
+                            <ResizableHandle withHandle />
+                            <ResizablePanel defaultSize={50} minSize={20}>
                                 <div className="flex h-full items-center justify-center p-6">
                                     <span className="font-semibold">Panel 2</span>
                                 </div>

@@ -50,7 +50,7 @@ const TabsTrigger = React.forwardRef<
             className={cn(
                 'inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm font-medium transition duration-fast ease-theme hover:text-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=active]:font-semibold data-[state=active]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0',
                 variant === 'line'
-                    ? 'relative py-3 after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-t-sm after:bg-transparent data-[state=active]:after:bg-primary'
+                    ? 'relative py-3 after:absolute after:inset-x-0 after:-bottom-px after:h-[3px] after:rounded-t-sm after:bg-transparent data-[state=active]:after:bg-primary'
                     : 'h-7 rounded-sm px-3 data-[state=active]:bg-card data-[state=active]:shadow-xs',
                 className,
             )}

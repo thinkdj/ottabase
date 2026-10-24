@@ -41,16 +41,19 @@ const ToggleGroupItem = React.forwardRef<
     React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item> & VariantProps<typeof toggleVariants>
 >(({ className, children, variant, size, ...props }, ref) => {
     const context = React.useContext(ToggleGroupContext);
+    // A default group is a segmented control: its items are segments on the track it draws
+    const chosen = context.variant || variant;
+    const itemVariant = !chosen || chosen === 'default' ? 'segment' : chosen;
 
     return (
         <ToggleGroupPrimitive.Item
             ref={ref}
             data-slot="toggle-group-item"
-            data-variant={(context.variant || variant) ?? 'default'}
+            data-variant={itemVariant}
             data-size={(context.size || size) ?? 'default'}
             className={cn(
                 toggleVariants({
-                    variant: context.variant || variant,
+                    variant: itemVariant,
                     size: context.size || size,
                 }),
                 className,
