@@ -331,6 +331,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Their Tailwind 3 `slide-in-from-left-1/2` / `-top-[48%]` offsets stacked on Tailwind 4's separate `translate`
   centring. Spotlight's palette had the same offsets. Popovers, menus, selects, hover cards and tooltips now zoom from
   the side they open on (Radix's transform-origin) instead of their own centre.
+- otta-web: `/demo/ottaforms` (and every `@ottabase/forms` screen) threw "useApiClient must be used within an
+  OttaQueryProvider configured with apiClient". The forms package, compiled from source, read `@ottabase/ottaorm/client`
+  from dist, a second copy of the context. `vite.config.ts` aliases it to source as it does `@ottabase/premium/react`,
+  and the single-instance test now covers both.
 - `@ottabase/ui` Toggle: a toggle on its own is visible again. Its default look was a segmented-control segment (the
   pressed one lifts onto the surface), which needs a ToggleGroup's track and vanishes on a card. A standalone toggle now
   has a hover fill and the soft brand fill when pressed, and stands as tall as a segmented control of its size; a

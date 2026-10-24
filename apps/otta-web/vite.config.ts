@@ -64,6 +64,10 @@ export default defineConfig(({ command }) => ({
             // which shows as empty pages with no error. Aliases apply to every importer.
             // Guard: src/__tests__/premium-single-instance.test.ts.
             '@ottabase/premium/react': path.resolve(__dirname, '../../packages/premium/src/react/index.ts'),
+            // Same trap for @ottabase/ottaorm/client (OttaQueryProvider / useApiClient): @ottabase/forms,
+            // compiled from its source, would read the dist copy's empty context and every form request
+            // would throw "useApiClient must be used within an OttaQueryProvider configured with apiClient".
+            '@ottabase/ottaorm/client': path.resolve(__dirname, '../../packages/ottaorm/src/client/index.ts'),
             // Stub @sentry/node in browser build so Vite never bundles it (it uses node:inspector).
             // Logger's SentryTransport will catch and try @sentry/browser or show optional warning.
             '@sentry/node': path.resolve(__dirname, './src/stubs/sentry-node-stub.ts'),
