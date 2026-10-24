@@ -7,7 +7,13 @@ const readComponent = (file: string) => fs.readFileSync(path.join(process.cwd(),
 const overrideAwarePrimitives = ['badge.tsx', 'button.tsx', 'card.tsx', 'input.tsx'];
 
 // Composed components that hold their own state or effects.
-const statefulComposedComponents = ['dark-mode-toggle.tsx', 'json-editor.tsx', 'split-pane.tsx'];
+const statefulComposedComponents = [
+    'dark-mode-toggle.tsx',
+    'json-editor.tsx',
+    'rating.tsx',
+    'split-pane.tsx',
+    'tree-view.tsx',
+];
 
 describe('React Server Component boundaries', () => {
     it.each(overrideAwarePrimitives)('%s declares a client boundary before using brand component context', (file) => {

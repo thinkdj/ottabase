@@ -47,4 +47,57 @@ const AvatarFallback = React.forwardRef<
 ));
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName;
 
-export { Avatar, AvatarImage, AvatarFallback };
+/*
+ * A row of overlapping avatars (members, assignees, who is viewing). Each one
+ * is ringed in the surface colour so the overlap reads as a cut, and anything
+ * past `max` folds into a "+N" disc. The group sizes its children: pass plain
+ * <Avatar>s, without size classes.
+ */
+// Each avatar tucks ~20% under the next: enough to read as a group, little enough that the
+// centred initials of the one beneath stay clear of the ring
+const AVATAR_GROUP_SIZES = {
+    sm: '-space-x-1 [&>*]:size-6 [&>*]:text-[9px] [&_[data-slot=avatar-fallback]]:text-[9px]',
+    default: '-space-x-1.5 [&>*]:size-8 [&>*]:text-xs',
+    lg: '-space-x-2 [&>*]:size-10 [&>*]:text-sm [&_[data-slot=avatar-fallback]]:text-sm',
+} as const;
+
+export interface AvatarGroupProps extends React.HTMLAttributes<HTMLDivElement> {
+    /** How many avatars show before the rest fold into "+N". */
+    max?: number;
+    /** The real headcount when `children` is only the first few (e.g. 3 loaded of 120 members). */
+    total?: number;
+    size?: keyof typeof AVATAR_GROUP_SIZES;
+}
+
+const AvatarGroup = React.forwardRef<HTMLDivElement, AvatarGroupProps>(
+    ({ max, total, size = 'default', className, children, ...props }, ref) => {
+        const avatars = React.Children.toArray(children).filter(React.isValidElement);
+        const shown = max === undefined ? avatars : avatars.slice(0, Math.max(0, max));
+        const hidden = Math.max(0, (total ?? avatars.length) - shown.length);
+
+        return (
+            <div
+                ref={ref}
+                role="group"
+                data-slot="avatar-group"
+                data-size={size}
+                className={cn('flex items-center [&>*]:ring-2 [&>*]:ring-card', AVATAR_GROUP_SIZES[size], className)}
+                {...props}
+            >
+                {shown}
+                {hidden > 0 ? (
+                    <span
+                        data-slot="avatar-group-count"
+                        className="relative inline-grid shrink-0 place-items-center rounded-full bg-muted font-semibold tabular-nums tracking-[0.02em] text-subtle-foreground"
+                    >
+                        <span aria-hidden="true">{hidden > 99 ? '99+' : `+${hidden}`}</span>
+                        <span className="sr-only">{hidden} more</span>
+                    </span>
+                ) : null}
+            </div>
+        );
+    },
+);
+AvatarGroup.displayName = 'AvatarGroup';
+
+export { Avatar, AvatarImage, AvatarFallback, AvatarGroup };

@@ -207,6 +207,52 @@ Tones are a CSS map: any element with `data-tone="green|amber|red|blue|smoke|neu
 `--t-bg`, `--t-line` and `--t-solid`. Code and CLI output sit in the always-dark `terminal` room:
 `<BrandScope name="terminal">` or `data-brand-scope="terminal"`.
 
+## Data display
+
+```tsx
+import {
+    Timeline, TimelineItem, TimelineHeader, TimelineTitle, TimelineTime, TimelineDescription,
+    TreeView, type TreeNode, AvatarGroup, Avatar, AvatarFallback, Rating, VisuallyHidden,
+} from '@ottabase/ui';
+
+<Timeline aria-label="Recent events">
+    <TimelineItem tone="red" icon={X}>
+        <TimelineHeader>
+            <TimelineTitle>job.failed</TimelineTitle>
+            <TimelineTime dateTime="2026-10-24T09:41:00Z">09:41 UTC</TimelineTime>
+        </TimelineHeader>
+        <TimelineDescription>email.send moved to the dead-letter queue</TimelineDescription>
+    </TimelineItem>
+</Timeline>
+
+<TreeView aria-label="Admin" items={nodes} defaultExpanded={['content']} selected={id} onSelectedChange={setId} />
+<AvatarGroup max={4} total={members.length} aria-label="Members">{members.map(…<Avatar>…)}</AvatarGroup>
+<Rating aria-label="Your rating" value={stars} onValueChange={setStars} step={0.5} />
+<Rating readOnly value={4.3} aria-label="Average rating" />
+<Button size="icon"><X /><VisuallyHidden>Close</VisuallyHidden></Button>
+```
+
+- **Timeline** is the Design System's event rail (`ob-tl`), an `<ol>`. A marker is a ringed dot, or a soft disc with
+  `icon`; only an event that needs someone takes a `tone`. Items are subgrid rows, so dots and discs mixed in one list
+  keep one straight rail. Give `TimelineTime` a `dateTime`.
+- **TreeView** is the WAI-ARIA tree pattern rendered flat: one tab stop, Up/Down, Right opens or steps in, Left closes
+  or steps out, Home/End, Enter selects and toggles, Space selects, typed letters jump (the same letter cycles). A click
+  selects, the chevron or a double click opens. `expanded` and `selected` are controlled or not (`default*`);
+  `selectable={false}` makes a reading tree; `renderItem` adds a count or a badge; a `disabled` node stays focusable but
+  cannot be selected or opened. Indent guides are drawn per row, a hairline per ancestor.
+- **AvatarGroup** overlaps its avatars (ringed in the surface colour), folds everything past `max` into "+N" (from
+  `total` when only some are loaded) and sizes its children (`sm` 24px, `default` 32px, `lg` 40px). Pass plain
+  `<Avatar>`s as its only children.
+- **Rating** is the WAI-ARIA rating slider when interactive: arrows step by `step` (1 or 0.5, the pointer picks halves
+  too), Home clears, End is the top mark, a digit jumps, hovering previews and clicking the current value clears it
+  (`allowClear`). Read-only it is an image whose label carries the value, and fractions fill as they are. Stars read
+  `--rating-color` (amber by default); `max`, `size`, `name` (form value) and `getValueText` (what a screen reader
+  hears) are props. The mark is any SVG: `icon` takes a Lucide icon, your own SVG component (it must pass `className` to
+  its `<svg>`) or an `<svg>` element, and `emptyIcon` draws the empty part with a shape of its own. Halves and fractions
+  work for every mark (a filled copy is clipped over the empty one). A path with no fill takes the rating's colours, one
+  in `currentColor` follows the theme, and a fixed fill is kept for multicolour marks.
+- **VisuallyHidden** keeps text for screen readers only (`sr-only`); `asChild` hides your own element.
+
 ## Theming hooks (Brand Engine)
 
 Components are fully themeable by the brand engine without forking:

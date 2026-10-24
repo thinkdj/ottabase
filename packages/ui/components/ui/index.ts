@@ -31,7 +31,7 @@ export {
 
 export { AspectRatio } from './aspect-ratio';
 
-export { Avatar, AvatarImage, AvatarFallback } from './avatar';
+export { Avatar, AvatarImage, AvatarFallback, AvatarGroup, type AvatarGroupProps } from './avatar';
 
 export {
     Breadcrumb,
@@ -315,9 +315,23 @@ export {
     type Tone,
 } from './status-language';
 
+export { Rating, type RatingIcon, type RatingProps } from './rating';
+export {
+    Timeline,
+    TimelineDescription,
+    TimelineHeader,
+    TimelineItem,
+    TimelineTime,
+    TimelineTitle,
+    type TimelineItemProps,
+} from './timeline';
+export { TreeView, type TreeItemState, type TreeNode, type TreeViewProps } from './tree-view';
+
 export { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from './native-select';
 
 export { Spinner } from './spinner';
+
+export { VisuallyHidden, type VisuallyHiddenProps } from './visually-hidden';
 
 // Composed components. JsonEditor is not here: it ships on its own entry, `@ottabase/ui/json-editor`.
 export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from './confirm-dialog';
