@@ -8,6 +8,29 @@ import { Search } from 'lucide-react';
 import { cn } from '@ottabase/ui/lib/utils';
 import { Dialog, DialogContent } from './dialog';
 
+/*
+ * cmdk scrolls its selected item (and, for the first item of a group, the
+ * group's heading) into view whenever the selection changes, including the
+ * first item it selects by itself on mount. That scroll is not limited to the
+ * list: it drags the whole page down to any palette below the fold. The
+ * item and the group heading follow the selection only while focus is inside
+ * their command, which is what the scrolling is for (arrow keys).
+ */
+function followSelectionWhileFocused(element: HTMLElement | null) {
+    if (!element || Object.prototype.hasOwnProperty.call(element, 'scrollIntoView')) return;
+    element.scrollIntoView = function (this: HTMLElement, options?: boolean | ScrollIntoViewOptions) {
+        if (this.closest('[cmdk-root]')?.contains(document.activeElement)) {
+            HTMLElement.prototype.scrollIntoView.call(this, options);
+        }
+    };
+}
+
+/** Hands an element to a forwarded ref of either kind. */
+function setRef<T>(ref: React.ForwardedRef<T>, value: T | null) {
+    if (typeof ref === 'function') ref(value);
+    else if (ref) ref.current = value;
+}
+
 type CommandProps = React.ComponentPropsWithoutRef<typeof CommandPrimitive>;
 type CommandRef = React.ElementRef<typeof CommandPrimitive>;
 
@@ -86,7 +109,10 @@ type CommandGroupRef = React.ElementRef<typeof CommandPrimitive.Group>;
 
 const CommandGroup = React.forwardRef<CommandGroupRef, CommandGroupProps>(({ className, ...props }, ref) => (
     <CommandPrimitive.Group
-        ref={ref}
+        ref={(element) => {
+            followSelectionWhileFocused(element?.querySelector<HTMLElement>(':scope > [cmdk-group-heading]') ?? null);
+            setRef(ref, element);
+        }}
         data-slot="command-group"
         className={cn(
             'overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground',
@@ -118,7 +144,10 @@ type CommandItemRef = React.ElementRef<typeof CommandPrimitive.Item>;
 
 const CommandItem = React.forwardRef<CommandItemRef, CommandItemProps>(({ className, ...props }, ref) => (
     <CommandPrimitive.Item
-        ref={ref}
+        ref={(element) => {
+            followSelectionWhileFocused(element);
+            setRef(ref, element);
+        }}
         data-slot="command-item"
         className={cn(
             'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm focus-visible:outline-hidden aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',

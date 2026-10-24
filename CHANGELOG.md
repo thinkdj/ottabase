@@ -327,6 +327,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- `@ottabase/ui` Command: a page with an inline command list below the fold no longer jumps down to it on load. cmdk
+  scrolled the item it selects by itself on mount into view; items now follow the selection only while focus is inside
+  the command.
+- `@ottabase/ui` Calendar: day cells are 36px squares again, with space between weeks. The day button's `size-auto` had
+  overridden its height, so every row collapsed to its text.
 - UI base styles: native controls and scrollbars no longer turn dark on a light page when the OS is in dark mode (the
   old `ui-base` rule keyed `color-scheme` off the OS, not the app theme), and pages no longer force a 380px minimum
   width, which made 375px phones scroll sideways.
