@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- `ottabase-update` skill: updates an app repo built on Ottabase (and Ottabase Pro, when the app has `packages/pro`) to
+  the latest release while keeping every local change. Upstream is cloned into the git-ignored `.repos.upstream/`, and
+  only what upstream changed since the app's last sync is applied; nothing is pushed or deployed.
 - `@ottabase/ui` data display: `Timeline` (the Design System's event rail, dots or icon discs on one straight rail),
   `TreeView` (the WAI-ARIA tree pattern, flat, with roving focus, type-ahead and indent guides), `AvatarGroup` (overlap,
   "+N" past `max`, `total`, three sizes), `Rating` (the WAI-ARIA rating slider, half steps, fractional read-only
