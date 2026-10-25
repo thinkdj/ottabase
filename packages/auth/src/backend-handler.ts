@@ -217,16 +217,26 @@ async function handleGetSession(request: Request, env: AuthEnv, options: CreateA
     return jsonResponse(session ?? null);
 }
 
-async function requireCsrf(request: Request, env: AuthEnv, submittedToken: unknown): Promise<boolean> {
-    // Defense in depth: reject a mismatched Origin outright before the token check.
-    if (!isTrustedOrigin(request, env)) return false;
+/** The 403 to return when a state-changing request fails the Origin or CSRF check, else null. */
+async function requireCsrf(request: Request, env: AuthEnv, submittedToken: unknown): Promise<Response | null> {
+    // Defense in depth: reject a mismatched Origin outright before the token check. Its own message, because
+    // the usual cause is opening the app on another loopback name (localhost vs 127.0.0.1), not a bad token.
+    if (!isTrustedOrigin(request, env)) {
+        // Echoed for the developer; capped, since it is whatever the client sent.
+        const origin = (request.headers.get('Origin') ?? '').slice(0, 200);
+        return jsonResponse(
+            { error: `Untrusted origin ${origin}: open the app at its configured URL (AUTH_URL)` },
+            403,
+        );
+    }
     const cookies = parseCookies(request.headers.get('Cookie'));
     const secret = resolveAuthSecret(env);
-    return verifyCsrfToken(
+    const valid = await verifyCsrfToken(
         cookies[csrfCookieName(env)],
         typeof submittedToken === 'string' ? submittedToken : undefined,
         secret,
     );
+    return valid ? null : jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
 }
 
 async function handleCredentialsCallback(
@@ -240,9 +250,8 @@ async function handleCredentialsCallback(
 
     const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string; csrfToken?: string };
 
-    if (!(await requireCsrf(request, env, body.csrfToken))) {
-        return jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
-    }
+    const rejected = await requireCsrf(request, env, body.csrfToken);
+    if (rejected) return rejected;
 
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body.password === 'string' ? body.password : '';
@@ -535,9 +544,8 @@ async function handleMagicLinkSend(
         callbackUrl?: string;
     };
 
-    if (!(await requireCsrf(request, env, body.csrfToken))) {
-        return jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
-    }
+    const rejected = await requireCsrf(request, env, body.csrfToken);
+    if (rejected) return rejected;
 
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     if (!email) {
@@ -650,9 +658,8 @@ async function handleMagicLinkCallback(
 
 async function handleSignOut(request: Request, env: AuthEnv, options: CreateAuthConfigOptions): Promise<Response> {
     const body = (await request.json().catch(() => ({}))) as { csrfToken?: string };
-    if (!(await requireCsrf(request, env, body.csrfToken))) {
-        return jsonResponse({ error: 'Invalid or missing CSRF token' }, 403);
-    }
+    const rejected = await requireCsrf(request, env, body.csrfToken);
+    if (rejected) return rejected;
 
     const cookies = parseCookies(request.headers.get('Cookie'));
     const token = cookies[resolveSessionCookieName(env)];

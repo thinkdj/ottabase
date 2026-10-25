@@ -146,6 +146,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- `@ottabase/auth`: a sign-in, magic-link or sign-out request from an origin that isn't allowed now fails with
+  `Untrusted origin <origin>: open the app at its configured URL (AUTH_URL)` instead of `Invalid or missing CSRF token`.
+  The usual cause is opening the app on another loopback name (`localhost:3003` when `AUTH_URL` is `127.0.0.1:3003`),
+  which the old message disguised as a token problem.
 - otta-web: `/demo/charts` shows every `@ottabase/charts` component with its code, a picker for which chart to use, and
   loading, empty and export states. The analytics page draws a per-day `BarChart` above its table (quiet days filled
   with zero) and ranks the other groupings as a `BarList`.

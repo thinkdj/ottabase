@@ -196,7 +196,10 @@ prefixed in production) containing `token.hmac(token)` and returns the plain `to
 endpoints (credentials sign-in, magic-link send, sign-out) require the client to echo that token back in the request
 body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the server also rejects any
 request whose `Origin` header is present but not in the allowlist (same-origin or the configured `AUTH_URL`), so a
-cross-site request is refused even before the token check. The client API handles the token automatically:
+cross-site request is refused even before the token check. The two failures answer 403 with different errors:
+`Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on `127.0.0.1`, which
+the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API handles the token
+automatically:
 
 ```typescript
 import { getCsrfToken, signInWithCredentials } from '@ottabase/auth/client';

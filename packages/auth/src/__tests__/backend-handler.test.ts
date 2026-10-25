@@ -183,6 +183,8 @@ describe('handleAuthRequest', () => {
             env,
         );
         expect(res.status).toBe(403);
+        // Its own message, so a wrong-origin login isn't mistaken for a token problem
+        expect((await res.json()).error).toMatch(/^Untrusted origin https:\/\/evil\.example\.com/);
     });
 
     it('rejects a state-changing POST with a mismatched CSRF token', async () => {
@@ -197,6 +199,7 @@ describe('handleAuthRequest', () => {
             env,
         );
         expect(res.status).toBe(403);
+        expect((await res.json()).error).toBe('Invalid or missing CSRF token');
     });
 
     it('does not issue a credentials session when first-user provisioning fails', async () => {
