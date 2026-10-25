@@ -18,12 +18,23 @@ export {
     type TooltipSeriesValue,
     type ValueClickPayload,
 } from './react/CartesianChart';
+export { WaterfallChart, type WaterfallChartProps } from './react/WaterfallChart';
+
+// Relationships and profiles
+export {
+    ScatterChart,
+    type ScatterChartProps,
+    type ScatterGroupConfig,
+    type ScatterPointPayload,
+} from './react/ScatterChart';
+export { RadarChart, type RadarChartProps } from './react/RadarChart';
 
 // Composition and progress
 export { DonutChart, type DonutChartProps } from './react/DonutChart';
 export { CategoryBar, type CategoryBarItem, type CategoryBarProps } from './react/CategoryBar';
 export { FunnelChart, type FunnelChartProps, type FunnelStepInput } from './react/FunnelChart';
 export { SankeyChart, type SankeyChartProps } from './react/SankeyChart';
+export { TreemapChart, type TreemapChartProps } from './react/TreemapChart';
 export { ProgressCircle, type ProgressCircleProps } from './react/ProgressCircle';
 
 // Rankings and density

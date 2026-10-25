@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- `@ottabase/charts`: `TreemapChart` (squarified, optionally grouped into blocks, the tail folded into "Other" tiles
+  that keep their sum), `RadarChart` (polygon or circle rings, an outline per series), `WaterfallChart` (changes
+  floating from the running total, subtotal rows, an opening balance, connectors, signed labels) and `ScatterChart`
+  (groups, bubbles sized by area, nearest-point hover with guides), each with a headless layout. Every chart now handles
+  50,000+ rows: lines and bars draw through the rows holding each pixel column's extremes (M4, so spikes survive),
+  sub-pixel bars and scatter points draw as one path a series, waterfalls sum runs of changes, trackers keep each merged
+  bar's worst status, heatmaps batch cells by shade, Sankey merges duplicate links (and lays out in linear time),
+  BarList caps at 100 rows with a count, CategoryBar folds past eight. Screen-reader tables list up to 500 rows, evenly
+  spread. `/demo/charts` gains a Relationships section, treemap and waterfall examples, and, last on the page, a 5k-100k
+  rows section with live render timing.
 - `@ottabase/charts`: zero-dependency charts drawn to the Design System v1 chart spec. A headless root (layouts as plain
   numbers and SVG paths, scales, formatters, `fillTimeSeries`/`pivot`/`groupOther`, `toCsv`) and SVG components on
   `/react`: `LineChart`, `AreaChart`, `BarChart`, `ComboChart` (stacked and percent, a right axis, reference lines,

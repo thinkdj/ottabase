@@ -82,7 +82,7 @@ export function Bands({ frame, referenceAreas, selection, active, hasBars, showC
                     <rect
                         x={(x.centers[active] ?? 0) - half}
                         y={plot.y}
-                        width={x.step}
+                        width={Math.max(x.step, 1)}
                         height={plot.height}
                         className="fill-muted"
                         opacity={0.6}

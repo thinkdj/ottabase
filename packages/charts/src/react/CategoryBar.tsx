@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { resolveColor } from '../color';
+import { CHART_SLOTS, resolveColor } from '../color';
+import { groupOther } from '../data';
 import { formatCompact, formatPercent } from '../format';
 import type { ChartColor, Formatter, MarkRadius } from '../types';
 import { ChartLegend } from './ChartLegend';
@@ -51,7 +52,14 @@ export function CategoryBar({
     const revealed = useReveal(animate);
     const sum = data.reduce((s, d) => s + Math.max(0, d.value), 0);
     const full = total !== undefined && total > sum ? total : sum;
-    const items = data.map((d, i) => ({
+    // Slots never cycle: past eight segments the smallest fold into "Other", on the neutral slot.
+    const folded = data.length > CHART_SLOTS;
+    const segments: CategoryBarItem[] = folded
+        ? groupOther(data, CHART_SLOTS - 1).map((d, i) =>
+              i === CHART_SLOTS - 1 ? { ...d, color: CHART_SLOTS } : (data.find((x) => x.name === d.name) ?? d),
+          )
+        : data;
+    const items = segments.map((d, i) => ({
         ...d,
         color: resolveColor(d.color, i + 1),
         share: full > 0 ? Math.max(0, d.value) / full : 0,

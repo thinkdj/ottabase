@@ -28,6 +28,13 @@ export interface MarksProps {
 const DIM = 0.45;
 const FADE = 0.2;
 
+const r = (n: number) => Math.round(n * 100) / 100;
+
+/** Every bar of a series as one path of rectangles. */
+function barsPath(bars: SeriesGeometry['bars']): string {
+    return bars.map((b) => `M${r(b.x)} ${r(b.y)}h${r(b.width)}v${r(b.height)}h${r(-b.width)}Z`).join('');
+}
+
 export function lastValueIndex(values: (number | null)[]): number {
     for (let i = values.length - 1; i >= 0; i--) if (values[i] !== null) return i;
     return -1;
@@ -41,20 +48,25 @@ function MarksView({
     active,
     emphasis,
     stacked,
-    dots,
-    showValues,
     formatOf,
     revealed,
     animate,
     radius,
+    showValues: valuesProp,
+    dots: dotsProp,
 }: MarksProps) {
     const { layout, transposed } = frame;
     const { plot } = layout;
     const hasBars = layout.series.some((s) => s.type === 'bar');
+    // A sampled chart has a mark per pixel column: a dot or label on each would be a smear.
+    const dots = layout.sampled && dotsProp === 'all' ? 'last' : dotsProp;
+    const showValues = layout.sampled && valuesProp === 'all' ? 'last' : valuesProp;
+    // Past a few hundred bars, one path per series draws the same pixels as a rect each.
+    const batched = layout.sampled || layout.x.bandwidth < 2;
     const seriesOpacity = (key: string) => (emphasis !== null && emphasis !== key ? FADE : 1);
-    // Stack totals label the top of each stack once, not every segment.
+    // Stack totals label the top of each stack once, not every segment, where a label fits.
     const stackTotals: { x: number; y: number; total: number; format: Formatter }[] = [];
-    if (showValues !== 'none' && stacked && hasBars) {
+    if (showValues !== 'none' && stacked && hasBars && layout.x.bandwidth >= 18) {
         const bars = layout.series.filter((s) => s.type === 'bar');
         const rows = layout.series[0]?.values.length ?? 0;
         for (let ri = 0; ri < rows; ri++) {
@@ -110,18 +122,22 @@ function MarksView({
                             opacity={seriesOpacity(s.key)}
                             className="transition-opacity duration-fast ease-theme"
                         >
-                            {s.bars.map((b) => (
-                                <rect
-                                    key={b.index}
-                                    x={b.x}
-                                    y={b.y}
-                                    width={b.width}
-                                    height={b.height}
-                                    rx={radius}
-                                    opacity={active !== null && active !== b.index ? DIM : 1}
-                                    className="transition-all duration-normal ease-theme"
-                                />
-                            ))}
+                            {batched ? (
+                                <path d={barsPath(s.bars)} />
+                            ) : (
+                                s.bars.map((b) => (
+                                    <rect
+                                        key={b.index}
+                                        x={b.x}
+                                        y={b.y}
+                                        width={b.width}
+                                        height={b.height}
+                                        rx={radius}
+                                        opacity={active !== null && active !== b.index ? DIM : 1}
+                                        className="transition-all duration-normal ease-theme"
+                                    />
+                                ))
+                            )}
                         </g>
                     ) : (
                         <g
@@ -144,12 +160,15 @@ function MarksView({
                                 strokeLinejoin="round"
                                 strokeLinecap="round"
                             />
-                            {dots !== 'none' &&
+                            {dots === 'all' &&
                                 s.points.map((p, i) =>
-                                    p && (dots === 'all' || i === lastValueIndex(s.values)) ? (
-                                        <circle key={i} cx={p.x} cy={p.y} r={3} style={{ fill: s.color }} />
-                                    ) : null,
+                                    p ? <circle key={i} cx={p.x} cy={p.y} r={3} style={{ fill: s.color }} /> : null,
                                 )}
+                            {dots === 'last' &&
+                                (() => {
+                                    const p = s.points[lastValueIndex(s.values)];
+                                    return p ? <circle cx={p.x} cy={p.y} r={3} style={{ fill: s.color }} /> : null;
+                                })()}
                         </g>
                     ),
                 )}
@@ -177,9 +196,10 @@ function MarksView({
                     {!stacked &&
                         layout.series
                             .filter((s) => s.type === 'bar')
-                            .map((s) =>
-                                s.bars.map((b) => {
-                                    if (showValues === 'last' && b.index !== lastValueIndex(s.values)) return null;
+                            .map((s) => {
+                                const lastIndex = lastValueIndex(s.values);
+                                return s.bars.map((b) => {
+                                    if (showValues === 'last' && b.index !== lastIndex) return null;
                                     // Narrow grouped bars have no room for a label each.
                                     if (b.width < 18) return null;
                                     const end = b.value >= 0 ? b.y : b.y + b.height;
@@ -207,8 +227,8 @@ function MarksView({
                                             {label}
                                         </text>
                                     );
-                                }),
-                            )}
+                                });
+                            })}
                     {layout.series
                         .filter((s) => s.type !== 'bar')
                         .map((s) => {

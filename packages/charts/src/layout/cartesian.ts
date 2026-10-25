@@ -1,6 +1,7 @@
 import { toNumber } from '../data';
 import { formatCompact, formatPercent } from '../format';
 import { bandLayout, linearScale, niceTicks, pointLayout, type BandLayout, type LinearScale } from '../scale';
+import { sampleIndices, spreadIndices } from '../sample';
 import { areaPath, linePath, type AreaPoint } from '../shape';
 import type { ChartRow, Curve, Formatter, ResolvedSeries, StackMode } from '../types';
 
@@ -8,9 +9,19 @@ import type { ChartRow, Curve, Formatter, ResolvedSeries, StackMode } from '../t
 export const BAR_GAP = 2;
 
 // ponytail: tick labels are measured by character count, not by the DOM. 10px mono ≈ 6.2px a glyph.
-const CHAR_W = 6.2;
+export const CHAR_W = 6.2;
 /** Height reserved for an axis title. */
-const AXIS_TITLE = 16;
+export const AXIS_TITLE = 16;
+
+/** Width of a column of tick labels, with the 8px between them and the plot. */
+export function labelWidth(labels: string[]): number {
+    return Math.ceil(Math.max(0, ...labels.map((l) => l.length)) * CHAR_W + 8);
+}
+
+/** Ticks positioned on a scale. */
+export function toTicks(ticks: number[], labels: string[], scale: LinearScale): Tick[] {
+    return ticks.map((value, i) => ({ value, position: scale(value), label: labels[i] as string }));
+}
 
 export interface Insets {
     top: number;
@@ -116,6 +127,14 @@ export interface CartesianLayout {
     rightValueFormatter: Formatter;
     /** Pixel y of zero on the left axis (the bar baseline), clamped to the plot. */
     baseline: number;
+    /**
+     * More rows than the plot has pixels for: lines and bars are drawn through a sample
+     * that keeps every column's extremes (`sampleIndices`), bars are one pixel column
+     * wide, and `points` still holds every row for hover.
+     */
+    sampled: boolean;
+    /** Rows drawn: all of them, or the sample's size. */
+    drawn: number;
 }
 
 /** Series that stack together: same mark type, same axis. Lines never stack. */
@@ -129,7 +148,7 @@ interface AxisDomain {
 }
 
 /** Round ticks covering [lo, hi], or exactly the pinned bounds when given. */
-function axisTicks(
+export function axisTicks(
     lo: number,
     hi: number,
     min: number | undefined,
@@ -241,11 +260,11 @@ export function computeCartesian(options: CartesianOptions): CartesianLayout {
     // 3. The plot box: room for the tick labels and titles the axes need.
     const yLabels = leftAxis.ticks.map((t) => valueFormatter(t));
     const y2Labels = rightAxisTicks ? rightAxisTicks.ticks.map((t) => rightValueFormatter(t)) : [];
-    const xLabels = data.map((row) => indexFormatter(String(row[index] ?? '')));
-    const xLabelW = Math.max(0, ...xLabels.map((l) => l.length)) * CHAR_W;
-    const labelW = (labels: string[]) => Math.ceil(Math.max(0, ...labels.map((l) => l.length)) * CHAR_W + 8);
-    const yAxisW = showY ? labelW(yLabels) + (options.yTitle ? AXIS_TITLE : 0) : 0;
-    const y2AxisW = showY && rightAxisTicks ? labelW(y2Labels) + (right.title ? AXIS_TITLE : 0) : 0;
+    const xLabelOf = (i: number) => indexFormatter(String(data[i]?.[index] ?? ''));
+    // The widest label decides the spacing; a spread of 200 rows finds it without formatting 50,000.
+    const xLabelW = Math.max(0, ...spreadIndices(data.length, 200).map((i) => xLabelOf(i).length)) * CHAR_W;
+    const yAxisW = showY ? labelWidth(yLabels) + (options.yTitle ? AXIS_TITLE : 0) : 0;
+    const y2AxisW = showY && rightAxisTicks ? labelWidth(y2Labels) + (right.title ? AXIS_TITLE : 0) : 0;
     const hasBars = series.some((s) => s.type === 'bar');
     // Edge-to-edge points put the first and last label on the plot edge; half of each overhangs.
     const overhang = showX && !hasBars ? xLabelW / 2 : 0;
@@ -268,17 +287,24 @@ export function computeCartesian(options: CartesianOptions): CartesianLayout {
         ? bandLayout(data.length, plot.x, plot.x + plot.width, options.barPadding ?? 0.35)
         : pointLayout(data.length, plot.x, plot.x + plot.width);
 
-    const toTicks = (ticks: number[], labels: string[], scale: LinearScale): Tick[] =>
-        ticks.map((value, i) => ({ value, position: scale(value), label: labels[i] as string }));
     const yTicks = toTicks(leftAxis.ticks, yLabels, y);
     const y2Ticks = rightAxisTicks && y2 ? toTicks(rightAxisTicks.ticks, y2Labels, y2) : [];
     const fit = Math.max(1, Math.floor(plot.width / (xLabelW + 16 || 1)));
     const stride = Math.max(1, Math.ceil(data.length / fit));
-    const xTicks: Tick[] = showX
-        ? x.centers
-              .map((position, i) => ({ value: i, position, label: xLabels[i] as string }))
-              .filter((_, i) => i % stride === 0)
-        : [];
+    const xTicks: Tick[] = [];
+    if (showX) {
+        for (let i = 0; i < data.length; i += stride) {
+            xTicks.push({ value: i, position: x.centers[i] as number, label: xLabelOf(i) });
+        }
+    }
+
+    // Past four rows a pixel column, draw through the rows that keep each column's extremes.
+    const drawn = sampleIndices(
+        spans.map((col) => col.map((span) => (span ? span[1] : null))),
+        data.length,
+        plot.width,
+    );
+    const sampled = drawn.length < data.length;
 
     // 4. Marks.
     const zeroOf = (scale: LinearScale) => scale(Math.min(Math.max(0, scale.domain[0]), scale.domain[1]));
@@ -288,6 +314,9 @@ export function computeCartesian(options: CartesianOptions): CartesianLayout {
     const maxBar = options.maxBarWidth ?? 48;
     const groupW = Math.min(x.bandwidth, maxBar * (grouped ? barSeries.length : 1));
     const barW = grouped ? Math.max(1, (groupW - BAR_GAP * (barSeries.length - 1)) / barSeries.length) : groupW;
+    // Thinner than a pixel, bars become pixel columns: each covers its row's slot, groups overlap.
+    const dense = hasBars && groupW < 1;
+    const denseW = Math.max(1, x.step);
     // Per row and sign: has a stacked segment already been placed against the axis?
     const placed = data.map(() => ({ pos: false, neg: false }));
 
@@ -307,10 +336,13 @@ export function computeCartesian(options: CartesianOptions): CartesianLayout {
         const bars: BarRect[] = [];
         if (s.type === 'bar') {
             const slot = barSeries.indexOf(si);
-            points.forEach((p, ri) => {
+            for (const ri of drawn) {
+                const p = points[ri];
                 const value = values[ri];
-                if (!p || value === null || value === undefined) return;
-                const left = (x.centers[ri] as number) - groupW / 2 + (grouped ? slot * (barW + BAR_GAP) : 0);
+                if (!p || value === null || value === undefined) continue;
+                const left = dense
+                    ? (x.centers[ri] as number) - denseW / 2
+                    : (x.centers[ri] as number) - groupW / 2 + (grouped ? slot * (barW + BAR_GAP) : 0);
                 let top = Math.min(p.y, p.y0);
                 let h = Math.abs(p.y0 - p.y);
                 if (stacked && value !== 0) {
@@ -328,11 +360,12 @@ export function computeCartesian(options: CartesianOptions): CartesianLayout {
                     if (value > 0) top = p.y0 - 1;
                     h = 1;
                 }
-                bars.push({ x: left, y: top, width: barW, height: h, value, index: ri });
-            });
+                bars.push({ x: left, y: top, width: dense ? denseW : barW, height: h, value, index: ri });
+            }
         }
 
-        const linePoints = options.connectNulls ? points.filter((p) => p !== null) : points;
+        const kept = sampled ? drawn.map((ri) => points[ri] as AreaPoint | null) : points;
+        const linePoints = options.connectNulls ? kept.filter((p) => p !== null) : kept;
         return {
             ...s,
             values,
@@ -356,5 +389,7 @@ export function computeCartesian(options: CartesianOptions): CartesianLayout {
         valueFormatter,
         rightValueFormatter,
         baseline,
+        sampled,
+        drawn: drawn.length,
     };
 }

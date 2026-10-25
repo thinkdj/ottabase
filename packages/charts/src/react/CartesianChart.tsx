@@ -21,7 +21,8 @@ import { Axes } from './cartesian/Axes';
 import { pt, type Frame } from './cartesian/frame';
 import { Marks, type ValueLabels } from './cartesian/Marks';
 import { Bands, OverlayLines, type Annotation, type ReferenceArea, type ReferenceLine } from './cartesian/Overlays';
-import { cx, MARK_RADII, rowIndexOf, useElementWidth, useReveal } from './utils';
+import { spreadIndices } from '../sample';
+import { cx, MARK_RADII, rowIndexOf, SR_ROWS, srCaption, useElementWidth, useReveal } from './utils';
 
 export type { Annotation, ReferenceArea, ReferenceLine } from './cartesian/Overlays';
 
@@ -114,9 +115,9 @@ export interface CartesianChartProps {
     animate?: boolean;
     /** Draw a skeleton instead of the data. */
     loading?: boolean;
-    /** Accessible name. Also titles the screen-reader data table. */
     /** Corner radius of the marks: `none` 0, `sm` 2px, `md` 4px, `lg` 8px. Default `sm`. */
     radius?: MarkRadius;
+    /** Accessible name. Also titles the screen-reader data table. */
     title?: string;
     emptyText?: ReactNode;
     className?: string;
@@ -200,7 +201,12 @@ function CartesianChart({
 
     const layout = useMemo(() => {
         if (measured <= 0) return null;
-        const categoryW = Math.max(0, ...data.map((r) => indexFormatter(String(r[index] ?? '')).length)) * CHAR_W;
+        const categoryW = transposed
+            ? Math.max(
+                  0,
+                  ...spreadIndices(data.length, 200).map((i) => indexFormatter(String(data[i]?.[index] ?? '')).length),
+              ) * CHAR_W
+            : 0;
         const shared = {
             data,
             index,
@@ -280,9 +286,12 @@ function CartesianChart({
     const categoryTicks: Tick[] = useMemo(() => {
         if (!layout || !transposed) return [];
         const stride = Math.max(1, Math.ceil(12 / (layout.x.step || 12)));
-        return layout.x.centers
-            .map((position, i) => ({ value: i, position, label: indexFormatter(String(data[i]?.[index] ?? '')) }))
-            .filter((_, i) => i % stride === 0);
+        const ticks: Tick[] = [];
+        for (let i = 0; i < layout.x.centers.length; i += stride) {
+            const label = indexFormatter(String(data[i]?.[index] ?? ''));
+            ticks.push({ value: i, position: layout.x.centers[i] as number, label });
+        }
+        return ticks;
     }, [layout, transposed, data, index, indexFormatter]);
 
     const resolvedAreas = useMemo(
@@ -363,9 +372,11 @@ function CartesianChart({
         const last = data.length - 1;
         const forward = transposed ? 'ArrowDown' : 'ArrowRight';
         const back = transposed ? 'ArrowUp' : 'ArrowLeft';
+        // One keypress moves one pixel column: a row at a time through 50,000 would never arrive.
+        const step = layout?.sampled ? Math.max(1, Math.round(data.length / (layout.plot.width || 1))) : 1;
         const moves: Record<string, number> = {
-            [forward]: Math.min((active ?? -1) + 1, last),
-            [back]: Math.max((active ?? data.length) - 1, 0),
+            [forward]: Math.min((active ?? -step) + step, last),
+            [back]: Math.max((active ?? data.length - 1 + step) - step, 0),
             Home: 0,
             End: last,
         };
@@ -430,6 +441,43 @@ function CartesianChart({
         const v = s?.values[ri];
         return s && s.type !== 'line' && v !== null && v !== undefined ? formatPercent(v) : null;
     };
+
+    // The same numbers for screen readers; the SVG itself is aria-hidden. Memoised: hover
+    // re-renders the chart, and a long table would be rebuilt on every pointer move.
+    const table = useMemo(() => {
+        const rows = spreadIndices(data.length, SR_ROWS);
+        const caption = srCaption(title, rows.length, data.length);
+        return (
+            <table className="sr-only">
+                {/* A caption renders outside the table box, so the table's sr-only clip misses it. */}
+                {caption && <caption className="sr-only">{caption}</caption>}
+                <thead>
+                    <tr>
+                        <th scope="col">{index}</th>
+                        {resolved.map((s) => (
+                            <th key={s.key} scope="col">
+                                {s.label}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((i) => {
+                        const row = data[i] as ChartRow;
+                        return (
+                            <tr key={i}>
+                                <th scope="row">{indexFormatter(String(row[index] ?? ''))}</th>
+                                {resolved.map((s) => {
+                                    const v = toNumber(row[s.key]);
+                                    return <td key={s.key}>{v === null ? '' : valueFormatter(v)}</td>;
+                                })}
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        );
+    }, [data, index, resolved, indexFormatter, valueFormatter, title]);
 
     const legendNode = legend ? (
         <ChartLegend
@@ -585,32 +633,7 @@ function CartesianChart({
             </div>
             {legendPosition === 'bottom' && legendNode}
 
-            {/* The same numbers for screen readers; the SVG itself is aria-hidden. */}
-            <table className="sr-only">
-                {/* A caption renders outside the table box, so the table's sr-only clip misses it. */}
-                {title && <caption className="sr-only">{title}</caption>}
-                <thead>
-                    <tr>
-                        <th scope="col">{index}</th>
-                        {resolved.map((s) => (
-                            <th key={s.key} scope="col">
-                                {s.label}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((row, i) => (
-                        <tr key={i}>
-                            <th scope="row">{indexFormatter(String(row[index] ?? ''))}</th>
-                            {resolved.map((s) => {
-                                const v = toNumber(row[s.key]);
-                                return <td key={s.key}>{v === null ? '' : valueFormatter(v)}</td>;
-                            })}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {table}
         </div>
     );
 }

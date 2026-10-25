@@ -18,9 +18,9 @@ export interface SparklineProps {
     width?: number;
     /** Start at the lowest value instead of zero, to show the shape of a series far from zero. Lines only. */
     autoMinValue?: boolean;
-    /** Accessible name, e.g. "Signups, last 14 days". Without one the sparkline is decorative. */
     /** Corner radius of the marks: `none` 0, `sm` 2px, `md` 4px, `lg` 8px. Default `sm`. */
     radius?: MarkRadius;
+    /** Accessible name, e.g. "Signups, last 14 days". Without one the sparkline is decorative. */
     title?: string;
     className?: string;
 }

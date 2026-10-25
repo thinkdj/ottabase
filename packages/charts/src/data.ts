@@ -108,8 +108,8 @@ export function fillTimeSeries(rows: ChartRow[], options: FillTimeSeriesOptions)
     if (!Number.isFinite(startT) || !Number.isFinite(endT)) return [];
     const out: ChartRow[] = [];
     const last = bucketStart(endT, step).getTime();
-    // ponytail: hard cap stops a bad range (hours over years) from building a million rows.
-    for (let d = bucketStart(startT, step); d.getTime() <= last && out.length < 10_000; d = nextBucket(d, step)) {
+    // ponytail: hard cap stops a bad range from building millions of rows; 100,000 hours is eleven years.
+    for (let d = bucketStart(startT, step); d.getTime() <= last && out.length < 100_000; d = nextBucket(d, step)) {
         const key = bucketKey(d, step);
         out.push(byKey.get(key) ?? { ...fill, [index]: key });
     }

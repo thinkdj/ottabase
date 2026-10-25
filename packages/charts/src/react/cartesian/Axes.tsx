@@ -2,10 +2,10 @@ import { memo } from 'react';
 import { CHART_CHROME } from '../../color';
 import type { Tick } from '../../layout/cartesian';
 import { TICK_CLASS } from '../utils';
-import { categoryAxisX, pt, type Frame } from './frame';
+import { categoryAxisX, pt, type AxesLayout, type Frame } from './frame';
 
 export interface AxesProps {
-    frame: Frame;
+    frame: Frame<AxesLayout>;
     showGrid: boolean;
     showXAxis: boolean;
     showYAxis: boolean;

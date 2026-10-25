@@ -55,6 +55,16 @@ export const TICK_CLASS = 'fill-chart-label font-mono text-[10px]';
 /** Data labels next to marks: 10px mono in the readable foreground. */
 export const VALUE_LABEL_CLASS = 'fill-foreground font-mono text-[10px] font-medium';
 
+/** Rows a screen-reader data table lists; a longer one lists this many, spread evenly. */
+export const SR_ROWS = 500;
+
+/** A data table's caption: the title, and when rows were left out, how many are listed. */
+export function srCaption(title: string | undefined, listed: number, total: number): string | undefined {
+    if (listed >= total) return title;
+    const note = `${listed} of ${total} rows, evenly spaced`;
+    return title ? `${title} (${note})` : note;
+}
+
 /** Resolve a row position given as an index number or as an index-column value. */
 export function rowIndexOf(data: Record<string, unknown>[], index: string, at: number | string): number {
     if (typeof at === 'number') return at;

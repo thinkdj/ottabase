@@ -42,19 +42,19 @@ export interface HeatmapLayout {
 /** A matrix of x × y categories coloured by value: traffic by hour and weekday, errors by route and day. */
 export function computeHeatmap(options: HeatmapOptions): HeatmapLayout {
     const { data, x, y, value = 'value', levels = 5 } = options;
-    const seenX: string[] = [];
-    const seenY: string[] = [];
+    const seenX = new Set<string>();
+    const seenY = new Set<string>();
     const totals = new Map<string, number>();
     for (const row of data) {
         const xv = String(row[x] ?? '');
         const yv = String(row[y] ?? '');
-        if (!seenX.includes(xv)) seenX.push(xv);
-        if (!seenY.includes(yv)) seenY.push(yv);
+        seenX.add(xv);
+        seenY.add(yv);
         const key = `${xv}\u0000${yv}`;
         totals.set(key, (totals.get(key) ?? 0) + (toNumber(row[value]) ?? 0));
     }
-    const xDomain = options.xDomain ?? seenX;
-    const yDomain = options.yDomain ?? seenY;
+    const xDomain = options.xDomain ?? [...seenX];
+    const yDomain = options.yDomain ?? [...seenY];
     let min = Infinity;
     let max = -Infinity;
     for (const v of totals.values()) {

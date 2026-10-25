@@ -98,4 +98,38 @@ export {
 
 export { computeHeatmap, type HeatmapCell, type HeatmapLayout, type HeatmapOptions } from './layout/heatmap';
 
+export {
+    computeTreemap,
+    squarify,
+    type TreemapGroup,
+    type TreemapItem,
+    type TreemapLayout,
+    type TreemapOptions,
+    type TreemapTile,
+} from './layout/treemap';
+
+export {
+    computeRadar,
+    radarAxisAt,
+    type RadarAxis,
+    type RadarLayout,
+    type RadarOptions,
+    type RadarRing,
+    type RadarSeries,
+} from './layout/radar';
+
+export { computeWaterfall, type WaterfallLayout, type WaterfallOptions, type WaterfallStep } from './layout/waterfall';
+
+export {
+    computeScatter,
+    scatterIndex,
+    type ScatterGroup,
+    type ScatterLayout,
+    type ScatterOptions,
+    type ScatterPoint,
+    type ScatterSeries,
+} from './layout/scatter';
+
+export { sampleIndices, spreadIndices } from './sample';
+
 export { toCsv } from './export';

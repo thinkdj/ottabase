@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { resolveColor } from '../color';
-import { formatCompact, formatPercent } from '../format';
+import { formatCompact, formatNumber, formatPercent } from '../format';
 import type { ChartColor, Formatter, MarkRadius } from '../types';
 import { cx, MARK_RADII, useReveal } from './utils';
 
@@ -26,7 +26,10 @@ export interface BarListProps<T extends BarListItem> {
     onSelect?: (item: T) => void;
     /** Header row labels, e.g. `['Page', 'Visits']`. */
     labels?: [ReactNode, ReactNode];
-    /** Rows shown; the rest are dropped (fold them first with `groupOther()` to keep the total). */
+    /**
+     * Rows shown; the rest are dropped (fold them first with `groupOther()` to keep the total).
+     * Without one, the list shows 100 rows and a "N more not shown" line.
+     */
     limit?: number;
     /** Bars are relative to this instead of the largest row: pass the grand total for shares. */
     maxValue?: number;
@@ -37,6 +40,8 @@ export interface BarListProps<T extends BarListItem> {
     animate?: boolean;
     className?: string;
 }
+
+const MAX_ROWS = 100;
 
 /** A ranked list with an in-row bar: top pages, referrers, countries. Reads like a table, compares like a chart. */
 export function BarList<T extends BarListItem>({
@@ -60,9 +65,11 @@ export function BarList<T extends BarListItem>({
             sortOrder === 'none'
                 ? data
                 : [...data].sort((a, b) => (sortOrder === 'desc' ? b.value - a.value : a.value - b.value));
-        return limit === undefined ? sorted : sorted.slice(0, limit);
+        return sorted.slice(0, limit ?? MAX_ROWS);
     }, [data, sortOrder, limit]);
-    const max = maxValue ?? Math.max(0, ...rows.map((r) => r.value));
+    // Without a limit, a long list stops at MAX_ROWS and says how many it left out.
+    const hiddenRows = limit === undefined ? data.length - rows.length : 0;
+    const max = maxValue ?? rows.reduce((m, r) => Math.max(m, r.value), 0);
     const sum = data.reduce((s, r) => s + Math.max(0, r.value), 0);
     const shareBase = maxValue ?? sum;
 
@@ -121,6 +128,9 @@ export function BarList<T extends BarListItem>({
                     </div>
                 );
             })}
+            {hiddenRows > 0 && (
+                <p className="px-2 pt-1 text-xs text-muted-foreground">{formatNumber(hiddenRows)} more not shown</p>
+            )}
         </div>
     );
 }
