@@ -1,5 +1,5 @@
 import type { BlogDemoPostSeed } from '@ottabase/ottablog/router';
-import { checklist, code, doc, h, on, p, table, ul, warning } from './demo-blocks';
+import { checklist, code, doc, h, image, on, p, table, ul, warning } from './demo-blocks';
 
 /**
  * The demo's "What's new" timeline: real Ottabase release notes, dated by the commits that
@@ -30,6 +30,74 @@ const release = (
 };
 
 export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
+    release({
+        date: '2026-10-25',
+        title: 'Charts, with zero dependencies',
+        slug: 'zero-dependency-charts',
+        isFeatured: true,
+        excerpt:
+            'Nineteen chart components drawn as plain SVG by a geometry engine of their own: no chart library, nothing in your dependency tree. They follow your brand kit and dark mode, and draw 50,000 rows without slowing the page.',
+        hero: 'The charts demo at a glance: stat tiles with deltas and sparklines, progress circles and a storage bar',
+        tags: ['Charts', 'UI'],
+        content: doc(
+            p(
+                "@ottabase/charts draws every chart itself. A small headless engine computes each scale, tick and path, and the React entry renders it as SVG. There is no chart library and no D3 underneath, and the package has no runtime dependencies at all. Colours come from the brand engine's <code>--chart-1</code> to <code>--chart-8</code> tokens, so a chart follows the active brand kit and dark mode without a single prop.",
+            ),
+            h('Pick by the question you are answering', 3),
+            table(
+                ['Question', 'Component'],
+                ['How is it trending?', 'LineChart, AreaChart, Sparkline'],
+                ['How do categories compare?', 'BarChart, stacked, grouped or horizontal'],
+                ['Two units on one timeline?', 'ComboChart, with a second axis'],
+                ['Do two measures move together?', 'ScatterChart, or a bubble chart with size'],
+                ['How do a few things score?', 'RadarChart'],
+                ['What is the mix?', 'DonutChart, CategoryBar, TreemapChart'],
+                ['How did we get from start to end?', 'WaterfallChart'],
+                ['Where do people drop off?', 'FunnelChart, plain or as a flow by channel'],
+                ['Where does it flow?', 'SankeyChart'],
+                ['What ranks highest?', 'BarList'],
+                ['When is it busy?', 'Heatmap, CalendarHeatmap'],
+                ['Is it up?', 'Tracker'],
+                ['How full is it, and did it change?', 'ProgressCircle, Delta'],
+            ),
+            h('Headless first', 3),
+            ul(
+                '<code>@ottabase/charts</code> holds the maths: scales, ticks, path generators, stacking, layouts, formatters, data shaping and CSV. No DOM and no React, so it runs in a Worker and in React Native.',
+                '<code>@ottabase/charts/react</code> draws it: one tooltip system, keyboard and touch, reveal transitions, loading and empty states.',
+            ),
+            code(
+                [
+                    "import { dateFormatter } from '@ottabase/charts';",
+                    "import { LineChart } from '@ottabase/charts/react';",
+                    '',
+                    '<LineChart',
+                    '    data={days}',
+                    '    index="day"',
+                    "    series={['requests', 'jobs']}",
+                    "    indexFormatter={dateFormatter('day')}",
+                    '/>',
+                ].join('\n'),
+                'tsx',
+            ),
+            image(
+                '/ottabase-demo/whats-new/zero-dependency-charts-flow.webp',
+                'A funnel drawn as a flow: one column per step, the bands split by channel.',
+                'A checkout funnel by channel, from impressions to add to cart to buy, as bands that narrow between steps',
+                { stretched: true },
+            ),
+            h('Real data, drawn honestly', 3),
+            p(
+                'Every chart draws 50,000 rows and more without slowing the page, and none of them averages. A line keeps each pixel column\'s first, last, lowest and highest row, so every spike survives. A treemap or a donut folds its smallest parts into "Other" with their exact sum. Hover still finds the nearest real row, not the nearest drawn one.',
+            ),
+            h('Accessible, and easy to take away', 3),
+            ul(
+                'Each chart is a focusable group with a name and a hidden data table holding the same numbers. The arrow keys drive the tooltip and range selection.',
+                'Colour never works alone: every series has a legend key or a label. Reduced motion turns the transitions off.',
+                "Export any chart as PNG or SVG with the theme's colours inlined, or its rows as CSV.",
+            ),
+            cta('See every chart with its code', '/demo/charts'),
+        ),
+    }),
     release({
         date: '2026-10-20',
         title: 'Ottabase Pro: seven packages, sold as source',
