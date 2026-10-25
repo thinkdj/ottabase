@@ -671,6 +671,7 @@ const demoChildren = [
     demoChild('ottaforms', () => import('@/pages/demo/ottaforms/OttaFormsDemoPage'), 'OttaFormsDemoPage'),
     demoChild('ottaselect', () => import('@/pages/demo/ottaselect/OttaSelectDemoPage'), 'OttaSelectDemoPage'),
     demoChild('ui-datatable', () => import('@/pages/demo/ui-datatable/DataTableDemoPage'), 'DataTableDemoPage'),
+    demoChild('charts', () => import('@/pages/demo/charts/ChartsDemoPage'), 'ChartsDemoPage'),
     demoChild('split-pane', () => import('@/pages/demo/split-pane/SplitPaneDemoPage'), 'SplitPaneDemoPage'),
     demoChild('ui-cropper', () => import('@/pages/demo/ui-cropper/CropperDemoPage'), 'CropperDemoPage'),
     demoChild('logger', () => import('@/pages/demo/logger/LoggerDemoPage'), 'LoggerDemoPage'),

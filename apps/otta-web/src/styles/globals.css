@@ -9,6 +9,7 @@
    classes are named here. One narrow glob covers every Premium Package and every Pro package, so adding one needs no
    edit. Tests and stories hold regexes and fixture strings that would be read as class names (a vault test's
    /[-:.]/ became the invalid utility .[-:.]), so they are left out. */
+@source '../../../../packages/charts/src';
 @source '../../../../packages/ui-code-highlight/src';
 @source '../../../../packages/ui/components';
 @source '../../../../packages/ottaselect/src';

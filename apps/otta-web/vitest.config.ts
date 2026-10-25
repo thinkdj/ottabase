@@ -58,6 +58,8 @@ export default defineConfig({
             '@ottabase/brand-engine/dom': path.resolve(__dirname, '../../packages/brand-engine/src/dom.ts'),
             '@ottabase/forms/react': path.resolve(__dirname, '../../packages/forms/src/react.ts'),
             '@ottabase/ui-datatable/react': path.resolve(__dirname, '../../packages/ui-datatable/src/react.ts'),
+            '@ottabase/charts/react': path.resolve(__dirname, '../../packages/charts/src/react.ts'),
+            '@ottabase/charts': path.resolve(__dirname, '../../packages/charts/src/index.ts'),
             '@ottabase/spotlight/react': path.resolve(__dirname, '../../packages/spotlight/src/react.ts'),
             '@ottabase/docs/react': path.resolve(__dirname, '../../packages/docs/src/react.ts'),
             '@ottabase/medialibrary/react': path.resolve(__dirname, '../../packages/medialibrary/src/react.ts'),

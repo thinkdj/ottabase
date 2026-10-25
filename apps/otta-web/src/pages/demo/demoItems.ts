@@ -9,6 +9,7 @@ import {
     Bot,
     Calendar,
     Camera,
+    ChartLine,
     Clock,
     Cloud,
     Code,
@@ -173,6 +174,15 @@ export const DEMO_ITEMS: DemoItem[] = [
         title: 'DataTable',
         description:
             'Advanced data table on TanStack Table v8: server-side sort/filter/pagination, column visibility, row selection, bulk actions.',
+        buttonVariant: 'default',
+    },
+    {
+        to: '/demo/charts',
+        icon: ChartLine,
+        label: 'Charts',
+        title: 'Charts',
+        description:
+            'Zero-dependency SVG charts on the brand tokens: line, area, bar, combo, donut, sparkline, bar list, calendar heatmap, tracker.',
         buttonVariant: 'default',
     },
     {

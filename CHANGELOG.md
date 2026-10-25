@@ -146,6 +146,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- otta-web: `/demo/charts` shows every `@ottabase/charts` component with its code, a picker for which chart to use, and
+  loading, empty and export states. The analytics page draws a per-day `BarChart` above its table (quiet days filled
+  with zero) and ranks the other groupings as a `BarList`.
 - One UI kit: `@ottabase/ui-shadcn` is now `@ottabase/ui` (`packages/ui`), and it absorbs `@ottabase/ui-components`,
   `@ottabase/ui-split-pane` and `@ottabase/ui-base`, which are gone. `ConfirmDialog`, `MessageBox`, `DarkModeToggle` and
   `SplitPane` import from `@ottabase/ui`; `JsonEditor` from its own entry, `@ottabase/ui/json-editor`. `BlogPagination`

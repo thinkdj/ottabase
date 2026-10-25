@@ -23,6 +23,8 @@ import {
     TabsList,
     TabsTrigger,
 } from '@ottabase/ui';
+import { dateFormatter, fillTimeSeries, formatNumber } from '@ottabase/charts';
+import { BarChart, BarList } from '@ottabase/charts/react';
 import { IconChartBar, IconLink, IconLoader2, IconRefresh, IconUsers } from '@tabler/icons-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
@@ -70,6 +72,28 @@ function AnalyticsEmptyState() {
     );
 }
 
+const DAY_LABEL = dateFormatter('day');
+
+function rowValue(row: AnalyticsRow): number {
+    return Math.round(row.clicks ?? row.value ?? 0);
+}
+
+function dimensionColumnLabel(groupBy: string, dimensionLabel?: string): string {
+    if (dimensionLabel) return dimensionLabel;
+    switch (groupBy) {
+        case 'country':
+            return 'Country';
+        case 'shortCode':
+            return 'Short Code';
+        case 'referralCode':
+            return 'Referral Code';
+        case 'event':
+            return 'Event';
+        default:
+            return 'Date';
+    }
+}
+
 function AnalyticsResultsCard({
     loading,
     data,
@@ -105,14 +129,44 @@ function AnalyticsResultsCard({
                     </div>
                 ) : data.length === 0 ? (
                     <AnalyticsEmptyState />
+                ) : groupBy === 'day' ? (
+                    <div className="space-y-6">
+                        {/* WAE returns only the days that had events; fill the quiet ones so the trend is honest. */}
+                        <BarChart
+                            data={fillTimeSeries(
+                                data.map((row) => ({ day: row.dimension, value: rowValue(row) })),
+                                { index: 'day', step: 'day', fill: { value: 0 } },
+                            )}
+                            index="day"
+                            series={[{ key: 'value', label: valueLabel }]}
+                            indexFormatter={DAY_LABEL}
+                            height={200}
+                            title={`${valueLabel} per day`}
+                        />
+                        <AnalyticsTable
+                            data={data}
+                            groupBy={groupBy}
+                            formatDimension={formatDimension}
+                            linkTo={linkTo}
+                            dimensionLabel={dimensionLabel}
+                            valueLabel={valueLabel}
+                        />
+                    </div>
                 ) : (
-                    <AnalyticsTable
-                        data={data}
-                        groupBy={groupBy}
-                        formatDimension={formatDimension}
-                        linkTo={linkTo}
-                        dimensionLabel={dimensionLabel}
-                        valueLabel={valueLabel}
+                    <BarList
+                        data={data.map((row) => ({ name: row.dimension, value: rowValue(row) }))}
+                        labels={[dimensionColumnLabel(groupBy, dimensionLabel), valueLabel]}
+                        valueFormatter={formatNumber}
+                        showPercent
+                        renderName={(item) =>
+                            groupBy === 'shortCode' || groupBy === 'referralCode' ? (
+                                <Link to={linkTo} className="font-mono text-primary hover:underline">
+                                    {item.name}
+                                </Link>
+                            ) : (
+                                formatDimension(item.name)
+                            )
+                        }
                     />
                 )}
             </CardContent>
@@ -589,17 +643,7 @@ function AnalyticsTable({
     dimensionLabel?: string;
     valueLabel?: string;
 }) {
-    const colLabel =
-        dimensionLabel ??
-        (groupBy === 'country'
-            ? 'Country'
-            : groupBy === 'shortCode'
-              ? 'Short Code'
-              : groupBy === 'referralCode'
-                ? 'Referral Code'
-                : groupBy === 'event'
-                  ? 'Event'
-                  : 'Date');
+    const colLabel = dimensionColumnLabel(groupBy, dimensionLabel);
 
     const showLink = groupBy === 'shortCode' || groupBy === 'referralCode';
 
@@ -630,7 +674,7 @@ function AnalyticsTable({
                             </TableCell>
                             <TableCell className="text-right">
                                 <span className="inline-flex items-center rounded-full bg-background px-2 py-0.5 font-mono text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border">
-                                    {Math.round(row.clicks ?? row.value ?? 0)}
+                                    {rowValue(row)}
                                 </span>
                             </TableCell>
                         </TableRow>

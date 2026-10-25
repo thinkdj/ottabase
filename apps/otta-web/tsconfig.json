@@ -54,6 +54,7 @@
             "@ottabase/brand-engine/dom": ["../../packages/brand-engine/src/dom.ts"],
             "@ottabase/forms/react": ["../../packages/forms/src/react.ts"],
             "@ottabase/ui-datatable/react": ["../../packages/ui-datatable/src/react.ts"],
+            "@ottabase/charts/react": ["../../packages/charts/src/react.ts"],
             "@ottabase/spotlight/react": ["../../packages/spotlight/src/react.ts"],
             "@ottabase/docs/react": ["../../packages/docs/src/react.ts"],
             "@ottabase/medialibrary/react": ["../../packages/medialibrary/src/react.ts"],
