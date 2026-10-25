@@ -2,20 +2,17 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button, cn, Input } from '@ottabase/ui';
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { Layout, Search, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEMO_ITEMS } from './demoItems';
 import './demo.css';
 
 export function DemoLayout() {
     const location = useLocation();
     const [search, setSearch] = useState('');
-    const contentRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
-        // Keep demo navigation predictable: every /demo/* page starts at top.
-        // Scroll both the <main> element and the window since the actual scroll
-        // container depends on the parent layout (ottalayout may use window scroll).
-        contentRef.current?.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        // Keep demo navigation predictable: every /demo/* page starts at top. The window is the
+        // only scroller here (see <main> below).
         window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     }, [location.pathname]);
 
@@ -29,7 +26,8 @@ export function DemoLayout() {
         <div className="otta-demo flex min-h-[calc(100vh-3.5rem)]">
             {/* Sidebar */}
             <aside className="hidden w-64 shrink-0 border-r md:block">
-                <div className="sticky top-0 flex max-h-[calc(100vh-3.5rem)] flex-col gap-3 px-3 py-6">
+                {/* top-14: stacks below the app shell's sticky header instead of sliding under it (as StudioShell) */}
+                <div className="sticky top-14 flex max-h-[calc(100dvh-3.5rem)] flex-col gap-3 px-3 py-6">
                     <div className="px-0.5">
                         <h2 className="mb-3 px-2 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                             Demos
@@ -105,8 +103,9 @@ export function DemoLayout() {
                 </div>
             </aside>
 
-            {/* Content */}
-            <main ref={contentRef} className="min-w-0 flex-1 overflow-auto bg-background">
+            {/* Content. No overflow here: the window scrolls the page, and a second scroller would nest
+                inside it. Wide content (code, tables) scrolls in its own box; min-w-0 keeps it from widening the row. */}
+            <main className="min-w-0 flex-1 bg-background">
                 <div className="container mx-auto max-w-6xl px-8 py-10">
                     <div className="mb-6">
                         <Breadcrumbs />

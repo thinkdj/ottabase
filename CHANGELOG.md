@@ -346,6 +346,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- otta-web: `/demo/*` pages no longer scroll inside the page. The demo layout's content was its own scroll container
+  inside the window's, so a page taller than it (the charts demo) showed a second scrollbar and took the wheel first.
+  The window is now the only scroller, and the demo sidebar sticks below the app header instead of sliding under it.
 - `@ottabase/ui` Dialog and AlertDialog fade up into place (8px rise from 98%) instead of swooping in from the top left.
   Their Tailwind 3 `slide-in-from-left-1/2` / `-top-[48%]` offsets stacked on Tailwind 4's separate `translate`
   centring. Spotlight's palette had the same offsets. Popovers, menus, selects, hover cards and tooltips now zoom from
