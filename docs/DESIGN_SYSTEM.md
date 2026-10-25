@@ -59,6 +59,7 @@ Motion: 120ms controls, 200ms switches, 360ms entrances, 320ms when the theme fl
 | `Tabs` / `TabsList variant="segmented"`                       | Underline tabs for saved views with counts; the pill track for ranges and views                                                                                                        |
 | `Table`                                                       | Sticky head on the subtle fill, 44px rows, hover, `data-state="selected"`                                                                                                              |
 | `Card`, `Dialog`, `Sheet`, `DropdownMenu`                     | Surface + hairline; dialogs 14px corners; a 560px drawer for records; `DropdownMenuItem variant="destructive"`                                                                         |
+| `LineChart`, `BarChart`, `DonutChart`… (`@ottabase/charts`)   | The chart spec applied: 2px lines, square bars with 2px gaps, recessive grid, one y-axis, slots in order, tones for status. `Sparkline` + `Delta` go in a `Stat` foot                  |
 
 Every piece stamps `data-slot`; a theme restyles it through `[data-slot=…]` CSS (Tier 1) or replaces the DOM through
 `BrandComponentsProvider` (Tier 2). Nothing below a component names a hex.

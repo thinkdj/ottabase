@@ -40,6 +40,7 @@
 - [@ottabase/cf](packages/cf/README.md): Framework-agnostic Cloudflare bindings wrapper for TypeScript applications.
 - [@ottabase/cf-pdf](packages/cf-pdf/README.md): @ottabase/cf-pdf is a normal Ottabase package for secure HTML-to-PDF export on Cloudflare Workers. It combines:
 - [@ottabase/cf-realtime](packages/cf-realtime/README.md): A Pusher alternative for real-time pub/sub using Cloudflare Actors (Durable Objects). Build scalable, real-time applications with WebSocket support, offline message queuing, and TypeScript-first API.
+- [@ottabase/charts](packages/charts/README.md): Charts for Ottabase apps, drawn to the Design System v1 chart spec: 2px lines, square-ended bars with 2px gaps, a recessive grid, one y-axis (two when a second unit earns it), series colours by role.…
 - [@ottabase/cli](packages/cli/README.md): Ottabase monorepo CLI tool for scaffolding, developing, building, and testing apps.
 - [@ottabase/comments](packages/comments/README.md): Threaded comment system for Ottabase apps with polymorphic targeting, reactions, and moderation.
 - [@ottabase/config](packages/config/README.md): Shared configuration utilities for Ottabase applications with environment variable support.

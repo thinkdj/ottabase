@@ -111,7 +111,8 @@ Use this as the default decision tree when shipping new work.
 3. **Theme-safe UI**
     - Prefer design tokens/CSS variables and existing UI packages (`@ottabase/ui`, `@ottabase/ui-tailwind`).
     - Avoid hardcoded one-off colors/sizes that bypass theme runtime.
-    - Icons: Lucide Icons, and Tabler, Radix as fallback. Charts: Tremor where applicable.
+    - Icons: Lucide Icons, and Tabler, Radix as fallback. Charts: `@ottabase/charts` (`/react` for the rendered charts);
+      do not add a chart library.
     - Always add dark mode classes for new UI.
 4. **Cloudflare edge-safe code**
     - Avoid Node-only APIs in app/worker code.

@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- `@ottabase/charts`: zero-dependency charts drawn to the Design System v1 chart spec. A headless root (layouts as plain
+  numbers and SVG paths, scales, formatters, `fillTimeSeries`/`pivot`/`groupOther`, `toCsv`) and SVG components on
+  `/react`: `LineChart`, `AreaChart`, `BarChart`, `ComboChart` (stacked and percent, a right axis, reference lines,
+  bands, annotations), `DonutChart`, `ProgressCircle`, `FunnelChart` (bars, or `variant="flow"` with stacked bands by
+  channel), `SankeyChart`, `BarList`, `CategoryBar`, `Tracker`, `Sparkline`, `Delta`, `Heatmap`, `CalendarHeatmap` and
+  `ChartSkeleton`. Brand chart tokens for colour, keyboard navigation, a hidden data table per chart for screen readers,
+  legend toggles, reduced-motion aware reveals, a `radius` scale (`none`/`sm`/`md`/`lg`, 0/2/4/8px) and PNG/SVG/CSV
+  export (CSV cells that would run as spreadsheet formulas are defused). AGENTS.MD now points chart work here instead of
+  Tremor.
 - `ottabase-update` skill: updates an app repo built on Ottabase (and Ottabase Pro, when the app has `packages/pro`) to
   the latest release while keeping every local change. Upstream is cloned into the git-ignored `.repos.upstream/`, and
   only what upstream changed since the app's last sync is applied; nothing is pushed or deployed.
