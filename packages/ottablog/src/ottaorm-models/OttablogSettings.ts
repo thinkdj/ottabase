@@ -5,6 +5,7 @@ import {
     normalizeLanguageCode,
     normalizeLockedTeaser,
     type BlogLanguageConfig,
+    type BlogScope,
     type LockedTeaserField,
 } from '../types';
 import { ottablogSettingsTable } from './OttablogSettings.schema';
@@ -114,75 +115,26 @@ export class OttablogSettings extends BaseModel {
         },
     };
 
-    static async forScope(options: {
-        appId?: string | null;
-        organizationId?: string | null;
-    }): Promise<OttablogSettings | null> {
-        const where: Record<string, unknown> = {};
-        if (options.appId !== undefined) where.appId = options.appId;
-        // Settings always belong to one exact scope. An omitted organization is
-        // the platform scope, not an unscoped query that may pick another org's row.
-        where.organizationId = options.organizationId ?? null;
-        return (await this.first(where)) as OttablogSettings | null;
+    /** The blog's own settings row; null until its first save (defaults apply). */
+    static async forBlog(scope: BlogScope): Promise<OttablogSettings | null> {
+        return (await this.first({ ...scope })) as OttablogSettings | null;
     }
 
-    /**
-     * Resolve the effective language policy for a blog scope. Organization blogs
-     * inherit the platform policy until an organization administrator saves an
-     * explicit override for that organization.
-     */
-    static async forScopeOrPlatform(options: {
-        appId?: string | null;
-        organizationId?: string | null;
-    }): Promise<OttablogSettings | null> {
-        const scoped = await this.forScope(options);
-        if (scoped || options.organizationId == null) return scoped;
-        return this.forScope({ appId: options.appId, organizationId: null });
-    }
-
-    static async ensure(
-        options: { appId?: string | null; organizationId?: string | null },
-        seed: Record<string, unknown> = {},
-    ): Promise<OttablogSettings> {
-        const existing = await this.forScope(options);
+    /** The blog's settings row, created with defaults on first write. */
+    static async ensure(scope: BlogScope): Promise<OttablogSettings> {
+        const existing = await this.forBlog(scope);
         if (existing) return existing;
         try {
-            return (await this.create({
-                ...seed,
-                appId: options.appId ?? null,
-                organizationId: options.organizationId ?? null,
-            })) as OttablogSettings;
+            return (await this.create({ ...scope })) as OttablogSettings;
         } catch (error) {
             // Two first requests can race before either sees the row. The scope unique index
             // makes one insert win; return that winner instead of surfacing a false 500.
             if (/unique|constraint|duplicate/i.test(error instanceof Error ? error.message : String(error))) {
-                const raced = await this.forScope(options);
+                const raced = await this.forBlog(scope);
                 if (raced) return raced;
             }
             throw error;
         }
-    }
-
-    /**
-     * The scope's own row for a partial write (e.g. only the teaser). An organization saving its
-     * first setting starts from the policy it inherited, so its languages do not reset to defaults.
-     */
-    static async ensureOwn(options: {
-        appId?: string | null;
-        organizationId?: string | null;
-    }): Promise<OttablogSettings> {
-        const inherited = await this.forScopeOrPlatform(options);
-        if (inherited && (inherited.get('organizationId') ?? null) === (options.organizationId ?? null))
-            return inherited;
-        const seed = inherited
-            ? {
-                  defaultLanguage: inherited.get('defaultLanguage'),
-                  supportedLanguages: inherited.get('supportedLanguages'),
-                  fallbackToDefault: inherited.get('fallbackToDefault'),
-                  lockedTeaser: inherited.get('lockedTeaser'),
-              }
-            : {};
-        return this.ensure(options, seed);
     }
 
     config(): BlogLanguageConfig {

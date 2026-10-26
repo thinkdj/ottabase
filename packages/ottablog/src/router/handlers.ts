@@ -14,6 +14,7 @@ import {
     globalRLS,
     INSIDER_ROLE_NAME,
     MAX_SEARCH_TERM_BYTES,
+    Organization,
     OrganizationMember,
     RLSError,
     Role,
@@ -41,8 +42,9 @@ import {
     type BlogExportPost,
     type BlogImportResult,
 } from '../import-export';
+import { blogBasePath, blogPostPath } from '../paths';
 import { signPreviewToken, verifyPreviewToken } from '../preview-token';
-import { StudioManager } from '../studio';
+import { StudioManager, type StudioState } from '../studio';
 import {
     ContentValidationError,
     generateSlug,
@@ -50,13 +52,16 @@ import {
     normalizeLanguageCode,
     POST_STATUSES,
     type BlogLanguage,
+    type BlogInfo,
     type BlogLanguageConfig,
+    type BlogScope,
     type EditorJSData,
     type LockedTeaserField,
     type PostCrosspost,
     type PostStatus,
 } from '../types';
 import type {
+    BlogAdminResult,
     BlogDemoPostSeed,
     BlogEditorialWriteResult,
     BlogHandlers,
@@ -80,32 +85,27 @@ async function readJson<T>(request: Request): Promise<T> {
     }
 }
 
-function resolveOrgId(request: Request, fallback: string | null = null): string | null {
-    const fromSession = fallback?.trim();
-    if (fromSession && fromSession !== 'null' && fromSession !== 'undefined') return fromSession;
-
-    const fromHeader = request.headers.get('x-org-id')?.trim();
-    if (fromHeader && fromHeader !== 'null' && fromHeader !== 'undefined') return fromHeader;
-
-    return null;
-}
-
-/**
- * Public blog lookup by slug: always discriminates by appId.
- * Never queries by slug alone — the same slug can exist across apps (see Post schema indexes).
- * In org mode the lookup also discriminates by organizationId (null = platform-owned rows),
- * since org mode allows the same slug across orgs within one app.
- */
+/** A published post of one blog by slug. Slugs are unique per blog, never across blogs. */
 async function findPublishedPostBySlug(
     slug: string,
-    appId: string,
+    blog: BlogScope,
     contentTypeParam: string | null,
-    organizationId?: string | null,
 ): Promise<Post | null> {
-    const primary: Record<string, unknown> = { slug, status: 'published', appId };
-    if (contentTypeParam) primary.contentType = contentTypeParam;
-    if (organizationId !== undefined) primary.organizationId = organizationId;
-    return Post.first(primary);
+    return Post.first({
+        slug,
+        status: 'published',
+        ...blog,
+        ...(contentTypeParam ? { contentType: contentTypeParam } : {}),
+    });
+}
+
+/** Responses that depend on who is asking, or on state an admin just changed. */
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
+/** The blog a public request reads: its scope, and its public identity (null for the site blog). */
+interface ResolvedBlog {
+    scope: BlogScope;
+    info: BlogInfo | null;
 }
 
 /** Conservative D1 bound-parameter chunk size for IN (...) lists that carry no other bound conditions. */
@@ -248,12 +248,11 @@ export function demoSeedProblems(seeds: readonly BlogDemoPostSeed[]): string[] {
 type WriteCheck = (entity: typeof Post.entity, data: Record<string, unknown>) => void;
 
 /**
- * Taxonomy by NAME, for import and the demo seed: find-or-create a tag, category or series in the
- * blog's vocabulary, then link terms to a post. `tenantOrg` is undefined in platform mode (one
- * app-wide vocabulary) and the organization in org mode. `check` runs before every write; import
- * passes its RLS check, the platform-owner seed writes trusted fixtures and passes none.
+ * Taxonomy by NAME, for import and the demo seed: find-or-create a tag, category or series in one
+ * blog's vocabulary, then link terms to a post. `check` runs before every write; import passes its
+ * RLS check, the platform-owner seed writes trusted fixtures and passes none.
  */
-function taxonomyByName(appId: string, tenantOrg: string | null | undefined, check: WriteCheck = () => {}) {
+function taxonomyByName(blog: BlogScope, check: WriteCheck = () => {}) {
     const termIds = new Map<string, string>();
     const ensureTerm = async (kind: 'tag' | 'category' | 'series', name: string): Promise<string> => {
         const key = `${kind}:${name.toLowerCase()}`;
@@ -261,13 +260,12 @@ function taxonomyByName(appId: string, tenantOrg: string | null | undefined, che
         if (cached) return cached;
         const Model = (kind === 'tag' ? PostTag : kind === 'category' ? PostCategory : PostSeries) as typeof PostTag;
         const nameField = kind === 'series' ? 'title' : 'name';
-        const where: Record<string, unknown> = { appId };
+        const where: Record<string, unknown> = { ...blog };
         if (kind !== 'series') where.type = 'post';
-        if (tenantOrg !== undefined) where.organizationId = tenantOrg;
         const slug = generateSlug(name);
         let term = await Model.first(slug ? { ...where, slug } : { ...where, [nameField]: name });
         if (!term) {
-            const data = { ...where, organizationId: tenantOrg ?? null, [nameField]: name };
+            const data = { ...where, [nameField]: name };
             check(Model.entity, data);
             term = await Model.create(data);
         }
@@ -325,7 +323,7 @@ interface LockState {
 
 const UNLOCKED: LockState = { lockedCategoryIds: new Set(), teaser: [], restricted: false };
 
-/** Grant scope of the platform blog: SYSTEM-scoped grants (rbac's SYSTEM_ORGANIZATION_ID). */
+/** Grant scope of the site blog: SYSTEM-scoped grants (rbac's SYSTEM_ORGANIZATION_ID). */
 const SYSTEM_GRANT_SCOPE = 'system';
 
 /**
@@ -392,8 +390,6 @@ async function enrichPostsJsonBatch(
     options?: {
         language?: string | null;
         languageConfig?: BlogLanguageConfig;
-        appId?: string | null;
-        organizationId?: string | null;
         /**
          * Locked categories: flags locked posts and, for a restricted reader, swaps each for its
          * teaser or drops it. Checked against the page's real category links as well as the
@@ -493,11 +489,7 @@ async function enrichPostsJsonBatch(
     const translationByPost = new Map<string, PostTranslation>();
     const publishedLanguagesByPost = new Map<string, string[]>();
     const language = options?.language;
-    const publishedTranslations = await PostTranslation.forPublicPosts(postIds, {
-        status: 'published',
-        ...(options?.appId !== undefined ? { appId: options.appId } : {}),
-        ...(options?.organizationId !== undefined ? { organizationId: options.organizationId } : {}),
-    });
+    const publishedTranslations = await PostTranslation.forPublicPosts(postIds);
     for (const translation of publishedTranslations) {
         const postId = translation.get('postId') as string;
         const codes = publishedLanguagesByPost.get(postId) ?? [];
@@ -649,11 +641,7 @@ async function publicPostJson(
     const j = record.toJson() as Record<string, unknown>;
     const { privateNotes, ...baseRest } = j;
     const publishedTranslations = options?.languageConfig
-        ? await PostTranslation.forPublicPosts([String(record.get('id'))], {
-              status: 'published',
-              appId: record.get('appId') as string | null,
-              organizationId: record.get('organizationId') as string | null,
-          })
+        ? await PostTranslation.forPublicPosts([String(record.get('id'))])
         : [];
     const rest = mergeTranslationJson(
         baseRest,
@@ -735,39 +723,77 @@ async function publicPostJson(
 export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>): BlogHandlers<Env> {
     type Ctx = BlogRequestContext<Env>;
 
-    function resolveMode(env: Env): 'platform' | 'org' {
-        if (typeof config.mode === 'function') return config.mode(env);
-        return config.mode ?? 'platform';
-    }
-
     function resolveAppId(context: Ctx): string {
         // App scope is server configuration, never request-controlled input.
         return config.defaultAppId(context.env);
     }
 
-    /**
-     * Resolve the tenant dimension for this request.
-     * Platform mode: undefined (queries carry no org filter — column is ignored).
-     * Org mode: the app-resolved organizationId, or null for platform-owned content.
-     */
-    async function resolveTenant(context: Ctx): Promise<string | null | undefined> {
-        if (resolveMode(context.env) !== 'org') return undefined;
-        const resolved = await config.resolveOrganizationId?.(context);
-        return resolved ?? null;
+    function orgBlogsEnabled(env: Env): boolean {
+        return typeof config.orgBlogs === 'function' ? config.orgBlogs(env) : config.orgBlogs === true;
     }
 
-    /** One settings read per request and scope: the language and lock policies share the row. */
+    const blogNotFound = () => errorResponse('Blog not found', 404, { code: 'BLOG_NOT_FOUND' });
+
+    /**
+     * The blog a PUBLIC request reads, from its URL only: `?blog=<orgSlug>` names an organization's
+     * blog, no param is the site blog. Never the visitor's own workspace: a reader on another
+     * organization's blog must see that blog, and anyone may ask for any blog. 404 for an unknown
+     * or inactive organization, or when organization blogs are off.
+     */
+    async function blogFromUrl(context: Ctx): Promise<ResolvedBlog | Response> {
+        const appId = resolveAppId(context);
+        const slug = context.url.searchParams.get('blog')?.trim();
+        if (!slug) return { scope: { appId, organizationId: null }, info: null };
+        if (!orgBlogsEnabled(context.env)) return blogNotFound();
+        const org = await Organization.findBySlug(slug);
+        if (!org || (org.status ?? 'active') !== 'active') return blogNotFound();
+        return { scope: { appId, organizationId: org.id }, info: { slug: org.slug, name: org.name } };
+    }
+
+    /**
+     * An organization's blog goes public with its first published post. Before that it does not
+     * exist for readers, so the public endpoints cannot be used to enumerate organizations.
+     */
+    async function notYetPublic(blog: ResolvedBlog): Promise<Response | null> {
+        if (blog.scope.organizationId === null) return null;
+        const [post] = await Post.where(
+            { ...blog.scope, status: 'published', contentType: { $ne: 'changelog' } },
+            { select: ['id'], limit: 1 },
+        );
+        return post ? null : blogNotFound();
+    }
+
+    /** The public blog of this request (see blogFromUrl), once it is public. */
+    async function publicBlog(context: Ctx): Promise<ResolvedBlog | Response> {
+        const blog = await blogFromUrl(context);
+        if (blog instanceof Response) return blog;
+        return (await notYetPublic(blog)) ?? blog;
+    }
+
+    /**
+     * The blog an EDITORIAL request works on (Studio, imports, preview links): the host's choice,
+     * the site blog by default. A request, not a grant: every caller re-checks access to it.
+     */
+    async function editorialScope(context: Ctx): Promise<BlogScope> {
+        const organizationId = (await config.resolveEditorialScope?.(context)) ?? null;
+        return { appId: resolveAppId(context), organizationId };
+    }
+
+    /** A blog's public identity for a scope: null for the site blog. */
+    async function blogInfo(scope: BlogScope): Promise<BlogInfo | null> {
+        if (scope.organizationId === null) return null;
+        const org = await Organization.find(scope.organizationId);
+        return org ? { slug: org.get('slug') as string, name: org.get('name') as string } : null;
+    }
+
+    /** One settings read per request and blog: the language and lock policies share the row. */
     const settingsByRequest = new WeakMap<Request, Map<string, Promise<OttablogSettings | null>>>();
-    function settingsFor(
-        context: Ctx,
-        appId: string,
-        organizationId: string | null | undefined,
-    ): Promise<OttablogSettings | null> {
-        let byScope = settingsByRequest.get(context.request);
-        if (!byScope) settingsByRequest.set(context.request, (byScope = new Map()));
-        const key = appId + '|' + String(organizationId);
-        let settings = byScope.get(key);
-        if (!settings) byScope.set(key, (settings = OttablogSettings.forScopeOrPlatform({ appId, organizationId })));
+    function settingsFor(context: Ctx, blog: BlogScope): Promise<OttablogSettings | null> {
+        let byBlog = settingsByRequest.get(context.request);
+        if (!byBlog) settingsByRequest.set(context.request, (byBlog = new Map()));
+        const key = blog.appId + '|' + String(blog.organizationId);
+        let settings = byBlog.get(key);
+        if (!settings) byBlog.set(key, (settings = OttablogSettings.forBlog(blog)));
         return settings;
     }
 
@@ -776,17 +802,12 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
      * locked; the access check runs only when something is. `anonymous` skips it for responses a
      * shared cache may store (RSS, sitemap): they must look the same for everyone.
      */
-    async function resolveLock(
-        context: Ctx,
-        appId: string,
-        organizationId: string | null | undefined,
-        options?: { anonymous?: boolean },
-    ): Promise<LockState> {
-        const lockedCategoryIds = await PostCategory.lockedIdsForScope({ appId, organizationId });
+    async function resolveLock(context: Ctx, blog: BlogScope, options?: { anonymous?: boolean }): Promise<LockState> {
+        const lockedCategoryIds = await PostCategory.lockedIdsForScope(blog);
         if (lockedCategoryIds.size === 0) return UNLOCKED;
-        const settings = await settingsFor(context, appId, organizationId);
+        const settings = await settingsFor(context, blog);
         const teaser = settings?.lockedTeaser() ?? [];
-        const restricted = options?.anonymous === true || !(await canReadLocked(context, organizationId ?? null));
+        const restricted = options?.anonymous === true || !(await canReadLocked(context, blog.organizationId));
         return { lockedCategoryIds, teaser, restricted };
     }
 
@@ -808,12 +829,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return links.some((link) => lock.lockedCategoryIds.has(String(link.get('categoryId'))));
     }
 
-    async function languageConfigFor(
-        context: Ctx,
-        appId: string,
-        organizationId: string | null | undefined,
-    ): Promise<BlogLanguageConfig> {
-        const settings = await settingsFor(context, appId, organizationId);
+    async function languageConfigFor(context: Ctx, blog: BlogScope): Promise<BlogLanguageConfig> {
+        const settings = await settingsFor(context, blog);
         return (
             settings?.config() ?? {
                 defaultLanguage: 'en',
@@ -869,119 +886,89 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     async function translationFor(
         postId: string,
         language: string | null,
-        appId: string,
-        organizationId: string | null | undefined,
         configForBlog: BlogLanguageConfig,
     ): Promise<PostTranslation | null> {
         if (!language) return null;
         if (!configForBlog.supportedLanguages.some((item) => item.code === language)) return null;
-        return PostTranslation.findForPost(postId, language, { appId, organizationId, status: 'published' });
+        return PostTranslation.findForPost(postId, language, 'published');
     }
 
     async function findLocalizedPostBySlug(
         context: Ctx,
         slug: string,
-        appId: string,
+        blog: BlogScope,
         contentTypeParam: string | null,
-        organizationId: string | null | undefined,
         languageConfig: BlogLanguageConfig,
     ): Promise<{ record: Post; translation: PostTranslation | null; language: string } | null> {
         const language = requestedLanguage(context, languageConfig);
         const hasExplicitLanguage = Boolean(context.url.searchParams.get('lang')?.trim());
-        if (language && languageConfig.supportedLanguages.some((item) => item.code === language)) {
-            const translation = await PostTranslation.findBySlug(slug, {
-                appId,
-                organizationId,
-                language,
+        const isEnabled = (code: unknown) => languageConfig.supportedLanguages.some((item) => item.code === code);
+        const parentOf = (translation: PostTranslation) =>
+            Post.first({
+                id: translation.get('postId'),
                 status: 'published',
+                ...blog,
+                ...(contentTypeParam ? { contentType: contentTypeParam } : {}),
             });
-            if (translation) {
-                const baseWhere: Record<string, unknown> = {
-                    id: translation.get('postId'),
-                    status: 'published',
-                    appId,
-                };
-                if (contentTypeParam) baseWhere.contentType = contentTypeParam;
-                if (organizationId !== undefined) baseWhere.organizationId = organizationId;
-                const record = await Post.first(baseWhere);
-                if (record) return { record, translation, language };
-            }
+
+        if (language && isEnabled(language)) {
+            const translation = await PostTranslation.findBySlug(slug, { ...blog, language, status: 'published' });
+            const record = translation ? await parentOf(translation) : null;
+            if (translation && record) return { record, translation, language };
         }
 
         // A translated slug is a complete public URL by itself. If there is no
         // explicit `?lang=` selector, resolve it across enabled languages even
         // when the browser's Accept-Language prefers another locale.
         if (!hasExplicitLanguage) {
-            const translation = await PostTranslation.findBySlug(slug, {
-                appId,
-                organizationId,
-                status: 'published',
-            });
+            const translation = await PostTranslation.findBySlug(slug, { ...blog, status: 'published' });
             const translationLanguage = translation?.get('language');
-            if (
-                translation &&
-                typeof translationLanguage === 'string' &&
-                languageConfig.supportedLanguages.some((item) => item.code === translationLanguage)
-            ) {
-                const baseWhere: Record<string, unknown> = {
-                    id: translation.get('postId'),
-                    status: 'published',
-                    appId,
-                };
-                if (contentTypeParam) baseWhere.contentType = contentTypeParam;
-                if (organizationId !== undefined) baseWhere.organizationId = organizationId;
-                const record = await Post.first(baseWhere);
+            if (translation && typeof translationLanguage === 'string' && isEnabled(translationLanguage)) {
+                const record = await parentOf(translation);
                 if (record) return { record, translation, language: translationLanguage };
             }
         }
 
-        const record = await findPublishedPostBySlug(slug, appId, contentTypeParam, organizationId);
+        const record = await findPublishedPostBySlug(slug, blog, contentTypeParam);
         if (!record) return null;
-        const translation = await translationFor(
-            record.get('id') as string,
-            language,
-            appId,
-            organizationId,
-            languageConfig,
-        );
+        const translation = await translationFor(record.get('id') as string, language, languageConfig);
         if (translation) return { record, translation, language: language! };
         const canonicalLanguage = (record.get('language') as string) || languageConfig.defaultLanguage;
-        if (
-            language &&
-            language !== canonicalLanguage &&
-            languageConfig.supportedLanguages.some((item) => item.code === language) &&
-            !languageConfig.fallbackToDefault
-        )
+        if (language && language !== canonicalLanguage && isEnabled(language) && !languageConfig.fallbackToDefault)
             return null;
         return { record, translation: null, language: canonicalLanguage };
     }
 
     /**
-     * Guard a Studio operation against its RESOLVED blog scope: null/undefined
-     * target = the platform blog (platform admin), an org id = that org's blog
-     * (its org admin, or a platform admin) via requireScopedStudioAdmin. Without
-     * the seam, falls back to requireAdmin — the platform-only behavior.
+     * Guard a Studio operation on one blog: null = the site blog (platform admin), an id = that
+     * organization's blog (its admin, or a platform admin). Without the scoped seam: platform only.
      */
     async function requireStudioAdmin(
         context: Ctx,
-        organizationId: string | null | undefined,
-    ): Promise<import('./types').BlogAdminResult | Response> {
-        if (config.requireScopedStudioAdmin) {
-            return config.requireScopedStudioAdmin(context, { organizationId: organizationId ?? null });
-        }
+        organizationId: string | null,
+    ): Promise<BlogAdminResult | Response> {
+        if (config.requireScopedStudioAdmin) return config.requireScopedStudioAdmin(context, { organizationId });
         return config.requireAdmin(context);
     }
 
+    /** The caller's editorial blog, once they are proven its Studio admin. */
+    async function studioBlog(context: Ctx): Promise<{ blog: BlogScope; admin: BlogAdminResult } | Response> {
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const blog = await editorialScope(context);
+        const admin = await requireStudioAdmin(context, blog.organizationId);
+        if (admin instanceof Response) return admin;
+        return { blog, admin };
+    }
+
     /**
-     * Public rendering shape of the studio state: the active theme (the only
-     * one visitors render) and enabled plugins with config, plus bare
-     * {pluginId, enabled:false} skeletons for disabled rows so the client can
-     * deactivate statically-registered defaults. Inactive themes' rows (and
-     * their tokens/config) and disabled plugins' configs stay admin-only —
-     * in org mode this endpoint is reachable for ANY org via request-supplied
-     * scope, so the full payload must not be an anonymous enumeration surface.
+     * Public rendering shape of the studio state: the active theme (the only one visitors render)
+     * and enabled plugins with config, plus bare {pluginId, enabled:false} skeletons for disabled
+     * rows so the client can deactivate statically-registered defaults. Inactive themes (and their
+     * tokens/config) and disabled plugins' configs stay admin-only: any blog's public state is
+     * readable by anyone, so the full payload must not be an anonymous enumeration surface.
      */
-    function toPublicStudioState(state: Awaited<ReturnType<typeof StudioManager.getState>>) {
+    function toPublicStudioState(state: StudioState) {
         return {
             activeThemeId: state.activeThemeId,
             languageConfig: state.languageConfig,
@@ -992,110 +979,97 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         };
     }
 
-    async function handleBlogStudioState(context: Ctx): Promise<Response> {
-        // Public endpoint: the runtime needs active theme + enabled plugin config to render blog pages
-        // for every visitor (BlogStudioProvider is mounted globally). Mutation endpoints below remain
-        // admin-guarded. Default-row seeding is gated to admin callers to avoid public write side effects.
-        const { env } = context;
-        const connectError = config.connect(env);
-        if (connectError) return connectError;
-
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const orgScope = organizationId !== undefined ? { organizationId } : {};
-
-        // The guard resolves the full session context — memoize so seeding
-        // and the ?full=1 payload decision cost at most one resolution. Scoped:
-        // an org admin administers THEIR org's studio; the platform blog
-        // (null/undefined tenant) requires a platform admin.
-        let adminMemo: boolean | null = null;
-        const callerIsAdmin = async (): Promise<boolean> => {
-            if (adminMemo === null) {
-                const admin = await requireStudioAdmin(context, organizationId);
-                adminMemo = !(admin instanceof Response);
+    /**
+     * A blog's default theme and plugin rows, created on its admin's first Studio load (never by a
+     * visitor: no public write side effects). Until then the client renders its in-memory defaults.
+     */
+    async function seedStudioDefaults(blog: BlogScope, state: StudioState): Promise<void> {
+        // Unique-violation tolerant: two concurrent admin loads may race the same seed inserts; the
+        // loser's constraint error is benign (the row exists).
+        const seedTolerant = async (create: () => Promise<unknown>) => {
+            try {
+                await create();
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                if (!/unique|constraint|duplicate/i.test(message)) throw error;
             }
-            return adminMemo;
         };
-
-        let state = await StudioManager.getState(appId, organizationId);
-
-        const needsSeeding = state.themes.length === 0 || state.plugins.length === 0;
-        if (needsSeeding && (await callerIsAdmin())) {
-            // Only seed default theme/plugin rows if the caller is an admin — avoids any unauthenticated
-            // visitor triggering DB writes. Non-admins get the current (possibly empty) state; the client
-            // falls back to in-memory defaults registered by registerBlogThemesAndPlugins().
-            // Unique-violation tolerant: two concurrent admin loads may race the same
-            // seed inserts; the loser's constraint error is benign (the row exists).
-            const seedTolerant = async (create: () => Promise<unknown>) => {
-                try {
-                    await create();
-                } catch (error) {
-                    const message = error instanceof Error ? error.message : String(error);
-                    if (!/unique|constraint|duplicate/i.test(message)) throw error;
-                }
-            };
-            if (state.themes.length === 0) {
-                await seedTolerant(() =>
-                    OttablogTheme.create({
-                        themeId: 'default',
-                        name: 'Default',
-                        description: 'Clean, modern default theme with dark mode support',
-                        version: '1.0.0',
-                        appId,
-                        ...orgScope,
-                        isActive: true,
-                    }),
-                );
-                await seedTolerant(() =>
-                    OttablogTheme.create({
-                        themeId: 'minimal',
-                        name: 'Minimal',
-                        description: 'Clean, minimalist theme focused on typography and readability',
-                        version: '1.0.0',
-                        author: 'Ottabase',
-                        appId,
-                        ...orgScope,
-                        isActive: false,
-                    }),
-                );
-            }
-            if (state.plugins.length === 0) {
-                await seedTolerant(() =>
-                    OttablogPlugin.create({
-                        pluginId: 'content-injector-plugin',
-                        name: 'Content Injector Plugin',
-                        description: 'Injects custom content into posts',
-                        appId,
-                        ...orgScope,
-                        enabled: false,
-                    }),
-                );
-            }
-            state = await StudioManager.getState(appId, organizationId);
+        if (state.themes.length === 0) {
+            await seedTolerant(() =>
+                OttablogTheme.create({
+                    themeId: 'default',
+                    name: 'Default',
+                    description: 'Clean, modern default theme with dark mode support',
+                    version: '1.0.0',
+                    ...blog,
+                    isActive: true,
+                }),
+            );
+            await seedTolerant(() =>
+                OttablogTheme.create({
+                    themeId: 'minimal',
+                    name: 'Minimal',
+                    description: 'Clean, minimalist theme focused on typography and readability',
+                    version: '1.0.0',
+                    author: 'Ottabase',
+                    ...blog,
+                    isActive: false,
+                }),
+            );
         }
-
-        // Full state (inactive themes, disabled-plugin configs) is the admin
-        // Studio's payload — explicit opt-in via ?full=1 plus the admin gate.
-        // Everyone else gets the public rendering shape.
-        if (context.url.searchParams.get('full') === '1' && (await callerIsAdmin())) {
-            return jsonResponse(state);
+        if (state.plugins.length === 0) {
+            await seedTolerant(() =>
+                OttablogPlugin.create({
+                    pluginId: 'content-injector-plugin',
+                    name: 'Content Injector Plugin',
+                    description: 'Injects custom content into posts',
+                    ...blog,
+                    enabled: false,
+                }),
+            );
         }
-        return jsonResponse(toPublicStudioState(state));
     }
 
-    async function handleBlogStudioLanguages(context: Ctx): Promise<Response> {
+    /**
+     * Two payloads. Public (`?blog=`): what a reader's browser needs to render that blog: its
+     * identity, active theme, enabled plugins and languages. Full (`?full=1`): the Studio of the
+     * caller's editorial blog, for its admin only.
+     */
+    async function handleBlogStudioState(context: Ctx): Promise<Response> {
         const connectError = config.connect(context.env);
         if (connectError) return connectError;
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        if (context.request.method === 'GET') {
-            // Tenant-specific mutable Studio state must never be reused after a save.
-            return jsonResponse(await languageConfigFor(context, appId, organizationId), 200, {
-                headers: { 'Cache-Control': 'no-store' },
-            });
+
+        if (context.url.searchParams.get('full') === '1') {
+            const studio = await studioBlog(context);
+            if (studio instanceof Response) return studio;
+            let state = await StudioManager.getState(studio.blog);
+            if (state.themes.length === 0 || state.plugins.length === 0) {
+                await seedStudioDefaults(studio.blog, state);
+                state = await StudioManager.getState(studio.blog);
+            }
+            return jsonResponse({ ...state, blog: await blogInfo(studio.blog) }, 200, { headers: NO_STORE });
         }
-        const admin = await requireStudioAdmin(context, organizationId);
-        if (admin instanceof Response) return admin;
+
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+        return jsonResponse({ ...toPublicStudioState(await StudioManager.getState(blog.scope)), blog: blog.info });
+    }
+
+    /** The blog an editor works on: its identity (null for the site blog) and language policy. */
+    async function handleBlogStudioBlog(context: Ctx): Promise<Response> {
+        const auth = await (config.requireContentEditor ?? config.requireAdmin)(context);
+        if (auth instanceof Response) return auth;
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const blog = await editorialScope(context);
+        const [info, languageConfig] = await Promise.all([blogInfo(blog), languageConfigFor(context, blog)]);
+        return jsonResponse({ blog: info, languageConfig }, 200, { headers: NO_STORE });
+    }
+
+    /** Save the editorial blog's language policy (its Studio admin). */
+    async function handleBlogStudioLanguages(context: Ctx): Promise<Response> {
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
         const body = await readJson<{
             defaultLanguage?: unknown;
             supportedLanguages?: unknown;
@@ -1110,13 +1084,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('fallbackToDefault must be a boolean', 400, { code: 'VALIDATION_ERROR' });
         }
         try {
-            const settings = await OttablogSettings.ensure({ appId, organizationId });
+            const settings = await OttablogSettings.ensure(studio.blog);
             await settings.updateLanguages({
                 defaultLanguage: body.defaultLanguage,
                 supportedLanguages: body.supportedLanguages as BlogLanguage[],
                 fallbackToDefault: body.fallbackToDefault as boolean | undefined,
             });
-            return jsonResponse(settings.config(), 200, { headers: { 'Cache-Control': 'no-store' } });
+            return jsonResponse(settings.config(), 200, { headers: NO_STORE });
         } catch (error) {
             if (error instanceof ContentValidationError || error instanceof DomainValidationError) {
                 return errorResponse(error.message, error instanceof DomainValidationError ? error.status : 400, {
@@ -1131,29 +1105,24 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     // LOCKED CATEGORIES: teaser policy + invited readers (studio admin)
     // ============================================================
 
-    /** The blog scope a studio access request administers, and where its reader grants live. */
+    /** The blog a studio access request administers, and where its reader grants live. */
     async function accessScope(context: Ctx) {
-        const connectError = config.connect(context.env);
-        if (connectError) return connectError;
-        const organizationId = await resolveTenant(context);
-        const admin = await requireStudioAdmin(context, organizationId);
-        if (admin instanceof Response) return admin;
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
         return {
-            appId: resolveAppId(context),
-            organizationId,
-            // Platform blog: SYSTEM-scoped grants. Org blog: grants in that org (members only).
-            grantScope: organizationId ?? SYSTEM_GRANT_SCOPE,
-            adminUserId: admin.session?.user?.id ?? undefined,
+            ...studio.blog,
+            // Site blog: SYSTEM-scoped grants. Org blog: grants in that org (members only).
+            grantScope: studio.blog.organizationId ?? SYSTEM_GRANT_SCOPE,
+            adminUserId: studio.admin.session?.user?.id ?? undefined,
         };
     }
     type AccessScope = Exclude<Awaited<ReturnType<typeof accessScope>>, Response>;
 
     async function accessState(scope: AccessScope) {
-        const where: Record<string, unknown> = { appId: scope.appId };
-        if (scope.organizationId !== undefined) where.organizationId = scope.organizationId;
+        const blog = { appId: scope.appId, organizationId: scope.organizationId };
         const [settings, categories, role] = await Promise.all([
-            OttablogSettings.forScopeOrPlatform({ appId: scope.appId, organizationId: scope.organizationId }),
-            PostCategory.where(where, { select: ['id', 'name', 'slug', 'parentId', 'isLocked'] }),
+            OttablogSettings.forBlog(blog),
+            PostCategory.where(blog, { select: ['id', 'name', 'slug', 'parentId', 'isLocked'] }),
             Role.findByName(INSIDER_ROLE_NAME),
         ]);
         const lockedIds = PostCategory.effectiveLockedIds(
@@ -1202,13 +1171,13 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             if (!Array.isArray(body.lockedTeaser)) {
                 return errorResponse('lockedTeaser must be an array of field names', 400, { code: 'VALIDATION_ERROR' });
             }
-            const settings = await OttablogSettings.ensureOwn({
+            const settings = await OttablogSettings.ensure({
                 appId: scope.appId,
                 organizationId: scope.organizationId,
             });
             await settings.updateLockedTeaser(body.lockedTeaser);
         }
-        return jsonResponse(await accessState(scope), 200, { headers: { 'Cache-Control': 'no-store' } });
+        return jsonResponse(await accessState(scope), 200, { headers: NO_STORE });
     }
 
     /** POST { email }: give an existing account reader access to this blog's locked categories. */
@@ -1245,7 +1214,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (!role) return errorResponse('Reader role is unavailable', 500, { code: 'ROLE_MISSING' });
         await user.assignRole(String(role.get('id')), scope.adminUserId, scope.grantScope);
         await readerAccessChanged(context.env, userId);
-        return jsonResponse(await accessState(scope), 200, { headers: { 'Cache-Control': 'no-store' } });
+        return jsonResponse(await accessState(scope), 200, { headers: NO_STORE });
     }
 
     /** DELETE: revoke a reader's access to this blog's locked categories. */
@@ -1257,7 +1226,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             await UserRole.removeRole(userId, String(role.get('id')), scope.grantScope);
             await readerAccessChanged(context.env, userId);
         }
-        return jsonResponse(await accessState(scope), 200, { headers: { 'Cache-Control': 'no-store' } });
+        return jsonResponse(await accessState(scope), 200, { headers: NO_STORE });
     }
 
     async function translationPostFor(
@@ -1284,16 +1253,12 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return {
             post,
             securityContext,
-            languageConfig: await languageConfigFor(
-                context,
-                (securityContext.appId ?? appIdForPost(post)) as string,
-                securityContext.organizationId,
-            ),
+            // The post's own blog decides its languages.
+            languageConfig: await languageConfigFor(context, {
+                appId: post.get('appId') as string,
+                organizationId: (post.get('organizationId') as string | null) ?? null,
+            }),
         };
-    }
-
-    function appIdForPost(post: Post): string {
-        return (post.get('appId') as string) || '';
     }
 
     function translationPayload(body: BlogTranslationBody, language: string): Record<string, unknown> {
@@ -1320,7 +1285,6 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     async function handleBlogPostTranslations(context: Ctx, postId: string): Promise<Response> {
         const result = await translationPostFor(context, postId, 'read');
         if (result instanceof Response) return result;
-        const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
         const translationLanguage = context.url.searchParams.get('language')?.trim();
         let translations: PostTranslation[];
         if (translationLanguage) {
@@ -1332,16 +1296,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                     code: 'VALIDATION_ERROR',
                 });
             }
-            const translation = await PostTranslation.findForPost(postId, normalizedLanguage, {
-                appId: scopedAppId,
-                organizationId: result.securityContext.organizationId,
-            });
+            const translation = await PostTranslation.findForPost(postId, normalizedLanguage);
             translations = translation ? [translation] : [];
         } else {
-            translations = await PostTranslation.forPostSummary(postId, {
-                appId: scopedAppId,
-                organizationId: result.securityContext.organizationId,
-            });
+            translations = await PostTranslation.forPostSummary(postId);
         }
         return jsonResponse(
             {
@@ -1352,7 +1310,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 ),
             },
             200,
-            { headers: { 'Cache-Control': 'no-store' } },
+            { headers: NO_STORE },
         );
     }
 
@@ -1415,11 +1373,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 code: 'VALIDATION_ERROR',
             });
         }
-        const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
-        const translation = await PostTranslation.findForPost(postId, language, {
-            appId: scopedAppId,
-            organizationId: result.securityContext.organizationId,
-        });
+        const translation = await PostTranslation.findForPost(postId, language);
         if (!translation) return errorResponse('Translation not found', 404, { code: 'NOT_FOUND' });
         const body = await readJson<BlogTranslationBody>(context.request);
         const currentStatus = translation.get('status') as PostStatus;
@@ -1463,11 +1417,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 code: 'VALIDATION_ERROR',
             });
         }
-        const scopedAppId = (result.post.get('appId') as string | null) ?? result.securityContext.appId;
-        const translation = await PostTranslation.findForPost(postId, language, {
-            appId: scopedAppId,
-            organizationId: result.securityContext.organizationId,
-        });
+        const translation = await PostTranslation.findForPost(postId, language);
         if (!translation) return errorResponse('Translation not found', 404, { code: 'NOT_FOUND' });
         if (
             (translation.get('status') === 'published' || translation.get('status') === 'scheduled') &&
@@ -1481,65 +1431,35 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     async function handleBlogStudioActivateTheme(context: Ctx): Promise<Response> {
-        const { request, env } = context;
-        const connectError = config.connect(env);
-        if (connectError) return connectError;
-
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const admin = await requireStudioAdmin(context, organizationId);
-        if (admin instanceof Response) return admin;
-        const orgScope = organizationId !== undefined ? { organizationId } : {};
-        const body = await readJson<{ themeId: string }>(request);
-        const themeId = body?.themeId;
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
+        const themeId = (await readJson<{ themeId?: string } | null>(context.request))?.themeId;
         if (!themeId) {
             return errorResponse('themeId is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        let themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined, organizationId });
+        let themeRow = await OttablogTheme.findByThemeId(themeId, studio.blog);
         if (!themeRow) {
-            await OttablogTheme.create({
-                themeId,
-                name: themeId,
-                appId,
-                ...orgScope,
-                isActive: false,
-            });
-            themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined, organizationId });
+            await OttablogTheme.create({ themeId, name: themeId, ...studio.blog, isActive: false });
+            themeRow = await OttablogTheme.findByThemeId(themeId, studio.blog);
         }
-        if (themeRow) {
-            await themeRow.activate({ appId: appId ?? undefined, organizationId });
-        }
+        await themeRow?.activate();
         return jsonResponse({ success: true });
     }
 
     async function handleBlogStudioPluginEnable(context: Ctx): Promise<Response> {
-        const { request, env } = context;
-        const connectError = config.connect(env);
-        if (connectError) return connectError;
-
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const admin = await requireStudioAdmin(context, organizationId);
-        if (admin instanceof Response) return admin;
-        const orgScope = organizationId !== undefined ? { organizationId } : {};
-        const body = await readJson<{ pluginId: string; enabled: boolean }>(request);
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
+        const body = await readJson<{ pluginId?: string; enabled?: boolean } | null>(context.request);
         const pluginId = body?.pluginId;
         const enabled = body?.enabled ?? true;
-
         if (!pluginId) {
             return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        let pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined, organizationId });
+        const pluginRow = await OttablogPlugin.findByPluginId(pluginId, studio.blog);
         if (!pluginRow) {
-            await OttablogPlugin.create({
-                pluginId,
-                name: pluginId,
-                appId,
-                ...orgScope,
-                enabled,
-            });
+            await OttablogPlugin.create({ pluginId, name: pluginId, ...studio.blog, enabled });
         } else {
             pluginRow.set('enabled', enabled);
             await pluginRow.save();
@@ -1548,24 +1468,17 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     /**
-     * POST /studio/theme/tokens — set a theme row's sparse brand-token overrides
-     * (the data-driven half of blog theming). Admin-gated like other Studio
-     * mutations. Tokens are validated at render time (theme-tokens.ts); here we
-     * only require a JSON object shape so bad values can be corrected in place.
+     * POST /studio/theme/tokens: set a theme row's sparse brand-token overrides (the data-driven
+     * half of blog theming). Tokens are validated at render time (theme-tokens.ts); here we only
+     * require a JSON object shape so bad values can be corrected in place.
      */
     async function handleBlogStudioThemeTokens(context: Ctx): Promise<Response> {
-        const { request, env } = context;
-        const connectError = config.connect(env);
-        if (connectError) return connectError;
-
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const admin = await requireStudioAdmin(context, organizationId);
-        if (admin instanceof Response) return admin;
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
         const body = await readJson<{
-            themeId: string;
-            tokens: { light?: Record<string, string>; dark?: Record<string, string> } | null;
-        }>(request);
+            themeId?: string;
+            tokens?: { light?: Record<string, string>; dark?: Record<string, string> } | null;
+        } | null>(context.request);
         const themeId = body?.themeId;
         if (!themeId) {
             return errorResponse('themeId is required', 400, { code: 'VALIDATION_ERROR' });
@@ -1577,39 +1490,29 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             });
         }
 
-        const themeRow = await OttablogTheme.findByThemeId(themeId, { appId: appId ?? undefined, organizationId });
+        const themeRow = await OttablogTheme.findByThemeId(themeId, studio.blog);
         if (!themeRow) {
             return errorResponse('Theme not found', 404, { code: 'NOT_FOUND' });
         }
-
         themeRow.set('tokens', tokens);
         await themeRow.save();
         return jsonResponse({ success: true });
     }
 
     async function handleBlogStudioPluginConfig(context: Ctx): Promise<Response> {
-        const { request, env } = context;
-        const connectError = config.connect(env);
-        if (connectError) return connectError;
-
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const admin = await requireStudioAdmin(context, organizationId);
-        if (admin instanceof Response) return admin;
-        const body = await readJson<{ pluginId: string; config: Record<string, unknown> }>(request);
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
+        const body = await readJson<{ pluginId?: string; config?: Record<string, unknown> } | null>(context.request);
         const pluginId = body?.pluginId;
-        const pluginConfig = body?.config;
-
         if (!pluginId) {
             return errorResponse('pluginId is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        const pluginRow = await OttablogPlugin.findByPluginId(pluginId, { appId: appId ?? undefined, organizationId });
+        const pluginRow = await OttablogPlugin.findByPluginId(pluginId, studio.blog);
         if (!pluginRow) {
             return errorResponse('Plugin not found', 404, { code: 'NOT_FOUND' });
         }
-
-        await pluginRow.updateConfig(pluginConfig ?? {});
+        await pluginRow.updateConfig(body?.config ?? {});
         return jsonResponse({ success: true });
     }
 
@@ -1930,11 +1833,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+        const { scope } = blog;
         const page = parseBoundedInteger(url.searchParams.get('page'), 1, 1, 1000);
         const perPage = parseBoundedInteger(url.searchParams.get('perPage'), 15, 1, 50);
-        // Always app-scoped (param → x-app-id → config default): on a shared
-        // multi-app database, one app's public list must never serve another's.
-        const appId = resolveAppId(context);
         const contentType = url.searchParams.get('contentType') || null;
         const seriesId = url.searchParams.get('seriesId') || null;
         const categoryId = url.searchParams.get('categoryId') || null;
@@ -1946,13 +1849,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         // Date archive: filter posts by year (and optionally month) of publishedAt
         const yearParam = url.searchParams.get('year') || null;
         const monthParam = url.searchParams.get('month') || null;
-        const organizationId = await resolveTenant(context);
-        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const languageConfig = await languageConfigFor(context, scope);
         const language = requestedLanguage(context, languageConfig);
 
-        const where: Record<string, unknown> = { status: 'published' };
-        if (appId) where.appId = appId;
-        if (organizationId !== undefined) where.organizationId = organizationId;
+        // Always one blog: on a shared database, one blog's list never serves another's.
+        const where: Record<string, unknown> = { status: 'published', ...scope };
         if (contentType) {
             where.contentType = contentType;
         } else {
@@ -1979,7 +1880,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Locked categories, in SQL so pagination and totals stay true. Search hides every locked
         // post from a restricted reader: matching on a hidden excerpt or blurb would leak it.
-        const lock = await resolveLock(context, appId, organizationId);
+        const lock = await resolveLock(context, scope);
         Object.assign(where, lockedPostsWhere(lock, Boolean(search?.trim())));
         const emptyPage = () =>
             jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } }, 200, {
@@ -2032,10 +1933,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             !languageConfig.fallbackToDefault
         ) {
             const [translatedRows, canonicalRows] = await Promise.all([
-                PostTranslation.where(
-                    { language, status: 'published', appId, organizationId: organizationId ?? null },
-                    { select: ['postId'] },
-                ),
+                PostTranslation.where({ language, status: 'published', ...scope }, { select: ['postId'] }),
                 Post.where({ ...where, language }, { select: ['id'] }),
             ]);
             const visibleIds = [
@@ -2062,12 +1960,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         let localizedSearchMatched = false;
         if (searchTerm && language && languageConfig.supportedLanguages.some((item) => item.code === language)) {
             const [localizedIds, canonicalIds] = await Promise.all([
-                PostTranslation.searchPostIds(searchTerm, {
-                    language,
-                    status: 'published',
-                    appId,
-                    organizationId: organizationId ?? null,
-                }),
+                PostTranslation.searchPostIds(searchTerm, { ...scope, language, status: 'published' }),
                 Post.searchPostIds(searchTerm, searchFields, where),
             ]);
             const matchingIds = [...new Set([...localizedIds, ...canonicalIds])];
@@ -2146,13 +2039,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Enrich the page with tags, categories, series, and author — batched
         // flat queries (see enrichPostsJsonBatch) instead of ~5 queries per post.
-        const data = await enrichPostsJsonBatch(result.data as Post[], {
-            language,
-            languageConfig,
-            appId,
-            organizationId: organizationId ?? null,
-            lock,
-        });
+        const data = await enrichPostsJsonBatch(result.data as Post[], { language, languageConfig, lock });
         return jsonResponse(
             {
                 data,
@@ -2169,23 +2056,25 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     /**
-     * Signed draft preview: when a valid, unexpired `?preview=` token matches this
-     * slug + appId, load the post WITHOUT the published-status filter. The token's
-     * own org scope drives the lookup (it was bound at mint time), so a token can
-     * never reach across tenants. Returns null when preview does not apply.
+     * Signed draft preview: when a valid, unexpired `?preview=` token names this slug in THIS blog,
+     * load the post WITHOUT the published-status filter. The blog is inside the signature (bound at
+     * mint time), so a token never reaches another blog's post. Null when preview does not apply.
      */
-    async function findPostForPreview(context: Ctx, slug: string, appId: string): Promise<Post | null> {
+    async function findPostForPreview(context: Ctx, slug: string, blog: BlogScope): Promise<Post | null> {
         const token = context.url.searchParams.get('preview');
         if (!token) return null;
         const secret = config.previewTokenSecret?.(context.env);
         if (!secret) return null;
 
         const payload = await verifyPreviewToken(secret, token);
-        if (!payload || payload.slug !== slug || payload.appId !== appId) return null;
-
-        const where: Record<string, unknown> = { slug, appId };
-        if (payload.organizationId !== undefined) where.organizationId = payload.organizationId;
-        return Post.first(where);
+        if (
+            !payload ||
+            payload.slug !== slug ||
+            payload.appId !== blog.appId ||
+            payload.organizationId !== blog.organizationId
+        )
+            return null;
+        return Post.first({ slug, ...blog });
     }
 
     async function handleBlogPostBySlug(context: Ctx, slug: string): Promise<Response> {
@@ -2193,18 +2082,24 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const appId = resolveAppId(context);
-        const preview = await findPostForPreview(context, slug, appId);
-        const organizationId = preview ? undefined : await resolveTenant(context);
+        // A preview reads its draft before the blog's first post goes public.
+        const blog = await blogFromUrl(context);
+        if (blog instanceof Response) return blog;
+        const { scope } = blog;
+        const preview = await findPostForPreview(context, slug, scope);
+        if (!preview) {
+            const notPublic = await notYetPublic(blog);
+            if (notPublic) return notPublic;
+        }
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const languageConfig = await languageConfigFor(context, scope);
         const localized = preview
             ? {
                   record: preview,
                   translation: null,
                   language: (preview.get('language') as string) || languageConfig.defaultLanguage,
               }
-            : await findLocalizedPostBySlug(context, slug, appId, contentTypeParam, organizationId, languageConfig);
+            : await findLocalizedPostBySlug(context, slug, scope, contentTypeParam, languageConfig);
         const record = localized?.record;
 
         if (!record) {
@@ -2222,7 +2117,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // A preview token is the editor's review artifact, minted by someone who may edit the
         // post, so it skips the locked-category check like it skips the published filter.
-        const lock = preview ? UNLOCKED : await resolveLock(context, appId, organizationId);
+        const lock = preview ? UNLOCKED : await resolveLock(context, scope);
         const isLocked = await postIsLocked(record, lock);
         const asTeaser = isLocked && lock.restricted;
         if (asTeaser && !isTeasable(record.get('contentType'), lock)) {
@@ -2259,18 +2154,12 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('slug and password are required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+        const { scope } = blog;
         const contentTypeParam = url.searchParams.get('contentType') || null;
-        const languageConfig = await languageConfigFor(context, appId, organizationId);
-        const localized = await findLocalizedPostBySlug(
-            context,
-            slug,
-            appId,
-            contentTypeParam,
-            organizationId,
-            languageConfig,
-        );
+        const languageConfig = await languageConfigFor(context, scope);
+        const localized = await findLocalizedPostBySlug(context, slug, scope, contentTypeParam, languageConfig);
         const record = localized?.record;
         if (!record) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
@@ -2283,7 +2172,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         }
 
         // A password never opens a locked category: that needs reader access, not a secret.
-        const lock = await resolveLock(context, appId, organizationId);
+        const lock = await resolveLock(context, scope);
         const isLocked = await postIsLocked(record, lock);
         if (isLocked && lock.restricted) {
             return isTeasable(record.get('contentType'), lock)
@@ -2329,36 +2218,53 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     // ARCHIVE PAGES: tag, category, series by slug
     // ============================================================
 
-    async function handleBlogTagBySlug(context: Ctx, slug: string): Promise<Response> {
-        const { env, url } = context;
-        const connectError = config.connect(env);
-        if (connectError) return connectError;
+    /**
+     * Whether this reader can see a published post of the blog matching `where`. An archive (tag,
+     * series) whose every post is hidden from them does not exist for them: its name would say
+     * what the hidden posts are about.
+     */
+    async function hasVisiblePost(scope: BlogScope, lock: LockState, where: Record<string, unknown>): Promise<boolean> {
+        const [post] = await Post.where(
+            { ...where, ...scope, status: 'published', contentType: { $ne: 'changelog' }, ...lockedPostsWhere(lock) },
+            { select: ['id'], limit: 1 },
+        );
+        return Boolean(post);
+    }
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const type = url.searchParams.get('type') || 'post';
-        const tag = await PostTag.findBySlug(slug, { appId, type, organizationId });
-        if (!tag) {
-            return errorResponse('Tag not found', 404, { code: 'NOT_FOUND' });
+    async function handleBlogTagBySlug(context: Ctx, slug: string): Promise<Response> {
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+
+        const type = context.url.searchParams.get('type') || 'post';
+        const tag = await PostTag.findBySlug(slug, { ...blog.scope, type });
+        if (!tag) return errorResponse('Tag not found', 404, { code: 'NOT_FOUND' });
+        const lock = await resolveLock(context, blog.scope);
+        if (lock.restricted) {
+            const links = await PostTagLink.where({ tagId: String(tag.get('id')) }, { select: ['postId'] });
+            const postIds = links.map((link) => String(link.get('postId')));
+            if (postIds.length === 0 || !(await hasVisiblePost(blog.scope, lock, { id: postIds }))) {
+                return errorResponse('Tag not found', 404, { code: 'NOT_FOUND' });
+            }
         }
-        return jsonResponse(tag.toJson());
+        return jsonResponse(tag.toJson(), 200, { headers: lockHeaders(lock) });
     }
 
     async function handleBlogCategoryBySlug(context: Ctx, slug: string): Promise<Response> {
-        const { env, url } = context;
-        const connectError = config.connect(env);
+        const connectError = config.connect(context.env);
         if (connectError) return connectError;
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const type = url.searchParams.get('type') || 'post';
-        const category = await PostCategory.findBySlug(slug, { appId, type, organizationId });
+        const type = context.url.searchParams.get('type') || 'post';
+        const category = await PostCategory.findBySlug(slug, { ...blog.scope, type });
         if (!category) {
             return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
         }
         // `isLocked` reports the EFFECTIVE lock (a parent's lock covers its children). With
         // teasers off, a locked category does not exist for a reader without access.
-        const lock = await resolveLock(context, appId, organizationId);
+        const lock = await resolveLock(context, blog.scope);
         const isLocked = lock.lockedCategoryIds.has(String(category.get('id')));
         if (isLocked && lock.restricted && lock.teaser.length === 0) {
             return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
@@ -2366,47 +2272,74 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return jsonResponse({ ...category.toJson(), isLocked }, 200, { headers: lockHeaders(lock) });
     }
 
-    async function handleBlogSeriesBySlug(context: Ctx, slug: string): Promise<Response> {
-        const { env } = context;
-        const connectError = config.connect(env);
+    /** The blog's series this reader can see a post of, in display order. */
+    async function handleBlogSeriesList(context: Ctx): Promise<Response> {
+        const connectError = config.connect(context.env);
         if (connectError) return connectError;
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const series = await PostSeries.findBySlug(slug, { appId, organizationId });
-        if (!series) {
+        const lock = await resolveLock(context, blog.scope);
+        const ids = await Post.seriesIdsOf({
+            ...blog.scope,
+            status: 'published',
+            contentType: { $ne: 'changelog' },
+            ...lockedPostsWhere(lock),
+        });
+        const series = await chunkedFetch(ids, (chunk) => PostSeries.whereIn('id', chunk));
+        series.sort(
+            (a, b) =>
+                Number(a.get('sortOrder') ?? 0) - Number(b.get('sortOrder') ?? 0) ||
+                String(a.get('title')).localeCompare(String(b.get('title'))),
+        );
+        return jsonResponse({ data: series.map((row) => row.toJson()) }, 200, { headers: lockHeaders(lock) });
+    }
+
+    async function handleBlogSeriesBySlug(context: Ctx, slug: string): Promise<Response> {
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+
+        const series = await PostSeries.findBySlug(slug, blog.scope);
+        const lock = await resolveLock(context, blog.scope);
+        if (!series || !(await hasVisiblePost(blog.scope, lock, { seriesId: String(series.get('id')) }))) {
             return errorResponse('Series not found', 404, { code: 'NOT_FOUND' });
         }
-        return jsonResponse(series.toJson());
+        return jsonResponse(series.toJson(), 200, { headers: lockHeaders(lock) });
     }
 
     /**
-     * Public author card for the author archive page. Answers only for a user with a published
-     * post in this blog's scope, so the route cannot be used to look up arbitrary accounts by id,
+     * Public author card for the author archive page. Answers only for a user with a post in this
+     * blog the reader can see, so the route cannot be used to look up arbitrary accounts by id,
      * and only with the public author projection (never the account email).
      */
     async function handleBlogAuthorById(context: Ctx, authorId: string): Promise<Response> {
         const connectError = config.connect(context.env);
         if (connectError) return connectError;
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
 
-        const where: Record<string, unknown> = {
-            authorId,
-            status: 'published',
-            appId: resolveAppId(context),
-            // Changelog entries live at /changelog, so they do not make someone a blog author.
-            contentType: { $ne: 'changelog' },
-        };
-        const organizationId = await resolveTenant(context);
-        if (organizationId !== undefined) where.organizationId = organizationId;
-        // Someone who only wrote what this reader may not see is not an author to them.
-        Object.assign(where, lockedPostsWhere(await resolveLock(context, where.appId as string, organizationId)));
-
-        const post = await Post.first(where);
+        // Someone who only wrote what this reader may not see is not an author to them. Changelog
+        // entries live at /changelog, so they do not make someone a blog author either.
+        const lock = await resolveLock(context, blog.scope);
+        const [post] = await Post.where(
+            {
+                authorId,
+                ...blog.scope,
+                status: 'published',
+                contentType: { $ne: 'changelog' },
+                ...lockedPostsWhere(lock),
+            },
+            { select: ['id', 'authorId'], limit: 1 },
+        );
         const author = post ? await post.author([...PUBLIC_AUTHOR_FIELDS]) : null;
         if (!author) {
             return errorResponse('Author not found', 404, { code: 'NOT_FOUND' });
         }
-        return jsonResponse({ id: author.get('id'), name: author.get('name'), image: author.get('image') });
+        return jsonResponse({ id: author.get('id'), name: author.get('name'), image: author.get('image') }, 200, {
+            headers: lockHeaders(lock),
+        });
     }
 
     // ============================================================
@@ -2414,22 +2347,19 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     // ============================================================
 
     async function handleBlogRelatedPosts(context: Ctx, postId: string): Promise<Response> {
-        const { env, url } = context;
-        const connectError = config.connect(env);
+        const connectError = config.connect(context.env);
         if (connectError) return connectError;
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+        const { scope } = blog;
+        const limit = parseBoundedInteger(context.url.searchParams.get('limit'), 4, 1, 10);
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const limit = parseBoundedInteger(url.searchParams.get('limit'), 4, 1, 10);
-
-        const postWhere: Record<string, unknown> = { id: postId, appId };
-        if (organizationId !== undefined) postWhere.organizationId = organizationId;
-        const post = await Post.first(postWhere);
+        const post = await Post.first({ id: postId, status: 'published', ...scope });
         if (!post) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
 
-        const lock = await resolveLock(context, appId, organizationId);
+        const lock = await resolveLock(context, scope);
         if (lock.restricted && (await postIsLocked(post, lock)) && !isTeasable(post.get('contentType'), lock)) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
@@ -2439,10 +2369,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const categoryIds = categoryLinks.map((cl) => cl.get('categoryId') as string);
 
         const related = await Post.related(postId, {
+            ...scope,
             categoryIds,
             contentType: post.get('contentType') as string,
-            appId,
-            organizationId,
             // Suggestions never tease: a restricted reader is only pointed at what they can read.
             excludeLocked: lock.restricted,
             limit,
@@ -2450,12 +2379,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Batched enrichment (adds categories/seriesTitle alongside tags/author —
         // additive fields, same per-post shape as the list endpoint).
-        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const languageConfig = await languageConfigFor(context, scope);
         const data = await enrichPostsJsonBatch(related, {
             language: requestedLanguage(context, languageConfig),
             languageConfig,
-            appId,
-            organizationId: organizationId ?? null,
             lock: { ...lock, teaser: [] },
         });
         return jsonResponse(data, 200, { headers: lockHeaders(lock) });
@@ -2470,24 +2397,22 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+        const { scope } = blog;
+        const languageConfig = await languageConfigFor(context, scope);
         const language = requestedLanguage(context, languageConfig);
         const contentType = url.searchParams.get('contentType') || null;
         const limit = parseBoundedInteger(url.searchParams.get('limit'), 25, 1, 100);
 
-        const where: Record<string, unknown> = { status: 'published' };
-        if (appId) where.appId = appId;
-        if (organizationId !== undefined) where.organizationId = organizationId;
-        if (contentType) {
-            where.contentType = contentType;
-        } else {
-            where.contentType = { $ne: 'changelog' };
-        }
+        const where: Record<string, unknown> = {
+            status: 'published',
+            ...scope,
+            contentType: contentType ?? { $ne: 'changelog' },
+        };
         // A feed is publicly cached and read by feed readers without a session: always the
         // anonymous view (teasers only, when enabled), whoever fetched it.
-        const lock = await resolveLock(context, appId, organizationId, { anonymous: true });
+        const lock = await resolveLock(context, scope, { anonymous: true });
         Object.assign(where, lockedPostsWhere(lock));
 
         const posts = await Post.where(where, {
@@ -2502,12 +2427,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         // for an older post can never reach a localized RSS feed.
         let feedCandidates = posts;
         if (language) {
-            const translationRows = await PostTranslation.forPublicFeed({
-                language,
-                appId,
-                organizationId: organizationId ?? null,
-                limit,
-            });
+            const translationRows = await PostTranslation.forPublicFeed({ ...scope, language, limit });
             const translatedPostIds = [
                 ...new Set(translationRows.map((row) => row.get('postId') as string).filter(Boolean)),
             ];
@@ -2540,7 +2460,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // Derive the site URL from the request
         const siteUrl = `${url.protocol}//${url.host}`;
-        const feedTitle = url.searchParams.get('title') || 'Blog';
+        const blogSlug = blog.info?.slug ?? null;
+        const feedTitle = url.searchParams.get('title') || blog.info?.name || 'Blog';
         const feedDescription = url.searchParams.get('description') || 'Latest posts';
 
         const escapeXml = (str: string): string =>
@@ -2560,13 +2481,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             }
         };
 
-        const localizedRows = await enrichPostsJsonBatch(feedCandidates, {
-            language,
-            languageConfig,
-            appId,
-            organizationId: organizationId ?? null,
-            lock,
-        });
+        const localizedRows = await enrichPostsJsonBatch(feedCandidates, { language, languageConfig, lock });
         const localizedById = new Map(localizedRows.map((row) => [row.id as string, row]));
         // Enrichment drops what this reader may not see; never fall back to the raw row for it.
         const visibleCandidates = feedCandidates.filter((post) => localizedById.has(post.get('id') as string));
@@ -2595,12 +2510,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 const isBlurb = localized.contentType === 'blurb';
                 const isPhotoJournal = post.get('contentType') === 'photo';
                 const title = escapeXml((localized.title as string) || '');
-                const slug = localized.slug as string;
-                const localizedLanguage = localized.language as string | undefined;
-                const languageSuffix =
-                    localized.translationId && localizedLanguage
-                        ? '?lang=' + encodeURIComponent(localizedLanguage)
-                        : '';
+                const link = escapeXml(
+                    siteUrl +
+                        blogPostPath(
+                            blogSlug,
+                            localized.slug as string,
+                            localized.translationId ? (localized.language as string | undefined) : null,
+                        ),
+                );
                 const excerpt = escapeXml(
                     (isBlurb ? (localized.blurbText as string) : (localized.excerpt as string)) || '',
                 );
@@ -2615,8 +2532,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
                 return `    <item>
       <title>${title}</title>
-      <link>${escapeXml(siteUrl)}/blog/${escapeXml(slug)}${languageSuffix}</link>
-      <guid isPermaLink="true">${escapeXml(siteUrl)}/blog/${escapeXml(slug)}${languageSuffix}</guid>
+      <link>${link}</link>
+      <guid isPermaLink="true">${link}</guid>
       <description>${excerpt}</description>
       ${authorName ? `<dc:creator>${authorName}</dc:creator>` : ''}
       ${isBlurb ? '<category>Blurb</category>' : ''}${isPhotoJournal ? '<category>Photo Journal</category>' : ''}
@@ -2639,11 +2556,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${escapeXml(feedTitle)}</title>
-    <link>${escapeXml(siteUrl)}/blog</link>
+    <link>${escapeXml(siteUrl + blogBasePath(blogSlug))}</link>
     <description>${escapeXml(feedDescription)}</description>
     <language>${escapeXml(language || languageConfig.defaultLanguage)}</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
-    <atom:link href="${escapeXml(siteUrl)}/api/blog/rss" rel="self" type="application/rss+xml" />
+    <atom:link href="${escapeXml(siteUrl + '/api/blog/rss' + (blogSlug ? '?blog=' + encodeURIComponent(blogSlug) : ''))}" rel="self" type="application/rss+xml" />
 ${items}
   </channel>
 </rss>`;
@@ -2652,7 +2569,7 @@ ${items}
             headers: {
                 'Content-Type': 'application/rss+xml; charset=utf-8',
                 'Cache-Control': 'public, max-age=3600',
-                Vary: 'Accept-Language, X-Org-Id, X-App-Id',
+                Vary: 'Accept-Language',
             },
         });
     }
@@ -2666,9 +2583,11 @@ ${items}
         const connectError = config.connect(env);
         if (connectError) return connectError;
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-        const languageConfig = await languageConfigFor(context, appId, organizationId);
+        const blog = await publicBlog(context);
+        if (blog instanceof Response) return blog;
+        const { scope } = blog;
+        const blogSlug = blog.info?.slug ?? null;
+        const languageConfig = await languageConfigFor(context, scope);
         // Bounded at the sitemap protocol's own 50k-URL-per-file ceiling, not a
         // lower default: crawlers never pass ?limit=, so a smaller default would
         // silently drop older posts from a real deployment's sitemap the moment
@@ -2676,11 +2595,13 @@ ${items}
         // pagination is the follow-up once a single deployment nears 50k posts.
         const urlLimit = parseBoundedInteger(url.searchParams.get('limit'), 50000, 1, 50000);
         const page = parseBoundedInteger(url.searchParams.get('page'), 1, 1, 1000000);
-        const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
-        if (appId) where.appId = appId;
-        if (organizationId !== undefined) where.organizationId = organizationId;
-        // Publicly cached: the anonymous view. Teased locked posts keep their (teaser) URL.
-        Object.assign(where, lockedPostsWhere(await resolveLock(context, appId, organizationId, { anonymous: true })));
+        const where: Record<string, unknown> = {
+            status: 'published',
+            contentType: { $ne: 'changelog' },
+            ...scope,
+            // Publicly cached: the anonymous view. Teased locked posts keep their (teaser) URL.
+            ...lockedPostsWhere(await resolveLock(context, scope, { anonymous: true })),
+        };
         const enabledLanguages = new Set(languageConfig.supportedLanguages.map((item) => item.code));
         const maxVariantsPerPost = Math.max(1, enabledLanguages.size + 1);
         const safePageSize = Math.max(1, Math.floor(Math.max(1, urlLimit - 1) / maxVariantsPerPost));
@@ -2703,14 +2624,13 @@ ${items}
         if (url.pathname.endsWith('/sitemap-index.xml')) {
             const summary = await Post.paginate(1, pageSize, where, { orderBy: 'publishedAt', orderDirection: 'desc' });
             const totalPages = Math.max(1, summary.totalPages);
-            const queryAppId = url.searchParams.get('appId');
-            const appQuery = queryAppId ? '&appId=' + encodeURIComponent(queryAppId) : '';
+            const blogQuery = blogSlug ? '&blog=' + encodeURIComponent(blogSlug) : '';
             const entries = Array.from({ length: totalPages }, (_, index) => {
                 const pageNumber = index + 1;
                 return (
                     '  <sitemap>\n    <loc>' +
                     escapeXml(
-                        siteUrl + '/api/blog/sitemap.xml?page=' + pageNumber + '&pageSize=' + pageSize + appQuery,
+                        siteUrl + '/api/blog/sitemap.xml?page=' + pageNumber + '&pageSize=' + pageSize + blogQuery,
                     ) +
                     '</loc>\n  </sitemap>'
                 );
@@ -2724,7 +2644,7 @@ ${items}
                 headers: {
                     'Content-Type': 'application/xml; charset=utf-8',
                     'Cache-Control': 'public, max-age=3600',
-                    Vary: 'Accept-Language, X-Org-Id, X-App-Id',
+                    Vary: 'Accept-Language',
                 },
             });
         }
@@ -2739,7 +2659,6 @@ ${items}
         const posts = postsPage.slice(0, pageSize);
         const publishedTranslations = await PostTranslation.forPublicPosts(
             posts.map((post) => post.get('id') as string),
-            { appId, organizationId: organizationId ?? null, status: 'published' },
         );
         const translationsByPost = new Map<string, PostTranslation[]>();
         for (const translation of publishedTranslations) {
@@ -2749,10 +2668,8 @@ ${items}
             translationsByPost.set(postId, rows);
         }
 
-        const absoluteUrl = (slug: string, language: string, canonical = false): string => {
-            const suffix = canonical ? '' : '?lang=' + encodeURIComponent(language);
-            return siteUrl + '/blog/' + encodeURIComponent(slug) + suffix;
-        };
+        const absoluteUrl = (slug: string, language: string, canonical = false): string =>
+            siteUrl + blogPostPath(blogSlug, slug, canonical ? null : language);
         const dateOnly = (value: unknown): string => {
             const timestamp = value instanceof Date ? value.getTime() : typeof value === 'number' ? value : 0;
             return timestamp ? new Date(timestamp).toISOString().split('T')[0] : '';
@@ -2834,7 +2751,7 @@ ${items}
         const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>${escapeXml(siteUrl)}/blog</loc>
+    <loc>${escapeXml(siteUrl + blogBasePath(blogSlug))}</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2845,7 +2762,7 @@ ${urls}
             headers: {
                 'Content-Type': 'application/xml; charset=utf-8',
                 'Cache-Control': 'public, max-age=3600',
-                Vary: 'Accept-Language, X-Org-Id, X-App-Id',
+                Vary: 'Accept-Language',
                 'X-Sitemap-Page': String(page),
                 ...(hasNextPage ? { 'X-Sitemap-Next-Page': String(page + 1) } : {}),
                 ...(truncated ? { 'X-Sitemap-Truncated': 'true' } : {}),
@@ -2884,20 +2801,13 @@ ${urls}
     }
 
     /**
-     * Seed the app's public demo content — sample articles, release notes, and
-     * the block kitchensink that exercises every renderer. This is the single
-     * seeding entry point; `requireAdmin` is wired to a system-scoped platform
-     * admin gate, so only the platform owner can run it.
+     * Seed the app's public demo content into the SITE blog: sample articles, release notes, and
+     * the block kitchensink that exercises every renderer. `requireAdmin` is wired to a
+     * system-scoped platform admin gate, so only the platform owner can run it, and the site blog
+     * is theirs to edit.
      *
-     * Create-only: an existing slug is reported under `existing` and left
-     * untouched, so re-running is safe after an administrator has tailored the
-     * seeded content.
-     *
-     * Rows are tagged with the CALLER's organization so the seeded posts are
-     * immediately visible and editable in the admin surface, whose reads are
-     * tenant-filtered. Known limitation: an admin browsing in platform scope
-     * still seeds into their session org, since the platform-scope sentinel is
-     * an app-level concept this package does not resolve.
+     * Create-only: an existing slug is reported under `existing` and left untouched, so re-running
+     * is safe after an administrator has tailored the seeded content.
      */
     async function handleBlogDemoSeed(context: Ctx): Promise<Response> {
         const auth = await config.requireAdmin(context);
@@ -2915,28 +2825,15 @@ ${urls}
         const connectError = config.connect(context.env);
         if (connectError) return connectError;
 
-        const appId = resolveAppId(context);
-        // Seed into the CALLER's own organization, not the public-read tenant.
-        // resolveTenant() answers "which tenant does a visitor read?" — in platform
-        // mode that is undefined, i.e. a NULL organizationId. Seeding NULL puts the
-        // rows outside every admin's scope, so the editor's own lookup
-        // (GET /api/ottaorm/posts/:id, tenant-filtered) 404s on content the seed
-        // just created. Tagging the caller's org makes seeded posts behave exactly
-        // like posts that admin creates by hand.
-        const organizationId = resolveOrgId(context.request, auth.session?.user?.organizationId ?? null);
+        const site: BlogScope = { appId: resolveAppId(context), organizationId: null };
         const userId = auth.session?.user?.id ?? null;
         const now = Date.now();
-        // Same vocabulary scope as import: app-wide in platform mode, per organization in org mode.
-        const taxonomy = taxonomyByName(appId, resolveMode(context.env) === 'org' ? organizationId : undefined);
+        const taxonomy = taxonomyByName(site);
         const created: Array<{ id: unknown; slug: string; contentType: string }> = [];
         const existing: string[] = [];
 
         for (const seed of seeds) {
-            // Mirror the UNIQUE index that actually binds — (app_id, slug) — rather
-            // than the org-aware one. An org-filtered probe would miss a same-slug
-            // row owned by another tenant and turn the insert into a hard constraint
-            // failure instead of a clean "already exists".
-            const where: Record<string, unknown> = { slug: seed.slug, appId };
+            const where: Record<string, unknown> = { slug: seed.slug, ...site };
 
             if (await Post.first(where)) {
                 existing.push(seed.slug);
@@ -2957,8 +2854,7 @@ ${urls}
                     ...(seriesId ? { seriesId } : {}),
                     userId,
                     authorId: userId,
-                    appId,
-                    organizationId,
+                    ...site,
                 });
             } catch (error) {
                 // A concurrent seed request may win after our lookup. Re-check
@@ -2979,8 +2875,8 @@ ${urls}
     }
 
     /**
-     * POST /posts/preview-token — mint a signed draft-preview link.
-     * Gated by the editorial guard (requireContentEditor, falling back to
+     * POST /posts/preview-token: mint a signed draft-preview link for a post of the caller's
+     * editorial blog. Gated by the editorial guard (requireContentEditor, falling back to
      * requireAdmin). 404 when no preview secret is configured.
      */
     async function handleBlogPreviewTokenMint(context: Ctx): Promise<Response> {
@@ -2996,31 +2892,25 @@ ${urls}
         const connectError = config.connect(context.env);
         if (connectError) return connectError;
 
-        const body = await readJson<{ slug?: string; ttlMs?: number }>(context.request);
+        const body = await readJson<{ slug?: string; ttlMs?: number } | null>(context.request);
         const slug = body?.slug?.trim();
         if (!slug) {
             return errorResponse('slug is required', 400, { code: 'VALIDATION_ERROR' });
         }
 
-        const appId = resolveAppId(context);
-        const organizationId = await resolveTenant(context);
-
-        // The post must exist in the caller's scope (any status — that is the point).
-        const where: Record<string, unknown> = { slug, appId };
-        if (organizationId !== undefined) where.organizationId = organizationId;
-        const post = await Post.first(where);
+        // The post must exist in the editorial blog (any status: that is the point).
+        const blog = await editorialScope(context);
+        const post = await Post.first({ slug, ...blog });
         if (!post) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
 
-        // OBJECT-level authorization: the baseline guard proves "may edit posts
-        // somewhere"; it must not mint previews for posts the caller cannot edit
-        // (another author's draft, another tenant's post via a request-supplied
-        // org hint, a password-protected post's content). Authors always pass
-        // for their OWN posts; anything else requires the app's canManagePost
-        // check against the POST ROW's org — never the request's org hint.
-        // Denial answers 404, identical to a missing post, so minting cannot be
-        // used as a cross-scope slug-existence oracle.
+        // OBJECT-level authorization: the baseline guard proves "may edit posts somewhere"; it must
+        // not mint previews for posts the caller cannot edit (another author's draft, another
+        // blog's post via a request-supplied scope, a password-protected post's content). Authors
+        // always pass for their OWN posts; anything else requires the app's canManagePost check
+        // against the POST ROW's org, never the request's. Denial answers 404, identical to a
+        // missing post, so minting cannot be used as a cross-blog slug-existence oracle.
         const callerId = auth.session?.user?.id ?? null;
         const postAuthorId = (post.get('authorId') as string | null) ?? null;
         const postUserId = (post.get('userId') as string | null) ?? null;
@@ -3039,27 +2929,18 @@ ${urls}
             }
         }
 
-        // Bind the token to the POST ROW's org scope (not the request's org
-        // hint): the row is what the preview will disclose.
-        const tokenOrgScope =
-            organizationId !== undefined ? ((post.get('organizationId') as string | null) ?? null) : undefined;
-
         // Clamp TTL to [1 minute, 7 days]; default 24h lives in signPreviewToken.
         const ttlMs =
             typeof body?.ttlMs === 'number' && Number.isFinite(body.ttlMs)
                 ? Math.min(7 * 24 * 60 * 60 * 1000, Math.max(60 * 1000, body.ttlMs))
                 : undefined;
 
-        const { token, expiresAt } = await signPreviewToken(secret, {
-            slug,
-            appId,
-            organizationId: tokenOrgScope,
-            ttlMs,
-        });
+        const { token, expiresAt } = await signPreviewToken(secret, { slug, ...blog, ttlMs });
+        const blogSlug = (await blogInfo(blog))?.slug ?? null;
         return jsonResponse({
             token,
             expiresAt,
-            path: `/blog/${encodeURIComponent(slug)}?preview=${encodeURIComponent(token)}`,
+            path: `${blogPostPath(blogSlug, slug)}?preview=${encodeURIComponent(token)}`,
         });
     }
 
@@ -3148,7 +3029,7 @@ ${urls}
                 } as BlogExportPost;
             }),
         };
-        return jsonResponse(file, 200, { headers: { 'Cache-Control': 'no-store' } });
+        return jsonResponse(file, 200, { headers: NO_STORE });
     }
 
     /**
@@ -3200,10 +3081,10 @@ ${urls}
             Boolean(securityContext.platformAdmin) ||
             hasGrantedPermission(permissions, 'org:admin') ||
             hasGrantedPermission(permissions, 'taxonomy:manage');
-        // Platform mode: one app-wide vocabulary and app-wide slugs. Org mode: per-organization.
-        const tenantOrg = resolveMode(context.env) === 'org' ? scope.organizationId : undefined;
-        const languageConfig = await languageConfigFor(context, scope.appId, tenantOrg);
-        const taxonomy = taxonomyByName(scope.appId, tenantOrg, (entity, data) =>
+        // The caller's blog: its own vocabulary, slugs and languages.
+        const blog: BlogScope = { appId: scope.appId, organizationId: scope.organizationId };
+        const languageConfig = await languageConfigFor(context, blog);
+        const taxonomy = taxonomyByName(blog, (entity, data) =>
             globalRLS.validateWrite(entity, securityContext, data, 'create'),
         );
 
@@ -3219,9 +3100,7 @@ ${urls}
                 result.skipped.push({ slug: String(item.data.title), reason: 'Needs a title or slug usable in a URL' });
                 continue;
             }
-            const slugWhere: Record<string, unknown> = { appId: scope.appId, slug };
-            if (tenantOrg !== undefined) slugWhere.organizationId = tenantOrg;
-            if (await Post.first(slugWhere)) {
+            if (await Post.first({ slug, ...blog })) {
                 result.skipped.push({ slug, reason: 'A post with this slug already exists' });
                 continue;
             }
@@ -3291,6 +3170,7 @@ ${urls}
 
     return {
         handleBlogStudioState,
+        handleBlogStudioBlog,
         handleBlogStudioLanguages,
         handleBlogStudioAccess,
         handleBlogStudioReaderGrant,
@@ -3311,6 +3191,7 @@ ${urls}
         handleBlogPostUnlock,
         handleBlogTagBySlug,
         handleBlogCategoryBySlug,
+        handleBlogSeriesList,
         handleBlogSeriesBySlug,
         handleBlogAuthorById,
         handleBlogRelatedPosts,

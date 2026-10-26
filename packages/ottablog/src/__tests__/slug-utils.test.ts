@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { normalizeSlugInput } from '../slug-utils';
+import { describe, expect, it, vi } from 'vitest';
+import { normalizeSlugInput, prepareCreateSlug, prepareUpdateSlug, resolveUniqueSlug } from '../slug-utils';
 
 describe('slug-utils', () => {
     describe('normalizeSlugInput', () => {
@@ -31,6 +31,70 @@ describe('slug-utils', () => {
 
         it('should trim and normalize whitespace', () => {
             expect(normalizeSlugInput('  multiple   spaces  ', 'fb', 'tag')).toBe('multiple-spaces');
+        });
+    });
+
+    describe('per-blog slug uniqueness', () => {
+        /** A model whose `first` reports the given slugs as taken in the probed scope. */
+        const modelWith = (taken: string[]) =>
+            ({
+                first: vi.fn(async (where: { slug: string }) =>
+                    taken.includes(where.slug) ? { get: () => 'other-id' } : null,
+                ),
+            }) as any;
+
+        it('probes one blog only, so two blogs may share a slug', async () => {
+            const Model = modelWith(['life']);
+
+            const slug = await resolveUniqueSlug(Model, 'life', {
+                appId: 'app',
+                organizationId: 'org-1',
+                type: 'post',
+            });
+
+            expect(slug).toBe('life-1');
+            expect(Model.first).toHaveBeenCalledWith(
+                { appId: 'app', organizationId: 'org-1', type: 'post', slug: 'life' },
+                undefined,
+            );
+        });
+
+        it('creates in the row blog: the site blog when no organization is set', async () => {
+            const Model = modelWith([]);
+            const data: Record<string, unknown> = { appId: 'app', name: 'Life' };
+
+            await prepareCreateSlug(Model, data, {
+                slugPrefix: 'category',
+                nameField: 'name',
+                hasType: true,
+                entityLabel: 'categories',
+            });
+
+            expect(data).toMatchObject({ slug: 'life', type: 'post' });
+            expect(Model.first).toHaveBeenCalledWith(
+                { appId: 'app', organizationId: null, type: 'post', slug: 'life' },
+                undefined,
+            );
+        });
+
+        it("keeps an update in the stored row's blog", async () => {
+            const Model = modelWith([]);
+            const data: Record<string, unknown> = { slug: 'Trips' };
+
+            await prepareUpdateSlug(
+                Model,
+                's1',
+                data,
+                { slugPrefix: 'series', nameField: 'title', hasType: false, entityLabel: 'series' },
+                undefined,
+                { id: 's1', appId: 'app', organizationId: 'org-1', slug: 'old', title: 'Old' },
+            );
+
+            expect(data.slug).toBe('trips');
+            expect(Model.first).toHaveBeenCalledWith(
+                { appId: 'app', organizationId: 'org-1', slug: 'trips' },
+                undefined,
+            );
         });
     });
 });

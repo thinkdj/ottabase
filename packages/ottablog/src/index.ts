@@ -96,8 +96,10 @@ export type {
 
 // Type exports
 export type {
+    BlogInfo,
     BlogLanguage,
     BlogLanguageConfig,
+    BlogScope,
     ContentType,
     EditorJSData,
     HeroImage,
@@ -167,8 +169,8 @@ export {
 } from './import-export';
 export type { BlogExportFile, BlogExportPost, BlogImportResult } from './import-export';
 
-// Migrations (org-mode index swap; register conditionally in the app's migration registry)
-export { ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
+// Migrations (shipped by the package manifest; exported for apps that run migrations themselves)
+export { ottablogMigrations } from './migrations';
 
 // Draft preview tokens (Web Crypto HMAC; used by the router's ?preview= path)
 export { signPreviewToken, verifyPreviewToken } from './preview-token';
@@ -179,7 +181,19 @@ export type { BlogThemeCssOptions, BlogThemeTokens } from './theme-tokens';
 export type { PreviewTokenPayload } from './preview-token';
 
 // SEO builders for edge-injected per-post meta (pure, React-free)
-export { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from './seo';
+export { buildPostSeoTags, escapeHtml, jsonForScriptTag, replaceDocumentTitle } from './seo';
+
+// Public blog URLs: /blog for the site blog, /blogs/{orgSlug} for an organization's blog (pure)
+export {
+    blogArchivePath,
+    blogBasePath,
+    blogDateArchivePath,
+    blogPostPath,
+    ORG_BLOGS_PATH,
+    parseBlogPath,
+    parseBlogPostPath,
+    SITE_BLOG_PATH,
+} from './paths';
 export type { PostSeoInput } from './seo';
 
 // Blog-renderer prop/data types (pure, type-only). The rendered components (BlogRenderer,
@@ -214,4 +228,9 @@ export * from './plugins';
 
 // Studio (themes/plugins management)
 export * from './studio';
-export { createOttablogPackage, OTTABLOG_PACKAGE_KEY, type OttablogPackageOptions } from './manifest';
+export {
+    blogScopedPolicies,
+    createOttablogPackage,
+    OTTABLOG_PACKAGE_KEY,
+    type OttablogPackageOptions,
+} from './manifest';

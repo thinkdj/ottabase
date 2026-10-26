@@ -30,23 +30,6 @@ export function jsonForScriptTag(value: unknown): string {
     return sanitizeJsonForScript(value);
 }
 
-/**
- * Extract the post slug from a blog detail pathname.
- * Matches exactly `<basePath>/<slug>` — `/blog` itself and deeper paths like
- * `/blog/tag/x` (archive routes) return null. The returned slug is decoded.
- */
-export function extractBlogSlugFromPath(pathname: string, basePath = '/blog'): string | null {
-    const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-    if (!pathname.startsWith(`${base}/`)) return null;
-    const rest = pathname.slice(base.length + 1);
-    if (!rest || rest.includes('/')) return null;
-    try {
-        return decodeURIComponent(rest);
-    } catch {
-        return null;
-    }
-}
-
 export interface PostSeoInput {
     title: string;
     /** Plain-text summary; used for description, OG, and JSON-LD. */

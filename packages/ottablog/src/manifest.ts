@@ -1,6 +1,6 @@
 import { definePackage, type OttaPackage, type PackageExtras } from '@ottabase/kernel';
-import { RLSPolicies, type Migration, type ModelRLSConfig } from '@ottabase/ottaorm';
-import { ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
+import type { Migration, ModelRLSConfig, SecurityContext } from '@ottabase/ottaorm';
+import { ottablogMigrations } from './migrations';
 import {
     categoriesTable,
     OttablogPlugin,
@@ -28,19 +28,10 @@ import {
 
 export const OTTABLOG_PACKAGE_KEY = 'ottablog';
 
-export interface OttablogPackageOptions<Env> extends PackageExtras<Env> {
-    /**
-     * `platform`: one blog per app, slugs unique app-wide. `org`: every organization has its own
-     * blog, slugs unique per organization, tenant-scoped policies on the shared tables.
-     *
-     * STRUCTURAL: it decides which migrations run and which policies guard the tables, so it is
-     * a value in `ottabase.config.ts`, never an env var. Default `platform`.
-     */
-    mode?: 'platform' | 'org';
-}
+export type OttablogPackageOptions<Env> = PackageExtras<Env>;
 
-/** Tables that every organization writes to in org mode, and so need a tenant-scoped policy there. */
-const ORG_MODE_SHARED_TABLES = [
+/** Tables whose rows belong to one blog (posts and post versions carry editorial policies in core). */
+const BLOG_SCOPED_TABLES = [
     'categories',
     'post_tags',
     'series',
@@ -50,24 +41,39 @@ const ORG_MODE_SHARED_TABLES = [
     'post_translations',
 ];
 
-export function ottablogOrgModePolicies(): ModelRLSConfig[] {
-    return ORG_MODE_SHARED_TABLES.map((model) => ({
+/**
+ * A blog's rows, for whoever works in that blog: an organization's rows for a caller acting in
+ * that organization (membership is enforced by the engine), the site blog's rows (organizationId
+ * NULL) for a platform admin acting in platform scope. Anyone else, anonymous callers included,
+ * reads nothing; public pages read through /api/blog instead.
+ */
+function blogScopeFilter(context: SecurityContext): Record<string, unknown> | null {
+    if (!context.userId) return null;
+    if (context.organizationId == null && context.platformAdmin !== true) return null;
+    const filter: Record<string, unknown> = { organizationId: context.organizationId ?? null };
+    if (context.appId) filter.appId = context.appId;
+    return filter;
+}
+
+export function blogScopedPolicies(): ModelRLSConfig[] {
+    return BLOG_SCOPED_TABLES.map((model) => ({
         model,
-        policy: RLSPolicies.TenantScoped(false),
+        policy: { level: 'custom', filter: blogScopeFilter },
         contextFields: ['organizationId', 'appId'],
+        // A create lands in the caller's own blog: never the site blog unless a platform admin.
+        createWithinReadScope: true,
         auditEnabled: true,
     }));
 }
 
 /** The blog package as the app registers it. The host adds the routes (its handlers own sessions and SEO). */
 export function createOttablogPackage<Env = unknown>(options: OttablogPackageOptions<Env> = {}): OttaPackage<Env> {
-    const { mode = 'platform', ...extras } = options;
-    const org = mode === 'org';
     return definePackage<Env>({
         key: OTTABLOG_PACKAGE_KEY,
         name: 'Blog',
         version: '1.0.0',
-        description: 'Posts, categories, tags, series, versions, translations, themes and plugins.',
+        description:
+            'Site and organization blogs: posts, categories, tags, series, versions, translations, themes and plugins.',
         tables: {
             seriesTable,
             categoriesTable,
@@ -81,8 +87,7 @@ export function createOttablogPackage<Env = unknown>(options: OttablogPackageOpt
             ottablogSettingsTable,
             postTranslationsTable,
         },
-        migrations: org ? (ottablogOrgModeMigrations as Migration[]) : [],
-        suppressIndexes: org ? ottablogOrgModeSuppressedIndexes : [],
+        migrations: ottablogMigrations as Migration[],
         models: [
             Post,
             PostTag,
@@ -96,7 +101,7 @@ export function createOttablogPackage<Env = unknown>(options: OttablogPackageOpt
             OttablogSettings,
             PostTranslation,
         ],
-        policies: org ? ottablogOrgModePolicies() : [],
-        ...extras,
+        policies: blogScopedPolicies(),
+        ...options,
     });
 }

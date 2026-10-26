@@ -8,6 +8,7 @@
 import '@ottabase/ottarenderer/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { blogPostPath } from '../paths';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { applyFilters, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme, getTheme } from '../themes';
@@ -362,7 +363,7 @@ export function BlogExcerptCard({
 }: BlogExcerptCardProps) {
     // Check for a theme-provided card renderer
     const theme = useMemo(() => (themeId ? getTheme(themeId) : null) ?? getActiveTheme() ?? defaultTheme, [themeId]);
-    const cardHref = sanitizeUrl(href || `/blog/${post.slug}`);
+    const cardHref = sanitizeUrl(href || blogPostPath(null, post.slug));
 
     if (post.contentType === 'blurb') {
         const blurb = (

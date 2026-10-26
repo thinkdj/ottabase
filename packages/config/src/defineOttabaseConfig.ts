@@ -10,8 +10,6 @@ import type {
     CrudHubFeatureConfig,
     OttabaseConfig,
     OttabaseConfigInput,
-    OttablogFeatureConfig,
-    OttablogMode,
     OttaaiFeatureConfig,
     PaginationFeatureConfig,
     ReferralsFeatureConfig,
@@ -49,15 +47,6 @@ const DEFAULT_AUTH_BEHAVIOR: AuthBehaviorConfig = {
     disableCredentials: false,
     verbose: false,
 };
-
-const DEFAULT_OTTABLOG: OttablogFeatureConfig = {
-    mode: 'platform',
-};
-
-/** Coerce an ottablog mode value; anything other than 'org' resolves to 'platform'. */
-export function normalizeOttablogMode(value: unknown): OttablogMode {
-    return value === 'org' ? 'org' : 'platform';
-}
 
 /**
  * AI provisioning defaults. FROZEN AT MAJOR — changing `mode` or `strategy` in a minor
@@ -193,10 +182,8 @@ export function defineOttabaseConfig(input: OttabaseConfigInput): OttabaseConfig
         pagination: { ...DEFAULT_PAGINATION, ...input.features?.pagination },
         crudHub: { ...DEFAULT_CRUDHUB, ...input.features?.crudHub },
         authBehavior: { ...DEFAULT_AUTH_BEHAVIOR, ...input.features?.authBehavior },
-        ottablog: {
-            ...DEFAULT_OTTABLOG,
-            mode: normalizeOttablogMode(input.features?.ottablog?.mode ?? DEFAULT_OTTABLOG.mode),
-        },
+        // Organization blogs are opt-in: anything but `true` serves the site blog only.
+        ottablog: { orgBlogs: input.features?.ottablog?.orgBlogs === true },
         ottaai,
     };
 

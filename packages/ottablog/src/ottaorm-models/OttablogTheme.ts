@@ -6,6 +6,7 @@
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
 import { ottablogThemesTable, type NewOttablogThemeType, type OttablogThemeType } from './OttablogTheme.schema';
+import type { BlogScope } from '../types';
 
 export { ottablogThemesTable, type NewOttablogThemeType, type OttablogThemeType } from './OttablogTheme.schema';
 
@@ -224,66 +225,26 @@ export class OttablogTheme extends BaseModel {
     // QUERY HELPERS
     // ============================================================
 
-    /**
-     * Find theme by themeId
-     */
-    static async findByThemeId(
-        themeId: string,
-        options?: { appId?: string; organizationId?: string | null },
-    ): Promise<OttablogTheme | null> {
-        const query: Record<string, unknown> = { themeId };
-        if (options?.appId) query.appId = options.appId;
-        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
-        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as OttablogTheme) : null;
+    /** A theme row of one blog. */
+    static async findByThemeId(themeId: string, scope: BlogScope): Promise<OttablogTheme | null> {
+        return (await this.first({ themeId, ...scope })) as OttablogTheme | null;
     }
 
-    /**
-     * Get active theme
-     */
-    static async active(options?: { appId?: string; organizationId?: string | null }): Promise<OttablogTheme | null> {
-        const query: Record<string, unknown> = { isActive: true };
-        if (options?.appId) query.appId = options.appId;
-        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as OttablogTheme) : null;
-    }
-
-    /**
-     * Get all inactive themes
-     */
-    static async inactive(options?: { appId?: string; organizationId?: string | null }) {
-        const query: Record<string, unknown> = { isActive: false };
-        if (options?.appId) query.appId = options.appId;
-        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        return this.where(query, {
-            orderBy: 'name',
-            orderDirection: 'asc',
-        });
+    /** The blog's active theme. */
+    static async active(scope: BlogScope): Promise<OttablogTheme | null> {
+        return (await this.first({ isActive: true, ...scope })) as OttablogTheme | null;
     }
 
     // ==================== Instance Methods ====================
 
-    /**
-     * Activate the theme (deactivates others in the same scope).
-     * Scope is (appId) in platform mode; pass organizationId (id or null) to
-     * scope deactivation to a single tenant's blog in org mode.
-     */
-    async activate(options?: { appId?: string; organizationId?: string | null }) {
-        const appId = options?.appId || this.get('appId');
-        const orgScoped = options?.organizationId !== undefined;
-
-        // Deactivate all other themes within the activation scope
-        const scopeQuery: Record<string, unknown> = { isActive: true };
-        if (appId) scopeQuery.appId = appId;
-        if (orgScoped) scopeQuery.organizationId = options?.organizationId;
-
-        const otherThemes = await OttablogTheme.where(scopeQuery);
-        for (const theme of otherThemes) {
+    /** Activate the theme, deactivating the rest of its own blog's themes. */
+    async activate() {
+        const others = await OttablogTheme.where({
+            isActive: true,
+            appId: this.get('appId'),
+            organizationId: this.get('organizationId') ?? null,
+        });
+        for (const theme of others) {
             if (theme.get('id') !== this.get('id')) {
                 theme.set('isActive', false);
                 await theme.save();

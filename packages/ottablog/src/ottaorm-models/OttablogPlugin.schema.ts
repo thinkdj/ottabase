@@ -1,6 +1,7 @@
 /**
  * OttablogPlugin table schema - plugin registry and state
  */
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { tolerantJsonText } from './tolerant-json-column';
 
@@ -30,8 +31,7 @@ export const ottablogPluginsTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id'),
 
-        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
-        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        // The blog this belongs to: an organization's blog, or null for the site blog.
         organizationId: text('organization_id'),
 
         // Timestamps
@@ -45,9 +45,14 @@ export const ottablogPluginsTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Unique plugin per appId
-        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
-        uniqueIndex('ottablog_plugins_app_id_plugin_id_unique_idx').on(table.appId, table.pluginId),
+        // Unique plugin rows per blog. SQLite treats NULLs as distinct in a unique index, so the site
+        // blog (null org) needs its own partial index.
+        uniqueIndex('ottablog_plugins_org_app_plugin_unique_idx')
+            .on(table.organizationId, table.appId, table.pluginId)
+            .where(sql`${table.organizationId} IS NOT NULL`),
+        uniqueIndex('ottablog_plugins_app_plugin_unique_no_org_idx')
+            .on(table.appId, table.pluginId)
+            .where(sql`${table.organizationId} IS NULL`),
 
         // Enabled plugins query
         index('ottablog_plugins_enabled_idx').on(table.enabled),
@@ -55,7 +60,7 @@ export const ottablogPluginsTable = sqliteTable(
         // Multi-tenant filtering
         index('ottablog_plugins_app_id_enabled_idx').on(table.appId, table.enabled),
 
-        // Org-mode filtering: organizationId + appId + enabled
+        // Blog filtering: organizationId + appId + enabled
         index('ottablog_plugins_org_app_enabled_idx').on(table.organizationId, table.appId, table.enabled),
 
         // Plugin lookup

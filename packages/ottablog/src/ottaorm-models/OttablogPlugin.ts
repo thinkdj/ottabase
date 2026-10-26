@@ -6,6 +6,7 @@
  */
 import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
 import { ottablogPluginsTable, type NewOttablogPluginType, type OttablogPluginType } from './OttablogPlugin.schema';
+import type { BlogScope } from '../types';
 
 export { ottablogPluginsTable, type NewOttablogPluginType, type OttablogPluginType } from './OttablogPlugin.schema';
 
@@ -209,47 +210,14 @@ export class OttablogPlugin extends BaseModel {
     // QUERY HELPERS
     // ============================================================
 
-    /**
-     * Find plugin by pluginId
-     */
-    static async findByPluginId(
-        pluginId: string,
-        options?: { appId?: string; organizationId?: string | null },
-    ): Promise<OttablogPlugin | null> {
-        const query: Record<string, unknown> = { pluginId };
-        if (options?.appId) query.appId = options.appId;
-        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
-        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as OttablogPlugin) : null;
+    /** A plugin row of one blog. */
+    static async findByPluginId(pluginId: string, scope: BlogScope): Promise<OttablogPlugin | null> {
+        return (await this.first({ pluginId, ...scope })) as OttablogPlugin | null;
     }
 
-    /**
-     * Get all enabled plugins
-     */
-    static async enabled(options?: { appId?: string; organizationId?: string | null }) {
-        const query: Record<string, unknown> = { enabled: true };
-        if (options?.appId) query.appId = options.appId;
-        if (options?.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        return this.where(query, {
-            orderBy: 'name',
-            orderDirection: 'asc',
-        });
-    }
-
-    /**
-     * Get all disabled plugins
-     */
-    static async disabled(options?: { appId?: string }) {
-        const query: Record<string, unknown> = { enabled: false };
-        if (options?.appId) query.appId = options.appId;
-
-        return this.where(query, {
-            orderBy: 'name',
-            orderDirection: 'asc',
-        });
+    /** The blog's enabled plugins. */
+    static async enabled(scope: BlogScope) {
+        return this.where({ enabled: true, ...scope }, { orderBy: 'name', orderDirection: 'asc' });
     }
 
     // ==================== Instance Methods ====================

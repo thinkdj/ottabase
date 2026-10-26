@@ -14,7 +14,7 @@ import {
     type PackageType,
     type UpdateMutationContext,
 } from '@ottabase/ottaorm';
-import { and, eq, inArray, lte, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import {
     calculateReadingTime,
     BlurbValidationError,
@@ -36,6 +36,7 @@ import {
     validatePostWrite,
     normalizePostTimestamp,
     normalizeLanguageCode,
+    type BlogScope,
     type ContentType,
     type EditorJSData,
     type PhotoJournalItem,
@@ -1077,18 +1078,16 @@ export class Post extends BaseModel {
         return super.prepareForDatabase(validatePostWrite(normalized));
     }
 
+    /** A post's canonical language must be one its blog has enabled (no settings row: any). */
     private static async assertCanonicalLanguageSupported(
         language: unknown,
-        appId?: string | null,
-        organizationId?: string | null,
+        appId: string | null | undefined,
+        organizationId: string | null | undefined,
     ): Promise<void> {
-        if (appId === undefined && organizationId === undefined) return;
+        if (!appId) return;
         const normalized = normalizeLanguageCode(language ?? 'en');
         const { OttablogSettings } = await import('./OttablogSettings');
-        const settings = await OttablogSettings.forScopeOrPlatform({
-            appId: appId ?? null,
-            organizationId: organizationId ?? null,
-        });
+        const settings = await OttablogSettings.forBlog({ appId, organizationId: organizationId ?? null });
         if (settings && !settings.isSupported(normalized)) {
             throw new DomainValidationError('The canonical language must be enabled for this blog', {
                 status: 422,
@@ -1133,10 +1132,7 @@ export class Post extends BaseModel {
             const previousLanguage = normalizeLanguageCode(current.language ?? 'en');
             if (nextLanguage !== previousLanguage) {
                 const { PostTranslation } = await import('./PostTranslation');
-                const existingTranslation = await PostTranslation.findForPost(String(id), nextLanguage, {
-                    appId: current.appId ?? null,
-                    organizationId: current.organizationId ?? null,
-                });
+                const existingTranslation = await PostTranslation.findForPost(String(id), nextLanguage);
                 if (existingTranslation) {
                     throw new DomainValidationError(
                         'Change the canonical language only after removing its translation',
@@ -1152,16 +1148,11 @@ export class Post extends BaseModel {
     // QUERY HELPERS
     // ============================================================
 
-    /**
-     * Find a post by slug (unique per appId)
-     */
-    static async findBySlug(slug: string, options?: { appId?: string }): Promise<Post | null> {
-        const query: Record<string, unknown> = { slug };
-        if (options?.appId) query.appId = options.appId;
-
+    /** A post of one blog by slug (slugs are unique per blog). */
+    static async findBySlug(slug: string, scope: BlogScope): Promise<Post | null> {
         // `first`, not `where`: this returns ONE post for a detail view, and a collection read
         // would omit the deferred columns, so callers would find the body missing.
-        return (await this.first(query)) as Post | null;
+        return (await this.first({ slug, ...scope })) as Post | null;
     }
 
     /**
@@ -1706,6 +1697,16 @@ export class Post extends BaseModel {
         };
     }
 
+    /** The distinct series of the posts matching `where`, in one query. */
+    static async seriesIdsOf(where: Record<string, unknown>, driver?: DbDriver): Promise<string[]> {
+        const rows: Array<{ seriesId: string | null }> = await this.getDriver(driver)
+            .getDb()
+            .selectDistinct({ seriesId: postsTable.seriesId })
+            .from(postsTable)
+            .where(and(isNotNull(postsTable.seriesId), ...this.buildWhereConditions(where)));
+        return rows.flatMap((row) => (row.seriesId ? [row.seriesId] : []));
+    }
+
     // ============================================================
     // LOCKED CATEGORIES
     // ============================================================
@@ -1759,87 +1760,62 @@ export class Post extends BaseModel {
      */
     static async related(
         postId: string,
-        options?: {
+        options: BlogScope & {
             categoryIds?: string[];
             contentType?: string;
-            appId?: string;
-            /** Org-mode scoping: null = platform-owned rows only; undefined = no org filter. */
-            organizationId?: string | null;
             /** Leave out posts in locked categories (a reader without access, hidden teaser mode). */
             excludeLocked?: boolean;
             limit?: number;
         },
     ): Promise<Post[]> {
-        const limit = options?.limit ?? 4;
-        const lockFilter = options?.excludeLocked ? { isLocked: false } : {};
+        const limit = options.limit ?? 4;
+        const base = {
+            status: 'published',
+            appId: options.appId,
+            organizationId: options.organizationId,
+            ...(options.excludeLocked ? { isLocked: false } : {}),
+        };
         const results: Post[] = [];
         const seenIds = new Set<string>([postId]);
-        const orgScoped = options?.organizationId !== undefined;
-        const appScoped = !!options?.appId;
-        const inAppScope = (p: Post): boolean => !appScoped || p.get('appId') === options?.appId;
-        const inOrgScope = (p: Post): boolean =>
-            !orgScoped || ((p.get('organizationId') as string | null) ?? null) === (options?.organizationId ?? null);
+        const take = (rows: Post[]) => {
+            for (const p of rows) {
+                const id = p.get('id') as string;
+                if (results.length >= limit) return;
+                if (!seenIds.has(id)) {
+                    results.push(p);
+                    seenIds.add(id);
+                }
+            }
+        };
 
         // 1. Same categories via junction table (best signal)
-        const catIds = options?.categoryIds?.length ? options.categoryIds : [];
+        const catIds = options.categoryIds ?? [];
         if (catIds.length > 0) {
-            // Find other posts sharing any of the same categories — single
-            // array-where query (inArray) instead of one query per category.
+            // Other posts sharing any of the same categories: one array-where query (inArray).
             const allCatLinks = await PostCategoryLink.where({ categoryId: catIds });
             const candidateIds = [
                 ...new Set(allCatLinks.map((l) => l.get('postId') as string).filter((id) => !seenIds.has(id))),
             ];
-
             if (candidateIds.length > 0) {
-                // BaseModel owns D1-safe IN chunking and the stable cross-chunk
-                // merge, including the global limit. Keep that logic in one place.
-                const candidates = await this.where(
-                    {
-                        id: candidateIds,
-                        status: 'published',
-                        ...lockFilter,
-                        ...(options?.appId ? { appId: options.appId } : {}),
-                        ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
-                    },
-                    {
-                        orderBy: 'publishedAt',
-                        orderDirection: 'desc',
-                        limit: limit + 1,
-                    },
+                // BaseModel owns D1-safe IN chunking and the stable cross-chunk merge, including
+                // the global limit. Keep that logic in one place.
+                take(
+                    (await this.where(
+                        { ...base, id: candidateIds },
+                        { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
+                    )) as Post[],
                 );
-                for (const p of candidates) {
-                    if (
-                        !seenIds.has(p.get('id') as string) &&
-                        p.get('status') === 'published' &&
-                        inAppScope(p as Post) &&
-                        inOrgScope(p as Post) &&
-                        results.length < limit
-                    ) {
-                        results.push(p as Post);
-                        seenIds.add(p.get('id') as string);
-                    }
-                }
             }
         }
 
         // 2. Same content type (fallback)
-        if (results.length < limit && options?.contentType) {
-            const byType = await this.where(
-                {
-                    contentType: options.contentType,
-                    status: 'published',
-                    ...lockFilter,
-                    ...(options?.appId ? { appId: options.appId } : {}),
-                    ...(orgScoped ? { organizationId: options?.organizationId ?? null } : {}),
-                },
-                { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
+        if (results.length < limit && options.contentType) {
+            take(
+                (await this.where(
+                    { ...base, contentType: options.contentType },
+                    { orderBy: 'publishedAt', orderDirection: 'desc', limit: limit + 1 },
+                )) as Post[],
             );
-            for (const p of byType) {
-                if (!seenIds.has(p.get('id') as string) && results.length < limit) {
-                    results.push(p as Post);
-                    seenIds.add(p.get('id') as string);
-                }
-            }
         }
 
         return results;

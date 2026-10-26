@@ -1,6 +1,7 @@
 /**
  * PostSeries table schema - group related posts into a series
  */
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const seriesTable = sqliteTable(
@@ -34,8 +35,7 @@ export const seriesTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id').notNull(),
 
-        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
-        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        // The blog this belongs to: an organization's blog, or null for the site blog.
         organizationId: text('organization_id'),
 
         // Timestamps
@@ -49,14 +49,19 @@ export const seriesTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Enforce unique series slugs per app
-        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
-        uniqueIndex('series_app_id_slug_unique_idx').on(table.appId, table.slug),
+        // Unique series slugs per blog. SQLite treats NULLs as distinct in a unique index, so the site
+        // blog (null org) needs its own partial index.
+        uniqueIndex('series_org_app_slug_unique_idx')
+            .on(table.organizationId, table.appId, table.slug)
+            .where(sql`${table.organizationId} IS NOT NULL`),
+        uniqueIndex('series_app_slug_unique_no_org_idx')
+            .on(table.appId, table.slug)
+            .where(sql`${table.organizationId} IS NULL`),
 
         // List series by app ordered: appId + isComplete + sortOrder
         index('series_app_id_complete_order_idx').on(table.appId, table.isComplete, table.sortOrder),
 
-        // Org-mode filtering: organizationId + appId
+        // Blog filtering: organizationId + appId
         index('series_org_app_idx').on(table.organizationId, table.appId),
 
         // Find complete/incomplete series: isComplete + sortOrder

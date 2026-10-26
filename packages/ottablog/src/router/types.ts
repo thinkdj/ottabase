@@ -91,20 +91,19 @@ export interface BlogRouterConfig<Env = unknown> {
     connect: (env: Env) => Response | null;
 
     /**
-     * Blog tenancy mode (features.ottablog.mode). Defaults to 'platform': one blog per
-     * app, no org dimension — today's behavior, unchanged. In 'org' mode every public
-     * read is scoped to the organization resolved by {@link resolveOrganizationId};
-     * an unresolved tenant (null) scopes to platform-owned content (organizationId IS NULL).
-     * Pass a function to resolve per request from env (e.g. an OTTABLOG_MODE env override).
+     * Serve organization blogs publicly (features.ottablog.orgBlogs). Every app has the site blog
+     * (organizationId NULL, at /blog); with this on, `?blog=<orgSlug>` reads that organization's
+     * blog (at /blogs/<orgSlug>). Off: `?blog=` answers 404 and only the site blog is public.
      */
-    mode?: 'platform' | 'org' | ((env: Env) => 'platform' | 'org');
+    orgBlogs?: boolean | ((env: Env) => boolean);
 
     /**
-     * org mode only: resolve the tenant for a request (subdomain, path prefix, header —
-     * the app decides). Return the organizationId, or null for "no tenant" (platform
-     * content). Never called in platform mode.
+     * The blog an editorial request works on (Studio, imports, preview links): the caller's active
+     * organization, or null for the site blog. A REQUEST, not an authorization: every handler that
+     * uses it re-checks the caller against that blog (requireScopedStudioAdmin, RLS). Defaults to
+     * the site blog.
      */
-    resolveOrganizationId?: (ctx: BlogRequestContext<Env>) => Promise<string | null> | string | null;
+    resolveEditorialScope?: (ctx: BlogRequestContext<Env>) => Promise<string | null> | string | null;
 
     /** Trusted server-configured appId for this router instance. */
     defaultAppId: (env: Env) => string;
@@ -119,12 +118,10 @@ export interface BlogRouterConfig<Env = unknown> {
     requireAdmin: (ctx: BlogRequestContext<Env>) => Promise<BlogAdminResult | Response>;
 
     /**
-     * SCOPED Studio guard: may this caller administer the studio of the given
-     * blog scope? The target org is the RESOLVED tenant (never a request hint
-     * trusted on its own): null = the platform blog (platform admin required),
-     * an id = that organization's blog (its org admin — or a platform admin).
-     * Enables org admins to run their own blog's Studio in org mode. Falls back
-     * to {@link requireAdmin} (platform-only) when not provided.
+     * SCOPED Studio guard: may this caller administer the given blog? null = the site blog
+     * (platform admin required), an id = that organization's blog (its org admin, or a platform
+     * admin). Lets each organization run its own blog's Studio. Falls back to {@link requireAdmin}
+     * (platform-only) when not provided.
      */
     requireScopedStudioAdmin?: (
         ctx: BlogRequestContext<Env>,
@@ -134,7 +131,7 @@ export interface BlogRouterConfig<Env = unknown> {
     /**
      * May this caller read posts in LOCKED (invite-only) categories of the given blog scope? Evaluate
      * the grant IN that scope (never the caller's own workspace, which every signup owns):
-     * system-scoped grants for the platform blog (null), that organization's grants for an org blog.
+     * system-scoped grants for the site blog (null), that organization's grants for an org blog.
      * otta-web checks `posts:read_locked` (the `insider` role). Absent = nobody may: locked posts
      * stay locked, served as teasers or hidden per the blog's teaser setting.
      */
@@ -199,6 +196,7 @@ export interface BlogRouterConfig<Env = unknown> {
  */
 export interface BlogHandlers<Env = unknown> {
     handleBlogStudioState(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioBlog(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioActivateTheme(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioPluginEnable(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioPluginConfig(ctx: BlogRequestContext<Env>): Promise<Response>;
@@ -210,6 +208,7 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogPostBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
     handleBlogPostUnlock(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogTagBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
+    handleBlogSeriesList(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogCategoryBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
     handleBlogSeriesBySlug(ctx: BlogRequestContext<Env>, slug: string): Promise<Response>;
     handleBlogAuthorById(ctx: BlogRequestContext<Env>, authorId: string): Promise<Response>;

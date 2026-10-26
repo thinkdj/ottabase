@@ -59,7 +59,8 @@ dependency — install it only if you render). Importing the pure root loads zer
 | `@ottabase/ottablog/share`      | Standalone rendered `ShareButton`; requires the app's `@ottabase/ui` and `lucide-react` peers.                                                                                                                                                                                                                                                                                       | No                    |
 | `@ottabase/ottablog/pagination` | Standalone rendered `BlogPagination` (previous/next plus numbered pages with an ellipsis); requires the `lucide-react` peer.                                                                                                                                                                                                                                                         | No                    |
 | `@ottabase/ottablog/router`     | React-free `@ottabase/ottarouter` sub-router (`createBlogRouter`, `buildBlogRouter`, `createBlogHandlers`).                                                                                                                                                                                                                                                                          | No                    |
-| `@ottabase/ottablog/seo`        | Pure edge SEO builders (`buildPostSeoTags`, `extractBlogSlugFromPath`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                   | No                    |
+| `@ottabase/ottablog/seo`        | Pure edge SEO builders (`buildPostSeoTags`, `replaceDocumentTitle`, …).                                                                                                                                                                                                                                                                                                              | No                    |
+| `@ottabase/ottablog/paths`      | Pure blog URL contract (`blogBasePath`, `blogPostPath`, `blogArchivePath`, `blogDateArchivePath`, `parseBlogPath`, `parseBlogPostPath`).                                                                                                                                                                                                                                             | No                    |
 
 Register a custom theme (pure) from the root and render it from `/renderer`:
 
@@ -130,6 +131,48 @@ export {
 curl -X POST http://localhost:3000/api/ottaorm/init
 ```
 
+## Site blog and organization blogs
+
+Every app has one **site blog**, owned by the platform and served at `/blog`. With organization blogs on
+(`features.ottablog.orgBlogs` in `ottabase.config.ts`, read from the config file because the client builds its routes
+from it), every organization also has its **own blog** at `/blogs/{orgSlug}`, written by its own members.
+
+One rule scopes everything: a blog is `{ appId, organizationId }` (`BlogScope`), with `organizationId` null for the site
+blog. Posts, translations, categories, tags, series, themes, plugins and settings all carry it, slugs are unique per
+blog (the schemas pair a partial unique index for the site blog with one for organization blogs), and nothing is shared
+or inherited between blogs.
+
+**Which blog a request is about** depends on who is asking:
+
+| Request                                                      | Blog                                                                                                                         |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Public (`/api/blog/posts`, by-slug, archives, RSS, sitemap…) | From the URL only: `?blog=<orgSlug>` names an organization's blog, no param is the site blog. Never the visitor's workspace. |
+| Editorial (Studio, imports, preview links, `/studio/blog`)   | The host's `resolveEditorialScope(ctx)`: the caller's active organization, or the site blog in Platform scope.               |
+| Writes through RLS (posts, taxonomy)                         | The caller's security context, so the same blog as their editorial scope.                                                    |
+
+An organization's blog goes public with its first published post: before that (or for an unknown or inactive
+organization, or with `orgBlogs` off) every public endpoint answers `404 BLOG_NOT_FOUND`, so they cannot be used to
+enumerate organizations. A preview link (`?preview=`) reads its draft even before then; its token is bound to the post's
+blog and never opens another blog's post. Site blog writes need a platform admin; an organization's blog is written by
+its members, and its Studio is run by its admins (`requireScopedStudioAdmin`).
+
+Router seams (`BlogRouterConfig`):
+
+```ts
+createBlogRouter({
+    // ...
+    orgBlogs: (env) => config(env).features.ottablog.orgBlogs,
+    resolveEditorialScope: (ctx) => activeOrganizationIdOrNull(ctx), // re-checked by every guard
+    requireScopedStudioAdmin: (ctx, { organizationId }) => studioAdminGuard(ctx, organizationId),
+});
+```
+
+Build every link with `@ottabase/ottablog/paths` (`blogPostPath(blogSlug, slug, lang)` and friends) so the SPA, RSS,
+sitemap, preview links and the edge injectors agree. `GET /api/blog/studio/state?blog=<orgSlug>` gives a reader's
+browser the blog's identity (`blog: { slug, name } | null`), active theme, enabled plugins and languages;
+`GET /api/blog/studio/blog` gives an editor the blog they write to. Existing installs are converted by the
+`ottablog_blog_scopes_v1` migration: a single-blog install becomes the site blog.
+
 ## Multilingual publishing
 
 Multilingual support is part of the core blog model. A blog has one language policy, and every post has a canonical
@@ -138,12 +181,10 @@ post lists stay small and the large EditorJS payloads remain deferred.
 
 Configure the policy from the admin content settings page or by updating the Studio endpoint:
 
-In organization mode, a blog inherits its platform language policy until that organization saves its own content
-settings policy. An organization-specific save is therefore an explicit override, rather than a requirement to duplicate
-the platform's enabled languages.
+Each blog has its own policy: an organization's blog starts from the defaults (English) and never inherits the site
+blog's. Editors read their blog's policy from `GET /api/blog/studio/blog`; its Studio admin saves it:
 
 ```http
-GET  /api/blog/studio/languages
 POST /api/blog/studio/languages
 Content-Type: application/json
 
@@ -204,7 +245,7 @@ canonical language, excludes translations whose languages are no longer enabled,
 never emits more than 50,000 URLs per file; use `/api/blog/sitemap-index.xml` for a standard sitemap index, whose
 `/api/blog/sitemap.xml?page=N` children cover every canonical-post page. `?limit=` can be used to make smaller pages,
 and a truncation header is returned when variants fill a page. RSS is language-selected, ordered by the selected
-translation's publication time, and advertises `Vary: Accept-Language` plus tenant scope headers. Public
+translation's publication time, and advertises `Vary: Accept-Language` (the blog is in the URL). Public
 collection/feed/sitemap queries use scalar translation projections, so rich bodies, footnotes, albums, SEO blobs, and
 other deferred fields are not overfetched. The response exposes `language`, `baseLanguage`, `baseSlug`, `translationId`,
 and `availableLanguages` for language switchers. A scheduled translation is published by the same cron endpoint as
@@ -218,8 +259,8 @@ readable only by invited readers. Access is one level above being signed in: the
 the built-in `insider` role (and by `owner`, `admin`, `editor` and the platform owner's `*:*`; never by `*:read`).
 
 **Who has access.** The grant is evaluated in the blog's scope, never the caller's own workspace (every signup owns one
-as `owner`): system-scoped grants for the platform blog, that organization's grants for an org blog. The host decides
-via the `canReadLocked(ctx, { organizationId })` router seam; without it nobody has access. otta-web wires it to
+as `owner`): system-scoped grants for the site blog, that organization's grants for an org blog. The host decides via
+the `canReadLocked(ctx, { organizationId })` router seam; without it nobody has access. otta-web wires it to
 `canReadLockedPosts` (`worker/lib/content-guard.ts`).
 
 **What everyone else sees.** One blog-level setting, `OttablogSettings.lockedTeaser`:
@@ -729,25 +770,17 @@ const tags = await post.tags({
 const categories = await post.categories();
 ```
 
-## Multi-App Support
+## Blog Scope in Queries
 
-All models support the `appId` field for multi-tenant scenarios:
+Every model row belongs to one blog (`BlogScope`: `appId` plus `organizationId`, null for the site blog), so one
+database can serve several apps and every organization's blog. Query with the whole scope:
 
 ```typescript
-// Query posts for specific app
-const appPosts = await Post.where({ appId: 'app-123' });
+const site: BlogScope = { appId: 'app-123', organizationId: null };
 
-// Categories by type and app
-const appCategories = await PostCategory.where({
-    type: 'post',
-    appId: 'app-123',
-});
-
-// Filter tags by app and type
-const appTags = await PostTag.where({
-    type: 'blog',
-    appId: 'app-123',
-});
+const posts = await Post.where({ ...site, status: 'published' });
+const category = await PostCategory.findBySlug('life', { ...site, type: 'post' });
+const series = await PostSeries.findBySlug('travels', { appId: 'app-123', organizationId: 'org-1' });
 ```
 
 ## Registration
@@ -894,18 +927,20 @@ database, schema, and RLS failures still propagate instead of masquerading as em
 
 ## Edge SEO Meta
 
-`@ottabase/ottablog/seo` ships pure builders for per-post SEO injection at the edge: `extractBlogSlugFromPath` detects a
-blog detail document navigation, `buildPostSeoTags` produces the escaped description/canonical/OpenGraph/Twitter/JSON-LD
-head block, and `replaceDocumentTitle` swaps the SPA's static `<title>` using a replacer function (author-authored
-`$`-sequences are never expanded). Blurbs emit `SocialMediaPosting` JSON-LD, photo journals emit `CollectionPage` with
-ordered `ImageObject` entries, and full articles emit `Article`. The `otta-web` worker wires these into its HTML
-pipeline right after brand injection (`worker/lib/blog-seo-inject.ts`), so crawlers and link unfurlers see the content
-instead of the SPA shell. Injected documents are served `Cache-Control: no-store` with asset validators stripped,
-matching the brand-injection policy.
+`@ottabase/ottablog/seo` ships pure builders for per-post SEO injection at the edge (`parseBlogPostPath` from
+`@ottabase/ottablog/paths` detects a blog detail document navigation and names its blog), `buildPostSeoTags` produces
+the escaped description/canonical/OpenGraph/Twitter/JSON-LD head block, and `replaceDocumentTitle` swaps the SPA's
+static `<title>` using a replacer function (author-authored `$`-sequences are never expanded). Blurbs emit
+`SocialMediaPosting` JSON-LD, photo journals emit `CollectionPage` with ordered `ImageObject` entries, and full articles
+emit `Article`. The `otta-web` worker wires these into its HTML pipeline right after brand injection
+(`worker/lib/blog-seo-inject.ts`), so crawlers and link unfurlers see the content instead of the SPA shell. Injected
+documents are served `Cache-Control: no-store` with asset validators stripped, matching the brand-injection policy.
 
 ## Public API Endpoints
 
-When integrated with the app's worker routes, the blog system provides these public endpoints:
+When integrated with the app's worker routes, the blog system provides these public endpoints. Each reads the site blog,
+or an organization's blog with `?blog=<orgSlug>` (see
+[Site blog and organization blogs](#site-blog-and-organization-blogs)).
 
 ### List Posts
 
@@ -990,8 +1025,8 @@ back to content type.
 GET /api/blog/tags/by-slug/{slug}
 ```
 
-Returns tag metadata (id, name, slug, color, type). Supports query params: `appId` (optional, otherwise
-`X-App-Id`/config is used) and `type` (defaults to `post`).
+Returns tag metadata (id, name, slug, color, type). Supports `type` (defaults to `post`). A tag whose every post is
+hidden from the reader (locked) answers 404.
 
 ### Category by Slug
 
@@ -999,18 +1034,19 @@ Returns tag metadata (id, name, slug, color, type). Supports query params: `appI
 GET /api/blog/categories/by-slug/{slug}
 ```
 
-Returns category metadata (id, name, slug, description, effective `isLocked`). Supports query params: `appId` (optional,
-otherwise `X-App-Id`/config is used) and `type` (defaults to `post`). A locked category answers 404 to a reader without
-access while teasers are off.
+Returns category metadata (id, name, slug, description, effective `isLocked`). Supports `type` (defaults to `post`). A
+locked category answers 404 to a reader without access while teasers are off.
 
-### Series by Slug
+### Series
 
 ```http
+GET /api/blog/series
 GET /api/blog/series/by-slug/{slug}
 ```
 
-Returns series metadata (id, title, slug, description, status). Supports query param: `appId` (optional, otherwise
-`X-App-Id`/config is used).
+The list returns `{ data }`: the blog's series with at least one post the reader can see, in display order (one
+`SELECT DISTINCT`). By slug returns one series (id, title, slug, description, status), or 404 when the reader can see
+none of its posts.
 
 ### Author by Id
 
@@ -1030,16 +1066,18 @@ GET /api/blog/rss?title=My+Blog&description=Latest+posts&contentType=blog&limit=
 
 Returns an RSS 2.0 XML feed of published articles, blurbs, and photo journals in publish chronology. Blurb text or the
 photo field note becomes the item description; a photo journal includes a `Photo Journal` category and lead-image
-enclosure. Supports `title`, `description`, `contentType`, `appId`, and `limit` query parameters.
+enclosure. Supports `title` (defaults to the organization's name on its blog), `description`, `contentType` and `limit`.
+Item links point at the post on its own blog (`/blog/...` or `/blogs/{orgSlug}/...`).
 
 ### Sitemap
 
 ```http
-GET /api/blog/sitemap.xml?appId=xyz
+GET /api/blog/sitemap.xml
+GET /api/blog/sitemap.xml?blog=acme
 ```
 
-Returns an XML sitemap of all published posts for SEO. Use /api/blog/sitemap-index.xml to enumerate paginated sitemap
-files on larger multilingual sites.
+Returns an XML sitemap of a blog's published posts for SEO. Use /api/blog/sitemap-index.xml to enumerate paginated
+sitemap files on larger multilingual sites; its page links keep the `blog` parameter.
 
 ### Scheduled Publishing
 
@@ -1062,8 +1100,8 @@ The single seeding entry point — sample articles, release notes, and the block
 renderer. Apps opt in by providing `demoPosts` in `BlogRouterConfig`; without it the route responds 404.
 
 Gated by `requireAdmin`, which apps should wire at **system scope** so only the platform owner can seed. The handler
-creates only missing rows in the resolved app/organization scope and leaves existing content unchanged, so it is safe
-for a fresh deployment and safe to repeat after an administrator edits the seeded content.
+writes to the **site blog** and creates only missing rows, leaving existing content unchanged, so it is safe for a fresh
+deployment and safe to repeat after an administrator edits the seeded content.
 
 A seed has the same shape as one post in an import file (`BlogExportPost`), so it can be any content type (blurbs and
 photo journals included) and carry `tags`, `categories` and a `series` by name, `footnotes`, an `originalDate`,

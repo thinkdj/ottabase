@@ -20,20 +20,28 @@ describe('preview tokens', () => {
         expect(expiresAt).toBeGreaterThan(Date.now());
     });
 
-    it('omits the org dimension when not provided (platform mode)', async () => {
-        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a' });
+    it('binds the site blog as a null organization', async () => {
+        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a', organizationId: null });
         const payload = await verifyPreviewToken(SECRET, token);
         expect(payload).not.toBeNull();
-        expect('organizationId' in payload!).toBe(false);
+        expect(payload!.organizationId).toBeNull();
+    });
+
+    it('rejects a signed payload that names no blog', async () => {
+        // Signed correctly, but without an organization field: never resolve it to some blog.
+        const { createHmac } = await import('node:crypto');
+        const json = JSON.stringify({ slug: 's', appId: 'a', exp: Date.now() + 60_000 });
+        const signature = createHmac('sha256', SECRET).update(json).digest('base64url');
+        expect(await verifyPreviewToken(SECRET, `${Buffer.from(json).toString('base64url')}.${signature}`)).toBeNull();
     });
 
     it('rejects a token signed with a different secret', async () => {
-        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a' });
+        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a', organizationId: null });
         expect(await verifyPreviewToken('another-secret-entirely-here!!!!', token)).toBeNull();
     });
 
     it('rejects a tampered payload', async () => {
-        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a' });
+        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a', organizationId: null });
         const [payload, sig] = token.split('.');
         const forged = JSON.parse(Buffer.from(payload, 'base64url').toString());
         forged.slug = 'someone-elses-draft';
@@ -42,7 +50,7 @@ describe('preview tokens', () => {
     });
 
     it('rejects an expired token', async () => {
-        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a', ttlMs: 1 });
+        const { token } = await signPreviewToken(SECRET, { slug: 's', appId: 'a', organizationId: null, ttlMs: 1 });
         await new Promise((resolve) => setTimeout(resolve, 5));
         expect(await verifyPreviewToken(SECRET, token)).toBeNull();
     });

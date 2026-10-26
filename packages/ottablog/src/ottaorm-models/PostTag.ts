@@ -8,7 +8,7 @@
  */
 import { BaseModel, ModelFields, type PackageType, type UpdateMutationContext } from '@ottabase/ottaorm';
 import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
-import { generateSlug } from '../types';
+import { generateSlug, type BlogScope } from '../types';
 import { postTagsTable } from './PostTag.schema';
 
 export { postTagsTable, type NewPostTagType, type PostTagType } from './PostTag.schema';
@@ -186,20 +186,10 @@ export class PostTag extends BaseModel {
         return data;
     }
 
-    /**
-     * Find post tag by slug
-     */
-    static async findBySlug(
-        slug: string,
-        options: { appId: string; type?: string; organizationId?: string | null },
-    ): Promise<PostTag | null> {
-        const query: Record<string, unknown> = { slug, appId: options.appId };
-        if (options?.type) query.type = options.type;
-        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
-        if (options.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as PostTag) : null;
+    /** A tag of one blog by slug. */
+    static async findBySlug(slug: string, scope: BlogScope & { type?: string }): Promise<PostTag | null> {
+        const { type, ...blog } = scope;
+        return (await this.first({ slug, ...blog, ...(type ? { type } : {}) })) as PostTag | null;
     }
 
     /**

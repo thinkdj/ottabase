@@ -10,10 +10,12 @@ vi.mock('../ottaorm-models', () => ({
     Post: {
         findBySlug: vi.fn(async () => null),
         first: vi.fn(async () => null),
+        where: vi.fn(async () => []),
         create: vi.fn(),
     },
     PostCategory: {
         findBySlug: vi.fn(async () => null),
+        lockedIdsForScope: vi.fn(async () => new Set()),
         first: vi.fn(async () => null),
         create: vi.fn(async () => ({ get: () => 'category-1' })),
     },
@@ -29,7 +31,7 @@ vi.mock('../ottaorm-models', () => ({
         create: vi.fn(async () => ({ get: () => 'tag-1' })),
     },
     PostTagLink: { where: vi.fn(async () => []), create: vi.fn() },
-    OttablogSettings: { forScope: vi.fn(async () => null), forScopeOrPlatform: vi.fn(async () => null) },
+    OttablogSettings: { forBlog: vi.fn(async () => null) },
     PostTranslation: {
         forPost: vi.fn(async () => []),
         findForPost: vi.fn(async () => null),
@@ -104,17 +106,16 @@ describe('handleBlogDemoSeed', () => {
         expect(await handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }))).toBe(denial);
     });
 
-    it('creates missing rows in the caller own organization so they stay editable', async () => {
+    it("creates missing rows in the site blog, whatever the caller's own workspace", async () => {
         vi.mocked(Post.create)
             .mockResolvedValueOnce(postRow({ id: 'post-1' }) as any)
             .mockResolvedValueOnce(postRow({ id: 'post-2' }) as any);
+        const resolveEditorialScope = vi.fn(async () => 'org-editing');
         const handlers = createBlogHandlers<Env>({
             ...baseConfig,
-            // The public-read tenant is deliberately DIFFERENT from the caller's org
-            // here: seeding must follow the caller, because the admin surface reads
-            // posts through a tenant filter keyed on the caller's organization.
-            mode: 'org',
-            resolveOrganizationId: async () => 'public-tenant',
+            // Neither the caller's session org nor their editorial scope picks the blog: demo
+            // content is the site's, and the platform owner edits the site blog.
+            resolveEditorialScope,
             requireAdmin: async () => ({ session: { user: { id: 'admin', organizationId: 'org-123' } } }),
             demoPosts: DEMO_POSTS,
         });
@@ -137,13 +138,14 @@ describe('handleBlogDemoSeed', () => {
             expect.objectContaining({
                 slug: 'sample-article',
                 appId: 'test-app',
-                organizationId: 'org-123',
+                organizationId: null,
                 contentType: 'blog',
                 status: 'published',
                 isFeatured: true,
                 heroImage: { url: 'https://cdn.test/hero.jpg', alt: 'Hero' },
             }),
         );
+        expect(resolveEditorialScope).not.toHaveBeenCalled();
     });
 
     it('omits heroImage entirely for seeds that do not declare one', async () => {
@@ -157,7 +159,7 @@ describe('handleBlogDemoSeed', () => {
         expect(vi.mocked(Post.create).mock.calls[1][0]).not.toHaveProperty('heroImage');
     });
 
-    it('probes for an existing slug per the binding (app, slug) unique index', async () => {
+    it('probes for an existing slug in the site blog, where slugs are unique', async () => {
         vi.mocked(Post.create).mockResolvedValue(postRow({ id: 'post-1' }) as any);
         const handlers = createBlogHandlers<Env>({
             ...baseConfig,
@@ -167,10 +169,7 @@ describe('handleBlogDemoSeed', () => {
 
         await handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST', headers: { 'x-app-id': 'site-a' } }));
 
-        // No organizationId in the probe: an org-filtered lookup would miss a
-        // same-slug row in another tenant and turn the insert into a hard
-        // constraint failure instead of a clean "already exists".
-        expect(Post.first).toHaveBeenCalledWith({ slug: 'sample-article', appId: 'test-app' });
+        expect(Post.first).toHaveBeenCalledWith({ slug: 'sample-article', appId: 'test-app', organizationId: null });
     });
 
     it('keeps the seed publish date and links its taxonomy by name', async () => {
@@ -202,8 +201,11 @@ describe('handleBlogDemoSeed', () => {
         );
         // Taxonomy never lands on the post row itself.
         expect(vi.mocked(Post.create).mock.calls[0][0]).not.toHaveProperty('tags');
-        // "Norway" and "norway" are one tag; platform mode keeps the vocabulary app-wide.
+        // "Norway" and "norway" are one tag, in the site blog's vocabulary.
         expect(PostTag.create).toHaveBeenCalledTimes(2);
+        expect(PostTag.first).toHaveBeenCalledWith(
+            expect.objectContaining({ appId: 'test-app', organizationId: null, type: 'post', slug: 'norway' }),
+        );
         expect(PostTag.create).toHaveBeenCalledWith(
             expect.objectContaining({ appId: 'test-app', type: 'post', organizationId: null, name: 'Norway' }),
         );
@@ -287,7 +289,9 @@ describe('blog by-slug app scoping', () => {
             },
             'hello',
         );
-        expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ appId: 'test-app', status: 'published' }));
+        expect(Post.first).toHaveBeenCalledWith(
+            expect.objectContaining({ appId: 'test-app', organizationId: null, status: 'published' }),
+        );
     });
 
     it('ignores request app query/header values on unlock reads', async () => {
@@ -341,6 +345,6 @@ describe('blog by-slug app scoping', () => {
             },
             's',
         );
-        expect(PostSeries.findBySlug).toHaveBeenCalledWith('s', expect.objectContaining({ appId: 'test-app' }));
+        expect(PostSeries.findBySlug).toHaveBeenCalledWith('s', { appId: 'test-app', organizationId: null });
     });
 });

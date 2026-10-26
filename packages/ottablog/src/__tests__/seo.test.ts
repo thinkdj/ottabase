@@ -1,33 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from '../seo';
-
-describe('extractBlogSlugFromPath', () => {
-    it('extracts the slug from a detail path', () => {
-        expect(extractBlogSlugFromPath('/blog/hello-world')).toBe('hello-world');
-    });
-
-    it('decodes percent-encoded slugs', () => {
-        expect(extractBlogSlugFromPath('/blog/hello%20world')).toBe('hello world');
-    });
-
-    it('returns null for the list page, archives, and deeper paths', () => {
-        expect(extractBlogSlugFromPath('/blog')).toBeNull();
-        expect(extractBlogSlugFromPath('/blog/')).toBeNull();
-        expect(extractBlogSlugFromPath('/blog/tag/x')).toBeNull();
-        expect(extractBlogSlugFromPath('/blog/category/x')).toBeNull();
-        expect(extractBlogSlugFromPath('/blog/series/x')).toBeNull();
-        expect(extractBlogSlugFromPath('/other/hello')).toBeNull();
-    });
-
-    it('returns null for malformed percent-encoding instead of throwing', () => {
-        expect(extractBlogSlugFromPath('/blog/%E0%A4%A')).toBeNull();
-    });
-
-    it('honors a custom base path', () => {
-        expect(extractBlogSlugFromPath('/news/story-1', '/news')).toBe('story-1');
-        expect(extractBlogSlugFromPath('/blog/story-1', '/news')).toBeNull();
-    });
-});
+import { buildPostSeoTags, escapeHtml, jsonForScriptTag, replaceDocumentTitle } from '../seo';
 
 describe('buildPostSeoTags', () => {
     const base = {

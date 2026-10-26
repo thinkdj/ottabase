@@ -4,7 +4,7 @@
  * surface asks the same question in the blog's scope.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { OrganizationMember, Role, User, UserRole } from '@ottabase/ottaorm';
+import { Organization, OrganizationMember, Role, User, UserRole } from '@ottabase/ottaorm';
 import { createBlogHandlers } from '../router';
 import type { BlogRouterConfig } from '../router';
 
@@ -18,6 +18,7 @@ vi.mock('../ottaorm-models', () => ({
         searchPaginate: vi.fn(async () => ({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 })),
         searchPostIds: vi.fn(async () => []),
         related: vi.fn(async () => []),
+        seriesIdsOf: vi.fn(async () => []),
     },
     PostCategory: {
         entity: 'categories',
@@ -33,11 +34,11 @@ vi.mock('../ottaorm-models', () => ({
     },
     PostCategoryLink: { entity: 'post_category_links', where: vi.fn(async () => []) },
     PostSeries: { entity: 'series', find: vi.fn(async () => null), whereIn: vi.fn(async () => []) },
-    PostTag: { entity: 'post_tags', whereIn: vi.fn(async () => []) },
+    PostTag: { entity: 'post_tags', findBySlug: vi.fn(async () => null), whereIn: vi.fn(async () => []) },
     PostTagLink: { entity: 'post_tag_links', where: vi.fn(async () => []) },
     OttablogSettings: {
-        forScopeOrPlatform: vi.fn(async () => null),
-        ensureOwn: vi.fn(),
+        forBlog: vi.fn(async () => null),
+        ensure: vi.fn(),
     },
     PostTranslation: {
         forPublicPosts: vi.fn(async () => []),
@@ -50,7 +51,7 @@ vi.mock('../ottaorm-models', () => ({
     OttablogPlugin: {},
 }));
 
-import { OttablogSettings, Post, PostCategory, PostCategoryLink } from '../ottaorm-models';
+import { OttablogSettings, Post, PostCategory, PostCategoryLink, PostTag, PostTagLink } from '../ottaorm-models';
 
 type Env = Record<string, never>;
 
@@ -84,7 +85,7 @@ function lockLife(teaser: string[] = []) {
     vi.mocked(PostCategory.lockedIdsForScope).mockResolvedValue(new Set(['c-life']));
     vi.mocked(PostCategoryLink.where).mockResolvedValue([model({ postId: 'p-life', categoryId: 'c-life' })] as any);
     vi.mocked(PostCategory.whereIn).mockResolvedValue([model({ id: 'c-life', name: 'Life', slug: 'life' })] as any);
-    vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValue({
+    vi.mocked(OttablogSettings.forBlog).mockResolvedValue({
         config: () => ({
             defaultLanguage: 'en',
             supportedLanguages: [{ code: 'en', name: 'English' }],
@@ -120,7 +121,7 @@ beforeEach(() => {
     vi.mocked(PostCategory.lockedIdsForScope).mockResolvedValue(new Set());
     vi.mocked(PostCategoryLink.where).mockResolvedValue([]);
     vi.mocked(PostCategory.whereIn).mockResolvedValue([]);
-    vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValue(null);
+    vi.mocked(OttablogSettings.forBlog).mockResolvedValue(null);
     vi.mocked(Post.paginate).mockResolvedValue({ data: [], page: 1, perPage: 15, total: 0, totalPages: 0 } as any);
     vi.mocked(Post.first).mockResolvedValue(null);
 });
@@ -194,16 +195,22 @@ describe('posts list', () => {
         expect(post.teaser).toBeUndefined();
     });
 
-    it('asks in the resolved organization on an org blog', async () => {
+    it("asks in the blog's own organization on an organization blog, never the reader's workspace", async () => {
         lockLife([]);
+        const findBySlug = vi
+            .spyOn(Organization, 'findBySlug')
+            .mockResolvedValue({ id: 'org-1', slug: 'acme', name: 'Acme', status: 'active' } as any);
+        vi.mocked(Post.where).mockResolvedValueOnce([model({ id: 'p0' })] as any); // the blog is public
         const canReadLocked = vi.fn(async () => true);
         await handlersWith({
             canReadLocked,
-            mode: 'org',
-            resolveOrganizationId: async () => 'org-1',
-        }).handleBlogPostsList(ctxFor('/posts'));
+            orgBlogs: true,
+            resolveEditorialScope: async () => 'org-of-the-reader',
+        }).handleBlogPostsList(ctxFor('/posts?blog=acme'));
 
         expect(canReadLocked).toHaveBeenCalledWith(expect.anything(), { organizationId: 'org-1' });
+        expect(PostCategory.lockedIdsForScope).toHaveBeenCalledWith({ appId: 'app', organizationId: 'org-1' });
+        findBySlug.mockRestore();
     });
 
     it('fails closed when the access check throws', async () => {
@@ -294,6 +301,31 @@ describe('other public surfaces', () => {
         expect(await response.json()).toMatchObject({ id: 'c-life', isLocked: true });
     });
 
+    it('hides a tag whose every post is hidden from the reader (its name would describe them)', async () => {
+        lockLife([]);
+        vi.mocked(PostTag.findBySlug).mockResolvedValue(model({ id: 't-grief', name: 'Grief' }) as any);
+        vi.mocked(PostTagLink.where).mockResolvedValue([model({ postId: 'p-life', tagId: 't-grief' })] as any);
+
+        vi.mocked(Post.where).mockResolvedValueOnce([]);
+        expect((await handlersWith().handleBlogTagBySlug(ctxFor('/tags/by-slug/grief'), 'grief')).status).toBe(404);
+        expect(Post.where).toHaveBeenLastCalledWith(
+            expect.objectContaining({ id: ['p-life'], isLocked: false, status: 'published' }),
+            { select: ['id'], limit: 1 },
+        );
+
+        vi.mocked(Post.where).mockResolvedValueOnce([model({ id: 'p-open' })] as any);
+        expect((await handlersWith().handleBlogTagBySlug(ctxFor('/tags/by-slug/grief'), 'grief')).status).toBe(200);
+    });
+
+    it('lists only the series a reader without access can see a post of', async () => {
+        lockLife([]);
+        await handlersWith().handleBlogSeriesList(ctxFor('/series'));
+
+        expect(Post.seriesIdsOf).toHaveBeenCalledWith(
+            expect.objectContaining({ isLocked: false, organizationId: null }),
+        );
+    });
+
     it('builds RSS as the anonymous view, without asking who is fetching', async () => {
         lockLife([]);
         const canReadLocked = vi.fn(async () => true);
@@ -328,7 +360,7 @@ describe('studio access', () => {
 
     it('saves the teaser on the scope row', async () => {
         const updateLockedTeaser = vi.fn();
-        vi.mocked(OttablogSettings.ensureOwn).mockResolvedValue({ updateLockedTeaser } as any);
+        vi.mocked(OttablogSettings.ensure).mockResolvedValue({ updateLockedTeaser } as any);
         vi.spyOn(Role, 'findByName').mockResolvedValue(null);
 
         const response = await handlersWith({ requireAdmin: admin }).handleBlogStudioAccess(
@@ -336,7 +368,7 @@ describe('studio access', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(OttablogSettings.ensureOwn).toHaveBeenCalledWith({ appId: 'app', organizationId: undefined });
+        expect(OttablogSettings.ensure).toHaveBeenCalledWith({ appId: 'app', organizationId: null });
         expect(updateLockedTeaser).toHaveBeenCalledWith(['title', 'excerpt']);
     });
 
@@ -373,8 +405,7 @@ describe('studio access', () => {
         vi.spyOn(User, 'findByEmail').mockResolvedValueOnce({ get: () => 'u-3', assignRole: vi.fn() } as any);
         vi.spyOn(OrganizationMember, 'isMember').mockResolvedValueOnce(false);
         const response = await grant({
-            mode: 'org',
-            resolveOrganizationId: async () => 'org-1',
+            resolveEditorialScope: async () => 'org-1',
             requireScopedStudioAdmin: admin,
         });
         expect(response.status).toBe(409);

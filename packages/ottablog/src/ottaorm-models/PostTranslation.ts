@@ -15,6 +15,7 @@ import {
     type EditorJSData,
     type HeroImage,
     type PhotoJournalItem,
+    type BlogScope,
     type PostStatus,
     type SeoMeta,
 } from '../types';
@@ -435,50 +436,50 @@ export class PostTranslation extends BaseModel {
         updatedAt: { type: 'date', editable: false, uiConfig: { label: 'Updated' }, tableConfig: { visible: false } },
     };
 
-    static async findForPost(
-        postId: string,
-        language: string,
-        options?: { appId?: string | null; organizationId?: string | null; status?: PostStatus },
-    ): Promise<PostTranslation | null> {
+    // Lookups by post id need no blog filter: a translation always lives in its post's blog, and
+    // callers reach the post through a scoped read first. Lookups by slug take the blog.
+
+    static async findForPost(postId: string, language: string, status?: PostStatus): Promise<PostTranslation | null> {
         const where: Record<string, unknown> = { postId, language: normalizeLanguageCode(language) };
-        if (options?.appId !== undefined) where.appId = options.appId;
-        if (options?.organizationId !== undefined) where.organizationId = options.organizationId;
-        if (options?.status) where.status = options.status;
+        if (status) where.status = status;
         return (await this.first(where)) as PostTranslation | null;
     }
 
-    static async forPost(postId: string, options?: { appId?: string | null; organizationId?: string | null }) {
-        const where: Record<string, unknown> = { postId };
-        if (options?.appId !== undefined) where.appId = options.appId;
-        if (options?.organizationId !== undefined) where.organizationId = options.organizationId;
-        return this.where(where, { orderBy: 'language', orderDirection: 'asc', withDeferred: true }) as Promise<
+    static async forPost(postId: string) {
+        return this.where({ postId }, { orderBy: 'language', orderDirection: 'asc', withDeferred: true }) as Promise<
             PostTranslation[]
         >;
     }
 
-    static async forPostSummary(postId: string, options?: { appId?: string | null; organizationId?: string | null }) {
-        const where: Record<string, unknown> = { postId };
-        if (options?.appId !== undefined) where.appId = options.appId;
-        if (options?.organizationId !== undefined) where.organizationId = options.organizationId;
-        return this.where(where, {
-            orderBy: 'language',
-            orderDirection: 'asc',
-            select: ['id', 'postId', 'language', 'title', 'slug', 'status', 'publishAt', 'publishedAt', 'updatedAt'],
-        }) as Promise<PostTranslation[]>;
+    static async forPostSummary(postId: string) {
+        return this.where(
+            { postId },
+            {
+                orderBy: 'language',
+                orderDirection: 'asc',
+                select: [
+                    'id',
+                    'postId',
+                    'language',
+                    'title',
+                    'slug',
+                    'status',
+                    'publishAt',
+                    'publishedAt',
+                    'updatedAt',
+                ],
+            },
+        ) as Promise<PostTranslation[]>;
     }
 
-    static async forPublicPosts(
-        postIds: string[],
-        options: { language?: string; appId?: string | null; organizationId?: string | null; status?: PostStatus },
-    ): Promise<PostTranslation[]> {
+    /** Published translations of a page of (already scoped) posts, list columns only. */
+    static async forPublicPosts(postIds: string[], language?: string): Promise<PostTranslation[]> {
         if (postIds.length === 0) return [];
         const where: Record<string, unknown> = {
             postId: postIds,
-            ...(options.language ? { language: normalizeLanguageCode(options.language) } : {}),
-            status: options.status ?? 'published',
+            ...(language ? { language: normalizeLanguageCode(language) } : {}),
+            status: 'published',
         };
-        if (options.appId !== undefined) where.appId = options.appId;
-        if (options.organizationId !== undefined) where.organizationId = options.organizationId;
         return this.where(where, {
             orderBy: 'postId',
             orderDirection: 'asc',
@@ -502,18 +503,13 @@ export class PostTranslation extends BaseModel {
         }) as Promise<PostTranslation[]>;
     }
 
-    static async forPublicFeed(options: {
-        language: string;
-        appId?: string | null;
-        organizationId?: string | null;
-        limit: number;
-    }): Promise<PostTranslation[]> {
+    static async forPublicFeed(options: BlogScope & { language: string; limit: number }): Promise<PostTranslation[]> {
         const where: Record<string, unknown> = {
             language: normalizeLanguageCode(options.language),
             status: 'published',
+            appId: options.appId,
+            organizationId: options.organizationId,
         };
-        if (options.appId !== undefined) where.appId = options.appId;
-        if (options.organizationId !== undefined) where.organizationId = options.organizationId;
         return this.where(where, {
             orderBy: 'publishedAt',
             orderDirection: 'desc',
@@ -574,20 +570,14 @@ export class PostTranslation extends BaseModel {
 
     static async searchPostIds(
         query: string,
-        options: {
-            language: string;
-            appId?: string | null;
-            organizationId?: string | null;
-            status?: PostStatus;
-            limit?: number;
-        },
+        options: BlogScope & { language: string; status?: PostStatus; limit?: number },
     ): Promise<string[]> {
         const where: Record<string, unknown> = {
             language: normalizeLanguageCode(options.language),
             status: options.status ?? 'published',
+            appId: options.appId,
+            organizationId: options.organizationId,
         };
-        if (options.appId !== undefined) where.appId = options.appId;
-        if (options.organizationId !== undefined) where.organizationId = options.organizationId;
         const rows = await this.search(
             query,
             ['title', 'slug', 'excerpt', 'blurbText', 'photoNote', 'content'],
@@ -599,16 +589,15 @@ export class PostTranslation extends BaseModel {
 
     static async findBySlug(
         slug: string,
-        options: { appId?: string | null; organizationId?: string | null; language?: string; status?: PostStatus },
+        options: BlogScope & { language?: string; status?: PostStatus },
     ): Promise<PostTranslation | null> {
-        const where: Record<string, unknown> = { slug };
-        if (options.appId !== undefined) where.appId = options.appId;
-        if (options.organizationId !== undefined) where.organizationId = options.organizationId;
+        const where: Record<string, unknown> = { slug, appId: options.appId, organizationId: options.organizationId };
         if (options.language) where.language = normalizeLanguageCode(options.language);
         if (options.status) where.status = options.status;
         return (await this.first(where)) as PostTranslation | null;
     }
 
+    /** A translation slug must not shadow a canonical post of the same blog. */
     private static async assertSlugAvailable(
         slug: string,
         scope: { appId?: string | null; organizationId?: string | null },
@@ -616,8 +605,8 @@ export class PostTranslation extends BaseModel {
         const { Post } = await import('./Post');
         const canonical = await Post.first({
             slug,
-            ...(scope.appId !== undefined ? { appId: scope.appId } : {}),
-            ...(scope.organizationId !== undefined ? { organizationId: scope.organizationId } : {}),
+            appId: scope.appId ?? null,
+            organizationId: scope.organizationId ?? null,
         });
         if (canonical) {
             throw new DomainValidationError('Translation slug is already used by a canonical post in this blog', {
@@ -655,10 +644,7 @@ export class PostTranslation extends BaseModel {
             appId: data.appId,
             organizationId: data.organizationId,
         });
-        const existing = await this.findForPost(postId, normalized.language as string, {
-            appId: data.appId,
-            organizationId: data.organizationId,
-        });
+        const existing = await this.findForPost(postId, normalized.language as string);
         if (existing) {
             throw new DomainValidationError('This translation already exists. Reload it before editing.', {
                 status: 422,
@@ -674,10 +660,7 @@ export class PostTranslation extends BaseModel {
             })) as PostTranslation;
         } catch (error) {
             if (this.isUniqueConstraintError(error)) {
-                const raced = await this.findForPost(postId, normalized.language as string, {
-                    appId: data.appId,
-                    organizationId: data.organizationId,
-                });
+                const raced = await this.findForPost(postId, normalized.language as string);
                 if (raced) {
                     throw new DomainValidationError('This translation already exists. Reload it before editing.', {
                         status: 422,

@@ -76,15 +76,12 @@ export interface AuthBehaviorConfig {
 }
 
 /**
- * Blog tenancy mode.
- * - 'platform' (default): one blog per app, owned by the platform. Today's behavior, unchanged.
- * - 'org': each organization gets its own blog namespace — org-scoped slugs, taxonomy, and theme.
- *   Rows with a null organizationId remain platform-owned content.
+ * Blogs. Every app has one site blog (platform-owned, at /blog). With `orgBlogs`, every
+ * organization also gets its own public blog at /blogs/{orgSlug}, written by its own members.
  */
-export type OttablogMode = 'platform' | 'org';
-
 export interface OttablogFeatureConfig {
-    mode: OttablogMode;
+    /** Serve organization blogs publicly. Default false: the site blog only. */
+    orgBlogs: boolean;
 }
 
 /**
@@ -226,9 +223,9 @@ export interface OttabaseUIConfig {
 
 /**
  * Sentinel value for the x-org-id header / org selection meaning "act in PLATFORM
- * scope" (organizationId NULL — platform-owned rows such as the platform's own
- * blog in org mode). Honored server-side only for platform admins; never a valid
- * organization id. Shared by the API client, the org switcher, and the worker.
+ * scope" (organizationId NULL: platform-owned rows such as the site blog). Honored
+ * server-side only for platform admins; never a valid organization id. Shared by
+ * the API client, the org switcher, and the worker.
  */
 export const PLATFORM_ORG_SENTINEL = 'platform';
 

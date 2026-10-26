@@ -18,9 +18,11 @@ export function normalizeSlugInput(value: unknown, fallback: string, prefix: str
     return generateSlug(fallback) || `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-/** Scope fields used when checking slug uniqueness. */
+/** Scope fields used when checking slug uniqueness: one blog, and the type when the model has one. */
 export interface SlugScope {
     appId: string;
+    /** The blog: an organization's, or null for the site blog. */
+    organizationId: string | null;
     type?: string;
     excludeId?: string;
     /** Optional DB driver for multi-connection / multi-tenant scenarios. */
@@ -33,8 +35,8 @@ export interface SlugScope {
  * then falls back to a UUID suffix.
  */
 export async function resolveUniqueSlug(Model: typeof BaseModel, baseSlug: string, scope: SlugScope): Promise<string> {
-    // Build query scope: always appId, optionally type
-    const queryScope: Record<string, unknown> = { appId: scope.appId };
+    // Slugs are unique per blog (and type), matching the schemas' unique indexes.
+    const queryScope: Record<string, unknown> = { appId: scope.appId, organizationId: scope.organizationId };
     if (scope.type) queryScope.type = scope.type;
 
     let attempt = 0;
@@ -89,7 +91,12 @@ export async function prepareCreateSlug(
     const nameValue = data[config.nameField] ?? config.slugPrefix;
     const slugBase = normalizeSlugInput(data.slug ?? nameValue, nameValue, config.slugPrefix);
 
-    data.slug = await resolveUniqueSlug(Model, slugBase, { appId, type, driver });
+    data.slug = await resolveUniqueSlug(Model, slugBase, {
+        appId,
+        organizationId: (data.organizationId as string | null | undefined) ?? null,
+        type,
+        driver,
+    });
     if (config.hasType) {
         data.type = type;
     }
@@ -131,6 +138,7 @@ export async function prepareUpdateSlug(
 
     data.slug = await resolveUniqueSlug(Model, slugBase, {
         appId: currentAppId,
+        organizationId: (current.get('organizationId') as string | null | undefined) ?? null,
         type: nextType,
         excludeId: String(id),
         driver,

@@ -1,10 +1,5 @@
 // Ottabase config (dynamic packages, features, routes)
-export {
-    defineOttabaseConfig,
-    normalizeOttaaiMode,
-    normalizeOttaaiStrategy,
-    normalizeOttablogMode,
-} from './defineOttabaseConfig';
+export { defineOttabaseConfig, normalizeOttaaiMode, normalizeOttaaiStrategy } from './defineOttabaseConfig';
 export type {
     OttabaseConfig,
     OttabaseConfigInput,
@@ -18,7 +13,6 @@ export type {
     OttaaiImageConfig,
     OttaaiRateLimitConfig,
     OttablogFeatureConfig,
-    OttablogMode,
     OttabaseFeaturesConfig,
     OttabaseEmailConfig,
     OttabaseUIConfig,

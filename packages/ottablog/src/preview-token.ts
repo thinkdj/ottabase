@@ -2,10 +2,10 @@
  * Signed draft-preview tokens — Web Crypto HMAC, zero dependencies.
  *
  * A preview token lets an author hand a reviewer a link to an UNPUBLISHED post
- * without any account or session. The token binds the post's slug, appId, org
- * scope, and an expiry; the public by-slug handler accepts it as an alternate
- * access path that bypasses ONLY the `status: 'published'` filter — never RLS,
- * never other tenants' content (the org/app scope is inside the signature).
+ * without any account or session. The token binds the post's slug, its blog
+ * (appId + organization), and an expiry; the public by-slug handler accepts it
+ * as an alternate access path that bypasses ONLY the `status: 'published'`
+ * filter, never another blog's content (the blog is inside the signature).
  *
  * Format: base64url(payloadJson) + '.' + base64url(hmacSha256(payloadJson)).
  * Same signing primitive as @ottabase/auth sessions (HS256 over Web Crypto).
@@ -16,8 +16,8 @@ export interface PreviewTokenPayload {
     slug: string;
     /** App the slug is scoped to. */
     appId: string;
-    /** Org scope (org mode); null = platform-owned content. Omitted in platform mode. */
-    organizationId?: string | null;
+    /** The post's blog: an organization's, or null for the site blog. */
+    organizationId: string | null;
     /** Unix ms expiry. */
     exp: number;
 }
@@ -49,15 +49,15 @@ async function hmacKey(secret: string, usage: 'sign' | 'verify'): Promise<Crypto
 /** Sign a preview token for a post. `ttlMs` defaults to 24 hours. */
 export async function signPreviewToken(
     secret: string,
-    input: { slug: string; appId: string; organizationId?: string | null; ttlMs?: number },
+    input: { slug: string; appId: string; organizationId: string | null; ttlMs?: number },
 ): Promise<{ token: string; expiresAt: number }> {
     const expiresAt = Date.now() + (input.ttlMs ?? 24 * 60 * 60 * 1000);
     const payload: PreviewTokenPayload = {
         slug: input.slug,
         appId: input.appId,
+        organizationId: input.organizationId,
         exp: expiresAt,
     };
-    if (input.organizationId !== undefined) payload.organizationId = input.organizationId;
 
     const payloadJson = JSON.stringify(payload);
     const key = await hmacKey(secret, 'sign');
@@ -96,6 +96,7 @@ export async function verifyPreviewToken(secret: string, token: string): Promise
         if (
             typeof payload?.slug !== 'string' ||
             typeof payload?.appId !== 'string' ||
+            (payload.organizationId !== null && typeof payload.organizationId !== 'string') ||
             typeof payload?.exp !== 'number'
         ) {
             return null;

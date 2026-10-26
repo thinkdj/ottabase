@@ -1,6 +1,7 @@
 /**
  * PostTag table schema - blog-specific tags with color and type support
  */
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const postTagsTable = sqliteTable(
@@ -22,8 +23,7 @@ export const postTagsTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id').notNull(),
 
-        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
-        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        // The blog this belongs to: an organization's blog, or null for the site blog.
         organizationId: text('organization_id'),
 
         // Content type this tag applies to (post, news, docs, etc.)
@@ -35,14 +35,19 @@ export const postTagsTable = sqliteTable(
             .$defaultFn(() => Date.now()),
     },
     (table) => [
-        // Enforce unique tag slugs per app + content type
-        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
-        uniqueIndex('post_tags_app_id_type_slug_unique_idx').on(table.appId, table.type, table.slug),
+        // Unique tag slugs per content type per blog. SQLite treats NULLs as distinct in a unique index, so the site
+        // blog (null org) needs its own partial index.
+        uniqueIndex('post_tags_org_app_type_slug_unique_idx')
+            .on(table.organizationId, table.appId, table.type, table.slug)
+            .where(sql`${table.organizationId} IS NOT NULL`),
+        uniqueIndex('post_tags_app_type_slug_unique_no_org_idx')
+            .on(table.appId, table.type, table.slug)
+            .where(sql`${table.organizationId} IS NULL`),
 
         // Multi-tenant with type: appId + type for filtering tags by content type
         index('post_tags_app_id_type_idx').on(table.appId, table.type),
 
-        // Org-mode filtering: organizationId + appId + type
+        // Blog filtering: organizationId + appId + type
         index('post_tags_org_app_type_idx').on(table.organizationId, table.appId, table.type),
 
         // Type filtering single index for flexibility

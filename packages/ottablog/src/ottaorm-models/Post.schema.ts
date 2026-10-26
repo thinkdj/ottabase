@@ -127,7 +127,7 @@ export const postsTable = sqliteTable(
         // Use Post.author() relationship to get author info (name, email, image)
         authorId: text('author_id'),
 
-        // Tenancy / ownership
+        // The blog this post is in: an organization's blog, or null for the site blog.
         organizationId: text('organization_id'),
         userId: text('user_id'),
 
@@ -179,10 +179,12 @@ export const postsTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Unique slug per appId
-        uniqueIndex('posts_app_id_slug_unique_idx').on(table.appId, table.slug),
-        // Unique slug per organization + app (multi-tenant)
+        // Unique slug per blog: an organization's blog (NULLs are distinct in a unique index, so
+        // this one never constrains the site blog), and the site blog (organizationId NULL).
         uniqueIndex('posts_org_app_slug_unique_idx').on(table.organizationId, table.appId, table.slug),
+        uniqueIndex('posts_app_slug_unique_no_org_idx')
+            .on(table.appId, table.slug)
+            .where(sql`${table.organizationId} IS NULL`),
         // Unique slug when appId is null (single-tenant/local)
         uniqueIndex('posts_slug_unique_no_app_idx')
             .on(table.slug)

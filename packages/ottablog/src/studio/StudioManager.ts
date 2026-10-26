@@ -8,6 +8,7 @@
 import { OttablogPlugin, OttablogSettings, OttablogTheme } from '../ottaorm-models';
 import { activatePlugin } from '../plugins/registry';
 import { setActiveTheme } from '../themes/registry';
+import type { BlogScope } from '../types';
 
 export interface StudioThemeState {
     id: string;
@@ -49,36 +50,27 @@ export interface StudioState {
  */
 export class StudioManager {
     /**
-     * Load DB state and apply to theme/plugin registries (active theme, enabled plugins).
-     * Call this before rendering or when handling studio API requests.
-     * Pass organizationId (id or null) to scope to a single tenant's blog in org mode;
-     * omit it (undefined) for platform mode.
+     * Load one blog's DB state into the in-memory theme/plugin registries (active theme, enabled
+     * plugins). Plugin config is applied on the client when it loads the state.
      */
-    static async initialize(appId: string | null = null, organizationId?: string | null): Promise<void> {
-        // Apply active theme
-        const activeTheme = await OttablogTheme.active({ appId: appId ?? undefined, organizationId });
+    static async initialize(scope: BlogScope): Promise<void> {
+        const activeTheme = await OttablogTheme.active(scope);
         if (activeTheme) {
             setActiveTheme(activeTheme.get('themeId') as string);
         }
 
-        // Activate enabled plugins (by id only; config is applied on client when loading state)
-        const enabledPlugins = await OttablogPlugin.enabled({ appId: appId ?? undefined, organizationId });
+        const enabledPlugins = await OttablogPlugin.enabled(scope);
         for (const row of enabledPlugins) {
             await activatePlugin(row.get('pluginId') as string);
         }
     }
 
-    /**
-     * Get current studio state for admin UI (themes + plugins from DB).
-     * Pass organizationId (id or null) to scope to a single tenant's blog in org mode.
-     */
-    static async getState(appId: string | null = null, organizationId?: string | null): Promise<StudioState> {
-        const scope: Record<string, unknown> = { ...(appId ? { appId } : {}) };
-        if (organizationId !== undefined) scope.organizationId = organizationId;
+    /** One blog's Studio state: its themes, plugins and language policy. */
+    static async getState(scope: BlogScope): Promise<StudioState> {
         const [themesRows, pluginsRows, settings] = await Promise.all([
-            OttablogTheme.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
-            OttablogPlugin.where(scope, { orderBy: 'name', orderDirection: 'asc' }),
-            OttablogSettings.forScopeOrPlatform({ appId: appId ?? null, organizationId }),
+            OttablogTheme.where({ ...scope }, { orderBy: 'name', orderDirection: 'asc' }),
+            OttablogPlugin.where({ ...scope }, { orderBy: 'name', orderDirection: 'asc' }),
+            OttablogSettings.forBlog(scope),
         ]);
 
         const activeThemeRow = themesRows.find((t) => t.get('isActive'));

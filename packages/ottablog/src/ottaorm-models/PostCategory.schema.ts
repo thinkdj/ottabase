@@ -1,6 +1,7 @@
 /**
  * PostCategory table schema - hierarchical content organization
  */
+import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const categoriesTable = sqliteTable(
@@ -28,8 +29,7 @@ export const categoriesTable = sqliteTable(
         // App identifier for multi-app database sharing
         appId: text('app_id').notNull(),
 
-        // Tenant scope for org-mode blogs (null = platform-owned). Only filtered when
-        // features.ottablog.mode === 'org'; platform mode ignores this column entirely.
+        // The blog this belongs to: an organization's blog, or null for the site blog.
         organizationId: text('organization_id'),
 
         // Content type this category applies to (post, news, docs, etc.)
@@ -49,14 +49,19 @@ export const categoriesTable = sqliteTable(
             .$onUpdateFn(() => Date.now()),
     },
     (table) => [
-        // Enforce unique category slugs per app + content type
-        // (org mode replaces this with org-aware partial indexes via ottablogOrgModeMigrations)
-        uniqueIndex('categories_app_id_type_slug_unique_idx').on(table.appId, table.type, table.slug),
+        // Slugs are unique per blog and content type. SQLite treats NULLs as distinct in a unique
+        // index, so the site blog (null org) needs its own partial index.
+        uniqueIndex('categories_org_app_type_slug_unique_idx')
+            .on(table.organizationId, table.appId, table.type, table.slug)
+            .where(sql`${table.organizationId} IS NOT NULL`),
+        uniqueIndex('categories_app_type_slug_unique_no_org_idx')
+            .on(table.appId, table.type, table.slug)
+            .where(sql`${table.organizationId} IS NULL`),
 
         // Multi-tenant with type: appId + type for filtering categories by content type
         index('categories_app_id_type_idx').on(table.appId, table.type),
 
-        // Org-mode filtering: organizationId + appId + type
+        // Blog filtering: organizationId + appId + type
         index('categories_org_app_type_idx').on(table.organizationId, table.appId, table.type),
 
         // Hierarchy traversal: parentId + sortOrder for getting children ordered

@@ -6,7 +6,7 @@
  */
 import { BaseModel, ModelFields, type PackageType, type UpdateMutationContext } from '@ottabase/ottaorm';
 import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
-import { generateSlug } from '../types';
+import { generateSlug, type BlogScope } from '../types';
 import { seriesTable } from './PostSeries.schema';
 
 export {
@@ -236,19 +236,9 @@ export class PostSeries extends BaseModel {
         });
     }
 
-    /**
-     * Find series by slug
-     */
-    static async findBySlug(
-        slug: string,
-        options: { appId: string; organizationId?: string | null },
-    ): Promise<PostSeries | null> {
-        const query: Record<string, unknown> = { slug, appId: options.appId };
-        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
-        if (options.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as PostSeries) : null;
+    /** A series of one blog by slug. */
+    static async findBySlug(slug: string, scope: BlogScope): Promise<PostSeries | null> {
+        return (await this.first({ slug, ...scope })) as PostSeries | null;
     }
 
     // ==================== Instance Methods ====================

@@ -13,7 +13,7 @@ import {
 } from '@ottabase/ottaorm';
 import { eq } from 'drizzle-orm';
 import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
-import { generateSlug } from '../types';
+import { generateSlug, type BlogScope } from '../types';
 import { categoriesTable } from './PostCategory.schema';
 import { PostCategoryLink, postCategoryLinksTable } from './PostCategoryLink';
 
@@ -330,14 +330,9 @@ export class PostCategory extends BaseModel {
         return new Set(rows.filter((row) => lockedOf(row.id, 0)).map((row) => row.id));
     }
 
-    /**
-     * Effectively locked categories of one blog scope (one query). `organizationId` undefined =
-     * no org filter (platform mode), null = platform-owned rows.
-     */
-    static async lockedIdsForScope(scope: { appId: string; organizationId?: string | null }): Promise<Set<string>> {
-        const where: Record<string, unknown> = { appId: scope.appId };
-        if (scope.organizationId !== undefined) where.organizationId = scope.organizationId;
-        const rows = (await this.where(where, { select: LOCK_COLUMNS })).map(toLockRow);
+    /** Effectively locked categories of one blog (one query). */
+    static async lockedIdsForScope(scope: BlogScope): Promise<Set<string>> {
+        const rows = (await this.where({ ...scope }, { select: LOCK_COLUMNS })).map(toLockRow);
         return rows.some((row) => row.isLocked) ? this.effectiveLockedIds(rows) : new Set();
     }
 
@@ -466,20 +461,10 @@ export class PostCategory extends BaseModel {
         });
     }
 
-    /**
-     * Find category by slug
-     */
-    static async findBySlug(
-        slug: string,
-        options: { appId: string; type?: string; organizationId?: string | null },
-    ): Promise<PostCategory | null> {
-        const query: Record<string, unknown> = { slug, appId: options.appId };
-        if (options.type) query.type = options.type;
-        // Org-mode scoping: null filters platform-owned rows (IS NULL); undefined = no filter.
-        if (options.organizationId !== undefined) query.organizationId = options.organizationId;
-
-        const results = await this.where(query);
-        return results.length > 0 ? (results[0] as PostCategory) : null;
+    /** A category of one blog by slug. */
+    static async findBySlug(slug: string, scope: BlogScope & { type?: string }): Promise<PostCategory | null> {
+        const { type, ...blog } = scope;
+        return (await this.first({ slug, ...blog, ...(type ? { type } : {}) })) as PostCategory | null;
     }
 
     // ==================== Instance Methods ====================

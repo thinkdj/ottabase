@@ -1,102 +1,89 @@
 /**
  * Ottablog migrations.
  *
- * `ottablogOrgModeMigrations` applies ONLY when the app runs the blog in org
- * mode (features.ottablog.mode === 'org'): register it conditionally in the
- * app's package-migration registry. It swaps the app-scoped unique slug
- * indexes for org-aware pairs so each organization gets its own slug
- * namespace, while platform-owned rows (organization_id IS NULL) keep
- * app-scoped uniqueness via partial indexes.
+ * Every blog is scoped by organization: an organization's own blog, or the site blog
+ * (organization_id NULL). The schemas declare per-blog unique slug indexes; this migration brings
+ * an install made before blogs were scoped up to date, once:
  *
- * SQLite treats NULLs as distinct in unique indexes, so a single
- * (organization_id, app_id, slug) index would silently stop constraining
- * platform-owned rows — hence the IS NULL / IS NOT NULL pairs.
+ *  - An install that served ONE app-wide blog stamped each post with its author's workspace, so
+ *    that content becomes the site blog. An install that already served organization blogs (it
+ *    recorded `ottablog_org_mode_slug_scope_v1`) keeps its scopes as they are.
+ *  - Comments on posts take their post's blog.
+ *  - The old app-wide unique slug indexes are dropped: they would stop two blogs sharing a slug.
  *
- * Statements are idempotent (IF EXISTS / IF NOT EXISTS): safe on fresh
- * installs (running right after auto-init created tables and columns) and on
- * re-runs.
+ * A fresh install has nothing to convert. Not idempotent DDL (it moves data), so it declares no
+ * `affectedTables`: it must never re-run after a table rebuild.
  */
 
 /** Both migration runners (`runMigrations` and `autoInit`) hand `up()` the DbDriver. */
 interface MigrationDb {
-    executeRaw: (sql: string) => Promise<unknown>;
+    executeRaw: (sql: string, params?: unknown[]) => Promise<unknown>;
 }
 
-async function exec(db: MigrationDb, sql: string): Promise<void> {
-    await db.executeRaw(sql);
-}
+/** Recorded by installs that already served organization blogs before blogs were always scoped. */
+const ORG_BLOGS_MIGRATION = 'ottablog_org_mode_slug_scope_v1';
 
-const ORG_MODE_INDEX_STATEMENTS: string[] = [
-    // posts: drop the strict app-wide unique slug index; org rows are constrained by the
-    // existing posts_org_app_slug_unique_idx, platform rows by the partial below.
-    `DROP INDEX IF EXISTS posts_app_id_slug_unique_idx`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS posts_app_slug_unique_no_org_idx
-        ON posts(app_id, slug) WHERE organization_id IS NULL`,
-
-    // categories
-    `DROP INDEX IF EXISTS categories_app_id_type_slug_unique_idx`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS categories_org_app_type_slug_unique_idx
-        ON categories(organization_id, app_id, type, slug) WHERE organization_id IS NOT NULL`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS categories_app_type_slug_unique_no_org_idx
-        ON categories(app_id, type, slug) WHERE organization_id IS NULL`,
-
-    // post_tags
-    `DROP INDEX IF EXISTS post_tags_app_id_type_slug_unique_idx`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS post_tags_org_app_type_slug_unique_idx
-        ON post_tags(organization_id, app_id, type, slug) WHERE organization_id IS NOT NULL`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS post_tags_app_type_slug_unique_no_org_idx
-        ON post_tags(app_id, type, slug) WHERE organization_id IS NULL`,
-
-    // series
-    `DROP INDEX IF EXISTS series_app_id_slug_unique_idx`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS series_org_app_slug_unique_idx
-        ON series(organization_id, app_id, slug) WHERE organization_id IS NOT NULL`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS series_app_slug_unique_no_org_idx
-        ON series(app_id, slug) WHERE organization_id IS NULL`,
-
-    // ottablog_themes: theme registry rows become per-(org, app)
-    `DROP INDEX IF EXISTS ottablog_themes_app_id_theme_id_unique_idx`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS ottablog_themes_org_app_theme_unique_idx
-        ON ottablog_themes(organization_id, app_id, theme_id) WHERE organization_id IS NOT NULL`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS ottablog_themes_app_theme_unique_no_org_idx
-        ON ottablog_themes(app_id, theme_id) WHERE organization_id IS NULL`,
-
-    // ottablog_plugins: plugin rows become per-(org, app)
-    `DROP INDEX IF EXISTS ottablog_plugins_app_id_plugin_id_unique_idx`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS ottablog_plugins_org_app_plugin_unique_idx
-        ON ottablog_plugins(organization_id, app_id, plugin_id) WHERE organization_id IS NOT NULL`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS ottablog_plugins_app_plugin_unique_no_org_idx
-        ON ottablog_plugins(app_id, plugin_id) WHERE organization_id IS NULL`,
+/** Tables whose rows belong to one blog. */
+const BLOG_SCOPED_TABLES = [
+    'posts',
+    'post_versions',
+    'post_translations',
+    'categories',
+    'post_tags',
+    'series',
+    'ottablog_themes',
+    'ottablog_plugins',
+    'ottablog_settings',
 ];
 
-export const ottablogOrgModeMigrations = [
-    {
-        name: 'ottablog_org_mode_slug_scope_v1',
-        up: async (db: MigrationDb) => {
-            for (const sql of ORG_MODE_INDEX_STATEMENTS) {
-                await exec(db, sql);
-            }
-        },
-        // Pure idempotent DDL (DROP IF EXISTS / CREATE IF NOT EXISTS) — safe to re-run.
-        // Declared so autoMigrate re-applies it if a destructive column-removal rebuild
-        // (DROP + RENAME) on any of these tables wipes the indexes it created, even
-        // though this migration is already recorded as run.
-        affectedTables: ['posts', 'categories', 'post_tags', 'series', 'ottablog_themes', 'ottablog_plugins'],
-    },
-];
-
-/**
- * Schema-declared indexes the migration above DROPS. In org mode these MUST be
- * passed to autoInit's `suppressIndexes` — the ensure step re-creates schema
- * indexes with IF NOT EXISTS on EVERY init run, while the drop-migration is
- * tracked and runs once, so without suppression a later re-init silently
- * restores app-wide slug uniqueness and breaks per-org slug namespaces.
- */
-export const ottablogOrgModeSuppressedIndexes: string[] = [
+const APP_WIDE_SLUG_INDEXES = [
     'posts_app_id_slug_unique_idx',
     'categories_app_id_type_slug_unique_idx',
     'post_tags_app_id_type_slug_unique_idx',
     'series_app_id_slug_unique_idx',
     'ottablog_themes_app_id_theme_id_unique_idx',
     'ottablog_plugins_app_id_plugin_id_unique_idx',
+];
+
+function hasRows(result: unknown): boolean {
+    if (Array.isArray(result)) return result.length > 0;
+    const rows = (result as { results?: unknown[] } | null)?.results;
+    return Array.isArray(rows) && rows.length > 0;
+}
+
+async function servedOrganizationBlogs(db: MigrationDb): Promise<boolean> {
+    try {
+        return hasRows(
+            await db.executeRaw('SELECT 1 FROM _ottabase_migrations WHERE name = ? LIMIT 1', [ORG_BLOGS_MIGRATION]),
+        );
+    } catch {
+        return false;
+    }
+}
+
+export const ottablogMigrations = [
+    {
+        name: 'ottablog_blog_scopes_v1',
+        up: async (db: MigrationDb) => {
+            if (!(await servedOrganizationBlogs(db))) {
+                // OR IGNORE: a row that would collide with another blog's slug keeps its scope
+                // rather than failing the whole upgrade.
+                for (const table of BLOG_SCOPED_TABLES) {
+                    await db.executeRaw(`UPDATE OR IGNORE ${table} SET organization_id = NULL`);
+                }
+            }
+            try {
+                await db.executeRaw(
+                    `UPDATE comments SET organization_id =
+                        (SELECT posts.organization_id FROM posts WHERE posts.id = comments.target_id)
+                     WHERE target_type = 'post' AND target_id IN (SELECT id FROM posts)`,
+                );
+            } catch {
+                // No comments package installed: nothing to re-scope.
+            }
+            for (const index of APP_WIDE_SLUG_INDEXES) {
+                await db.executeRaw(`DROP INDEX IF EXISTS ${index}`);
+            }
+        },
+    },
 ];

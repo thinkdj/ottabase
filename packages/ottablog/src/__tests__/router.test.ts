@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DomainValidationError, globalRLS } from '@ottabase/ottaorm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DomainValidationError, globalRLS, Organization } from '@ottabase/ottaorm';
 import { buildBlogRouter, createBlogHandlers } from '../router';
 import type { BlogHandlers } from '../router';
 import { BlurbValidationError } from '../types';
@@ -20,6 +20,7 @@ vi.mock('../ottaorm-models', () => ({
         related: vi.fn(async () => []),
         publishScheduled: vi.fn(async () => ({ posts: [], hasMore: false })),
         findBySlug: vi.fn(async () => null),
+        seriesIdsOf: vi.fn(async () => []),
         create: vi.fn(),
         createBlurb: vi.fn(),
         createPhotoJournal: vi.fn(),
@@ -63,8 +64,7 @@ vi.mock('../ottaorm-models', () => ({
         create: vi.fn(),
     },
     OttablogSettings: {
-        forScope: vi.fn(async () => null),
-        forScopeOrPlatform: vi.fn(async () => null),
+        forBlog: vi.fn(async () => null),
         ensure: vi.fn(async () => ({
             config: () => ({
                 defaultLanguage: 'en',
@@ -100,7 +100,9 @@ vi.mock('../studio', () => ({
 }));
 
 import {
+    OttablogPlugin,
     OttablogSettings,
+    OttablogTheme,
     Post,
     PostCategory,
     PostCategoryLink,
@@ -118,6 +120,7 @@ const named = (name: string) => vi.fn(async () => new Response(name));
 function stubHandlers(): BlogHandlers<Env> {
     return {
         handleBlogStudioState: named('studio-state'),
+        handleBlogStudioBlog: named('studio-blog'),
         handleBlogStudioLanguages: named('studio-languages'),
         handleBlogStudioAccess: named('studio-access'),
         handleBlogStudioReaderGrant: named('reader-grant'),
@@ -138,6 +141,7 @@ function stubHandlers(): BlogHandlers<Env> {
         handleBlogPostUnlock: named('post-unlock'),
         handleBlogTagBySlug: named('tag-by-slug'),
         handleBlogCategoryBySlug: named('category-by-slug'),
+        handleBlogSeriesList: named('series-list'),
         handleBlogSeriesBySlug: named('series-by-slug'),
         handleBlogAuthorById: named('author-by-id'),
         handleBlogExport: named('export'),
@@ -180,7 +184,7 @@ describe('buildBlogRouter', () => {
 
         const cases: Array<[string, string, string]> = [
             ['GET', '/studio/state', 'studio-state'],
-            ['GET', '/studio/languages', 'studio-languages'],
+            ['GET', '/studio/blog', 'studio-blog'],
             ['POST', '/studio/languages', 'studio-languages'],
             ['GET', '/studio/access', 'studio-access'],
             ['POST', '/studio/access', 'studio-access'],
@@ -201,6 +205,7 @@ describe('buildBlogRouter', () => {
             ['GET', '/posts/p1/related', 'related'],
             ['GET', '/tags/by-slug/t', 'tag-by-slug'],
             ['GET', '/categories/by-slug/c', 'category-by-slug'],
+            ['GET', '/series', 'series-list'],
             ['GET', '/series/by-slug/s', 'series-by-slug'],
             ['GET', '/authors/u1', 'author-by-id'],
             ['GET', '/export', 'export'],
@@ -268,7 +273,7 @@ describe('createBlogHandlers', () => {
     });
 
     it('does not cache mutable language policy reads', async () => {
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [{ code: 'en', name: 'English' }],
@@ -277,35 +282,68 @@ describe('createBlogHandlers', () => {
         } as any);
         const handlers = createBlogHandlers<Env>({ ...baseConfig });
 
-        const response = await handlers.handleBlogStudioLanguages(ctxFor('/studio/languages'));
+        const response = await handlers.handleBlogStudioBlog(ctxFor('/studio/blog'));
 
         expect(response.headers.get('cache-control')).toBe('no-store');
     });
 
-    it('uses the platform policy when an organization has no override', async () => {
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
-            config: () => ({
-                defaultLanguage: 'en',
-                supportedLanguages: [
-                    { code: 'en', name: 'English' },
-                    { code: 'ml', name: 'Malayalam' },
-                ],
-                fallbackToDefault: true,
-            }),
-        } as any);
+    it('names the editorial blog and reads its own language policy, with no fallback to another blog', async () => {
         const handlers = createBlogHandlers<Env>({
             ...baseConfig,
-            mode: 'org',
-            resolveOrganizationId: vi.fn(async () => 'org-1'),
+            resolveEditorialScope: vi.fn(async () => 'org-1'),
+        });
+        vi.spyOn(Organization, 'find').mockResolvedValueOnce({
+            get: (key: string) => ({ slug: 'acme', name: 'Acme' })[key],
+        } as any);
+
+        const response = await handlers.handleBlogStudioBlog(ctxFor('/studio/blog'));
+        const body = await response.json();
+
+        expect(body.blog).toEqual({ slug: 'acme', name: 'Acme' });
+        // The organization saved nothing yet: defaults, never the site blog's languages.
+        expect(body.languageConfig.supportedLanguages).toEqual([
+            { code: 'en', name: 'English', nativeName: 'English' },
+        ]);
+        expect(OttablogSettings.forBlog).toHaveBeenCalledTimes(1);
+        expect(OttablogSettings.forBlog).toHaveBeenCalledWith({ appId: 'test-app', organizationId: 'org-1' });
+    });
+
+    it('answers the editorial blog only to an editor', async () => {
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            requireContentEditor: vi.fn(async () => new Response('no', { status: 403 })),
         });
 
-        const response = await handlers.handleBlogStudioLanguages(ctxFor('/studio/languages'));
+        const response = await handlers.handleBlogStudioBlog(ctxFor('/studio/blog'));
 
-        expect((await response.json()).supportedLanguages).toContainEqual(expect.objectContaining({ code: 'ml' }));
-        expect(OttablogSettings.forScopeOrPlatform).toHaveBeenCalledWith({
-            appId: 'test-app',
-            organizationId: 'org-1',
+        expect(response.status).toBe(403);
+        expect(OttablogSettings.forBlog).not.toHaveBeenCalled();
+    });
+
+    it('saves languages on the editorial blog, for its studio admin only', async () => {
+        const requireScopedStudioAdmin = vi.fn(async () => ({ session: { user: { id: 'admin' } } }));
+        const handlers = createBlogHandlers<Env>({
+            ...baseConfig,
+            resolveEditorialScope: () => 'org-1',
+            requireScopedStudioAdmin,
         });
+        const updateLanguages = vi.fn();
+        vi.mocked(OttablogSettings.ensure).mockResolvedValueOnce({
+            updateLanguages,
+            config: () => ({ defaultLanguage: 'en', supportedLanguages: [], fallbackToDefault: true }),
+        } as any);
+
+        const response = await handlers.handleBlogStudioLanguages(
+            ctxFor('/studio/languages', {
+                method: 'POST',
+                body: JSON.stringify({ defaultLanguage: 'en', supportedLanguages: [{ code: 'en', name: 'English' }] }),
+            }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(requireScopedStudioAdmin).toHaveBeenCalledWith(expect.anything(), { organizationId: 'org-1' });
+        expect(OttablogSettings.ensure).toHaveBeenCalledWith({ appId: 'test-app', organizationId: 'org-1' });
+        expect(updateLanguages).toHaveBeenCalled();
     });
 
     /**
@@ -640,10 +678,7 @@ describe('createBlogHandlers', () => {
 
         const listResponse = await handlers.handleBlogPostTranslations(ctxFor('/posts/p1/translations'), 'p1');
         expect((await listResponse.json()).translations).toEqual([expect.objectContaining({ slug: 'namaskaram' })]);
-        expect(PostTranslation.forPostSummary).toHaveBeenCalledWith('p1', {
-            appId: 'test-app',
-            organizationId: null,
-        });
+        expect(PostTranslation.forPostSummary).toHaveBeenCalledWith('p1');
         expect(PostTranslation.forPost).not.toHaveBeenCalled();
 
         const detailResponse = await handlers.handleBlogPostTranslations(
@@ -653,10 +688,7 @@ describe('createBlogHandlers', () => {
         expect((await detailResponse.json()).translations).toEqual([
             expect.objectContaining({ content: expect.any(Object) }),
         ]);
-        expect(PostTranslation.findForPost).toHaveBeenCalledWith('p1', 'ml', {
-            appId: 'test-app',
-            organizationId: null,
-        });
+        expect(PostTranslation.findForPost).toHaveBeenCalledWith('p1', 'ml');
         getReadFilter.mockRestore();
     });
 
@@ -681,7 +713,7 @@ describe('createBlogHandlers', () => {
                     title: 'Namaskaram',
                 })[field],
         };
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -701,15 +733,11 @@ describe('createBlogHandlers', () => {
         expect(body).toContain('/blog/hello');
         expect(body).toContain('/blog/namaskaram?lang=ml');
         expect(body).toContain('hreflang="ml"');
-        expect(PostTranslation.forPublicPosts).toHaveBeenCalledWith(['p1'], {
-            appId: 'test-app',
-            organizationId: null,
-            status: 'published',
-        });
+        expect(PostTranslation.forPublicPosts).toHaveBeenCalledWith(['p1']);
     });
 
     it('honors Accept-Language quality weights when selecting a supported locale', async () => {
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -746,7 +774,7 @@ describe('createBlogHandlers', () => {
     });
 
     it('resolves a translated slug directly without requiring a lang query parameter', async () => {
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -795,13 +823,13 @@ describe('createBlogHandlers', () => {
         });
         expect(PostTranslation.findBySlug).toHaveBeenCalledWith('dry-season-idris-ml', {
             appId: 'test-app',
-            organizationId: undefined,
+            organizationId: null,
             status: 'published',
         });
     });
 
     it('searches localized fields and keeps the list projection bounded to matching post ids', async () => {
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -845,7 +873,7 @@ describe('createBlogHandlers', () => {
         const disabledTranslation = {
             get: (field: string) => ({ id: 't2', postId: 'p1', language: 'fr', slug: 'bonjour' })[field],
         };
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -1482,7 +1510,7 @@ describe('createBlogHandlers', () => {
         vi.mocked(Post.where)
             .mockResolvedValueOnce([recent] as any)
             .mockResolvedValueOnce([older] as any);
-        vi.mocked(OttablogSettings.forScopeOrPlatform).mockResolvedValueOnce({
+        vi.mocked(OttablogSettings.forBlog).mockResolvedValueOnce({
             config: () => ({
                 defaultLanguage: 'en',
                 supportedLanguages: [
@@ -1530,22 +1558,22 @@ describe('createBlogHandlers', () => {
         expect(xml).toContain('<enclosure url="https://images.test/kyoto.png" type="image/png" />');
     });
 
-    describe('platform mode (default)', () => {
-        it('adds no organizationId filter and never calls resolveOrganizationId', async () => {
-            const resolveOrganizationId = vi.fn(async () => 'org-1');
-            const handlers = createBlogHandlers<Env>({ ...baseConfig, resolveOrganizationId });
+    describe('site blog (default)', () => {
+        it('reads the site blog when no ?blog= is given, never the editorial scope', async () => {
+            const resolveEditorialScope = vi.fn(async () => 'org-1');
+            const handlers = createBlogHandlers<Env>({ ...baseConfig, resolveEditorialScope });
 
             await handlers.handleBlogPostsList(ctxFor('/posts'));
 
-            expect(resolveOrganizationId).not.toHaveBeenCalled();
+            // A visitor's own workspace never picks the blog they read.
+            expect(resolveEditorialScope).not.toHaveBeenCalled();
             const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
-            expect('organizationId' in where).toBe(false);
+            expect(where).toMatchObject({ appId: 'test-app', organizationId: null });
         });
 
-        it('always scopes the public list to the resolved app (shared-DB multi-app safety)', async () => {
+        it('always scopes the public list to the configured app (shared-DB multi-app safety)', async () => {
             const handlers = createBlogHandlers<Env>({ ...baseConfig });
 
-            // No ?appId → falls back to the app's configured default.
             await handlers.handleBlogPostsList(ctxFor('/posts'));
             let where = vi.mocked(Post.paginate).mock.calls.at(-1)![2] as Record<string, unknown>;
             expect(where.appId).toBe('test-app');
@@ -1556,14 +1584,22 @@ describe('createBlogHandlers', () => {
             expect(where.appId).toBe('test-app');
         });
 
-        it('scopes related posts to the resolved app', async () => {
+        it('scopes related posts to the blog', async () => {
             const handlers = createBlogHandlers<Env>({ ...baseConfig });
             vi.mocked(Post.first).mockResolvedValueOnce({ get: () => 'blog' } as any);
 
             await handlers.handleBlogRelatedPosts(ctxFor('/posts/p1/related'), 'p1');
 
-            expect(Post.related).toHaveBeenCalledWith('p1', expect.objectContaining({ appId: 'test-app' }));
-            expect(Post.first).toHaveBeenCalledWith({ id: 'p1', appId: 'test-app' });
+            expect(Post.first).toHaveBeenCalledWith({
+                id: 'p1',
+                status: 'published',
+                appId: 'test-app',
+                organizationId: null,
+            });
+            expect(Post.related).toHaveBeenCalledWith(
+                'p1',
+                expect.objectContaining({ appId: 'test-app', organizationId: null }),
+            );
         });
     });
 
@@ -1601,79 +1637,244 @@ describe('createBlogHandlers', () => {
         });
     });
 
-    describe('org mode', () => {
-        const orgConfig = {
-            ...baseConfig,
-            mode: 'org' as const,
-            resolveOrganizationId: vi.fn(async () => 'org-1'),
-        };
+    describe('organization blogs (?blog=)', () => {
+        const ACME = { id: 'org-1', slug: 'acme', name: 'Acme', status: 'active' };
+        const orgConfig = { ...baseConfig, orgBlogs: true };
+        let findBySlug: ReturnType<typeof vi.spyOn>;
 
-        it('scopes the public posts list to the resolved organization', async () => {
-            const handlers = createBlogHandlers<Env>(orgConfig);
-            await handlers.handleBlogPostsList(ctxFor('/posts'));
-
-            const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
-            expect(where.organizationId).toBe('org-1');
+        beforeEach(() => {
+            findBySlug = vi.spyOn(Organization, 'findBySlug').mockResolvedValue(ACME as any);
+            // The blog is public: it has a published post.
+            vi.mocked(Post.where).mockResolvedValue([{ get: () => 'p0' }] as any);
+        });
+        afterEach(() => {
+            findBySlug.mockRestore();
+            vi.mocked(Post.where).mockReset().mockResolvedValue([]);
         });
 
-        it('scopes by-slug lookups to the resolved organization', async () => {
+        it("scopes the public posts list to the named organization's blog", async () => {
             const handlers = createBlogHandlers<Env>(orgConfig);
-            await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/hello'), 'hello');
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts?blog=acme'));
+
+            expect(response.status).toBe(200);
+            expect(findBySlug).toHaveBeenCalledWith('acme');
+            const where = vi.mocked(Post.paginate).mock.calls[0][2] as Record<string, unknown>;
+            expect(where).toMatchObject({ appId: 'test-app', organizationId: 'org-1' });
+        });
+
+        it('scopes by-slug lookups to that blog', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/hello?blog=acme'), 'hello');
 
             expect(Post.first).toHaveBeenCalledWith(
                 expect.objectContaining({ slug: 'hello', status: 'published', organizationId: 'org-1' }),
             );
         });
 
-        it('falls back to platform-owned content (organizationId null) when no tenant resolves', async () => {
-            const handlers = createBlogHandlers<Env>({
-                ...orgConfig,
-                resolveOrganizationId: vi.fn(async () => null),
+        it('threads the blog into taxonomy lookups', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            await handlers.handleBlogTagBySlug(ctxFor('/tags/by-slug/t?blog=acme'), 't');
+
+            expect(PostTag.findBySlug).toHaveBeenCalledWith('t', {
+                appId: 'test-app',
+                organizationId: 'org-1',
+                type: 'post',
             });
-            await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/hello'), 'hello');
-
-            expect(Post.first).toHaveBeenCalledWith(expect.objectContaining({ organizationId: null }));
         });
 
-        it('threads the organization into taxonomy lookups', async () => {
+        it("serves that blog's public studio state with its identity", async () => {
             const handlers = createBlogHandlers<Env>(orgConfig);
-            await handlers.handleBlogTagBySlug(ctxFor('/tags/by-slug/t'), 't');
+            const response = await handlers.handleBlogStudioState(ctxFor('/studio/state?blog=acme'));
 
-            expect(PostTag.findBySlug).toHaveBeenCalledWith('t', expect.objectContaining({ organizationId: 'org-1' }));
+            expect(StudioManager.getState).toHaveBeenCalledWith({ appId: 'test-app', organizationId: 'org-1' });
+            expect((await response.json()).blog).toEqual({ slug: 'acme', name: 'Acme' });
         });
 
-        it('threads the organization into studio state', async () => {
+        it('serves the site blog identity as null', async () => {
             const handlers = createBlogHandlers<Env>(orgConfig);
-            await handlers.handleBlogStudioState(ctxFor('/studio/state'));
+            const response = await handlers.handleBlogStudioState(ctxFor('/studio/state'));
 
-            expect(StudioManager.getState).toHaveBeenCalledWith('test-app', 'org-1');
+            expect(StudioManager.getState).toHaveBeenCalledWith({ appId: 'test-app', organizationId: null });
+            expect((await response.json()).blog).toBeNull();
+            expect(findBySlug).not.toHaveBeenCalled();
         });
 
-        it('resolves the mode per request when mode is a function of env', async () => {
-            const seenModes: string[] = [];
+        it('answers 404 BLOG_NOT_FOUND when organization blogs are off, without looking the slug up', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+            const response = await handlers.handleBlogPostsList(ctxFor('/posts?blog=acme'));
+
+            expect(response.status).toBe(404);
+            expect((await response.json()).code).toBe('BLOG_NOT_FOUND');
+            expect(findBySlug).not.toHaveBeenCalled();
+            expect(Post.paginate).not.toHaveBeenCalled();
+        });
+
+        it('answers 404 for an unknown or inactive organization', async () => {
+            const handlers = createBlogHandlers<Env>(orgConfig);
+
+            findBySlug.mockResolvedValueOnce(undefined);
+            expect((await handlers.handleBlogPostsList(ctxFor('/posts?blog=nobody'))).status).toBe(404);
+
+            findBySlug.mockResolvedValueOnce({ ...ACME, status: 'suspended' } as any);
+            const suspended = await handlers.handleBlogStudioState(ctxFor('/studio/state?blog=acme'));
+            expect(suspended.status).toBe(404);
+            expect((await suspended.json()).code).toBe('BLOG_NOT_FOUND');
+            expect(Post.paginate).not.toHaveBeenCalled();
+        });
+
+        it('keeps an organization blog private until its first published post', async () => {
+            vi.mocked(Post.where).mockResolvedValue([]);
+            const handlers = createBlogHandlers<Env>(orgConfig);
+
+            for (const response of [
+                await handlers.handleBlogStudioState(ctxFor('/studio/state?blog=acme')),
+                await handlers.handleBlogPostsList(ctxFor('/posts?blog=acme')),
+                await handlers.handleBlogRssFeed(ctxFor('/rss?blog=acme')),
+                await handlers.handleBlogSitemap(ctxFor('/sitemap.xml?blog=acme')),
+                await handlers.handleBlogPostBySlug(ctxFor('/posts/by-slug/hello?blog=acme'), 'hello'),
+            ]) {
+                expect(response.status).toBe(404);
+                expect((await response.json()).code).toBe('BLOG_NOT_FOUND');
+            }
+            // The probe: one published, non-changelog post of exactly this blog.
+            expect(Post.where).toHaveBeenCalledWith(
+                {
+                    appId: 'test-app',
+                    organizationId: 'org-1',
+                    status: 'published',
+                    contentType: { $ne: 'changelog' },
+                },
+                { select: ['id'], limit: 1 },
+            );
+            expect(Post.paginate).not.toHaveBeenCalled();
+        });
+
+        it('reads orgBlogs per request when it is a function of env', async () => {
+            const seen: string[] = [];
             const handlers = createBlogHandlers<Env>({
                 ...baseConfig,
-                mode: (e) => {
-                    seenModes.push(e.marker);
-                    return 'platform';
+                orgBlogs: (e) => {
+                    seen.push(e.marker);
+                    return e.marker === 'on';
                 },
             });
 
-            await handlers.handleBlogPostsList({ ...ctxFor('/posts'), env: { marker: 'env-a' } });
-            await handlers.handleBlogPostsList({ ...ctxFor('/posts'), env: { marker: 'env-b' } });
+            const off = await handlers.handleBlogPostsList({ ...ctxFor('/posts?blog=acme'), env: { marker: 'off' } });
+            const on = await handlers.handleBlogPostsList({ ...ctxFor('/posts?blog=acme'), env: { marker: 'on' } });
 
-            expect(seenModes).toEqual(['env-a', 'env-b']);
+            expect(seen).toEqual(['off', 'on']);
+            expect(off.status).toBe(404);
+            expect(on.status).toBe(200);
+        });
+
+        it('links RSS items and the feed itself to the organization blog', async () => {
+            const post = {
+                get: (field: string) =>
+                    ({ id: 'p1', slug: 'hello', contentType: 'blog', publishedAt: 1, authorId: null })[field] ?? null,
+                toJson: () => ({ id: 'p1', slug: 'hello', title: 'Hello', contentType: 'blog', publishedAt: 1 }),
+            };
+            vi.mocked(Post.where)
+                .mockResolvedValueOnce([{ get: () => 'p0' }] as any) // public probe
+                .mockResolvedValueOnce([post] as any); // feed window
+            const handlers = createBlogHandlers<Env>(orgConfig);
+
+            const response = await handlers.handleBlogRssFeed(ctxFor('/rss?blog=acme'));
+            const xml = await response.text();
+
+            expect(xml).toContain('<title>Acme</title>');
+            expect(xml).toContain('<link>https://x.test/blogs/acme</link>');
+            expect(xml).toContain('<link>https://x.test/blogs/acme/hello</link>');
+            expect(xml).toContain('href="https://x.test/api/blog/rss?blog=acme"');
+            expect(response.headers.get('Vary')).toBe('Accept-Language');
+        });
+
+        it('carries the blog into sitemap URLs and sitemap-index pages', async () => {
+            const post = {
+                get: (field: string) =>
+                    ({ id: 'p1', slug: 'hello', language: 'en', contentType: 'blog', updatedAt: 0 })[field],
+            };
+            vi.mocked(Post.where)
+                .mockResolvedValueOnce([{ get: () => 'p0' }] as any)
+                .mockResolvedValueOnce([post] as any);
+            const handlers = createBlogHandlers<Env>(orgConfig);
+            const sitemap = await (await handlers.handleBlogSitemap(ctxFor('/sitemap.xml?blog=acme'))).text();
+            expect(sitemap).toContain('<loc>https://x.test/blogs/acme</loc>');
+            expect(sitemap).toContain('<loc>https://x.test/blogs/acme/hello</loc>');
+
+            vi.mocked(Post.paginate).mockResolvedValueOnce({
+                data: [],
+                page: 1,
+                perPage: 10,
+                total: 20,
+                totalPages: 2,
+            } as any);
+            const index = await (await handlers.handleBlogSitemap(ctxFor('/sitemap-index.xml?blog=acme'))).text();
+            expect(index).toContain('page=2');
+            expect(index).toContain('&amp;blog=acme');
+        });
+    });
+
+    describe('public series list', () => {
+        it('lists the series a reader can see a post of, in display order', async () => {
+            vi.mocked(Post.seriesIdsOf).mockResolvedValueOnce(['s1', 's2']);
+            const series = (id: string, title: string, sortOrder: number) => ({
+                get: (field: string) => ({ id, title, sortOrder })[field],
+                toJson: () => ({ id, title, sortOrder }),
+            });
+            vi.mocked(PostSeries.whereIn).mockResolvedValueOnce([
+                series('s2', 'Zeta', 0),
+                series('s1', 'Alpha', 1),
+            ] as any);
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogSeriesList(ctxFor('/series'));
+
+            expect((await response.json()).data.map((row: { id: string }) => row.id)).toEqual(['s2', 's1']);
+            expect(Post.seriesIdsOf).toHaveBeenCalledWith({
+                appId: 'test-app',
+                organizationId: null,
+                status: 'published',
+                contentType: { $ne: 'changelog' },
+            });
+            expect(PostSeries.whereIn).toHaveBeenCalledWith('id', ['s1', 's2']);
+        });
+
+        it('answers an empty list without querying series when no post has one', async () => {
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            const response = await handlers.handleBlogSeriesList(ctxFor('/series'));
+
+            expect(await response.json()).toEqual({ data: [] });
+            expect(PostSeries.whereIn).not.toHaveBeenCalled();
+        });
+
+        it('answers a series by slug only while it has a published post', async () => {
+            const row = { get: () => 's1', toJson: () => ({ id: 's1', slug: 'trip' }) };
+            const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+            vi.mocked(PostSeries.findBySlug).mockResolvedValueOnce(row as any);
+            vi.mocked(Post.where).mockResolvedValueOnce([]);
+            expect((await handlers.handleBlogSeriesBySlug(ctxFor('/series/by-slug/trip'), 'trip')).status).toBe(404);
+
+            vi.mocked(PostSeries.findBySlug).mockResolvedValueOnce(row as any);
+            vi.mocked(Post.where).mockResolvedValueOnce([{ get: () => 'p1' }] as any);
+            const found = await handlers.handleBlogSeriesBySlug(ctxFor('/series/by-slug/trip'), 'trip');
+            expect(found.status).toBe(200);
+            expect(PostSeries.findBySlug).toHaveBeenLastCalledWith('trip', { appId: 'test-app', organizationId: null });
+            expect(Post.where).toHaveBeenLastCalledWith(
+                expect.objectContaining({ seriesId: 's1', status: 'published', organizationId: null }),
+                { select: ['id'], limit: 1 },
+            );
         });
     });
 
     describe('scoped studio guard', () => {
-        it('guards mutations against the RESOLVED tenant (org mode) and propagates denial', async () => {
+        it('guards mutations against the editorial blog and propagates denial', async () => {
             const denial = new Response('not-your-blog', { status: 403 });
             const requireScopedStudioAdmin = vi.fn(async () => denial);
             const handlers = createBlogHandlers<Env>({
                 ...baseConfig,
-                mode: 'org' as const,
-                resolveOrganizationId: vi.fn(async () => 'org-1'),
+                resolveEditorialScope: vi.fn(async () => 'org-1'),
                 requireScopedStudioAdmin,
             });
 
@@ -1687,27 +1888,45 @@ describe('createBlogHandlers', () => {
             expect(baseConfig.requireAdmin).not.toHaveBeenCalled();
         });
 
-        it('maps the platform blog (unresolved tenant and platform mode) to a null target', async () => {
+        it('targets the site blog (null) without an editorial scope, or when it resolves null', async () => {
             const requireScopedStudioAdmin = vi.fn(async () => ({ session: null }));
 
-            // Org mode, apex (tenant resolves null) → platform blog target.
-            const orgHandlers = createBlogHandlers<Env>({
+            const explicit = createBlogHandlers<Env>({
                 ...baseConfig,
-                mode: 'org' as const,
-                resolveOrganizationId: vi.fn(async () => null),
+                resolveEditorialScope: vi.fn(async () => null),
                 requireScopedStudioAdmin,
             });
-            await orgHandlers.handleBlogStudioThemeTokens(
+            await explicit.handleBlogStudioThemeTokens(
                 ctxFor('/studio/theme/tokens', { method: 'POST', body: JSON.stringify({ themeId: 't' }) }),
             );
             expect(requireScopedStudioAdmin).toHaveBeenLastCalledWith(expect.anything(), { organizationId: null });
 
-            // Platform mode (tenant undefined) → also the null target.
-            const platformHandlers = createBlogHandlers<Env>({ ...baseConfig, requireScopedStudioAdmin });
-            await platformHandlers.handleBlogStudioPluginEnable(
+            const implicit = createBlogHandlers<Env>({ ...baseConfig, requireScopedStudioAdmin });
+            await implicit.handleBlogStudioPluginEnable(
                 ctxFor('/studio/plugin/enable', { method: 'POST', body: JSON.stringify({ pluginId: 'p' }) }),
             );
             expect(requireScopedStudioAdmin).toHaveBeenLastCalledWith(expect.anything(), { organizationId: null });
+        });
+
+        it('writes theme and plugin rows into the editorial blog only', async () => {
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                resolveEditorialScope: () => 'org-1',
+                requireScopedStudioAdmin: vi.fn(async () => ({ session: null })),
+            });
+            const blog = { appId: 'test-app', organizationId: 'org-1' };
+
+            await handlers.handleBlogStudioActivateTheme(
+                ctxFor('/studio/theme/activate', { method: 'POST', body: JSON.stringify({ themeId: 'minimal' }) }),
+            );
+            expect(OttablogTheme.findByThemeId).toHaveBeenCalledWith('minimal', blog);
+            expect(OttablogTheme.create).toHaveBeenCalledWith(expect.objectContaining({ themeId: 'minimal', ...blog }));
+
+            await handlers.handleBlogStudioPluginEnable(
+                ctxFor('/studio/plugin/enable', { method: 'POST', body: JSON.stringify({ pluginId: 'p' }) }),
+            );
+            expect(OttablogPlugin.findByPluginId).toHaveBeenCalledWith('p', blog);
+            expect(OttablogPlugin.create).toHaveBeenCalledWith(expect.objectContaining({ pluginId: 'p', ...blog }));
         });
 
         it('falls back to requireAdmin when the scoped seam is absent', async () => {
@@ -1751,32 +1970,78 @@ describe('createBlogHandlers', () => {
             expect(off?.enabled).toBe(false); // signal retained for client deactivation
             expect(off?.config).toBeNull();
             expect(off?.description).toBeNull();
-            // No seeding needed and no ?full=1 → the admin guard is never consulted.
+            // A public read never consults the admin guard, and never seeds.
             expect(requireAdmin).not.toHaveBeenCalled();
         });
 
-        it('serves the full payload only to admins that request ?full=1', async () => {
+        it('serves the full payload of the editorial blog only to its studio admin', async () => {
             vi.mocked(StudioManager.getState).mockResolvedValue(fullState as any);
 
             const adminHandlers = createBlogHandlers<Env>({
                 ...baseConfig,
                 requireAdmin: vi.fn(async () => ({ session: null })),
             });
-            const adminBody = (await (
-                await adminHandlers.handleBlogStudioState(ctxFor('/studio/state?full=1'))
-            ).json()) as typeof fullState;
+            const adminResponse = await adminHandlers.handleBlogStudioState(ctxFor('/studio/state?full=1'));
+            const adminBody = (await adminResponse.json()) as typeof fullState & { blog: unknown };
             expect(adminBody.themes.map((t) => t.themeId)).toEqual(['default', 'stash']);
             expect(adminBody.plugins.find((p) => p.pluginId === 'off')?.config).toEqual({ b: 2 });
+            expect(adminBody.blog).toBeNull();
+            expect(adminResponse.headers.get('cache-control')).toBe('no-store');
 
+            // No silent downgrade to the public shape: a non-admin asking for the Studio is refused.
             const anonHandlers = createBlogHandlers<Env>({
                 ...baseConfig,
                 requireAdmin: vi.fn(async () => new Response('no', { status: 401 })),
             });
-            const anonBody = (await (
-                await anonHandlers.handleBlogStudioState(ctxFor('/studio/state?full=1'))
-            ).json()) as typeof fullState;
-            expect(anonBody.themes.map((t) => t.themeId)).toEqual(['default']);
-            expect(anonBody.plugins.find((p) => p.pluginId === 'off')?.config).toBeNull();
+            const anonResponse = await anonHandlers.handleBlogStudioState(ctxFor('/studio/state?full=1'));
+            expect(anonResponse.status).toBe(401);
+        });
+
+        it("names an organization's blog in its full state", async () => {
+            vi.mocked(StudioManager.getState).mockResolvedValue(fullState as any);
+            const find = vi.spyOn(Organization, 'find').mockResolvedValue({
+                get: (field: string) => ({ slug: 'acme', name: 'Acme' })[field],
+            } as any);
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                resolveEditorialScope: () => 'org-1',
+                requireScopedStudioAdmin: vi.fn(async () => ({ session: null })),
+            });
+
+            const body = await (await handlers.handleBlogStudioState(ctxFor('/studio/state?full=1'))).json();
+
+            expect(StudioManager.getState).toHaveBeenCalledWith({ appId: 'test-app', organizationId: 'org-1' });
+            expect(find).toHaveBeenCalledWith('org-1');
+            expect(body.blog).toEqual({ slug: 'acme', name: 'Acme' });
+            find.mockRestore();
+        });
+
+        it("seeds the editorial blog's default rows on its admin's first Studio load", async () => {
+            vi.mocked(StudioManager.getState)
+                .mockResolvedValueOnce({ activeThemeId: null, themes: [], plugins: [] } as any)
+                .mockResolvedValueOnce(fullState as any);
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                resolveEditorialScope: () => 'org-1',
+                requireScopedStudioAdmin: vi.fn(async () => ({ session: null })),
+            });
+            vi.spyOn(Organization, 'find').mockResolvedValueOnce(null as any);
+
+            await handlers.handleBlogStudioState(ctxFor('/studio/state?full=1'));
+
+            const blog = { appId: 'test-app', organizationId: 'org-1' };
+            expect(OttablogTheme.create).toHaveBeenCalledWith(expect.objectContaining({ themeId: 'default', ...blog }));
+            expect(OttablogPlugin.create).toHaveBeenCalledWith(expect.objectContaining(blog));
+
+            // A visitor's read of an unseeded blog writes nothing.
+            vi.mocked(OttablogTheme.create).mockClear();
+            vi.mocked(StudioManager.getState).mockResolvedValueOnce({
+                activeThemeId: null,
+                themes: [],
+                plugins: [],
+            } as any);
+            await handlers.handleBlogStudioState(ctxFor('/studio/state'));
+            expect(OttablogTheme.create).not.toHaveBeenCalled();
         });
     });
 
@@ -1845,26 +2110,25 @@ describe('createBlogHandlers', () => {
             );
         });
 
-        it('org mode: the token binds the POST ROW org, not the request org hint', async () => {
-            const handlers = createBlogHandlers<Env>({
-                ...previewConfig,
-                mode: 'org' as const,
-                resolveOrganizationId: vi.fn(async () => 'org-request-hint'),
-                canManagePost: vi.fn(async () => true),
-            });
-            vi.mocked(Post.first).mockResolvedValueOnce(
-                ownPostRow('draft', { authorId: 'someone-else', organizationId: 'org-real' }),
-            );
+        it("binds the token to the editorial blog and links to that blog's post page", async () => {
+            const find = vi.spyOn(Organization, 'find').mockResolvedValue({
+                get: (field: string) => ({ slug: 'acme', name: 'Acme' })[field],
+            } as any);
+            const handlers = createBlogHandlers<Env>({ ...previewConfig, resolveEditorialScope: () => 'org-1' });
+            vi.mocked(Post.first).mockResolvedValueOnce(ownPostRow('draft', { organizationId: 'org-1' }));
 
             const response = await handlers.handleBlogPreviewTokenMint(
                 ctxFor('/posts/preview-token', { method: 'POST', body: JSON.stringify({ slug: 'draft' }) }),
             );
             expect(response.status).toBe(200);
-            const { token } = (await response.json()) as { token: string };
+            const { token, path } = (await response.json()) as { token: string; path: string };
 
+            // The post is looked up in the editorial blog only.
+            expect(Post.first).toHaveBeenCalledWith({ slug: 'draft', appId: 'test-app', organizationId: 'org-1' });
             const { verifyPreviewToken } = await import('../preview-token');
-            const payload = await verifyPreviewToken(SECRET, token);
-            expect(payload?.organizationId).toBe('org-real');
+            expect((await verifyPreviewToken(SECRET, token))?.organizationId).toBe('org-1');
+            expect(path).toBe(`/blogs/acme/draft?preview=${encodeURIComponent(token)}`);
+            find.mockRestore();
         });
 
         it('mint responds 404 when no preview secret is configured', async () => {
@@ -1897,7 +2161,7 @@ describe('createBlogHandlers', () => {
         it('a minted token unlocks the unpublished post on the by-slug route', async () => {
             const handlers = createBlogHandlers<Env>(previewConfig);
             const { token, path } = await mintToken(handlers, 'my-draft');
-            expect(path).toContain('preview=');
+            expect(path).toBe(`/blog/my-draft?preview=${encodeURIComponent(token)}`);
 
             const draft = {
                 get: (k: string) =>
@@ -1949,28 +2213,137 @@ describe('createBlogHandlers', () => {
             const lastWhere = vi.mocked(Post.first).mock.calls.at(-1)![0] as Record<string, unknown>;
             expect(lastWhere.status).toBe('published');
         });
+
+        it("a token for one blog's post never opens the same slug on another blog", async () => {
+            const findBySlug = vi
+                .spyOn(Organization, 'findBySlug')
+                .mockResolvedValue({ id: 'org-1', slug: 'acme', name: 'Acme', status: 'active' } as any);
+            vi.mocked(Post.where).mockResolvedValue([{ get: () => 'p0' }] as any);
+            const handlers = createBlogHandlers<Env>({ ...previewConfig, orgBlogs: true });
+            // Minted for the SITE blog's "my-draft".
+            const { token } = await mintToken(handlers, 'my-draft');
+
+            vi.mocked(Post.first).mockResolvedValue(null as any);
+            const response = await handlers.handleBlogPostBySlug(
+                ctxFor(`/posts/by-slug/my-draft?blog=acme&preview=${encodeURIComponent(token)}`),
+                'my-draft',
+            );
+
+            expect(response.status).toBe(404);
+            const lastWhere = vi.mocked(Post.first).mock.calls.at(-1)![0] as Record<string, unknown>;
+            expect(lastWhere).toMatchObject({ status: 'published', organizationId: 'org-1' });
+            findBySlug.mockRestore();
+            vi.mocked(Post.where).mockReset().mockResolvedValue([]);
+        });
+
+        it('a preview reads its draft before the organization blog has gone public', async () => {
+            const findBySlug = vi
+                .spyOn(Organization, 'findBySlug')
+                .mockResolvedValue({ id: 'org-1', slug: 'acme', name: 'Acme', status: 'active' } as any);
+            const find = vi.spyOn(Organization, 'find').mockResolvedValue({
+                get: (field: string) => ({ slug: 'acme', name: 'Acme' })[field],
+            } as any);
+            vi.mocked(Post.where).mockResolvedValue([]); // no published post yet
+            const handlers = createBlogHandlers<Env>({
+                ...previewConfig,
+                orgBlogs: true,
+                resolveEditorialScope: () => 'org-1',
+            });
+            const { token } = await mintToken(handlers, 'first-post');
+            const draft = {
+                get: (k: string) => (({ slug: 'first-post', status: 'draft', contentType: 'blog' }) as any)[k] ?? null,
+                toJson: () => ({ id: 'p1', slug: 'first-post', status: 'draft', contentType: 'blog' }),
+                author: async () => null,
+                tags: async () => [],
+            };
+            vi.mocked(Post.first).mockResolvedValueOnce(draft as any);
+
+            const response = await handlers.handleBlogPostBySlug(
+                ctxFor(`/posts/by-slug/first-post?blog=acme&preview=${encodeURIComponent(token)}`),
+                'first-post',
+            );
+
+            expect(response.status).toBe(200);
+            expect((await response.json()).preview).toBe(true);
+            // Without the token, the same blog does not exist yet.
+            const anonymous = await handlers.handleBlogPostBySlug(
+                ctxFor('/posts/by-slug/first-post?blog=acme'),
+                'first-post',
+            );
+            expect(anonymous.status).toBe(404);
+            findBySlug.mockRestore();
+            find.mockRestore();
+        });
     });
 });
 
-describe('org-mode migrations', () => {
-    it('executes idempotent index statements through executeRaw', async () => {
+describe('blog scope migration', () => {
+    /** A fake migration DB: records statements, answers the org-blogs probe, optionally fails some. */
+    function fakeDb(options: { servedOrgBlogs?: boolean; fail?: RegExp } = {}) {
         const executed: string[] = [];
-        const db = { executeRaw: vi.fn(async (sql: string) => void executed.push(sql)) };
+        const db = {
+            executeRaw: vi.fn(async (sql: string) => {
+                executed.push(sql);
+                if (options.fail?.test(sql)) throw new Error('no such table');
+                if (sql.startsWith('SELECT 1 FROM _ottabase_migrations')) {
+                    return { results: options.servedOrgBlogs ? [{ 1: 1 }] : [] };
+                }
+                return { results: [] };
+            }),
+        };
+        return { db, executed };
+    }
 
-        const { ottablogOrgModeMigrations } = await import('../migrations');
-        expect(ottablogOrgModeMigrations).toHaveLength(1);
-        await ottablogOrgModeMigrations[0].up(db);
+    async function run(db: { executeRaw: (sql: string, params?: unknown[]) => Promise<unknown> }) {
+        const { ottablogMigrations } = await import('../migrations');
+        expect(ottablogMigrations.map((m) => m.name)).toEqual(['ottablog_blog_scopes_v1']);
+        await ottablogMigrations[0].up(db);
+    }
 
-        // Every statement is idempotent, and each swapped table gets a NULL-org partial
-        // pair (SQLite unique indexes treat NULLs as distinct).
-        expect(executed.length).toBeGreaterThan(0);
-        for (const sql of executed) {
-            expect(sql).toMatch(/IF (NOT )?EXISTS/);
-        }
-        const dropped = executed.filter((s) => s.startsWith('DROP INDEX'));
-        expect(dropped).toHaveLength(6);
-        const nullPartials = executed.filter((s) => s.includes('WHERE organization_id IS NULL'));
-        expect(nullPartials).toHaveLength(6);
+    it('turns an install that served one blog into the site blog', async () => {
+        const { db, executed } = fakeDb();
+        await run(db);
+
+        const rescoped = executed.filter((sql) => sql.startsWith('UPDATE OR IGNORE'));
+        expect(rescoped).toHaveLength(9);
+        for (const sql of rescoped) expect(sql).toMatch(/SET organization_id = NULL$/);
+        expect(rescoped.some((sql) => sql.includes(' posts '))).toBe(true);
+        expect(db.executeRaw).toHaveBeenCalledWith(expect.stringContaining('_ottabase_migrations'), [
+            'ottablog_org_mode_slug_scope_v1',
+        ]);
+    });
+
+    it('keeps the scopes of an install that already served organization blogs', async () => {
+        const { db, executed } = fakeDb({ servedOrgBlogs: true });
+        await run(db);
+
+        expect(executed.some((sql) => sql.startsWith('UPDATE OR IGNORE'))).toBe(false);
+        // Comments still follow their post, and the app-wide indexes still go.
+        expect(executed.some((sql) => sql.startsWith('UPDATE comments'))).toBe(true);
+        expect(executed.filter((sql) => sql.startsWith('DROP INDEX IF EXISTS'))).toHaveLength(6);
+    });
+
+    it("moves post comments into their post's blog and drops the six app-wide slug indexes", async () => {
+        const { db, executed } = fakeDb();
+        await run(db);
+
+        const comments = executed.find((sql) => sql.startsWith('UPDATE comments'))!;
+        expect(comments).toContain('SELECT posts.organization_id FROM posts WHERE posts.id = comments.target_id');
+        expect(comments).toContain("target_type = 'post'");
+        expect(executed.filter((sql) => sql.startsWith('DROP INDEX IF EXISTS'))).toEqual([
+            'DROP INDEX IF EXISTS posts_app_id_slug_unique_idx',
+            'DROP INDEX IF EXISTS categories_app_id_type_slug_unique_idx',
+            'DROP INDEX IF EXISTS post_tags_app_id_type_slug_unique_idx',
+            'DROP INDEX IF EXISTS series_app_id_slug_unique_idx',
+            'DROP INDEX IF EXISTS ottablog_themes_app_id_theme_id_unique_idx',
+            'DROP INDEX IF EXISTS ottablog_plugins_app_id_plugin_id_unique_idx',
+        ]);
+    });
+
+    it('runs without a comments table', async () => {
+        const { db, executed } = fakeDb({ fail: /^UPDATE comments/ });
+        await expect(run(db)).resolves.toBeUndefined();
+        expect(executed.filter((sql) => sql.startsWith('DROP INDEX'))).toHaveLength(6);
     });
 });
 
@@ -2020,17 +2393,21 @@ describe('author archive, export, and import', () => {
 
         const author = record({ id: 'a1', name: 'Ada', image: '/ada.png', email: 'private@example.com' });
         const post = { author: vi.fn(async () => author) };
-        vi.mocked(Post.first).mockResolvedValueOnce(post as any);
+        vi.mocked(Post.where).mockResolvedValueOnce([post] as any);
         const response = await handlers.handleBlogAuthorById(ctxFor('/authors/a1'), 'a1');
 
         expect(await response.json()).toEqual({ id: 'a1', name: 'Ada', image: '/ada.png' });
         expect(post.author).toHaveBeenCalledWith(['id', 'name', 'image']);
-        expect(Post.first).toHaveBeenLastCalledWith({
-            authorId: 'a1',
-            status: 'published',
-            appId: 'test-app',
-            contentType: { $ne: 'changelog' },
-        });
+        expect(Post.where).toHaveBeenLastCalledWith(
+            {
+                authorId: 'a1',
+                appId: 'test-app',
+                organizationId: null,
+                status: 'published',
+                contentType: { $ne: 'changelog' },
+            },
+            { select: ['id', 'authorId'], limit: 1 },
+        );
     });
 
     it('exports readable posts with taxonomy names and never a password hash', async () => {
@@ -2100,6 +2477,8 @@ describe('author archive, export, and import', () => {
             warnings: [],
         });
         expect(Post.create).toHaveBeenCalledTimes(1);
+        // Slugs are unique per blog: the probe asks the caller's blog only.
+        expect(Post.first).toHaveBeenCalledWith({ slug: 'taken', appId: 'test-app', organizationId: 'org-1' });
         expect(vi.mocked(Post.create).mock.calls[0][0]).toMatchObject({
             slug: 'old-post',
             status: 'published',
@@ -2146,7 +2525,8 @@ describe('author archive, export, and import', () => {
         expect(PostTagLink.create).toHaveBeenCalledTimes(1);
         expect(PostTagLink.create).toHaveBeenCalledWith({ postId: 'id-tagged', tagId: 't-existing' });
         expect(PostCategory.create).toHaveBeenCalledWith(
-            expect.objectContaining({ name: 'Notes', appId: 'test-app', type: 'post', organizationId: null }),
+            // The caller's own blog vocabulary.
+            expect.objectContaining({ name: 'Notes', appId: 'test-app', type: 'post', organizationId: 'org-1' }),
         );
         expect(PostCategoryLink.create).toHaveBeenCalledWith({ postId: 'id-tagged', categoryId: 'c-new' });
 

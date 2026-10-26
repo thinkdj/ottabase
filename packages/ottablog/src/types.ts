@@ -81,6 +81,21 @@ export function normalizeBlogLanguages(value: unknown): BlogLanguage[] {
 }
 
 /**
+ * One blog: the site blog (organizationId null) or an organization's blog. Every blog row carries
+ * both, and every blog query filters by both.
+ */
+export interface BlogScope {
+    appId: string;
+    organizationId: string | null;
+}
+
+/** An organization blog's public identity: its URL slug (/blogs/{slug}) and display name. */
+export interface BlogInfo {
+    slug: string;
+    name: string;
+}
+
+/**
  * Fields of a LOCKED post (one in an invite-only category) that a reader without access may see.
  * An empty list hides locked posts from them entirely. A teaser always leads with the title, so a
  * list without `title` normalizes to empty (hidden).

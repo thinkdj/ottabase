@@ -93,7 +93,8 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                     bool(env, 'AUTH_DISABLE_CREDENTIALS') ?? config.features.authBehavior.disableCredentials,
                 verbose: bool(env, 'AUTH_VERBOSE') ?? config.features.authBehavior.verbose,
             },
-            // Structural (migrations, policies): the config FILE decides, never an env var.
+            // The browser reads the config file at build time, so the server must too: an env
+            // override would serve org blogs the client has no routes for (or the reverse).
             ottablog: config.features.ottablog,
             ottaai: {
                 mode: normalizeOttaaiMode(str(env, ENV_KEYS.OTTAAI_MODE) ?? config.features.ottaai.mode),
