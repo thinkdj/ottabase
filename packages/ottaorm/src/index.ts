@@ -109,6 +109,8 @@ export type { DomainValidationErrorOptions, NormalizedValidationFailure, Validat
 export {
     Account,
     AuditLog,
+    INSIDER_ROLE_NAME,
+    READ_LOCKED_POSTS_PERMISSION,
     // Media (core — tracks all uploaded files)
     Media,
     // Multi-tenant/RBAC models and tables

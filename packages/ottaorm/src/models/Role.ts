@@ -37,6 +37,19 @@ export const ORG_ADMIN_PERMISSION = 'org:admin';
 export const AI_MANAGE_PERMISSION = 'ai:manage';
 
 /**
+ * Permission to read posts in LOCKED (invite-only) blog categories (@ottabase/ottablog).
+ *
+ * One level above being signed in: every signup owns a personal workspace, so the grant is
+ * evaluated in the BLOG's scope (system-scoped grants for the platform blog, the blog's org for
+ * an org blog), never against the caller's own workspace. Not matched by `*:read`, so viewers
+ * and members do not hold it by accident.
+ */
+export const READ_LOCKED_POSTS_PERMISSION = 'posts:read_locked';
+
+/** Built-in role for invited readers of locked blog categories. Holds only the permission above. */
+export const INSIDER_ROLE_NAME = 'insider';
+
+/**
  * Scoped permission set for the org-level 'owner' / 'admin' roles.
  *
  * Full CRUD on all resources within the org, plus the `org:admin` capability and
@@ -60,6 +73,7 @@ export const ORG_OWNER_PERMISSIONS: string[] = [
     // the own-posts-only RLS dimension (edit anyone's post in the org).
     'posts:publish',
     'posts:manage',
+    READ_LOCKED_POSTS_PERMISSION,
     // The org's AI provider key is a spending instrument; owners/admins manage it.
     AI_MANAGE_PERMISSION,
 ];
@@ -291,7 +305,14 @@ export class Role extends BaseModel {
         {
             name: 'editor',
             description: 'Can create, edit, and publish any post in the organization',
-            permissions: ['*:read', '*:create', '*:update', 'posts:publish', 'posts:manage'],
+            permissions: [
+                '*:read',
+                '*:create',
+                '*:update',
+                'posts:publish',
+                'posts:manage',
+                READ_LOCKED_POSTS_PERMISSION,
+            ],
         },
         {
             name: 'author',
@@ -307,6 +328,11 @@ export class Role extends BaseModel {
             name: 'member',
             description: 'Default member access',
             permissions: ['*:read'],
+        },
+        {
+            name: INSIDER_ROLE_NAME,
+            description: 'Invited reader: can read posts in locked (invite-only) blog categories',
+            permissions: [READ_LOCKED_POSTS_PERMISSION],
         },
     ];
 
