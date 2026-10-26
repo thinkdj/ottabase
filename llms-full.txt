@@ -134,7 +134,7 @@ ottabase/
 │   ├── apikeys/          # Hashed, scoped, revocable API keys for your customers
 │   ├── postmaster/       # Inbound mail, suppression list, one-click unsubscribe, bounce webhooks
 │   ├── vault/            # D1 backups to R2 as NDJSON, restore, per-tenant export
-│   ├── fleet/            # The beacon: GET /api/fleet/report for whatever watches your apps
+│   ├── fleet/            # App report: GET /api/fleet/report for whatever watches your apps
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
 │   ├── rbac/             # Role-based access control with KV caching
 │   ├── audit/            # Audit logging with change tracking
@@ -376,7 +376,7 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/legal`      | Terms, privacy (GDPR/CCPA), cookies, acceptable use, refunds and sub-processors from one config: clause toggles, overrides, Worker routes and React |
 | `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                             |
 | `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                        |
-| `@ottabase/fleet`      | The beacon: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
+| `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
 | `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
 
@@ -5924,7 +5924,7 @@ Motion: 120ms controls, 200ms switches, 360ms entrances, 320ms when the theme fl
 | `Button` variant                                              | `default` the one primary per view · `outline` secondary · `ghost` toolbars · `danger` outline in place · `destructive` solid, only inside a confirm · `loading` shows the one spinner |
 | `Status domain value`                                         | A record's state from the map; `withIcon` for tight cells. `StatusChip tone` when there is no enum                                                                                     |
 | `Badge`                                                       | `default` the brand chip · `secondary` a quiet tag · `outline` a neutral pill                                                                                                          |
-| `Tag mono`, `EnvName`, `CountBadge`, `PremiumMark`, `LiveDot` | Metadata, an exact variable name, a count, the lock, a beacon                                                                                                                          |
+| `Tag mono`, `EnvName`, `CountBadge`, `PremiumMark`, `LiveDot` | Metadata, an exact variable name, a count, the lock, an app answering                                                                                                                  |
 | `PageHeader title description actions`                        | The page head; one description line, actions on the right                                                                                                                              |
 | `Stat label value unit foot tone`                             | Numbers before narrative; an `onClick` makes it a filter tile with `pressed`                                                                                                           |
 | `Alert variant`                                               | `info` · `success` · `warning` · `destructive` · `smoke`: soft fill, 3px bar, tone icon                                                                                                |
@@ -6349,9 +6349,9 @@ probe ask it; until the routes are mounted the schedule stays off and health say
 **Where the paywall actually is.** A license on a package whose source is in this public repository is a courtesy, not a
 gate: the demo private key is published and anyone can swap in their own. Vault and webhooks are here as worked examples
 and as free tiers that make clone-and-use credible. Anything meant to earn lives in a private repository and is sold as
-repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: the beacon
+repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: Fleet
 (`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
-cockpit that watches a fleet of beacons is a private Premium Package.
+cockpit that watches all your apps is a private Premium Package.
 
 That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench,
 Helpdesk and Privacy, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token
@@ -7642,7 +7642,7 @@ Read the columns as:
 | **Database access**        | `@ottabase/db/drizzle-d1` + OttaORM                                                             | Drizzle query builder for a specific hot path                                       | Raw D1 client (`@ottabase/cf/d1`) for non-OttaORM code                  |
 | **KV cache keys**          | `@ottabase/cf/cache-keys` builders (`orgKey`, `userKey`, …)                                     | `withCache` read-through wrapper                                                    | Hand-formatted key strings — collision risk, avoid                      |
 | **Backups / export**       | `@ottabase/vault` listed: nightly `vault:backup` to R2, `GET /api/vault/export/me`              | `vault.backup()` / `restore()` by hand around a risky migration                     | D1 Time Travel alone — Cloudflare's net, not a copy you hold            |
-| **Several apps**           | `@ottabase/fleet` listed on each app (its beacon) and a cockpit reading `GET /api/fleet/report` | `curl -H "Authorization: Bearer $FLEET_TOKEN" …/api/fleet/report` from a shell      | Opening every admin panel by hand on a Monday                           |
+| **Several apps**           | `@ottabase/fleet` listed on each app (its report) and a cockpit reading `GET /api/fleet/report` | `curl -H "Authorization: Bearer $FLEET_TOKEN" …/api/fleet/report` from a shell      | Opening every admin panel by hand on a Monday                           |
 | **Transactional mail**     | `@ottabase/email` templates via the app mailer                                                  | `suppressions.guard(mailer)` (`@ottabase/postmaster`) for list mail                 | Sending to a list you never checked against suppressions — avoid        |
 | **Inbound mail / bounces** | `@ottabase/postmaster`: Worker `email()` → `email.inbound` on the bus, provider webhooks        | A custom `email()` export over `parseInboundEmail`                                  | Polling a mailbox — not a Workers pattern                               |
 | **Entitlements / usage**   | `@ottabase/flags` guards (402 `UPGRADE_REQUIRED`) + `@ottabase/meter` credits                   | Reading a plan column for one isolated check                                        | Plan names hard-coded in routes — avoid                                 |
@@ -12731,8 +12731,8 @@ engine's `--chart-1` … `--chart-8` tokens, so charts follow the active theme a
 
 - **Headless root** (`@ottabase/charts`): scales, ticks, path generators, stacking, layouts, formatters, data shaping,
   CSV. No DOM, no React. Safe in a Worker and in React Native.
-- **Rendered** (`@ottabase/charts/react`): nineteen components, one tooltip system, keyboard and touch support,
-  reveal transitions, loading and empty states, PNG/SVG export.
+- **Rendered** (`@ottabase/charts/react`): nineteen components, one tooltip system, keyboard and touch support, reveal
+  transitions, loading and empty states, PNG/SVG export.
 - **Large data**: every chart draws 50,000 rows (and more) without slowing the page. See [Large data](#large-data).
 - Zero runtime dependencies. React is an optional peer, needed only for `/react`.
 
@@ -15045,15 +15045,15 @@ what happens.
 
 # @ottabase/fleet
 
-The beacon that makes an Ottabase app watchable. List it, set one secret, and the app answers `GET /api/fleet/report`
+The package that makes an Ottabase app watchable. List it, set one secret, and the app answers `GET /api/fleet/report`
 with one JSON document: its packages and versions, each Premium Package's license state, the kernel health report, its
 scheduled tasks with their last status, and its newest backup. `POST /api/fleet/init` relays whatever init the host
 wired (the Worker template passes its database init).
 
-This is deliberately the free half. A cockpit that watches a fleet of these needs every app on the board to carry the
-beacon, including apps run by people who never bought anything; a beacon behind a paywall would have nothing to report
-to. The cockpit itself (Tower: watched apps, polling, history, version drift, alerts, the board) is a paid add-on kept
-outside this repository.
+This is deliberately the free half. A cockpit that watches all your apps needs every app on the board to carry Fleet,
+including apps run by people who never bought anything; a Fleet behind a paywall would have nothing to report to. The
+cockpit itself (Tower: watched apps, polling, history, version drift, alerts, the board) is a paid add-on kept outside
+this repository.
 
 ## Install
 
@@ -15076,7 +15076,7 @@ export const fleetPackage = createFleetPackage<CloudflareEnv>({
 ```
 
 List `fleetPackage` in `ottabase/packages.ts`, then `wrangler secret put FLEET_TOKEN`. No tables, no nav, no cron. The
-health report gains one line, `fleet:beacon`, saying whether the token is set.
+health report gains one line, `fleet:token`, saying whether the token is set.
 
 ## The report
 
@@ -15123,7 +15123,7 @@ app `degraded`.
 
 ## Why a token, and why a secret
 
-The health report's details name bindings and env vars, so the beacon is not public: it answers only a bearer token
+The health report's details name bindings and env vars, so the report is not public: it answers only a bearer token
 compared in constant time, and refuses with 503 until one is configured. The token unlocks a read-only report plus
 whatever `init` the host chose to expose, and nothing else: no sessions, no admin token, no database.
 
@@ -15922,7 +15922,8 @@ Routes, in either mode:
 
 A disabled or unknown document falls through to the next handler, so the SPA or your 404 page answers. Responses carry
 `Cache-Control: public, max-age=3600` (`maxAge` changes it). The health probe `legal:config` reports every gap from
-`validateLegalConfig` to the fleet, so a placeholder jurisdiction never reaches production unnoticed.
+`validateLegalConfig` in the health report Fleet serves, so a placeholder jurisdiction never reaches production
+unnoticed.
 
 Render in the SPA from the same config:
 

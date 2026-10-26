@@ -10,7 +10,7 @@
  *   GET {basePath}/index.json      always the JSON list of published documents
  *
  * A disabled or unknown document falls through (null), so a SPA or a 404 handler takes over. The health probe reports
- * the config gaps from `validateLegalConfig`, so a placeholder jurisdiction shows up in the fleet report, not in court.
+ * the config gaps from `validateLegalConfig`, so a placeholder jurisdiction shows up in the Fleet report, not in court.
  */
 
 import { definePackage, type HealthCheck, type OttaPackage, type PackageExtras } from '@ottabase/kernel';

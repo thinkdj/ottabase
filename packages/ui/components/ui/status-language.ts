@@ -59,7 +59,7 @@ export const STATUS_LANGUAGE = {
         paused: entry('smoke', 'Paused', Pause),
         never: entry('neutral', 'Never run', CircleDashed),
     },
-    /** An app on the board, as its beacon last answered. */
+    /** An app on the board, as it last answered. */
     fleet: {
         ok: entry('green', 'OK', CircleCheck),
         degraded: entry('amber', 'Degraded', TriangleAlert),

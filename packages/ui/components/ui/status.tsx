@@ -16,7 +16,7 @@ import { statusOf, type StatusDomain, type StatusValue, type Tone } from './stat
  *   EnvName      an exact variable name, mono, with the `$` saying "a name"
  *   CountBadge   a count beside a tab or nav item
  *   PremiumMark  a crown and a word, never a colour of its own
- *   LiveDot      a realtime connection or a beacon answering
+ *   LiveDot      a realtime connection or an app answering
  */
 
 const TONE_SURFACE = 'border-[color:var(--t-line)] bg-[color:var(--t-bg)] text-[color:var(--t-fg)]';

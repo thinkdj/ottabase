@@ -12,7 +12,7 @@ interface CloudflareEnv {
     /** Premium package licenses: one per package (`PREMIUM_LICENSE_VAULT`) or a JSON map. */
     PREMIUM_LICENSES?: string;
     PREMIUM_LICENSE_VAULT?: string;
-    /** Lets a cockpit read this Worker's beacon (`GET /api/fleet/report`). */
+    /** Lets a cockpit read this Worker's Fleet report (`GET /api/fleet/report`). */
     FLEET_TOKEN?: string;
     MIGRATION_ALLOW_DESTRUCTIVE?: string;
     OTTAORM_MAX_ALL_ROWS?: string;

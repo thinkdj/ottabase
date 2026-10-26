@@ -1,11 +1,11 @@
 // ============================================================
-// @ottabase/fleet — the beacon
+// @ottabase/fleet — makes an app watchable
 // ============================================================
 
-export { authorizeBeacon, createReporter, summarize } from './beacon';
+export { authorizeFleet, createReporter, summarize } from './report';
 export * from './constants';
 export { createFleetPackage } from './manifest';
-export { createBeaconRouter, type BeaconRouterOptions } from './routes';
+export { createFleetRouter, type FleetRouterOptions } from './routes';
 export type {
     Awaitable,
     FleetLicenseState,

@@ -1,5 +1,5 @@
 // ============================================================
-// The beacon, mounted like any free package and read the way a cockpit (or curl) reads it.
+// Fleet, mounted like any free package and read the way a cockpit (or curl) reads it.
 // ============================================================
 
 import { createPackageRegistry, definePackage, mountPackages } from '@ottabase/kernel';
@@ -66,14 +66,14 @@ const data = async <T>(response: Response | null | undefined): Promise<T> => {
     return ((await response!.json()) as { data: T }).data;
 };
 
-describe('the beacon package', () => {
+describe('the fleet package', () => {
     it('is a free package at /api/fleet whose health line says whether it can be watched', async () => {
         const { pkg, mounted } = app();
         expect(pkg.premium).toBeUndefined();
         expect(mounted).toEqual(['/api/fleet']);
         expect(pkg.env).toEqual({ optional: ['FLEET_TOKEN'] });
         expect(await pkg.health!({})).toMatchObject({
-            name: 'fleet:beacon',
+            name: 'fleet:token',
             ok: true,
             detail: expect.stringContaining('unset'),
         });
@@ -102,13 +102,13 @@ describe('the beacon package', () => {
                     version: '1.0.0',
                     premium: { state: 'active', plan: 'pro', expiresAt: null },
                 },
-                { key: 'fleet', name: 'Fleet beacon', version: '1.0.0' },
+                { key: 'fleet', name: 'Fleet', version: '1.0.0' },
             ],
             health: {
                 ok: true,
                 checks: [
                     { package: 'widgets', name: 'db', ok: true },
-                    { package: 'fleet', name: 'fleet:beacon', ok: true, detail: expect.any(String) },
+                    { package: 'fleet', name: 'fleet:token', ok: true, detail: expect.any(String) },
                 ],
             },
             tasks: [task()],

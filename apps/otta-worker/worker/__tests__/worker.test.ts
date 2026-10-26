@@ -80,7 +80,7 @@ describe('the Worker', () => {
         expect(((await missing.json()) as { code: string }).code).toBe('NOT_FOUND');
     });
 
-    it('is a Fleet beacon behind FLEET_TOKEN, reporting its packages, health and license states', async () => {
+    it('is watchable through Fleet behind FLEET_TOKEN, reporting its packages, health and license states', async () => {
         expect((await call('/api/fleet/report')).status).toBe(503); // no FLEET_TOKEN: fail closed
         const wrong = await call(
             '/api/fleet/report',
@@ -112,7 +112,7 @@ describe('the Worker', () => {
         expect(data.health.ok).toBe(false); // no D1 bound
         expect(data.canInit).toBe(true);
         expect(data.errors.some((error) => error.startsWith('tasks:'))).toBe(true); // no D1: the task read failed, the report stands
-        // The operator token is NOT the beacon token: a cockpit never holds admin rights here.
+        // The operator token is NOT the Fleet token: a cockpit never holds admin rights here.
         expect((await call('/api/fleet/report', asOperator, { FLEET_TOKEN: 'beacon' })).status).toBe(401);
     });
 

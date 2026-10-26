@@ -1,14 +1,14 @@
 # @ottabase/fleet
 
-The beacon that makes an Ottabase app watchable. List it, set one secret, and the app answers `GET /api/fleet/report`
+The package that makes an Ottabase app watchable. List it, set one secret, and the app answers `GET /api/fleet/report`
 with one JSON document: its packages and versions, each Premium Package's license state, the kernel health report, its
 scheduled tasks with their last status, and its newest backup. `POST /api/fleet/init` relays whatever init the host
 wired (the Worker template passes its database init).
 
-This is deliberately the free half. A cockpit that watches a fleet of these needs every app on the board to carry the
-beacon, including apps run by people who never bought anything; a beacon behind a paywall would have nothing to report
-to. The cockpit itself (Tower: watched apps, polling, history, version drift, alerts, the board) is a paid add-on kept
-outside this repository.
+This is deliberately the free half. A cockpit that watches all your apps needs every app on the board to carry Fleet,
+including apps run by people who never bought anything; a Fleet behind a paywall would have nothing to report to. The
+cockpit itself (Tower: watched apps, polling, history, version drift, alerts, the board) is a paid add-on kept outside
+this repository.
 
 ## Install
 
@@ -31,7 +31,7 @@ export const fleetPackage = createFleetPackage<CloudflareEnv>({
 ```
 
 List `fleetPackage` in `ottabase/packages.ts`, then `wrangler secret put FLEET_TOKEN`. No tables, no nav, no cron. The
-health report gains one line, `fleet:beacon`, saying whether the token is set.
+health report gains one line, `fleet:token`, saying whether the token is set.
 
 ## The report
 
@@ -78,6 +78,6 @@ app `degraded`.
 
 ## Why a token, and why a secret
 
-The health report's details name bindings and env vars, so the beacon is not public: it answers only a bearer token
+The health report's details name bindings and env vars, so the report is not public: it answers only a bearer token
 compared in constant time, and refuses with 503 until one is configured. The token unlocks a read-only report plus
 whatever `init` the host chose to expose, and nothing else: no sessions, no admin token, no database.

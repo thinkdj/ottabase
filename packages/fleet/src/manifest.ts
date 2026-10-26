@@ -2,25 +2,25 @@
 // @ottabase/fleet — the manifest (a free package)
 // ============================================================
 // Listing this makes an app WATCHABLE: `GET /api/fleet/report` behind FLEET_TOKEN. It is
-// deliberately the free half. Whatever watches a fleet of these (Tower, sold separately)
-// needs every app, including other people's, to carry the beacon; a beacon behind a paywall
+// deliberately the free half. Whatever watches all your apps (Tower, sold separately)
+// needs every app, including other people's, to carry Fleet; a Fleet behind a paywall
 // would have nothing to report to.
 // ============================================================
 
 import { definePackage, type OttaPackage } from '@ottabase/kernel';
-import { createReporter } from './beacon';
+import { createReporter } from './report';
 import { FLEET_BASE_PATH, FLEET_PACKAGE_KEY, FLEET_TOKEN_ENV } from './constants';
-import { createBeaconRouter } from './routes';
+import { createFleetRouter } from './routes';
 import type { FleetOptions } from './types';
 
-/** The beacon as the app registers it: two token-guarded routes and a health line saying whether it can be watched. */
+/** Fleet as the app registers it: two token-guarded routes and a health line saying whether it can be watched. */
 export function createFleetPackage<Env = unknown>(options: FleetOptions<Env>): OttaPackage<Env> {
     const { basePath = FLEET_BASE_PATH, env = { optional: [FLEET_TOKEN_ENV] } } = options;
     const token = options.token ?? ((requestEnv: Env) => (requestEnv as { FLEET_TOKEN?: string } | null)?.FLEET_TOKEN);
 
     return definePackage<Env>({
         key: FLEET_PACKAGE_KEY,
-        name: 'Fleet beacon',
+        name: 'Fleet',
         version: '1.0.0',
         description:
             'Answers GET /api/fleet/report to FLEET_TOKEN with this app’s packages, license states, health, scheduled tasks and newest backup, so a cockpit can watch it.',
@@ -29,7 +29,7 @@ export function createFleetPackage<Env = unknown>(options: FleetOptions<Env>): O
         routes: {
             basePath,
             build: (host) =>
-                createBeaconRouter<Env>({
+                createFleetRouter<Env>({
                     report: createReporter(host.packages, options),
                     token,
                     ...(options.init ? { init: options.init } : {}),
@@ -38,7 +38,7 @@ export function createFleetPackage<Env = unknown>(options: FleetOptions<Env>): O
 
         env,
         health: (requestEnv) => ({
-            name: 'fleet:beacon',
+            name: 'fleet:token',
             ok: true,
             detail: token(requestEnv)?.trim()
                 ? `${FLEET_TOKEN_ENV} set: a cockpit can read ${basePath}/report`

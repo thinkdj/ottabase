@@ -208,9 +208,9 @@ probe ask it; until the routes are mounted the schedule stays off and health say
 **Where the paywall actually is.** A license on a package whose source is in this public repository is a courtesy, not a
 gate: the demo private key is published and anyone can swap in their own. Vault and webhooks are here as worked examples
 and as free tiers that make clone-and-use credible. Anything meant to earn lives in a private repository and is sold as
-repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: the beacon
+repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: Fleet
 (`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
-cockpit that watches a fleet of beacons is a private Premium Package.
+cockpit that watches all your apps is a private Premium Package.
 
 That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench,
 Helpdesk and Privacy, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token

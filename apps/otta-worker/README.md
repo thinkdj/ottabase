@@ -52,9 +52,9 @@ curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3005/api/premium/package
 Unlicensed, Vault still backs up and restores by hand (five kept backups); the nightly schedule waits for a key. The
 home page shows each premium package's state next to its key.
 
-`@ottabase/fleet` makes this Worker a beacon: with `wrangler secret put FLEET_TOKEN`, a cockpit reads
+`@ottabase/fleet` makes this Worker watchable: with `wrangler secret put FLEET_TOKEN`, a cockpit reads
 `GET /api/fleet/report` (packages, health, tasks, newest backup, license states) and can run `POST /api/fleet/init`,
-which does what `/api/admin/init` does. The cockpit that watches a fleet of these is a paid add-on outside this repo.
+which does what `/api/admin/init` does. The cockpit that watches all your apps is a paid add-on outside this repo.
 
 ## First run
 

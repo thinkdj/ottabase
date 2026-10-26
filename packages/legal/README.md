@@ -96,7 +96,8 @@ Routes, in either mode:
 
 A disabled or unknown document falls through to the next handler, so the SPA or your 404 page answers. Responses carry
 `Cache-Control: public, max-age=3600` (`maxAge` changes it). The health probe `legal:config` reports every gap from
-`validateLegalConfig` to the fleet, so a placeholder jurisdiction never reaches production unnoticed.
+`validateLegalConfig` in the health report Fleet serves, so a placeholder jurisdiction never reaches production
+unnoticed.
 
 Render in the SPA from the same config:
 

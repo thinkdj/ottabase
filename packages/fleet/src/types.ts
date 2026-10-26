@@ -10,7 +10,7 @@ export interface FleetLicenseState {
     expiresAt?: number | null;
 }
 
-/** What a beacon says about one installed package. `premium` is present for Premium Packages only. */
+/** What Fleet says about one installed package. `premium` is present for Premium Packages only. */
 export interface FleetReportPackage {
     key: string;
     name: string;
@@ -18,7 +18,7 @@ export interface FleetReportPackage {
     premium?: { state: string; plan: string | null; expiresAt: number | null };
 }
 
-/** One scheduled task as the beacon reports it: only what a board needs to say "cron is failing". */
+/** One scheduled task as Fleet reports it: only what a board needs to say "cron is failing". */
 export interface FleetReportTask {
     name: string;
     task: string;
@@ -48,7 +48,7 @@ export interface FleetReport {
 /** A board's verdict on a report. */
 export type FleetStatus = 'ok' | 'degraded' | 'unreachable';
 
-/** What the beacon reads from the host. Everything optional degrades to "not reported". */
+/** What Fleet reads from the host. Everything optional degrades to "not reported". */
 export interface FleetSources<Env> {
     /** The newest backup, e.g. `async (env) => (await vault.list(env, 1))[0] ?? null`. */
     backup?: (env: Env) => Awaitable<{ id: string; createdAt: string } | null>;
@@ -61,7 +61,7 @@ export interface FleetOptions<Env> {
     appId: (env: Env) => string;
     /** Environment name for the report (`production`, `development`). */
     environment?: (env: Env) => string;
-    /** The beacon token this app expects. Default `env.FLEET_TOKEN`. Unset means the beacon refuses. */
+    /** The Fleet token this app expects. Default `env.FLEET_TOKEN`. Unset means the report refuses. */
     token?: (env: Env) => string | null | undefined;
     sources?: FleetSources<Env>;
     /**

@@ -1,27 +1,27 @@
 import { Router } from '@ottabase/ottarouter';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { authorizeBeacon } from './beacon';
+import { authorizeFleet } from './report';
 import type { Awaitable, FleetReport } from './types';
 
-export interface BeaconRouterOptions<Env> {
+export interface FleetRouterOptions<Env> {
     report: (env: Env) => Promise<FleetReport>;
     token: (env: Env) => string | null | undefined;
     init?: (env: Env) => Awaitable<unknown>;
 }
 
 /** `GET /report` and `POST /init`, both behind the bearer token. */
-export function createBeaconRouter<Env>(options: BeaconRouterOptions<Env>): Router<Env> {
+export function createFleetRouter<Env>(options: FleetRouterOptions<Env>): Router<Env> {
     const router = new Router<Env>();
 
     router.get('/report', async (c) => {
-        const denied = authorizeBeacon(c.req, options.token(c.env));
+        const denied = authorizeFleet(c.req, options.token(c.env));
         if (denied) return denied;
         return jsonResponse({ data: await options.report(c.env) });
     });
 
     router.post('/init', async (c) => {
-        const denied = authorizeBeacon(c.req, options.token(c.env));
+        const denied = authorizeFleet(c.req, options.token(c.env));
         if (denied) return denied;
         if (!options.init) return errorResponse('This app has no init action', 501, { code: 'NOT_SUPPORTED' });
         try {

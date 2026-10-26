@@ -1,5 +1,5 @@
 // ============================================================
-// @ottabase/fleet — the beacon: what one app says about itself
+// @ottabase/fleet — the report: what one app says about itself
 // ============================================================
 // Every app that lists the package answers `GET /api/fleet/report` to a bearer token with
 // one JSON document: its packages and their versions, each Premium Package's license state,
@@ -19,8 +19,8 @@ function timingSafeEqual(a: string, b: string): boolean {
     return diff === 0;
 }
 
-/** Null when the request carries this app's beacon token. Never passes when no token is configured. */
-export function authorizeBeacon(request: Request, expected: string | null | undefined): Response | null {
+/** Null when the request carries this app's Fleet token. Never passes when no token is configured. */
+export function authorizeFleet(request: Request, expected: string | null | undefined): Response | null {
     const want = expected?.trim();
     if (!want) {
         return errorResponse('FLEET_TOKEN is not set; this app cannot be watched until it is', 503, {

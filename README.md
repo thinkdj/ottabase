@@ -125,7 +125,7 @@ ottabase/
 │   ├── apikeys/          # Hashed, scoped, revocable API keys for your customers
 │   ├── postmaster/       # Inbound mail, suppression list, one-click unsubscribe, bounce webhooks
 │   ├── vault/            # D1 backups to R2 as NDJSON, restore, per-tenant export
-│   ├── fleet/            # The beacon: GET /api/fleet/report for whatever watches your apps
+│   ├── fleet/            # App report: GET /api/fleet/report for whatever watches your apps
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
 │   ├── rbac/             # Role-based access control with KV caching
 │   ├── audit/            # Audit logging with change tracking
@@ -367,7 +367,7 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/legal`      | Terms, privacy (GDPR/CCPA), cookies, acceptable use, refunds and sub-processors from one config: clause toggles, overrides, Worker routes and React |
 | `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                             |
 | `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                        |
-| `@ottabase/fleet`      | The beacon: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
+| `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
 | `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
 

@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/fleet",
     "version": "0.1.0",
-    "description": "The beacon that makes an Ottabase app watchable: GET /api/fleet/report behind FLEET_TOKEN returns its packages and versions, license states, health, scheduled tasks and newest backup; POST /api/fleet/init relays the host init",
+    "description": "Makes an Ottabase app watchable: GET /api/fleet/report behind FLEET_TOKEN returns its packages and versions, license states, health, scheduled tasks and newest backup; POST /api/fleet/init relays the host init",
     "ottabase": {
         "key": "fleet",
         "factory": "createFleetPackage"

@@ -1,5 +1,5 @@
 // ============================================================
-// Fleet (@ottabase/fleet): the beacon a cockpit watches
+// Fleet (@ottabase/fleet): makes this app watchable by a cockpit
 // ============================================================
 // `GET /api/fleet/report` behind FLEET_TOKEN: packages and versions, license states, the
 // health report, scheduled tasks, newest backup. No `init`: otta-web's tables come from its

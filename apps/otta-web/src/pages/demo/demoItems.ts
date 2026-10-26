@@ -70,7 +70,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'Ottabase Pro',
         title: 'Ottabase Pro',
         description:
-            'Seven commercial packages: status page, error tracking, helpdesk, billing, privacy requests, a database console and a fleet board.',
+            'Seven commercial packages: status page, error tracking, helpdesk, billing, privacy requests, a database console and one board for all your apps.',
         buttonVariant: 'default',
     },
     {

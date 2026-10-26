@@ -1,5 +1,5 @@
 // ============================================================
-// Fleet (@ottabase/fleet): the beacon a cockpit watches
+// Fleet (@ottabase/fleet): makes this Worker watchable by a cockpit
 // ============================================================
 // `GET /api/fleet/report` answers FLEET_TOKEN with this Worker's packages, health, tasks,
 // newest backup and license states; `POST /api/fleet/init` does what `POST /api/admin/init`
