@@ -8,6 +8,7 @@
 // ============================================================
 
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 import { getOttabaseConfig, isDevelopment } from '../config.loader';
 
 export interface PackageCaller {
@@ -17,13 +18,6 @@ export interface PackageCaller {
     email: string | null;
     platformAdmin: boolean;
     canManage: boolean;
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-    if (a.length !== b.length) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
 }
 
 function presentedToken(request: Request): string | null {

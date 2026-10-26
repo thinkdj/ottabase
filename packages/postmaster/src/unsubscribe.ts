@@ -1,4 +1,5 @@
 import type { SendEmailInput } from '@ottabase/email';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 
 const encoder = new TextEncoder();
 
@@ -20,13 +21,6 @@ async function hmac(secret: string, message: string): Promise<string> {
         'sign',
     ]);
     return base64Url(await crypto.subtle.sign('HMAC', key, encoder.encode(message)));
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-    if (a.length !== b.length) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
 }
 
 export interface UnsubscribeClaims {

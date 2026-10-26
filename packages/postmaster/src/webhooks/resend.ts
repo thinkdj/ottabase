@@ -1,4 +1,5 @@
 import type { ProviderEvent } from '../types';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 
 const encoder = new TextEncoder();
 
@@ -35,14 +36,8 @@ export async function verifyResendSignature(
 
     return signatures.split(' ').some((entry) => {
         const [version, value] = entry.split(',');
-        return version === 'v1' && value?.length === expected.length && constantTimeEqual(value, expected);
+        return version === 'v1' && !!value && timingSafeEqual(value, expected);
     });
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
 }
 
 interface ResendPayload {

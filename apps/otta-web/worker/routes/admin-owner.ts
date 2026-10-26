@@ -1,5 +1,6 @@
 import { provisionPlatformOwnerOrganization } from '@ottabase/auth/backend';
 import { PLATFORM_OWNER_ROLE_NAME, Role, User, UserRole } from '@ottabase/ottaorm/models';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { SYSTEM_ORGANIZATION_ID } from '../lib/admin-guard';
@@ -14,18 +15,6 @@ function clean(value: string | null): string | null {
     const trimmed = value.trim();
     if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
     return trimmed;
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-    const encoder = new TextEncoder();
-    const bufA = encoder.encode(a);
-    const bufB = encoder.encode(b);
-    if (bufA.byteLength !== bufB.byteLength) return false;
-    let result = 0;
-    for (let i = 0; i < bufA.byteLength; i++) {
-        result |= bufA[i] ^ bufB[i];
-    }
-    return result === 0;
 }
 
 export async function handleAdminPromotePlatformOwner(context: ApiRouteContext): Promise<Response> {
@@ -70,7 +59,7 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
     }
 
     const providedSecret = headerSecret || bodySecret;
-    if (!providedSecret || !constantTimeEqual(providedSecret, secret)) {
+    if (!providedSecret || !timingSafeEqual(providedSecret, secret)) {
         return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
     }
 

@@ -10,14 +10,8 @@
 import { runHealth, type PackageRegistry } from '@ottabase/kernel';
 import { ScheduledTask } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 import type { FleetOptions, FleetReport, FleetReportTask, FleetStatus } from './types';
-
-function timingSafeEqual(a: string, b: string): boolean {
-    if (a.length !== b.length) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    return diff === 0;
-}
 
 /** Null when the request carries this app's Fleet token. Never passes when no token is configured. */
 export function authorizeFleet(request: Request, expected: string | null | undefined): Response | null {

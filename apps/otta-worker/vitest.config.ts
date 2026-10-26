@@ -24,6 +24,7 @@ export default defineConfig({
             '@ottabase/premium': path.resolve(__dirname, '../../packages/premium/src/index.ts'),
             '@ottabase/utils/http-response': path.resolve(__dirname, '../../packages/utils/src/http-response.ts'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../../packages/utils/src/http-errors.ts'),
+            '@ottabase/utils/hmac-signature': path.resolve(__dirname, '../../packages/utils/src/hmac-signature.ts'),
         },
     },
 });

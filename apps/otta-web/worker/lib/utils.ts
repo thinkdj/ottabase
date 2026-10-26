@@ -1,4 +1,5 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 
 export async function readJson<T = any>(request: { json(): Promise<unknown> }): Promise<T> {
     try {
@@ -115,19 +116,6 @@ export function isDemoMode(env: { DEMO_MODE?: string }): boolean {
 export function requireSignedIn(userId: string | null | undefined): Response | null {
     if (userId) return null;
     return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-}
-
-/** Constant-time string comparison — avoids leaking secret bytes via response-timing variance. */
-function timingSafeEqual(a: string, b: string): boolean {
-    const encoder = new TextEncoder();
-    const aBytes = encoder.encode(a);
-    const bBytes = encoder.encode(b);
-    if (aBytes.length !== bBytes.length) return false;
-    let diff = 0;
-    for (let i = 0; i < aBytes.length; i++) {
-        diff |= aBytes[i] ^ bBytes[i];
-    }
-    return diff === 0;
 }
 
 /**
