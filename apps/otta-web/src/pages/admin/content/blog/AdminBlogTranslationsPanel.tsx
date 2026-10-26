@@ -30,7 +30,7 @@ import {
 } from '@ottabase/ui';
 import { Eye, Languages, Loader2, Save, Trash2 } from 'lucide-react';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { getPublicContentPath } from './blogAdminPaths';
+import { getPublicContentPath, useEditorialBlog } from './blogAdminPaths';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -129,6 +129,7 @@ function TranslationEditor({
     languageLabel?: string;
     actionsTarget?: HTMLElement | null;
 }) {
+    const editorial = useEditorialBlog();
     const languageName = languageLabel ?? language;
     const slugPrefix = `${basePost.slug}-`;
     const initialValues = useMemo<TranslationFormValues>(
@@ -271,11 +272,11 @@ function TranslationEditor({
                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-background px-2.5 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
                             {languageName} · {POST_STATUSES[status].label}
                         </span>
-                        {existing?.status === 'published' && basePost.status === 'published' && (
+                        {existing?.status === 'published' && basePost.status === 'published' && editorial.isPublic && (
                             <Button variant="ghost" asChild>
                                 <a
                                     href={sanitizeUrl(
-                                        `${getPublicContentPath(basePost.slug, basePost.contentType)}?lang=${encodeURIComponent(language)}`,
+                                        `${getPublicContentPath(basePost.slug, basePost.contentType, editorial.blog?.slug)}?lang=${encodeURIComponent(language)}`,
                                     )}
                                     target="_blank"
                                     rel="noreferrer"

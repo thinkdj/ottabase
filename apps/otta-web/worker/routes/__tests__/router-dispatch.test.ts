@@ -99,38 +99,42 @@ vi.mock('../auth', () => ({
 }));
 
 vi.mock('../blog', () => ({
-    handleBlogBlurbCreate: handlerMock('handleBlogBlurbCreate'),
-    handleBlogBlurbUpdate: handlerMock('handleBlogBlurbUpdate'),
-    handleBlogPhotoJournalCreate: handlerMock('handleBlogPhotoJournalCreate'),
-    handleBlogPhotoJournalUpdate: handlerMock('handleBlogPhotoJournalUpdate'),
-    handleBlogCategoryBySlug: handlerMock('handleBlogCategoryBySlug'),
-    handleBlogDemoSeed: handlerMock('handleBlogDemoSeed'),
-    handleBlogPostBySlug: handlerMock('handleBlogPostBySlug'),
-    handleBlogPostUnlock: handlerMock('handleBlogPostUnlock'),
-    handleBlogPostsList: handlerMock('handleBlogPostsList'),
-    handleBlogPreviewTokenMint: handlerMock('handleBlogPreviewTokenMint'),
-    handleBlogPublishScheduled: handlerMock('handleBlogPublishScheduled'),
-    handleBlogRelatedPosts: handlerMock('handleBlogRelatedPosts'),
-    handleBlogRssFeed: handlerMock('handleBlogRssFeed'),
-    handleBlogSeriesBySlug: handlerMock('handleBlogSeriesBySlug'),
-    handleBlogAuthorById: handlerMock('handleBlogAuthorById'),
-    handleBlogExport: handlerMock('handleBlogExport'),
-    handleBlogImport: handlerMock('handleBlogImport'),
-    handleBlogSitemap: handlerMock('handleBlogSitemap'),
-    handleBlogStudioActivateTheme: handlerMock('handleBlogStudioActivateTheme'),
-    handleBlogStudioPluginConfig: handlerMock('handleBlogStudioPluginConfig'),
-    handleBlogStudioPluginEnable: handlerMock('handleBlogStudioPluginEnable'),
-    handleBlogStudioState: handlerMock('handleBlogStudioState'),
-    handleBlogStudioLanguages: handlerMock('handleBlogStudioLanguages'),
-    handleBlogStudioAccess: handlerMock('handleBlogStudioAccess'),
-    handleBlogStudioReaderGrant: handlerMock('handleBlogStudioReaderGrant'),
-    handleBlogStudioReaderRevoke: handlerMock('handleBlogStudioReaderRevoke'),
-    handleBlogPostTranslations: handlerMock('handleBlogPostTranslations'),
-    handleBlogPostTranslationCreate: handlerMock('handleBlogPostTranslationCreate'),
-    handleBlogPostTranslationUpdate: handlerMock('handleBlogPostTranslationUpdate'),
-    handleBlogPostTranslationDelete: handlerMock('handleBlogPostTranslationDelete'),
-    handleBlogStudioThemeTokens: handlerMock('handleBlogStudioThemeTokens'),
-    handleBlogTagBySlug: handlerMock('handleBlogTagBySlug'),
+    blogHandlers: {
+        handleBlogBlurbCreate: handlerMock('handleBlogBlurbCreate'),
+        handleBlogBlurbUpdate: handlerMock('handleBlogBlurbUpdate'),
+        handleBlogPhotoJournalCreate: handlerMock('handleBlogPhotoJournalCreate'),
+        handleBlogPhotoJournalUpdate: handlerMock('handleBlogPhotoJournalUpdate'),
+        handleBlogCategoryBySlug: handlerMock('handleBlogCategoryBySlug'),
+        handleBlogDemoSeed: handlerMock('handleBlogDemoSeed'),
+        handleBlogPostBySlug: handlerMock('handleBlogPostBySlug'),
+        handleBlogPostUnlock: handlerMock('handleBlogPostUnlock'),
+        handleBlogPostsList: handlerMock('handleBlogPostsList'),
+        handleBlogPreviewTokenMint: handlerMock('handleBlogPreviewTokenMint'),
+        handleBlogPublishScheduled: handlerMock('handleBlogPublishScheduled'),
+        handleBlogRelatedPosts: handlerMock('handleBlogRelatedPosts'),
+        handleBlogRssFeed: handlerMock('handleBlogRssFeed'),
+        handleBlogSeriesList: handlerMock('handleBlogSeriesList'),
+        handleBlogSeriesBySlug: handlerMock('handleBlogSeriesBySlug'),
+        handleBlogAuthorById: handlerMock('handleBlogAuthorById'),
+        handleBlogExport: handlerMock('handleBlogExport'),
+        handleBlogImport: handlerMock('handleBlogImport'),
+        handleBlogSitemap: handlerMock('handleBlogSitemap'),
+        handleBlogStudioActivateTheme: handlerMock('handleBlogStudioActivateTheme'),
+        handleBlogStudioPluginConfig: handlerMock('handleBlogStudioPluginConfig'),
+        handleBlogStudioPluginEnable: handlerMock('handleBlogStudioPluginEnable'),
+        handleBlogStudioState: handlerMock('handleBlogStudioState'),
+        handleBlogStudioBlog: handlerMock('handleBlogStudioBlog'),
+        handleBlogStudioLanguages: handlerMock('handleBlogStudioLanguages'),
+        handleBlogStudioAccess: handlerMock('handleBlogStudioAccess'),
+        handleBlogStudioReaderGrant: handlerMock('handleBlogStudioReaderGrant'),
+        handleBlogStudioReaderRevoke: handlerMock('handleBlogStudioReaderRevoke'),
+        handleBlogPostTranslations: handlerMock('handleBlogPostTranslations'),
+        handleBlogPostTranslationCreate: handlerMock('handleBlogPostTranslationCreate'),
+        handleBlogPostTranslationUpdate: handlerMock('handleBlogPostTranslationUpdate'),
+        handleBlogPostTranslationDelete: handlerMock('handleBlogPostTranslationDelete'),
+        handleBlogStudioThemeTokens: handlerMock('handleBlogStudioThemeTokens'),
+        handleBlogTagBySlug: handlerMock('handleBlogTagBySlug'),
+    },
 }));
 
 vi.mock('../brand', () => ({
@@ -216,7 +220,7 @@ vi.mock('../../../ottabase/config.loader', () => ({
     getOttabaseConfig: vi.fn(() => ({
         appId: 'otta-web',
         storage: { prefix: 'ottabase' },
-        features: { ottablog: { mode: 'platform' }, ottaai: { strategy: 'user-then-org' } },
+        features: { ottablog: { orgBlogs: false }, ottaai: { strategy: 'user-then-org' } },
     })),
 }));
 
@@ -283,35 +287,7 @@ import {
     handleVerifyEmail,
     handleVerifyEmailResend,
 } from '../auth';
-import {
-    handleBlogBlurbCreate,
-    handleBlogBlurbUpdate,
-    handleBlogPhotoJournalCreate,
-    handleBlogPhotoJournalUpdate,
-    handleBlogCategoryBySlug,
-    handleBlogDemoSeed,
-    handleBlogPostBySlug,
-    handleBlogPostUnlock,
-    handleBlogPostsList,
-    handleBlogPreviewTokenMint,
-    handleBlogPublishScheduled,
-    handleBlogRelatedPosts,
-    handleBlogRssFeed,
-    handleBlogSeriesBySlug,
-    handleBlogAuthorById,
-    handleBlogExport,
-    handleBlogImport,
-    handleBlogSitemap,
-    handleBlogStudioAccess,
-    handleBlogStudioActivateTheme,
-    handleBlogStudioPluginConfig,
-    handleBlogStudioPluginEnable,
-    handleBlogStudioReaderGrant,
-    handleBlogStudioReaderRevoke,
-    handleBlogStudioState,
-    handleBlogStudioThemeTokens,
-    handleBlogTagBySlug,
-} from '../blog';
+import { blogHandlers } from '../blog';
 import { handleBrandApi } from '../brand';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from '../cloudflare-d1';
 import { handleCloudflareQueue } from '../cloudflare-queue';
@@ -346,6 +322,37 @@ import {
     handleShortlinksCreate,
     handleShortlinksList,
 } from '../shortlinks';
+
+const {
+    handleBlogBlurbCreate,
+    handleBlogBlurbUpdate,
+    handleBlogPhotoJournalCreate,
+    handleBlogPhotoJournalUpdate,
+    handleBlogCategoryBySlug,
+    handleBlogDemoSeed,
+    handleBlogPostBySlug,
+    handleBlogPostUnlock,
+    handleBlogPostsList,
+    handleBlogPreviewTokenMint,
+    handleBlogPublishScheduled,
+    handleBlogRelatedPosts,
+    handleBlogRssFeed,
+    handleBlogSeriesList,
+    handleBlogSeriesBySlug,
+    handleBlogAuthorById,
+    handleBlogExport,
+    handleBlogImport,
+    handleBlogSitemap,
+    handleBlogStudioAccess,
+    handleBlogStudioActivateTheme,
+    handleBlogStudioPluginConfig,
+    handleBlogStudioPluginEnable,
+    handleBlogStudioReaderGrant,
+    handleBlogStudioReaderRevoke,
+    handleBlogStudioState,
+    handleBlogStudioThemeTokens,
+    handleBlogTagBySlug,
+} = blogHandlers;
 
 /**
  * The ONLY place in this file that knows how routing is invoked.
@@ -427,6 +434,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleBlogPublishScheduled,
     handleBlogRelatedPosts,
     handleBlogRssFeed,
+    handleBlogSeriesList,
     handleBlogSeriesBySlug,
     handleBlogAuthorById,
     handleBlogExport,
@@ -485,7 +493,7 @@ function expectNoHandlersCalled(except: string[] = []) {
 const APP_CONFIG = {
     appId: 'otta-web',
     storage: { prefix: 'ottabase' },
-    features: { ottablog: { mode: 'platform' }, ottaai: { strategy: 'user-then-org' } },
+    features: { ottablog: { orgBlogs: false }, ottaai: { strategy: 'user-then-org' } },
 };
 
 beforeEach(() => {
@@ -682,6 +690,11 @@ describe('router dispatch parity', () => {
                 'p1',
             );
             expect(await response!.text()).toBe('handleBlogPhotoJournalUpdate');
+        });
+
+        it('GET /api/blog/series dispatches to the public series list', async () => {
+            const { response } = await dispatch('GET', '/api/blog/series');
+            expect(await response!.text()).toBe('handleBlogSeriesList');
         });
 
         it('GET /api/blog/authors/u1 dispatches to the author card with "u1"', async () => {

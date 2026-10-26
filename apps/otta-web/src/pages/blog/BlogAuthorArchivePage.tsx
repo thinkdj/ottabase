@@ -5,6 +5,7 @@
  * /api/blog/authors/:id, which only answers for users with a published post in this blog.
  */
 import { SEOHead } from '@/components/SEOHead';
+import { useBlogScope } from '@/ottabase/blog/BlogScope';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import type { PostAuthor } from '@/types/blog';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
@@ -15,7 +16,6 @@ import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, PenLine } from 'lucide-react';
-import { useMemo } from 'react';
 
 interface BlogPostsResponse {
     data: BlogPostData[];
@@ -27,23 +27,23 @@ export function BlogAuthorArchivePage() {
     const authorId = (params as { authorId?: string }).authorId;
     const searchParams = useSearch({ strict: false }) as { lang?: string };
     const requestedLanguage = searchParams.lang || '';
-    const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
+    const blog = useBlogScope();
+    // Read on every render: BlogScope re-renders the page once the blog's own theme is applied.
+    const theme = getActiveTheme() ?? defaultTheme;
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
 
     const { data: author, isLoading: isLoadingAuthor } = useApiQuery<PostAuthor>({
         entity: 'blog_authors',
-        queryKey: ['by-id', authorId],
-        endpoint: `/api/blog/authors/${encodeURIComponent(authorId ?? '')}`,
+        queryKey: ['by-id', blog.slug, authorId],
+        endpoint: blog.api(`/authors/${encodeURIComponent(authorId ?? '')}`),
         queryOptions: { enabled: !!authorId, staleTime: 60_000 },
     });
 
     // ponytail: first 50 posts, same as the tag/category archives; add paging when an author outgrows it.
     const { data: postsResponse, isLoading: isLoadingPosts } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['author-archive', authorId, requestedLanguage],
-        endpoint:
-            `/api/blog/posts?authorId=${encodeURIComponent(author?.id ?? '')}&perPage=50` +
-            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
+        queryKey: ['author-archive', blog.slug, authorId, requestedLanguage],
+        endpoint: blog.api('/posts', { authorId: author?.id, perPage: 50, lang: requestedLanguage }),
         queryOptions: { enabled: !!author?.id, ...BLOG_LIST_QUERY_CONFIG },
     });
 
@@ -77,7 +77,7 @@ export function BlogAuthorArchivePage() {
                     This author hasn't published anything here yet.
                 </p>
                 <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground">
-                    <Link to="/blog">
+                    <Link to={blog.base}>
                         <ArrowLeft className="h-4 w-4" />
                         Back to Blog
                     </Link>
@@ -91,7 +91,7 @@ export function BlogAuthorArchivePage() {
             <SEOHead title={`Posts by ${name}`} description={`All blog posts written by ${name}`} />
 
             <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                <Link to="/blog">
+                <Link to={blog.base}>
                     <ArrowLeft className="h-4 w-4" />
                     Back to Blog
                 </Link>
@@ -125,8 +125,7 @@ export function BlogAuthorArchivePage() {
                     {posts.map((post) => (
                         <Link
                             key={post.id}
-                            to="/blog/$slug"
-                            params={{ slug: post.slug }}
+                            to={blog.post(post.slug)}
                             search={localizedPostSearch(post, requestedLanguage)}
                             className="group block rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >

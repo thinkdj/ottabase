@@ -62,7 +62,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 import { BlogImportExport } from './BlogImportExport';
-import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
+import { getPublicContentPath, useBlogSurface, useEditorialBlog } from './blogAdminPaths';
 
 /** Debounce delay for search input (ms) */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -101,6 +101,7 @@ const CONTENT_TYPE_TABS: Array<{ value: ContentType | 'all'; label: string }> = 
 
 export function AdminBlogListPage() {
     const surface = useBlogSurface();
+    const editorial = useEditorialBlog();
     const [searchInput, setSearchInput] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<PostStatus | 'all'>('all');
@@ -544,16 +545,22 @@ export function AdminBlogListPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="icon" asChild>
-                                                    <a
-                                                        href={getPublicContentPath(post.slug, post.contentType)}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        aria-label="View"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </a>
-                                                </Button>
+                                                {editorial.isPublic && (
+                                                    <Button variant="ghost" size="icon" asChild>
+                                                        <a
+                                                            href={getPublicContentPath(
+                                                                post.slug,
+                                                                post.contentType,
+                                                                editorial.blog?.slug,
+                                                            )}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            aria-label="View"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </a>
+                                                    </Button>
+                                                )}
                                                 <Button variant="ghost" size="icon" asChild>
                                                     <Link to={surface.editPath(post.id)}>
                                                         <Edit className="h-4 w-4" />

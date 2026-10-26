@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockThemeActive, mockGetOttabaseConfig, mockEnsureDbConnection, mockResolveBlogOrganizationId, mockSanitize } =
-    vi.hoisted(() => ({
+const { mockThemeActive, mockGetOttabaseConfig, mockEnsureDbConnection, mockFindOrgBySlug, mockSanitize } = vi.hoisted(
+    () => ({
         mockThemeActive: vi.fn(),
         mockGetOttabaseConfig: vi.fn(),
         mockEnsureDbConnection: vi.fn(),
-        mockResolveBlogOrganizationId: vi.fn(),
+        mockFindOrgBySlug: vi.fn(),
         mockSanitize: vi.fn((css: string) => css),
-    }));
+    }),
+);
 
 vi.mock('@ottabase/ottablog', async () => {
     const actual = await vi.importActual<typeof import('@ottabase/ottablog')>('@ottabase/ottablog');
@@ -29,8 +30,9 @@ vi.mock('../db-utils', () => ({
     ensureDbConnection: mockEnsureDbConnection,
 }));
 
-vi.mock('../../routes/blog', () => ({
-    resolveBlogOrganizationIdCached: mockResolveBlogOrganizationId,
+vi.mock('@ottabase/ottaorm', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@ottabase/ottaorm')>()),
+    Organization: { findBySlug: mockFindOrgBySlug },
 }));
 
 import { BLOG_THEME_STYLE_ID, injectBlogThemeCss } from '../blog-theme-inject';
@@ -48,7 +50,7 @@ const env = { OBCF_D1: {} } as any;
 const CONFIG = {
     appId: 'otta-web',
     packages: { ottablog: true },
-    features: { ottablog: { mode: 'platform' } },
+    features: { ottablog: { orgBlogs: true } },
 };
 
 function themeRow(tokens: unknown) {
@@ -60,7 +62,7 @@ describe('injectBlogThemeCss', () => {
         vi.clearAllMocks();
         mockSanitize.mockImplementation((css: string) => css);
         mockGetOttabaseConfig.mockReturnValue(CONFIG);
-        mockResolveBlogOrganizationId.mockResolvedValue(null);
+        mockFindOrgBySlug.mockResolvedValue({ id: 'org-1', slug: 'acme', name: 'Acme', status: 'active' });
         mockThemeActive.mockResolvedValue(themeRow({ light: { '--primary': '265 89% 66%' } }));
     });
 
@@ -84,13 +86,20 @@ describe('injectBlogThemeCss', () => {
         expect(await injectBlogThemeCss(noTokens, new Request('https://x.test/blog/post'), env)).toBe(noTokens);
     });
 
-    it('scopes the active-theme lookup by org in org mode', async () => {
-        mockGetOttabaseConfig.mockReturnValue({ ...CONFIG, features: { ottablog: { mode: 'org' } } });
-        mockResolveBlogOrganizationId.mockResolvedValue('org-1');
+    it("uses the site blog's theme on /blog and the organization's own on /blogs/{org}", async () => {
+        await injectBlogThemeCss(htmlResponse(), new Request('https://x.test/blog'), env);
+        expect(mockThemeActive).toHaveBeenLastCalledWith({ appId: 'otta-web', organizationId: null });
 
-        await injectBlogThemeCss(htmlResponse(), new Request('https://acme.x.test/blog'), env);
+        await injectBlogThemeCss(htmlResponse(), new Request('https://x.test/blogs/acme/a-post'), env);
+        expect(mockFindOrgBySlug).toHaveBeenCalledWith('acme');
+        expect(mockThemeActive).toHaveBeenLastCalledWith({ appId: 'otta-web', organizationId: 'org-1' });
+    });
 
-        expect(mockThemeActive).toHaveBeenCalledWith({ appId: 'otta-web', organizationId: 'org-1' });
+    it('injects nothing for an organization blog that is not served', async () => {
+        mockFindOrgBySlug.mockResolvedValue(undefined);
+        const original = htmlResponse();
+        expect(await injectBlogThemeCss(original, new Request('https://x.test/blogs/nope'), env)).toBe(original);
+        expect(mockThemeActive).not.toHaveBeenCalled();
     });
 
     it('returns the original response when the sanitizer strips everything or a lookup throws', async () => {

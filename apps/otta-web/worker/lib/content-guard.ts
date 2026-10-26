@@ -6,6 +6,7 @@
 // blog preview-token mint and the /studio surface's server-side counterparts.
 // ---------------------------------------------------------------------------
 
+import { getSession } from '@ottabase/auth/backend';
 import { READ_LOCKED_POSTS_PERMISSION } from '@ottabase/ottaorm/models';
 import { hasPermission, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
@@ -71,11 +72,25 @@ export async function requireContentPermission(
 }
 
 /**
- * SCOPED Studio guard: platform-blog scope (null org) requires a PLATFORM
- * admin; an org scope requires an ORG ADMIN of that org (org:admin grant
- * evaluated in the TARGET org — grants are org-scoped, so non-members have
- * none there) or a platform admin. This is what lets each tenant run their
- * own blog's Studio in org mode while the platform blog stays platform-only.
+ * The blog an editorial request works on: the caller's canonical active scope, exactly what the
+ * posts RLS stamps on their writes. An organization they are a member of, or null for the site
+ * blog (a platform admin in Platform scope, or a caller with no active organization). Only a
+ * request: the Studio and object guards still decide whether they may act on it.
+ */
+export async function resolveEditorialBlog(context: ContentGuardContext): Promise<string | null> {
+    const { request, env } = context;
+    if (!env?.OBCF_D1) return null;
+    initDbConnection(env);
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    if (!session?.user?.id) return null;
+    return (await getSecurityContext(request, session, env)).organizationId ?? null;
+}
+
+/**
+ * SCOPED Studio guard: the site blog (null org) requires a PLATFORM admin; an organization's blog
+ * requires an ORG ADMIN of that org (org:admin evaluated in the TARGET org: grants are org-scoped,
+ * so non-members have none there) or a platform admin. Each organization runs its own blog's
+ * Studio while the site blog stays platform-only.
  */
 export async function requireStudioAdminForScope(
     context: ContentGuardContext,
@@ -115,9 +130,9 @@ export async function requireStudioAdminForScope(
         return toAccessResult();
     }
 
-    // The platform blog's studio is platform-only.
+    // The site blog's studio is platform-only.
     if (target.organizationId === null) {
-        return errorResponse('Managing the platform blog requires a platform administrator', 403, {
+        return errorResponse('Managing the site blog requires a platform administrator', 403, {
             code: 'FORBIDDEN',
         });
     }
@@ -155,7 +170,7 @@ export async function canManagePostInOrg(
 
         if (!reqCtx.isAuthenticated || !reqCtx.user) return false;
         if (isPlatformAdmin(reqCtx)) return true;
-        // Platform-owned posts (null org): only a platform admin manages them.
+        // Site blog posts (null org): only a platform admin manages them.
         if (post.organizationId === null) return false;
         return hasPermission(reqCtx, 'posts:manage') || hasPermission(reqCtx, 'org:admin');
     } catch {
@@ -165,10 +180,10 @@ export async function canManagePostInOrg(
 
 /**
  * READ access to a blog's LOCKED (invite-only) categories: `posts:read_locked` evaluated in the
- * BLOG's scope, never the caller's own workspace (every signup owns one, as `owner`). The
- * platform blog (null org) counts SYSTEM-scoped grants only (the `insider` role granted from the
- * blog's Settings, or platform_owner's '*:*'); an org blog counts grants in that org, which
- * requires active membership. Anonymous callers never reach the database.
+ * BLOG's scope, never the caller's own workspace (every signup owns one, as `owner`). The site
+ * blog (null org) counts SYSTEM-scoped grants only (the `insider` role granted from the blog's
+ * Settings, or platform_owner's '*:*'); an org blog counts grants in that org, which requires
+ * active membership. Anonymous callers never reach the database.
  */
 export async function canReadLockedPosts(
     context: ContentGuardContext,

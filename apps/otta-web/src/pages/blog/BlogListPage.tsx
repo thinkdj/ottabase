@@ -5,6 +5,7 @@
  * Uses public API so protected posts only return excerpt (no full body).
  */
 import { SEOHead } from '@/components/SEOHead';
+import { useBlogScope } from '@/ottabase/blog/BlogScope';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import type { PostAuthor } from '@/types/blog';
@@ -16,7 +17,7 @@ import {
     type PhotoJournalItem,
 } from '@ottabase/ottablog';
 import { BlurbRenderer, PhotoJournalRenderer } from '@ottabase/ottablog/renderer';
-import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Badge,
     Button,
@@ -102,13 +103,13 @@ interface BlogListResponse {
 }
 
 function PublishedDateLink({ publishedAt }: { publishedAt: string }) {
+    const blog = useBlogScope();
     const date = new Date(publishedAt);
     if (Number.isNaN(date.getTime())) return <span>{formatDate(publishedAt)}</span>;
 
     return (
         <Link
-            to="/blog/archive/$year/$month"
-            params={{ year: String(date.getUTCFullYear()), month: String(date.getUTCMonth() + 1) }}
+            to={blog.date(date.getUTCFullYear(), date.getUTCMonth() + 1)}
             className="flex items-center gap-1 hover:text-foreground"
             aria-label={`View posts from ${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`}
         >
@@ -118,13 +119,10 @@ function PublishedDateLink({ publishedAt }: { publishedAt: string }) {
     );
 }
 
-const blogSeriesHooks = createModelHooks<BlogSeries>({
-    entityName: 'series',
-});
-
 const POSTS_PER_PAGE = 12;
 
 export function BlogListPage() {
+    const blog = useBlogScope();
     const searchParams = useSearch({ strict: false }) as { lang?: string };
     const requestedLanguage = searchParams.lang || '';
     const { user } = useSession();
@@ -166,18 +164,30 @@ export function BlogListPage() {
         entity: 'posts',
         queryKey: [
             'list',
-            { page: currentPage, contentType, seriesFilter, search: debouncedSearch, language: requestedLanguage },
+            {
+                blog: blog.slug,
+                page: currentPage,
+                contentType,
+                seriesFilter,
+                search: debouncedSearch,
+                language: requestedLanguage,
+            },
         ],
-        endpoint: `/api/blog/posts?${blogListParams.toString()}`,
+        endpoint: blog.api(`/posts?${blogListParams.toString()}`),
         queryOptions: BLOG_LIST_QUERY_CONFIG,
     });
 
     // Fetch series for filter dropdown
-    const { data: seriesData } = blogSeriesHooks.useList(undefined, SERIES_LIST_QUERY_CONFIG);
+    const { data: seriesData } = useApiQuery<{ data: BlogSeries[] }>({
+        entity: 'series',
+        queryKey: ['public-list', blog.slug],
+        endpoint: blog.api('/series'),
+        queryOptions: SERIES_LIST_QUERY_CONFIG,
+    });
 
     const posts = listResponse?.data ?? [];
     const pagination = listResponse?.pagination ?? { page: 1, perPage: POSTS_PER_PAGE, total: 0, totalPages: 1 };
-    const series = seriesData || [];
+    const series = seriesData?.data ?? [];
 
     // Reset to page 1 when filters change
     const handleFilterChange = (callback: () => void) => {
@@ -187,6 +197,11 @@ export function BlogListPage() {
 
     // Blurbs remain chronological; highlight-capable articles and photo journals can enter the featured rail.
     const { featuredPosts, timelinePosts } = partitionBlogTimeline(posts);
+    // An organization's blog carries its name; the site blog keeps the app's own wording.
+    const blogTitle = blog.info?.name ?? 'Blog';
+    const blogIntro = blog.info
+        ? `Posts from ${blog.info.name}.`
+        : 'Photo journals, short thoughts, articles, tutorials, and updates from our team.';
 
     return (
         // One measure for the whole page, matching the detail view: the default theme's container
@@ -195,8 +210,8 @@ export function BlogListPage() {
         <div className="mx-auto w-full max-w-3xl space-y-12">
             {/* SEO Meta Tags */}
             <SEOHead
-                title="Blog - Stories, Thoughts, and Photo Journals"
-                description="Photo journals, short thoughts, articles, tutorials, and updates from our team."
+                title={blog.info ? blogTitle : 'Blog - Stories, Thoughts, and Photo Journals'}
+                description={blogIntro}
                 ogType="website"
                 twitterCard="summary_large_image"
             />
@@ -204,10 +219,8 @@ export function BlogListPage() {
             {/* Header */}
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                 <div className="space-y-1.5">
-                    <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
-                    <p className="text-lg text-muted-foreground">
-                        Photo journals, short thoughts, articles, tutorials, and updates from our team.
-                    </p>
+                    <h1 className="text-3xl font-bold tracking-tight">{blogTitle}</h1>
+                    <p className="text-lg text-muted-foreground">{blogIntro}</p>
                 </div>
                 {canWrite && (
                     <DropdownMenu>
@@ -322,8 +335,7 @@ export function BlogListPage() {
                             ) : post.contentType === 'blurb' ? (
                                 <Link
                                     key={post.id}
-                                    to="/blog/$slug"
-                                    params={{ slug: post.slug }}
+                                    to={blog.post(post.slug)}
                                     search={localizedPostSearch(post, requestedLanguage)}
                                     aria-label={`Open thought from ${post.author?.name || 'author'}`}
                                     // Matches the blurb card's bound edge so the focus ring traces the card, not a rounded box around it.
@@ -334,8 +346,7 @@ export function BlogListPage() {
                             ) : post.contentType === 'photo' ? (
                                 <Link
                                     key={post.id}
-                                    to="/blog/$slug"
-                                    params={{ slug: post.slug }}
+                                    to={blog.post(post.slug)}
                                     search={localizedPostSearch(post, requestedLanguage)}
                                     aria-label={`Open photo journal ${post.title}`}
                                     className="group block rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -405,10 +416,10 @@ function PostImageLink({
     className: string;
     children: ReactNode;
 }) {
+    const blog = useBlogScope();
     return (
         <Link
-            to="/blog/$slug"
-            params={{ slug: post.slug }}
+            to={blog.post(post.slug)}
             search={localizedPostSearch(post, activeLanguage)}
             tabIndex={-1}
             aria-hidden="true"
@@ -420,6 +431,7 @@ function PostImageLink({
 }
 
 function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
+    const blog = useBlogScope();
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
@@ -446,8 +458,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
                 )}
                 <h3 className="mb-2 flex items-center gap-2 font-serif text-xl font-semibold leading-snug tracking-[-0.02em] line-clamp-2">
                     <Link
-                        to="/blog/$slug"
-                        params={{ slug: post.slug }}
+                        to={blog.post(post.slug)}
                         search={localizedPostSearch(post, activeLanguage)}
                         className="hover:underline focus-visible:outline-hidden"
                     >
@@ -503,8 +514,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
                     ) : null}
                 </div>
                 <Link
-                    to="/blog/$slug"
-                    params={{ slug: post.slug }}
+                    to={blog.post(post.slug)}
                     search={localizedPostSearch(post, activeLanguage)}
                     className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >
@@ -517,6 +527,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
 }
 
 function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
+    const blog = useBlogScope();
     const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
     return (
         <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
@@ -552,8 +563,7 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                         like a contents page, not a row of app tiles. */}
                 <h3 className="mb-2 flex items-center gap-2 font-serif text-lg font-semibold leading-snug tracking-[-0.015em] line-clamp-2">
                     <Link
-                        to="/blog/$slug"
-                        params={{ slug: post.slug }}
+                        to={blog.post(post.slug)}
                         search={localizedPostSearch(post, activeLanguage)}
                         className="hover:underline focus-visible:outline-hidden"
                     >
@@ -608,8 +618,7 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                     )}
                 </div>
                 <Link
-                    to="/blog/$slug"
-                    params={{ slug: post.slug }}
+                    to={blog.post(post.slug)}
                     search={localizedPostSearch(post, activeLanguage)}
                     className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 >

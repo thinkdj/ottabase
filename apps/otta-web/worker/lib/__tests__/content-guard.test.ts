@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getRequestContext = vi.fn();
 const getSecurityContext = vi.fn();
 const hasPermission = vi.fn();
+const getSession = vi.fn();
+
+vi.mock('@ottabase/auth/backend', () => ({
+    getSession: (...args: unknown[]) => getSession(...args),
+}));
 
 vi.mock('@ottabase/rbac/request-context', () => ({
     getRequestContext: (...args: unknown[]) => getRequestContext(...args),
@@ -22,7 +27,7 @@ vi.mock('../db-utils', () => ({
     initDbConnection: vi.fn(),
 }));
 
-import { canReadLockedPosts, requireContentPermission } from '../content-guard';
+import { canReadLockedPosts, requireContentPermission, resolveEditorialBlog } from '../content-guard';
 
 function context(headers?: HeadersInit) {
     const request = new Request('http://127.0.0.1:3003/api/blog/photo-journals', {
@@ -156,8 +161,8 @@ describe('canReadLockedPosts', () => {
         expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
     });
 
-    it('counts only SYSTEM grants on the platform blog, so a workspace owner is not a reader', async () => {
-        // Every signup owns a personal workspace; an org-scoped grant there must not open the platform blog.
+    it('counts only SYSTEM grants on the site blog, so a workspace owner is not a reader', async () => {
+        // Every signup owns a personal workspace; an org-scoped grant there must not open the site blog.
         getRequestContext.mockResolvedValue(reqCtx(['posts:read_locked'], []));
         expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
         expect(getRequestContext).toHaveBeenCalledWith(
@@ -188,5 +193,26 @@ describe('canReadLockedPosts', () => {
     it('fails closed when the context cannot be resolved', async () => {
         getRequestContext.mockRejectedValue(new Error('kv down'));
         expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+    });
+});
+
+describe('resolveEditorialBlog', () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+    });
+
+    it("is the caller's canonical scope: their workspace, or the site blog in Platform scope", async () => {
+        getSession.mockResolvedValue({ user: { id: 'u1' } });
+        getSecurityContext.mockResolvedValueOnce({ organizationId: 'org-1' });
+        expect(await resolveEditorialBlog(context({ 'x-org-id': 'org-1' }))).toBe('org-1');
+
+        getSecurityContext.mockResolvedValueOnce({ organizationId: null, platformAdmin: true });
+        expect(await resolveEditorialBlog(context({ 'x-org-id': 'platform' }))).toBeNull();
+    });
+
+    it('is the site blog for an anonymous caller, without resolving a context', async () => {
+        getSession.mockResolvedValue(null);
+        expect(await resolveEditorialBlog(context({ 'x-org-id': 'org-1' }))).toBeNull();
+        expect(getSecurityContext).not.toHaveBeenCalled();
     });
 });

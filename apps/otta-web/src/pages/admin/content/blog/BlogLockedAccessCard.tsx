@@ -4,6 +4,7 @@
  * Categories are locked from the Categories screen. Access is the `insider` role (permission
  * posts:read_locked) granted in this blog's scope, so it is one level above being signed in.
  */
+import { organizationIdAtom } from '@/ottabase/state/appState';
 import type { LockedTeaserField } from '@ottabase/ottablog';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Loader2, Lock, UserPlus, X } from 'lucide-react';
+import { useAtomValue } from 'jotai';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useBlogSurface } from './blogAdminPaths';
 
@@ -40,9 +42,11 @@ const OPTIONAL_TEASER_FIELDS: { field: LockedTeaserField; label: string }[] = [
 
 export function BlogLockedAccessCard() {
     const surface = useBlogSurface();
+    // The active organization's blog, or the site blog in Platform scope.
+    const organizationId = useAtomValue(organizationIdAtom);
     const { data, isLoading } = useApiQuery<BlogAccessState>({
         entity: ACCESS_ENTITY,
-        queryKey: ['state'],
+        queryKey: ['state', organizationId],
         endpoint: '/api/blog/studio/access',
     });
     const [teaser, setTeaser] = useState<LockedTeaserField[]>([]);

@@ -418,8 +418,8 @@ async function handleInit(context: BootstrapContext): Promise<Response> {
             allowDestructive:
                 env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === '1' ||
                 env.MIGRATION_ALLOW_DESTRUCTIVE?.trim().toLowerCase() === 'true',
-            // Indexes a package's migration dropped on purpose (org-mode blog slugs); autoInit's
-            // ensure step would otherwise re-create them on every run of this wizard step.
+            // Indexes a package's migration dropped on purpose; autoInit's ensure step would
+            // otherwise re-create them on every run of this wizard step.
             suppressIndexes: packages.suppressIndexes(),
         });
 

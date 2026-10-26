@@ -1,9 +1,18 @@
 import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { ContentValidationError, Post, PostCategory, PostCategoryLink, validatePostWrite } from '@ottabase/ottablog';
+import {
+    ContentValidationError,
+    Post,
+    PostCategory,
+    PostCategoryLink,
+    PostTag,
+    PostTagLink,
+    validatePostWrite,
+} from '@ottabase/ottablog';
 import {
     executeSecureCrudRequest,
+    globalRLS,
     parseCrudRequest,
     registerConnection,
     type CrudResponse,
@@ -13,9 +22,8 @@ import { Organization, OrganizationMember, User, UserGroupMember } from '@ottaba
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
-import { canManagePostInOrg, canReadLockedPosts } from '../lib/content-guard';
+import { canReadLockedPosts } from '../lib/content-guard';
 
 export interface OttaormCrudContext {
     request: Request;
@@ -98,50 +106,60 @@ async function resolveCommentSecurityContext(
 
 /**
  * A post in a locked (invite-only) category keeps its comment thread as private as its body:
- * without locked-read access in the post's blog scope (system grants for the platform blog),
- * reading or writing its comments answers as if the post did not exist.
+ * without locked-read access in the post's own blog (system grants for the site blog), reading or
+ * writing its comments answers as if the post did not exist.
  */
 async function canSeeLockedPostComments(context: OttaormCrudContext, post: Post): Promise<boolean> {
     if (post.get('isLocked') !== true) return true;
-    const orgMode = getOttabaseConfig(context.env).features.ottablog.mode === 'org';
-    const blogOrganizationId = orgMode ? ((post.get('organizationId') as string | null) ?? null) : null;
-    return canReadLockedPosts(context, { organizationId: blogOrganizationId });
+    return canReadLockedPosts(context, { organizationId: (post.get('organizationId') as string | null) ?? null });
 }
 
 /**
- * A taxonomy write that could UNLOCK posts in a locked (invite-only) category needs the blog's own
- * authority, not just the taxonomy gate: every signup is org:admin of their own workspace, and in
- * platform mode categories are app-wide, so that gate alone would let anyone with an account open
- * the platform's locked posts. Writes that only lock more are left alone.
- *  - categories: dropping the lock, re-parenting or deleting a locked category needs a platform
- *    admin in platform mode (org mode is already tenant-scoped to that org's administrators);
- *  - post_category_links: removing a post from a locked category needs manage rights on the post.
+ * A post's tag and category links belong to the post's blog. Writing one needs the post to be
+ * editable by the caller (the posts RLS read filter: their own posts, or every post of a blog they
+ * manage) and the term to be in that same blog. The link tables carry no scope of their own, so
+ * without this anyone allowed to manage taxonomy somewhere (every signup administers their own
+ * workspace) could relink another blog's posts, or take a post out of a locked category. Links are
+ * created and deleted, never edited.
  */
-async function guardLockedTaxonomyWrite(
-    context: OttaormCrudContext,
+async function guardBlogLinkWrite(
     crudRequest: { model: string; method: string; id?: string | null; body?: unknown },
     securityContext: Awaited<ReturnType<typeof getSecurityContext>>,
 ): Promise<Response | null> {
-    if (!crudRequest.id || securityContext.platformAdmin === true) return null;
-    const denied = () =>
-        errorResponse('Only an administrator of this blog can change a locked category', 403, { code: 'FORBIDDEN' });
-
-    if (crudRequest.model === 'categories') {
-        if (getOttabaseConfig(context.env).features.ottablog.mode === 'org') return null;
-        const body = (crudRequest.body ?? {}) as Record<string, unknown>;
-        const unlocks = crudRequest.method === 'DELETE' || body.isLocked === false || 'parentId' in body;
-        if (unlocks && (await PostCategory.lockedAmong([crudRequest.id])).size > 0) return denied();
-        return null;
+    const isTag = crudRequest.model === 'post_tag_links';
+    if (!isTag && crudRequest.model !== 'post_category_links') return null;
+    if (crudRequest.method === 'PUT' || crudRequest.method === 'PATCH') {
+        return errorResponse('Links are created or deleted, not edited', 405, { code: 'METHOD_NOT_ALLOWED' });
     }
 
-    if (crudRequest.model === 'post_category_links' && crudRequest.method === 'DELETE') {
-        const link = await PostCategoryLink.find(crudRequest.id);
-        if (!link || (await PostCategory.lockedAmong([String(link.get('categoryId'))])).size === 0) return null;
-        const post = await Post.find(String(link.get('postId')));
-        const organizationId = (post?.get('organizationId') as string | null | undefined) ?? null;
-        if (post && !(await canManagePostInOrg(context, { organizationId }))) return denied();
+    const termField = isTag ? 'tagId' : 'categoryId';
+    let link: Record<string, unknown> | null = null;
+    if (crudRequest.method === 'POST') {
+        link = (crudRequest.body ?? null) as Record<string, unknown> | null;
+    } else if (crudRequest.id) {
+        const row = await (isTag ? PostTagLink : PostCategoryLink).find(crudRequest.id);
+        if (!row) return null; // secure CRUD answers the missing row
+        link = { postId: row.get('postId'), [termField]: row.get(termField) };
     }
-    return null;
+    const notFound = () => errorResponse('Post or term not found in this blog', 404, { code: 'NOT_FOUND' });
+    if (typeof link?.postId !== 'string' || typeof link[termField] !== 'string') return notFound();
+
+    let filter: Record<string, unknown>;
+    try {
+        filter = globalRLS.getReadFilter(Post.entity, securityContext);
+    } catch {
+        return notFound();
+    }
+    const [post] = await Post.where(
+        { ...filter, id: link.postId },
+        { select: ['id', 'appId', 'organizationId'], limit: 1 },
+    );
+    if (!post) return notFound();
+    const [term] = await (isTag ? PostTag : PostCategory).where(
+        { id: link[termField], appId: post.get('appId'), organizationId: post.get('organizationId') ?? null },
+        { select: ['id'], limit: 1 },
+    );
+    return term ? null : notFound();
 }
 
 /**
@@ -172,13 +190,10 @@ function isCommentOwnerOrModerator(
 }
 
 /**
- * App-global blog taxonomy: one shared vocabulary per app (no organizationId column), referenced
- * by every tenant's posts. Its RLS is AppScoped with NO role/permission requirement, so generic
- * CRUD would let ANY caller — even unauthenticated — create/rename/delete every tenant's tags,
- * categories, and series, and attach them to any post via the public-writable link tables.
- * Reads stay open (the editor lists them); WRITES require org:admin, i.e. an authenticated content
- * administrator (a platform owner satisfies this via '*:*'). Deeper per-post-ownership scoping of
- * the junction links is a larger RLS change tracked separately.
+ * Taxonomy and its post links. Blog taxonomy (categories, post_tags, series) is scoped to one blog
+ * by its RLS policy; the core `tags` vocabulary is app-wide. Writes need a content administrator
+ * on top: org:admin or taxonomy:manage (a platform owner satisfies both via '*:*'). The link tables
+ * carry no scope of their own, so guardBlogLinkWrite ties each link to its post's blog.
  */
 const APP_TAXONOMY_MODELS = new Set([
     'series',
@@ -496,8 +511,8 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 code: 'FORBIDDEN',
             });
         }
-        const lockDenied = await guardLockedTaxonomyWrite(context, crudRequest, securityContext);
-        if (lockDenied) return lockDenied;
+        const linkDenied = await guardBlogLinkWrite(crudRequest, securityContext);
+        if (linkDenied) return linkDenied;
     }
 
     // Mutating or deleting an organization requires owner/admin authority in the TARGET org. The
@@ -562,24 +577,6 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 return errorResponse(error.message, 400, { code: 'VALIDATION_ERROR' });
             }
             throw error;
-        }
-    }
-
-    if (
-        crudRequest.model === 'posts' &&
-        crudRequest.body &&
-        (crudRequest.method === 'POST' || crudRequest.method === 'PATCH')
-    ) {
-        // A null organizationId means "platform-owned" (see the posts RLS policy in
-        // registry.ts) — only a platform admin may author those rows. The custom
-        // policy's platformAdmin gate is READ-only (generateFilter), so without this
-        // check anyone with no active org (e.g. after clearing activeOrganizationId)
-        // could stamp an author-invisible, admin-only draft onto the platform blog.
-        const resolvedOrgId = securityContext.organizationId ?? null;
-        if (resolvedOrgId === null && !securityContext.platformAdmin) {
-            return errorResponse('An active organization is required to create or edit posts', 403, {
-                code: 'FORBIDDEN',
-            });
         }
     }
 

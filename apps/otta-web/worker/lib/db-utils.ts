@@ -101,7 +101,7 @@ function registerAppModels(): void {
 
     // Package policies are registered AFTER initRLS(): the RLS registry is last-write-wins,
     // so a policy registered before it would be silently replaced by a built-in with the
-    // same model name. This is where org-mode blog overrides, the AI credential policy and
+    // same model name. This is where the blog-scoped policies, the AI credential policy and
     // the landing-site policies land, each declared by its own manifest.
     for (const policy of packages.policies()) registerPolicy(policy);
 }

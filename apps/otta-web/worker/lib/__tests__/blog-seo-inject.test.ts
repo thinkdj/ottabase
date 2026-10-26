@@ -1,17 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPostFirst, mockSettingsFor, mockGetOttabaseConfig, mockEnsureDbConnection, mockResolveBlogOrganizationId } =
-    vi.hoisted(() => ({
+const { mockPostFirst, mockSettingsFor, mockGetOttabaseConfig, mockEnsureDbConnection, mockFindOrgBySlug } = vi.hoisted(
+    () => ({
         mockPostFirst: vi.fn(),
         mockSettingsFor: vi.fn(),
         mockGetOttabaseConfig: vi.fn(),
         mockEnsureDbConnection: vi.fn(),
-        mockResolveBlogOrganizationId: vi.fn(),
-    }));
+        mockFindOrgBySlug: vi.fn(),
+    }),
+);
 
 vi.mock('@ottabase/ottablog', () => ({
     Post: { first: mockPostFirst },
-    OttablogSettings: { forScopeOrPlatform: mockSettingsFor },
+    OttablogSettings: { forBlog: mockSettingsFor },
+}));
+
+vi.mock('@ottabase/ottaorm', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@ottabase/ottaorm')>()),
+    Organization: { findBySlug: mockFindOrgBySlug },
 }));
 
 vi.mock('../../../ottabase/config.loader', () => ({
@@ -20,10 +26,6 @@ vi.mock('../../../ottabase/config.loader', () => ({
 
 vi.mock('../db-utils', () => ({
     ensureDbConnection: mockEnsureDbConnection,
-}));
-
-vi.mock('../../routes/blog', () => ({
-    resolveBlogOrganizationIdCached: mockResolveBlogOrganizationId,
 }));
 
 import { injectBlogPostSeo } from '../blog-seo-inject';
@@ -49,18 +51,18 @@ function fakePost(fields: Record<string, unknown>) {
 
 const env = { OBCF_D1: {} } as any;
 
-const PLATFORM_CONFIG = {
+const CONFIG = {
     appId: 'otta-web',
     appName: 'Ottabase Demo',
     packages: { ottablog: true },
-    features: { ottablog: { mode: 'platform' } },
+    features: { ottablog: { orgBlogs: true } },
 };
 
 describe('injectBlogPostSeo', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockGetOttabaseConfig.mockReturnValue(PLATFORM_CONFIG);
-        mockResolveBlogOrganizationId.mockResolvedValue(null);
+        mockGetOttabaseConfig.mockReturnValue(CONFIG);
+        mockFindOrgBySlug.mockResolvedValue({ id: 'org-1', slug: 'acme', name: 'Acme', status: 'active' });
         mockPostFirst.mockResolvedValue(
             fakePost({
                 title: 'Hello World',
@@ -87,10 +89,6 @@ describe('injectBlogPostSeo', () => {
         expect(mockPostFirst).toHaveBeenCalledWith(
             expect.objectContaining({ slug: 'hello-world', status: 'published', appId: 'otta-web' }),
         );
-        // Platform mode: no org dimension in the lookup, resolver never called.
-        const where = mockPostFirst.mock.calls[0][0];
-        expect('organizationId' in where).toBe(false);
-        expect(mockResolveBlogOrganizationId).not.toHaveBeenCalled();
     });
 
     it('uses the blurb text and SocialMediaPosting metadata for thoughts', async () => {
@@ -154,7 +152,7 @@ describe('injectBlogPostSeo', () => {
     });
 
     it('returns the original response for non-detail paths', async () => {
-        for (const path of ['/blog', '/blog/tag/x', '/about', '/']) {
+        for (const path of ['/blog', '/blog/tag/x', '/blogs/acme', '/blogs/acme/tag/x', '/about', '/']) {
             const original = htmlResponse();
             const result = await injectBlogPostSeo(original, requestFor(`https://demo.test${path}`), env);
             expect(result).toBe(original);
@@ -177,16 +175,46 @@ describe('injectBlogPostSeo', () => {
         expect(await injectBlogPostSeo(json, requestFor('https://demo.test/blog/hello-world'), env)).toBe(json);
     });
 
-    it('scopes the lookup by organization in org mode', async () => {
-        mockGetOttabaseConfig.mockReturnValue({
-            ...PLATFORM_CONFIG,
-            features: { ottablog: { mode: 'org' } },
+    it('reads a site blog post from the site blog only', async () => {
+        await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/hello-world'), env);
+
+        expect(mockPostFirst).toHaveBeenCalledWith({
+            slug: 'hello-world',
+            status: 'published',
+            appId: 'otta-web',
+            organizationId: null,
         });
-        mockResolveBlogOrganizationId.mockResolvedValue('org-1');
+        expect(mockFindOrgBySlug).not.toHaveBeenCalled();
+    });
 
-        await injectBlogPostSeo(htmlResponse(), requestFor('https://acme.demo.test/blog/hello-world'), env);
+    it("reads an organization blog post from that organization's blog, with its own canonical URL", async () => {
+        const html = await (
+            await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blogs/acme/hello-world'), env)
+        ).text();
 
+        expect(mockFindOrgBySlug).toHaveBeenCalledWith('acme');
         expect(mockPostFirst).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-1' }));
+        expect(html).toContain('https://demo.test/blogs/acme/hello-world');
+    });
+
+    it('serves no organization blog when they are off, or the organization is unknown or inactive', async () => {
+        mockGetOttabaseConfig.mockReturnValue({ ...CONFIG, features: { ottablog: { orgBlogs: false } } });
+        const off = htmlResponse();
+        expect(await injectBlogPostSeo(off, requestFor('https://demo.test/blogs/acme/hello-world'), env)).toBe(off);
+
+        mockGetOttabaseConfig.mockReturnValue(CONFIG);
+        mockFindOrgBySlug.mockResolvedValue(undefined);
+        const unknown = htmlResponse();
+        expect(await injectBlogPostSeo(unknown, requestFor('https://demo.test/blogs/nope/hello-world'), env)).toBe(
+            unknown,
+        );
+
+        mockFindOrgBySlug.mockResolvedValue({ id: 'org-2', slug: 'gone', name: 'Gone', status: 'suspended' });
+        const inactive = htmlResponse();
+        expect(await injectBlogPostSeo(inactive, requestFor('https://demo.test/blogs/gone/hello-world'), env)).toBe(
+            inactive,
+        );
+        expect(mockPostFirst).not.toHaveBeenCalled();
     });
 
     it('survives author-authored $-sequences and HTML in titles', async () => {

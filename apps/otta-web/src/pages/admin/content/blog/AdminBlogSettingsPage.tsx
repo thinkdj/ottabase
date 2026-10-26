@@ -5,8 +5,10 @@
  * demo content seed.
  */
 import { isPlatformAdmin, useSession } from '@/lib/auth';
-import type { BlogLanguageConfig, StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
+import { organizationIdAtom } from '@/ottabase/state/appState';
+import type { BlogInfo, BlogLanguageConfig, StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
 import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
+import type { QueryKey } from '@tanstack/react-query';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -39,6 +41,7 @@ import {
 } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { Loader2, Palette, Puzzle, Settings, Sparkles } from 'lucide-react';
+import { useAtomValue } from 'jotai';
 import { useCallback, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 import { BlogLanguageSettingsCard } from './BlogLanguageSettingsCard';
@@ -52,7 +55,12 @@ interface StudioStateResponse {
     themes: StudioThemeState[];
     plugins: StudioPluginState[];
     languageConfig: BlogLanguageConfig;
+    /** The blog these settings belong to; null for the site blog. */
+    blog: BlogInfo | null;
 }
+
+/** A Studio change shows on the blog's public pages: drop their cached state too. */
+const PUBLIC_BLOG_STATE: QueryKey[] = [['blog-state']];
 
 /** POST /api/blog/seed-demo — create-only, so `existing` lists slugs it skipped. */
 interface DemoSeedResponse {
@@ -103,6 +111,8 @@ function formToPluginConfig(form: ContentInjectorConfigForm): Record<string, unk
 
 export function AdminBlogSettingsPage() {
     const surface = useBlogSurface();
+    // The Studio of the active organization's blog, or the site blog's in Platform scope.
+    const organizationId = useAtomValue(organizationIdAtom);
     const {
         data: state,
         isLoading,
@@ -110,7 +120,7 @@ export function AdminBlogSettingsPage() {
         error,
     } = useApiQuery<StudioStateResponse>({
         entity: SETTINGS_ENTITY,
-        queryKey: ['state'],
+        queryKey: ['state', organizationId],
         endpoint: '/api/blog/studio/state?full=1',
     });
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
@@ -129,6 +139,7 @@ export function AdminBlogSettingsPage() {
         endpoint: '/api/blog/studio/theme/activate',
         method: 'POST',
         invalidateEntities: [SETTINGS_ENTITY],
+        invalidateKeys: PUBLIC_BLOG_STATE,
         mutationOptions: {
             onError: () =>
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to activate theme. Please try again.' }),
@@ -139,6 +150,7 @@ export function AdminBlogSettingsPage() {
         endpoint: '/api/blog/studio/plugin/enable',
         method: 'POST',
         invalidateEntities: [SETTINGS_ENTITY],
+        invalidateKeys: PUBLIC_BLOG_STATE,
         mutationOptions: {
             onError: () =>
                 setAlertDialog({ open: true, title: 'Error', message: 'Failed to update plugin. Please try again.' }),
@@ -174,6 +186,7 @@ export function AdminBlogSettingsPage() {
         endpoint: '/api/blog/studio/plugin/config',
         method: 'POST',
         invalidateEntities: [SETTINGS_ENTITY],
+        invalidateKeys: PUBLIC_BLOG_STATE,
         mutationOptions: {
             onSuccess: () => closeConfigModal(),
             onError: () =>
@@ -262,7 +275,8 @@ export function AdminBlogSettingsPage() {
             <div className="space-y-1.5">
                 <h1 className="text-2xl font-semibold tracking-[-0.015em]">Content settings</h1>
                 <p className="max-w-3xl text-muted-foreground">
-                    Manage themes, plugins, languages, and who can read locked categories.
+                    Manage themes, plugins, languages, and who can read locked categories
+                    {state ? ` for ${state.blog?.name ?? 'the site blog'}` : ''}.
                 </p>
             </div>
 

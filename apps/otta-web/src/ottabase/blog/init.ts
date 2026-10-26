@@ -1,24 +1,22 @@
 /**
- * Ottablog Initialization for Vite App
+ * Ottablog on the client: the built-in themes, and one blog's Studio state applied over them.
  *
- * Initialize themes, plugins, and hooks. Optionally loads studio state from API
- * and applies active theme and enabled plugins (with config).
+ * Themes and plugins live in one in-memory registry while the app serves several blogs (the site
+ * blog and each organization's). Applying a blog's state therefore starts from the built-in
+ * defaults every time: nothing one blog configured ever renders on another.
  */
 
-import { api } from '@/lib/api';
 import {
     activatePlugin,
     blogThemeTokensToCss,
-    contentInjectorPlugin,
     createContentInjectorPlugin,
     deactivatePlugin,
+    getActivePlugins,
     getTheme,
-    hasPlugin,
     registerPlugin,
     registerTheme,
     setActiveTheme,
     type BlogThemeTokens,
-    type StudioPluginState,
     type StudioState,
 } from '@ottabase/ottablog';
 import { initOttablog } from '@ottabase/ottablog/renderer';
@@ -26,7 +24,7 @@ import { initOttablog } from '@ottabase/ottablog/renderer';
 /**
  * Style-element id shared with the edge injector (worker/lib/blog-theme-inject.ts).
  * The client REPLACES the element's content instead of adding a second tag, so the
- * edge-painted state and the client-applied state can never disagree — the same
+ * edge-painted state and the client-applied state can never disagree: the same
  * contract the brand engine uses for #brand-critical.
  */
 const BLOG_THEME_STYLE_ID = 'ottablog-theme-scope';
@@ -49,131 +47,39 @@ function applyBlogThemeTokens(tokens: BlogThemeTokens | null | undefined): void 
 }
 
 /**
- * Register default themes and the content injector plugin (in-memory).
+ * Apply one blog's public Studio state: its active theme (with stored class overrides and brand
+ * tokens) and its enabled plugins with their configuration. Null applies the defaults alone.
  */
-function registerBlogThemesAndPlugins() {
+export async function applyBlogState(state: Pick<StudioState, 'activeThemeId' | 'themes' | 'plugins'> | null) {
+    // Pristine built-in themes, the default active, every plugin off.
     initOttablog({ defaultThemeId: 'default' });
+    for (const plugin of getActivePlugins()) await deactivatePlugin(plugin.metadata.id);
 
-    const plugin = contentInjectorPlugin.end(
-        '<div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 my-4 rounded"><p class="text-sm text-blue-800 dark:text-blue-200"><strong>Note:</strong> This content was injected by the Content Injector Plugin!</p></div>',
-        {
-            priority: 10,
-            enabled: true,
-            contentTypes: [],
-        },
-    );
-    registerPlugin(plugin);
-}
-
-/** In-flight promise so concurrent calls (e.g. Strict Mode double effect) share one request */
-let studioStateFetchPromise: Promise<StudioState | null> | null = null;
-
-/** Delay before clearing in-flight ref so a concurrent caller (same tick / next microtask) still sees the promise */
-const STUDIO_STATE_DEDUPE_CLEAR_MS = 50;
-
-/**
- * Fetch studio state from API and apply active theme, enabled plugins, and configs.
- * Concurrent calls share the same in-flight request (avoids 2x from React Strict Mode).
- * Clear is delayed so a very fast response does not set the ref to null before a second caller checks it.
- */
-export async function applyStudioStateFromApi() {
-    if (studioStateFetchPromise) {
-        const state = await studioStateFetchPromise;
-        if (state) await applyState(state);
-        return;
-    }
-    studioStateFetchPromise = (async () => {
-        try {
-            // Runtime blog state is mounted globally (public + authenticated visitors).
-            // The request client is presentation-free, so this optional probe handles
-            // failures locally without causing an auth redirect.
-            const state = await api<StudioState>('/api/blog/studio/state');
-            await applyState(state);
-            return state;
-        } catch (err) {
-            console.warn('Could not load blog studio state:', err);
-            return null;
-        } finally {
-            setTimeout(() => {
-                studioStateFetchPromise = null;
-            }, STUDIO_STATE_DEDUPE_CLEAR_MS);
-        }
-    })();
-    await studioStateFetchPromise;
-}
-
-async function applyState(state: StudioState) {
-    // Apply active theme (use activeThemeId as source of truth)
-    if (state.activeThemeId) {
-        setActiveTheme(state.activeThemeId);
-    }
-
-    // Apply the active theme's brand-token overrides to the blog room
-    // ([data-brand-scope="blog"]). Sparse: no tokens, no CSS.
-    const activeThemeRow = (state.themes || []).find((t) => t.themeId === state.activeThemeId);
-    applyBlogThemeTokens((activeThemeRow?.tokens as BlogThemeTokens | null | undefined) ?? null);
-
-    // Merge DB-stored config (classes overrides) into the active in-memory theme
-    for (const t of state.themes || []) {
-        const dbClasses = (t.config as Record<string, unknown> | null)?.classes as Record<string, string> | undefined;
-        if (!dbClasses) continue;
-
-        const theme = getTheme(t.themeId);
+    // Stored class overrides re-register a theme with its built-in config merged under them.
+    for (const row of state?.themes ?? []) {
+        const classes = (row.config as Record<string, unknown> | null)?.classes as Record<string, string> | undefined;
+        const theme = classes ? getTheme(row.themeId) : null;
         if (!theme) continue;
-
-        // Re-register with merged config — DB classes override built-in defaults
-        registerTheme({
-            ...theme,
-            config: {
-                ...theme.config,
-                classes: { ...theme.config?.classes, ...dbClasses },
-            },
-        });
+        registerTheme({ ...theme, config: { ...theme.config, classes: { ...theme.config?.classes, ...classes } } });
     }
+    if (state?.activeThemeId) setActiveTheme(state.activeThemeId);
+    const active = state?.themes.find((row) => row.themeId === state.activeThemeId);
+    applyBlogThemeTokens((active?.tokens as BlogThemeTokens | null | undefined) ?? null);
 
-    // Deactivate content-injector when it's disabled in studio state (so default static plugin doesn't run)
-    for (const row of state.plugins || []) {
-        const p = row as StudioPluginState;
-        if (p.enabled || p.pluginId !== 'content-injector-plugin') continue;
-        if (hasPlugin(p.pluginId)) {
-            await deactivatePlugin(p.pluginId);
+    for (const row of state?.plugins ?? []) {
+        if (!row.enabled) continue;
+        const config = (row.config ?? {}) as Record<string, unknown>;
+        if (row.pluginId === 'content-injector-plugin') {
+            registerPlugin(
+                createContentInjectorPlugin({
+                    content: (config.content as string) ?? '',
+                    position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
+                    contentTypes: (config.contentTypes as string[]) ?? [],
+                    priority: (config.priority as number) ?? 10,
+                    enabled: true,
+                }),
+            );
         }
+        await activatePlugin(row.pluginId);
     }
-
-    // Apply enabled plugins with their configurations
-    for (const row of state.plugins || []) {
-        const p = row as StudioPluginState;
-        if (!p.enabled) continue;
-
-        const config = (p.config || {}) as Record<string, unknown>;
-
-        // Handle content-injector-plugin: always use config from API (replace default static plugin)
-        if (p.pluginId === 'content-injector-plugin') {
-            if (hasPlugin(p.pluginId)) {
-                await deactivatePlugin(p.pluginId);
-            }
-            const plugin = createContentInjectorPlugin({
-                content: (config.content as string) ?? '',
-                position: (config.position as 'beginning' | 'end' | 'random') ?? 'end',
-                contentTypes: (config.contentTypes as string[]) ?? [],
-                priority: (config.priority as number) ?? 10,
-                enabled: true,
-            });
-            registerPlugin(plugin);
-        }
-
-        // Add similar handling for other plugins here in the future
-
-        // Activate the plugin
-        await activatePlugin(p.pluginId);
-    }
-}
-
-/**
- * Initialize ottablog system: register themes/plugins, then load and apply DB studio state.
- */
-export async function initBlogSystem() {
-    registerBlogThemesAndPlugins();
-    await applyStudioStateFromApi();
-    console.log('✅ Ottablog initialized with hooks, themes, and plugins (database-backed)');
 }

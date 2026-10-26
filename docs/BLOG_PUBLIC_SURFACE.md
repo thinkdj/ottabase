@@ -21,18 +21,17 @@ This is intentionally separate from:
 ```ts
 features: {
     ottablog: {
-        mode: 'platform' | 'org';
+        orgBlogs: boolean;
     }
 }
 ```
 
-`features.ottablog.mode` already controls **content tenancy**:
-
-- `platform`: one platform-owned blog per app.
-- `org`: organization-scoped posts, taxonomy, themes, and plugins.
+`features.ottablog.orgBlogs` already controls **which blogs are public**: the site blog at `/blog` always, and with
+`orgBlogs` every organization's own blog at `/blogs/{orgSlug}` (see the ottablog README, "Site blog and organization
+blogs").
 
 Blog-only mode is instead a **routing, public navigation, layout, canonical URL, and deployment presentation** decision.
-Reusing the existing tenancy mode would blur authorization, cache ownership, organization resolution, and user-facing
+Folding it into the blogs switch would blur authorization, cache ownership, organization resolution, and user-facing
 behavior.
 
 The recommended first release is a **deploy-wide, build-time public surface**. In blog mode, the public blog is mounted
@@ -194,38 +193,20 @@ Recommended policy:
 
 Do not allow a database shortlink and article with the same root slug to compete by request order.
 
-### Public blog data currently mixes public endpoints and generic CRUD hooks
+### Public blog data reads through `/api/blog` only
 
-Most public data uses `/api/blog`, but supporting data still uses generic OttaORM hooks:
+Every public blog page reads through `/api/blog` (series included, via `GET /api/blog/series`), and every request names
+its blog in the URL: no parameter for the site blog, `?blog=<orgSlug>` for an organization's. Public reads never depend
+on the visitor's session or `x-org-id`, and anonymous callers read no blog taxonomy through generic CRUD.
 
-- The blog index uses `createModelHooks({ entityName: 'series' })` for the series filter.
-- Blog detail uses generic series detail and post list hooks for series navigation.
+### Blogs are resolved from the path, not the host
 
-The generic browser client intentionally does not send `x-org-id` for anonymous visitors. Meanwhile `/api/blog` can
-resolve blog tenancy from the request host. Under org mode or custom hostnames, this can produce a correctly scoped post
-followed by incorrectly scoped series/taxonomy support data.
+The SPA routes `/blog` and `/blogs/{orgSlug}`; the API takes the same blog as `?blog=`, and the edge SEO and theme
+injectors parse the same paths (`@ottabase/ottablog/paths`). An unknown or inactive organization, or one with no
+published post yet, is a 404: nothing falls back to another blog. There is no hostname-to-organization lookup.
 
-Before host-aware org blogs are supported:
-
-- Add the missing public series list/detail/navigation endpoints to the Ottablog router.
-- Make every public blog page read through domain-aware `/api/blog` endpoints.
-- Preserve entity-oriented query keys so the existing mutation invalidation behavior remains useful.
-
-### Existing subdomain-to-organization behavior is insufficient for custom domains
-
-[`apps/otta-web/worker/routes/blog.ts`](apps/otta-web/worker/routes/blog.ts) resolves org-mode public requests in this
-order:
-
-1. `?org=`.
-2. `x-org-id`.
-3. First hostname label looked up as an Organization slug.
-4. Unresolved requests fall back to platform-owned content.
-
-On `blog.example.com`, the first label is `blog`, so org mode would try to find an organization with slug `blog`. This
-is not an acceptable custom-domain mapping strategy.
-
-For a future managed-domain phase, use a validated hostname mapping model and fail closed on an unknown/inactive
-configured hostname instead of falling back to another tenant or platform content.
+For a future managed-domain phase, add a validated hostname mapping model that resolves to the same blog scope, and fail
+closed on an unknown or inactive configured hostname instead of falling back to another blog.
 
 ### Brand Engine is app-scoped, not organization/hostname-scoped
 
@@ -319,7 +300,7 @@ export default defineOttabaseConfig({
     publicSurface: 'blog',
     features: {
         ottablog: {
-            mode: 'platform',
+            orgBlogs: false,
         },
     },
 });
@@ -467,7 +448,7 @@ Future domain model, following OttaORM-first rules, could contain:
 - `id`.
 - Normalized `hostname`.
 - `appId`.
-- `organizationId` nullable for platform blog.
+- `organizationId` nullable for the site blog.
 - `surface`.
 - `isCanonical`.
 - Verification/provisioning status.
@@ -504,7 +485,7 @@ Blog surface should cover all of these before it is considered complete:
 
 ## Security and tenancy checklist
 
-- Do not reuse `features.ottablog.mode` for public-surface selection.
+- Do not reuse `features.ottablog.orgBlogs` for public-surface selection.
 - Do not trust browser headers or query parameters as authoritative domain-to-org mappings.
 - Keep appId server-configured.
 - Preserve RLS context for editorial/admin CRUD.
@@ -549,9 +530,8 @@ Repository rules require tests and documentation for this change. At minimum:
 
 ### Tenancy tests
 
-- Platform mode remains unchanged.
-- Org mode scopes posts, taxonomy, themes, feeds, and SEO identically.
-- Public supporting data no longer leaks through generic CRUD hooks.
+- The site blog and each organization's blog scope posts, taxonomy, themes, feeds, and SEO identically.
+- Public supporting data never reads through generic CRUD hooks.
 - Unknown custom host fails closed in any future host-aware implementation.
 - `blog.example.com` is not interpreted as org slug `blog` once explicit domain mapping is enabled.
 

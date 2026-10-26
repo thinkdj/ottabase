@@ -10,7 +10,7 @@ import { useComments, useCreateComment, type CommentType } from '@/hooks/comment
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { rememberReturnPath } from '@/lib/auth-redirect';
-import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
+import { useBlogScope } from '@/ottabase/blog/BlogScope';
 import type { PostAuthor } from '@/types/blog';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import {
@@ -23,7 +23,7 @@ import {
 import { BlogRenderer } from '@ottabase/ottablog/renderer';
 import { ShareButton } from '@ottabase/ottablog/share';
 import type { OutputData } from '@ottabase/ottaeditor';
-import { createModelHooks, useApiQuery } from '@ottabase/ottaorm/client';
+import { useApiQuery } from '@ottabase/ottaorm/client';
 import {
     Avatar,
     AvatarFallback,
@@ -42,7 +42,7 @@ import {
 } from '@ottabase/ui';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { localizedPostPath, localizedPostSearch } from './blogLinks';
+import { localizedPostSearch } from './blogLinks';
 import {
     ArrowLeft,
     ArrowRight,
@@ -96,6 +96,7 @@ interface BlogPost {
     publishedAt: string | null;
     seriesId: string | null;
     seriesOrder: number | null;
+    seriesTitle?: string | null;
     tags?: { id: string; name: string; slug: string }[];
     categories?: { id: string; name: string; slug: string; isLocked?: boolean }[];
     viewCount?: number;
@@ -114,18 +115,6 @@ interface BlogPost {
     } | null;
 }
 
-interface BlogSeries {
-    id: string;
-    title: string;
-    slug: string;
-    description: string | null;
-    isComplete: boolean;
-}
-
-const blogSeriesHooks = createModelHooks<BlogSeries>({
-    entityName: 'series',
-});
-
 const COMMENTS_TARGET_TYPE = 'post';
 
 function PostLanguageMenu({
@@ -135,6 +124,7 @@ function PostLanguageMenu({
     post: Pick<BlogPost, 'availableLanguages' | 'language' | 'baseLanguage' | 'baseSlug' | 'slug'>;
     requestedLanguage: string;
 }) {
+    const blog = useBlogScope();
     const languages = post.availableLanguages ?? [];
     if (languages.length <= 1) return null;
 
@@ -143,8 +133,7 @@ function PostLanguageMenu({
     const currentLanguage = languages.find((item) => item.code === currentCode) ?? languages[0];
 
     const navigateToLanguage = (code: string) => {
-        const targetSlug = post.baseSlug || post.slug;
-        window.location.assign(localizedPostPath(targetSlug, code));
+        window.location.assign(blog.post(post.baseSlug || post.slug, code));
     };
 
     return (
@@ -360,11 +349,12 @@ function LockedPostTeaser({ post, signedIn }: { post: BlogPost; signedIn: boolea
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
-    const search = useSearch({ strict: false }) as { lang?: string };
+    const search = useSearch({ strict: false }) as { lang?: string; preview?: string };
     const navigate = useNavigate();
     const requestedLanguage = search.lang || '';
     const { user } = useSession();
-    const { isReady: studioReady } = useBlogStudio();
+    const blog = useBlogScope();
+    const studioReady = blog.isReady;
     const [unlockedPost, setUnlockedPost] = useState<BlogPost | null>(null);
     const [password, setPassword] = useState('');
     const [unlockError, setUnlockError] = useState<string | null>(null);
@@ -377,33 +367,32 @@ export function BlogDetailPage() {
     // Any mutation on the posts entity auto-busts this cache via the global observer.
     const { data: post, isLoading: isLoadingPost } = useApiQuery<BlogPost>({
         entity: 'posts',
-        queryKey: ['by-slug', slug, requestedLanguage],
-        endpoint:
-            '/api/blog/posts/by-slug/' +
-            encodeURIComponent(slug ?? '') +
-            (requestedLanguage ? '?lang=' + encodeURIComponent(requestedLanguage) : ''),
+        queryKey: ['by-slug', blog.slug, slug, requestedLanguage, search.preview],
+        // A signed `?preview=` link reads its draft; the server checks the token against this blog.
+        endpoint: blog.api('/posts/by-slug/' + encodeURIComponent(slug ?? ''), {
+            lang: requestedLanguage,
+            preview: search.preview,
+        }),
         queryOptions: {
             enabled: !!slug,
             ...BLOG_DETAIL_QUERY_CONFIG,
         },
     });
 
-    // Fetch series info if post is part of a series (using useDetail for primary key lookup)
-    const { data: series } = blogSeriesHooks.useDetail(post?.seriesId || '', {
-        enabled: !!post?.seriesId,
-        ...BLOG_DETAIL_QUERY_CONFIG,
-    });
+    const seriesTitle = post?.seriesTitle ?? null;
 
     // Fetch localized series posts through the public endpoint so the
     // navigation uses the same language as the page and has self-contained links.
     const { data: seriesPostsResponse } = useApiQuery<{ data: BlogPost[] }>({
         entity: 'posts',
-        queryKey: ['series-navigation', post?.seriesId, requestedLanguage],
-        endpoint:
-            '/api/blog/posts?seriesId=' +
-            encodeURIComponent(post?.seriesId ?? '') +
-            '&orderBy=seriesOrder&orderDirection=asc&perPage=50' +
-            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
+        queryKey: ['series-navigation', blog.slug, post?.seriesId, requestedLanguage],
+        endpoint: blog.api('/posts', {
+            seriesId: post?.seriesId,
+            orderBy: 'seriesOrder',
+            orderDirection: 'asc',
+            perPage: 50,
+            lang: requestedLanguage,
+        }),
         queryOptions: { enabled: !!post?.seriesId },
     });
     const seriesPosts = seriesPostsResponse?.data ?? [];
@@ -517,7 +506,7 @@ export function BlogDetailPage() {
                     The post you're looking for doesn't exist or has been removed.
                 </p>
                 <Button asChild>
-                    <Link to="/blog">
+                    <Link to={blog.base}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Blog
                     </Link>
@@ -534,13 +523,10 @@ export function BlogDetailPage() {
         if (!password.trim() || !slug) return;
         setIsUnlocking(true);
         try {
-            const full = await api<BlogPost>(
-                '/api/blog/posts/unlock' + (requestedLanguage ? '?lang=' + encodeURIComponent(requestedLanguage) : ''),
-                {
-                    method: 'POST',
-                    body: { slug, password: password.trim() },
-                },
-            );
+            const full = await api<BlogPost>(blog.api('/posts/unlock', { lang: requestedLanguage }), {
+                method: 'POST',
+                body: { slug, password: password.trim() },
+            });
             setUnlockedPost(full);
             setPassword('');
         } catch (err) {
@@ -608,7 +594,7 @@ export function BlogDetailPage() {
         createdAt: null,
         seriesId: displayPost.seriesId,
         seriesOrder: displayPost.seriesOrder,
-        seriesTitle: series?.title || null,
+        seriesTitle,
         seriesTotalParts: seriesPosts.length > 0 ? seriesPosts.length : null,
         originalDate: displayPost.originalDate,
         isProtected: displayPost.isProtected,
@@ -654,7 +640,7 @@ export function BlogDetailPage() {
             {/* Back link + Share + Edit (author only) */}
             <div className="mb-6 flex items-center justify-between gap-4">
                 <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
-                    <Link to="/blog">
+                    <Link to={blog.base}>
                         <ArrowLeft className="h-4 w-4" />
                         Back to Blog
                     </Link>
@@ -738,18 +724,15 @@ export function BlogDetailPage() {
                             showFootnotes
                             showSeries
                             formatDate={formatDate}
-                            onAuthorClick={(authorId) =>
-                                navigate({ to: '/blog/author/$authorId', params: { authorId } })
-                            }
+                            onAuthorClick={(authorId) => navigate({ to: blog.archive('author', authorId) })}
                             renderSeriesNav={(_post) => {
-                                if (!series || seriesPosts.length <= 1) return null;
+                                if (!seriesTitle || seriesPosts.length <= 1) return null;
                                 return (
                                     <div className="mt-4 pt-4 border-t border-border/60">
                                         <div className="grid gap-4 sm:grid-cols-2">
                                             {prevPost && (
                                                 <Link
-                                                    to="/blog/$slug"
-                                                    params={{ slug: prevPost.slug }}
+                                                    to={blog.post(prevPost.slug)}
                                                     search={localizedPostSearch(prevPost, requestedLanguage)}
                                                     className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 >
@@ -766,8 +749,7 @@ export function BlogDetailPage() {
                                             )}
                                             {nextPost && (
                                                 <Link
-                                                    to="/blog/$slug"
-                                                    params={{ slug: nextPost.slug }}
+                                                    to={blog.post(nextPost.slug)}
                                                     search={localizedPostSearch(nextPost, requestedLanguage)}
                                                     className="group flex items-center gap-3 p-4 rounded-xl border border-transparent bg-muted/40 hover:bg-muted/70 transition-colors duration-normal outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-right sm:flex-row-reverse"
                                                 >
@@ -794,7 +776,7 @@ export function BlogDetailPage() {
                         <div className="flex flex-wrap gap-2 mt-8">
                             <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
                             {displayPost.tags.map((tag) => (
-                                <Link key={tag.id} to="/blog/tag/$slug" params={{ slug: tag.slug }}>
+                                <Link key={tag.id} to={blog.archive('tag', tag.slug)}>
                                     <Badge
                                         variant="outline"
                                         className="cursor-pointer border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
@@ -811,7 +793,7 @@ export function BlogDetailPage() {
                         <div className="flex flex-wrap gap-2 mt-4">
                             <FolderTree className="h-4 w-4 text-muted-foreground mt-0.5" />
                             {displayPost.categories.map((cat) => (
-                                <Link key={cat.id} to="/blog/category/$slug" params={{ slug: cat.slug }}>
+                                <Link key={cat.id} to={blog.archive('category', cat.slug)}>
                                     <Badge
                                         variant="outline"
                                         className="cursor-pointer gap-1 border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
@@ -920,7 +902,7 @@ export function BlogDetailPage() {
             )}
 
             {/* Series Navigation - All posts */}
-            {series && seriesPosts.length > 1 && (
+            {seriesTitle && seriesPosts.length > 1 && (
                 <nav className="border-t border-border/60 pt-8 mt-12">
                     <h2 className="text-[0.9375rem] font-semibold mb-4">More in this series</h2>
                     <details className="mt-6">
@@ -934,8 +916,7 @@ export function BlogDetailPage() {
                                         <span>{p.title} (current)</span>
                                     ) : (
                                         <Link
-                                            to="/blog/$slug"
-                                            params={{ slug: p.slug }}
+                                            to={blog.post(p.slug)}
                                             search={localizedPostSearch(p, requestedLanguage)}
                                             className="text-muted-foreground transition-colors duration-normal hover:text-foreground"
                                         >
@@ -952,7 +933,7 @@ export function BlogDetailPage() {
             {/* Back to blog */}
             <div className="border-t border-border/60 pt-8 mt-12">
                 <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground" asChild>
-                    <Link to="/blog">
+                    <Link to={blog.base}>
                         <ArrowLeft className="h-4 w-4" />
                         Back to all posts
                     </Link>

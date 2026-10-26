@@ -1,8 +1,7 @@
 import { api, reportApiError } from '@/lib/api';
 import { AuthSessionBootstrap } from '@/components/AuthSessionBootstrap';
 import enApp from '@/locales/en/app.json';
-import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
-import { APP_ID, MEDIA_LIBRARY_ENABLED, appConfig, PACKAGES_ENABLED } from '@/ottabase/config';
+import { APP_ID, MEDIA_LIBRARY_ENABLED, appConfig } from '@/ottabase/config';
 import { MediaLibraryPickerBridge } from '@/components/media-library/MediaLibraryPickerBridge';
 import { MediaGalleryConfirmBridge } from '@/components/editor/MediaGalleryConfirmBridge';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
@@ -70,13 +69,7 @@ function ProvidersContent({ children }: { children: React.ReactNode }) {
             resources={appResources}
         >
             <LanguageManager />
-            {PACKAGES_ENABLED.ottablog ? (
-                <BlogStudioProvider>
-                    <ProvidersInner>{children}</ProvidersInner>
-                </BlogStudioProvider>
-            ) : (
-                <ProvidersInner>{children}</ProvidersInner>
-            )}
+            <ProvidersInner>{children}</ProvidersInner>
         </I18nProvider>
     );
 }

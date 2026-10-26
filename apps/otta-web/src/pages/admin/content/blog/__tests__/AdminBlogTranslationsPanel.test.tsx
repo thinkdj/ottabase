@@ -93,7 +93,8 @@ vi.mock('@ottabase/ui', () => {
     };
 });
 
-vi.mock('lucide-react', () => ({
+vi.mock('lucide-react', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('lucide-react')>()),
     Languages: () => null,
     Loader2: () => null,
     Save: () => null,

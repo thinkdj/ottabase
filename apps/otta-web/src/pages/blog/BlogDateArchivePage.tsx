@@ -4,6 +4,7 @@
  * Shows posts from a given year or year+month, with prev/next navigation and pagination.
  */
 import { SEOHead } from '@/components/SEOHead';
+import { useBlogScope } from '@/ottabase/blog/BlogScope';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
 import { defaultTheme } from '@ottabase/ottablog/renderer';
@@ -53,7 +54,9 @@ export function BlogDateArchivePage() {
     const { year, month, invalidMonth } = parseArchiveParams(params);
     const searchParams = useSearch({ strict: false }) as { lang?: string };
     const requestedLanguage = searchParams.lang || '';
-    const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
+    const blog = useBlogScope();
+    // Read on every render: BlogScope re-renders the page once the blog's own theme is applied.
+    const theme = getActiveTheme() ?? defaultTheme;
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
     const [currentPage, setCurrentPage] = useState(1);
     // Reset to page 1 when navigating between archive routes
@@ -61,19 +64,12 @@ export function BlogDateArchivePage() {
 
     const endpoint =
         year && !invalidMonth
-            ? '/api/blog/posts?year=' +
-              year +
-              (month ? '&month=' + month : '') +
-              '&page=' +
-              currentPage +
-              '&perPage=' +
-              POSTS_PER_PAGE +
-              (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : '')
+            ? blog.api('/posts', { year, month, page: currentPage, perPage: POSTS_PER_PAGE, lang: requestedLanguage })
             : null;
 
     const { data: postsResponse, isLoading } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['date-archive', year, month, currentPage, requestedLanguage],
+        queryKey: ['date-archive', blog.slug, year, month, currentPage, requestedLanguage],
         endpoint: endpoint ?? '',
         queryOptions: { enabled: !!year && !invalidMonth, ...BLOG_LIST_QUERY_CONFIG },
     });
@@ -87,7 +83,7 @@ export function BlogDateArchivePage() {
     // Prev/next month params for navigation
     const prevParams = useMemo(() => {
         if (!year || !month || (year === 1970 && month === 1)) return null;
-        return month === 1 ? { year: String(year - 1), month: '12' } : { year: String(year), month: String(month - 1) };
+        return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
     }, [year, month]);
 
     const nextParams = useMemo(() => {
@@ -97,7 +93,7 @@ export function BlogDateArchivePage() {
         const ny = month === 12 ? year + 1 : year;
         // Don't link into the future
         if (ny > now.getFullYear() || (ny === now.getFullYear() && nm > now.getMonth() + 1)) return null;
-        return { year: String(ny), month: String(nm) };
+        return { year: ny, month: nm };
     }, [year, month]);
 
     if (isLoading) {
@@ -126,7 +122,7 @@ export function BlogDateArchivePage() {
                     {invalidMonth ? 'The month must be between 1 and 12.' : 'The archive date is not valid.'}
                 </p>
                 <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground">
-                    <Link to="/blog">
+                    <Link to={blog.base}>
                         <ArrowLeft className="h-4 w-4" />
                         Back to Blog
                     </Link>
@@ -141,7 +137,7 @@ export function BlogDateArchivePage() {
 
             {/* Back link */}
             <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                <Link to="/blog">
+                <Link to={blog.base}>
                     <ArrowLeft className="h-4 w-4" />
                     Back to Blog
                 </Link>
@@ -165,7 +161,7 @@ export function BlogDateArchivePage() {
                 <div className="flex items-center gap-2">
                     {prevParams ? (
                         <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                            <Link to="/blog/archive/$year/$month" params={prevParams}>
+                            <Link to={blog.date(prevParams.year, prevParams.month)}>
                                 <ChevronLeft className="h-4 w-4" />
                                 Previous month
                             </Link>
@@ -174,13 +170,11 @@ export function BlogDateArchivePage() {
                         <span />
                     )}
                     <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-                        <Link to="/blog/archive/$year" params={{ year: String(year) }}>
-                            View all of {year}
-                        </Link>
+                        <Link to={blog.date(year)}>View all of {year}</Link>
                     </Button>
                     {nextParams && (
                         <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                            <Link to="/blog/archive/$year/$month" params={nextParams}>
+                            <Link to={blog.date(nextParams.year, nextParams.month)}>
                                 Next month
                                 <ChevronRight className="h-4 w-4" />
                             </Link>
@@ -199,8 +193,7 @@ export function BlogDateArchivePage() {
                     {posts.map((post) => (
                         <Link
                             key={post.id}
-                            to="/blog/$slug"
-                            params={{ slug: post.slug }}
+                            to={blog.post(post.slug)}
                             search={localizedPostSearch(post, requestedLanguage)}
                             className="group block rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >

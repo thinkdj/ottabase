@@ -319,7 +319,7 @@ export async function getSecurityContext(
     let organizationId: string | null = null;
 
     // Explicit PLATFORM scope: a platform admin may act on platform-owned rows
-    // (organizationId NULL — e.g. the platform's own blog in org mode) by sending
+    // (organizationId NULL, e.g. the site blog) by sending
     // x-org-id: platform. This must override every other resolution path,
     // including the session's active org — that is the point of the switch.
     // For anyone else the sentinel is simply ignored (it is never a real org id).

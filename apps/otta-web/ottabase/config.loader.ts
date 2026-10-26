@@ -88,6 +88,9 @@ export const REFERRALS_CONFIG = appConfig.features.referrals;
  */
 export const OTTAAI_CONFIG = baseCfg.features.ottaai;
 
+/** Organization blogs at /blogs/{slug}, besides the site blog at /blog. Routes are built from it. */
+export const ORG_BLOGS_ENABLED = baseCfg.features.ottablog.orgBlogs;
+
 // Which packages are installed is not config: see ottabase/packages.ts (server) and
 // src/ottabase/config/packages.ts (client), which derive PACKAGES_ENABLED from the one list.
 export const MEDIA_LIBRARY_ENABLED = true; // Media is a core table, always available

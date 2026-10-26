@@ -6,15 +6,19 @@
  * Gated by content permissions (posts:*), never by org:admin or platform admin,
  * so authors and editors get a workspace without seeing the control plane.
  */
+import { useEditorialBlog } from '@/pages/admin/content/blog/blogAdminPaths';
+import { blogBasePath } from '@ottabase/ottablog/paths';
 import { Link } from '@tanstack/react-router';
 import { ExternalLink, PenLine } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-// Widened to string: these routes are registered dynamically (package-gated),
-// so they are absent from the static route-union type.
-const PATHS: Record<'studio' | 'blog', string> = { studio: '/studio', blog: '/blog' };
+// Widened to string: the route is registered dynamically (package-gated), so it is absent from
+// the static route-union type.
+const STUDIO_PATH: string = '/studio';
 
 export function StudioShell({ children }: { children: ReactNode }) {
+    // Writers always see which blog their posts land in: the site blog, or their organization's.
+    const editorial = useEditorialBlog();
     return (
         <div className="min-h-screen bg-background">
             {/*
@@ -27,15 +31,29 @@ export function StudioShell({ children }: { children: ReactNode }) {
              */}
             <header className="sticky top-14 z-30 border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/75">
                 <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4">
-                    <Link to={PATHS.studio} className="inline-flex items-center gap-2 font-semibold">
+                    <Link to={STUDIO_PATH} className="inline-flex items-center gap-2 font-semibold">
                         <PenLine className="h-4 w-4" />
                         Studio
                     </Link>
-                    <nav className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <Link to={PATHS.blog} className="inline-flex items-center gap-1.5 hover:text-foreground">
-                            View blog
-                            <ExternalLink className="h-3.5 w-3.5" />
-                        </Link>
+                    <nav className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground">
+                        {editorial.data && (
+                            <span className="truncate">
+                                Publishing to{' '}
+                                <span className="font-medium text-foreground">
+                                    {editorial.blog?.name ?? 'the site blog'}
+                                </span>
+                                {!editorial.isPublic && ' (not public)'}
+                            </span>
+                        )}
+                        {editorial.data && editorial.isPublic && (
+                            <Link
+                                to={blogBasePath(editorial.blog?.slug)}
+                                className="inline-flex shrink-0 items-center gap-1.5 hover:text-foreground"
+                            >
+                                View blog
+                                <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                        )}
                     </nav>
                 </div>
             </header>

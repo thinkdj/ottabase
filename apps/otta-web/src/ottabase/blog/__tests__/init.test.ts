@@ -1,72 +1,98 @@
 /**
- * Blog init tests
- *
- * Tests for applyStudioStateFromApi in-flight deduplication (concurrent calls share one request).
- * Run from repo root: pnpm test --filter=@ottabase/otta-web
+ * applyBlogState: one blog's Studio state over the built-in defaults. Blogs share one in-memory
+ * registry, so each apply must start clean: nothing one blog enabled may run on another.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockApi = vi.fn();
-const mockSetActiveTheme = vi.fn();
-const mockDeactivatePlugin = vi.fn();
-const mockHasPlugin = vi.fn();
-const mockCreateContentInjectorPlugin = vi.fn();
-const mockRegisterPlugin = vi.fn();
-const mockActivatePlugin = vi.fn();
-
-vi.mock('@/lib/api', () => ({
-    api: (...args: unknown[]) => mockApi(...args),
-}));
-
-vi.mock('@ottabase/ottablog', () => ({
-    setActiveTheme: (id: string) => mockSetActiveTheme(id),
-    deactivatePlugin: (id: string) => mockDeactivatePlugin(id),
-    hasPlugin: (id: string) => mockHasPlugin(id),
-    createContentInjectorPlugin: (opts: unknown) => mockCreateContentInjectorPlugin(opts),
-    registerPlugin: (plugin: unknown) => mockRegisterPlugin(plugin),
-    activatePlugin: (id: string) => mockActivatePlugin(id),
-    blogThemeTokensToCss: vi.fn(() => ''),
-    contentInjectorPlugin: { end: vi.fn() },
-}));
-
-vi.mock('@ottabase/ottablog/renderer', () => ({
+const { registry, initOttablog } = vi.hoisted(() => ({
+    registry: {
+        active: new Set<string>(),
+        activeTheme: 'default',
+        themes: new Map<string, { metadata: { id: string }; config?: { classes?: Record<string, string> } }>(),
+        registered: [] as unknown[],
+    },
     initOttablog: vi.fn(),
 }));
 
-describe('blog init applyStudioStateFromApi', () => {
-    beforeEach(async () => {
-        vi.clearAllMocks();
-        vi.resetModules();
-        mockHasPlugin.mockReturnValue(false);
-        mockApi.mockImplementation(
-            () =>
-                new Promise((resolve) => {
-                    setTimeout(() => resolve({ activeThemeId: 'default', plugins: [] }), 5);
-                }),
-        );
+vi.mock('@ottabase/ottablog', () => ({
+    activatePlugin: vi.fn(async (id: string) => registry.active.add(id)),
+    deactivatePlugin: vi.fn(async (id: string) => registry.active.delete(id)),
+    getActivePlugins: () => [...registry.active].map((id) => ({ metadata: { id } })),
+    getTheme: (id: string) => registry.themes.get(id) ?? null,
+    registerTheme: (theme: { metadata: { id: string } }) => registry.themes.set(theme.metadata.id, theme),
+    setActiveTheme: (id: string) => (registry.activeTheme = id),
+    registerPlugin: (plugin: unknown) => registry.registered.push(plugin),
+    createContentInjectorPlugin: (options: unknown) => ({ options }),
+    blogThemeTokensToCss: (tokens: unknown) => (tokens ? '[data-brand-scope="blog"]{--primary: 1 2% 3%;}' : ''),
+}));
+
+vi.mock('@ottabase/ottablog/renderer', () => ({
+    initOttablog: (options: { defaultThemeId: string }) => {
+        initOttablog(options);
+        // The pristine built-ins, as the real initOttablog registers them.
+        registry.themes.set('default', { metadata: { id: 'default' }, config: { classes: { title: 'text-2xl' } } });
+        registry.themes.set('minimal', { metadata: { id: 'minimal' } });
+        registry.activeTheme = options.defaultThemeId;
+    },
+}));
+
+import { applyBlogState } from '../init';
+
+const theme = (themeId: string, extra: Record<string, unknown> = {}) =>
+    ({ id: themeId, themeId, name: themeId, isActive: false, config: null, tokens: null, ...extra }) as never;
+const plugin = (pluginId: string, enabled: boolean, config: Record<string, unknown> | null = null) =>
+    ({ id: pluginId, pluginId, name: pluginId, enabled, config }) as never;
+
+describe('applyBlogState', () => {
+    beforeEach(() => {
+        registry.active.clear();
+        registry.themes.clear();
+        registry.registered = [];
+        document.getElementById('ottablog-theme-scope')?.remove();
     });
 
-    it('concurrent calls should share one API request (dedupe)', async () => {
-        const { applyStudioStateFromApi } = await import('../init');
+    it("applies a blog's theme, class overrides, tokens and enabled plugins", async () => {
+        await applyBlogState({
+            activeThemeId: 'default',
+            themes: [theme('default', { config: { classes: { title: 'text-4xl' } }, tokens: { light: { x: '1' } } })],
+            plugins: [plugin('content-injector-plugin', true, { content: 'Hi', position: 'beginning' })],
+        });
 
-        const p1 = applyStudioStateFromApi();
-        const p2 = applyStudioStateFromApi();
-
-        await Promise.all([p1, p2]);
-
-        expect(mockApi).toHaveBeenCalledTimes(1);
-        expect(mockApi).toHaveBeenCalledWith('/api/blog/studio/state');
+        expect(registry.activeTheme).toBe('default');
+        expect(registry.themes.get('default')?.config?.classes).toEqual({ title: 'text-4xl' });
+        expect(document.getElementById('ottablog-theme-scope')?.textContent).toContain('--primary');
+        expect(registry.active.has('content-injector-plugin')).toBe(true);
+        expect(registry.registered).toEqual([
+            { options: expect.objectContaining({ content: 'Hi', position: 'beginning', enabled: true }) },
+        ]);
     });
 
-    it('sequential calls after first completes should each make a new request', async () => {
-        const { applyStudioStateFromApi } = await import('../init');
+    it('starts the next blog from the defaults: no plugin, override or tokens carry over', async () => {
+        await applyBlogState({
+            activeThemeId: 'minimal',
+            themes: [
+                theme('default', { config: { classes: { title: 'text-4xl' } } }),
+                theme('minimal', { tokens: { light: { x: '1' } } }),
+            ],
+            plugins: [plugin('content-injector-plugin', true)],
+        });
 
-        await applyStudioStateFromApi();
-        // Wait longer than STUDIO_STATE_DEDUPE_CLEAR_MS (50ms) so the in-flight ref is cleared
-        await new Promise((r) => setTimeout(r, 60));
-        await applyStudioStateFromApi();
+        await applyBlogState({ activeThemeId: null, themes: [], plugins: [] });
 
-        expect(mockApi).toHaveBeenCalledTimes(2);
+        expect(initOttablog).toHaveBeenLastCalledWith({ defaultThemeId: 'default' });
+        expect(registry.activeTheme).toBe('default');
+        expect(registry.themes.get('default')?.config?.classes).toEqual({ title: 'text-2xl' });
+        expect(registry.active.size).toBe(0);
+        expect(document.getElementById('ottablog-theme-scope')).toBeNull();
+    });
+
+    it('applies the defaults alone when the state is unavailable', async () => {
+        registry.active.add('content-injector-plugin');
+
+        await applyBlogState(null);
+
+        expect(registry.activeTheme).toBe('default');
+        expect(registry.active.size).toBe(0);
     });
 });

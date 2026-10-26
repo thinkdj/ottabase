@@ -5,11 +5,13 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
-import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
+import { BlogScope } from '@/ottabase/blog/BlogScope';
+import { MEDIA_LIBRARY_ENABLED, ORG_BLOGS_ENABLED } from '@/ottabase/config';
 import { PACKAGE_ADMIN_PAGES, PACKAGE_ROUTES, PACKAGES_ENABLED } from '@/ottabase/config/packages';
 import { DEMO_ACCOUNT_GATES } from '@/pages/demo/demoAccountGates';
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
+import { ORG_BLOGS_PATH, SITE_BLOG_PATH } from '@ottabase/ottablog/paths';
 import { BrandScope } from '@ottabase/ui';
 import { createBrowserHistory, lazyRouteComponent, Outlet, RootRoute, Route, Router } from '@tanstack/react-router';
 
@@ -247,7 +249,8 @@ const userMediaLibraryRoute = protectedRoute(
  * Public blog page inside the blog token "room": wraps the component in
  * `<BrandScope name="blog">` so the active blog theme's CSS-variable overrides
  * ([data-brand-scope="blog"], edge-injected and client-applied) re-bind the
- * semantic brand vars for blog subtrees only — never the app shell.
+ * semantic brand vars for blog subtrees only, never the app shell. BlogScope
+ * resolves which blog the URL names and applies that blog's state.
  */
 function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => Promise<{ default: ComponentType }>) {
     return publicRoute(path, () =>
@@ -256,7 +259,9 @@ function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => 
             return {
                 default: () => (
                     <BrandScope name="blog">
-                        <Comp />
+                        <BlogScope>
+                            <Comp />
+                        </BlogScope>
                     </BrandScope>
                 ),
             };
@@ -264,30 +269,37 @@ function blogPublicRoute<const TPath extends string>(path: TPath, loader: () => 
     );
 }
 
-const blogListRoute = blogPublicRoute('/blog', () =>
-    import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
-);
-const blogDetailRoute = blogPublicRoute('/blog/$slug', () =>
-    import('@/pages/blog/BlogDetailPage').then((m) => ({ default: m.BlogDetailPage })),
-);
-const blogTagArchiveRoute = blogPublicRoute('/blog/tag/$slug', () =>
-    import('@/pages/blog/BlogTagArchivePage').then((m) => ({ default: m.BlogTagArchivePage })),
-);
-const blogCategoryArchiveRoute = blogPublicRoute('/blog/category/$slug', () =>
-    import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({ default: m.BlogCategoryArchivePage })),
-);
-const blogAuthorArchiveRoute = blogPublicRoute('/blog/author/$authorId', () =>
-    import('@/pages/blog/BlogAuthorArchivePage').then((m) => ({ default: m.BlogAuthorArchivePage })),
-);
-const blogSeriesArchiveRoute = blogPublicRoute('/blog/series/$slug', () =>
-    import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({ default: m.BlogSeriesArchivePage })),
-);
-const blogDateArchiveYearRoute = blogPublicRoute('/blog/archive/$year', () =>
-    import('@/pages/blog/BlogDateArchivePage').then((m) => ({ default: m.BlogDateArchivePage })),
-);
-const blogDateArchiveMonthRoute = blogPublicRoute('/blog/archive/$year/$month', () =>
-    import('@/pages/blog/BlogDateArchivePage').then((m) => ({ default: m.BlogDateArchivePage })),
-);
+const blogPage = {
+    list: () => import('@/pages/blog/BlogListPage').then((m) => ({ default: m.BlogListPage })),
+    detail: () => import('@/pages/blog/BlogDetailPage').then((m) => ({ default: m.BlogDetailPage })),
+    tag: () => import('@/pages/blog/BlogTagArchivePage').then((m) => ({ default: m.BlogTagArchivePage })),
+    category: () =>
+        import('@/pages/blog/BlogCategoryArchivePage').then((m) => ({ default: m.BlogCategoryArchivePage })),
+    author: () => import('@/pages/blog/BlogAuthorArchivePage').then((m) => ({ default: m.BlogAuthorArchivePage })),
+    series: () => import('@/pages/blog/BlogSeriesArchivePage').then((m) => ({ default: m.BlogSeriesArchivePage })),
+    date: () => import('@/pages/blog/BlogDateArchivePage').then((m) => ({ default: m.BlogDateArchivePage })),
+};
+
+/** One blog's public pages under its base path. */
+function blogRouteFamily<const TBase extends string>(base: TBase) {
+    return [
+        blogPublicRoute(base, blogPage.list),
+        blogPublicRoute(`${base}/$slug`, blogPage.detail),
+        blogPublicRoute(`${base}/tag/$slug`, blogPage.tag),
+        blogPublicRoute(`${base}/category/$slug`, blogPage.category),
+        blogPublicRoute(`${base}/author/$authorId`, blogPage.author),
+        blogPublicRoute(`${base}/series/$slug`, blogPage.series),
+        blogPublicRoute(`${base}/archive/$year`, blogPage.date),
+        blogPublicRoute(`${base}/archive/$year/$month`, blogPage.date),
+    ] as const;
+}
+
+// The site blog at /blog; with organization blogs on, each organization's at /blogs/{slug}.
+const blogRoutes = [
+    ...blogRouteFamily(SITE_BLOG_PATH),
+    ...(ORG_BLOGS_ENABLED ? blogRouteFamily(`${ORG_BLOGS_PATH}/$org` as const) : []),
+];
+
 const changelogListRoute = publicRoute('/changelog', () =>
     import('@/pages/changelog/ChangelogListPage').then((m) => ({ default: m.ChangelogListPage })),
 );
@@ -824,14 +836,7 @@ const packagePageRoutes = PACKAGE_ROUTES.map((page) =>
 const packageRoutes = [
     { route: adminShortlinksRoute, pkg: 'shortlinks' as const },
 
-    { route: blogListRoute, pkg: 'ottablog' as const },
-    { route: blogDetailRoute, pkg: 'ottablog' as const },
-    { route: blogTagArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogCategoryArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogSeriesArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogAuthorArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogDateArchiveYearRoute, pkg: 'ottablog' as const },
-    { route: blogDateArchiveMonthRoute, pkg: 'ottablog' as const },
+    ...blogRoutes.map((route) => ({ route, pkg: 'ottablog' as const })),
     { route: adminBlogRoute, pkg: 'ottablog' as const },
     { route: adminBlogNewRoute, pkg: 'ottablog' as const },
     { route: adminBlogEditRoute, pkg: 'ottablog' as const },

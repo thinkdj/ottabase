@@ -148,7 +148,7 @@ import { invoicesPackage } from './packages/invoices'; // your own
 export const PACKAGES = [
     corePackage,
     appPackage,
-    createOttablogPackage({ mode: 'platform', routes: blogRoutes }),
+    createOttablogPackage({ routes: blogRoutes }),
     createShortlinksPackage({ routes: shortlinkRoutes }),
     invoicesPackage, // tables, models, routes, cron, nav — one manifest
 ];

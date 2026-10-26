@@ -12,7 +12,8 @@ TanStack Router + Query template with automated OttaORM migrations and Cloudflar
 - **Owner Safety Guardrail** - Admin member APIs prevent demoting, deactivating, or removing the last active
   organization owner
 - **Ottablog CMS** - Rich articles, short thoughts/blurbs, and photo-first travel journals in one chronological
-  timeline, with invite-only locked categories and an optional public teaser
+  timeline: a site blog at `/blog` plus each organization's own blog at `/blogs/{slug}` (`features.ottablog.orgBlogs`),
+  with invite-only locked categories and an optional public teaser
 - **Custom Auth** - OAuth, Magic Link, and Credentials authentication via a lightweight, dependency-free implementation
 - **Vite** - Fast development server and optimized builds
 - **Cloudflare Workers** - D1, KV, R2, Queues, Rate Limiting, Durable Objects

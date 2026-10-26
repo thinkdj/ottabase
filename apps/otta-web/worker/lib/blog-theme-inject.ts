@@ -4,27 +4,22 @@
 // they apply under [data-brand-scope="blog"] so the blog "room" can diverge
 // from the app shell without fighting it. Injected at the edge so first paint
 // matches the client (zero FOUC), mirroring the brand-injection contract.
-// Runs only on /blog document navigations — one D1 read on those paths, none
-// anywhere else. No tokens (the seeded default) injects nothing.
+// Runs only on blog document navigations (/blog, /blogs/{org}): one D1 read
+// there (two for an organization blog), none anywhere else. No tokens (the
+// seeded default) injects nothing.
 // ---------------------------------------------------------------------------
 
-import { OttablogTheme } from '@ottabase/ottablog';
-import { blogThemeTokensToCss, type BlogThemeTokens } from '@ottabase/ottablog';
+import { blogThemeTokensToCss, OttablogTheme, type BlogThemeTokens } from '@ottabase/ottablog';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
-import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { resolveBlogOrganizationIdCached } from '../routes/blog';
+import { blogForDocument } from './blog-scope';
 import { ensureDbConnection } from './db-utils';
 
-/** Style-tag id shared with the client applier (BlogStudioContext replaces this element). */
+/** Style-tag id shared with the client applier (src/ottabase/blog/init.ts replaces this element). */
 export const BLOG_THEME_STYLE_ID = 'ottablog-theme-scope';
 
-function isBlogDocumentPath(pathname: string): boolean {
-    return pathname === '/blog' || pathname.startsWith('/blog/');
-}
-
 /**
- * If the response is an HTML document on a blog path and the active blog theme
- * defines tokens, inject the scoped token CSS into <head>. Returns the original
+ * If the response is an HTML document on a blog path and that blog's active
+ * theme defines tokens, inject the scoped token CSS into <head>. Returns the original
  * response untouched in every other case (non-HTML, non-blog path, no active
  * theme, no tokens, any error).
  */
@@ -33,20 +28,12 @@ export async function injectBlogThemeCss(response: Response, request: Request, e
     if (!contentType.includes('text/html') || !response.ok) return response;
 
     try {
-        const config = getOttabaseConfig(env);
-
-        const url = new URL(request.url);
-        if (!isBlogDocumentPath(url.pathname)) return response;
         if (!env.OBCF_D1) return response;
-
+        const blog = await blogForDocument(request, env);
+        if (!blog) return response;
         ensureDbConnection(env);
 
-        const organizationId =
-            config.features.ottablog.mode === 'org'
-                ? await resolveBlogOrganizationIdCached({ request, env, url })
-                : undefined;
-
-        const activeTheme = await OttablogTheme.active({ appId: config.appId, organizationId });
+        const activeTheme = await OttablogTheme.active(blog.scope);
         if (!activeTheme) return response;
 
         const tokens = activeTheme.get('tokens') as BlogThemeTokens | null;

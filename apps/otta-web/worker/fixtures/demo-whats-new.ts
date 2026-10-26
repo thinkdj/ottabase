@@ -298,7 +298,7 @@ export const demoWhatsNewPosts: readonly BlogDemoPostSeed[] = [
             h('For writers', 3),
             ul(
                 'One writing workspace per language, with a guard against losing unsaved changes.',
-                'In org mode, an organization inherits the platform’s languages until it saves its own.',
+                'Every blog keeps its own languages: the site blog and each organization’s blog.',
             ),
         ),
     }),

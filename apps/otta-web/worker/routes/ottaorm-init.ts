@@ -81,8 +81,8 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
         customMigrations: buildAppMigrations(),
         verbose: true,
         allowDestructive,
-        // Indexes a package's migration dropped on purpose (org-mode blog slugs); autoInit's
-        // ensure step would otherwise re-create them on every run.
+        // Indexes a package's migration dropped on purpose; autoInit's ensure step would
+        // otherwise re-create them on every run.
         suppressIndexes: packages.suppressIndexes(),
     });
 

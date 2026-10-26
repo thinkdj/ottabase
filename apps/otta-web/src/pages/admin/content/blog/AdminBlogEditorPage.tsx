@@ -9,7 +9,7 @@ import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
 import { AdminBlogTranslationsPanel } from './AdminBlogTranslationsPanel';
-import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
+import { getPublicContentPath, useBlogSurface, useEditorialBlog } from './blogAdminPaths';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
@@ -18,7 +18,6 @@ import { useSession } from '@/lib/auth';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import {
     CONTENT_TYPES,
-    type BlogLanguageConfig,
     formatDate,
     formatShortDate,
     generateSlug,
@@ -40,7 +39,7 @@ import {
     type OutputData,
     type ToolSettings,
 } from '@ottabase/ottaeditor';
-import { createModelHooks, useApiClient, useApiQuery } from '@ottabase/ottaorm/client';
+import { createModelHooks, useApiClient } from '@ottabase/ottaorm/client';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
@@ -387,16 +386,11 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     const navigate = useNavigate();
     const { user } = useSession();
 
-    // Form state - initialized from props
-    const { data: studioState } = useApiQuery<{ languageConfig: BlogLanguageConfig }>({
-        entity: 'blog_settings',
-        queryKey: ['state'],
-        endpoint: '/api/blog/studio/state',
-    });
-    const supportedLanguages = studioState?.languageConfig.supportedLanguages ?? [{ code: 'en', name: 'English' }];
-    const [language, setLanguage] = useState(
-        initialData?.language || studioState?.languageConfig.defaultLanguage || 'en',
-    );
+    // The blog this post is written in: its languages, and where readers find it.
+    const editorial = useEditorialBlog();
+    const supportedLanguages = editorial.data?.languageConfig.supportedLanguages ?? [{ code: 'en', name: 'English' }];
+    const defaultLanguage = editorial.data?.languageConfig.defaultLanguage;
+    const [language, setLanguage] = useState(initialData?.language || defaultLanguage || 'en');
     const [title, setTitle] = useState(initialData?.title || '');
     const [slug, setSlug] = useState(initialData?.slug || '');
     const [excerpt, setExcerpt] = useState(initialData?.excerpt || '');
@@ -414,9 +408,8 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     );
 
     useEffect(() => {
-        if (!initialData && studioState?.languageConfig.defaultLanguage)
-            setLanguage(studioState.languageConfig.defaultLanguage);
-    }, [initialData, studioState?.languageConfig.defaultLanguage]);
+        if (!initialData && defaultLanguage) setLanguage(defaultLanguage);
+    }, [initialData, defaultLanguage]);
 
     // When the content was originally written — a fuzzy date ("Late May 2010", "Summer 1998")
     const [originalDate, setOriginalDate] = useState<FuzzyDateTime | null>(
@@ -638,7 +631,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     useEffect(() => {
         if (!justSavedRef.current || !initialData) return;
         justSavedRef.current = false;
-        setLanguage(initialData.language ?? studioState?.languageConfig.defaultLanguage ?? 'en');
+        setLanguage(initialData.language ?? defaultLanguage ?? 'en');
         setTitle(initialData.title ?? '');
         setSlug(initialData.slug ?? '');
         setExcerpt(initialData.excerpt ?? '');
@@ -661,7 +654,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         setSeriesId(initialData.seriesId ?? null);
         setSeriesOrder(initialData.seriesOrder ?? null);
         setMaxVersionsToKeep(initialData.maxVersionsToKeep ?? null);
-    }, [initialData, user, studioState?.languageConfig.defaultLanguage]);
+    }, [initialData, user, defaultLanguage]);
 
     // Content editors - initialData is guaranteed to be available in edit mode
     const mainEditor = useOttaEditor({
@@ -684,7 +677,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         if (!initialData && !isEditMode) return true; // New post: allow save
         const formSame =
             initialData &&
-            language === (initialData.language ?? studioState?.languageConfig.defaultLanguage ?? 'en') &&
+            language === (initialData.language ?? defaultLanguage ?? 'en') &&
             title === (initialData.title ?? '') &&
             slug === (initialData.slug ?? '') &&
             excerpt === (initialData.excerpt ?? '') &&
@@ -749,7 +742,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         meta,
         initialData,
         isEditMode,
-        studioState?.languageConfig.defaultLanguage,
+        defaultLanguage,
         mainEditor.hasUnsavedChanges,
         notesEditor.hasUnsavedChanges,
         footnotesEditor.hasUnsavedChanges,
@@ -1357,10 +1350,14 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                         <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASS[status]}`} />
                         {POST_STATUSES[status].label}
                     </span>
-                    {isEditMode && initialData && status === 'published' && (
+                    {isEditMode && initialData && status === 'published' && editorial.isPublic && (
                         <Button variant="ghost" asChild>
                             <a
-                                href={getPublicContentPath(initialData.slug, initialData.contentType)}
+                                href={getPublicContentPath(
+                                    initialData.slug,
+                                    initialData.contentType,
+                                    editorial.blog?.slug,
+                                )}
                                 target="_blank"
                                 rel="noreferrer"
                             >

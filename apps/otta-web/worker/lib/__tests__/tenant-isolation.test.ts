@@ -9,6 +9,8 @@
  * - Denied cases go through `executeSecureCrudRequest`, which refuses before touching the database;
  *   no DB is registered, so a wrongly-allowed request would surface as a non-403 and fail the test.
  */
+import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
+import { blogScopedPolicies } from '@ottabase/ottablog';
 import { executeSecureCrudRequest, globalRLS, RLSPolicies, type SecurityContext } from '@ottabase/ottaorm';
 import { AuditLog, OrganizationMember, UserGroup } from '@ottabase/ottaorm/models';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -112,6 +114,55 @@ describe('tenant isolation (real context → real RLS)', () => {
         await expect(executeSecureCrudRequest({ method: 'GET', model: 'notes' }, handBuilt)).resolves.toMatchObject({
             success: false,
             status: 403,
+        });
+    });
+});
+
+describe('blogs: the site blog and organization blogs (real context → real RLS)', () => {
+    beforeEach(() => {
+        for (const policy of blogScopedPolicies()) globalRLS.register(policy);
+    });
+
+    it("files a member's taxonomy in their organization's blog", async () => {
+        const context = await contextFor(memberOfA, { 'x-org-id': 'org-a' });
+        const data: Record<string, unknown> = { name: 'Life' };
+
+        globalRLS.validateWrite('categories', context, data, 'create');
+
+        expect(data).toMatchObject({ organizationId: 'org-a', appId: context.appId });
+    });
+
+    it('denies a member without an active organization writing to the site blog', async () => {
+        const context = await contextFor(memberOfA);
+
+        expect(() => globalRLS.validateWrite('categories', context, { name: 'Life' }, 'create')).toThrow(/denied/);
+        await expect(executeSecureCrudRequest({ method: 'GET', model: 'categories' }, context)).resolves.toMatchObject({
+            success: false,
+            status: 403,
+        });
+    });
+
+    it('gives a platform admin in Platform scope the site blog (organizationId null)', async () => {
+        const context = await contextFor(
+            { user: { id: 'owner', platformAdmin: true } },
+            { 'x-org-id': PLATFORM_ORG_SENTINEL },
+        );
+        const data: Record<string, unknown> = { name: 'Life' };
+
+        globalRLS.validateWrite('categories', context, data, 'create');
+
+        expect(data.organizationId).toBeNull();
+        expect(globalRLS.applyReadFilter('categories', context)).toEqual({
+            organizationId: null,
+            appId: context.appId,
+        });
+    });
+
+    it('never lets an anonymous caller read any blog taxonomy through generic CRUD', async () => {
+        const context = await contextFor(null);
+
+        await expect(executeSecureCrudRequest({ method: 'GET', model: 'categories' }, context)).resolves.toMatchObject({
+            success: false,
         });
     });
 });

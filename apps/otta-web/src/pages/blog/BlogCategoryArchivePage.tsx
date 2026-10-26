@@ -4,6 +4,7 @@
  * Shows category details (name, description) and a list of posts in that category.
  */
 import { SEOHead } from '@/components/SEOHead';
+import { useBlogScope } from '@/ottabase/blog/BlogScope';
 import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { formatDate, getActiveTheme, type BlogPostData } from '@ottabase/ottablog';
 import { defaultTheme } from '@ottabase/ottablog/renderer';
@@ -12,7 +13,6 @@ import { Button } from '@ottabase/ui';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
 import { ArrowLeft, FolderTree, Lock } from 'lucide-react';
-import { useMemo } from 'react';
 
 interface BlogPostsResponse {
     data: BlogPostData[];
@@ -33,24 +33,24 @@ export function BlogCategoryArchivePage() {
     const slug = (params as { slug?: string }).slug;
     const searchParams = useSearch({ strict: false }) as { lang?: string };
     const requestedLanguage = searchParams.lang || '';
-    const theme = useMemo(() => getActiveTheme() ?? defaultTheme, []);
+    const blog = useBlogScope();
+    // Read on every render: BlogScope re-renders the page once the blog's own theme is applied.
+    const theme = getActiveTheme() ?? defaultTheme;
     const renderCard = theme.renderers.renderCard ?? defaultTheme.renderers.renderCard;
 
     // Fetch category info
     const { data: category, isLoading: isLoadingCategory } = useApiQuery<CategoryInfo>({
         entity: 'categories',
-        queryKey: ['by-slug', slug],
-        endpoint: `/api/blog/categories/by-slug/${encodeURIComponent(slug ?? '')}`,
+        queryKey: ['by-slug', blog.slug, slug],
+        endpoint: blog.api(`/categories/by-slug/${encodeURIComponent(slug ?? '')}`),
         queryOptions: { enabled: !!slug, staleTime: 60_000 },
     });
 
     // Fetch posts in this category
     const { data: postsResponse, isLoading: isLoadingPosts } = useApiQuery<BlogPostsResponse>({
         entity: 'posts',
-        queryKey: ['category-archive', slug, requestedLanguage],
-        endpoint:
-            `/api/blog/posts?categoryId=${encodeURIComponent(category?.id ?? '')}&perPage=50` +
-            (requestedLanguage ? '&lang=' + encodeURIComponent(requestedLanguage) : ''),
+        queryKey: ['category-archive', blog.slug, slug, requestedLanguage],
+        endpoint: blog.api('/posts', { categoryId: category?.id, perPage: 50, lang: requestedLanguage }),
         queryOptions: { enabled: !!category?.id, ...BLOG_LIST_QUERY_CONFIG },
     });
 
@@ -83,7 +83,7 @@ export function BlogCategoryArchivePage() {
                     The category you're looking for doesn't exist.
                 </p>
                 <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground">
-                    <Link to="/blog">
+                    <Link to={blog.base}>
                         <ArrowLeft className="h-4 w-4" />
                         Back to Blog
                     </Link>
@@ -101,7 +101,7 @@ export function BlogCategoryArchivePage() {
 
             {/* Back link */}
             <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5 text-muted-foreground">
-                <Link to="/blog">
+                <Link to={blog.base}>
                     <ArrowLeft className="h-4 w-4" />
                     Back to Blog
                 </Link>
@@ -139,8 +139,7 @@ export function BlogCategoryArchivePage() {
                     {posts.map((post) => (
                         <Link
                             key={post.id}
-                            to="/blog/$slug"
-                            params={{ slug: post.slug }}
+                            to={blog.post(post.slug)}
                             search={localizedPostSearch(post, requestedLanguage)}
                             className="group block rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >

@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
 // Blog SEO – per-post meta injection for HTML document navigations.
-// For /blog/:slug documents, loads the published post and splices real
+// For /blog/:slug and /blogs/:org/:slug documents, loads the published post of
+// that blog and splices real
 // <title>/description/canonical/OG/Twitter/JSON-LD into <head> so crawlers
 // and link unfurlers see the article instead of the SPA shell.
 // Piggybacks the brand-injection pipeline (runs right after it) and follows
@@ -9,9 +10,10 @@
 // ---------------------------------------------------------------------------
 
 import { OttablogSettings, Post } from '@ottabase/ottablog';
-import { buildPostSeoTags, extractBlogSlugFromPath, replaceDocumentTitle } from '@ottabase/ottablog/seo';
+import { blogPostPath, parseBlogPostPath } from '@ottabase/ottablog/paths';
+import { buildPostSeoTags, replaceDocumentTitle } from '@ottabase/ottablog/seo';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { resolveBlogOrganizationIdCached } from '../routes/blog';
+import { blogForDocument } from './blog-scope';
 import { ensureDbConnection } from './db-utils';
 
 /**
@@ -25,22 +27,15 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
     if (!contentType.includes('text/html') || !response.ok) return response;
 
     try {
-        const config = getOttabaseConfig(env);
-
         const url = new URL(request.url);
-        const slug = extractBlogSlugFromPath(url.pathname);
-        if (!slug) return response;
-
-        if (!env.OBCF_D1) return response;
+        const slug = parseBlogPostPath(url.pathname)?.postSlug;
+        if (!slug || !env.OBCF_D1) return response;
+        const blog = await blogForDocument(request, env);
+        if (!blog) return response;
         ensureDbConnection(env);
 
-        // Same discrimination as the public by-slug API: appId always; the org
-        // dimension only in org mode (null = platform-owned content).
-        const where: Record<string, unknown> = { slug, status: 'published', appId: config.appId };
-        if (config.features.ottablog.mode === 'org') {
-            where.organizationId = await resolveBlogOrganizationIdCached({ request, env, url });
-        }
-        const post = await Post.first(where);
+        // Same lookup as the public by-slug API: one blog, published only.
+        const post = await Post.first({ slug, status: 'published', ...blog.scope });
         if (!post) return response;
         // Changelog posts are hidden from /blog/* (they live at /changelog).
         if (post.get('contentType') === 'changelog') return response;
@@ -51,10 +46,7 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         const contentType = post.get('contentType') as string;
         let teaser: string[] | null = null;
         if (post.get('isLocked') === true) {
-            const settings = await OttablogSettings.forScopeOrPlatform({
-                appId: config.appId,
-                organizationId: (where.organizationId as string | null | undefined) ?? null,
-            });
+            const settings = await OttablogSettings.forBlog(blog.scope);
             teaser = settings?.lockedTeaser() ?? [];
             if (teaser.length === 0 || contentType === 'blurb') return response;
         }
@@ -73,11 +65,10 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         const title = isBlurb ? `Thought${authorName ? ` by ${authorName}` : ''}` : (post.get('title') as string) || '';
         if (!title) return response;
 
+        const config = getOttabaseConfig(env);
         const shows = (field: string) => teaser === null || teaser.includes(field);
         const heroImage = shows('heroImage') ? (post.get('heroImage') as { url?: string } | null) : null;
-        const canonicalUrl = `${url.protocol}//${url.host}/blog/${encodeURIComponent(
-            (post.get('slug') as string) || slug,
-        )}`;
+        const canonicalUrl = `${url.protocol}//${url.host}${blogPostPath(blog.blogSlug, (post.get('slug') as string) || slug)}`;
 
         const seoTags = buildPostSeoTags({
             title,

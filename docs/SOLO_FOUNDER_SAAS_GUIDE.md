@@ -96,7 +96,8 @@ The same steps are available headless (`POST /__bootstrap__/api/{init,seed,creat
 
 - One deployment = one `appId`, resolved on the server by `getOttabaseConfig(env).appId` (`ottabase.config.ts` `appId`,
   overridable with the `APP_ID` var). Never taken from a request header.
-- App-scoped tables (for example the blog in platform mode) are filtered by `appId` through the `AppScoped` RLS policy.
+- App-scoped tables are filtered by `appId` through the `AppScoped` RLS policy. Blog tables add the organization: the
+  site blog (null organization, platform admins) or an organization's own blog.
 - Role grants are per **organization**, not per app.
 
 **User:**

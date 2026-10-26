@@ -35,12 +35,18 @@ export default defineOttabaseConfig({
     // ── Packages ──────────────────────────────────────────────
     // Which packages are installed is NOT config: it is the list of manifests in
     // ottabase/packages.ts (server) mirrored by src/ottabase/config/packages.ts (client).
-    // Remove a package by removing its entry there. Structural dials a package reads at
-    // boot (features.ottablog.mode, features.ottaai.strategy) live here, in the file, and
-    // deliberately have no env override: they decide migrations and RLS policies.
+    // Remove a package by removing its entry there. Dials a package reads at boot
+    // (features.ottablog.orgBlogs, features.ottaai.strategy) live here, in the file, and
+    // deliberately have no env override: they shape routes, migrations or RLS policies.
 
     // ── Feature Configuration ─────────────────────────────────
     features: {
+        // ── Blogs ──────────────────────────────────────────────
+        // The site blog is always at /blog. orgBlogs also serves every organization's own
+        // blog at /blogs/{orgSlug}, written by that organization's members.
+        ottablog: {
+            orgBlogs: true,
+        },
         referrals: {
             enabled: true,
             trackClicks: true,

@@ -33,6 +33,8 @@ export function BlogLanguageSettingsCard({ config, onSaved }: Props) {
         endpoint: '/api/blog/studio/languages',
         method: 'POST',
         invalidateEntities: ['blog_settings', 'blog_translations'],
+        // Readers' pages carry the language list too.
+        invalidateKeys: [['blog-state']],
         mutationOptions: {
             onSuccess: () => {
                 setSaveError(null);
