@@ -122,6 +122,9 @@ vi.mock('../blog', () => ({
     handleBlogStudioPluginEnable: handlerMock('handleBlogStudioPluginEnable'),
     handleBlogStudioState: handlerMock('handleBlogStudioState'),
     handleBlogStudioLanguages: handlerMock('handleBlogStudioLanguages'),
+    handleBlogStudioAccess: handlerMock('handleBlogStudioAccess'),
+    handleBlogStudioReaderGrant: handlerMock('handleBlogStudioReaderGrant'),
+    handleBlogStudioReaderRevoke: handlerMock('handleBlogStudioReaderRevoke'),
     handleBlogPostTranslations: handlerMock('handleBlogPostTranslations'),
     handleBlogPostTranslationCreate: handlerMock('handleBlogPostTranslationCreate'),
     handleBlogPostTranslationUpdate: handlerMock('handleBlogPostTranslationUpdate'),
@@ -299,9 +302,12 @@ import {
     handleBlogExport,
     handleBlogImport,
     handleBlogSitemap,
+    handleBlogStudioAccess,
     handleBlogStudioActivateTheme,
     handleBlogStudioPluginConfig,
     handleBlogStudioPluginEnable,
+    handleBlogStudioReaderGrant,
+    handleBlogStudioReaderRevoke,
     handleBlogStudioState,
     handleBlogStudioThemeTokens,
     handleBlogTagBySlug,
@@ -731,6 +737,26 @@ describe('router dispatch parity', () => {
             expect(handleBlogStudioThemeTokens).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
             expect(handleBlogStudioActivateTheme).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleBlogStudioThemeTokens');
+        });
+
+        it('GET and POST /api/blog/studio/access dispatch to the locked-category access handler', async () => {
+            const get = await dispatch('GET', '/api/blog/studio/access');
+            expect(await get.response!.text()).toBe('handleBlogStudioAccess');
+            const post = await dispatch('POST', '/api/blog/studio/access');
+            expect(await post.response!.text()).toBe('handleBlogStudioAccess');
+            expect(handleBlogStudioAccess).toHaveBeenCalledTimes(2);
+        });
+
+        it('reader grant and revoke dispatch with the user id', async () => {
+            const grant = await dispatch('POST', '/api/blog/studio/access/readers');
+            expect(handleBlogStudioReaderGrant).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
+            expect(await grant.response!.text()).toBe('handleBlogStudioReaderGrant');
+            const revoke = await dispatch('DELETE', '/api/blog/studio/access/readers/user-1');
+            expect(handleBlogStudioReaderRevoke).toHaveBeenCalledWith(
+                expect.objectContaining({ method: 'DELETE' }),
+                'user-1',
+            );
+            expect(await revoke.response!.text()).toBe('handleBlogStudioReaderRevoke');
         });
     });
 

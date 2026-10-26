@@ -22,7 +22,7 @@ vi.mock('../db-utils', () => ({
     initDbConnection: vi.fn(),
 }));
 
-import { requireContentPermission } from '../content-guard';
+import { canReadLockedPosts, requireContentPermission } from '../content-guard';
 
 function context(headers?: HeadersInit) {
     const request = new Request('http://127.0.0.1:3003/api/blog/photo-journals', {
@@ -131,5 +131,62 @@ describe('requireContentPermission', () => {
         expect(result).toBeInstanceOf(Response);
         expect((result as Response).status).toBe(403);
         expect(getSecurityContext).not.toHaveBeenCalled();
+    });
+});
+
+describe('canReadLockedPosts', () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+    });
+
+    const reqCtx = (permissions: string[], systemPermissions: string[]) => ({
+        user: { id: 'u1' },
+        isAuthenticated: true,
+        permissions,
+        systemPermissions,
+    });
+
+    it('denies an anonymous caller', async () => {
+        getRequestContext.mockResolvedValue({
+            user: null,
+            isAuthenticated: false,
+            permissions: [],
+            systemPermissions: [],
+        });
+        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+    });
+
+    it('counts only SYSTEM grants on the platform blog, so a workspace owner is not a reader', async () => {
+        // Every signup owns a personal workspace; an org-scoped grant there must not open the platform blog.
+        getRequestContext.mockResolvedValue(reqCtx(['posts:read_locked'], []));
+        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+        expect(getRequestContext).toHaveBeenCalledWith(
+            expect.any(Request),
+            expect.anything(),
+            expect.objectContaining({ organizationIdOverride: null }),
+        );
+
+        getRequestContext.mockResolvedValue(reqCtx(['posts:read_locked'], ['posts:read_locked']));
+        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(true);
+    });
+
+    it('evaluates an org blog in that org and accepts wildcards', async () => {
+        getRequestContext.mockResolvedValue(reqCtx(['posts:*'], []));
+        expect(await canReadLockedPosts(context(), { organizationId: 'org-1' })).toBe(true);
+        expect(getRequestContext).toHaveBeenCalledWith(
+            expect.any(Request),
+            expect.anything(),
+            expect.objectContaining({ organizationIdOverride: 'org-1' }),
+        );
+    });
+
+    it('does not treat *:read as reader access', async () => {
+        getRequestContext.mockResolvedValue(reqCtx(['*:read'], ['*:read']));
+        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+    });
+
+    it('fails closed when the context cannot be resolved', async () => {
+        getRequestContext.mockRejectedValue(new Error('kv down'));
+        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
     });
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleOttaormCrud } from '../ottaorm-crud';
 
 vi.mock('@ottabase/auth/backend', () => ({
@@ -48,6 +48,22 @@ vi.mock('@ottabase/ottablog', async () => ({
         '../../../../../packages/ottablog/src/types',
     )),
     Post: { find: vi.fn(), first: vi.fn() },
+    PostCategory: { lockedAmong: vi.fn(async () => new Set()) },
+    PostCategoryLink: { find: vi.fn() },
+}));
+
+const { mockCanReadLockedPosts, mockCanManagePostInOrg } = vi.hoisted(() => ({
+    mockCanReadLockedPosts: vi.fn(),
+    mockCanManagePostInOrg: vi.fn(),
+}));
+
+vi.mock('../../lib/content-guard', () => ({
+    canReadLockedPosts: mockCanReadLockedPosts,
+    canManagePostInOrg: mockCanManagePostInOrg,
+}));
+
+vi.mock('../../../ottabase/config.loader', () => ({
+    getOttabaseConfig: () => ({ appId: 'otta-web', features: { ottablog: { mode: 'platform' } } }),
 }));
 
 vi.mock('@ottabase/comments', () => ({
@@ -215,6 +231,79 @@ describe('handleOttaormCrud (posts concurrency)', () => {
             expect(executeSecureCrudRequest as any).toHaveBeenCalled();
         },
     );
+});
+
+describe('handleOttaormCrud (locked category taxonomy guard)', () => {
+    // A signed-in user who is org:admin of their own workspace passes the taxonomy gate; that alone
+    // must never let them unlock the platform blog's locked posts.
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+        (getSecurityContext as any).mockResolvedValue(signedInContext({ permissions: ['org:admin'] }));
+    });
+
+    afterEach(async () => {
+        const { getSecurityContext } = await import('../../lib/auth-utils');
+        (getSecurityContext as any).mockImplementation(async () => signedInContext());
+    });
+
+    it.each([
+        ['PATCH', { isLocked: false }],
+        ['PATCH', { parentId: null }],
+        ['DELETE', undefined],
+    ])('refuses %s %o on a locked category from a workspace admin', async (method, body) => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { PostCategory } = await import('@ottabase/ottablog');
+        (parseCrudRequest as any).mockResolvedValue({ model: 'categories', method, id: 'c-life', body });
+        (PostCategory.lockedAmong as any).mockResolvedValue(new Set(['c-life']));
+
+        const response = await handleOttaormCrud(createContext());
+
+        expect(response.status).toBe(403);
+        expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
+    });
+
+    it('lets a workspace admin rename a locked category, and edit unlocked ones freely', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { PostCategory } = await import('@ottabase/ottablog');
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 200 });
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'categories',
+            method: 'PATCH',
+            id: 'c-life',
+            body: { name: 'Life', isLocked: true },
+        });
+        (PostCategory.lockedAmong as any).mockResolvedValue(new Set(['c-life']));
+        expect((await handleOttaormCrud(createContext())).status).toBe(200);
+
+        (parseCrudRequest as any).mockResolvedValue({
+            model: 'categories',
+            method: 'DELETE',
+            id: 'c-travel',
+        });
+        (PostCategory.lockedAmong as any).mockResolvedValue(new Set());
+        expect((await handleOttaormCrud(createContext())).status).toBe(200);
+    });
+
+    it('lets only someone who manages the post take it out of a locked category', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const { Post, PostCategory, PostCategoryLink } = await import('@ottabase/ottablog');
+        (parseCrudRequest as any).mockResolvedValue({ model: 'post_category_links', method: 'DELETE', id: 'link-1' });
+        (PostCategoryLink.find as any).mockResolvedValue({
+            get: (key: string) => ({ postId: 'p-life', categoryId: 'c-life' })[key],
+        });
+        (PostCategory.lockedAmong as any).mockResolvedValue(new Set(['c-life']));
+        (Post.find as any).mockResolvedValue({ get: (key: string) => (key === 'organizationId' ? 'org-owner' : null) });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: {}, status: 200 });
+
+        mockCanManagePostInOrg.mockResolvedValueOnce(false);
+        expect((await handleOttaormCrud(createContext())).status).toBe(403);
+        expect(mockCanManagePostInOrg).toHaveBeenCalledWith(expect.anything(), { organizationId: 'org-owner' });
+
+        mockCanManagePostInOrg.mockResolvedValueOnce(true);
+        expect((await handleOttaormCrud(createContext())).status).toBe(200);
+    });
 });
 
 describe('handleOttaormCrud (posts null-org authoring guard)', () => {
@@ -739,6 +828,28 @@ describe('handleOttaormCrud (comments)', () => {
             expect(call[0].body.userId).toBe('user-1');
             expect(call[1].organizationId).toBe('org-POST');
             expect(Post.first).toHaveBeenCalledWith({ id: 'post-1', appId: 'otta-web' });
+        });
+
+        it('treats a locked post as missing for a commenter without reader access', async () => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+            const { Post } = await import('@ottabase/ottablog');
+
+            (parseCrudRequest as any).mockResolvedValue({
+                model: 'comments',
+                method: 'POST',
+                body: { body: 'hello', targetType: 'post', targetId: 'post-locked' },
+            });
+            (Post.first as any).mockResolvedValue({
+                get: (key: string) => ({ organizationId: 'org-1', isLocked: true })[key] ?? null,
+            });
+            mockCanReadLockedPosts.mockResolvedValue(false);
+
+            const response = await handleOttaormCrud(createContext());
+
+            expect(response.status).toBe(404);
+            // Platform mode: the platform blog's (system) scope decides, not the post row's org.
+            expect(mockCanReadLockedPosts).toHaveBeenCalledWith(expect.anything(), { organizationId: null });
+            expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
         });
 
         it('returns 404 when the target post does not exist', async () => {

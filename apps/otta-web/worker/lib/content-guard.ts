@@ -6,9 +6,11 @@
 // blog preview-token mint and the /studio surface's server-side counterparts.
 // ---------------------------------------------------------------------------
 
+import { READ_LOCKED_POSTS_PERMISSION } from '@ottabase/ottaorm/models';
 import { hasPermission, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { SecurityContext } from '@ottabase/ottaorm';
 import { getAuthOptions, getSecurityContext } from './auth-utils';
 import { initDbConnection } from './db-utils';
@@ -156,6 +158,37 @@ export async function canManagePostInOrg(
         // Platform-owned posts (null org): only a platform admin manages them.
         if (post.organizationId === null) return false;
         return hasPermission(reqCtx, 'posts:manage') || hasPermission(reqCtx, 'org:admin');
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * READ access to a blog's LOCKED (invite-only) categories: `posts:read_locked` evaluated in the
+ * BLOG's scope, never the caller's own workspace (every signup owns one, as `owner`). The
+ * platform blog (null org) counts SYSTEM-scoped grants only (the `insider` role granted from the
+ * blog's Settings, or platform_owner's '*:*'); an org blog counts grants in that org, which
+ * requires active membership. Anonymous callers never reach the database.
+ */
+export async function canReadLockedPosts(
+    context: ContentGuardContext,
+    target: { organizationId: string | null },
+): Promise<boolean> {
+    const { request, env } = context;
+    if (!env?.OBCF_D1) return false;
+
+    initDbConnection(env);
+
+    try {
+        const reqCtx = await getRequestContext(request, env as any, {
+            getAuthOptions,
+            allowNullTenant: true,
+            // null loads no org grants at all, so only the system scope is evaluated.
+            organizationIdOverride: target.organizationId,
+        });
+        if (!reqCtx.isAuthenticated || !reqCtx.user) return false;
+        const granted = target.organizationId === null ? reqCtx.systemPermissions : reqCtx.permissions;
+        return hasGrantedPermission(granted, READ_LOCKED_POSTS_PERMISSION);
     } catch {
         return false;
     }

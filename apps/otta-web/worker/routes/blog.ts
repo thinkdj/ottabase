@@ -19,7 +19,13 @@ import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { demoBlogPosts } from '../fixtures/demo-blog-content';
 import { demoWhatsNewPosts } from '../fixtures/demo-whats-new';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { canManagePostInOrg, requireContentPermission, requireStudioAdminForScope } from '../lib/content-guard';
+import { bumpProfileVersion } from '../lib/auth-utils';
+import {
+    canManagePostInOrg,
+    canReadLockedPosts,
+    requireContentPermission,
+    requireStudioAdminForScope,
+} from '../lib/content-guard';
 import { checkCronAuth } from '../lib/utils';
 
 export interface BlogRouteContext {
@@ -120,6 +126,10 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     // Object-level check for minting previews of posts the caller does not own:
     // manage-grade grants evaluated in the POST's org (never a request hint).
     canManagePost: (ctx, post) => canManagePostInOrg(ctx, post),
+    // Locked (invite-only) categories: posts:read_locked in the blog's scope (system grants for
+    // the platform blog). A reader grant refreshes that user's live session snapshot.
+    canReadLocked: (ctx, target) => canReadLockedPosts(ctx, target),
+    onReaderAccessChanged: (env, userId) => bumpProfileVersion(env, userId),
     // Dedicated BLOG_PREVIEW_SECRET wins; AUTH_SECRET is the pragmatic default
     // so preview links work out of the box on any configured deployment.
     previewTokenSecret: (env) => {
@@ -158,6 +168,9 @@ export const {
     handleBlogPreviewTokenMint,
     handleBlogStudioThemeTokens,
     handleBlogStudioLanguages,
+    handleBlogStudioAccess,
+    handleBlogStudioReaderGrant,
+    handleBlogStudioReaderRevoke,
     handleBlogPostTranslations,
     handleBlogPostTranslationCreate,
     handleBlogPostTranslationUpdate,

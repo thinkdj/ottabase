@@ -11,7 +11,7 @@ import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
-import { ArrowLeft, FolderTree } from 'lucide-react';
+import { ArrowLeft, FolderTree, Lock } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface BlogPostsResponse {
@@ -24,6 +24,8 @@ interface CategoryInfo {
     name: string;
     slug: string;
     description?: string | null;
+    /** Locked (invite-only), directly or through a parent category. */
+    isLocked?: boolean;
 }
 
 export function BlogCategoryArchivePage() {
@@ -110,6 +112,13 @@ export function BlogCategoryArchivePage() {
                 <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                     <FolderTree className="h-3.5 w-3.5" />
                     Category
+                    {category.isLocked && (
+                        <>
+                            <span aria-hidden="true">·</span>
+                            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                            Invite only
+                        </>
+                    )}
                 </p>
                 <h1 className={theme.config?.classes?.archiveTitle || 'text-3xl font-bold tracking-tight'}>
                     {category.name}

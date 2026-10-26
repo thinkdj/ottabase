@@ -1,7 +1,7 @@
 import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { ContentValidationError, Post, validatePostWrite } from '@ottabase/ottablog';
+import { ContentValidationError, Post, PostCategory, PostCategoryLink, validatePostWrite } from '@ottabase/ottablog';
 import {
     executeSecureCrudRequest,
     parseCrudRequest,
@@ -13,7 +13,9 @@ import { Organization, OrganizationMember, User, UserGroupMember } from '@ottaba
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
+import { canManagePostInOrg, canReadLockedPosts } from '../lib/content-guard';
 
 export interface OttaormCrudContext {
     request: Request;
@@ -54,6 +56,7 @@ async function resolveCommentSecurityContext(
     targetId: unknown,
     session: any,
     ambient: Awaited<ReturnType<typeof getSecurityContext>>,
+    canSeePost: (post: Post) => Promise<boolean>,
 ): Promise<
     | { ok: true; organizationId: string | null; securityContext: Awaited<ReturnType<typeof getSecurityContext>> }
     | { ok: false; response: Response }
@@ -70,7 +73,7 @@ async function resolveCommentSecurityContext(
         // comment tenant. A bare ID could otherwise point at a post belonging
         // to another app in the shared database.
         const post = await Post.first({ id: targetId, appId: ambient.appId });
-        if (!post) {
+        if (!post || !(await canSeePost(post))) {
             return { ok: false, response: errorResponse('Target post not found', 404, { code: 'NOT_FOUND' }) };
         }
         const targetOrgId = (post.get('organizationId') as string | null) ?? null;
@@ -91,6 +94,54 @@ async function resolveCommentSecurityContext(
         return { ok: false, response: errorResponse('No active organization', 400, { code: 'VALIDATION_ERROR' }) };
     }
     return { ok: true, organizationId: ambient.organizationId, securityContext: ambient };
+}
+
+/**
+ * A post in a locked (invite-only) category keeps its comment thread as private as its body:
+ * without locked-read access in the post's blog scope (system grants for the platform blog),
+ * reading or writing its comments answers as if the post did not exist.
+ */
+async function canSeeLockedPostComments(context: OttaormCrudContext, post: Post): Promise<boolean> {
+    if (post.get('isLocked') !== true) return true;
+    const orgMode = getOttabaseConfig(context.env).features.ottablog.mode === 'org';
+    const blogOrganizationId = orgMode ? ((post.get('organizationId') as string | null) ?? null) : null;
+    return canReadLockedPosts(context, { organizationId: blogOrganizationId });
+}
+
+/**
+ * A taxonomy write that could UNLOCK posts in a locked (invite-only) category needs the blog's own
+ * authority, not just the taxonomy gate: every signup is org:admin of their own workspace, and in
+ * platform mode categories are app-wide, so that gate alone would let anyone with an account open
+ * the platform's locked posts. Writes that only lock more are left alone.
+ *  - categories: dropping the lock, re-parenting or deleting a locked category needs a platform
+ *    admin in platform mode (org mode is already tenant-scoped to that org's administrators);
+ *  - post_category_links: removing a post from a locked category needs manage rights on the post.
+ */
+async function guardLockedTaxonomyWrite(
+    context: OttaormCrudContext,
+    crudRequest: { model: string; method: string; id?: string | null; body?: unknown },
+    securityContext: Awaited<ReturnType<typeof getSecurityContext>>,
+): Promise<Response | null> {
+    if (!crudRequest.id || securityContext.platformAdmin === true) return null;
+    const denied = () =>
+        errorResponse('Only an administrator of this blog can change a locked category', 403, { code: 'FORBIDDEN' });
+
+    if (crudRequest.model === 'categories') {
+        if (getOttabaseConfig(context.env).features.ottablog.mode === 'org') return null;
+        const body = (crudRequest.body ?? {}) as Record<string, unknown>;
+        const unlocks = crudRequest.method === 'DELETE' || body.isLocked === false || 'parentId' in body;
+        if (unlocks && (await PostCategory.lockedAmong([crudRequest.id])).size > 0) return denied();
+        return null;
+    }
+
+    if (crudRequest.model === 'post_category_links' && crudRequest.method === 'DELETE') {
+        const link = await PostCategoryLink.find(crudRequest.id);
+        if (!link || (await PostCategory.lockedAmong([String(link.get('categoryId'))])).size === 0) return null;
+        const post = await Post.find(String(link.get('postId')));
+        const organizationId = (post?.get('organizationId') as string | null | undefined) ?? null;
+        if (post && !(await canManagePostInOrg(context, { organizationId }))) return denied();
+    }
+    return null;
 }
 
 /**
@@ -445,6 +496,8 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 code: 'FORBIDDEN',
             });
         }
+        const lockDenied = await guardLockedTaxonomyWrite(context, crudRequest, securityContext);
+        if (lockDenied) return lockDenied;
     }
 
     // Mutating or deleting an organization requires owner/admin authority in the TARGET org. The
@@ -532,6 +585,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
     if (crudRequest.model === 'comments') {
         const user = session?.user;
+        const canSeePost = (post: Post) => canSeeLockedPostComments(context, post);
 
         if (crudRequest.method === 'POST' && crudRequest.body) {
             const body = crudRequest.body as Record<string, unknown>;
@@ -540,6 +594,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 body.targetId,
                 session,
                 securityContext,
+                canSeePost,
             );
             if (!orgResolution.ok) return orgResolution.response;
 
@@ -584,6 +639,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 comment.get('targetId'),
                 session,
                 securityContext,
+                canSeePost,
             );
             if (!orgResolution.ok) return orgResolution.response;
             if ((comment.get('organizationId') ?? null) !== orgResolution.organizationId) {
@@ -656,6 +712,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 where.targetId,
                 session,
                 securityContext,
+                canSeePost,
             );
             if (!orgResolution.ok) return orgResolution.response;
             effectiveSecurityContext = orgResolution.securityContext;

@@ -8,7 +8,7 @@
 // per-request-personalized HTML.
 // ---------------------------------------------------------------------------
 
-import { Post } from '@ottabase/ottablog';
+import { OttablogSettings, Post } from '@ottabase/ottablog';
 import { buildPostSeoTags, extractBlogSlugFromPath, replaceDocumentTitle } from '@ottabase/ottablog/seo';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { resolveBlogOrganizationIdCached } from '../routes/blog';
@@ -45,6 +45,20 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         // Changelog posts are hidden from /blog/* (they live at /changelog).
         if (post.get('contentType') === 'changelog') return response;
 
+        // A locked (invite-only) post gets the anonymous view, like crawlers and unfurlers do:
+        // its public teaser fields only, and nothing at all when teasers are off. A blurb's title
+        // is cut from its text, so it is never teased. Members load the body in the SPA.
+        const contentType = post.get('contentType') as string;
+        let teaser: string[] | null = null;
+        if (post.get('isLocked') === true) {
+            const settings = await OttablogSettings.forScopeOrPlatform({
+                appId: config.appId,
+                organizationId: (where.organizationId as string | null | undefined) ?? null,
+            });
+            teaser = settings?.lockedTeaser() ?? [];
+            if (teaser.length === 0 || contentType === 'blurb') return response;
+        }
+
         // Author name for JSON-LD — best effort, never fails the injection.
         let authorName: string | null = null;
         try {
@@ -54,25 +68,28 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
             authorName = null;
         }
 
-        const contentType = post.get('contentType') as string;
         const isBlurb = contentType === 'blurb';
         const isPhotoJournal = contentType === 'photo';
         const title = isBlurb ? `Thought${authorName ? ` by ${authorName}` : ''}` : (post.get('title') as string) || '';
         if (!title) return response;
 
-        const heroImage = post.get('heroImage') as { url?: string } | null;
+        const shows = (field: string) => teaser === null || teaser.includes(field);
+        const heroImage = shows('heroImage') ? (post.get('heroImage') as { url?: string } | null) : null;
         const canonicalUrl = `${url.protocol}//${url.host}/blog/${encodeURIComponent(
             (post.get('slug') as string) || slug,
         )}`;
 
         const seoTags = buildPostSeoTags({
             title,
-            excerpt:
-                (isBlurb
-                    ? (post.get('blurbText') as string)
-                    : isPhotoJournal
-                      ? (post.get('photoNote') as string) || (post.get('excerpt') as string)
-                      : (post.get('excerpt') as string)) || null,
+            excerpt: teaser
+                ? shows('excerpt')
+                    ? (post.get('excerpt') as string) || null
+                    : null
+                : (isBlurb
+                      ? (post.get('blurbText') as string)
+                      : isPhotoJournal
+                        ? (post.get('photoNote') as string) || (post.get('excerpt') as string)
+                        : (post.get('excerpt') as string)) || null,
             canonicalUrl,
             imageUrl: heroImage?.url ?? null,
             publishedAt: post.get('publishedAt') as number | string | null,
@@ -80,9 +97,10 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
             authorName,
             siteName: config.appName || null,
             contentType,
-            photoAlbum: isPhotoJournal
-                ? (post.get('photoAlbum') as NonNullable<Parameters<typeof buildPostSeoTags>[0]['photoAlbum']>)
-                : null,
+            photoAlbum:
+                isPhotoJournal && !teaser
+                    ? (post.get('photoAlbum') as NonNullable<Parameters<typeof buildPostSeoTags>[0]['photoAlbum']>)
+                    : null,
         });
 
         // Clone before consuming: on any later throw the untouched original

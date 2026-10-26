@@ -44,6 +44,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../BlogAdminNav', () => ({ BlogAdminNav: () => null }));
+vi.mock('../BlogLockedAccessCard', () => ({ BlogLockedAccessCard: () => null }));
 vi.mock('../blogAdminPaths', () => ({ useBlogSurface: () => ({ contentPath: '/admin/content/blog' }) }));
 
 // Passthrough shadcn primitives — assertions target text and the click handler.

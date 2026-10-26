@@ -73,10 +73,14 @@ interface BlogPost {
     readingTimeMinutes: number | null;
     isFeatured: boolean;
     isProtected?: boolean;
+    /** In a locked (invite-only) category. */
+    isLocked?: boolean;
+    /** Locked post served without access: only its public teaser fields are present. */
+    teaser?: boolean;
     publishedAt: string | null;
     seriesId: string | null;
     seriesTitle?: string | null;
-    categories?: { id: string; name: string; slug: string }[];
+    categories?: { id: string; name: string; slug: string; isLocked?: boolean }[];
     tags?: BlogPostTag[];
     viewCount?: number;
     language?: string;
@@ -310,10 +314,10 @@ export function BlogListPage() {
                     {/* Mixed shapes sit here — a bordered thought, an image collage, an article card.
                         They need more air between them than a uniform list would. */}
                     <div className="space-y-6">
-                        {/* A protected post ships no body (the API blanks it), so it falls back to
-                            PostCard, which renders the lock affordance instead of an empty frame. */}
+                        {/* A protected post or a locked teaser ships no body (the API blanks it), so it
+                            falls back to PostCard, which renders the lock affordance instead of an empty frame. */}
                         {timelinePosts.map((post) =>
-                            post.isProtected ? (
+                            post.isProtected || post.teaser ? (
                                 <PostCard key={post.id} post={post} activeLanguage={requestedLanguage} />
                             ) : post.contentType === 'blurb' ? (
                                 <Link
@@ -376,6 +380,13 @@ export function BlogListPage() {
             )}
         </div>
     );
+}
+
+/** Lock affordance: invite-only (locked category) wins over a password, which is the lesser gate. */
+function PostLockIcon({ post, className }: { post: BlogPost; className: string }) {
+    if (!post.isLocked && !post.isProtected) return null;
+    const label = post.isLocked ? 'Invite only' : 'Password protected';
+    return <Lock className={`${className} shrink-0 text-muted-foreground`} aria-label={label} />;
 }
 
 /**
@@ -441,9 +452,7 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
                         className="hover:underline focus-visible:outline-hidden"
                     >
                         {post.title}
-                        {post.isProtected && (
-                            <Lock className="h-4 w-4 text-muted-foreground shrink-0" aria-label="Password protected" />
-                        )}
+                        <PostLockIcon post={post} className="h-4 w-4" />
                     </Link>
                 </h3>
                 {post.excerpt && (
@@ -549,9 +558,7 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                         className="hover:underline focus-visible:outline-hidden"
                     >
                         {post.title}
-                        {post.isProtected && (
-                            <Lock className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Password protected" />
-                        )}
+                        <PostLockIcon post={post} className="h-3 w-3" />
                     </Link>
                 </h3>
                 {post.excerpt && (

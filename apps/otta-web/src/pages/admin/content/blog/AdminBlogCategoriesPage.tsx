@@ -17,9 +17,10 @@ import {
     SheetDescription,
     SheetHeader,
     SheetTitle,
+    Switch,
     Textarea,
 } from '@ottabase/ui';
-import { ChevronRight, Edit, FolderTree, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronRight, Edit, FolderTree, Loader2, Lock, Plus, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 
@@ -34,6 +35,7 @@ interface BlogCategory {
     parentId: string | null;
     sortOrder: number | null;
     type: string | null;
+    isLocked?: boolean;
     createdAt: string;
 }
 
@@ -102,6 +104,7 @@ export function AdminBlogCategoriesPage() {
     const [formParentId, setFormParentId] = useState<string | null>(null);
     const [formSortOrder, setFormSortOrder] = useState(0);
     const [formType, setFormType] = useState('post');
+    const [formLocked, setFormLocked] = useState(false);
 
     const { data: categoriesData, isLoading } = blogCategoryHooks.useList(undefined, { staleTime: 30_000 });
     const categories: BlogCategory[] = useMemo(() => {
@@ -125,6 +128,23 @@ export function AdminBlogCategoriesPage() {
         : flatList;
 
     const sheetOpen = isCreating || editingCategory !== null;
+
+    // A lock covers child categories: show it on each child, and on the parent the form picks.
+    const categoriesById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+    const lockedByAncestor = useCallback(
+        (parentId: string | null): boolean => {
+            const seen = new Set<string>();
+            let current = parentId ? categoriesById.get(parentId) : undefined;
+            while (current && !seen.has(current.id)) {
+                if (current.isLocked) return true;
+                seen.add(current.id);
+                current = current.parentId ? categoriesById.get(current.parentId) : undefined;
+            }
+            return false;
+        },
+        [categoriesById],
+    );
+    const inheritsLock = lockedByAncestor(formParentId);
 
     // Build parent label for display
     const categoryLabel = useCallback(
@@ -171,6 +191,7 @@ export function AdminBlogCategoriesPage() {
             setFormParentId(editingCategory.parentId);
             setFormSortOrder(editingCategory.sortOrder ?? 0);
             setFormType(editingCategory.type ?? 'post');
+            setFormLocked(editingCategory.isLocked === true);
         }
     }, [editingCategory]);
 
@@ -181,6 +202,7 @@ export function AdminBlogCategoriesPage() {
         setFormParentId(null);
         setFormSortOrder(0);
         setFormType('post');
+        setFormLocked(false);
     };
 
     const openCreate = () => {
@@ -204,6 +226,7 @@ export function AdminBlogCategoriesPage() {
             parentId: formParentId || undefined,
             sortOrder: formSortOrder,
             type: formType || 'post',
+            isLocked: formLocked,
         };
 
         if (editingCategory) {
@@ -303,6 +326,12 @@ export function AdminBlogCategoriesPage() {
                                         <Badge variant="outline" className={CHIP_CLASS}>
                                             {cat.slug}
                                         </Badge>
+                                        {(cat.isLocked || lockedByAncestor(cat.parentId)) && (
+                                            <Badge variant="outline" className={`${CHIP_CLASS} gap-1`}>
+                                                <Lock className="h-3 w-3" aria-hidden="true" />
+                                                {cat.isLocked ? 'Locked' : 'Locked by parent'}
+                                            </Badge>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <Button
@@ -397,6 +426,25 @@ export function AdminBlogCategoriesPage() {
                         <div className="space-y-2">
                             <Label>Type</Label>
                             <Input value={formType} onChange={(e) => setFormType(e.target.value)} placeholder="post" />
+                        </div>
+                        <div className="flex items-start justify-between gap-4 rounded-xl bg-muted/40 p-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="category-locked" className="flex items-center gap-1.5">
+                                    <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                                    Locked (invite only)
+                                </Label>
+                                <p className="text-xs leading-relaxed text-muted-foreground">
+                                    {inheritsLock
+                                        ? 'Already locked by a parent category.'
+                                        : 'Posts here and in child categories are readable only by invited readers. Set the public teaser and invite readers in Settings.'}
+                                </p>
+                            </div>
+                            <Switch
+                                id="category-locked"
+                                checked={formLocked || inheritsLock}
+                                disabled={inheritsLock}
+                                onCheckedChange={setFormLocked}
+                            />
                         </div>
                         <Button onClick={handleSave} disabled={!formName.trim() || isSaving} className="w-full">
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

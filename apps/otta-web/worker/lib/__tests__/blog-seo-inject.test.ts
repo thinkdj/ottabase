@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPostFirst, mockGetOttabaseConfig, mockEnsureDbConnection, mockResolveBlogOrganizationId } = vi.hoisted(
-    () => ({
+const { mockPostFirst, mockSettingsFor, mockGetOttabaseConfig, mockEnsureDbConnection, mockResolveBlogOrganizationId } =
+    vi.hoisted(() => ({
         mockPostFirst: vi.fn(),
+        mockSettingsFor: vi.fn(),
         mockGetOttabaseConfig: vi.fn(),
         mockEnsureDbConnection: vi.fn(),
         mockResolveBlogOrganizationId: vi.fn(),
-    }),
-);
+    }));
 
 vi.mock('@ottabase/ottablog', () => ({
     Post: { first: mockPostFirst },
+    OttablogSettings: { forScopeOrPlatform: mockSettingsFor },
 }));
 
 vi.mock('../../../ottabase/config.loader', () => ({
@@ -213,5 +214,52 @@ describe('injectBlogPostSeo', () => {
         const result = await injectBlogPostSeo(original, requestFor('https://demo.test/blog/hello-world'), env);
         expect(result).toBe(original);
         expect(await result.text()).toContain('App Shell');
+    });
+
+    describe('locked (invite-only) posts', () => {
+        const locked = (fields: Record<string, unknown> = {}) =>
+            fakePost({
+                title: 'A letter to my father',
+                slug: 'a-letter',
+                excerpt: 'Some things I never said.',
+                contentType: 'blog',
+                heroImage: { url: 'https://img.test/private.jpg' },
+                isLocked: true,
+                ...fields,
+            });
+        const teaser = (fields: string[]) => mockSettingsFor.mockResolvedValue({ lockedTeaser: () => fields });
+
+        it('injects nothing when teasers are off', async () => {
+            mockPostFirst.mockResolvedValue(locked());
+            teaser([]);
+            const original = htmlResponse();
+
+            const response = await injectBlogPostSeo(original, requestFor('https://demo.test/blog/a-letter'), env);
+
+            expect(response).toBe(original);
+        });
+
+        it('injects only the teaser fields the blog allows', async () => {
+            mockPostFirst.mockResolvedValue(locked());
+            teaser(['title']);
+
+            const html = await (
+                await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/a-letter'), env)
+            ).text();
+
+            expect(html).toContain('<title>A letter to my father</title>');
+            expect(html).not.toContain('Some things I never said.');
+            expect(html).not.toContain('private.jpg');
+        });
+
+        it('never teases a locked blurb (its title is its text)', async () => {
+            mockPostFirst.mockResolvedValue(locked({ contentType: 'blurb', blurbText: 'private thought' }));
+            teaser(['title', 'excerpt']);
+            const original = htmlResponse();
+
+            expect(await injectBlogPostSeo(original, requestFor('https://demo.test/blog/a-letter'), env)).toBe(
+                original,
+            );
+        });
     });
 });

@@ -9,6 +9,7 @@ import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
 import { useComments, useCreateComment, type CommentType } from '@/hooks/commentHooks';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+import { rememberReturnPath } from '@/lib/auth-redirect';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
 import type { PostAuthor } from '@/types/blog';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
@@ -39,6 +40,7 @@ import {
     Skeleton,
     Textarea,
 } from '@ottabase/ui';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { localizedPostPath, localizedPostSearch } from './blogLinks';
 import {
@@ -95,8 +97,12 @@ interface BlogPost {
     seriesId: string | null;
     seriesOrder: number | null;
     tags?: { id: string; name: string; slug: string }[];
-    categories?: { id: string; name: string; slug: string }[];
+    categories?: { id: string; name: string; slug: string; isLocked?: boolean }[];
     viewCount?: number;
+    /** In a locked (invite-only) category. */
+    isLocked?: boolean;
+    /** Locked post served without access: only its public teaser fields are present. */
+    teaser?: boolean;
     originalDate?: {
         timestamp: number;
         resolution: string;
@@ -309,6 +315,48 @@ const CommentNode = memo(function CommentNode({
     );
 });
 
+/**
+ * A locked post seen without access: the teaser fields the blog allows, and the way in. Signing
+ * in is not access by itself (that is an invite), so a signed-in reader is told who to ask.
+ */
+function LockedPostTeaser({ post, signedIn }: { post: BlogPost; signedIn: boolean }) {
+    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '';
+    return (
+        <div className="flex flex-col items-center px-4 py-10 text-center">
+            {heroUrl && (
+                <img
+                    src={heroUrl}
+                    alt={post.heroImage?.alt || post.title}
+                    className="mb-8 aspect-[16/9] w-full rounded-2xl object-cover"
+                />
+            )}
+            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-muted/40 px-3 py-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground ring-1 ring-border">
+                <Lock className="h-3 w-3" aria-hidden />
+                Invite only
+            </span>
+            <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight">{post.title}</h1>
+            {post.excerpt && <p className="mb-8 max-w-lg leading-relaxed text-muted-foreground">{post.excerpt}</p>}
+            <div className="w-full max-w-md rounded-2xl bg-muted/40 p-6">
+                <p className="text-sm font-medium">
+                    {signedIn ? 'Your account does not have access yet.' : 'This post is for invited readers.'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    {signedIn
+                        ? 'Ask the author to invite you as a reader, then reload this page.'
+                        : 'Sign in with an invited account to read it.'}
+                </p>
+                {!signedIn && (
+                    <Button asChild className="mt-4">
+                        <Link to="/login" onClick={() => rememberReturnPath()}>
+                            Sign in
+                        </Link>
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function BlogDetailPage() {
     const params = useParams({ strict: false });
     const slug = (params as { slug?: string }).slug;
@@ -365,7 +413,8 @@ export function BlogDetailPage() {
     const nextPost = currentIndex < seriesPosts.length - 1 ? seriesPosts[currentIndex + 1] : null;
 
     const postForComments = unlockedPost ?? post;
-    const isLocked = !!(postForComments?.isProtected && !postForComments?.content);
+    const isTeaser = post?.teaser === true;
+    const isLocked = isTeaser || !!(postForComments?.isProtected && !postForComments?.content);
     const allowComments = postForComments?.allowComments ?? true;
     const commentsTargetId = post?.id ?? unlockedPost?.id ?? null;
 
@@ -638,8 +687,11 @@ export function BlogDetailPage() {
                 </p>
             )}
 
+            {/* Teaser of a locked (invite-only) post for a reader without access */}
+            {isTeaser && <LockedPostTeaser post={displayPost} signedIn={Boolean(user?.id)} />}
+
             {/* Lock screen for password-protected posts */}
-            {isLocked && (
+            {isLocked && !isTeaser && (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                     <div className="rounded-full bg-muted/40 p-6 mb-6">
                         <Lock className="h-16 w-16 text-muted-foreground" aria-hidden />
@@ -762,8 +814,9 @@ export function BlogDetailPage() {
                                 <Link key={cat.id} to="/blog/category/$slug" params={{ slug: cat.slug }}>
                                     <Badge
                                         variant="outline"
-                                        className="cursor-pointer border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
+                                        className="cursor-pointer gap-1 border-transparent bg-background font-medium text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground"
                                     >
+                                        {cat.isLocked && <Lock className="h-3 w-3" aria-label="Invite only" />}
                                         {cat.name}
                                     </Badge>
                                 </Link>

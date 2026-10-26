@@ -1,7 +1,8 @@
 /**
  * Admin Content Settings Page
  *
- * Manage content themes and plugins, and run the one-time demo content seed.
+ * Manage content themes, plugins, languages and locked-category access, and run the one-time
+ * demo content seed.
  */
 import { isPlatformAdmin, useSession } from '@/lib/auth';
 import type { BlogLanguageConfig, StudioPluginState, StudioThemeState } from '@ottabase/ottablog';
@@ -41,6 +42,7 @@ import { Loader2, Palette, Puzzle, Settings, Sparkles } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { BlogAdminNav } from './BlogAdminNav';
 import { BlogLanguageSettingsCard } from './BlogLanguageSettingsCard';
+import { BlogLockedAccessCard } from './BlogLockedAccessCard';
 import { useBlogSurface } from './blogAdminPaths';
 
 const SETTINGS_ENTITY = 'blog_settings' as const;
@@ -260,11 +262,13 @@ export function AdminBlogSettingsPage() {
             <div className="space-y-1.5">
                 <h1 className="text-2xl font-semibold tracking-[-0.015em]">Content settings</h1>
                 <p className="max-w-3xl text-muted-foreground">
-                    Manage themes, plugins, and the languages your readers can use.
+                    Manage themes, plugins, languages, and who can read locked categories.
                 </p>
             </div>
 
             <BlogLanguageSettingsCard config={languageConfig} />
+
+            <BlogLockedAccessCard />
 
             {isLoading ? (
                 <div className="grid gap-6 md:grid-cols-2" aria-busy="true">
