@@ -252,7 +252,7 @@ describe('injectBlogPostSeo', () => {
                 excerpt: 'Some things I never said.',
                 contentType: 'blog',
                 heroImage: { url: 'https://img.test/private.jpg' },
-                isLocked: true,
+                lockKey: '|c-life|',
                 ...fields,
             });
         const teaser = (fields: string[]) => mockSettingsFor.mockResolvedValue({ lockedTeaser: () => fields });

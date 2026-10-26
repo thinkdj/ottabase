@@ -19,6 +19,9 @@
 import { commentReactionsTable, commentsTable } from '@ottabase/comments/schema';
 import {
     categoriesTable,
+    ottablogAudienceMembersTable,
+    ottablogAudiencesTable,
+    ottablogCategoryAudiencesTable,
     ottablogPluginsTable,
     ottablogThemesTable,
     ottablogSettingsTable,
@@ -66,6 +69,9 @@ export {
     landingLeadsTable,
     landingPagesTable,
     landingSitesTable,
+    ottablogAudienceMembersTable,
+    ottablogAudiencesTable,
+    ottablogCategoryAudiencesTable,
     ottablogPluginsTable,
     ottablogThemesTable,
     ottablogSettingsTable,

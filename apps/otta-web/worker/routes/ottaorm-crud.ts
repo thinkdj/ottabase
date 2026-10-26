@@ -2,6 +2,7 @@ import { getSession, hashPassword } from '@ottabase/auth/backend';
 import { Comment, CommentReaction } from '@ottabase/comments';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import {
+    canReadLockKey,
     ContentValidationError,
     Post,
     PostCategory,
@@ -23,7 +24,7 @@ import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
-import { canReadLockedPosts } from '../lib/content-guard';
+import { resolveBlogViewer } from '../lib/content-guard';
 
 export interface OttaormCrudContext {
     request: Request;
@@ -105,13 +106,21 @@ async function resolveCommentSecurityContext(
 }
 
 /**
- * A post in a locked (invite-only) category keeps its comment thread as private as its body:
- * without locked-read access in the post's own blog (system grants for the site blog), reading or
- * writing its comments answers as if the post did not exist.
+ * A post in a locked (invite-only) category keeps its comment thread as private as its body: a
+ * reader its lock is closed to (no audience given the category, not the blog's staff) reads and
+ * writes its comments as if the post did not exist.
  */
 async function canSeeLockedPostComments(context: OttaormCrudContext, post: Post): Promise<boolean> {
-    if (post.get('isLocked') !== true) return true;
-    return canReadLockedPosts(context, { organizationId: (post.get('organizationId') as string | null) ?? null });
+    const lockKey = post.get('lockKey') as string | null;
+    if (!lockKey) return true;
+    const blog = {
+        appId: String(post.get('appId')),
+        organizationId: (post.get('organizationId') as string | null) ?? null,
+    };
+    const access = await PostCategory.lockAccessFor(blog, () =>
+        resolveBlogViewer(context, { organizationId: blog.organizationId }),
+    );
+    return canReadLockKey(lockKey, access.forbidden);
 }
 
 /**

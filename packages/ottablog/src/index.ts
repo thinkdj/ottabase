@@ -36,6 +36,12 @@
 // Models + schema exports (fat models)
 export {
     categoriesTable,
+    OttablogAudience,
+    OttablogAudienceMember,
+    ottablogAudienceMembersTable,
+    ottablogAudiencesTable,
+    OttablogCategoryAudience,
+    ottablogCategoryAudiencesTable,
     OttablogPlugin,
     ottablogPluginsTable,
     OttablogTheme,
@@ -194,6 +200,19 @@ export {
     parseBlogPostPath,
     SITE_BLOG_PATH,
 } from './paths';
+
+// Locked categories: lock keys and reader access (pure)
+export {
+    ANONYMOUS_VIEWER,
+    canReadLockKey,
+    formatLockKey,
+    lockKeyIds,
+    MAX_FORBIDDEN_FILTERS,
+    NOTHING_LOCKED,
+    readableWhere,
+    type BlogViewer,
+    type LockAccess,
+} from './lock-key';
 export type { PostSeoInput } from './seo';
 
 // Blog-renderer prop/data types (pure, type-only). The rendered components (BlogRenderer,

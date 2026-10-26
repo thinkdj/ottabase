@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne } from 'drizzle-orm';
+import { and, eq, gt, gte, inArray, isNotNull, isNull, like, lt, lte, ne, notLike } from 'drizzle-orm';
 import { integer, sqliteTable, SQLiteSyncDialect, text } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
 import { BaseModel } from '../base/BaseModel';
@@ -66,6 +66,19 @@ describe('buildWhereConditions', () => {
         const expected = [ne(testTable.status, 'archived')];
         expect(actual).toHaveLength(1);
         expect(conditionSql(actual)).toBe(conditionSql(expected));
+    });
+
+    it('should generate like() and notLike() for $like / $notLike patterns', () => {
+        expect(conditionSql(TestableModel.testBuildWhere({ name: { $like: '%a%' } }))).toBe(
+            conditionSql([like(testTable.name, '%a%')]),
+        );
+        expect(conditionSql(TestableModel.testBuildWhere({ name: { $notLike: '%|c1|%' } }))).toBe(
+            conditionSql([notLike(testTable.name, '%|c1|%')]),
+        );
+    });
+
+    it('should reject a non-string LIKE pattern', () => {
+        expect(() => TestableModel.testBuildWhere({ name: { $notLike: 5 } })).toThrow(TypeError);
     });
 
     it('should generate isNotNull() with $ne: null', () => {

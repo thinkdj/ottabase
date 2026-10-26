@@ -27,7 +27,7 @@ vi.mock('../db-utils', () => ({
     initDbConnection: vi.fn(),
 }));
 
-import { canReadLockedPosts, requireContentPermission, resolveEditorialBlog } from '../content-guard';
+import { requireContentPermission, resolveBlogViewer, resolveEditorialBlog } from '../content-guard';
 
 function context(headers?: HeadersInit) {
     const request = new Request('http://127.0.0.1:3003/api/blog/photo-journals', {
@@ -139,32 +139,41 @@ describe('requireContentPermission', () => {
     });
 });
 
-describe('canReadLockedPosts', () => {
+describe('resolveBlogViewer', () => {
     beforeEach(() => {
         vi.resetAllMocks();
     });
 
+    const anonymous = { userId: null, readsAllLocked: false };
     const reqCtx = (permissions: string[], systemPermissions: string[]) => ({
-        user: { id: 'u1' },
+        user: { get: (field: string) => ({ id: 'u1' })[field] },
         isAuthenticated: true,
         permissions,
         systemPermissions,
     });
 
-    it('denies an anonymous caller', async () => {
+    it('answers signed out for an anonymous caller', async () => {
         getRequestContext.mockResolvedValue({
             user: null,
             isAuthenticated: false,
             permissions: [],
             systemPermissions: [],
         });
-        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+        expect(await resolveBlogViewer(context(), { organizationId: null })).toEqual(anonymous);
     });
 
-    it('counts only SYSTEM grants on the site blog, so a workspace owner is not a reader', async () => {
+    it('names a signed-in reader without staff access, so their audiences decide', async () => {
+        getRequestContext.mockResolvedValue(reqCtx([], []));
+        expect(await resolveBlogViewer(context(), { organizationId: null })).toEqual({
+            userId: 'u1',
+            readsAllLocked: false,
+        });
+    });
+
+    it('counts only SYSTEM grants on the site blog, so a workspace owner is not staff', async () => {
         // Every signup owns a personal workspace; an org-scoped grant there must not open the site blog.
         getRequestContext.mockResolvedValue(reqCtx(['posts:read_locked'], []));
-        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+        expect((await resolveBlogViewer(context(), { organizationId: null })).readsAllLocked).toBe(false);
         expect(getRequestContext).toHaveBeenCalledWith(
             expect.any(Request),
             expect.anything(),
@@ -172,12 +181,12 @@ describe('canReadLockedPosts', () => {
         );
 
         getRequestContext.mockResolvedValue(reqCtx(['posts:read_locked'], ['posts:read_locked']));
-        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(true);
+        expect((await resolveBlogViewer(context(), { organizationId: null })).readsAllLocked).toBe(true);
     });
 
     it('evaluates an org blog in that org and accepts wildcards', async () => {
         getRequestContext.mockResolvedValue(reqCtx(['posts:*'], []));
-        expect(await canReadLockedPosts(context(), { organizationId: 'org-1' })).toBe(true);
+        expect((await resolveBlogViewer(context(), { organizationId: 'org-1' })).readsAllLocked).toBe(true);
         expect(getRequestContext).toHaveBeenCalledWith(
             expect.any(Request),
             expect.anything(),
@@ -185,14 +194,14 @@ describe('canReadLockedPosts', () => {
         );
     });
 
-    it('does not treat *:read as reader access', async () => {
+    it('does not treat *:read as staff access', async () => {
         getRequestContext.mockResolvedValue(reqCtx(['*:read'], ['*:read']));
-        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+        expect((await resolveBlogViewer(context(), { organizationId: null })).readsAllLocked).toBe(false);
     });
 
-    it('fails closed when the context cannot be resolved', async () => {
+    it('fails closed to signed out when the context cannot be resolved', async () => {
         getRequestContext.mockRejectedValue(new Error('kv down'));
-        expect(await canReadLockedPosts(context(), { organizationId: null })).toBe(false);
+        expect(await resolveBlogViewer(context(), { organizationId: null })).toEqual(anonymous);
     });
 });
 

@@ -36,7 +36,6 @@ export {
 // RBAC models (with tenant + app scoping)
 export { Permission, permissionsTable, type NewPermissionType, type PermissionType } from './Permission';
 export {
-    INSIDER_ROLE_NAME,
     ORG_ADMIN_PERMISSION,
     ORG_OWNER_PERMISSIONS,
     PLATFORM_ADMIN_PERMISSION,

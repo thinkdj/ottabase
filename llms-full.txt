@@ -17869,8 +17869,8 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
   (and config) applied at init (see [STUDIO.md](./STUDIO.md))
 - **Multilingual publishing** - Configure supported BCP-47 languages per blog, assign each post a canonical language,
   and manage independent localized versions with fallback-aware public routing, RSS, and sitemap URLs
-- **Locked categories** - Invite-only categories (e.g. "Life") readable one level above sign-in, with an optional public
-  teaser per blog — see [Locked categories](#locked-categories-invite-only)
+- **Locked categories** - Invite-only categories (e.g. "Life") opened per category to audiences of readers, with an
+  optional public teaser per blog. See [Locked categories](#locked-categories-invite-only)
 - **Author Archives** - `/blog/author/$authorId` lists an author's published posts; post bylines link to it
 - **Import / Export** - One-file JSON backup of every post, and import from that file or from Markdown with front matter
   (Jekyll, Hugo, Astro, Eleventy, Ghost exports) — see [Import / Export](#import--export)
@@ -18095,46 +18095,65 @@ creates tables without `FOREIGN KEY` clauses, so the schema's `onDelete: 'cascad
 ## Locked categories (invite-only)
 
 Lock a category (`PostCategory.isLocked`) and every post filed under it, or under one of its child categories, becomes
-readable only by invited readers. Access is one level above being signed in: the `posts:read_locked` permission, held by
-the built-in `insider` role (and by `owner`, `admin`, `editor` and the platform owner's `*:*`; never by `*:read`).
+readable only by the readers you choose. Access is one level above being signed in, and it is per category:
 
-**Who has access.** The grant is evaluated in the blog's scope, never the caller's own workspace (every signup owns one
-as `owner`): system-scoped grants for the site blog, that organization's grants for an org blog. The host decides via
-the `canReadLocked(ctx, { organizationId })` router seam; without it nobody has access. otta-web wires it to
-`canReadLockedPosts` (`worker/lib/content-guard.ts`).
+- **Audiences** are named groups of readers per blog (e.g. Family, Close friends). Each locked category is given any
+  number of audiences, and a reader may be in any number of them, so any combination works. A reader opens a locked
+  category when one of their audiences is given it or one of its parent categories. Readers need no organization
+  membership: any signed-in account can be added.
+- **Staff** read every locked post: the `posts:read_locked` permission (held by `owner`, `admin`, `editor` and the
+  platform owner's `*:*`; never by `*:read`), evaluated in the blog's scope, never the caller's own workspace (every
+  signup owns one as `owner`): system-scoped grants for the site blog, that organization's grants for an org blog.
+
+The host says who is reading through the `resolveViewer(ctx, { organizationId })` router seam, which answers
+`{ userId, readsAllLocked }` (`BlogViewer`); without it, or when it throws, every reader is signed out. otta-web wires
+it to `resolveBlogViewer` (`worker/lib/content-guard.ts`). It is resolved lazily: a blog with nothing locked never asks.
+Audiences are read per request, so a change applies on the reader's next page load, with no session refresh.
 
 **What everyone else sees.** One blog-level setting, `OttablogSettings.lockedTeaser`:
 
-| `lockedTeaser`                          | Readers without access                                                                  |
+| `lockedTeaser`                          | Readers a post is closed to                                                             |
 | --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `[]` (default)                          | Locked posts and categories do not exist: lists, search, archives, RSS, sitemap, 404s   |
-| `['title']`, plus `excerpt`/`heroImage` | Locked posts are listed with only those fields and `teaser: true`; the body never ships |
+| `[]` (default)                          | Closed posts and categories do not exist: lists, search, archives, RSS, sitemap, 404s   |
+| `['title']`, plus `excerpt`/`heroImage` | Closed posts are listed with only those fields and `teaser: true`; the body never ships |
 
-Blurbs are never teased (their title is cut from their text), search always hides locked posts from readers without
-access (a match on a hidden excerpt would leak it), related posts never suggest them, and a password never opens a
-locked post (`POST /posts/unlock` answers 403 `LOCKED`). Public payloads carry `isLocked`, and each category carries its
-effective `isLocked`, so readers with access see a lock badge. Responses that depend on access send
-`Cache-Control: private, no-store`; RSS and the sitemap are always the anonymous view, since shared caches store them.
+A post filed under several locked categories is closed unless the reader may open all of them. Blurbs are never teased
+(their title is cut from their text), search always hides closed posts (a match on a hidden excerpt would leak it),
+related posts never suggest them, a tag or series whose every post is closed does not exist, comments on a closed post
+answer as if it did not exist, and a password never opens a closed post (`POST /posts/unlock` answers 403 `LOCKED`).
+Public payloads carry `isLocked`, and each category carries its effective `isLocked`, so readers with access see a lock
+badge. Responses that depend on access send `Cache-Control: private, no-store`; RSS, the sitemap and the server-rendered
+SEO tags are always the anonymous view, since shared caches store them.
 
-**How it stays fast.** `posts.isLocked` is a denormalized flag, so lists filter and paginate in SQL with true totals.
-`PostCategoryLink` (create/delete) and `PostCategory` (lock or parent change, delete) re-derive it through
-`Post.syncLocked(postIds)`, which writes only changed rows and leaves `updatedAt` alone. Public reads also check each
-post against its real category links, so a stale flag can never ship a locked body. With nothing locked, a request costs
-one small category query and no access check.
+**How it stays fast.** `posts.lockKey` denormalizes a post's effectively locked categories as `|id|id|` (sorted), or
+null, so lists filter and paginate in SQL with true totals: `lockKey IS NULL OR (lockKey NOT LIKE '%|id|%' AND ...)` for
+each category closed to the reader (`readableWhere` in `lock-key.ts`). Past `MAX_FORBIDDEN_FILTERS` (24) closed
+categories, or when all are closed, the filter is `lockKey IS NULL`: it fails closed, never open. `PostCategoryLink`
+(create/delete) and `PostCategory` (lock or parent change, delete) re-derive the key through `Post.syncLocked(postIds)`,
+which writes only changed rows and leaves `updatedAt` alone. Public reads also check each post against its real category
+links, so a stale key can never ship a closed body. Per request, `PostCategory.lockAccessFor(blog, viewer)` costs one
+category query when nothing is locked, plus one grants query and one membership query for a signed-in reader.
 
-**Managing access** (studio admin of the blog's scope):
+**Managing access** (Studio admin of the blog's scope; every call answers with the full access state):
 
 ```http
-GET    /api/blog/studio/access                    # { lockedTeaser, lockedCategories, readers }
-POST   /api/blog/studio/access                    # { "lockedTeaser": ["title", "excerpt", "heroImage"] }
-POST   /api/blog/studio/access/readers            # { "email": "friend@example.com" }: grant `insider`
-DELETE /api/blog/studio/access/readers/{userId}   # revoke
+GET    /api/blog/studio/access                                # { lockedTeaser, lockedCategories, audiences }
+POST   /api/blog/studio/access                                # { "lockedTeaser": ["title", "excerpt", "heroImage"] }
+POST   /api/blog/studio/audiences                             # { "name": "Family" }
+PATCH  /api/blog/studio/audiences/{audienceId}                # { "name": "Close family" }
+DELETE /api/blog/studio/audiences/{audienceId}                # with its members and category grants
+POST   /api/blog/studio/audiences/{audienceId}/members        # { "email": "friend@example.com" }
+DELETE /api/blog/studio/audiences/{audienceId}/members/{userId}
+PUT    /api/blog/studio/categories/{categoryId}/audiences     # { "audienceIds": ["…"] }: replaces the set
 ```
 
-Readers sign up first, then are invited by email (`404 USER_NOT_FOUND` otherwise). On an org blog the reader must also
-be an active member of the organization (`409 NOT_A_MEMBER`), because org grants are only read for members. After a
-grant change the optional `onReaderAccessChanged(env, userId)` seam lets the host refresh that user's session. In
-otta-web all of this lives on the blog's **Settings** page; categories are locked from **Categories**.
+`lockedCategories` lists each effectively locked category with `inherited` (locked by a parent) and its `audienceIds`;
+`audiences` lists each audience with its `members` (`id`, `name`, `email`, `image`). Audience names are 1 to 60
+characters and unique per blog (`422 AUDIENCE_EXISTS`). Readers sign up first, then are added by email
+(`404 USER_NOT_FOUND` otherwise). An audience or category of another blog answers 404. The models are
+`OttablogAudience`, `OttablogAudienceMember` and `OttablogCategoryAudience`; deleting an audience or a category removes
+its rows in the other two. In otta-web all of this lives on the blog's **Settings** page; categories are locked from
+**Categories**.
 
 ## Models
 
@@ -20707,13 +20726,14 @@ for await (const page of Todo.pages({ perPage: 500, where: { completed: false } 
 ```
 
 `pages()` orders by the primary key and adds a caller filter with `$and`, so a scan cannot overwrite an existing
-primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`) and nested `$and`/`$or` groups are supported.
-OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from the
-array shorthand (`{ id: [..] }`), `$in`, nested boolean groups, or several lists in the same query; scalar bindings and
-search terms count against the same budget. Planned results are de-duplicated and receive the requested ordering,
-offset, and limit globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a
-projection. The same planner covers rows, counts, sums, and paginated totals. In the Worker template set
-`OTTAORM_MAX_ALL_ROWS` in the Wrangler environment; the generated ambient `CloudflareEnv` includes it.
+primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`), SQL patterns (`$like`, `$notLike`: a NULL column
+matches neither) and nested `$and`/`$or` groups are supported. OttaORM budgets bindings for the whole D1 statement.
+Large lists are recursively planned whether they come from the array shorthand (`{ id: [..] }`), `$in`, nested boolean
+groups, or several lists in the same query; scalar bindings and search terms count against the same budget. Planned
+results are de-duplicated and receive the requested ordering, offset, and limit globally. Columns needed only to merge
+ordered chunks are loaded internally and remain absent from a projection. The same planner covers rows, counts, sums,
+and paginated totals. In the Worker template set `OTTAORM_MAX_ALL_ROWS` in the Wrangler environment; the generated
+ambient `CloudflareEnv` includes it.
 
 ## D1 Database Setup
 
@@ -24475,8 +24495,7 @@ Default roles are seeded automatically during bootstrap (when the platform owner
 `Role.ensureDefaultRoles()`); to reconcile them later, run the secret-gated seed step: `POST /__bootstrap__/api/seed`.
 
 Creates tables: `roles`, `permissions`, `user_roles`. Default roles: `platform_owner`, `owner`, `admin`, `editor`,
-`author`, `viewer`, `member`, `insider` (invited reader of locked blog categories: holds only `posts:read_locked`, which
-`*:read` does not match)
+`author`, `viewer`, `member`
 
 ### 2. Initialize Cache
 

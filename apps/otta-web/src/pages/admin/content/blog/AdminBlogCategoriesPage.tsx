@@ -436,7 +436,7 @@ export function AdminBlogCategoriesPage() {
                                 <p className="text-xs leading-relaxed text-muted-foreground">
                                     {inheritsLock
                                         ? 'Already locked by a parent category.'
-                                        : 'Posts here and in child categories are readable only by invited readers. Set the public teaser and invite readers in Settings.'}
+                                        : 'Posts here and in child categories are readable only by the audiences you give it. Set the public teaser, audiences and who reads what in Settings.'}
                                 </p>
                             </div>
                             <Switch

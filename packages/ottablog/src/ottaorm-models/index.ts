@@ -48,3 +48,13 @@ export type { NewOttablogSettingsType, OttablogSettingsType } from './OttablogSe
 // Localized post versions
 export { PostTranslation, postTranslationsTable } from './PostTranslation';
 export type { NewPostTranslationType, PostTranslationType, PostTranslationWriteData } from './PostTranslation';
+
+// Audiences: readers of a blog's locked categories
+export { OttablogAudience, OttablogAudienceMember, OttablogCategoryAudience } from './OttablogAudience';
+export {
+    ottablogAudienceMembersTable,
+    ottablogAudiencesTable,
+    ottablogCategoryAudiencesTable,
+    type NewOttablogAudienceType,
+    type OttablogAudienceType,
+} from './OttablogAudience';

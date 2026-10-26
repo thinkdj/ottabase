@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { getSession } from '@ottabase/auth/backend';
+import { ANONYMOUS_VIEWER, type BlogViewer } from '@ottabase/ottablog';
 import { READ_LOCKED_POSTS_PERMISSION } from '@ottabase/ottaorm/models';
 import { hasPermission, isPlatformAdmin } from '@ottabase/rbac/admin-guard';
 import { getRequestContext } from '@ottabase/rbac/request-context';
@@ -179,18 +180,18 @@ export async function canManagePostInOrg(
 }
 
 /**
- * READ access to a blog's LOCKED (invite-only) categories: `posts:read_locked` evaluated in the
- * BLOG's scope, never the caller's own workspace (every signup owns one, as `owner`). The site
- * blog (null org) counts SYSTEM-scoped grants only (the `insider` role granted from the blog's
- * Settings, or platform_owner's '*:*'); an org blog counts grants in that org, which requires
- * active membership. Anonymous callers never reach the database.
+ * Who reads a blog with LOCKED (invite-only) categories: the signed-in user, matched against the
+ * blog's audiences by id, and whether they are the blog's staff (`posts:read_locked`, read every
+ * locked post). Staff is evaluated in the BLOG's scope, never the caller's own workspace (every
+ * signup owns one, as `owner`): the site blog (null org) counts SYSTEM-scoped grants only; an org
+ * blog counts grants in that org, which requires active membership. Fails closed to signed out.
  */
-export async function canReadLockedPosts(
+export async function resolveBlogViewer(
     context: ContentGuardContext,
     target: { organizationId: string | null },
-): Promise<boolean> {
+): Promise<BlogViewer> {
     const { request, env } = context;
-    if (!env?.OBCF_D1) return false;
+    if (!env?.OBCF_D1) return ANONYMOUS_VIEWER;
 
     initDbConnection(env);
 
@@ -201,10 +202,13 @@ export async function canReadLockedPosts(
             // null loads no org grants at all, so only the system scope is evaluated.
             organizationIdOverride: target.organizationId,
         });
-        if (!reqCtx.isAuthenticated || !reqCtx.user) return false;
+        if (!reqCtx.isAuthenticated || !reqCtx.user) return ANONYMOUS_VIEWER;
         const granted = target.organizationId === null ? reqCtx.systemPermissions : reqCtx.permissions;
-        return hasGrantedPermission(granted, READ_LOCKED_POSTS_PERMISSION);
+        return {
+            userId: String(reqCtx.user.get('id')),
+            readsAllLocked: hasGrantedPermission(granted, READ_LOCKED_POSTS_PERMISSION),
+        };
     } catch {
-        return false;
+        return ANONYMOUS_VIEWER;
     }
 }

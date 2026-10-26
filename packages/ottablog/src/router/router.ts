@@ -59,8 +59,22 @@ export function buildBlogRouter<Env = unknown>(
     r.post('/studio/languages', (c) => handlers.handleBlogStudioLanguages(ctxOf(c)));
     r.get('/studio/access', (c) => handlers.handleBlogStudioAccess(ctxOf(c)));
     r.post('/studio/access', (c) => handlers.handleBlogStudioAccess(ctxOf(c)));
-    r.post('/studio/access/readers', (c) => handlers.handleBlogStudioReaderGrant(ctxOf(c)));
-    r.delete('/studio/access/readers/:userId', (c) => handlers.handleBlogStudioReaderRevoke(ctxOf(c), c.params.userId));
+    r.post('/studio/audiences', (c) => handlers.handleBlogStudioAudienceCreate(ctxOf(c)));
+    r.patch('/studio/audiences/:audienceId', (c) =>
+        handlers.handleBlogStudioAudienceUpdate(ctxOf(c), c.params.audienceId),
+    );
+    r.delete('/studio/audiences/:audienceId', (c) =>
+        handlers.handleBlogStudioAudienceDelete(ctxOf(c), c.params.audienceId),
+    );
+    r.post('/studio/audiences/:audienceId/members', (c) =>
+        handlers.handleBlogStudioAudienceMemberAdd(ctxOf(c), c.params.audienceId),
+    );
+    r.delete('/studio/audiences/:audienceId/members/:userId', (c) =>
+        handlers.handleBlogStudioAudienceMemberRemove(ctxOf(c), c.params.audienceId, c.params.userId),
+    );
+    r.put('/studio/categories/:categoryId/audiences', (c) =>
+        handlers.handleBlogStudioCategoryAudiences(ctxOf(c), c.params.categoryId),
+    );
     r.get('/posts/:postId/translations', (c) => handlers.handleBlogPostTranslations(ctxOf(c), c.params.postId));
     r.post('/posts/:postId/translations', (c) => handlers.handleBlogPostTranslationCreate(ctxOf(c), c.params.postId));
     r.patch('/posts/:postId/translations/:language', (c) =>

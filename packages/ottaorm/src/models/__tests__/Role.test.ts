@@ -1,12 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import {
-    INSIDER_ROLE_NAME,
-    ORG_ADMIN_PERMISSION,
-    PLATFORM_OWNER_ROLE_NAME,
-    READ_LOCKED_POSTS_PERMISSION,
-    Role,
-} from '../Role';
+import { ORG_ADMIN_PERMISSION, PLATFORM_OWNER_ROLE_NAME, READ_LOCKED_POSTS_PERMISSION, Role } from '../Role';
 
 // ---------------------------------------------------------------------------
 // ensureDefaultRoles() heal
@@ -160,10 +154,6 @@ describe('Role.ensureDefaultRoles — heal mode', () => {
 
 describe('locked blog categories permission', () => {
     const permissionsOf = (name: string) => Role.DEFAULT_ROLE_DEFINITIONS.find((d) => d.name === name)!.permissions;
-
-    it('insider holds only posts:read_locked', () => {
-        expect(permissionsOf(INSIDER_ROLE_NAME)).toEqual([READ_LOCKED_POSTS_PERMISSION]);
-    });
 
     it('content managers hold it, plain readers do not (`*:read` never matches it)', () => {
         for (const name of ['owner', 'admin', 'editor', PLATFORM_OWNER_ROLE_NAME]) {

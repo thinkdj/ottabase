@@ -3,6 +3,12 @@ import type { Migration, ModelRLSConfig, SecurityContext } from '@ottabase/ottao
 import { ottablogMigrations } from './migrations';
 import {
     categoriesTable,
+    OttablogAudience,
+    OttablogAudienceMember,
+    ottablogAudienceMembersTable,
+    ottablogAudiencesTable,
+    OttablogCategoryAudience,
+    ottablogCategoryAudiencesTable,
     OttablogPlugin,
     ottablogPluginsTable,
     OttablogSettings,
@@ -39,6 +45,7 @@ const BLOG_SCOPED_TABLES = [
     'ottablog_plugins',
     'ottablog_settings',
     'post_translations',
+    'ottablog_audiences',
 ];
 
 /**
@@ -73,7 +80,7 @@ export function createOttablogPackage<Env = unknown>(options: OttablogPackageOpt
         name: 'Blog',
         version: '1.0.0',
         description:
-            'Site and organization blogs: posts, categories, tags, series, versions, translations, themes and plugins.',
+            'Site and organization blogs: posts, categories, tags, series, versions, translations, themes, plugins and audiences.',
         tables: {
             seriesTable,
             categoriesTable,
@@ -86,6 +93,9 @@ export function createOttablogPackage<Env = unknown>(options: OttablogPackageOpt
             ottablogThemesTable,
             ottablogSettingsTable,
             postTranslationsTable,
+            ottablogAudiencesTable,
+            ottablogAudienceMembersTable,
+            ottablogCategoryAudiencesTable,
         },
         migrations: ottablogMigrations as Migration[],
         models: [
@@ -100,6 +110,9 @@ export function createOttablogPackage<Env = unknown>(options: OttablogPackageOpt
             OttablogTheme,
             OttablogSettings,
             PostTranslation,
+            OttablogAudience,
+            OttablogAudienceMember,
+            OttablogCategoryAudience,
         ],
         policies: blogScopedPolicies(),
         ...options,

@@ -58,7 +58,7 @@ export class PostCategoryLink extends BaseModel {
         },
     };
 
-    // Every link write re-derives the post's denormalized `isLocked` flag (see PostCategory).
+    // Every link write re-derives the post's denormalized `lockKey` (see PostCategory).
     // Post and PostCategory import this module, so they are loaded lazily here.
 
     static async create<T extends typeof BaseModel>(

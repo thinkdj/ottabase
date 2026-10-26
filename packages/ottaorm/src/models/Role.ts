@@ -37,17 +37,15 @@ export const ORG_ADMIN_PERMISSION = 'org:admin';
 export const AI_MANAGE_PERMISSION = 'ai:manage';
 
 /**
- * Permission to read posts in LOCKED (invite-only) blog categories (@ottabase/ottablog).
+ * Read every post of a blog's LOCKED (invite-only) categories (@ottabase/ottablog): the blog's
+ * staff. Invited readers get in through the blog's audiences instead, which open only the
+ * categories they are given.
  *
- * One level above being signed in: every signup owns a personal workspace, so the grant is
- * evaluated in the BLOG's scope (system-scoped grants for the site blog, the blog's org for
- * an org blog), never against the caller's own workspace. Not matched by `*:read`, so viewers
- * and members do not hold it by accident.
+ * Evaluated in the BLOG's scope (system-scoped grants for the site blog, the blog's org for an
+ * org blog), never against the caller's own workspace, which every signup owns. Not matched by
+ * `*:read`, so viewers and members do not hold it by accident.
  */
 export const READ_LOCKED_POSTS_PERMISSION = 'posts:read_locked';
-
-/** Built-in role for invited readers of locked blog categories. Holds only the permission above. */
-export const INSIDER_ROLE_NAME = 'insider';
 
 /**
  * Scoped permission set for the org-level 'owner' / 'admin' roles.
@@ -328,11 +326,6 @@ export class Role extends BaseModel {
             name: 'member',
             description: 'Default member access',
             permissions: ['*:read'],
-        },
-        {
-            name: INSIDER_ROLE_NAME,
-            description: 'Invited reader: can read posts in locked (invite-only) blog categories',
-            permissions: [READ_LOCKED_POSTS_PERMISSION],
         },
     ];
 

@@ -15,7 +15,7 @@ vi.mock('../ottaorm-models', () => ({
     },
     PostCategory: {
         findBySlug: vi.fn(async () => null),
-        lockedIdsForScope: vi.fn(async () => new Set()),
+        lockAccessFor: vi.fn(async () => ({ locked: new Set(), forbidden: new Set() })),
         first: vi.fn(async () => null),
         create: vi.fn(async () => ({ get: () => 'category-1' })),
     },

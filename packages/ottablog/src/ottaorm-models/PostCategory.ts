@@ -13,7 +13,9 @@ import {
 } from '@ottabase/ottaorm';
 import { eq } from 'drizzle-orm';
 import { prepareCreateSlug, prepareUpdateSlug, type SlugLifecycleConfig } from '../slug-utils';
+import { NOTHING_LOCKED, type BlogViewer, type LockAccess } from '../lock-key';
 import { generateSlug, type BlogScope } from '../types';
+import { OttablogAudienceMember, OttablogCategoryAudience, ottablogCategoryAudiencesTable } from './OttablogAudience';
 import { categoriesTable } from './PostCategory.schema';
 import { PostCategoryLink, postCategoryLinksTable } from './PostCategoryLink';
 
@@ -255,9 +257,9 @@ export class PostCategory extends BaseModel {
 
     // ==================== Locking ====================
     //
-    // A category's lock is inherited by its descendants. Posts carry a denormalized `isLocked`
-    // flag (any of their categories effectively locked) so public lists filter in SQL; every
-    // write that can change it re-syncs the affected posts here or in PostCategoryLink.
+    // A category's lock is inherited by its descendants. Posts carry a denormalized `lockKey`
+    // (their effectively locked categories) so public lists filter in SQL; every write that can
+    // change it re-syncs the affected posts here or in PostCategoryLink.
 
     static async update<T extends typeof BaseModel>(
         this: T,
@@ -330,10 +332,51 @@ export class PostCategory extends BaseModel {
         return new Set(rows.filter((row) => lockedOf(row.id, 0)).map((row) => row.id));
     }
 
-    /** Effectively locked categories of one blog (one query). */
-    static async lockedIdsForScope(scope: BlogScope): Promise<Set<string>> {
-        const rows = (await this.where({ ...scope }, { select: LOCK_COLUMNS })).map(toLockRow);
-        return rows.some((row) => row.isLocked) ? this.effectiveLockedIds(rows) : new Set();
+    /**
+     * What a reader may open of a blog's locked categories. A category opens to the members of an
+     * audience given it or any of its ancestors; the blog's staff open everything, a signed-out
+     * reader nothing. One category query, plus two small ones for a signed-in reader when
+     * something is locked. A lazy `viewer` is resolved only then.
+     */
+    static async lockAccessFor(
+        blog: BlogScope,
+        viewerOrResolve: BlogViewer | (() => Promise<BlogViewer>),
+    ): Promise<LockAccess> {
+        const rows = (await this.where({ ...blog }, { select: LOCK_COLUMNS })).map(toLockRow);
+        if (!rows.some((row) => row.isLocked)) return NOTHING_LOCKED;
+        const locked = this.effectiveLockedIds(rows);
+        const viewer = typeof viewerOrResolve === 'function' ? await viewerOrResolve() : viewerOrResolve;
+        if (viewer.readsAllLocked) return { locked, forbidden: new Set() };
+        if (!viewer.userId) return { locked, forbidden: new Set(locked) };
+
+        const grants = await OttablogCategoryAudience.where(
+            { categoryId: [...locked] },
+            { select: ['categoryId', 'audienceId'] },
+        );
+        const audienceIds = [...new Set(grants.map((grant) => String(grant.get('audienceId'))))];
+        const memberships =
+            audienceIds.length > 0
+                ? await OttablogAudienceMember.where(
+                      { userId: viewer.userId, audienceId: audienceIds },
+                      { select: ['audienceId'] },
+                  )
+                : [];
+        const memberOf = new Set(memberships.map((row) => String(row.get('audienceId'))));
+        const granted = new Set(
+            grants
+                .filter((grant) => memberOf.has(String(grant.get('audienceId'))))
+                .map((grant) => String(grant.get('categoryId'))),
+        );
+        const parentOf = new Map(rows.map((row) => [row.id, row.parentId]));
+        const opens = (id: string): boolean => {
+            let current: string | null = id;
+            for (let depth = 0; current && depth <= MAX_CATEGORY_DEPTH; depth++) {
+                if (granted.has(current)) return true;
+                current = parentOf.get(current) ?? null;
+            }
+            return false;
+        };
+        return { locked, forbidden: new Set([...locked].filter((id) => !opens(id))) };
     }
 
     /** Which of these categories are effectively locked, walking up their ancestors. */
@@ -351,11 +394,14 @@ export class PostCategory extends BaseModel {
         return new Set(categoryIds.filter((id) => locked.has(id)));
     }
 
-    /** A category and every descendant in its app (one query). */
+    /** A category and every descendant in its blog (one query). */
     private static async subtreeIds(id: string): Promise<string[]> {
-        const [root] = await this.where({ id }, { select: ['id', 'appId'], limit: 1 });
+        const [root] = await this.where({ id }, { select: ['id', 'appId', 'organizationId'], limit: 1 });
         if (!root) return [id];
-        const rows = await this.where({ appId: root.get('appId') }, { select: ['id', 'parentId'] });
+        const rows = await this.where(
+            { appId: root.get('appId'), organizationId: root.get('organizationId') ?? null },
+            { select: ['id', 'parentId'] },
+        );
         const children = new Map<string, string[]>();
         for (const row of rows) {
             const parentId = row.get('parentId') as string | null;
@@ -407,7 +453,7 @@ export class PostCategory extends BaseModel {
         await this.syncSubtreePosts(id);
     }
 
-    /** Re-derive `posts.isLocked` for every post filed under this category or its descendants. */
+    /** Re-derive `posts.lockKey` for every post filed under this category or its descendants. */
     static async syncSubtreePosts(id: string): Promise<void> {
         const links = await PostCategoryLink.where({ categoryId: await this.subtreeIds(id) }, { select: ['postId'] });
         const { Post } = await import('./Post');
@@ -416,49 +462,34 @@ export class PostCategory extends BaseModel {
 
     /**
      * There are no FOREIGN KEY clauses in D1 (see Post.delete), so a deleted category would leave
-     * its links behind. Remove them, then re-derive the posts it may have locked.
+     * its post links and audience grants behind. Remove them, then re-derive the posts it may have
+     * locked.
      */
     private static async afterDelete(id: string, affectedPostIds: string[], driver?: DbDriver): Promise<void> {
-        await this.getDriver(driver)
-            .getDb()
-            .delete(postCategoryLinksTable)
-            .where(eq(postCategoryLinksTable.categoryId, id));
+        const db = this.getDriver(driver).getDb();
+        await db.delete(postCategoryLinksTable).where(eq(postCategoryLinksTable.categoryId, id));
+        await db.delete(ottablogCategoryAudiencesTable).where(eq(ottablogCategoryAudiencesTable.categoryId, id));
         if (affectedPostIds.length === 0) return;
         const { Post } = await import('./Post');
         await Post.syncLocked(affectedPostIds);
     }
 
-    /**
-     * Get root categories (no parent).
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
-     */
-    static async roots(options: { appId: string; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
-        const query: Record<string, unknown> = { parentId: null, appId: options.appId };
-
-        return this.where(query, {
-            orderBy: options?.orderBy || 'sortOrder',
-            orderDirection: options?.orderDirection || 'asc',
-        });
+    /** A blog's root categories (no parent). */
+    static async roots(scope: BlogScope & { orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
+        const { orderBy, orderDirection, ...blog } = scope;
+        return this.where(
+            { ...blog, parentId: null },
+            { orderBy: orderBy || 'sortOrder', orderDirection: orderDirection || 'asc' },
+        );
     }
 
-    /**
-     * Get children of a category.
-     * appId is required — matches NOT NULL schema constraint and prevents cross-tenant data leaks.
-     */
-    static async children(
-        parentId: string,
-        options: {
-            appId: string;
-            orderBy?: string;
-            orderDirection?: 'asc' | 'desc';
-        },
-    ) {
-        const query: Record<string, unknown> = { parentId, appId: options.appId };
-
-        return this.where(query, {
-            orderBy: options?.orderBy || 'sortOrder',
-            orderDirection: options?.orderDirection || 'asc',
-        });
+    /** A category's children, within its blog. */
+    static async children(parentId: string, scope: BlogScope & { orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
+        const { orderBy, orderDirection, ...blog } = scope;
+        return this.where(
+            { ...blog, parentId },
+            { orderBy: orderBy || 'sortOrder', orderDirection: orderDirection || 'asc' },
+        );
     }
 
     /** A category of one blog by slug. */

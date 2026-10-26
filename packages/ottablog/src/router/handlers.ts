@@ -12,17 +12,24 @@ import { isEmail } from '@ottabase/utils/string';
 import {
     DomainValidationError,
     globalRLS,
-    INSIDER_ROLE_NAME,
     MAX_SEARCH_TERM_BYTES,
     Organization,
-    OrganizationMember,
     RLSError,
-    Role,
     User,
-    UserRole,
     type SecurityContext,
 } from '@ottabase/ottaorm';
 import {
+    ANONYMOUS_VIEWER,
+    lockKeyIds,
+    NOTHING_LOCKED,
+    readableWhere,
+    type BlogViewer,
+    type LockAccess,
+} from '../lock-key';
+import {
+    OttablogAudience,
+    OttablogAudienceMember,
+    OttablogCategoryAudience,
     OttablogPlugin,
     OttablogSettings,
     PostTranslation,
@@ -312,19 +319,15 @@ function stripProtectedBody(post: Record<string, unknown>): void {
 }
 
 /** What one request may see of the blog's locked (invite-only) categories. */
-interface LockState {
-    /** Effectively locked categories of the blog scope (a lock covers child categories). */
-    lockedCategoryIds: Set<string>;
-    /** Fields of a locked post shown to a reader without access. Empty = hidden from them. */
+interface LockState extends LockAccess {
+    /** Fields of a locked post shown to a reader who may not open it. Empty = hidden from them. */
     teaser: LockedTeaserField[];
-    /** Locked categories exist and this caller cannot read them. */
-    restricted: boolean;
 }
 
-const UNLOCKED: LockState = { lockedCategoryIds: new Set(), teaser: [], restricted: false };
+const UNLOCKED: LockState = { ...NOTHING_LOCKED, teaser: [] };
 
-/** Grant scope of the site blog: SYSTEM-scoped grants (rbac's SYSTEM_ORGANIZATION_ID). */
-const SYSTEM_GRANT_SCOPE = 'system';
+/** Some locked category is closed to this reader. */
+const isRestricted = (lock: LockState) => lock.forbidden.size > 0;
 
 /**
  * Locked-post keys a teaser keeps besides the configured teaser fields. An allowlist, so a column
@@ -363,18 +366,29 @@ function lockedTeaserJson(post: Record<string, unknown>, teaser: LockedTeaserFie
 }
 
 /**
- * Where-clause keeping a restricted reader's results free of what they may not see: every locked
- * post when teasers are off (or `hideAll`), only the un-teasable locked blurbs when they are on.
+ * Where-clause keeping a reader's results free of what they may not see: every post closed to
+ * them when teasers are off (or `hideAll`), only the un-teasable closed blurbs when they are on.
  */
 function lockedPostsWhere(lock: LockState, hideAll = false): Record<string, unknown> {
-    if (!lock.restricted) return {};
-    if (hideAll || lock.teaser.length === 0) return { isLocked: false };
-    return { $or: [{ isLocked: false }, { contentType: { $ne: 'blurb' } }] };
+    const readable = readableWhere(lock);
+    if (Object.keys(readable).length === 0) return {};
+    if (hideAll || lock.teaser.length === 0) return { $and: [readable] };
+    return { $and: [{ $or: [readable, { contentType: { $ne: 'blurb' } }] }] };
+}
+
+/** A post's locked categories (its lock key, confirmed against live links) and whether it is closed to this reader. */
+function lockOf(
+    lock: LockState,
+    lockKey: unknown,
+    linkedCategoryIds: string[],
+): { isLocked: boolean; closed: boolean } {
+    const sources = [...lockKeyIds(lockKey as string | null), ...linkedCategoryIds].filter((id) => lock.locked.has(id));
+    return { isLocked: sources.length > 0, closed: sources.some((id) => lock.forbidden.has(id)) };
 }
 
 /** A response that depends on the caller's access must never be shared by a cache. */
 function lockHeaders(lock: LockState): HeadersInit | undefined {
-    return lock.lockedCategoryIds.size > 0 ? { 'Cache-Control': 'private, no-store' } : undefined;
+    return lock.locked.size > 0 ? { 'Cache-Control': 'private, no-store' } : undefined;
 }
 
 /**
@@ -393,7 +407,7 @@ async function enrichPostsJsonBatch(
         /**
          * Locked categories: flags locked posts and, for a restricted reader, swaps each for its
          * teaser or drops it. Checked against the page's real category links as well as the
-         * stored `isLocked` flag, so a stale flag never ships a locked body.
+         * stored lock key, so a stale key never ships a closed body.
          */
         lock?: LockState;
     },
@@ -442,7 +456,7 @@ async function enrichPostsJsonBatch(
                 id: c.get('id') as string,
                 name: c.get('name') as string,
                 slug: c.get('slug') as string,
-                isLocked: lock.lockedCategoryIds.has(c.get('id') as string),
+                isLocked: lock.locked.has(c.get('id') as string),
             });
         }
     } catch {
@@ -557,12 +571,10 @@ async function enrichPostsJsonBatch(
             if (column !== 'privateNotes' && !(column in rest)) rest[column] = null;
         }
 
-        const isLocked =
-            lock.lockedCategoryIds.size > 0 &&
-            (record.get('isLocked') === true ||
-                (catIdsByPost.get(postId) ?? []).some((cid) => lock.lockedCategoryIds.has(cid)));
+        const { isLocked, closed } = lockOf(lock, record.get('lockKey'), catIdsByPost.get(postId) ?? []);
+        delete rest.lockKey;
         rest.isLocked = isLocked;
-        if (isLocked && lock.restricted) {
+        if (closed) {
             return isTeasable(rest.contentType, lock) ? lockedTeaserJson(rest, lock.teaser) : null;
         }
 
@@ -635,11 +647,12 @@ async function publicPostJson(
         translation?: PostTranslation | null;
         languageConfig?: BlogLanguageConfig;
         /** Effectively locked categories of the blog, to flag each category. */
-        lockedCategoryIds?: Set<string>;
+        lockedCategories?: Set<string>;
     },
 ) {
     const j = record.toJson() as Record<string, unknown>;
-    const { privateNotes, ...baseRest } = j;
+    // The lock key names the post's locked categories: internal, the payload says `isLocked`.
+    const { privateNotes, lockKey, ...baseRest } = j;
     const publishedTranslations = options?.languageConfig
         ? await PostTranslation.forPublicPosts([String(record.get('id'))])
         : [];
@@ -693,7 +706,7 @@ async function publicPostJson(
                     id: c!.get('id'),
                     name: c!.get('name'),
                     slug: c!.get('slug'),
-                    isLocked: options?.lockedCategoryIds?.has(c!.get('id') as string) ?? false,
+                    isLocked: options?.lockedCategories?.has(c!.get('id') as string) ?? false,
                 }));
             } else {
                 rest.categories = [];
@@ -798,35 +811,41 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     /**
-     * Locked-category state for this request. Costs one small category query when nothing is
-     * locked; the access check runs only when something is. `anonymous` skips it for responses a
-     * shared cache may store (RSS, sitemap): they must look the same for everyone.
+     * Who is reading, for locked categories. Fail closed: no seam, or a failing one, is a
+     * signed-out reader.
      */
-    async function resolveLock(context: Ctx, blog: BlogScope, options?: { anonymous?: boolean }): Promise<LockState> {
-        const lockedCategoryIds = await PostCategory.lockedIdsForScope(blog);
-        if (lockedCategoryIds.size === 0) return UNLOCKED;
-        const settings = await settingsFor(context, blog);
-        const teaser = settings?.lockedTeaser() ?? [];
-        const restricted = options?.anonymous === true || !(await canReadLocked(context, blog.organizationId));
-        return { lockedCategoryIds, teaser, restricted };
-    }
-
-    /** Fail closed: no seam, or a failing one, means no access. */
-    async function canReadLocked(context: Ctx, organizationId: string | null): Promise<boolean> {
-        if (!config.canReadLocked) return false;
+    async function viewerOf(context: Ctx, organizationId: string | null): Promise<BlogViewer> {
+        if (!config.resolveViewer) return ANONYMOUS_VIEWER;
         try {
-            return await config.canReadLocked(context, { organizationId });
+            return await config.resolveViewer(context, { organizationId });
         } catch {
-            return false;
+            return ANONYMOUS_VIEWER;
         }
     }
 
-    /** A post's lock: the stored flag, confirmed against its category links (defense in depth). */
-    async function postIsLocked(record: Post, lock: LockState): Promise<boolean> {
-        if (lock.lockedCategoryIds.size === 0) return false;
-        if (record.get('isLocked') === true) return true;
+    /**
+     * Locked-category state for this request. Costs one small category query when nothing is
+     * locked; the reader is resolved only when something is. `anonymous` skips that for responses
+     * a shared cache may store (RSS, sitemap): they must look the same for everyone.
+     */
+    async function resolveLock(context: Ctx, blog: BlogScope, options?: { anonymous?: boolean }): Promise<LockState> {
+        const access = await PostCategory.lockAccessFor(blog, () =>
+            options?.anonymous ? Promise.resolve(ANONYMOUS_VIEWER) : viewerOf(context, blog.organizationId),
+        );
+        if (access.locked.size === 0) return UNLOCKED;
+        const teaser = access.forbidden.size > 0 ? ((await settingsFor(context, blog))?.lockedTeaser() ?? []) : [];
+        return { ...access, teaser };
+    }
+
+    /** A post's lock for this reader: its lock key, confirmed against its live category links. */
+    async function postLock(record: Post, lock: LockState): Promise<{ isLocked: boolean; closed: boolean }> {
+        if (lock.locked.size === 0) return { isLocked: false, closed: false };
         const links = await PostCategoryLink.where({ postId: String(record.get('id')) }, { select: ['categoryId'] });
-        return links.some((link) => lock.lockedCategoryIds.has(String(link.get('categoryId'))));
+        return lockOf(
+            lock,
+            record.get('lockKey'),
+            links.map((link) => String(link.get('categoryId'))),
+        );
     }
 
     async function languageConfigFor(context: Ctx, blog: BlogScope): Promise<BlogLanguageConfig> {
@@ -1102,28 +1121,15 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
     }
 
     // ============================================================
-    // LOCKED CATEGORIES: teaser policy + invited readers (studio admin)
+    // LOCKED CATEGORIES: teaser policy and audiences (studio admin)
     // ============================================================
 
-    /** The blog a studio access request administers, and where its reader grants live. */
-    async function accessScope(context: Ctx) {
-        const studio = await studioBlog(context);
-        if (studio instanceof Response) return studio;
-        return {
-            ...studio.blog,
-            // Site blog: SYSTEM-scoped grants. Org blog: grants in that org (members only).
-            grantScope: studio.blog.organizationId ?? SYSTEM_GRANT_SCOPE,
-            adminUserId: studio.admin.session?.user?.id ?? undefined,
-        };
-    }
-    type AccessScope = Exclude<Awaited<ReturnType<typeof accessScope>>, Response>;
-
-    async function accessState(scope: AccessScope) {
-        const blog = { appId: scope.appId, organizationId: scope.organizationId };
-        const [settings, categories, role] = await Promise.all([
+    /** A blog's access settings in one payload: the teaser, its locked categories, its audiences. */
+    async function accessState(blog: BlogScope) {
+        const [settings, categories, audiences] = await Promise.all([
             OttablogSettings.forBlog(blog),
-            PostCategory.where(blog, { select: ['id', 'name', 'slug', 'parentId', 'isLocked'] }),
-            Role.findByName(INSIDER_ROLE_NAME),
+            PostCategory.where({ ...blog }, { select: ['id', 'name', 'slug', 'parentId', 'isLocked'] }),
+            OttablogAudience.forBlog(blog),
         ]);
         const lockedIds = PostCategory.effectiveLockedIds(
             categories.map((c) => ({
@@ -1132,9 +1138,33 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 isLocked: Boolean(c.get('isLocked')),
             })),
         );
-        const grants = role ? await UserRole.where({ roleId: role.get('id'), organizationId: scope.grantScope }) : [];
-        const userIds = [...new Set(grants.map((grant) => String(grant.get('userId'))))];
-        const users = await User.whereIn('id', userIds, { select: ['id', 'name', 'email', 'image'] });
+        const audienceIds = audiences.map((audience) => String(audience.get('id')));
+        const [grants, members] = await Promise.all([
+            lockedIds.size > 0
+                ? OttablogCategoryAudience.where(
+                      { categoryId: [...lockedIds] },
+                      { select: ['categoryId', 'audienceId'] },
+                  )
+                : [],
+            audienceIds.length > 0
+                ? OttablogAudienceMember.where({ audienceId: audienceIds }, { select: ['audienceId', 'userId'] })
+                : [],
+        ]);
+        const users = await User.whereIn('id', [...new Set(members.map((member) => String(member.get('userId'))))], {
+            select: ['id', 'name', 'email', 'image'],
+        });
+        const readerById = new Map(
+            users.map((user) => [
+                String(user.get('id')),
+                { id: user.get('id'), name: user.get('name'), email: user.get('email'), image: user.get('image') },
+            ]),
+        );
+        const idsOf = (
+            rows: Array<{ get(field: string): unknown }>,
+            match: string,
+            matchField: string,
+            field: string,
+        ) => rows.filter((row) => String(row.get(matchField)) === match).map((row) => String(row.get(field)));
         return {
             lockedTeaser: settings?.lockedTeaser() ?? [],
             lockedCategories: categories
@@ -1144,89 +1174,138 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                     name: c.get('name'),
                     slug: c.get('slug'),
                     inherited: !c.get('isLocked'),
+                    audienceIds: idsOf(grants, String(c.get('id')), 'categoryId', 'audienceId'),
                 })),
-            readers: users.map((user) => ({
-                id: user.get('id'),
-                name: user.get('name'),
-                email: user.get('email'),
-                image: user.get('image'),
+            audiences: audiences.map((audience) => ({
+                id: audience.get('id'),
+                name: audience.get('name'),
+                members: idsOf(members, String(audience.get('id')), 'audienceId', 'userId')
+                    .map((userId) => readerById.get(userId))
+                    .filter(Boolean),
             })),
         };
     }
 
-    async function readerAccessChanged(env: Env, userId: string): Promise<void> {
+    /**
+     * Change the access settings of the caller's editorial blog (its Studio admin only), then
+     * answer with the new state. `change` returns a Response to refuse.
+     */
+    async function changeAccess(
+        context: Ctx,
+        change: (blog: BlogScope) => Promise<Response | void> = async () => {},
+    ): Promise<Response> {
+        const studio = await studioBlog(context);
+        if (studio instanceof Response) return studio;
         try {
-            await config.onReaderAccessChanged?.(env, userId);
-        } catch {
-            // Session refresh is best-effort: the grant itself is already authoritative.
+            const refused = await change(studio.blog);
+            if (refused) return refused;
+        } catch (error) {
+            if (!(error instanceof DomainValidationError)) throw error;
+            return errorResponse(error.message, error.status, { code: error.code, fieldErrors: error.fieldErrors });
         }
+        return jsonResponse(await accessState(studio.blog), 200, { headers: NO_STORE });
     }
 
-    /** GET: teaser policy, locked categories and invited readers. POST { lockedTeaser }: save the policy. */
+    const audienceNotFound = () => errorResponse('Audience not found', 404, { code: 'NOT_FOUND' });
+
+    /** An audience of this blog by id, or a 404 (never another blog's). */
+    async function audienceIn(blog: BlogScope, audienceId: string): Promise<OttablogAudience | Response> {
+        return (await OttablogAudience.findInBlog(audienceId, blog)) ?? audienceNotFound();
+    }
+
+    /** GET: the access settings. POST { lockedTeaser }: save what readers without access see. */
     async function handleBlogStudioAccess(context: Ctx): Promise<Response> {
-        const scope = await accessScope(context);
-        if (scope instanceof Response) return scope;
-        if (context.request.method === 'POST') {
-            const body = await readJson<{ lockedTeaser?: unknown }>(context.request);
-            if (!Array.isArray(body.lockedTeaser)) {
+        if (context.request.method !== 'POST') return changeAccess(context);
+        const body = await readJson<{ lockedTeaser?: unknown } | null>(context.request);
+        return changeAccess(context, async (blog) => {
+            if (!Array.isArray(body?.lockedTeaser)) {
                 return errorResponse('lockedTeaser must be an array of field names', 400, { code: 'VALIDATION_ERROR' });
             }
-            const settings = await OttablogSettings.ensure({
-                appId: scope.appId,
-                organizationId: scope.organizationId,
-            });
-            await settings.updateLockedTeaser(body.lockedTeaser);
-        }
-        return jsonResponse(await accessState(scope), 200, { headers: NO_STORE });
+            await (await OttablogSettings.ensure(blog)).updateLockedTeaser(body.lockedTeaser);
+        });
     }
 
-    /** POST { email }: give an existing account reader access to this blog's locked categories. */
-    async function handleBlogStudioReaderGrant(context: Ctx): Promise<Response> {
-        const scope = await accessScope(context);
-        if (scope instanceof Response) return scope;
-        const body = await readJson<{ email?: unknown }>(context.request);
-        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-        if (!isEmail(email)) {
-            return errorResponse('Enter a valid email address', 400, {
-                code: 'VALIDATION_ERROR',
-                fieldErrors: { email: ['Enter a valid email address'] },
-            });
-        }
-        const user = await User.findByEmail(email);
-        if (!user) {
-            return errorResponse('No account uses this email yet. Ask them to sign up, then invite them.', 404, {
-                code: 'USER_NOT_FOUND',
-            });
-        }
-        const userId = String(user.get('id'));
-        // An org blog's grants are read in that org, which needs membership: invite them there first.
-        if (scope.organizationId && !(await OrganizationMember.isMember(userId, scope.organizationId))) {
-            return errorResponse('Add this person to the organization first, then invite them as a reader.', 409, {
-                code: 'NOT_A_MEMBER',
-            });
-        }
-        let role = await Role.findByName(INSIDER_ROLE_NAME);
-        if (!role) {
-            // Installs older than the insider role get it here (create-if-missing only).
-            await Role.ensureDefaultRoles();
-            role = await Role.findByName(INSIDER_ROLE_NAME);
-        }
-        if (!role) return errorResponse('Reader role is unavailable', 500, { code: 'ROLE_MISSING' });
-        await user.assignRole(String(role.get('id')), scope.adminUserId, scope.grantScope);
-        await readerAccessChanged(context.env, userId);
-        return jsonResponse(await accessState(scope), 200, { headers: NO_STORE });
+    /** POST { name }: a new audience. */
+    async function handleBlogStudioAudienceCreate(context: Ctx): Promise<Response> {
+        const body = await readJson<{ name?: unknown } | null>(context.request);
+        return changeAccess(context, async (blog) => {
+            await OttablogAudience.createInBlog(blog, body?.name);
+        });
     }
 
-    /** DELETE: revoke a reader's access to this blog's locked categories. */
-    async function handleBlogStudioReaderRevoke(context: Ctx, userId: string): Promise<Response> {
-        const scope = await accessScope(context);
-        if (scope instanceof Response) return scope;
-        const role = await Role.findByName(INSIDER_ROLE_NAME);
-        if (role) {
-            await UserRole.removeRole(userId, String(role.get('id')), scope.grantScope);
-            await readerAccessChanged(context.env, userId);
-        }
-        return jsonResponse(await accessState(scope), 200, { headers: NO_STORE });
+    /** PATCH { name }: rename an audience. */
+    async function handleBlogStudioAudienceUpdate(context: Ctx, audienceId: string): Promise<Response> {
+        const body = await readJson<{ name?: unknown } | null>(context.request);
+        return changeAccess(context, async (blog) => {
+            const audience = await audienceIn(blog, audienceId);
+            if (audience instanceof Response) return audience;
+            await audience.rename(body?.name);
+        });
+    }
+
+    /** DELETE: an audience, with its members and the categories it was given. */
+    async function handleBlogStudioAudienceDelete(context: Ctx, audienceId: string): Promise<Response> {
+        return changeAccess(context, async (blog) => {
+            const audience = await audienceIn(blog, audienceId);
+            if (audience instanceof Response) return audience;
+            await OttablogAudience.delete(audienceId);
+        });
+    }
+
+    /** POST { email }: add an existing account to an audience. Any account: no organization membership needed. */
+    async function handleBlogStudioAudienceMemberAdd(context: Ctx, audienceId: string): Promise<Response> {
+        const body = await readJson<{ email?: unknown } | null>(context.request);
+        return changeAccess(context, async (blog) => {
+            const audience = await audienceIn(blog, audienceId);
+            if (audience instanceof Response) return audience;
+            const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+            if (!isEmail(email)) {
+                return errorResponse('Enter a valid email address', 400, {
+                    code: 'VALIDATION_ERROR',
+                    fieldErrors: { email: ['Enter a valid email address'] },
+                });
+            }
+            const user = await User.findByEmail(email);
+            if (!user) {
+                return errorResponse('No account uses this email yet. Ask them to sign up, then add them.', 404, {
+                    code: 'USER_NOT_FOUND',
+                });
+            }
+            await audience.addMember(String(user.get('id')));
+        });
+    }
+
+    /** DELETE: remove a reader from an audience. */
+    async function handleBlogStudioAudienceMemberRemove(
+        context: Ctx,
+        audienceId: string,
+        userId: string,
+    ): Promise<Response> {
+        return changeAccess(context, async (blog) => {
+            const audience = await audienceIn(blog, audienceId);
+            if (audience instanceof Response) return audience;
+            await audience.removeMember(userId);
+        });
+    }
+
+    /** PUT { audienceIds }: the audiences that open a locked category (and its subcategories). */
+    async function handleBlogStudioCategoryAudiences(context: Ctx, categoryId: string): Promise<Response> {
+        const body = await readJson<{ audienceIds?: unknown } | null>(context.request);
+        return changeAccess(context, async (blog) => {
+            const category = await PostCategory.first({ id: categoryId, ...blog });
+            if (!category) return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
+            const ids = body?.audienceIds;
+            if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string')) {
+                return errorResponse('audienceIds must be an array of audience ids', 400, {
+                    code: 'VALIDATION_ERROR',
+                });
+            }
+            const wanted = [...new Set(ids)];
+            const found =
+                wanted.length > 0 ? await OttablogAudience.where({ id: wanted, ...blog }, { select: ['id'] }) : [];
+            if (found.length !== wanted.length) return audienceNotFound();
+            await OttablogCategoryAudience.setForCategory(categoryId, wanted);
+        });
     }
 
     async function translationPostFor(
@@ -2118,8 +2197,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         // A preview token is the editor's review artifact, minted by someone who may edit the
         // post, so it skips the locked-category check like it skips the published filter.
         const lock = preview ? UNLOCKED : await resolveLock(context, scope);
-        const isLocked = await postIsLocked(record, lock);
-        const asTeaser = isLocked && lock.restricted;
+        const { isLocked, closed: asTeaser } = await postLock(record, lock);
         if (asTeaser && !isTeasable(record.get('contentType'), lock)) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
@@ -2134,7 +2212,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             enrichAuthor: true,
             translation: localized?.translation ?? null,
             languageConfig,
-            lockedCategoryIds: lock.lockedCategoryIds,
+            lockedCategories: lock.locked,
         });
         data.isLocked = isLocked;
         if (asTeaser) return jsonResponse(lockedTeaserJson(data, lock.teaser), 200, { headers: lockHeaders(lock) });
@@ -2173,8 +2251,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
 
         // A password never opens a locked category: that needs reader access, not a secret.
         const lock = await resolveLock(context, scope);
-        const isLocked = await postIsLocked(record, lock);
-        if (isLocked && lock.restricted) {
+        const { isLocked, closed } = await postLock(record, lock);
+        if (closed) {
             return isTeasable(record.get('contentType'), lock)
                 ? errorResponse('This post is for invited readers', 403, { code: 'LOCKED' })
                 : errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
@@ -2191,7 +2269,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 enrichAuthor: true,
                 translation: localized?.translation ?? null,
                 languageConfig,
-                lockedCategoryIds: lock.lockedCategoryIds,
+                lockedCategories: lock.locked,
             });
             return jsonResponse({ ...data, isLocked }, 200, { headers: lockHeaders(lock) });
         }
@@ -2209,7 +2287,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             enrichAuthor: true,
             translation: localized?.translation ?? null,
             languageConfig,
-            lockedCategoryIds: lock.lockedCategoryIds,
+            lockedCategories: lock.locked,
         });
         return jsonResponse({ ...data, isLocked }, 200, { headers: lockHeaders(lock) });
     }
@@ -2241,7 +2319,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         const tag = await PostTag.findBySlug(slug, { ...blog.scope, type });
         if (!tag) return errorResponse('Tag not found', 404, { code: 'NOT_FOUND' });
         const lock = await resolveLock(context, blog.scope);
-        if (lock.restricted) {
+        if (isRestricted(lock)) {
             const links = await PostTagLink.where({ tagId: String(tag.get('id')) }, { select: ['postId'] });
             const postIds = links.map((link) => String(link.get('postId')));
             if (postIds.length === 0 || !(await hasVisiblePost(blog.scope, lock, { id: postIds }))) {
@@ -2263,10 +2341,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
         }
         // `isLocked` reports the EFFECTIVE lock (a parent's lock covers its children). With
-        // teasers off, a locked category does not exist for a reader without access.
+        // teasers off, a locked category closed to this reader does not exist for them.
         const lock = await resolveLock(context, blog.scope);
-        const isLocked = lock.lockedCategoryIds.has(String(category.get('id')));
-        if (isLocked && lock.restricted && lock.teaser.length === 0) {
+        const categoryId = String(category.get('id'));
+        const isLocked = lock.locked.has(categoryId);
+        if (lock.forbidden.has(categoryId) && lock.teaser.length === 0) {
             return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
         }
         return jsonResponse({ ...category.toJson(), isLocked }, 200, { headers: lockHeaders(lock) });
@@ -2360,7 +2439,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         }
 
         const lock = await resolveLock(context, scope);
-        if (lock.restricted && (await postIsLocked(post, lock)) && !isTeasable(post.get('contentType'), lock)) {
+        if ((await postLock(post, lock)).closed && !isTeasable(post.get('contentType'), lock)) {
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
 
@@ -2372,8 +2451,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             ...scope,
             categoryIds,
             contentType: post.get('contentType') as string,
-            // Suggestions never tease: a restricted reader is only pointed at what they can read.
-            excludeLocked: lock.restricted,
+            // Suggestions never tease: a reader is only pointed at what they can open.
+            where: readableWhere(lock),
             limit,
         });
 
@@ -3173,8 +3252,12 @@ ${urls}
         handleBlogStudioBlog,
         handleBlogStudioLanguages,
         handleBlogStudioAccess,
-        handleBlogStudioReaderGrant,
-        handleBlogStudioReaderRevoke,
+        handleBlogStudioAudienceCreate,
+        handleBlogStudioAudienceUpdate,
+        handleBlogStudioAudienceDelete,
+        handleBlogStudioAudienceMemberAdd,
+        handleBlogStudioAudienceMemberRemove,
+        handleBlogStudioCategoryAudiences,
         handleBlogPostTranslations,
         handleBlogPostTranslationCreate,
         handleBlogPostTranslationUpdate,

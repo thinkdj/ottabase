@@ -9,6 +9,7 @@
  */
 
 import type { BlogExportPost } from '../import-export';
+import type { BlogViewer } from '../lock-key';
 import type { BlogLanguageConfig, ContentType, HeroImage, SeoMeta } from '../types';
 import type { SecurityContext } from '@ottabase/ottaorm';
 
@@ -129,19 +130,14 @@ export interface BlogRouterConfig<Env = unknown> {
     ) => Promise<BlogAdminResult | Response>;
 
     /**
-     * May this caller read posts in LOCKED (invite-only) categories of the given blog scope? Evaluate
-     * the grant IN that scope (never the caller's own workspace, which every signup owns):
-     * system-scoped grants for the site blog (null), that organization's grants for an org blog.
-     * otta-web checks `posts:read_locked` (the `insider` role). Absent = nobody may: locked posts
-     * stay locked, served as teasers or hidden per the blog's teaser setting.
+     * Who is reading, for LOCKED (invite-only) categories: the signed-in user (null when signed
+     * out) and whether they are the blog's staff, who read every locked post. Evaluate staff IN
+     * the blog's scope, never the caller's own workspace (every signup owns one): system-scoped
+     * grants for the site blog (null), that organization's grants for an org blog. otta-web checks
+     * `posts:read_locked`. Everyone else opens what their audiences are given. Absent, or
+     * failing: every reader is signed out, so locked posts stay closed (teased or hidden).
      */
-    canReadLocked?: (ctx: BlogRequestContext<Env>, target: { organizationId: string | null }) => Promise<boolean>;
-
-    /**
-     * Called after a reader grant changes, to refresh that user's live session (e.g. bump their
-     * profile version). Optional and best-effort: `canReadLocked` should read grants fresh anyway.
-     */
-    onReaderAccessChanged?: (env: Env, userId: string) => Promise<void> | void;
+    resolveViewer?: (ctx: BlogRequestContext<Env>, target: { organizationId: string | null }) => Promise<BlogViewer>;
 
     /** Cron-secret check for POST /publish-scheduled. */
     checkCronAuth: (request: Request, env: Env) => boolean;
@@ -223,8 +219,16 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogStudioThemeTokens(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioLanguages(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioAccess(ctx: BlogRequestContext<Env>): Promise<Response>;
-    handleBlogStudioReaderGrant(ctx: BlogRequestContext<Env>): Promise<Response>;
-    handleBlogStudioReaderRevoke(ctx: BlogRequestContext<Env>, userId: string): Promise<Response>;
+    handleBlogStudioAudienceCreate(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioAudienceUpdate(ctx: BlogRequestContext<Env>, audienceId: string): Promise<Response>;
+    handleBlogStudioAudienceDelete(ctx: BlogRequestContext<Env>, audienceId: string): Promise<Response>;
+    handleBlogStudioAudienceMemberAdd(ctx: BlogRequestContext<Env>, audienceId: string): Promise<Response>;
+    handleBlogStudioAudienceMemberRemove(
+        ctx: BlogRequestContext<Env>,
+        audienceId: string,
+        userId: string,
+    ): Promise<Response>;
+    handleBlogStudioCategoryAudiences(ctx: BlogRequestContext<Env>, categoryId: string): Promise<Response>;
     handleBlogPostTranslations(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
     handleBlogPostTranslationCreate(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
     handleBlogPostTranslationUpdate(ctx: BlogRequestContext<Env>, postId: string, language: string): Promise<Response>;

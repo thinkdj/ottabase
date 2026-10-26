@@ -14,7 +14,7 @@ import {
     type PackageType,
     type UpdateMutationContext,
 } from '@ottabase/ottaorm';
-import { and, eq, inArray, isNotNull, lte, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import {
     calculateReadingTime,
     BlurbValidationError,
@@ -43,6 +43,7 @@ import {
     type PostCrosspost,
     type PostStatus,
 } from '../types';
+import { formatLockKey } from '../lock-key';
 import { postsTable } from './Post.schema';
 // Static on purpose: none of these modules imports Post, so there is no cycle to break
 // (dynamic imports stay only for PostTranslation/OttablogSettings below).
@@ -89,7 +90,7 @@ export interface ScheduledPublishResult {
 
 /** Leaves five D1 bind slots for status/timestamp predicates and update values. */
 const MAX_SCHEDULED_PUBLISH_BATCH = 90;
-/** Ids per `isLocked` sync UPDATE, under D1's 100 bound parameters with room for the predicates. */
+/** Ids per `lockKey` sync UPDATE, under D1's 100 bound parameters with room for the predicates. */
 const LOCK_SYNC_CHUNK = 90;
 
 function photoJournalWordCount(note: string | null, items: PhotoJournalItem[]): number {
@@ -359,7 +360,6 @@ export class Post extends BaseModel {
         isFeatured: 'boolean' as const,
         allowComments: 'boolean' as const,
         isProtected: 'boolean' as const,
-        isLocked: 'boolean' as const,
         readingTimeMinutes: 'number' as const,
         wordCount: 'number' as const,
         viewCount: 'number' as const,
@@ -890,16 +890,15 @@ export class Post extends BaseModel {
                 colWidth: 120,
             },
         },
-        isLocked: {
-            type: 'boolean',
+        lockKey: {
+            type: 'string',
             editable: false,
-            filterable: true,
             uiConfig: {
-                label: 'Locked',
-                description: 'In a locked (invite-only) category. Set by the categories, not edited here.',
+                label: 'Locked by',
+                description: 'The locked (invite-only) categories it is filed under. Set by the categories.',
             },
             formConfig: { visible: false },
-            tableConfig: { visible: true, colWidth: 100 },
+            tableConfig: { visible: false },
         },
         passwordHash: {
             type: 'string',
@@ -1711,41 +1710,52 @@ export class Post extends BaseModel {
     // LOCKED CATEGORIES
     // ============================================================
 
-    /** Ground truth: which of these posts sit in an effectively locked category right now. */
-    static async lockedAmong(postIds: string[]): Promise<Set<string>> {
-        if (postIds.length === 0) return new Set();
+    /**
+     * Ground truth: the lock key of each of these posts that sits in an effectively locked
+     * category right now (see lock-key.ts). Posts in none are absent.
+     */
+    static async lockKeysOf(postIds: string[]): Promise<Map<string, string>> {
+        const keys = new Map<string, string>();
+        if (postIds.length === 0) return keys;
         const links = await PostCategoryLink.where({ postId: postIds }, { select: ['postId', 'categoryId'] });
-        if (links.length === 0) return new Set();
-        const lockedCategories = await PostCategory.lockedAmong(links.map((link) => String(link.get('categoryId'))));
-        return new Set(
-            links
-                .filter((link) => lockedCategories.has(String(link.get('categoryId'))))
-                .map((link) => String(link.get('postId'))),
-        );
+        if (links.length === 0) return keys;
+        const locked = await PostCategory.lockedAmong(links.map((link) => String(link.get('categoryId'))));
+        const byPost = new Map<string, string[]>();
+        for (const link of links) {
+            const categoryId = String(link.get('categoryId'));
+            if (!locked.has(categoryId)) continue;
+            const postId = String(link.get('postId'));
+            byPost.set(postId, [...(byPost.get(postId) ?? []), categoryId]);
+        }
+        for (const [postId, categoryIds] of byPost) keys.set(postId, formatLockKey(categoryIds)!);
+        return keys;
     }
 
     /**
-     * Re-derive the denormalized `isLocked` flag for these posts. Only rows whose flag changes are
+     * Re-derive the denormalized `lockKey` of these posts. Only rows whose key changes are
      * written, and `updatedAt` is kept: the lock is not an edit (no sitemap churn, no false
      * conflicts in the editor's concurrency guard).
      */
     static async syncLocked(postIds: string[], driver?: DbDriver): Promise<void> {
         const ids = [...new Set(postIds)];
         if (ids.length === 0) return;
-        const locked = await this.lockedAmong(ids);
+        const keys = await this.lockKeysOf(ids);
+        const byKey = new Map<string | null, string[]>();
+        for (const id of ids) {
+            const key = keys.get(id) ?? null;
+            byKey.set(key, [...(byKey.get(key) ?? []), id]);
+        }
         const db = this.getDriver(driver).getDb();
-        for (const value of [true, false]) {
-            const targets = ids.filter((id) => locked.has(id) === value);
+        for (const [key, targets] of byKey) {
+            const differs =
+                key === null
+                    ? isNotNull(postsTable.lockKey)
+                    : or(isNull(postsTable.lockKey), ne(postsTable.lockKey, key));
             for (let i = 0; i < targets.length; i += LOCK_SYNC_CHUNK) {
                 await db
                     .update(postsTable)
-                    .set({ isLocked: value, updatedAt: sql`${postsTable.updatedAt}` })
-                    .where(
-                        and(
-                            inArray(postsTable.id, targets.slice(i, i + LOCK_SYNC_CHUNK)),
-                            ne(postsTable.isLocked, value),
-                        ),
-                    );
+                    .set({ lockKey: key, updatedAt: sql`${postsTable.updatedAt}` })
+                    .where(and(inArray(postsTable.id, targets.slice(i, i + LOCK_SYNC_CHUNK)), differs));
             }
         }
     }
@@ -1763,17 +1773,17 @@ export class Post extends BaseModel {
         options: BlogScope & {
             categoryIds?: string[];
             contentType?: string;
-            /** Leave out posts in locked categories (a reader without access, hidden teaser mode). */
-            excludeLocked?: boolean;
+            /** Extra conditions on every candidate, e.g. only what this reader may open. */
+            where?: Record<string, unknown>;
             limit?: number;
         },
     ): Promise<Post[]> {
         const limit = options.limit ?? 4;
         const base = {
+            ...options.where,
             status: 'published',
             appId: options.appId,
             organizationId: options.organizationId,
-            ...(options.excludeLocked ? { isLocked: false } : {}),
         };
         const results: Post[] = [];
         const seenIds = new Set<string>([postId]);

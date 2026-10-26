@@ -31,8 +31,7 @@ Default roles are seeded automatically during bootstrap (when the platform owner
 `Role.ensureDefaultRoles()`); to reconcile them later, run the secret-gated seed step: `POST /__bootstrap__/api/seed`.
 
 Creates tables: `roles`, `permissions`, `user_roles`. Default roles: `platform_owner`, `owner`, `admin`, `editor`,
-`author`, `viewer`, `member`, `insider` (invited reader of locked blog categories: holds only `posts:read_locked`, which
-`*:read` does not match)
+`author`, `viewer`, `member`
 
 ### 2. Initialize Cache
 

@@ -149,13 +149,14 @@ for await (const page of Todo.pages({ perPage: 500, where: { completed: false } 
 ```
 
 `pages()` orders by the primary key and adds a caller filter with `$and`, so a scan cannot overwrite an existing
-primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`) and nested `$and`/`$or` groups are supported.
-OttaORM budgets bindings for the whole D1 statement. Large lists are recursively planned whether they come from the
-array shorthand (`{ id: [..] }`), `$in`, nested boolean groups, or several lists in the same query; scalar bindings and
-search terms count against the same budget. Planned results are de-duplicated and receive the requested ordering,
-offset, and limit globally. Columns needed only to merge ordered chunks are loaded internally and remain absent from a
-projection. The same planner covers rows, counts, sums, and paginated totals. In the Worker template set
-`OTTAORM_MAX_ALL_ROWS` in the Wrangler environment; the generated ambient `CloudflareEnv` includes it.
+primary-key predicate. Range operators (`$gt`, `$gte`, `$lt`, `$lte`), SQL patterns (`$like`, `$notLike`: a NULL column
+matches neither) and nested `$and`/`$or` groups are supported. OttaORM budgets bindings for the whole D1 statement.
+Large lists are recursively planned whether they come from the array shorthand (`{ id: [..] }`), `$in`, nested boolean
+groups, or several lists in the same query; scalar bindings and search terms count against the same budget. Planned
+results are de-duplicated and receive the requested ordering, offset, and limit globally. Columns needed only to merge
+ordered chunks are loaded internally and remain absent from a projection. The same planner covers rows, counts, sums,
+and paginated totals. In the Worker template set `OTTAORM_MAX_ALL_ROWS` in the Wrangler environment; the generated
+ambient `CloudflareEnv` includes it.
 
 ## D1 Database Setup
 

@@ -45,7 +45,7 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         // is cut from its text, so it is never teased. Members load the body in the SPA.
         const contentType = post.get('contentType') as string;
         let teaser: string[] | null = null;
-        if (post.get('isLocked') === true) {
+        if (post.get('lockKey')) {
             const settings = await OttablogSettings.forBlog(blog.scope);
             teaser = settings?.lockedTeaser() ?? [];
             if (teaser.length === 0 || contentType === 'blurb') return response;

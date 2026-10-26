@@ -20,6 +20,7 @@ import {
     lt,
     lte,
     ne,
+    notLike,
     or,
     sql,
 } from 'drizzle-orm';
@@ -427,7 +428,7 @@ export class BaseModel extends AbstractBaseModel {
                         if (!Array.isArray(operand)) throw new TypeError('$in must be an array');
                         count += new Set(operand).size;
                         recognized = true;
-                    } else if (['$eq', '$ne', '$gt', '$gte', '$lt', '$lte'].includes(operator)) {
+                    } else if (['$eq', '$ne', '$gt', '$gte', '$lt', '$lte', '$like', '$notLike'].includes(operator)) {
                         if (operand !== null && operand !== undefined) count += 1;
                         recognized = true;
                     }
@@ -1061,6 +1062,15 @@ export class BaseModel extends AbstractBaseModel {
                             recognizedOperator = true;
                             if (!Array.isArray(operand)) throw new TypeError('$in must be an array');
                             conditions.push(operand.length > 0 ? inArray(column, operand) : sql`0 = 1`);
+                            break;
+                        // SQL LIKE patterns, used as given (`%` and `_` are wildcards). A NULL
+                        // column matches neither: pair $notLike with `{ col: null }` in an $or to keep NULLs.
+                        case '$like':
+                        case '$notLike':
+                            recognizedOperator = true;
+                            if (typeof operand !== 'string')
+                                throw new TypeError(`${operator} must be a string pattern`);
+                            conditions.push(operator === '$like' ? like(column, operand) : notLike(column, operand));
                             break;
                         default:
                             // Unknown object keys are not operators; retain
