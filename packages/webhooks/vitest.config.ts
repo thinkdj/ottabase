@@ -27,6 +27,8 @@ export default defineConfig({
             '@ottabase/premium/license-tools': path.resolve(__dirname, '../premium/src/license-tools.ts'),
             '@ottabase/premium': path.resolve(__dirname, '../premium/src/index.ts'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../utils/src/http-errors.ts'),
+            '@ottabase/utils/outbound-url': path.resolve(__dirname, '../utils/src/outbound-url.ts'),
+            '@ottabase/utils/hmac-signature': path.resolve(__dirname, '../utils/src/hmac-signature.ts'),
             '@ottabase/utils/http-response': path.resolve(__dirname, '../utils/src/http-response.ts'),
             '@ottabase/ottarouter': path.resolve(__dirname, '../ottarouter/src/index.ts'),
             '@ottabase/ottaorm': path.resolve(__dirname, '../ottaorm/src/index.ts'),
