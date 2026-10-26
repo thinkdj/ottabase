@@ -77,7 +77,7 @@ export interface RuntimeMigrationConfig {
          * Tables this migration's `up()` creates/modifies indexes or constraints on. When ANY
          * of these was destructively rebuilt this run (see rebuiltTables above), the migration
          * re-runs even if already recorded — so `up()` MUST be side-effect-free to repeat (pure
-         * idempotent DDL like the ottablog org-mode index swap, never a one-time data mutation).
+         * idempotent DDL such as an index swap, never a one-time data mutation).
          */
         affectedTables?: string[];
     }>;
@@ -101,10 +101,10 @@ export interface RuntimeMigrationConfig {
     /**
      * Index names the ensure step must NOT (re)create, even though the Drizzle
      * schema declares them. Needed when a tracked custom migration deliberately
-     * DROPS a schema-declared index (e.g. ottablog org mode swaps app-scoped
-     * unique slug indexes for org-aware partials): the migration runs once, but
-     * the ensure loop runs every init — without suppression it would silently
-     * restore the dropped index on the next run.
+     * DROPS a schema-declared index (e.g. swapping a unique index for a partial
+     * one): the migration runs once, but the ensure loop runs every init, so
+     * without suppression it would silently restore the dropped index on the
+     * next run.
      */
     suppressIndexes?: string[];
 }

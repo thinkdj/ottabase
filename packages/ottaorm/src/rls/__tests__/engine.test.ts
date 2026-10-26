@@ -391,6 +391,58 @@ describe('RLS Engine', () => {
             const ctx: SecurityContext = { userId: 'u1' };
             expect(() => engine.validateWrite('unknown', ctx, {}, 'create')).toThrow(RLSError);
         });
+
+        describe('createWithinReadScope', () => {
+            // A blog-scoped table: an organization's rows, or the site's (null org, platform admins only).
+            const blogScoped = (createWithinReadScope: boolean) =>
+                engine.register({
+                    model: 'categories',
+                    policy: {
+                        level: 'custom',
+                        filter: (context) =>
+                            context.organizationId == null && context.platformAdmin !== true
+                                ? null
+                                : { organizationId: context.organizationId ?? null, appId: context.appId },
+                    },
+                    contextFields: ['organizationId', 'appId'],
+                    createWithinReadScope,
+                });
+
+            it('denies a create the read filter denies', () => {
+                blogScoped(true);
+                const ctx: SecurityContext = { userId: 'u1', organizationId: null, appId: 'app' };
+                expect(() => engine.validateWrite('categories', ctx, { name: 'Life' }, 'create')).toThrow(
+                    /Custom filter denied/,
+                );
+            });
+
+            it('without the flag, a custom filter does not gate creates', () => {
+                blogScoped(false);
+                const ctx: SecurityContext = { userId: 'u1', organizationId: null, appId: 'app' };
+                expect(() => engine.validateWrite('categories', ctx, { name: 'Life' }, 'create')).not.toThrow();
+            });
+
+            it('injects the pinned scope, including a null organization', () => {
+                blogScoped(true);
+                const ctx: SecurityContext = { userId: 'u1', organizationId: null, appId: 'app', platformAdmin: true };
+                const data: Record<string, unknown> = { name: 'Life' };
+                engine.validateWrite('categories', ctx, data, 'create');
+                expect(data).toMatchObject({ organizationId: null, appId: 'app' });
+            });
+
+            it('blocks a create into another scope', () => {
+                blogScoped(true);
+                engine.register({
+                    model: 'notes',
+                    policy: { level: 'custom', filter: (context) => ({ ownerId: context.userId }) },
+                    createWithinReadScope: true,
+                });
+                const ctx: SecurityContext = { userId: 'u1' };
+                expect(() => engine.validateWrite('notes', ctx, { ownerId: 'u2' }, 'create')).toThrow(
+                    /outside the read scope/,
+                );
+            });
+        });
     });
 
     describe('RLSError', () => {

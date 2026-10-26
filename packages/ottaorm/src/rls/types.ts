@@ -115,6 +115,15 @@ export interface ModelRLSConfig {
     enforceOnWrite?: Partial<Record<string, 'userId' | 'organizationId' | 'appId'>>;
 
     /**
+     * A create must land inside the caller's own read scope: the policy's read filter is evaluated
+     * for the caller (a denying filter denies the create), and every field it pins to a single
+     * value is injected when missing and must match otherwise. Custom filters are otherwise read-
+     * only, so without this a caller the filter denies could still create rows (e.g. in a scope
+     * only platform admins may write).
+     */
+    createWithinReadScope?: boolean;
+
+    /**
      * Soft delete field (if any)
      */
     softDeleteField?: string;

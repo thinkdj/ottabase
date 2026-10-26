@@ -1143,6 +1143,10 @@ and applied automatically by the secure CRUD handler.
   layer throws instead of silently dropping the filter (which would otherwise leak across tenants). Keep policy `field`
   / `contextFields` / `enforceOnWrite` names in sync with your table columns.
 - **Caller `where` can't widen scope.** The RLS filter is merged last, so a client can't override a security field.
+- **Creates can be held to the read scope.** A custom filter only scopes reads, updates and deletes. Set
+  `createWithinReadScope: true` on a policy and a create is checked against it too: a filter that denies the caller
+  denies the create, and every field it pins to one value is injected or must match (so no one but a platform admin
+  creates a site blog post, for example).
 - **Authorized snapshot plus atomic write.** Update/delete first load the complete record under the caller's RLS filter,
   then carry those predicates and an available `updatedAt`/`version` value into the actual database mutation. A row that
   leaves scope or changes between the read and write fails with a conflict instead of being mutated.

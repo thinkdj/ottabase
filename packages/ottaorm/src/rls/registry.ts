@@ -192,10 +192,9 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
             filter: (context) => {
                 if (!context.userId) return null; // fail closed without a user
                 if (context.organizationId === undefined || context.organizationId === null) {
-                    // THE PLATFORM'S OWN BLOG: rows with organizationId NULL are
-                    // platform-owned (org mode serves them at the apex; each tenant's
-                    // blog is org-scoped). A PLATFORM ADMIN acting without an active
-                    // org manages exactly that scope — create-injection via
+                    // THE SITE BLOG: rows with organizationId NULL are platform-owned
+                    // (each organization's own blog is org-scoped). A PLATFORM ADMIN
+                    // acting without an active org manages exactly that scope — create-injection via
                     // contextFields stamps the null org, so their posts stay
                     // platform-owned. Everyone else still fails closed.
                     if (context.platformAdmin === true) {
@@ -218,22 +217,8 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
             },
         },
         contextFields: ['organizationId', 'appId', 'userId'],
-        auditEnabled: true,
-    },
-
-    // Blog series - app-scoped (no tenant isolation, filtered by appId)
-    {
-        model: 'series',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
-        contextFields: ['appId'],
-        auditEnabled: true,
-    },
-
-    // Blog categories - app-scoped
-    {
-        model: 'categories',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
-        contextFields: ['appId'],
+        // Only a platform admin creates site blog posts; everyone else creates in their own blog.
+        createWithinReadScope: true,
         auditEnabled: true,
     },
 
@@ -245,13 +230,8 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Blog tags - app-scoped
-    {
-        model: 'post_tags',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
-        contextFields: ['appId'],
-        auditEnabled: true,
-    },
+    // Blog taxonomy, themes, plugins, settings and translations are blog-scoped: their policies
+    // ship with @ottabase/ottablog (blogScopedPolicies), which owns those tables.
 
     // Blog tag links (junction table) — no appId column; security inherits from parent entities
     {
@@ -278,9 +258,9 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
             level: 'custom',
             filter: (context) => {
                 // Mirrors `posts`: version history is editor data. An anonymous caller (or a signed-in
-                // user with no active org) must not land on the platform-owned NULL-org partition —
-                // that would expose the platform blog's draft history to anyone. Only a platform
-                // admin acting without an org manages that scope.
+                // user with no active org) must not land on the site blog's NULL-org partition: that
+                // would expose its draft history to anyone. Only a platform admin acting without an
+                // org manages that scope.
                 if (!context.userId) return null;
                 if (context.organizationId == null && context.platformAdmin !== true) return null;
                 const filter: Record<string, any> = { organizationId: context.organizationId ?? null };
@@ -289,22 +269,6 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
             },
         },
         contextFields: ['organizationId', 'appId'],
-        auditEnabled: true,
-    },
-
-    // Blog themes - app-scoped
-    {
-        model: 'ottablog_themes',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
-        contextFields: ['appId'],
-        auditEnabled: true,
-    },
-
-    // Blog plugins - app-scoped
-    {
-        model: 'ottablog_plugins',
-        policy: RLSPolicies.AppScoped(), // Filter by appId
-        contextFields: ['appId'],
         auditEnabled: true,
     },
 
@@ -405,10 +369,19 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         auditEnabled: true,
     },
 
-    // Comments: scoped to org on reads; organizationId auto-injected on writes
+    // Comments: scoped to their target's organization, which the host derives from the target
+    // (a comment on a post takes the post's org). Null is a real scope: comments on site-level
+    // content such as the site blog, which belongs to no organization. An unresolved
+    // (undefined) organization is never one: deny rather than read unscoped.
     {
         model: 'comments',
-        policy: RLSPolicies.TenantScoped(false),
+        policy: {
+            level: 'custom',
+            filter: (context) =>
+                context.organizationId === undefined ? null : { organizationId: context.organizationId },
+        },
+        contextFields: ['organizationId'],
+        createWithinReadScope: true,
         auditEnabled: true,
     },
 ];

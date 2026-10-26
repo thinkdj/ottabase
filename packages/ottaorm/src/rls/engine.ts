@@ -432,6 +432,24 @@ export class RLSEngine {
             }
         }
 
+        // See ModelRLSConfig.createWithinReadScope. generateFilter throws when the policy denies.
+        if (operation === 'create' && config.createWithinReadScope) {
+            const scope = this.generateFilter(policy, context, model);
+            for (const [field, value] of Object.entries(scope)) {
+                // Operators and lists do not pin one value; null does (e.g. organizationId IS NULL).
+                if (value !== null && typeof value === 'object') continue;
+                if (data[field] === undefined) data[field] = value;
+                else if (data[field] !== value) {
+                    throw new RLSError(`Create outside the read scope blocked: data.${field} != ${String(value)}`, {
+                        type: field === 'organizationId' ? 'cross_tenant_write' : 'unauthorized_access',
+                        model,
+                        context,
+                        attemptedAccess: { operation, data },
+                    });
+                }
+            }
+        }
+
         // Defense-in-depth: block writes scoped to an organization the user isn't a member of.
         this.enforceOrgMembership(data.organizationId, context, model);
     }

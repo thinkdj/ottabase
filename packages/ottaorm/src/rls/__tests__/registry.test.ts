@@ -169,6 +169,58 @@ describe('RLS Registry', () => {
             const ctx: SecurityContext = { userId: 'u1', organizationId: 'org-2', platformAdmin: true };
             expect(filter(ctx)).toEqual({ organizationId: 'org-2' });
         });
+
+        it('creates only inside the read scope: the site blog is for platform admins', () => {
+            registerAllPolicies();
+            const noOrg: SecurityContext = {
+                userId: 'u1',
+                organizationId: null,
+                appId: 'web',
+                memberOrganizationIds: [],
+            };
+            expect(() => globalRLS.validateWrite('posts', noOrg, { title: 'x' }, 'create')).toThrow(/denied/);
+
+            const author: SecurityContext = {
+                userId: 'u1',
+                organizationId: 'org-1',
+                appId: 'web',
+                memberOrganizationIds: ['org-1'],
+                permissions: ['posts:create'],
+            };
+            const data: Record<string, unknown> = { title: 'x' };
+            globalRLS.validateWrite('posts', author, data, 'create');
+            expect(data).toMatchObject({ organizationId: 'org-1', appId: 'web', userId: 'u1' });
+            // An author cannot file a post under someone else.
+            expect(() => globalRLS.validateWrite('posts', author, { title: 'x', userId: 'u2' }, 'create')).toThrow();
+        });
+    });
+
+    describe('comments policy (target-derived organization)', () => {
+        const comments = MODEL_POLICIES.find((p) => p.model === 'comments')!;
+
+        it("scopes to the target's organization, including the site's null one", () => {
+            expect(comments.policy.filter!({ organizationId: 'org-1' })).toEqual({ organizationId: 'org-1' });
+            expect(comments.policy.filter!({ organizationId: null })).toEqual({ organizationId: null });
+        });
+
+        it('denies an unresolved organization instead of reading unscoped', () => {
+            expect(comments.policy.filter!({})).toBeNull();
+        });
+
+        it('creates only in that scope', () => {
+            registerAllPolicies();
+            const data: Record<string, unknown> = { body: 'hi' };
+            globalRLS.validateWrite('comments', { userId: 'u1', organizationId: null }, data, 'create');
+            expect(data.organizationId).toBeNull();
+            expect(() =>
+                globalRLS.validateWrite(
+                    'comments',
+                    { userId: 'u1', organizationId: null },
+                    { body: 'hi', organizationId: 'org-2' },
+                    'create',
+                ),
+            ).toThrow();
+        });
     });
 
     describe('post_versions policy filter (editor history)', () => {

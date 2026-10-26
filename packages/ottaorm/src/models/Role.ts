@@ -40,7 +40,7 @@ export const AI_MANAGE_PERMISSION = 'ai:manage';
  * Permission to read posts in LOCKED (invite-only) blog categories (@ottabase/ottablog).
  *
  * One level above being signed in: every signup owns a personal workspace, so the grant is
- * evaluated in the BLOG's scope (system-scoped grants for the platform blog, the blog's org for
+ * evaluated in the BLOG's scope (system-scoped grants for the site blog, the blog's org for
  * an org blog), never against the caller's own workspace. Not matched by `*:read`, so viewers
  * and members do not hold it by accident.
  */
