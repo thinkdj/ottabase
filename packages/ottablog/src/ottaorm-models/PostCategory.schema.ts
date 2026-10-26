@@ -35,6 +35,9 @@ export const categoriesTable = sqliteTable(
         // Content type this category applies to (post, news, docs, etc.)
         type: text('type').notNull().default('post'),
 
+        // Invite-only: posts here (and in child categories) are readable only with posts:read_locked.
+        isLocked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
+
         // Timestamps
         createdAt: integer('created_at')
             .notNull()

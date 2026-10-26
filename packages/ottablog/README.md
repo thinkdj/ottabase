@@ -29,6 +29,8 @@ A comprehensive blog and content management system for Ottabase apps. Built on t
   (and config) applied at init (see [STUDIO.md](./STUDIO.md))
 - **Multilingual publishing** - Configure supported BCP-47 languages per blog, assign each post a canonical language,
   and manage independent localized versions with fallback-aware public routing, RSS, and sitemap URLs
+- **Locked categories** - Invite-only categories (e.g. "Life") readable one level above sign-in, with an optional public
+  teaser per blog — see [Locked categories](#locked-categories-invite-only)
 - **Author Archives** - `/blog/author/$authorId` lists an author's published posts; post bylines link to it
 - **Import / Export** - One-file JSON backup of every post, and import from that file or from Markdown with front matter
   (Jekyll, Hugo, Astro, Eleventy, Ghost exports) — see [Import / Export](#import--export)
@@ -208,6 +210,50 @@ other deferred fields are not overfetched. The response exposes `language`, `bas
 and `availableLanguages` for language switchers. A scheduled translation is published by the same cron endpoint as
 canonical posts. Deleting a post deletes its translations: `Post.delete()` removes them first, because OttaORM auto-init
 creates tables without `FOREIGN KEY` clauses, so the schema's `onDelete: 'cascade'` is documentation only.
+
+## Locked categories (invite-only)
+
+Lock a category (`PostCategory.isLocked`) and every post filed under it, or under one of its child categories, becomes
+readable only by invited readers. Access is one level above being signed in: the `posts:read_locked` permission, held by
+the built-in `insider` role (and by `owner`, `admin`, `editor` and the platform owner's `*:*`; never by `*:read`).
+
+**Who has access.** The grant is evaluated in the blog's scope, never the caller's own workspace (every signup owns one
+as `owner`): system-scoped grants for the platform blog, that organization's grants for an org blog. The host decides
+via the `canReadLocked(ctx, { organizationId })` router seam; without it nobody has access. otta-web wires it to
+`canReadLockedPosts` (`worker/lib/content-guard.ts`).
+
+**What everyone else sees.** One blog-level setting, `OttablogSettings.lockedTeaser`:
+
+| `lockedTeaser`                          | Readers without access                                                                  |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `[]` (default)                          | Locked posts and categories do not exist: lists, search, archives, RSS, sitemap, 404s   |
+| `['title']`, plus `excerpt`/`heroImage` | Locked posts are listed with only those fields and `teaser: true`; the body never ships |
+
+Blurbs are never teased (their title is cut from their text), search always hides locked posts from readers without
+access (a match on a hidden excerpt would leak it), related posts never suggest them, and a password never opens a
+locked post (`POST /posts/unlock` answers 403 `LOCKED`). Public payloads carry `isLocked`, and each category carries its
+effective `isLocked`, so readers with access see a lock badge. Responses that depend on access send
+`Cache-Control: private, no-store`; RSS and the sitemap are always the anonymous view, since shared caches store them.
+
+**How it stays fast.** `posts.isLocked` is a denormalized flag, so lists filter and paginate in SQL with true totals.
+`PostCategoryLink` (create/delete) and `PostCategory` (lock or parent change, delete) re-derive it through
+`Post.syncLocked(postIds)`, which writes only changed rows and leaves `updatedAt` alone. Public reads also check each
+post against its real category links, so a stale flag can never ship a locked body. With nothing locked, a request costs
+one small category query and no access check.
+
+**Managing access** (studio admin of the blog's scope):
+
+```http
+GET    /api/blog/studio/access                    # { lockedTeaser, lockedCategories, readers }
+POST   /api/blog/studio/access                    # { "lockedTeaser": ["title", "excerpt", "heroImage"] }
+POST   /api/blog/studio/access/readers            # { "email": "friend@example.com" }: grant `insider`
+DELETE /api/blog/studio/access/readers/{userId}   # revoke
+```
+
+Readers sign up first, then are invited by email (`404 USER_NOT_FOUND` otherwise). On an org blog the reader must also
+be an active member of the organization (`409 NOT_A_MEMBER`), because org grants are only read for members. After a
+grant change the optional `onReaderAccessChanged(env, userId)` seam lets the host refresh that user's session. In
+otta-web all of this lives on the blog's **Settings** page; categories are locked from **Categories**.
 
 ## Models
 
@@ -429,7 +475,11 @@ category.generateSlug();
 - `parentId` - Parent category for hierarchy
 - `sortOrder` - Display order
 - `type` - Content type (post, news, docs, etc.) - **NEW: Enables reuse for multiple content types**
+- `isLocked` - Invite-only; inherited by child categories (see [Locked categories](#locked-categories-invite-only))
 - `appId` - Multi-app identifier (required)
+
+`PostCategory.effectiveLockedIds(rows)`, `lockedIdsForScope({ appId, organizationId })` and `lockedAmong(ids)` resolve
+inherited locks.
 
 ### PostTag
 
@@ -949,8 +999,9 @@ Returns tag metadata (id, name, slug, color, type). Supports query params: `appI
 GET /api/blog/categories/by-slug/{slug}
 ```
 
-Returns category metadata (id, name, slug, description). Supports query params: `appId` (optional, otherwise
-`X-App-Id`/config is used) and `type` (defaults to `post`).
+Returns category metadata (id, name, slug, description, effective `isLocked`). Supports query params: `appId` (optional,
+otherwise `X-App-Id`/config is used) and `type` (defaults to `post`). A locked category answers 404 to a reader without
+access while teasers are off.
 
 ### Series by Slug
 

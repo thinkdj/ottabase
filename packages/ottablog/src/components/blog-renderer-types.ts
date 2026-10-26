@@ -63,6 +63,10 @@ export interface BlogPostData {
     isProtected?: boolean;
     /** Optional hint shown on the lock screen (never expose passwordHash) */
     passwordHint?: string | null;
+    /** The post is in a locked (invite-only) category */
+    isLocked?: boolean;
+    /** Locked post served to a reader without access: only the public teaser fields are present */
+    teaser?: boolean;
 }
 
 export interface BlogRendererProps {

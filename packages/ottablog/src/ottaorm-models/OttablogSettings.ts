@@ -1,6 +1,12 @@
 /** Blog-level settings model. */
 import { BaseModel, DomainValidationError, ModelFields, type PackageType } from '@ottabase/ottaorm';
-import { normalizeBlogLanguages, normalizeLanguageCode, type BlogLanguageConfig } from '../types';
+import {
+    normalizeBlogLanguages,
+    normalizeLanguageCode,
+    normalizeLockedTeaser,
+    type BlogLanguageConfig,
+    type LockedTeaserField,
+} from '../types';
 import { ottablogSettingsTable } from './OttablogSettings.schema';
 
 export { ottablogSettingsTable } from './OttablogSettings.schema';
@@ -15,6 +21,7 @@ export class OttablogSettings extends BaseModel {
 
     static casts = {
         supportedLanguages: 'json' as const,
+        lockedTeaser: 'json' as const,
         fallbackToDefault: 'boolean' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
@@ -27,8 +34,15 @@ export class OttablogSettings extends BaseModel {
     };
 
     static writable = {
-        create: ['defaultLanguage', 'supportedLanguages', 'fallbackToDefault', 'appId', 'organizationId'],
-        update: ['defaultLanguage', 'supportedLanguages', 'fallbackToDefault'],
+        create: [
+            'defaultLanguage',
+            'supportedLanguages',
+            'fallbackToDefault',
+            'lockedTeaser',
+            'appId',
+            'organizationId',
+        ],
+        update: ['defaultLanguage', 'supportedLanguages', 'fallbackToDefault', 'lockedTeaser'],
     };
 
     protected static fields: ModelFields = {
@@ -59,6 +73,16 @@ export class OttablogSettings extends BaseModel {
             },
             formConfig: { visible: true, fieldType: 'boolean' },
             tableConfig: { visible: true, colWidth: 150 },
+        },
+        lockedTeaser: {
+            type: 'json',
+            editable: true,
+            uiConfig: {
+                label: 'Locked post teaser',
+                description: 'Fields of a locked post shown to readers without access (empty = hidden)',
+            },
+            formConfig: { visible: true, fieldType: 'json' },
+            tableConfig: { visible: false },
         },
         appId: {
             type: 'string',
@@ -116,11 +140,15 @@ export class OttablogSettings extends BaseModel {
         return this.forScope({ appId: options.appId, organizationId: null });
     }
 
-    static async ensure(options: { appId?: string | null; organizationId?: string | null }): Promise<OttablogSettings> {
+    static async ensure(
+        options: { appId?: string | null; organizationId?: string | null },
+        seed: Record<string, unknown> = {},
+    ): Promise<OttablogSettings> {
         const existing = await this.forScope(options);
         if (existing) return existing;
         try {
             return (await this.create({
+                ...seed,
                 appId: options.appId ?? null,
                 organizationId: options.organizationId ?? null,
             })) as OttablogSettings;
@@ -133,6 +161,28 @@ export class OttablogSettings extends BaseModel {
             }
             throw error;
         }
+    }
+
+    /**
+     * The scope's own row for a partial write (e.g. only the teaser). An organization saving its
+     * first setting starts from the policy it inherited, so its languages do not reset to defaults.
+     */
+    static async ensureOwn(options: {
+        appId?: string | null;
+        organizationId?: string | null;
+    }): Promise<OttablogSettings> {
+        const inherited = await this.forScopeOrPlatform(options);
+        if (inherited && (inherited.get('organizationId') ?? null) === (options.organizationId ?? null))
+            return inherited;
+        const seed = inherited
+            ? {
+                  defaultLanguage: inherited.get('defaultLanguage'),
+                  supportedLanguages: inherited.get('supportedLanguages'),
+                  fallbackToDefault: inherited.get('fallbackToDefault'),
+                  lockedTeaser: inherited.get('lockedTeaser'),
+              }
+            : {};
+        return this.ensure(options, seed);
     }
 
     config(): BlogLanguageConfig {
@@ -181,6 +231,16 @@ export class OttablogSettings extends BaseModel {
                 status: 422,
             });
         }
+    }
+
+    /** Locked-post fields readers without access may see. Empty = locked posts are hidden from them. */
+    lockedTeaser(): LockedTeaserField[] {
+        return normalizeLockedTeaser(this.get('lockedTeaser'));
+    }
+
+    async updateLockedTeaser(fields: unknown) {
+        this.set('lockedTeaser', normalizeLockedTeaser(fields));
+        return this.save();
     }
 
     isSupported(language: string): boolean {

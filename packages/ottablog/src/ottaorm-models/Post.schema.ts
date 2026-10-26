@@ -141,6 +141,10 @@ export const postsTable = sqliteTable(
         // Allow comments
         allowComments: integer('allow_comments', { mode: 'boolean' }).notNull().default(true),
 
+        // In a locked (invite-only) category. Derived, never client-written: PostCategory and
+        // PostCategoryLink re-sync it on every write that can change it (see Post.syncLocked).
+        isLocked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
+
         // Password-protected post (show lock screen until correct password)
         isProtected: integer('is_protected', { mode: 'boolean' }).notNull().default(false),
         passwordHash: text('password_hash'),

@@ -131,6 +131,21 @@ export interface BlogRouterConfig<Env = unknown> {
         target: { organizationId: string | null },
     ) => Promise<BlogAdminResult | Response>;
 
+    /**
+     * May this caller read posts in LOCKED (invite-only) categories of the given blog scope? Evaluate
+     * the grant IN that scope (never the caller's own workspace, which every signup owns):
+     * system-scoped grants for the platform blog (null), that organization's grants for an org blog.
+     * otta-web checks `posts:read_locked` (the `insider` role). Absent = nobody may: locked posts
+     * stay locked, served as teasers or hidden per the blog's teaser setting.
+     */
+    canReadLocked?: (ctx: BlogRequestContext<Env>, target: { organizationId: string | null }) => Promise<boolean>;
+
+    /**
+     * Called after a reader grant changes, to refresh that user's live session (e.g. bump their
+     * profile version). Optional and best-effort: `canReadLocked` should read grants fresh anyway.
+     */
+    onReaderAccessChanged?: (env: Env, userId: string) => Promise<void> | void;
+
     /** Cron-secret check for POST /publish-scheduled. */
     checkCronAuth: (request: Request, env: Env) => boolean;
 
@@ -208,6 +223,9 @@ export interface BlogHandlers<Env = unknown> {
     handleBlogPreviewTokenMint(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioThemeTokens(ctx: BlogRequestContext<Env>): Promise<Response>;
     handleBlogStudioLanguages(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioAccess(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioReaderGrant(ctx: BlogRequestContext<Env>): Promise<Response>;
+    handleBlogStudioReaderRevoke(ctx: BlogRequestContext<Env>, userId: string): Promise<Response>;
     handleBlogPostTranslations(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
     handleBlogPostTranslationCreate(ctx: BlogRequestContext<Env>, postId: string): Promise<Response>;
     handleBlogPostTranslationUpdate(ctx: BlogRequestContext<Env>, postId: string, language: string): Promise<Response>;

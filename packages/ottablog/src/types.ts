@@ -81,6 +81,20 @@ export function normalizeBlogLanguages(value: unknown): BlogLanguage[] {
 }
 
 /**
+ * Fields of a LOCKED post (one in an invite-only category) that a reader without access may see.
+ * An empty list hides locked posts from them entirely. A teaser always leads with the title, so a
+ * list without `title` normalizes to empty (hidden).
+ */
+export const LOCKED_TEASER_FIELDS = ['title', 'excerpt', 'heroImage'] as const;
+export type LockedTeaserField = (typeof LOCKED_TEASER_FIELDS)[number];
+
+/** Normalize a stored or submitted teaser field list. Unknown values are dropped; no title means hidden. */
+export function normalizeLockedTeaser(value: unknown): LockedTeaserField[] {
+    if (!Array.isArray(value) || !value.includes('title')) return [];
+    return LOCKED_TEASER_FIELDS.filter((field) => value.includes(field));
+}
+
+/**
  * SEO metadata for posts
  */
 export interface SeoMeta {

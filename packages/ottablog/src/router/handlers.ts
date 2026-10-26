@@ -8,11 +8,17 @@
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import { isEmail } from '@ottabase/utils/string';
 import {
     DomainValidationError,
     globalRLS,
+    INSIDER_ROLE_NAME,
     MAX_SEARCH_TERM_BYTES,
+    OrganizationMember,
     RLSError,
+    Role,
+    User,
+    UserRole,
     type SecurityContext,
 } from '@ottabase/ottaorm';
 import {
@@ -40,11 +46,13 @@ import { StudioManager } from '../studio';
 import {
     ContentValidationError,
     generateSlug,
+    LOCKED_TEASER_FIELDS,
     normalizeLanguageCode,
     POST_STATUSES,
     type BlogLanguage,
     type BlogLanguageConfig,
     type EditorJSData,
+    type LockedTeaserField,
     type PostCrosspost,
     type PostStatus,
 } from '../types';
@@ -305,6 +313,72 @@ function stripProtectedBody(post: Record<string, unknown>): void {
     post.crossposts = null;
 }
 
+/** What one request may see of the blog's locked (invite-only) categories. */
+interface LockState {
+    /** Effectively locked categories of the blog scope (a lock covers child categories). */
+    lockedCategoryIds: Set<string>;
+    /** Fields of a locked post shown to a reader without access. Empty = hidden from them. */
+    teaser: LockedTeaserField[];
+    /** Locked categories exist and this caller cannot read them. */
+    restricted: boolean;
+}
+
+const UNLOCKED: LockState = { lockedCategoryIds: new Set(), teaser: [], restricted: false };
+
+/** Grant scope of the platform blog: SYSTEM-scoped grants (rbac's SYSTEM_ORGANIZATION_ID). */
+const SYSTEM_GRANT_SCOPE = 'system';
+
+/**
+ * Locked-post keys a teaser keeps besides the configured teaser fields. An allowlist, so a column
+ * added later never ships to readers without access by default. Tags, series, crossposts and SEO
+ * are left out: they describe the body.
+ */
+const TEASER_KEYS = [
+    'id',
+    'slug',
+    'baseSlug',
+    'language',
+    'baseLanguage',
+    'translationId',
+    'availableLanguages',
+    'contentType',
+    'status',
+    'publishedAt',
+    'author',
+    'authorId',
+    'categories',
+    'isFeatured',
+    'readingTimeMinutes',
+] as const;
+
+/** A blurb's title and excerpt are cut from its text, so it has nothing safe to tease. */
+function isTeasable(contentType: unknown, lock: LockState): boolean {
+    return lock.teaser.length > 0 && contentType !== 'blurb';
+}
+
+/** The public teaser of a locked post for a reader without access. */
+function lockedTeaserJson(post: Record<string, unknown>, teaser: LockedTeaserField[]): Record<string, unknown> {
+    const json: Record<string, unknown> = { isLocked: true, teaser: true, allowComments: false };
+    for (const key of TEASER_KEYS) if (key in post) json[key] = post[key];
+    for (const field of LOCKED_TEASER_FIELDS) json[field] = teaser.includes(field) ? (post[field] ?? null) : null;
+    return json;
+}
+
+/**
+ * Where-clause keeping a restricted reader's results free of what they may not see: every locked
+ * post when teasers are off (or `hideAll`), only the un-teasable locked blurbs when they are on.
+ */
+function lockedPostsWhere(lock: LockState, hideAll = false): Record<string, unknown> {
+    if (!lock.restricted) return {};
+    if (hideAll || lock.teaser.length === 0) return { isLocked: false };
+    return { $or: [{ isLocked: false }, { contentType: { $ne: 'blurb' } }] };
+}
+
+/** A response that depends on the caller's access must never be shared by a cache. */
+function lockHeaders(lock: LockState): HeadersInit | undefined {
+    return lock.lockedCategoryIds.size > 0 ? { 'Cache-Control': 'private, no-store' } : undefined;
+}
+
 /**
  * Batch enrichment for a page of posts — flat queries instead of ~5 per post.
  * Output per post is shape-identical to publicPostJson's enriched object
@@ -320,9 +394,16 @@ async function enrichPostsJsonBatch(
         languageConfig?: BlogLanguageConfig;
         appId?: string | null;
         organizationId?: string | null;
+        /**
+         * Locked categories: flags locked posts and, for a restricted reader, swaps each for its
+         * teaser or drops it. Checked against the page's real category links as well as the
+         * stored `isLocked` flag, so a stale flag never ships a locked body.
+         */
+        lock?: LockState;
     },
 ): Promise<Record<string, unknown>[]> {
     if (records.length === 0) return [];
+    const lock = options?.lock ?? UNLOCKED;
 
     const postIds = records.map((r) => r.get('id') as string);
 
@@ -349,7 +430,7 @@ async function enrichPostsJsonBatch(
     // Categories: junction links → category rows. Same best-effort fallback
     // as tags above.
     const catIdsByPost = new Map<string, string[]>();
-    const catById = new Map<string, { id: string; name: string; slug: string }>();
+    const catById = new Map<string, { id: string; name: string; slug: string; isLocked: boolean }>();
     try {
         const catLinks = await chunkedFetch(postIds, (ids) => PostCategoryLink.where({ postId: ids }));
         for (const link of catLinks) {
@@ -365,6 +446,7 @@ async function enrichPostsJsonBatch(
                 id: c.get('id') as string,
                 name: c.get('name') as string,
                 slug: c.get('slug') as string,
+                isLocked: lock.lockedCategoryIds.has(c.get('id') as string),
             });
         }
     } catch {
@@ -430,7 +512,7 @@ async function enrichPostsJsonBatch(
         }
     }
 
-    return records.map((record) => {
+    const rows = records.map((record) => {
         const row = record as Post & { toJson?: () => Record<string, unknown> };
         const j =
             typeof row.toJson === 'function'
@@ -483,8 +565,18 @@ async function enrichPostsJsonBatch(
             if (column !== 'privateNotes' && !(column in rest)) rest[column] = null;
         }
 
+        const isLocked =
+            lock.lockedCategoryIds.size > 0 &&
+            (record.get('isLocked') === true ||
+                (catIdsByPost.get(postId) ?? []).some((cid) => lock.lockedCategoryIds.has(cid)));
+        rest.isLocked = isLocked;
+        if (isLocked && lock.restricted) {
+            return isTeasable(rest.contentType, lock) ? lockedTeaserJson(rest, lock.teaser) : null;
+        }
+
         return rest;
     });
+    return rows.filter((row): row is Record<string, unknown> => row !== null);
 }
 
 /**
@@ -550,6 +642,8 @@ async function publicPostJson(
         enrichAuthor?: boolean;
         translation?: PostTranslation | null;
         languageConfig?: BlogLanguageConfig;
+        /** Effectively locked categories of the blog, to flag each category. */
+        lockedCategoryIds?: Set<string>;
     },
 ) {
     const j = record.toJson() as Record<string, unknown>;
@@ -607,9 +701,12 @@ async function publicPostJson(
             if (categoryLinks.length > 0) {
                 const categoryIds = categoryLinks.map((cl) => cl.get('categoryId') as string);
                 const categoryModels = await Promise.all(categoryIds.map((id) => PostCategory.find(id)));
-                rest.categories = categoryModels
-                    .filter(Boolean)
-                    .map((c) => ({ id: c!.get('id'), name: c!.get('name'), slug: c!.get('slug') }));
+                rest.categories = categoryModels.filter(Boolean).map((c) => ({
+                    id: c!.get('id'),
+                    name: c!.get('name'),
+                    slug: c!.get('slug'),
+                    isLocked: options?.lockedCategoryIds?.has(c!.get('id') as string) ?? false,
+                }));
             } else {
                 rest.categories = [];
             }
@@ -659,12 +756,64 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         return resolved ?? null;
     }
 
+    /** One settings read per request and scope: the language and lock policies share the row. */
+    const settingsByRequest = new WeakMap<Request, Map<string, Promise<OttablogSettings | null>>>();
+    function settingsFor(
+        context: Ctx,
+        appId: string,
+        organizationId: string | null | undefined,
+    ): Promise<OttablogSettings | null> {
+        let byScope = settingsByRequest.get(context.request);
+        if (!byScope) settingsByRequest.set(context.request, (byScope = new Map()));
+        const key = appId + '|' + String(organizationId);
+        let settings = byScope.get(key);
+        if (!settings) byScope.set(key, (settings = OttablogSettings.forScopeOrPlatform({ appId, organizationId })));
+        return settings;
+    }
+
+    /**
+     * Locked-category state for this request. Costs one small category query when nothing is
+     * locked; the access check runs only when something is. `anonymous` skips it for responses a
+     * shared cache may store (RSS, sitemap): they must look the same for everyone.
+     */
+    async function resolveLock(
+        context: Ctx,
+        appId: string,
+        organizationId: string | null | undefined,
+        options?: { anonymous?: boolean },
+    ): Promise<LockState> {
+        const lockedCategoryIds = await PostCategory.lockedIdsForScope({ appId, organizationId });
+        if (lockedCategoryIds.size === 0) return UNLOCKED;
+        const settings = await settingsFor(context, appId, organizationId);
+        const teaser = settings?.lockedTeaser() ?? [];
+        const restricted = options?.anonymous === true || !(await canReadLocked(context, organizationId ?? null));
+        return { lockedCategoryIds, teaser, restricted };
+    }
+
+    /** Fail closed: no seam, or a failing one, means no access. */
+    async function canReadLocked(context: Ctx, organizationId: string | null): Promise<boolean> {
+        if (!config.canReadLocked) return false;
+        try {
+            return await config.canReadLocked(context, { organizationId });
+        } catch {
+            return false;
+        }
+    }
+
+    /** A post's lock: the stored flag, confirmed against its category links (defense in depth). */
+    async function postIsLocked(record: Post, lock: LockState): Promise<boolean> {
+        if (lock.lockedCategoryIds.size === 0) return false;
+        if (record.get('isLocked') === true) return true;
+        const links = await PostCategoryLink.where({ postId: String(record.get('id')) }, { select: ['categoryId'] });
+        return links.some((link) => lock.lockedCategoryIds.has(String(link.get('categoryId'))));
+    }
+
     async function languageConfigFor(
-        _context: Ctx,
+        context: Ctx,
         appId: string,
         organizationId: string | null | undefined,
     ): Promise<BlogLanguageConfig> {
-        const settings = await OttablogSettings.forScopeOrPlatform({ appId, organizationId });
+        const settings = await settingsFor(context, appId, organizationId);
         return (
             settings?.config() ?? {
                 defaultLanguage: 'en',
@@ -976,6 +1125,139 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             }
             throw error;
         }
+    }
+
+    // ============================================================
+    // LOCKED CATEGORIES: teaser policy + invited readers (studio admin)
+    // ============================================================
+
+    /** The blog scope a studio access request administers, and where its reader grants live. */
+    async function accessScope(context: Ctx) {
+        const connectError = config.connect(context.env);
+        if (connectError) return connectError;
+        const organizationId = await resolveTenant(context);
+        const admin = await requireStudioAdmin(context, organizationId);
+        if (admin instanceof Response) return admin;
+        return {
+            appId: resolveAppId(context),
+            organizationId,
+            // Platform blog: SYSTEM-scoped grants. Org blog: grants in that org (members only).
+            grantScope: organizationId ?? SYSTEM_GRANT_SCOPE,
+            adminUserId: admin.session?.user?.id ?? undefined,
+        };
+    }
+    type AccessScope = Exclude<Awaited<ReturnType<typeof accessScope>>, Response>;
+
+    async function accessState(scope: AccessScope) {
+        const where: Record<string, unknown> = { appId: scope.appId };
+        if (scope.organizationId !== undefined) where.organizationId = scope.organizationId;
+        const [settings, categories, role] = await Promise.all([
+            OttablogSettings.forScopeOrPlatform({ appId: scope.appId, organizationId: scope.organizationId }),
+            PostCategory.where(where, { select: ['id', 'name', 'slug', 'parentId', 'isLocked'] }),
+            Role.findByName(INSIDER_ROLE_NAME),
+        ]);
+        const lockedIds = PostCategory.effectiveLockedIds(
+            categories.map((c) => ({
+                id: String(c.get('id')),
+                parentId: (c.get('parentId') as string | null) ?? null,
+                isLocked: Boolean(c.get('isLocked')),
+            })),
+        );
+        const grants = role ? await UserRole.where({ roleId: role.get('id'), organizationId: scope.grantScope }) : [];
+        const userIds = [...new Set(grants.map((grant) => String(grant.get('userId'))))];
+        const users = await User.whereIn('id', userIds, { select: ['id', 'name', 'email', 'image'] });
+        return {
+            lockedTeaser: settings?.lockedTeaser() ?? [],
+            lockedCategories: categories
+                .filter((c) => lockedIds.has(String(c.get('id'))))
+                .map((c) => ({
+                    id: c.get('id'),
+                    name: c.get('name'),
+                    slug: c.get('slug'),
+                    inherited: !c.get('isLocked'),
+                })),
+            readers: users.map((user) => ({
+                id: user.get('id'),
+                name: user.get('name'),
+                email: user.get('email'),
+                image: user.get('image'),
+            })),
+        };
+    }
+
+    async function readerAccessChanged(env: Env, userId: string): Promise<void> {
+        try {
+            await config.onReaderAccessChanged?.(env, userId);
+        } catch {
+            // Session refresh is best-effort: the grant itself is already authoritative.
+        }
+    }
+
+    /** GET: teaser policy, locked categories and invited readers. POST { lockedTeaser }: save the policy. */
+    async function handleBlogStudioAccess(context: Ctx): Promise<Response> {
+        const scope = await accessScope(context);
+        if (scope instanceof Response) return scope;
+        if (context.request.method === 'POST') {
+            const body = await readJson<{ lockedTeaser?: unknown }>(context.request);
+            if (!Array.isArray(body.lockedTeaser)) {
+                return errorResponse('lockedTeaser must be an array of field names', 400, { code: 'VALIDATION_ERROR' });
+            }
+            const settings = await OttablogSettings.ensureOwn({
+                appId: scope.appId,
+                organizationId: scope.organizationId,
+            });
+            await settings.updateLockedTeaser(body.lockedTeaser);
+        }
+        return jsonResponse(await accessState(scope), 200, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    /** POST { email }: give an existing account reader access to this blog's locked categories. */
+    async function handleBlogStudioReaderGrant(context: Ctx): Promise<Response> {
+        const scope = await accessScope(context);
+        if (scope instanceof Response) return scope;
+        const body = await readJson<{ email?: unknown }>(context.request);
+        const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+        if (!isEmail(email)) {
+            return errorResponse('Enter a valid email address', 400, {
+                code: 'VALIDATION_ERROR',
+                fieldErrors: { email: ['Enter a valid email address'] },
+            });
+        }
+        const user = await User.findByEmail(email);
+        if (!user) {
+            return errorResponse('No account uses this email yet. Ask them to sign up, then invite them.', 404, {
+                code: 'USER_NOT_FOUND',
+            });
+        }
+        const userId = String(user.get('id'));
+        // An org blog's grants are read in that org, which needs membership: invite them there first.
+        if (scope.organizationId && !(await OrganizationMember.isMember(userId, scope.organizationId))) {
+            return errorResponse('Add this person to the organization first, then invite them as a reader.', 409, {
+                code: 'NOT_A_MEMBER',
+            });
+        }
+        let role = await Role.findByName(INSIDER_ROLE_NAME);
+        if (!role) {
+            // Installs older than the insider role get it here (create-if-missing only).
+            await Role.ensureDefaultRoles();
+            role = await Role.findByName(INSIDER_ROLE_NAME);
+        }
+        if (!role) return errorResponse('Reader role is unavailable', 500, { code: 'ROLE_MISSING' });
+        await user.assignRole(String(role.get('id')), scope.adminUserId, scope.grantScope);
+        await readerAccessChanged(context.env, userId);
+        return jsonResponse(await accessState(scope), 200, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    /** DELETE: revoke a reader's access to this blog's locked categories. */
+    async function handleBlogStudioReaderRevoke(context: Ctx, userId: string): Promise<Response> {
+        const scope = await accessScope(context);
+        if (scope instanceof Response) return scope;
+        const role = await Role.findByName(INSIDER_ROLE_NAME);
+        if (role) {
+            await UserRole.removeRole(userId, String(role.get('id')), scope.grantScope);
+            await readerAccessChanged(context.env, userId);
+        }
+        return jsonResponse(await accessState(scope), 200, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     async function translationPostFor(
@@ -1695,6 +1977,15 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             where.publishedAt = { $gte: rangeStart.getTime(), $lt: rangeEnd.getTime() };
         }
 
+        // Locked categories, in SQL so pagination and totals stay true. Search hides every locked
+        // post from a restricted reader: matching on a hidden excerpt or blurb would leak it.
+        const lock = await resolveLock(context, appId, organizationId);
+        Object.assign(where, lockedPostsWhere(lock, Boolean(search?.trim())));
+        const emptyPage = () =>
+            jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } }, 200, {
+                headers: lockHeaders(lock),
+            });
+
         // Tag-based filtering: find post IDs that have this tag, then filter
         let tagFilterPostIds: string[] | null = null;
         if (tagId) {
@@ -1702,7 +1993,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             tagFilterPostIds = links.map((l) => l.get('postId') as string);
             if (tagFilterPostIds.length === 0) {
                 // No posts have this tag — return empty
-                return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+                return emptyPage();
             }
         }
 
@@ -1712,7 +2003,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             const links = await PostCategoryLink.where({ categoryId });
             categoryFilterPostIds = links.map((l) => l.get('postId') as string);
             if (categoryFilterPostIds.length === 0) {
-                return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+                return emptyPage();
             }
         }
 
@@ -1729,7 +2020,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             // buildWhereConditions silently DROPS empty arrays, so an explicit
             // empty-intersection early-return is load-bearing, not cosmetic.
             if (junctionIds.length === 0) {
-                return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+                return emptyPage();
             }
         }
 
@@ -1753,13 +2044,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                     ...canonicalRows.map((row) => row.get('id') as string),
                 ]),
             ];
-            if (visibleIds.length === 0)
-                return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+            if (visibleIds.length === 0) return emptyPage();
             if (junctionIds) {
                 const visibleSet = new Set(visibleIds);
                 junctionIds = junctionIds.filter((id) => visibleSet.has(id));
-                if (junctionIds.length === 0)
-                    return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+                if (junctionIds.length === 0) return emptyPage();
             } else {
                 where.id = visibleIds;
             }
@@ -1787,8 +2076,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 if (junctionIds) {
                     const matchingSet = new Set(matchingIds);
                     junctionIds = junctionIds.filter((id) => matchingSet.has(id));
-                    if (junctionIds.length === 0)
-                        return jsonResponse({ data: [], pagination: { page, perPage, total: 0, totalPages: 0 } });
+                    if (junctionIds.length === 0) return emptyPage();
                 } else {
                     where.id = matchingIds;
                 }
@@ -1863,16 +2151,21 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             languageConfig,
             appId,
             organizationId: organizationId ?? null,
+            lock,
         });
-        return jsonResponse({
-            data,
-            pagination: {
-                page: result.page,
-                perPage: result.perPage,
-                total: result.total,
-                totalPages: result.totalPages,
+        return jsonResponse(
+            {
+                data,
+                pagination: {
+                    page: result.page,
+                    perPage: result.perPage,
+                    total: result.total,
+                    totalPages: result.totalPages,
+                },
             },
-        });
+            200,
+            { headers: lockHeaders(lock) },
+        );
     }
 
     /**
@@ -1927,18 +2220,30 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         // View tracking disabled by default (D1 write cost per view).
         // Call POST /api/blog/posts/:slug/track-view explicitly when needed.
 
+        // A preview token is the editor's review artifact, minted by someone who may edit the
+        // post, so it skips the locked-category check like it skips the published filter.
+        const lock = preview ? UNLOCKED : await resolveLock(context, appId, organizationId);
+        const isLocked = await postIsLocked(record, lock);
+        const asTeaser = isLocked && lock.restricted;
+        if (asTeaser && !isTeasable(record.get('contentType'), lock)) {
+            return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+        }
+
         const data = await publicPostJson(record, {
             // A preview link is the review artifact — the token grants content access
             // (password-protection stripping still applies to normal public reads).
             includeContent: !!preview,
-            enrichTags: true,
+            enrichTags: !asTeaser,
             enrichCategory: true,
-            enrichSeries: true,
+            enrichSeries: !asTeaser,
             enrichAuthor: true,
             translation: localized?.translation ?? null,
             languageConfig,
+            lockedCategoryIds: lock.lockedCategoryIds,
         });
-        return jsonResponse(preview ? { ...data, preview: true } : data);
+        data.isLocked = isLocked;
+        if (asTeaser) return jsonResponse(lockedTeaserJson(data, lock.teaser), 200, { headers: lockHeaders(lock) });
+        return jsonResponse(preview ? { ...data, preview: true } : data, 200, { headers: lockHeaders(lock) });
     }
 
     async function handleBlogPostUnlock(context: Ctx): Promise<Response> {
@@ -1977,6 +2282,15 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
 
+        // A password never opens a locked category: that needs reader access, not a secret.
+        const lock = await resolveLock(context, appId, organizationId);
+        const isLocked = await postIsLocked(record, lock);
+        if (isLocked && lock.restricted) {
+            return isTeasable(record.get('contentType'), lock)
+                ? errorResponse('This post is for invited readers', 403, { code: 'LOCKED' })
+                : errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+        }
+
         const isProtected = record.get('isProtected');
         const passwordHash = record.get('passwordHash');
         if (!isProtected || !passwordHash) {
@@ -1988,8 +2302,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 enrichAuthor: true,
                 translation: localized?.translation ?? null,
                 languageConfig,
+                lockedCategoryIds: lock.lockedCategoryIds,
             });
-            return jsonResponse(data);
+            return jsonResponse({ ...data, isLocked }, 200, { headers: lockHeaders(lock) });
         }
 
         const valid = await config.verifyPassword(String(password), String(passwordHash));
@@ -2005,8 +2320,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             enrichAuthor: true,
             translation: localized?.translation ?? null,
             languageConfig,
+            lockedCategoryIds: lock.lockedCategoryIds,
         });
-        return jsonResponse(data);
+        return jsonResponse({ ...data, isLocked }, 200, { headers: lockHeaders(lock) });
     }
 
     // ============================================================
@@ -2040,7 +2356,14 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (!category) {
             return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
         }
-        return jsonResponse(category.toJson());
+        // `isLocked` reports the EFFECTIVE lock (a parent's lock covers its children). With
+        // teasers off, a locked category does not exist for a reader without access.
+        const lock = await resolveLock(context, appId, organizationId);
+        const isLocked = lock.lockedCategoryIds.has(String(category.get('id')));
+        if (isLocked && lock.restricted && lock.teaser.length === 0) {
+            return errorResponse('Category not found', 404, { code: 'NOT_FOUND' });
+        }
+        return jsonResponse({ ...category.toJson(), isLocked }, 200, { headers: lockHeaders(lock) });
     }
 
     async function handleBlogSeriesBySlug(context: Ctx, slug: string): Promise<Response> {
@@ -2075,6 +2398,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         };
         const organizationId = await resolveTenant(context);
         if (organizationId !== undefined) where.organizationId = organizationId;
+        // Someone who only wrote what this reader may not see is not an author to them.
+        Object.assign(where, lockedPostsWhere(await resolveLock(context, where.appId as string, organizationId)));
 
         const post = await Post.first(where);
         const author = post ? await post.author([...PUBLIC_AUTHOR_FIELDS]) : null;
@@ -2104,6 +2429,11 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
         }
 
+        const lock = await resolveLock(context, appId, organizationId);
+        if (lock.restricted && (await postIsLocked(post, lock)) && !isTeasable(post.get('contentType'), lock)) {
+            return errorResponse('Post not found', 404, { code: 'NOT_FOUND' });
+        }
+
         // Gather category IDs from junction table for junction-aware related lookup
         const categoryLinks = await PostCategoryLink.where({ postId });
         const categoryIds = categoryLinks.map((cl) => cl.get('categoryId') as string);
@@ -2113,6 +2443,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             contentType: post.get('contentType') as string,
             appId,
             organizationId,
+            // Suggestions never tease: a restricted reader is only pointed at what they can read.
+            excludeLocked: lock.restricted,
             limit,
         });
 
@@ -2124,8 +2456,9 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             languageConfig,
             appId,
             organizationId: organizationId ?? null,
+            lock: { ...lock, teaser: [] },
         });
-        return jsonResponse(data);
+        return jsonResponse(data, 200, { headers: lockHeaders(lock) });
     }
 
     // ============================================================
@@ -2152,6 +2485,10 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         } else {
             where.contentType = { $ne: 'changelog' };
         }
+        // A feed is publicly cached and read by feed readers without a session: always the
+        // anonymous view (teasers only, when enabled), whoever fetched it.
+        const lock = await resolveLock(context, appId, organizationId, { anonymous: true });
+        Object.assign(where, lockedPostsWhere(lock));
 
         const posts = await Post.where(where, {
             orderBy: 'publishedAt',
@@ -2228,17 +2565,20 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             languageConfig,
             appId,
             organizationId: organizationId ?? null,
+            lock,
         });
         const localizedById = new Map(localizedRows.map((row) => [row.id as string, row]));
+        // Enrichment drops what this reader may not see; never fall back to the raw row for it.
+        const visibleCandidates = feedCandidates.filter((post) => localizedById.has(post.get('id') as string));
         const feedPosts =
             language && !languageConfig.fallbackToDefault
-                ? feedCandidates.filter((post) => {
+                ? visibleCandidates.filter((post) => {
                       const localized = localizedById.get(post.get('id') as string);
                       return localized?.translationId
                           ? localized.language === language
                           : post.get('language') === language;
                   })
-                : feedCandidates;
+                : visibleCandidates;
         const feedEntries = feedPosts
             .map((post) => ({
                 post,
@@ -2339,6 +2679,8 @@ ${items}
         const where: Record<string, unknown> = { status: 'published', contentType: { $ne: 'changelog' } };
         if (appId) where.appId = appId;
         if (organizationId !== undefined) where.organizationId = organizationId;
+        // Publicly cached: the anonymous view. Teased locked posts keep their (teaser) URL.
+        Object.assign(where, lockedPostsWhere(await resolveLock(context, appId, organizationId, { anonymous: true })));
         const enabledLanguages = new Set(languageConfig.supportedLanguages.map((item) => item.code));
         const maxVariantsPerPost = Math.max(1, enabledLanguages.size + 1);
         const safePageSize = Math.max(1, Math.floor(Math.max(1, urlLimit - 1) / maxVariantsPerPost));
@@ -2950,6 +3292,9 @@ ${urls}
     return {
         handleBlogStudioState,
         handleBlogStudioLanguages,
+        handleBlogStudioAccess,
+        handleBlogStudioReaderGrant,
+        handleBlogStudioReaderRevoke,
         handleBlogPostTranslations,
         handleBlogPostTranslationCreate,
         handleBlogPostTranslationUpdate,
