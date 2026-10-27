@@ -1,0 +1,101 @@
+{
+    "name": "@ottabase/alerts",
+    "version": "0.1.0",
+    "description": "Operator alerts for Ottabase apps: one raise() from any package reaches email, Slack, Discord, Telegram, PagerDuty or a signed webhook, de-duplicated, capped per channel, rolled into digests and retried, with a console in the admin",
+    "ottabase": {
+        "key": "alerts",
+        "factory": "createAlertsPackage",
+        "tables": {
+            "import": "@ottabase/alerts/schema",
+            "names": [
+                "alertChannelsTable",
+                "alertEventsTable",
+                "alertDeliveriesTable",
+                "alertKeysTable"
+            ]
+        }
+    },
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        },
+        "./schema": {
+            "types": "./src/schema.ts",
+            "default": "./src/schema.ts"
+        },
+        "./react": {
+            "types": "./src/react/index.ts",
+            "default": "./src/react/index.ts"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
+        "@ottabase/ottarouter": "workspace:*",
+        "@ottabase/utils": "workspace:*"
+    },
+    "peerDependencies": {
+        "@ottabase/ui": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "drizzle-orm": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:"
+    },
+    "peerDependenciesMeta": {
+        "@ottabase/ui": {
+            "optional": true
+        },
+        "@tanstack/react-query": {
+            "optional": true
+        },
+        "lucide-react": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@ottabase/db": "workspace:*",
+        "@ottabase/ui": "workspace:*",
+        "@tanstack/react-query": "catalog:",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "drizzle-orm": "catalog:",
+        "lucide-react": "catalog:",
+        "react": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "keywords": [
+        "ottabase",
+        "alerts",
+        "slack",
+        "discord",
+        "telegram",
+        "pagerduty",
+        "webhooks",
+        "cloudflare"
+    ],
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/alerts"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/alerts#readme"
+}
