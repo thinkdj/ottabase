@@ -7,6 +7,7 @@ import type { LegalConfig, LegalDocId } from './types';
 export const DEFAULTS = {
     basePath: '/legal',
     refundWindowDays: 14,
+    refundPercent: 100,
     noticeDays: 30,
     deletionDays: 30,
 } as const;
@@ -58,6 +59,8 @@ function subProcessorList(config: LegalConfig): string {
 
 /** Build the `{{placeholder}}` to value map from config, per document. */
 export function buildVars(config: LegalConfig, docId?: LegalDocId): Record<string, string> {
+    // Clamped so a bad value never publishes "retain -20%"; `validateLegalConfig` still reports it.
+    const refundPercent = Math.min(100, Math.max(1, Math.round(config.refundPercent ?? DEFAULTS.refundPercent)));
     const vars: Record<string, string> = {
         appName: config.appName,
         companyName: config.companyName,
@@ -73,6 +76,8 @@ export function buildVars(config: LegalConfig, docId?: LegalDocId): Record<strin
             (typeof config.lastUpdated === 'string' ? config.lastUpdated : ''),
         copyrightYear: String(config.copyrightYear ?? new Date().getFullYear()),
         refundWindowDays: String(config.refundWindowDays ?? DEFAULTS.refundWindowDays),
+        refundPercent: String(refundPercent),
+        refundRetainedPercent: String(100 - refundPercent),
         minimumAge: config.minimumAge ? String(config.minimumAge) : '',
         noticeDays: String(config.noticeDays ?? DEFAULTS.noticeDays),
         deletionDays: String(config.deletionDays ?? DEFAULTS.deletionDays),

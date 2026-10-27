@@ -126,6 +126,7 @@ return docId ? <LegalDocument docId={docId} config={legalConfig} /> : <LegalInde
 | `basePath`         |          | Where the pages live, default `/legal`; cross-document links use it `{{legalBase}}`                                                                     |
 | `copyrightYear`    |          | Defaults to the current year `{{copyrightYear}}`                                                                                                        |
 | `refundWindowDays` |          | Default 14; `0` publishes a no-refund policy `{{refundWindowDays}}`                                                                                     |
+| `refundPercent`    |          | Default 100; below 100 publishes a partial refund, the rest named as a service fee `{{refundPercent}}` `{{refundRetainedPercent}}`                      |
 | `minimumAge`       |          | Minimum age to hold an account; unset means "old enough to form a contract" `{{minimumAge}}`                                                            |
 | `noticeDays`       |          | Notice before price changes and material changes to the terms, default 30 `{{noticeDays}}`                                                              |
 | `deletionDays`     |          | Days after account deletion within which data is removed, default 30 `{{deletionDays}}`                                                                 |

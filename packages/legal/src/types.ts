@@ -103,6 +103,11 @@ export interface LegalConfig {
     copyrightYear?: number;
     /** Days after a charge within which a refund is considered. 0 publishes a no-refund policy. Default 14. `{{refundWindowDays}}` */
     refundWindowDays?: number;
+    /**
+     * Share of a charge refunded inside the window, 1 to 100. Below 100 the policy names the rest as a service fee
+     * (the provider, e.g. Polar, supports partial refunds). Default 100. `{{refundPercent}}` `{{refundRetainedPercent}}`
+     */
+    refundPercent?: number;
     /** Minimum age to hold an account, when you set one. Unset: "old enough to form a binding contract". `{{minimumAge}}` */
     minimumAge?: number;
     /** Days of notice given before a price change or a material change to the terms takes effect. Default 30. `{{noticeDays}}` */

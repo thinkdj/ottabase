@@ -214,6 +214,17 @@ describe('conditional clauses', () => {
         expect(none).not.toContain('within 0 days');
         expect(none).toContain('## Your statutory rights');
     });
+    it('refunds state a partial refund and the retained fee below 100 percent', () => {
+        const paid = { ...base, features: { paidPlans: true } };
+        const partial = assembleLegalDocument('refunds', { ...paid, refundPercent: 90 }).markdown;
+        expect(partial).toContain('we will refund 90% of it. We retain 10% as a service fee');
+        expect(partial).not.toContain('we will refund it.');
+        expect(assembleLegalDocument('refunds', paid).markdown).not.toContain('service fee');
+        // Out-of-range values are clamped in the published text; validateLegalConfig reports them.
+        const over = assembleLegalDocument('refunds', { ...paid, refundPercent: 120 }).markdown;
+        expect(over).not.toContain('-20%');
+        expect(buildVars({ ...paid, refundPercent: -5 }).refundRetainedPercent).toBe('99');
+    });
     it('cookies and acceptable use follow analytics and api', () => {
         expect(assembleLegalDocument('cookies', { ...base, features: { cookies: true } }).markdown).not.toContain(
             '## Analytics cookies',
@@ -304,6 +315,7 @@ describe('legalConfigFromApp and validateLegalConfig', () => {
             jurisdiction: 'TODO',
             lastUpdated: { terms: '1 January 2026' },
             refundWindowDays: -1,
+            refundPercent: 0,
             features: { eu: true, ai: true, paidPlans: true },
             subProcessors: [],
         });
@@ -316,6 +328,7 @@ describe('legalConfigFromApp and validateLegalConfig', () => {
                 expect.stringContaining('companyAddress is required for EU/UK users'),
                 expect.stringContaining('subProcessors is empty while features.eu is on'),
                 expect.stringContaining('refundWindowDays must be a whole number'),
+                expect.stringContaining('refundPercent must be a whole number from 1 to 100'),
             ]),
         );
         expect(gaps.some((g) => g.includes('for the Terms of Service'))).toBe(false);

@@ -2,9 +2,16 @@ import type { LegalSection } from '../types';
 
 /**
  * Refund and Cancellation Policy. Published only when `features.paidPlans` is set. The refund window comes from
- * `refundWindowDays`; 0 publishes a no-refund policy that still preserves statutory rights. Trial and lifetime clauses
- * follow their flags.
+ * `refundWindowDays`; 0 publishes a no-refund policy that still preserves statutory rights. `refundPercent` below 100
+ * publishes a partial refund with the retained share named as a service fee. Trial and lifetime clauses follow their
+ * flags.
  */
+
+const REFUND_ONCE =
+    'One refund per customer under this policy; renewals after the first paid period are refundable only where the law requires it or where a fault on our side prevented you from using the Service.';
+const REFUND_MECHANICS =
+    'Refunds go back to the original payment method and may take 5 to 10 business days to appear, depending on your bank. We may decline a refund where we find abuse of this policy, such as repeated purchases and refunds.';
+
 export const REFUNDS: LegalSection[] = [
     {
         id: 'intro',
@@ -29,10 +36,19 @@ export const REFUNDS: LegalSection[] = [
     {
         id: 'refunds',
         title: 'Refunds',
-        when: (c) => (c.refundWindowDays ?? 14) > 0,
+        when: (c) => (c.refundWindowDays ?? 14) > 0 && (c.refundPercent ?? 100) >= 100,
         body: [
-            'If the Service does not work for you, contact us at [{{contactEmail}}](mailto:{{contactEmail}}) within {{refundWindowDays}} days of a charge and we will refund it. One refund per customer under this policy; renewals after the first paid period are refundable only where the law requires it or where a fault on our side prevented you from using the Service.',
-            'Refunds go back to the original payment method and may take 5 to 10 business days to appear, depending on your bank. We may decline a refund where we find abuse of this policy, such as repeated purchases and refunds.',
+            `If the Service does not work for you, contact us at [{{contactEmail}}](mailto:{{contactEmail}}) within {{refundWindowDays}} days of a charge and we will refund it. ${REFUND_ONCE}`,
+            REFUND_MECHANICS,
+        ].join('\n\n'),
+    },
+    {
+        id: 'refunds-partial',
+        title: 'Refunds',
+        when: (c) => (c.refundWindowDays ?? 14) > 0 && (c.refundPercent ?? 100) < 100,
+        body: [
+            `If the Service does not work for you, contact us at [{{contactEmail}}](mailto:{{contactEmail}}) within {{refundWindowDays}} days of a charge and we will refund {{refundPercent}}% of it. We retain {{refundRetainedPercent}}% as a service fee covering payment processing and the use you have already had of the Service. ${REFUND_ONCE}`,
+            REFUND_MECHANICS,
         ].join('\n\n'),
     },
     {

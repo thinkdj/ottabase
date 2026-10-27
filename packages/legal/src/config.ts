@@ -91,6 +91,9 @@ export function validateLegalConfig(config: LegalConfig): string[] {
     }))
         if (v !== undefined && !(Number.isInteger(v) && v >= 0))
             gaps.push(`${k} must be a whole number of days or years, got ${String(v)}.`);
+    const pct = config.refundPercent;
+    if (pct !== undefined && !(Number.isInteger(pct) && pct >= 1 && pct <= 100))
+        gaps.push(`refundPercent must be a whole number from 1 to 100, got ${String(pct)}.`);
     for (const p of config.subProcessors ?? []) {
         check(p.name?.trim() && p.purpose?.trim(), `A sub-processor is missing its name or purpose.`);
         if (p.url) check(/^https:\/\//.test(p.url), `Sub-processor "${p.name}" has a non-https url.`);
