@@ -20,6 +20,7 @@
 // ============================================================
 
 import { definePackageList } from './registry';
+import { alertsPackage } from './packages/alerts';
 import { apiKeysPackage } from './packages/apikeys';
 import { appPackage } from './packages/app';
 import { brandEnginePackage } from './packages/brand-engine';
@@ -53,6 +54,7 @@ definePackageList(() => [
     meterPackage,
     apiKeysPackage,
     postmasterPackage,
+    alertsPackage,
     vaultPackage,
     fleetPackage,
     legalPackage,

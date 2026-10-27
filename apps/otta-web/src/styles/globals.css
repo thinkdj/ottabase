@@ -19,6 +19,7 @@
 @source '../../../../packages/medialibrary/src';
 @source '../../../../packages/ottaai/src';
 @source '../../../../packages/ottalanding/src';
+@source '../../../../packages/alerts/src';
 @source '../../../../packages/cf-pdf/src';
 @source '../../../../packages/vault/src';
 @source '../../../../packages/premium*/src/**/*.{js,ts,jsx,tsx}';

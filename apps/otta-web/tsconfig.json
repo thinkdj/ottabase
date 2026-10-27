@@ -72,6 +72,8 @@
             "@ottabase/webhooks/schema": ["../../packages/webhooks/src/schema.ts"],
             "@ottabase/webhooks/react": ["../../packages/webhooks/src/react/index.ts"],
             "@ottabase/vault/react": ["../../packages/vault/src/react/index.ts"],
+            "@ottabase/alerts/react": ["../../packages/alerts/src/react/index.ts"],
+            "@ottabase/alerts/schema": ["../../packages/alerts/src/schema.ts"],
             "@ottabase/*": ["../../packages/*/src"]
         },
         "types": ["vite/client"]

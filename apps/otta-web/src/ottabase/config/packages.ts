@@ -15,7 +15,7 @@
  */
 import { definePackageClient, installedPackages, packageAdminPages, packageRoutes } from '@ottabase/kernel/client';
 import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks';
-import { Archive, Gift, Webhook } from 'lucide-react';
+import { Archive, BellRing, Gift, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'core' }),
@@ -41,6 +41,21 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'meter' }),
     definePackageClient({ key: 'apikeys' }),
     definePackageClient({ key: 'postmaster' }),
+    definePackageClient({
+        key: 'alerts',
+        adminPages: [
+            {
+                path: '/admin/infrastructure/alerts',
+                title: 'Alerts',
+                description: 'Where operator alerts go, and every alert with where it went.',
+                icon: BellRing,
+                group: 'infrastructure',
+                scope: 'platform',
+                load: () => import('@/pages/admin/infrastructure/AlertsPage'),
+                exportName: 'AlertsPage',
+            },
+        ],
+    }),
     definePackageClient({ key: 'fleet' }),
     definePackageClient({ key: 'legal' }),
     definePackageClient({ key: 'screenshot' }),

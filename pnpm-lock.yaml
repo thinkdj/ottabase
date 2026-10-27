@@ -483,6 +483,9 @@ importers:
       '@mantine/notifications':
         specifier: 'catalog:'
         version: 8.3.15(@mantine/core@8.3.15(@mantine/hooks@8.3.15(react@19.2.4))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@mantine/hooks@8.3.15(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@ottabase/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@ottabase/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
@@ -815,6 +818,55 @@ importers:
       wrangler:
         specifier: 'catalog:'
         version: 4.145.0(@cloudflare/workers-types@4.20260702.1)(@types/node@25.1.0)
+
+  packages/alerts:
+    dependencies:
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@ottabase/ottaorm':
+        specifier: workspace:*
+        version: link:../ottaorm
+      '@ottabase/ottarouter':
+        specifier: workspace:*
+        version: link:../ottarouter
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
+    devDependencies:
+      '@ottabase/db':
+        specifier: workspace:*
+        version: link:../db
+      '@ottabase/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.16(react@19.2.4)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.28
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.7
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.468.0(react@19.2.4)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.4
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.28)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.7.0)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.31))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/analytics:
     devDependencies:

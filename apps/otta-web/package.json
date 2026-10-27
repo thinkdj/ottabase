@@ -64,6 +64,7 @@
         "@mantine/hooks": "catalog:",
         "@mantine/modals": "catalog:",
         "@mantine/notifications": "catalog:",
+        "@ottabase/alerts": "workspace:*",
         "@ottabase/analytics": "workspace:*",
         "@ottabase/apikeys": "workspace:*",
         "@ottabase/api": "workspace:*",
