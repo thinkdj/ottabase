@@ -62,6 +62,7 @@
 - [@ottabase/medialibrary](packages/medialibrary/README.md): Shared media-library primitives for Ottabase apps.
 - [@ottabase/meter](packages/meter/README.md): Usage credits for Ottabase apps: atomic D1 decrements per tenant and meter, period resets, top-ups, a usage ledger and a 402 guard.
 - [@ottabase/notifications](packages/notifications/README.md): Minimalistic notifications engine for Ottabase - multi-channel user notifications and real-time updates.
+- [@ottabase/og](packages/og/README.md): Social images for any page: the 1200 by 630 card that X, LinkedIn, Slack and iMessage show when a link is shared. The card is an HTML page drawn by Cloudflare Browser Rendering, kept in R2 so each…
 - [@ottabase/ottaai](packages/ottaai/README.md): Tenant BYOK for AI: a user's key → an org's key → the platform default → no client. Encrypted at rest, resolved deterministically, gated server-side, and shipped with the settings UI.
 - [@ottabase/ottablog](packages/ottablog/README.md): A comprehensive blog and content management system for Ottabase apps. Built on the fat model pattern with OttaORM.
 - [@ottabase/ottadate](packages/ottadate/README.md): Framework-agnostic date picker library with range, datetime, and fuzzy date support. Works with any framework or vanilla JS — no React, Vue, or Angular required.

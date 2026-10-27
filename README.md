@@ -355,6 +355,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows, DO alarms, Cache Keys |
 | `@ottabase/cf-pdf`     | Cloudflare HTML-to-PDF export with Browser Rendering and safe downloads                                       |
 | `@ottabase/screenshot` | Automated screenshots (png/jpg/webp, quality, optimization pass): Node runner + Browser Rendering route       |
+| `@ottabase/og`         | Social images: an HTML card drawn through Browser Rendering, cached in R2, served from signed URLs            |
 | `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)                                             |
 | `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link                                      |
 | `@ottabase/rbac`       | Role-based access control with per-org KV caching                                                             |

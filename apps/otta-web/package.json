@@ -109,6 +109,7 @@
         "@ottabase/queue": "workspace:*",
         "@ottabase/rbac": "workspace:*",
         "@ottabase/referrals": "workspace:*",
+        "@ottabase/og": "workspace:*",
         "@ottabase/screenshot": "workspace:*",
         "@ottabase/shortlinks": "workspace:*",
         "@ottabase/spotlight": "workspace:*",

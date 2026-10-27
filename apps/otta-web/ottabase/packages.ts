@@ -33,6 +33,7 @@ import { ottablogPackage } from './packages/ottablog';
 import { ottalandingPackage } from './packages/ottalanding';
 import { postmasterPackage } from './packages/postmaster';
 import { referralsPackage } from './packages/referrals';
+import { ogPackage } from './packages/og';
 import { screenshotPackage } from './packages/screenshot';
 import { shortlinksPackage } from './packages/shortlinks';
 import { vaultPackage } from './packages/vault';
@@ -59,6 +60,7 @@ definePackageList(() => [
     fleetPackage,
     legalPackage,
     screenshotPackage,
+    ogPackage,
     // Premium: collected like the rest; routes and lifecycle are the premium registry's.
     webhooksPackage,
 ]);

@@ -58,6 +58,7 @@ export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'fleet' }),
     definePackageClient({ key: 'legal' }),
     definePackageClient({ key: 'screenshot' }),
+    definePackageClient({ key: 'og' }),
     definePackageClient({
         key: 'vault',
         adminPages: [

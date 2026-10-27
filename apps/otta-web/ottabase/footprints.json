@@ -121,6 +121,9 @@
     },
     "fleet": { "description": "The fleet report for Tower. Composition only." },
     "screenshot": { "description": "Screenshots through Browser Rendering. Composition only." },
+    "og": {
+        "description": "Social images through Browser Rendering: the composition, and the blog's card for posts without a hero image."
+    },
     "webhooks": {
         "description": "Outbound webhooks (Premium): the admin page and the quota adapter. The Durable Object stays: it is generic.",
         "paths": [

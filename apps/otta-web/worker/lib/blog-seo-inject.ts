@@ -8,6 +8,7 @@
 // per-request-personalized HTML.
 // ---------------------------------------------------------------------------
 
+import { ogImageUrl } from '@ottabase/og'; // otta:only og
 import { Post } from '@ottabase/ottablog';
 import { buildPostSeoTags, extractBlogSlugFromPath, replaceDocumentTitle } from '@ottabase/ottablog/seo';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
@@ -60,22 +61,46 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
         const title = isBlurb ? `Thought${authorName ? ` by ${authorName}` : ''}` : (post.get('title') as string) || '';
         if (!title) return response;
 
+        const excerpt =
+            (isBlurb
+                ? (post.get('blurbText') as string)
+                : isPhotoJournal
+                  ? (post.get('photoNote') as string) || (post.get('excerpt') as string)
+                  : (post.get('excerpt') as string)) || null;
+        const publishedAt = post.get('publishedAt') as number | string | null;
         const heroImage = post.get('heroImage') as { url?: string } | null;
-        const canonicalUrl = `${url.protocol}//${url.host}/blog/${encodeURIComponent(
-            (post.get('slug') as string) || slug,
-        )}`;
+        const origin = `${url.protocol}//${url.host}`;
+        const canonicalUrl = `${origin}/blog/${encodeURIComponent((post.get('slug') as string) || slug)}`;
+        let imageUrl = heroImage?.url ?? null;
+        // otta:begin og
+        // A post without a hero still unfurls with a card: title, excerpt and author, drawn by @ottabase/og.
+        if (!imageUrl && env.AUTH_SECRET) {
+            imageUrl = await ogImageUrl(
+                origin,
+                {
+                    title,
+                    subtitle: excerpt ?? undefined,
+                    eyebrow: isBlurb ? 'Thought' : isPhotoJournal ? 'Photo journal' : 'Blog',
+                    author: authorName ?? undefined,
+                    date: publishedAt
+                        ? new Date(publishedAt).toLocaleDateString('en', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                          })
+                        : undefined,
+                },
+                env.AUTH_SECRET,
+            );
+        }
+        // otta:end og
 
         const seoTags = buildPostSeoTags({
             title,
-            excerpt:
-                (isBlurb
-                    ? (post.get('blurbText') as string)
-                    : isPhotoJournal
-                      ? (post.get('photoNote') as string) || (post.get('excerpt') as string)
-                      : (post.get('excerpt') as string)) || null,
+            excerpt,
             canonicalUrl,
-            imageUrl: heroImage?.url ?? null,
-            publishedAt: post.get('publishedAt') as number | string | null,
+            imageUrl,
+            publishedAt,
             updatedAt: post.get('updatedAt') as number | string | null,
             authorName,
             siteName: config.appName || null,

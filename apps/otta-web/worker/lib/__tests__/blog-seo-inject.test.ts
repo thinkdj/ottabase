@@ -46,7 +46,7 @@ function fakePost(fields: Record<string, unknown>) {
     };
 }
 
-const env = { OBCF_D1: {} } as any;
+const env = { OBCF_D1: {}, AUTH_SECRET: 'test-secret' } as any;
 
 const PLATFORM_CONFIG = {
     appId: 'otta-web',
@@ -90,6 +90,33 @@ describe('injectBlogPostSeo', () => {
         const where = mockPostFirst.mock.calls[0][0];
         expect('organizationId' in where).toBe(false);
         expect(mockResolveBlogOrganizationId).not.toHaveBeenCalled();
+    });
+
+    it('points og:image at a signed @ottabase/og card when the post has no hero image', async () => {
+        mockPostFirst.mockResolvedValue(
+            fakePost({
+                title: 'No hero',
+                slug: 'no-hero',
+                excerpt: 'Still unfurls',
+                contentType: 'blog',
+                publishedAt: Date.UTC(2026, 9, 28),
+            }),
+        );
+        const response = await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/no-hero'), env);
+        const html = await response.text();
+        const image = /property="og:image" content="([^"]+)"/.exec(html)?.[1]?.replace(/&amp;/g, '&');
+        expect(image).toBeDefined();
+        const url = new URL(image!);
+        expect(`${url.origin}${url.pathname}`).toBe('https://demo.test/api/og/image');
+        expect(Object.fromEntries(url.searchParams)).toMatchObject({
+            title: 'No hero',
+            subtitle: 'Still unfurls',
+            eyebrow: 'Blog',
+            author: 'Ada',
+            date: 'Oct 28, 2026',
+        });
+        expect(url.searchParams.get('sig')).toMatch(/^[0-9a-f]{64}$/);
+        expect(html).toContain('twitter:card" content="summary_large_image"');
     });
 
     it('uses the blurb text and SocialMediaPosting metadata for thoughts', async () => {

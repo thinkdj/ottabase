@@ -364,6 +364,7 @@ createTodo.mutate({ title: 'New Todo' });
 | `@ottabase/cf`         | D1, KV, R2, Queues, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows, DO alarms, Cache Keys |
 | `@ottabase/cf-pdf`     | Cloudflare HTML-to-PDF export with Browser Rendering and safe downloads                                       |
 | `@ottabase/screenshot` | Automated screenshots (png/jpg/webp, quality, optimization pass): Node runner + Browser Rendering route       |
+| `@ottabase/og`         | Social images: an HTML card drawn through Browser Rendering, cached in R2, served from signed URLs            |
 | `@ottabase/queue`      | Job queue (dispatch, handlers, deduplication, chaining, priority)                                             |
 | `@ottabase/auth`       | Lightweight custom auth: signed sessions, OAuth, Credentials, Magic Link                                      |
 | `@ottabase/rbac`       | Role-based access control with per-org KV caching                                                             |
@@ -5621,10 +5622,10 @@ pnpm otta deploy my-app --owner-email me@example.com --owner-password '…'
 
 That is Steps 1 to 6 below from one terminal: the resources the env block of `wrangler.jsonc` names are created, their
 ids are filled into a gitignored `wrangler.production.jsonc`, the packages and the app are built and deployed, the
-framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`, `BOOTSTRAP_OWNER_SECRET`, `CRON_SECRET`,
-`AUTH_URL`), the database is bootstrapped with that owner, and `/api/health` is checked. Rerun it to redeploy. Details
-and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight to Cloudflare".
-The rest of this guide is the CI/CD setup for a team.
+framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`, `BOOTSTRAP_OWNER_SECRET`,
+`CRON_SECRET`, `AUTH_URL`), the database is bootstrapped with that owner, and `/api/health` is checked. Rerun it to
+redeploy. Details and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight
+to Cloudflare". The rest of this guide is the CI/CD setup for a team.
 
 ---
 
@@ -13508,10 +13509,10 @@ declares as the key's:
     otta:end demo */
     ```
 
-    `otta:only` takes one line, `otta:begin … otta:end` a block, `otta:unless … otta:end` a block that becomes live
-    when the key goes (the starter home page in otta-web). A marker naming several keys (`otta:only ottablog
-    shortlinks`, on an import both use) goes when the last of them does. Markers of keys that stay are left in place.
-    An unpaired marker stops the strip with its line number.
+    `otta:only` takes one line, `otta:begin … otta:end` a block, `otta:unless … otta:end` a block that becomes live when
+    the key goes (the starter home page in otta-web). A marker naming several keys (`otta:only ottablog   shortlinks`,
+    on an import both use) goes when the last of them does. Markers of keys that stay are left in place. An unpaired
+    marker stops the strip with its line number.
 
 A package's pages copied from its `app/` folder are deleted only while they are still the shipped copy; an edited one is
 left and named in the plan. `otta add <key> <app>` later copies the key's footprint paths back from `apps/otta-web`
@@ -13581,8 +13582,8 @@ pnpm otta deploy my-app --dry-run
 
 What the deploy workflow does in CI, from one terminal and without a GitHub repository:
 
-1. **Resources.** `pnpm cf:setup --json --env <env>` creates the D1, KV, R2 and queue the env block of
-   `wrangler.jsonc` names (named after the app by `otta new`), or finds them, and returns their ids.
+1. **Resources.** `pnpm cf:setup --json --env <env>` creates the D1, KV, R2 and queue the env block of `wrangler.jsonc`
+   names (named after the app by `otta new`), or finds them, and returns their ids.
 2. **Config.** The placeholders of the env block (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`, `CLOUDFLARE_ACCOUNT_ID`, …) are
    filled into `wrangler.<env>.jsonc`, gitignored. Ids come from step 1, the account id from `wrangler whoami`, anything
    else from `--set KEY=VALUE` or the environment; a placeholder with no value stops the deploy and names itself.
@@ -13596,8 +13597,8 @@ What the deploy workflow does in CI, from one terminal and without a GitHub repo
    URL with the bootstrap secret, once.
 6. **Health.** `GET /api/health` on the Worker.
 
-Run it again after a change: it finds what exists and redeploys. CI stays the better place for a team; this is the
-first deploy, and the solo one.
+Run it again after a change: it finds what exists and redeploys. CI stays the better place for a team; this is the first
+deploy, and the solo one.
 
 ### Updating Ottabase Pro
 
@@ -13609,8 +13610,8 @@ pnpm otta pro update --dry-run
 
 Pro lives at `packages/pro` as a git subtree. The command runs `git subtree pull --squash` for the tag (the tree must be
 clean), `otta add pro <app>` for anything the release adds (never overwriting what the app has), and prints the
-release's `CHANGELOG.md` entry, with a warning when it names a newer public Ottabase than this repository may have.
-Then `pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit.
+release's `CHANGELOG.md` entry, with a warning when it names a newer public Ottabase than this repository may have. Then
+`pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit.
 
 ### Starting apps and environments
 
@@ -13782,12 +13783,12 @@ bin, so invoke it through the workspace script: `pnpm otta <command>`.
 
 | Command                      | Description                                                                                     |
 | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for the web template)           |
+| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for the web template)          |
 | `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`) |
-| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)              |
-| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                              |
+| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)             |
+| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                            |
 | `otta deploy [app]`          | Deploy straight to Cloudflare: resources, config, build, deploy, secrets, bootstrap (`--env`)   |
-| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)       |
+| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)      |
 | `otta start [app]`           | Start development or a named local Wrangler environment                                         |
 | `otta dev [app]`             | Start the hot-reload development topology                                                       |
 | `otta preview [app]`         | Build and start the preview Wrangler environment locally                                        |
@@ -17547,6 +17548,98 @@ import { notificationsTable, notificationPreferencesTable } from '@ottabase/noti
 ## License
 
 MIT
+
+
+---
+
+# packages/og/README.md
+
+# @ottabase/og
+
+Social images for any page: the 1200 by 630 card that X, LinkedIn, Slack and iMessage show when a link is shared. The
+card is an HTML page drawn by Cloudflare Browser Rendering, kept in R2 so each card costs one browser session, and
+served from a URL the app signs, so the public route renders what the app asked for and nothing else.
+
+Headless: no React, no admin page. The template is a function from a card to HTML; the default one is here, and Ottabase
+Pro's og-studio edits one visually. otta-web uses it for every blog post without a hero image.
+
+## The card
+
+```ts
+{
+    title: 'Why we moved to D1',       // required, up to 200 characters
+    subtitle: 'Four months, no regrets', // up to 300
+    eyebrow: 'Engineering',            // the small line above the title
+    siteName: 'Acme', domain: 'acme.dev',
+    author: 'Sam', date: 'Oct 2026',
+    accent: '#16a34a', background: '#0b1220', theme: 'dark',
+    imageUrl: 'https://…/hero.jpg',    // drawn behind the text, shaded
+    logoUrl: 'https://…/logo.svg',     // in the footer
+}
+```
+
+Every field is bounded (`CARD_LIMITS`), colors must be `#rrggbb`, images must be http(s). Fields the route fills from
+its `defaults` (site name, domain, colors, logo) can be left out of a URL, which keeps the URL short and lets the brand
+change without every emitted URL changing with it.
+
+## Install
+
+```ts
+// ottabase/packages/og.ts
+import { createOgPackage } from '@ottabase/og';
+
+export const ogPackage = createOgPackage<CloudflareEnv>({
+    getBrowserBinding: (env) => env.OBCF_BROWSER,
+    getBucket: (env) => env.OBCF_R2,
+    secret: (env) => env.AUTH_SECRET,
+    defaults: (env, request) => ({ siteName: 'Acme', domain: new URL(request.url).host, accent: '#16a34a' }),
+});
+```
+
+Then, wherever the app writes a page's `<head>`:
+
+```ts
+import { ogImageUrl } from '@ottabase/og';
+
+const image = await ogImageUrl(origin, { title, subtitle: excerpt, eyebrow: 'Blog', author }, env.AUTH_SECRET);
+// <meta property="og:image" content={image}>  <meta name="twitter:card" content="summary_large_image">
+```
+
+Options: `template` and `version` (another look; the version is part of the cache key, so name a new one when the
+template changes), `templates` (a source that picks a template per request, as og-studio does; a package can also
+`registerOgTemplateSource()` without the app wiring it), `prefix` (`og/` in the bucket), `open` (serve unsigned URLs:
+local development, or an app that accepts the cost), `maxAge` (one day), `basePath` (`/api/og`).
+
+Without Browser Rendering the routes answer 503 and the health line says so. Without a bucket every request renders.
+
+## Routes
+
+| Route                               | Who    | Does                                                                       |
+| ----------------------------------- | ------ | -------------------------------------------------------------------------- |
+| `GET /api/og/image?title=…&sig=…`   | anyone | the PNG, `Cache-Control: public, max-age=86400`; 403 without the signature |
+| `GET /api/og/preview?title=…&sig=…` | anyone | the same card as HTML, to look at the template                             |
+
+The signature is HMAC-SHA256 of the card's canonical query string under the secret. 400 for a bad card, 503 when
+rendering is not configured, 502 when the browser failed.
+
+## Your own template
+
+```ts
+import { createOgPackage, escapeHtml, type OgTemplate } from '@ottabase/og';
+
+const template: OgTemplate = (card) => `<!doctype html><body style="width:1200px;height:630px">
+    <h1>${escapeHtml(card.title)}</h1></body>`;
+
+createOgPackage({ …, template, version: 'acme-2' });
+```
+
+`createOgTemplate({ fontCss, fontFamily })` is the default look with a web font. The default template escapes every
+field and only draws http(s) images.
+
+## Tests
+
+`pnpm --filter @ottabase/og test`: the card's bounds, the canonical form and ids, the signatures, the template's
+escaping, the renderer's cache, and the routes with a fake browser.
 
 
 ---

@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Social images.** `@ottabase/og` draws the 1200 by 630 card a shared link shows: a bounded card (title, subtitle,
+  eyebrow, author, date, colors, logo, background image) rendered from an HTML template through Browser Rendering, kept
+  in R2 under the card's hash, served by `GET /api/og/image?…&sig=` where the signature is the app's (HMAC of the card
+  under `AUTH_SECRET`), so the public route draws only what the app asked for. `ogImageUrl()` emits the URL; `defaults`
+  fill the brand name, logo and primary color from the brand kit; `template` and `version` swap the look. otta-web uses
+  it for every blog post without a hero image, with the post's excerpt, author and date.
 - **The lean starter.** `otta new web my-app --minimal` (or `--preset blog`, `--preset saas`; `otta presets` lists them)
   scaffolds otta-web stripped to what the preset keeps: the core (auth, organizations and RBAC, the admin shell, Brand
   Engine, the app's own package) is never stripped, the demo gallery always is. A new app also gets its own Cloudflare
