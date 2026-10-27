@@ -30,6 +30,7 @@
 
 ## Packages
 
+- [@ottabase/alerts](packages/alerts/README.md): Operator alerts for Ottabase apps. Any package (or your own code) calls raise() once; the alert reaches email, Slack, Discord, Telegram, PagerDuty or a signed webhook, de-duplicated by a cooldown,…
 - [@ottabase/analytics](packages/analytics/README.md): Cloudflare Workers Analytics Engine (WAE) wrapper — track events, query aggregated data, and analyze user behavior.
 - [@ottabase/api](packages/api/README.md): Type-safe fetch wrapper with error handling.
 - [@ottabase/apikeys](packages/apikeys/README.md): API keys for the end users of an Ottabase app: hashed at rest, scoped, expiring, revocable, shown once, verified in one lookup.
@@ -60,7 +61,7 @@
 - [@ottabase/logger](packages/logger/README.md): Extensible logger for Ottabase with support for multiple transports and formatters.
 - [@ottabase/medialibrary](packages/medialibrary/README.md): Shared media-library primitives for Ottabase apps.
 - [@ottabase/meter](packages/meter/README.md): Usage credits for Ottabase apps: atomic D1 decrements per tenant and meter, period resets, top-ups, a usage ledger and a 402 guard.
-- [@ottabase/notifications](packages/notifications/README.md): Minimalistic notifications engine for Ottabase - multi-channel user notifications, system alerts, and real-time updates.
+- [@ottabase/notifications](packages/notifications/README.md): Minimalistic notifications engine for Ottabase - multi-channel user notifications and real-time updates.
 - [@ottabase/ottaai](packages/ottaai/README.md): Tenant BYOK for AI: a user's key → an org's key → the platform default → no client. Encrypted at rest, resolved deterministically, gated server-side, and shipped with the settings UI.
 - [@ottabase/ottablog](packages/ottablog/README.md): A comprehensive blog and content management system for Ottabase apps. Built on the fat model pattern with OttaORM.
 - [@ottabase/ottadate](packages/ottadate/README.md): Framework-agnostic date picker library with range, datetime, and fuzzy date support. Works with any framework or vanilla JS — no React, Vue, or Angular required.

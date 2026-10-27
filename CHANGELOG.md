@@ -9,6 +9,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- `@ottabase/alerts`: operator alerts for every package. One `raise(env, { source, kind, title, severity, key })`
+  reaches email, Slack, Discord, Telegram, PagerDuty (trigger and resolve share a dedup key) or an HMAC-signed webhook,
+  routed per channel by a severity floor and a source filter. Repeats of the same key and state inside a cooldown are
+  counted and reported on the next alert; a busy channel holds what is over its hourly limit and sends it as one
+  summary; a channel can send a daily digest instead; critical alerts skip both. Failed sends retry after 1, 5, 15 and
+  60 minutes from a five-minute sweep, and a 404 or a revoked token gives up at once. Channel targets are sealed with
+  AES-GCM in D1 and never sent to the browser. Unhandled errors (a 5xx, a failed scheduled task, a queue job out of
+  retries) become one alert per error shape per hour, unless an error tracker that alerts is installed.
+  `ALERTS_EMAIL_TO` gives mail with no setup; `POST /api/alerts/ingest` takes alerts from CI with a bearer token. The
+  console is at Admin → Infrastructure → Alerts, and a failing channel fails the `alerts:channels` health check.
+  Packages take the engine as an `alerts?: AlertSink<Env>` option.
+- `@ottabase/utils/outbound-url` (`assertPublicHttpsUrl`, `isPrivateHostname`) and `@ottabase/utils/hmac-signature`
+  (`signPayload`, `buildSignatureHeader`, `verifySignatureHeader`, `generateSigningSecret`, `timingSafeEqual`): the SSRF
+  policy and the signing scheme `@ottabase/webhooks` had, shared with `@ottabase/alerts`. Webhooks re-exports them under
+  its old names, unchanged for callers; one verifier now checks both packages' requests. Fleet, postmaster (unsubscribe
+  links and Resend webhooks), otta-web's cron guard and otta-worker's caller use its `timingSafeEqual` instead of their
+  own copies.
+- `@ottabase/notifications`: the system channel is gone (`SystemChannel`, `createSystemChannel`, `notifySystem`, the
+  `system_notifications` table and the `enable_system` preference). Operator alerts are `@ottabase/alerts`; this package
+  notifies users. The notifications demo page shows that split.
+
 - `@ottabase/charts`: `TreemapChart` (squarified, optionally grouped into blocks, the tail folded into "Other" tiles
   that keep their sum), `RadarChart` (polygon or circle rings, an outline per series), `WaterfallChart` (changes
   floating from the running total, subtotal rows, an opening balance, connectors, signed labels) and `ScatterChart`

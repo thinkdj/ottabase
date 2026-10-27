@@ -28,7 +28,12 @@ description:
 4. Generic `/api/ottaorm/*` CRUD is default-deny: add the entity to `GENERIC_CRUD_ALLOWLIST`
    (`worker/routes/ottaorm-crud.ts`) only if it should be reachable there, with an RLS policy in the manifest.
 5. Inside the manifest graph (handlers, lib code) read the registry from `ottabase/registry.ts`, not from the list.
-   _(Premium packages are the same manifest plus licensing. See `docs/PREMIUM_PACKAGES.md`.)_
+6. A package that must tell the operator something (a failing poll, a new ticket) takes the app's engine as an optional
+   `alerts?: AlertSink<Env>` option (type from `@ottabase/alerts`, never the engine itself) and calls
+   `alerts.raise(env, input)`; unset, it logs. Export the mapping (`xAlertInput`) so an app can raise elsewhere. Errors
+   thrown from its routes, cron and queue handlers reach alerts on their own through `registry.report()`. Messages to
+   the app's users are not alerts: `@ottabase/notifications` or the app mailer. _(Premium packages are the same manifest
+   plus licensing. See `docs/PREMIUM_PACKAGES.md`.)_
 
 ## Headless vs rendered (required when both exist)
 

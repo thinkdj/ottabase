@@ -52,6 +52,10 @@ if you want jobs defined purely in code with their own Cron Triggers, rather tha
   endpoints (e.g. blog publish-scheduled) and are open when `ENVIRONMENT` is a dev value.
 - Cron math is **UTC**. Convert for user-facing schedules.
 - Adding a cron trigger changes `wrangler.jsonc` — keep binding/trigger config in sync per the cloudflare rules.
+- A task that throws is reported to the kernel and becomes an operator alert through `@ottabase/alerts` (one per error
+  shape per hour). Do not mail on failure by hand. A condition worth telling the operator about that is not a throw (a
+  feed empty three nights running) is `alerts.raise(env, { source, kind, title, severity, key })` from
+  `ottabase/packages/alerts`; a package takes the engine as an `alerts?: AlertSink<Env>` option instead of importing it.
 
 ## Authoritative sources
 

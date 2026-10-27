@@ -124,6 +124,7 @@ ottabase/
 │   ├── meter/            # Usage credits: atomic balances, periods, ledger
 │   ├── apikeys/          # Hashed, scoped, revocable API keys for your customers
 │   ├── postmaster/       # Inbound mail, suppression list, one-click unsubscribe, bounce webhooks
+│   ├── alerts/           # Operator alerts: email, Slack, Discord, Telegram, PagerDuty, signed webhooks
 │   ├── vault/            # D1 backups to R2 as NDJSON, restore, per-tenant export
 │   ├── fleet/            # App report: GET /api/fleet/report for whatever watches your apps
 │   ├── auth/             # Lightweight custom auth (sessions, OAuth, magic links) with D1
@@ -370,6 +371,7 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
 | `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
+| `@ottabase/alerts`     | Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: cooldowns, hourly limits, digests, retries    |
 
 ### Premium Packages
 
@@ -421,13 +423,13 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 
 ### Features & Realtime
 
-| Package                   | Purpose                                                      |
-| ------------------------- | ------------------------------------------------------------ |
-| `@ottabase/cf-realtime`   | WebSocket pub/sub via Durable Objects (Pusher alternative)   |
-| `@ottabase/shortlinks`    | URL shortener: short codes, interstitial, expiry, WAE clicks |
-| `@ottabase/ottalanding`   | Landing sites in D1: typed sections, admin editor, 3 themes  |
-| `@ottabase/referrals`     | Referral tracking - first-touch attribution, WAE clicks      |
-| `@ottabase/notifications` | Multi-channel notifications (email, WebSocket, system)       |
+| Package                   | Purpose                                                        |
+| ------------------------- | -------------------------------------------------------------- |
+| `@ottabase/cf-realtime`   | WebSocket pub/sub via Durable Objects (Pusher alternative)     |
+| `@ottabase/shortlinks`    | URL shortener: short codes, interstitial, expiry, WAE clicks   |
+| `@ottabase/ottalanding`   | Landing sites in D1: typed sections, admin editor, 3 themes    |
+| `@ottabase/referrals`     | Referral tracking - first-touch attribution, WAE clicks        |
+| `@ottabase/notifications` | Notifications for your users: email and WebSocket, preferences |
 
 ### Utilities & Integrations
 

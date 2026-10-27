@@ -50,6 +50,9 @@ configure a Cloudflare dead-letter queue on the consumer). The raw `QueueAdapter
 - A producer binding alone never runs a handler. The Worker must also be listed under `queues.consumers` for the same
   queue, in the top level and in every `env.*` (they do not inherit). Without it jobs are accepted and never processed,
   with no error anywhere.
+- A job out of retries is reported to the kernel and becomes an operator alert through `@ottabase/alerts`; `onFailure`
+  is for the job's own cleanup, not for mailing anyone. Alerts are for the people running the app; a message to the user
+  the job was for goes through `@ottabase/notifications` or the app mailer.
 
 ## Authoritative sources
 

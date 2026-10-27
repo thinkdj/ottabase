@@ -341,6 +341,10 @@ leak, not a bug report.
   text, security context, attempted request data, or the model registry.
 - **Redact before logging.** Wrap any thrown value in `redactErrorForLog()`; raw errors carry tokens, cookies, and
   request bodies into log sinks. Prefer one bounded structured JSON event over free-text logging.
+- **Unhandled errors already alert.** A 5xx, a failed scheduled task and a queue job out of retries reach
+  `registry.report()` and become one operator alert per error shape per hour through `@ottabase/alerts`. Never mail the
+  operator by hand on an error path. Alerts go to the people running the app; `@ottabase/notifications` and the app
+  mailer go to its users. Do not mix the two.
 - **Provisioning is transactional and fail-closed.** An account without its organization, active membership, and scoped
   role grant is not a successful signup: roll back and surface the failure rather than issuing a session for a
   half-provisioned account.
@@ -605,6 +609,24 @@ const registry = createRegistry<Env>().register('send-email', async (job, ctx) =
 
 export default { queue: createQueueHandler(registry) };
 ```
+
+### @ottabase/alerts
+
+Operator alerts: one `raise()` reaches email, Slack, Discord, Telegram, PagerDuty or a signed webhook, de-duplicated by
+a cooldown, capped per channel, rolled into digests, retried. Channels at Admin → Infrastructure → Alerts.
+
+```typescript
+import { alerts } from '../ottabase/packages/alerts'; // the app's one engine
+
+await alerts.raise(env, { source: 'app', kind: 'import.failed', title: 'Nightly import failed', severity: 'warning' });
+
+// A package never imports the engine: it takes the sink as an option and logs when unset.
+export interface MyPackageOptions<Env> {
+    alerts?: AlertSink<Env>; // from '@ottabase/alerts'
+}
+```
+
+Not for your users: that is `@ottabase/notifications` (email, WebSocket, per-user preferences) or the app mailer.
 
 ### @ottabase/cf-realtime
 
