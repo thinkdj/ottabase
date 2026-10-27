@@ -15,17 +15,21 @@ export {
 export { DEMO_LICENSE_PRIVATE_KEY, DEMO_LICENSE_PUBLIC_KEY, DEMO_PRO_LICENSE } from './demo-license';
 export { createVaultPackage, type VaultPackageOptions } from './manifest';
 export { createVaultRouter, type VaultCaller, type VaultRouterOptions } from './routes';
+export { contentKey, listAll, parseEntries, type ObjectEntry } from './objects';
 export { createVault, d1Driver, defaultBackupId, type D1Like, type D1StatementLike } from './vault';
 export {
     VaultError,
     type Awaitable,
     type BackupManifest,
+    type BackupObjects,
     type BackupTable,
     type BucketLike,
     type ExportScope,
+    type ObjectsOptions,
     type RawDriver,
     type RawResult,
     type RawStatement,
+    type RestoredObjects,
     type RestoreResult,
     type Vault,
     type VaultOptions,

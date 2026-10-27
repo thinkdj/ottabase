@@ -99,7 +99,7 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
     router.post('/backups', async (c) => {
         const who = await admin(c);
         if (who instanceof Response) return who;
-        const body = await readJson<{ tables?: unknown; label?: unknown }>(c.req);
+        const body = await readJson<{ tables?: unknown; label?: unknown; objects?: unknown }>(c.req);
         try {
             // The count is measured HERE, never taken from the client: a client-supplied
             // number would let the client raise its own ceiling.
@@ -115,6 +115,7 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
             const manifest = await options.vault.backup(c.env, {
                 tables: tableList(body.tables),
                 label: typeof body.label === 'string' ? body.label.slice(0, 120) : undefined,
+                objects: body.objects !== false,
             });
             return jsonResponse({ data: manifest }, 201);
         } catch (error) {
@@ -151,7 +152,9 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
     router.post('/backups/:id/restore', async (c) => {
         const who = await admin(c);
         if (who instanceof Response) return who;
-        const body = await readJson<{ confirm?: unknown; tables?: unknown; truncate?: unknown }>(c.req);
+        const body = await readJson<{ confirm?: unknown; tables?: unknown; truncate?: unknown; objects?: unknown }>(
+            c.req,
+        );
         if (body.confirm !== c.params.id) {
             return errorResponse('Send { "confirm": "<backup id>" } to restore; this replaces live rows', 400, {
                 code: 'VALIDATION_ERROR',
@@ -161,6 +164,7 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
             const result = await options.vault.restore(c.env, c.params.id, {
                 tables: tableList(body.tables),
                 truncate: body.truncate !== false,
+                objects: body.objects !== false,
             });
             return jsonResponse({ data: result });
         } catch (error) {

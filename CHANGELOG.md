@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Vault snapshots the bucket too.** With `objects` in `createVault` (otta-web passes it, leaving out the `og/` cache),
+  every backup lists the bucket's objects beside the tables and keeps each object's bytes once per etag under
+  `vault/<appId>/_objects/`, so an unchanged bucket costs nothing to snapshot again. Restore puts the listed objects
+  back (skipping the ones that still match), pruning drops the bytes no remaining backup names, and the admin row shows
+  the file count and size. `objects: false` on a backup or restore leaves the bucket out of that run.
 - **Social images.** `@ottabase/og` draws the 1200 by 630 card a shared link shows: a bounded card (title, subtitle,
   eyebrow, author, date, colors, logo, background image) rendered from an HTML template through Browser Rendering, kept
   in R2 under the card's hash, served by `GET /api/og/image?…&sig=` where the signature is the app's (HMAC of the card

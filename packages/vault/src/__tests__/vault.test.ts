@@ -42,26 +42,59 @@ function sqliteDriver(db: DatabaseSync): Required<RawDriver> {
     return driver;
 }
 
-function memoryBucket(): BucketLike & { objects: Map<string, string> } {
+/** A content hash standing in for R2's etag. */
+const etagOf = (value: string) => {
+    let hash = 5381;
+    for (let i = 0; i < value.length; i++) hash = ((hash << 5) + hash + value.charCodeAt(i)) >>> 0;
+    return hash.toString(16);
+};
+
+function memoryBucket(): BucketLike & { objects: Map<string, string>; types: Map<string, string> } {
     const objects = new Map<string, string>();
+    const types = new Map<string, string>();
     return {
         objects,
-        async put(key, value) {
-            objects.set(key, typeof value === 'string' ? value : new TextDecoder().decode(value as ArrayBuffer));
+        types,
+        async put(key, value, options) {
+            objects.set(
+                key,
+                typeof value === 'string'
+                    ? value
+                    : value instanceof ReadableStream
+                      ? await new Response(value).text()
+                      : new TextDecoder().decode(value as ArrayBuffer),
+            );
+            if (options?.httpMetadata?.contentType) types.set(key, options.httpMetadata.contentType);
         },
         async get(key) {
             const value = objects.get(key);
-            return value === undefined ? null : { text: async () => value };
+            if (value === undefined) return null;
+            const contentType = types.get(key);
+            return {
+                text: async () => value,
+                body: new Blob([value]).stream(),
+                etag: etagOf(value),
+                ...(contentType ? { httpMetadata: { contentType } } : {}),
+            };
         },
         async list({ prefix = '', delimiter } = {}) {
             const keys = [...objects.keys()].filter((key) => key.startsWith(prefix)).sort();
             const prefixes = new Set<string>();
-            const direct: Array<{ key: string; size: number }> = [];
+            const direct: Array<{ key: string; size: number; etag: string; uploaded: Date }> = [];
             for (const key of keys) {
                 const rest = key.slice(prefix.length);
                 const at = delimiter ? rest.indexOf(delimiter) : -1;
                 if (at >= 0) prefixes.add(prefix + rest.slice(0, at + 1));
-                else direct.push({ key, size: objects.get(key)!.length });
+                else {
+                    const value = objects.get(key)!;
+                    direct.push({
+                        key,
+                        size: value.length,
+                        etag: etagOf(value),
+                        uploaded: new Date(0),
+                        ...(types.get(key) ? { httpMetadata: { contentType: types.get(key)! } } : {}),
+                    });
+                }
             }
             return { objects: direct, delimitedPrefixes: [...prefixes], truncated: false };
         },
@@ -258,6 +291,94 @@ describe('export and prune', () => {
         );
         expect(await vault.prune(env, 1)).toEqual([]);
         expect(await vault.remove(env, 'never-existed')).toBe(false);
+    });
+});
+
+describe('object snapshots', () => {
+    function withObjects() {
+        const bucket = memoryBucket();
+        bucket.objects.set('uploads/a.txt', 'alpha');
+        bucket.types.set('uploads/a.txt', 'text/plain');
+        bucket.objects.set('uploads/b.txt', 'beta');
+        bucket.objects.set('og/card.png', 'cached');
+        let tick = 0;
+        const base = Date.now();
+        const vault = createVault<Env>({
+            driver: (env) => sqliteDriver(env.db),
+            bucket: (env) => env.bucket,
+            appId: () => 'app',
+            now: () => new Date(base + tick++),
+            id: (at) => `${at.toISOString().replace(/[-:.]/g, '')}-${tick}`,
+            objects: { exclude: ['og/'] },
+        });
+        return { vault, env: { bucket, db: seed() } as Env, bucket };
+    }
+
+    it('lists the objects beside the tables and copies each etag once, never its own prefix or an excluded one', async () => {
+        const { vault, env, bucket } = withObjects();
+        const first = await vault.backup(env);
+        expect(first.objects).toMatchObject({ key: `vault/app/${first.id}/objects.ndjson`, count: 2, copied: 2 });
+        const entries = bucket.objects
+            .get(first.objects!.key)!
+            .trim()
+            .split('\n')
+            .map((line) => JSON.parse(line));
+        expect(entries.map((entry) => [entry.key, entry.contentType])).toEqual([
+            ['uploads/a.txt', 'text/plain'],
+            ['uploads/b.txt', null],
+        ]);
+        const store = [...bucket.objects.keys()].filter((key) => key.startsWith('vault/app/_objects/'));
+        expect(store).toHaveLength(2);
+        expect(bucket.types.get(store.find((key) => bucket.objects.get(key) === 'alpha')!)).toBe('text/plain');
+
+        // The same bucket again: nothing new to copy. A changed object: one copy.
+        expect((await vault.backup(env)).objects).toMatchObject({ count: 2, copied: 0 });
+        bucket.objects.set('uploads/b.txt', 'beta 2');
+        expect((await vault.backup(env)).objects).toMatchObject({ count: 2, copied: 1 });
+        expect((await vault.backup(env, { objects: false })).objects).toBeUndefined();
+        expect((await vault.list(env))[0]!.objects).toBeUndefined();
+    });
+
+    it('restores the listed objects, skipping the ones that still match, and reports the missing', async () => {
+        const { vault, env, bucket } = withObjects();
+        const backup = await vault.backup(env);
+        bucket.objects.set('uploads/a.txt', 'changed');
+        bucket.objects.delete('uploads/b.txt');
+        const restored = await vault.restore(env, backup.id);
+        expect(restored.objects).toEqual({ restored: 2, skipped: 0, missing: [] });
+        expect(bucket.objects.get('uploads/a.txt')).toBe('alpha');
+        expect(bucket.types.get('uploads/a.txt')).toBe('text/plain');
+        expect(bucket.objects.get('uploads/b.txt')).toBe('beta');
+        expect((await vault.restore(env, backup.id)).objects).toEqual({ restored: 0, skipped: 2, missing: [] });
+
+        for (const key of [...bucket.objects.keys()])
+            if (key.startsWith('vault/app/_objects/')) bucket.objects.delete(key);
+        bucket.objects.delete('uploads/a.txt');
+        expect((await vault.restore(env, backup.id)).objects).toEqual({
+            restored: 0,
+            skipped: 1,
+            missing: ['uploads/a.txt'],
+        });
+        expect((await vault.restore(env, backup.id, { objects: false })).objects).toBeUndefined();
+    });
+
+    it('prunes the bytes no remaining backup names', async () => {
+        const { vault, env, bucket } = withObjects();
+        const old = await vault.backup(env);
+        bucket.objects.set('uploads/a.txt', 'alpha 2');
+        const newer = await vault.backup(env);
+        bucket.objects.set(
+            `vault/app/${old.id}/manifest.json`,
+            JSON.stringify({ ...old, createdAt: '2025-01-01T00:00:00.000Z' }),
+        );
+        const before = [...bucket.objects.keys()].filter((key) => key.startsWith('vault/app/_objects/'));
+        expect(before).toHaveLength(3);
+
+        expect(await vault.prune(env, 30)).toEqual([old.id]);
+        const after = [...bucket.objects.keys()].filter((key) => key.startsWith('vault/app/_objects/'));
+        expect(after).toHaveLength(2);
+        expect(after.map((key) => bucket.objects.get(key)).sort()).toEqual(['alpha 2', 'beta']);
+        expect((await vault.restore(env, newer.id)).objects).toEqual({ restored: 0, skipped: 2, missing: [] });
     });
 });
 

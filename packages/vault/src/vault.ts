@@ -1,4 +1,5 @@
 import { byteLength, decodeRow, encodeRow, isInternalTable, isValidBackupId, ndjsonLines, quoteIdent } from './codec';
+import { collectGarbage, contentKey, parseEntries, restoreObjects, snapshotObjects } from './objects';
 import {
     VaultError,
     type BackupManifest,
@@ -41,6 +42,10 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
         if (!isValidBackupId(id)) throw new VaultError('VALIDATION', `Invalid backup id "${id}"`);
         return `${appDir(env)}${id}/`;
     };
+    /** The content store: one object per etag, shared by every snapshot of the app. */
+    const objectStore = (env: Env) => `${appDir(env)}_objects/`;
+    const objectSource = (env: Env): BucketLike | null =>
+        options.objects ? ((options.objects.bucket ?? options.bucket)(env) ?? null) : null;
 
     async function tables(env: Env): Promise<Array<{ name: string; sql: string }>> {
         const rows =
@@ -130,7 +135,7 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
     const api: Vault<Env> = {
         tables,
 
-        async backup(env, { tables: only, label } = {}) {
+        async backup(env, { tables: only, label, objects: withObjects = true } = {}) {
             const started = now();
             const t0 = Date.now();
             const driver = options.driver(env);
@@ -151,6 +156,17 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 await bucket.put(key, body, { httpMetadata: { contentType: 'application/x-ndjson' } });
                 out.push({ name: table.name, key, rows: lines.length, bytes: byteLength(body), columns: cols });
             }
+            const source = withObjects ? objectSource(env) : null;
+            const snapshot = source
+                ? await snapshotObjects({
+                      source,
+                      vault: bucket,
+                      store: objectStore(env),
+                      prefixes: options.objects?.prefixes ?? [''],
+                      exclude: [`${prefix}/`, ...(options.objects?.exclude ?? [])],
+                      dir,
+                  })
+                : undefined;
             const manifest: BackupManifest = {
                 version: 1,
                 id,
@@ -160,6 +176,7 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 durationMs: Date.now() - t0,
                 tables: out,
                 schema: chosen.map(({ name, sql }) => ({ name, sql })),
+                ...(snapshot ? { objects: snapshot } : {}),
             };
             // Written last: a backup that died halfway is never listed, and never restored.
             await bucket.put(`${dir}manifest.json`, JSON.stringify(manifest), {
@@ -183,7 +200,7 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
             return readManifest(bucketOf(env), backupDir(env, id));
         },
 
-        async restore(env, id, { tables: only, truncate = true } = {}) {
+        async restore(env, id, { tables: only, truncate = true, objects: withObjects = true } = {}) {
             const driver = options.driver(env);
             const bucket = bucketOf(env);
             const manifest = await readManifest(bucket, backupDir(env, id));
@@ -240,6 +257,16 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 // statement; give the driver a `batch` (D1 has one) for a real restore.
                 for (const statement of statements) await driver.executeRaw(statement.sql, statement.params);
             }
+            const source = withObjects && manifest.objects ? objectSource(env) : null;
+            if (source && manifest.objects) {
+                const listing = await bucket.get(manifest.objects.key);
+                result.objects = await restoreObjects({
+                    source,
+                    vault: bucket,
+                    store: objectStore(env),
+                    entries: listing ? parseEntries(await listing.text()) : [],
+                });
+            }
             return result;
         },
 
@@ -260,6 +287,20 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                     await api.remove(env, manifest.id);
                     removed.push(manifest.id);
                 }
+            }
+            // Object bytes are shared across snapshots: once a backup is gone, drop what no other names.
+            if (removed.length && options.objects) {
+                const bucket = bucketOf(env);
+                const store = objectStore(env);
+                const referenced = new Set<string>();
+                for (const manifest of manifests) {
+                    if (removed.includes(manifest.id) || !manifest.objects) continue;
+                    const listing = await bucket.get(manifest.objects.key);
+                    if (!listing) continue;
+                    for (const entry of parseEntries(await listing.text()))
+                        referenced.add(contentKey(store, entry.etag));
+                }
+                await collectGarbage(bucket, store, referenced);
             }
             return removed;
         },

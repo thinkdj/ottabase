@@ -74,7 +74,11 @@ function BackupRow({
                     </div>
                     <div className="text-xs text-muted-foreground">
                         {new Date(manifest.createdAt).toLocaleString()} · {manifest.tables.length} tables · {rows} rows
-                        · {formatBytes(bytes)} · {manifest.durationMs} ms
+                        · {formatBytes(bytes)}
+                        {manifest.objects
+                            ? ` · ${manifest.objects.count} files · ${formatBytes(manifest.objects.bytes)}`
+                            : ''}{' '}
+                        · {manifest.durationMs} ms
                     </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

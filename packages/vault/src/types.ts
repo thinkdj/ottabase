@@ -31,14 +31,52 @@ export interface BucketLike {
         value: string | ArrayBuffer | ReadableStream,
         options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> },
     ): Promise<unknown>;
-    get(key: string): Promise<{ text(): Promise<string> } | null>;
-    list(options?: { prefix?: string; delimiter?: string; cursor?: string; limit?: number }): Promise<{
-        objects: Array<{ key: string; size: number }>;
+    get(key: string): Promise<{
+        text(): Promise<string>;
+        /** The bytes as a stream, which an R2 `put` takes as is: how an object is copied. */
+        body?: ReadableStream;
+        etag?: string;
+        httpMetadata?: { contentType?: string };
+        customMetadata?: Record<string, string>;
+    } | null>;
+    list(options?: {
+        prefix?: string;
+        delimiter?: string;
+        cursor?: string;
+        limit?: number;
+        /** R2 lists metadata only when asked. */
+        include?: Array<'httpMetadata' | 'customMetadata'>;
+    }): Promise<{
+        objects: Array<{
+            key: string;
+            size: number;
+            etag?: string;
+            uploaded?: Date | string;
+            httpMetadata?: { contentType?: string };
+        }>;
         delimitedPrefixes: string[];
         truncated: boolean;
         cursor?: string;
     }>;
     delete(keys: string | string[]): Promise<void>;
+}
+
+/** What a backup says about the bucket's objects it snapshotted. */
+export interface BackupObjects {
+    /** Object key of the `objects.ndjson` listing (key, etag, size, uploaded, content type per line). */
+    key: string;
+    count: number;
+    bytes: number;
+    /** Objects whose bytes were new to the content store; the rest were there from earlier snapshots. */
+    copied: number;
+}
+
+export interface RestoredObjects {
+    restored: number;
+    /** Live objects whose etag already matched the snapshot. */
+    skipped: number;
+    /** Keys whose bytes were gone from the content store. */
+    missing: string[];
 }
 
 export interface BackupTable {
@@ -61,6 +99,8 @@ export interface BackupManifest {
     tables: BackupTable[];
     /** `CREATE TABLE` statements as SQLite reported them, for reference and for rebuilding elsewhere. */
     schema: Array<{ name: string; sql: string }>;
+    /** The bucket snapshot, when `objects` is configured and was not turned off for this backup. */
+    objects?: BackupObjects;
 }
 
 export interface RestoreResult {
@@ -68,6 +108,17 @@ export interface RestoreResult {
     tables: Array<{ name: string; rows: number; skippedColumns: string[] }>;
     /** Tables in the backup that no longer exist (or are excluded) and were left alone. */
     skippedTables: string[];
+    objects?: RestoredObjects;
+}
+
+/** Which of the bucket's objects a backup snapshots. */
+export interface ObjectsOptions<Env> {
+    /** The bucket whose objects are snapshotted. Default: the vault's own bucket. */
+    bucket?: (env: Env) => BucketLike | null | undefined;
+    /** Key prefixes to snapshot. Default `['']`: everything. */
+    prefixes?: string[];
+    /** Key prefixes left out. The vault's own prefix always is. */
+    exclude?: string[];
 }
 
 /** Which rows a tenant export takes: every row whose `column` equals `value`, in every table that has the column. */
@@ -90,12 +141,18 @@ export interface VaultOptions<Env> {
     now?: () => Date;
     /** Backup id for a timestamp. Must sort chronologically. */
     id?: (at: Date) => string;
+    /**
+     * Snapshot the bucket's objects (uploads, media) with every backup: their listing beside the
+     * tables, their bytes in a content store keyed by etag, copied once. Off when absent.
+     */
+    objects?: ObjectsOptions<Env>;
 }
 
 export interface Vault<Env> {
     /** User tables, with their CREATE statements. */
     tables(env: Env): Promise<Array<{ name: string; sql: string }>>;
-    backup(env: Env, options?: { tables?: string[]; label?: string }): Promise<BackupManifest>;
+    /** `objects: false` leaves the bucket out of this backup even when snapshots are configured. */
+    backup(env: Env, options?: { tables?: string[]; label?: string; objects?: boolean }): Promise<BackupManifest>;
     /** Newest first. */
     list(env: Env, limit?: number): Promise<BackupManifest[]>;
     manifest(env: Env, id: string): Promise<BackupManifest | null>;
@@ -104,9 +161,16 @@ export interface Vault<Env> {
      * rows are upserted by primary key). Runs as one transaction with deferred foreign keys when
      * the driver can batch, so parents and children land together.
      */
-    restore(env: Env, id: string, options?: { tables?: string[]; truncate?: boolean }): Promise<RestoreResult>;
+    restore(
+        env: Env,
+        id: string,
+        options?: { tables?: string[]; truncate?: boolean; objects?: boolean },
+    ): Promise<RestoreResult>;
     remove(env: Env, id: string): Promise<boolean>;
-    /** Delete backups older than `keepDays`, always keeping the newest one. Returns the ids removed. */
+    /**
+     * Delete backups older than `keepDays`, always keeping the newest one, then drop the object
+     * bytes no remaining backup names. Returns the ids removed.
+     */
     prune(env: Env, keepDays: number): Promise<string[]>;
     /** NDJSON stream of `{ table, row }` lines for one tenant. */
     export(env: Env, scope: ExportScope, options?: { tables?: string[] }): ReadableStream<Uint8Array>;
