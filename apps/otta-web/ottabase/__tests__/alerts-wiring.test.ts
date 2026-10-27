@@ -182,6 +182,9 @@ describe('alerts in otta-web, end to end', () => {
         });
     });
 
+    // With an error tracker installed (Pro's Blackbox) the alerts package leaves raw errors to it.
+    const errorsAlerted = !packages.has('blackbox');
+
     it('turns an unhandled error the host reports into one alert, however many times it happens', async () => {
         for (let i = 0; i < 5; i++) {
             await packages.report({
@@ -190,6 +193,10 @@ describe('alerts in otta-web, end to end', () => {
                 source: 'cron',
                 task: 'vault:backup',
             });
+        }
+        if (!errorsAlerted) {
+            expect(sent).toHaveLength(1);
+            return;
         }
         expect(sent).toHaveLength(2);
         expect(JSON.parse(sent[1]!.body).alert).toMatchObject({
@@ -202,7 +209,9 @@ describe('alerts in otta-web, end to end', () => {
     it('shows both in the feed with where they went, and reports healthy', async () => {
         const feed = await call('/api/alerts/alerts');
         expect(feed.status).toBe(200);
-        expect(feed.body.data.map((alert: { source: string }) => alert.source)).toEqual(['errors', 'external']);
+        expect(feed.body.data.map((alert: { source: string }) => alert.source)).toEqual(
+            errorsAlerted ? ['errors', 'external'] : ['external'],
+        );
         expect(feed.body.data[0].deliveries).toMatchObject([{ channelName: 'Ops hook', status: 'sent' }]);
         // What /api/admin/health (and Fleet, and so Tower) reports.
         const health = await runHealth(packages, env);
