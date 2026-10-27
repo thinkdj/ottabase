@@ -16,36 +16,18 @@
 // ============================================================
 // CORE TABLES (from @ottabase/ottaorm)
 // ============================================================
-import { commentReactionsTable, commentsTable } from '@ottabase/comments/schema';
-import {
-    categoriesTable,
-    ottablogPluginsTable,
-    ottablogThemesTable,
-    ottablogSettingsTable,
-    postTranslationsTable,
-    postCategoryLinksTable,
-    postTagLinksTable,
-    postTagsTable,
-    postVersionsTable,
-    postsTable,
-    seriesTable,
-} from '@ottabase/ottablog';
-import { accountsTable, mediaTable, usersTable, verificationTokensTable } from '@ottabase/ottaorm';
-import { landingLeadsTable, landingPagesTable, landingSitesTable } from '@ottabase/ottalanding/schema';
-import { referralTrackingTable } from '@ottabase/referrals';
-import { shortlinksTable } from '@ottabase/shortlinks';
-
-export { accountsTable, mediaTable, usersTable, verificationTokensTable };
+export { accountsTable, mediaTable, usersTable, verificationTokensTable } from '@ottabase/ottaorm';
 
 // ============================================================
 // APP-SPECIFIC TABLES
 // ============================================================
-export { todosTable } from '../models/Todo';
+export { todosTable } from '../models/Todo'; // otta:only demo
 
 // ============================================================
 // PACKAGE TABLES (from enabled packages)
 // ============================================================
-// Statically re-exported so drizzle-kit sees them without evaluating config.
+// Statically re-exported so drizzle-kit sees them without evaluating config. One statement per
+// package: the shape `otta add` writes and `otta strip` removes.
 export { aiProviderCredentialsTable } from '@ottabase/ottaai/schema';
 export { apiKeysTable } from '@ottabase/apikeys/schema';
 export { flagOverridesTable } from '@ottabase/flags/schema';
@@ -60,26 +42,23 @@ export {
     menuSlotAssignmentsTable,
     menusTable,
 } from '@ottabase/brand-engine/persistence';
+export { commentReactionsTable, commentsTable } from '@ottabase/comments/schema';
+export { landingLeadsTable, landingPagesTable, landingSitesTable } from '@ottabase/ottalanding/schema';
 export {
     categoriesTable,
-    commentsTable,
-    commentReactionsTable,
-    landingLeadsTable,
-    landingPagesTable,
-    landingSitesTable,
     ottablogPluginsTable,
-    ottablogThemesTable,
     ottablogSettingsTable,
-    postTranslationsTable,
+    ottablogThemesTable,
     postCategoryLinksTable,
+    postsTable,
     postTagLinksTable,
     postTagsTable,
+    postTranslationsTable,
     postVersionsTable,
-    postsTable,
-    referralTrackingTable,
     seriesTable,
-    shortlinksTable,
-};
+} from '@ottabase/ottablog';
+export { referralTrackingTable } from '@ottabase/referrals';
+export { shortlinksTable } from '@ottabase/shortlinks';
 
 // ============================================================
 // PREMIUM PACKAGE TABLES (listed in ottabase/packages.ts)
@@ -87,6 +66,4 @@ export {
 // Re-exported statically for the same reason as the package tables above: drizzle-kit
 // reads this module's NAMED EXPORTS and never evaluates config, so a table reachable only
 // through the runtime registry (ottabase/packages.ts) is invisible to `db:push`.
-//
-// Remove this block along with the package if you uninstall @ottabase/webhooks.
 export { webhookDeliveriesTable, webhookEndpointsTable } from '@ottabase/webhooks/schema';

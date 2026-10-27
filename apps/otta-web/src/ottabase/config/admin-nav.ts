@@ -27,19 +27,19 @@ import {
     Gem,
     Image as ImageIcon,
     Inbox,
-    LayoutTemplate,
+    LayoutTemplate, // otta:only ottalanding
     Layers,
     Layout,
-    Link2,
+    Link2, // otta:only shortlinks
     Mail,
-    Megaphone,
+    Megaphone, // otta:only ottablog
     Palette,
     Power,
     RefreshCw,
     Rocket,
-    Sparkles,
+    Sparkles, // otta:only ottaai
     Server,
-    Settings,
+    Settings, // otta:only ottablog
     Shield,
     ShieldCheck,
     ShieldEllipsis,
@@ -140,6 +140,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Content',
         icon: BookOpen,
         items: [
+            // otta:begin ottalanding
             {
                 title: 'Landing site',
                 description: 'Edit the public marketing site: its theme, pages and sections.',
@@ -147,6 +148,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: LayoutTemplate,
                 requiresPackage: 'ottalanding',
             },
+            // otta:end ottalanding
+            // otta:begin ottablog
             {
                 title: 'Posts',
                 description: 'Create and manage blog posts, changelogs, docs, and announcements.',
@@ -170,6 +173,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: Settings,
                 requiresPackage: 'ottablog',
             },
+            // otta:end ottablog
             {
                 title: 'Media Library',
                 description: 'Browse uploads with previews, metadata, and direct links.',
@@ -274,6 +278,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 href: '/admin/infrastructure/email',
                 icon: Mail,
             },
+            // otta:begin ottaai
             {
                 title: 'AI Gateway',
                 description:
@@ -282,6 +287,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: Sparkles,
                 requiresPackage: 'ottaai',
             },
+            // otta:end ottaai
             {
                 title: 'System Health',
                 description: 'View system health metrics and API status.',
@@ -302,6 +308,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 href: '/admin/growth/analytics',
                 icon: BarChart3,
             },
+            // otta:begin shortlinks
             {
                 title: 'Shortlinks',
                 description: 'Create and manage short URLs with edge click tracking.',
@@ -309,6 +316,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 icon: Link2,
                 requiresPackage: 'shortlinks',
             },
+            // otta:end shortlinks
+            // otta:begin ottaai
             {
                 title: 'AI providers',
                 description:
@@ -318,6 +327,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 scope: 'org',
                 requiresPackage: 'ottaai',
             },
+            // otta:end ottaai
             {
                 // Always listed, even with nothing installed: it is the control plane for paid
                 // add-ons, and an operator handed a license key needs somewhere to put it.

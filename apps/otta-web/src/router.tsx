@@ -1,5 +1,5 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { DemoBanner } from '@/components/DemoBanner';
+import { DemoBanner } from '@/components/DemoBanner'; // otta:only demo
 import { NotFoundPage } from '@/components/NotFoundPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
@@ -7,11 +7,19 @@ import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
 import { PACKAGE_ADMIN_PAGES, PACKAGE_ROUTES, PACKAGES_ENABLED } from '@/ottabase/config/packages';
-import { DEMO_ACCOUNT_GATES } from '@/pages/demo/demoAccountGates';
+import { DEMO_ACCOUNT_GATES } from '@/pages/demo/demoAccountGates'; // otta:only demo
 import { BrandPathSync, LayoutResolver } from '@ottabase/brand-engine-react';
 import { tanstackRouterAdapter } from '@ottabase/brand-engine-react/routers';
-import { BrandScope } from '@ottabase/ui';
-import { createBrowserHistory, lazyRouteComponent, Outlet, RootRoute, Route, Router } from '@tanstack/react-router';
+import { BrandScope } from '@ottabase/ui'; // otta:only ottablog
+import {
+    createBrowserHistory,
+    lazyRouteComponent,
+    Outlet,
+    RootRoute,
+    Route,
+    Router,
+    type AnyRoute,
+} from '@tanstack/react-router';
 
 import { type ComponentType, type ReactNode } from 'react';
 
@@ -31,7 +39,9 @@ function RootLayout() {
     return (
         <>
             <BrandPathSync pathname={pathname} />
+            {/* otta:begin demo */}
             <DemoBanner />
+            {/* otta:end demo */}
             <LayoutResolver router={tanstackRouterAdapter} layoutComponent={ConfigurableLayout}>
                 <Outlet />
             </LayoutResolver>
@@ -47,6 +57,7 @@ function AdminPrivilegeFallback() {
     );
 }
 
+// otta:begin ottablog
 /** Distinct from AdminPrivilegeFallback: /studio is gated by a CONTENT permission, never admin. */
 function StudioPrivilegeFallback() {
     return (
@@ -55,6 +66,7 @@ function StudioPrivilegeFallback() {
         </div>
     );
 }
+// otta:end ottablog
 
 /** Wraps an admin page in: ProtectedRoute(scope) → AdminLayout(sidebar) → page. */
 function renderAdminRoute(scope: AdminRouteScope, children: ReactNode) {
@@ -156,6 +168,7 @@ function makeAdminRoute<const TPath extends string, TSearch = Record<string, unk
     });
 }
 
+// otta:begin ottablog
 /**
  * Studio route: the writing-first editorial surface at /studio. Gated by CONTENT
  * permissions (posts:update — held by author/editor roles, org admins via *:update,
@@ -200,22 +213,29 @@ function makeStudioRoute<const TPath extends string, TSearch = Record<string, un
         ...(options.validateSearch ? { validateSearch: options.validateSearch } : {}),
     });
 }
+// otta:end ottablog
 
 // ─── Marketing / app surface ─────────────────────────────────────────────────
 
 const indexRoute = publicRoute('/', () => import('@/pages/home/HomePage').then((m) => ({ default: m.HomePage })));
 
+// otta:begin demo
 const docsRoute = publicRoute('/docs/$', () => import('@/pages/docs/DocsPage').then((m) => ({ default: m.DocsPage })));
+// otta:end demo
+// otta:begin legal
 // Legal pages (@ottabase/legal): /legal is the index, /legal/terms, /legal/privacy, ... each document, all from
 // ottabase/legal.config.ts. The Worker serves the same documents as JSON and Markdown at /api/legal.
 const legalRoute = publicRoute('/legal/$', () =>
     import('@/pages/legal/LegalPage').then((m) => ({ default: m.LegalPage })),
 );
+// otta:end legal
 
+// otta:begin demo
 // Outside the /demo wrapper on purpose: each preview swaps the whole app shell (see LayoutPreviewPage).
 const layoutPreviewRoute = publicRoute('/layout-preview/$preset', () =>
     import('@/pages/demo/layout/LayoutPreviewPage').then((m) => ({ default: m.LayoutPreviewPage })),
 );
+// otta:end demo
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -243,6 +263,7 @@ const userMediaLibraryRoute = protectedRoute(
 
 // ─── Public content (blog, changelog) ────────────────────────────────────────
 
+// otta:begin ottablog
 /**
  * Public blog page inside the blog token "room": wraps the component in
  * `<BrandScope name="blog">` so the active blog theme's CSS-variable overrides
@@ -294,6 +315,7 @@ const changelogListRoute = publicRoute('/changelog', () =>
 const changelogDetailRoute = publicRoute('/changelog/$slug', () =>
     import('@/pages/changelog/ChangelogDetailPage').then((m) => ({ default: m.ChangelogDetailPage })),
 );
+// otta:end ottablog
 
 // ─── /admin overview ─────────────────────────────────────────────────────────
 
@@ -341,6 +363,7 @@ const adminMenuDetailRoute = makeAdminRoute(
 
 // ─── /admin/content ──────────────────────────────────────────────────────────
 
+// otta:begin ottablog
 const adminBlogRoute = makeAdminRoute(
     '/admin/content/blog',
     () => import('@/pages/admin/content/blog/AdminBlogListPage'),
@@ -364,6 +387,8 @@ const adminBlogEditRoute = makeAdminRoute(
     'AdminBlogEditorPage',
     { scope: 'org' },
 );
+// otta:end ottablog
+// otta:begin ottalanding
 // Landing site content is APP-GLOBAL (platform-owned, like brand) → platform scope (default).
 const adminLandingRoute = makeAdminRoute(
     '/admin/content/landing',
@@ -380,6 +405,8 @@ const adminLandingPageRoute = makeAdminRoute(
     () => import('@/pages/admin/content/landing/AdminLandingPageEditorPage'),
     'AdminLandingPageEditorPage',
 );
+// otta:end ottalanding
+// otta:begin ottablog
 // Content settings manage APP-GLOBAL theme + renderer plugins → platform scope (default).
 const adminBlogSettingsRoute = makeAdminRoute(
     '/admin/content/blog/settings',
@@ -457,6 +484,7 @@ const adminChangelogRoute = makeAdminRoute(
     'AdminChangelogListPage',
     { scope: 'org' },
 );
+// otta:end ottablog
 const adminMediaLibraryRoute = makeAdminRoute(
     '/admin/content/media',
     () => import('@/pages/admin/content/MediaLibraryPage'),
@@ -578,11 +606,13 @@ const adminEmailRoute = makeAdminRoute(
     () => import('@/pages/admin/infrastructure/EmailPage'),
     'AdminEmailPage',
 );
+// otta:begin ottaai
 const adminAiGatewayRoute = makeAdminRoute(
     '/admin/infrastructure/ai',
     () => import('@/pages/admin/infrastructure/AiPage'),
     'AdminAiPage',
 );
+// otta:end ottaai
 
 // ─── /admin/growth ───────────────────────────────────────────────────────────
 
@@ -603,13 +633,16 @@ const adminAnalyticsRoute = makeAdminRoute(
     },
 );
 
+// otta:begin shortlinks
 // Shortlink management: the CRUD APIs are system-admin only (requireAdminAccess, system scope).
 const adminShortlinksRoute = makeAdminRoute(
     '/admin/growth/shortlinks',
     () => import('@/pages/shortlinks/ShortlinksPage'),
     'ShortlinksPage',
 );
+// otta:end shortlinks
 
+// otta:begin ottaai
 // AI providers: an ORG admin manages the workspace key, and any admin manages their own.
 // The server re-checks ` ai:manage ` on every org-scoped mutation, so this scope is a UX
 // affordance only — a route gate is not an authorization boundary.
@@ -619,6 +652,7 @@ const adminAiProvidersRoute = makeAdminRoute(
     'AiProvidersPage',
     { scope: 'org' },
 );
+// otta:end ottaai
 
 // Premium Packages (@ottabase/premium). The control plane is core — an operator handed a
 // license key needs somewhere to put it even before anything is installed.
@@ -630,6 +664,7 @@ const adminPremiumRoute = makeAdminRoute(
 
 // ─── /demo gallery ───────────────────────────────────────────────────────────
 
+// otta:begin demo
 const demoLayoutRoute = new Route({
     getParentRoute: () => rootRoute,
     path: '/demo',
@@ -752,18 +787,19 @@ const demoChildren = [
     demoChild('config', () => import('@/pages/demo/config/ConfigDemoPage'), 'ConfigDemoPage'),
 ];
 demoLayoutRoute.addChildren(demoChildren);
+// otta:end demo
 
 // ─── Route assembly ──────────────────────────────────────────────────────────
 
 // Always-on routes (core platform). Note: brandEngine and ottamenu are core packages.
 const coreRoutes = [
     indexRoute,
-    docsRoute,
-    legalRoute,
-    layoutPreviewRoute,
-    demoLayoutRoute,
-    changelogListRoute,
-    changelogDetailRoute,
+    docsRoute, // otta:only demo
+    legalRoute, // otta:only legal
+    layoutPreviewRoute, // otta:only demo
+    demoLayoutRoute, // otta:only demo
+    changelogListRoute, // otta:only ottablog
+    changelogDetailRoute, // otta:only ottablog
     loginRoute,
     registerRoute,
     verifyEmailRoute,
@@ -779,7 +815,7 @@ const coreRoutes = [
     adminMenusRoute,
     adminMenuNewRoute,
     adminMenuDetailRoute,
-    adminChangelogRoute,
+    adminChangelogRoute, // otta:only ottablog
     adminUsersRoute,
     adminUserRBACRoute,
     adminOrganizationsRoute,
@@ -820,37 +856,45 @@ const packagePageRoutes = PACKAGE_ROUTES.map((page) =>
         : protectedRoute(page.path, page.load, page.exportName),
 );
 
-// Routes that depend on optional packages.
-const packageRoutes = [
-    { route: adminShortlinksRoute, pkg: 'shortlinks' as const },
-
-    { route: blogListRoute, pkg: 'ottablog' as const },
-    { route: blogDetailRoute, pkg: 'ottablog' as const },
-    { route: blogTagArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogCategoryArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogSeriesArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogAuthorArchiveRoute, pkg: 'ottablog' as const },
-    { route: blogDateArchiveYearRoute, pkg: 'ottablog' as const },
-    { route: blogDateArchiveMonthRoute, pkg: 'ottablog' as const },
-    { route: adminBlogRoute, pkg: 'ottablog' as const },
-    { route: adminBlogNewRoute, pkg: 'ottablog' as const },
-    { route: adminBlogEditRoute, pkg: 'ottablog' as const },
-    { route: adminBlogSettingsRoute, pkg: 'ottablog' as const },
-    { route: adminBlogTagsRoute, pkg: 'ottablog' as const },
-    { route: adminBlogCategoriesRoute, pkg: 'ottablog' as const },
-    { route: adminBlogSeriesRoute, pkg: 'ottablog' as const },
-    { route: studioRoute, pkg: 'ottablog' as const },
-    { route: studioNewRoute, pkg: 'ottablog' as const },
-    { route: studioEditRoute, pkg: 'ottablog' as const },
-    { route: studioTagsRoute, pkg: 'ottablog' as const },
-    { route: studioCategoriesRoute, pkg: 'ottablog' as const },
-    { route: studioSeriesRoute, pkg: 'ottablog' as const },
-    { route: studioSettingsRoute, pkg: 'ottablog' as const },
-    { route: adminLandingRoute, pkg: 'ottalanding' as const },
-    { route: adminLandingLeadsRoute, pkg: 'ottalanding' as const },
-    { route: adminLandingPageRoute, pkg: 'ottalanding' as const },
-    { route: adminAiProvidersRoute, pkg: 'ottaai' as const },
-    { route: adminAiGatewayRoute, pkg: 'ottaai' as const },
+// Routes that depend on optional packages. Each line is marked for `otta strip <pkg>`; the type
+// annotation keeps the list well-typed when it is stripped empty.
+const packageRoutes: { route: AnyRoute; pkg: string }[] = [
+    // otta:begin shortlinks
+    { route: adminShortlinksRoute, pkg: 'shortlinks' },
+    // otta:end shortlinks
+    // otta:begin ottablog
+    { route: blogListRoute, pkg: 'ottablog' },
+    { route: blogDetailRoute, pkg: 'ottablog' },
+    { route: blogTagArchiveRoute, pkg: 'ottablog' },
+    { route: blogCategoryArchiveRoute, pkg: 'ottablog' },
+    { route: blogSeriesArchiveRoute, pkg: 'ottablog' },
+    { route: blogAuthorArchiveRoute, pkg: 'ottablog' },
+    { route: blogDateArchiveYearRoute, pkg: 'ottablog' },
+    { route: blogDateArchiveMonthRoute, pkg: 'ottablog' },
+    { route: adminBlogRoute, pkg: 'ottablog' },
+    { route: adminBlogNewRoute, pkg: 'ottablog' },
+    { route: adminBlogEditRoute, pkg: 'ottablog' },
+    { route: adminBlogSettingsRoute, pkg: 'ottablog' },
+    { route: adminBlogTagsRoute, pkg: 'ottablog' },
+    { route: adminBlogCategoriesRoute, pkg: 'ottablog' },
+    { route: adminBlogSeriesRoute, pkg: 'ottablog' },
+    { route: studioRoute, pkg: 'ottablog' },
+    { route: studioNewRoute, pkg: 'ottablog' },
+    { route: studioEditRoute, pkg: 'ottablog' },
+    { route: studioTagsRoute, pkg: 'ottablog' },
+    { route: studioCategoriesRoute, pkg: 'ottablog' },
+    { route: studioSeriesRoute, pkg: 'ottablog' },
+    { route: studioSettingsRoute, pkg: 'ottablog' },
+    // otta:end ottablog
+    // otta:begin ottalanding
+    { route: adminLandingRoute, pkg: 'ottalanding' },
+    { route: adminLandingLeadsRoute, pkg: 'ottalanding' },
+    { route: adminLandingPageRoute, pkg: 'ottalanding' },
+    // otta:end ottalanding
+    // otta:begin ottaai
+    { route: adminAiProvidersRoute, pkg: 'ottaai' },
+    { route: adminAiGatewayRoute, pkg: 'ottaai' },
+    // otta:end ottaai
 ];
 
 const routes = [

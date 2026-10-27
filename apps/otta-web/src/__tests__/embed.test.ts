@@ -31,6 +31,7 @@ describe('Embed system', () => {
         });
     });
 
+    // otta:begin demo
     describe('EmbedDocsPage', () => {
         it('uses correct base path', COLD_IMPORT, async () => {
             // Verify the BASE_PATH constant matches the route definition
@@ -40,6 +41,7 @@ describe('Embed system', () => {
             expect(typeof mod.EmbedDocsPage).toBe('function');
         });
     });
+    // otta:end demo
 
     describe('EmbedApp', () => {
         it('exports EmbedApp component', COLD_IMPORT, async () => {

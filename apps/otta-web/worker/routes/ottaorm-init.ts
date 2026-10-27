@@ -1,7 +1,7 @@
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { applyPackageLifecycle, createKvInstallStore, createMemoryInstallStore } from '@ottabase/kernel';
 import { autoInit, getAllModelsMetadata } from '@ottabase/ottaorm';
-import { LandingSite } from '@ottabase/ottalanding';
+import { LandingSite } from '@ottabase/ottalanding'; // otta:only ottalanding
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
@@ -100,8 +100,10 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
                 ? createKvInstallStore(env.OBCF_KV, `${ottabaseConfig.storage.prefix}:packages:`)
                 : createMemoryInstallStore(),
         });
+        // otta:begin ottalanding
         // Starter landing site, so the public site has content the moment the tables exist
         if (packages.has('ottalanding')) await LandingSite.ensureForApp(ottabaseConfig.appId);
+        // otta:end ottalanding
         return jsonResponse({ ...result, packages: { seededTasks, lifecycle } });
     }
 

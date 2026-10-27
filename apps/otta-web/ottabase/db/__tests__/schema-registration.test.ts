@@ -16,6 +16,18 @@ import * as drizzleSchema from '../schema';
  * `collectTableSchemas` (the auto-init migrator) picks up entries whose KEY ends in
  * `Table`. A correctly-shaped table exported under a key that does not is invisible to it.
  */
+describe('core tables reach auto-init', () => {
+    it('exports the user and account tables through the runtime and drizzle-kit adapters', () => {
+        const runtimeTables = getAllSchemas() as Record<string, unknown>;
+        const staticTables = drizzleSchema as Record<string, unknown>;
+        for (const tableKey of ['usersTable', 'accountsTable']) {
+            expect(runtimeTables[tableKey], `getAllSchemas().${tableKey}`).toBeDefined();
+            expect(staticTables[tableKey], `db/schema.${tableKey}`).toBe(runtimeTables[tableKey]);
+        }
+    });
+});
+
+// otta:begin ottaai
 const AI_TABLE_KEY = 'aiProviderCredentialsTable';
 
 describe('ai_provider_credentials reaches auto-init', () => {
@@ -50,7 +62,9 @@ describe('ai_provider_credentials reaches auto-init', () => {
         }
     });
 });
+// otta:end ottaai
 
+// otta:begin comments
 describe('comments package schema adapters stay in lockstep', () => {
     const tableKeys = ['commentsTable', 'commentReactionsTable'] as const;
 
@@ -66,7 +80,9 @@ describe('comments package schema adapters stay in lockstep', () => {
         }
     });
 });
+// otta:end comments
 
+// otta:begin ottalanding
 describe('landing package schema adapters stay in lockstep', () => {
     const tableKeys = ['landingSitesTable', 'landingPagesTable', 'landingLeadsTable'] as const;
 
@@ -82,3 +98,4 @@ describe('landing package schema adapters stay in lockstep', () => {
         }
     });
 });
+// otta:end ottalanding

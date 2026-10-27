@@ -309,13 +309,15 @@ export default [
     {
         // Imperative fetch() calls written before the provider client was mandatory.
         // Fix: move to useApiQuery / useApiMutation / useApiClient().
+        // `apps/*`, not `apps/otta-web`: `otta new web` copies these files verbatim into a new app
+        // (and `otta presets check` lints that copy), so the debt follows the file, not the folder.
         files: [
-            'apps/otta-web/src/pages/admin/appearance/brand/brandApi.ts',
-            'apps/otta-web/src/pages/admin/content/blog/AdminBlogEditorPage.tsx',
-            'apps/otta-web/src/pages/admin/infrastructure/MigrationsPage.tsx',
-            'apps/otta-web/src/pages/auth/LoginPage.tsx',
-            'apps/otta-web/src/pages/demo/cloudflare/CloudflareR2DemoPage.tsx',
-            'apps/otta-web/src/pages/demo/CodeBlockDemoPage.tsx',
+            'apps/*/src/pages/admin/appearance/brand/brandApi.ts',
+            'apps/*/src/pages/admin/content/blog/AdminBlogEditorPage.tsx',
+            'apps/*/src/pages/admin/infrastructure/MigrationsPage.tsx',
+            'apps/*/src/pages/auth/LoginPage.tsx',
+            'apps/*/src/pages/demo/cloudflare/CloudflareR2DemoPage.tsx',
+            'apps/*/src/pages/demo/CodeBlockDemoPage.tsx',
         ],
         rules: { 'no-restricted-globals': 'off' },
     },
@@ -351,7 +353,7 @@ export default [
         // Each file needs its early returns moved below the hook calls (render
         // the fallback from the returned JSX instead). Fix and delete the entry.
         files: [
-            'apps/otta-web/src/components/ReferralTracker.tsx',
+            'apps/*/src/components/ReferralTracker.tsx',
             'packages/ottarenderer/src/components/AdvancedImage/AdvancedImage.tsx',
             'packages/ottarenderer/src/components/BeforeAfter/BeforeAfter.tsx',
             'packages/ottarenderer/src/components/ImageHotspots/ImageHotspots.tsx',

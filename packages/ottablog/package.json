@@ -4,6 +4,22 @@
     "description": "Blog and content management system for Ottabase apps - articles, blurbs, photo journals, changelogs, and documentation",
     "ottabase": {
         "key": "ottablog",
+        "tables": {
+            "import": "@ottabase/ottablog",
+            "names": [
+                "categoriesTable",
+                "ottablogPluginsTable",
+                "ottablogSettingsTable",
+                "ottablogThemesTable",
+                "postCategoryLinksTable",
+                "postsTable",
+                "postTagLinksTable",
+                "postTagsTable",
+                "postTranslationsTable",
+                "postVersionsTable",
+                "seriesTable"
+            ]
+        },
         "factory": "createOttablogPackage"
     },
     "type": "module",

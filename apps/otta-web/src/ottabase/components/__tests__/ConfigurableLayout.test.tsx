@@ -43,9 +43,11 @@ vi.mock('@/components/LanguageSwitcher', () => ({
 vi.mock('@/components/OrganizationSwitcher', () => ({
     OrganizationSwitcher: () => <div data-testid="org-switcher" />,
 }));
+// otta:begin referrals
 vi.mock('@/components/ReferralTracker', () => ({
     ReferralTracker: () => <div data-testid="referral-tracker" />,
 }));
+// otta:end referrals
 vi.mock('@/hooks/useLocalStorage', () => ({
     useLocalStorage: () => [null, vi.fn()],
 }));
@@ -188,8 +190,8 @@ describe('ConfigurableLayout', () => {
             renderLayout();
             // "/" link appears twice: logo link + nav "Home" link
             expect(screen.getAllByTestId('link-/').length).toBeGreaterThanOrEqual(2);
-            expect(screen.getByTestId('link-/blog')).toBeTruthy();
-            expect(screen.getByTestId('link-/demo')).toBeTruthy();
+            expect(screen.getByTestId('link-/blog')).toBeTruthy(); // otta:only ottablog
+            expect(screen.getByTestId('link-/demo')).toBeTruthy(); // otta:only demo
         });
 
         it('renders minimal header', () => {
@@ -221,9 +223,10 @@ describe('ConfigurableLayout', () => {
         it('sidebar contains nav links', () => {
             setLayout({ navigation: 'sidebar' });
             renderLayout();
-            // Sidebar links present: the public ones only
-            expect(screen.getByTestId('link-/blog')).toBeTruthy();
-            expect(screen.getByTestId('link-/changelog')).toBeTruthy();
+            // Sidebar links present: the public ones only ("/" is the logo link and the Home link)
+            expect(screen.getAllByTestId('link-/').length).toBeGreaterThanOrEqual(1);
+            expect(screen.getByTestId('link-/blog')).toBeTruthy(); // otta:only ottablog
+            expect(screen.getByTestId('link-/changelog')).toBeTruthy(); // otta:only ottablog
         });
 
         it('renders drawer trigger for drawer navigation', () => {
@@ -269,11 +272,13 @@ describe('ConfigurableLayout', () => {
             expect(screen.getByTestId('outlet')).toBeTruthy();
         });
 
+        // otta:begin referrals
         it('renders referral tracker', () => {
             setLayout({});
             renderLayout();
             expect(screen.getByTestId('referral-tracker')).toBeTruthy();
         });
+        // otta:end referrals
     });
 
     // =======================================================================

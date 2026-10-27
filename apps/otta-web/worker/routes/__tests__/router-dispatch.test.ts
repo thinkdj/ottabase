@@ -20,9 +20,11 @@ const { handlerMock } = vi.hoisted(() => ({
     handlerMock: (name: string) => vi.fn(async () => new Response(name)),
 }));
 
+// otta:begin ottaai
 vi.mock('../admin-ai', () => ({
     handleAdminAiConfig: handlerMock('handleAdminAiConfig'),
 }));
+// otta:end ottaai
 
 vi.mock('../admin-cron', () => ({
     handleAdminCronCreate: handlerMock('handleAdminCronCreate'),
@@ -98,6 +100,7 @@ vi.mock('../auth', () => ({
     handleVerifyEmailResend: handlerMock('handleVerifyEmailResend'),
 }));
 
+// otta:begin ottablog
 vi.mock('../blog', () => ({
     handleBlogBlurbCreate: handlerMock('handleBlogBlurbCreate'),
     handleBlogBlurbUpdate: handlerMock('handleBlogBlurbUpdate'),
@@ -129,12 +132,14 @@ vi.mock('../blog', () => ({
     handleBlogStudioThemeTokens: handlerMock('handleBlogStudioThemeTokens'),
     handleBlogTagBySlug: handlerMock('handleBlogTagBySlug'),
 }));
+// otta:end ottablog
 
 vi.mock('../brand', () => ({
     // Decline-and-continue prefix handler: default null so matching continues.
     handleBrandApi: vi.fn(async () => null),
 }));
 
+// otta:begin demo
 vi.mock('../cloudflare-d1', () => ({
     handleD1Init: handlerMock('handleD1Init'),
     handleD1TodoById: handlerMock('handleD1TodoById'),
@@ -154,11 +159,12 @@ vi.mock('../cloudflare-realtime', () => ({
     handleRealtimeStats: handlerMock('handleRealtimeStats'),
     handleRealtimeWebsocket: handlerMock('handleRealtimeWebsocket'),
 }));
+// otta:end demo
 
 vi.mock('../cloudflare-storage', () => ({
-    handleCloudflareImages: handlerMock('handleCloudflareImages'),
-    handleCloudflareKV: handlerMock('handleCloudflareKV'),
-    handleCloudflareR2: handlerMock('handleCloudflareR2'),
+    handleCloudflareImages: handlerMock('handleCloudflareImages'), // otta:only demo
+    handleCloudflareKV: handlerMock('handleCloudflareKV'), // otta:only demo
+    handleCloudflareR2: handlerMock('handleCloudflareR2'), // otta:only demo
     handleUpload: handlerMock('handleUpload'),
     handleUploadFile: handlerMock('handleUploadFile'),
 }));
@@ -167,11 +173,13 @@ vi.mock('../core-analytics', () => ({
     handleCoreAnalytics: handlerMock('handleCoreAnalytics'),
 }));
 
+// otta:begin demo
 vi.mock('../demo', () => ({
     handleDemo: handlerMock('handleDemo'),
     handleDemoError: handlerMock('handleDemoError'),
     handleDemoMode: handlerMock('handleDemoMode'),
 }));
+// otta:end demo
 
 vi.mock('../email', () => ({
     handleEmailProviders: handlerMock('handleEmailProviders'),
@@ -187,6 +195,7 @@ vi.mock('../ottaorm-init', () => ({
     handleOttaormInit: handlerMock('handleOttaormInit'),
 }));
 
+// otta:begin referrals
 vi.mock('../referrals', () => ({
     handleReferralStats: handlerMock('handleReferralStats'),
     handleReferralTrack: handlerMock('handleReferralTrack'),
@@ -196,7 +205,9 @@ vi.mock('../referrals', () => ({
     handleReferralVanityRedirect: handlerMock('handleReferralVanityRedirect'),
     handleReferralsAnalytics: handlerMock('handleReferralsAnalytics'),
 }));
+// otta:end referrals
 
+// otta:begin shortlinks
 vi.mock('../shortlinks', () => ({
     handleShortlinkById: handlerMock('handleShortlinkById'),
     handleShortlinkExplicitGo: handlerMock('handleShortlinkExplicitGo'),
@@ -204,6 +215,7 @@ vi.mock('../shortlinks', () => ({
     handleShortlinksCreate: handlerMock('handleShortlinksCreate'),
     handleShortlinksList: handlerMock('handleShortlinksList'),
 }));
+// otta:end shortlinks
 
 vi.mock('../media-library', () => ({
     handleMediaLibraryPurge: handlerMock('handleMediaLibraryPurge'),
@@ -228,7 +240,7 @@ vi.mock('@ottabase/analytics/server', () => ({
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { getOttabaseConfig } from '../../../ottabase/config.loader';
 import { handleMediaLibraryPurge } from '../media-library';
-import { handleAdminAiConfig } from '../admin-ai';
+import { handleAdminAiConfig } from '../admin-ai'; // otta:only ottaai
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from '../admin-cron';
 import {
     handleAdminDbRowDelete,
@@ -280,6 +292,7 @@ import {
     handleVerifyEmail,
     handleVerifyEmailResend,
 } from '../auth';
+// otta:begin ottablog
 import {
     handleBlogBlurbCreate,
     handleBlogBlurbUpdate,
@@ -306,23 +319,27 @@ import {
     handleBlogStudioThemeTokens,
     handleBlogTagBySlug,
 } from '../blog';
+// otta:end ottablog
 import { handleBrandApi } from '../brand';
+// otta:begin demo
 import { handleD1Init, handleD1TodoById, handleD1Todos } from '../cloudflare-d1';
 import { handleCloudflareQueue } from '../cloudflare-queue';
 import { handleRateLimiting } from '../cloudflare-rate';
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from '../cloudflare-realtime';
+// otta:end demo
 import {
-    handleCloudflareImages,
-    handleCloudflareKV,
-    handleCloudflareR2,
+    handleCloudflareImages, // otta:only demo
+    handleCloudflareKV, // otta:only demo
+    handleCloudflareR2, // otta:only demo
     handleUpload,
     handleUploadFile,
 } from '../cloudflare-storage';
 import { handleCoreAnalytics } from '../core-analytics';
-import { handleDemo, handleDemoError, handleDemoMode } from '../demo';
+import { handleDemo, handleDemoError, handleDemoMode } from '../demo'; // otta:only demo
 import { handleEmailProviders, handleEmailTest } from '../email';
 import { handleOttaormCrud } from '../ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from '../ottaorm-init';
+// otta:begin referrals
 import {
     handleReferralStats,
     handleReferralTrack,
@@ -332,7 +349,9 @@ import {
     handleReferralVanityRedirect,
     handleReferralsAnalytics,
 } from '../referrals';
+// otta:end referrals
 import { apiRouter, handleApiRequest, makeApiRouteContext } from '../router';
+// otta:begin shortlinks
 import {
     handleShortlinkById,
     handleShortlinkExplicitGo,
@@ -340,6 +359,7 @@ import {
     handleShortlinksCreate,
     handleShortlinksList,
 } from '../shortlinks';
+// otta:end shortlinks
 
 /**
  * The ONLY place in this file that knows how routing is invoked.
@@ -365,7 +385,7 @@ async function dispatch(method: string, path: string) {
 
 /** Every mocked route handler — used to assert "nothing was called". */
 const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
-    handleAdminAiConfig,
+    handleAdminAiConfig, // otta:only ottaai
     handleAdminCronCreate,
     handleAdminCronList,
     handleCronTask,
@@ -409,6 +429,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleUserProfile,
     handleVerifyEmail,
     handleVerifyEmailResend,
+    // otta:begin ottablog
     handleBlogBlurbCreate,
     handleBlogBlurbUpdate,
     handleBlogPhotoJournalCreate,
@@ -431,7 +452,9 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleBlogStudioPluginEnable,
     handleBlogStudioState,
     handleBlogTagBySlug,
+    // otta:end ottablog
     handleBrandApi,
+    // otta:begin demo
     handleD1Init,
     handleD1TodoById,
     handleD1Todos,
@@ -443,28 +466,35 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleCloudflareImages,
     handleCloudflareKV,
     handleCloudflareR2,
+    // otta:end demo
     handleUpload,
     handleUploadFile,
     handleCoreAnalytics,
+    // otta:begin demo
     handleDemo,
     handleDemoError,
     handleDemoMode,
+    // otta:end demo
     handleEmailProviders,
     handleEmailTest,
     handleOttaormCrud,
     handleModelsMetadata,
     handleOttaormInit,
+    // otta:begin referrals
     handleReferralStats,
     handleReferralTrack,
     handleReferralTrackingList,
     handleReferralUser,
     handleReferralUsernameUpdate,
     handleReferralsAnalytics,
+    // otta:end referrals
+    // otta:begin shortlinks
     handleShortlinkById,
     handleShortlinkExplicitGo,
     handleShortlinksAnalytics,
     handleShortlinksCreate,
     handleShortlinksList,
+    // otta:end shortlinks
     handleAnalyticsTrack,
     handleMediaLibraryPurge,
 } as any;
@@ -650,6 +680,7 @@ describe('router dispatch parity', () => {
         });
     });
 
+    // otta:begin ottablog
     describe('blog (mounted from its manifest)', () => {
         it('POST /api/blog/blurbs dispatches to blurb creation', async () => {
             const { response } = await dispatch('POST', '/api/blog/blurbs');
@@ -733,7 +764,9 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleBlogStudioThemeTokens');
         });
     });
+    // otta:end ottablog
 
+    // otta:begin shortlinks
     describe('shortlinks (mounted from its manifest)', () => {
         it('PATCH /api/shortlinks/abc dispatches with id and method literal', async () => {
             const { response } = await dispatch('PATCH', '/api/shortlinks/abc');
@@ -761,7 +794,9 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleShortlinkExplicitGo');
         });
     });
+    // otta:end shortlinks
 
+    // otta:begin referrals
     describe('referrals (mounted from its manifest)', () => {
         it('PUT /api/referrals/username dispatches to the username update handler', async () => {
             const { response } = await dispatch('PUT', '/api/referrals/username');
@@ -778,6 +813,7 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleReferralVanityRedirect');
         });
     });
+    // otta:end referrals
 
     describe('brand prefix handler', () => {
         it('GET /api/brand/colors returns the brand response when brand handles it', async () => {
@@ -885,6 +921,7 @@ describe('router dispatch parity', () => {
         });
     });
 
+    // otta:begin ottaai
     describe('admin AI config', () => {
         it('GET /api/admin/ai/config dispatches to the platform snapshot', async () => {
             const { response } = await dispatch('GET', '/api/admin/ai/config');
@@ -892,6 +929,7 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleAdminAiConfig');
         });
     });
+    // otta:end ottaai
 
     describe('admin dev-mail', () => {
         it('GET /api/admin/dev-mail/msg%2F1 decodes the message id', async () => {
@@ -903,6 +941,7 @@ describe('router dispatch parity', () => {
     });
 
     describe('all-methods (method-agnostic) routes', () => {
+        // otta:begin demo
         it('PATCH /api/cloudflare/d1/todos/t1 dispatches with id and method literal', async () => {
             const { response } = await dispatch('PATCH', '/api/cloudflare/d1/todos/t1');
             expect(handleD1TodoById).toHaveBeenCalledWith(expect.objectContaining({ method: 'PATCH' }), 't1', 'PATCH');
@@ -937,6 +976,7 @@ describe('router dispatch parity', () => {
             expect(handleDemo).not.toHaveBeenCalled();
             expect(await response!.text()).toBe('handleDemoMode');
         });
+        // otta:end demo
 
         it('POST /api/upload/file/x/y dispatches to the upload-file prefix handler', async () => {
             const { response } = await dispatch('POST', '/api/upload/file/x/y');

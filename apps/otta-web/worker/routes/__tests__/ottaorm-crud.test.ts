@@ -3,7 +3,7 @@ import { handleOttaormCrud } from '../ottaorm-crud';
 
 vi.mock('@ottabase/auth/backend', () => ({
     getSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } }),
-    hashPassword: vi.fn(async (value: string) => `hashed-${value}`),
+    hashPassword: vi.fn(async (value: string) => `hashed-${value}`), // otta:only ottablog
 }));
 
 vi.mock('@ottabase/db/drizzle-d1', () => ({
@@ -40,6 +40,7 @@ vi.mock('../../lib/auth-utils', () => ({
     invalidateMembershipCache: vi.fn(),
 }));
 
+// otta:begin ottablog
 // Post is stubbed, but the blurb/photo VALIDATORS are the real ones: this route re-applies them so
 // generic CRUD cannot skip the caps the dedicated blog routes enforce. Pulled from the pure types
 // module (no ottaorm import) so the mocked ottaorm above does not break the model class it exports.
@@ -49,11 +50,14 @@ vi.mock('@ottabase/ottablog', async () => ({
     )),
     Post: { find: vi.fn(), first: vi.fn() },
 }));
+// otta:end ottablog
 
+// otta:begin comments
 vi.mock('@ottabase/comments', () => ({
     Comment: { find: vi.fn(), validateReplyParent: vi.fn() },
     CommentReaction: { toggle: vi.fn(), deleteForComment: vi.fn(), reactionsFor: vi.fn() },
 }));
+// otta:end comments
 
 vi.mock('@ottabase/ottaorm/models', () => ({
     Organization: { delete: vi.fn() },
@@ -71,6 +75,7 @@ function createContext() {
     } as any;
 }
 
+// otta:begin ottablog
 function installAuthorizedPostExecution(
     executeSecureCrudRequest: { mockImplementation: (implementation: (...args: any[]) => unknown) => void },
     currentData?: Record<string, unknown>,
@@ -91,12 +96,14 @@ function installAuthorizedPostExecution(
     });
     return captured;
 }
+// otta:end ottablog
 
 describe('handleOttaormCrud (posts concurrency)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
+    // otta:begin ottablog
     it('returns 409 when expectedUpdatedAt does not match', async () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
         const { Post } = await import('@ottabase/ottablog');
@@ -136,6 +143,7 @@ describe('handleOttaormCrud (posts concurrency)', () => {
         expect(response.status).toBe(200);
         expect(captured.body?.expectedUpdatedAt).toBeUndefined();
     });
+    // otta:end ottablog
 
     it('blocks organization_members CRUD and requires admin endpoints', async () => {
         const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
@@ -203,20 +211,23 @@ describe('handleOttaormCrud (posts concurrency)', () => {
         },
     );
 
-    it.each(['posts', 'media', 'categories', 'series'])(
-        'ALLOWS generic CRUD for the allow-listed app-data model %s',
-        async (model) => {
-            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
-            (parseCrudRequest as any).mockResolvedValue({ model, method: 'GET' });
-            (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: [], status: 200 });
+    it.each([
+        'media',
+        'posts', // otta:only ottablog
+        'categories', // otta:only ottablog
+        'series', // otta:only ottablog
+    ])('ALLOWS generic CRUD for the allow-listed app-data model %s', async (model) => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        (parseCrudRequest as any).mockResolvedValue({ model, method: 'GET' });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: [], status: 200 });
 
-            const response = await handleOttaormCrud(createContext());
-            expect(response.status).toBe(200);
-            expect(executeSecureCrudRequest as any).toHaveBeenCalled();
-        },
-    );
+        const response = await handleOttaormCrud(createContext());
+        expect(response.status).toBe(200);
+        expect(executeSecureCrudRequest as any).toHaveBeenCalled();
+    });
 });
 
+// otta:begin ottablog
 describe('handleOttaormCrud (posts null-org authoring guard)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -527,6 +538,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
         expect(executeSecureCrudRequest as any).not.toHaveBeenCalled();
     });
 });
+// otta:end ottablog
 
 describe('handleOttaormCrud (organization create — owner-membership atomicity)', () => {
     beforeEach(() => {
@@ -675,6 +687,7 @@ describe('handleOttaormCrud (organization mutation authorization)', () => {
     });
 });
 
+// otta:begin comments
 describe('handleOttaormCrud (comments)', () => {
     function makeCommentStub(data: Record<string, unknown>) {
         return {
@@ -1089,3 +1102,4 @@ describe('handleOttaormCrud (comments)', () => {
         });
     });
 });
+// otta:end comments

@@ -10,7 +10,7 @@
 import { Router } from '@ottabase/ottarouter';
 import { createMemoryStateStore, createPremiumRegistry, isPremiumPackage } from '@ottabase/premium';
 import { mountPremiumPackages } from '@ottabase/premium/server';
-import { DEMO_PRO_LICENSE, WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks';
+import { DEMO_PRO_LICENSE, WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks'; // otta:only webhooks
 import { describe, expect, it } from 'vitest';
 import { getAllSchemas, getSchemaSummary } from '../db/schemas-helper';
 import * as drizzleSchema from '../db/schema';
@@ -18,7 +18,7 @@ import { packages } from '../packages';
 import { ADMIN_NAV_GROUPS, getEnabledAdminNav } from '../../src/ottabase/config/admin-nav';
 import { CLIENT_PACKAGES, PACKAGE_ADMIN_PAGES, PACKAGES_ENABLED } from '../../src/ottabase/config/packages';
 
-const WEBHOOK_TABLE_KEYS = ['webhookEndpointsTable', 'webhookDeliveriesTable'];
+const WEBHOOK_TABLE_KEYS = ['webhookEndpointsTable', 'webhookDeliveriesTable']; // otta:only webhooks
 
 describe('the client list mirrors the server list', () => {
     // `src/ottabase/config/packages.ts` cannot import the manifests (they carry server
@@ -49,7 +49,7 @@ describe('package tables reach auto-init', () => {
             // shaped table exported under any other key is invisible to it.
             expect(key.endsWith('Table')).toBe(true);
         }
-        expect(getSchemaSummary().packages).toEqual(expect.arrayContaining(WEBHOOK_TABLE_KEYS));
+        expect(getSchemaSummary().packages).toEqual(expect.arrayContaining(WEBHOOK_TABLE_KEYS)); // otta:only webhooks
     });
 
     it('exports every package table from db/schema.ts for drizzle-kit, as the same object', () => {
@@ -61,9 +61,11 @@ describe('package tables reach auto-init', () => {
         }
     });
 
+    // otta:begin webhooks
     it('premium tables are contributed regardless of license — activating a key must not need a migration run', () => {
         expect(Object.keys(packages.tables())).toEqual(expect.arrayContaining(WEBHOOK_TABLE_KEYS));
     });
+    // otta:end webhooks
 });
 
 describe('what the packages contribute', () => {
@@ -76,11 +78,11 @@ describe('what the packages contribute', () => {
         const policies = packages.policies().map((policy) => policy.model);
         expect(policies).toEqual(
             expect.arrayContaining([
-                'premium_webhook_deliveries',
-                'premium_webhook_endpoints',
-                'landing_sites',
-                'landing_pages',
-                'landing_leads',
+                'premium_webhook_deliveries', // otta:only webhooks
+                'premium_webhook_endpoints', // otta:only webhooks
+                'landing_sites', // otta:only ottalanding
+                'landing_pages', // otta:only ottalanding
+                'landing_leads', // otta:only ottalanding
             ]),
         );
     });
@@ -88,10 +90,14 @@ describe('what the packages contribute', () => {
     it('collects every cron handler and seeds the housekeeping ones', () => {
         const cron = packages.cron();
         expect(Object.keys(cron)).toEqual(
-            expect.arrayContaining(['audit:prune', 'landing:notify-leads', 'queue:send-email']),
+            expect.arrayContaining([
+                'audit:prune',
+                'landing:notify-leads', // otta:only ottalanding
+                'queue:send-email',
+            ]),
         );
         expect(cron['audit:prune'].schedule).toBe('17 3 * * *');
-        expect(cron['landing:notify-leads'].schedule).toBeUndefined();
+        expect(cron['landing:notify-leads'].schedule).toBeUndefined(); // otta:only ottalanding
     });
 
     it('collects the queue handlers, including the event bus consumer', () => {
@@ -113,21 +119,24 @@ describe('admin navigation', () => {
         expect(growth?.items.map((item) => item.href)).toContain('/admin/growth/premium');
     });
 
+    // otta:begin webhooks
     it('shows an installed package page and gates it on the package key', () => {
         const growth = getEnabledAdminNav(caps).find((group) => group.id === 'growth');
         const webhooks = growth?.items.find((item) => item.href === '/admin/growth/webhooks');
         expect(webhooks?.requiresPackage).toBe(WEBHOOKS_PACKAGE_KEY);
     });
+    // otta:end webhooks
 
     it('every package-gated nav item names an installed package', () => {
         const gated = ADMIN_NAV_GROUPS.flatMap((group) => group.items).filter((item) => item.requiresPackage);
-        expect(gated.length).toBeGreaterThan(0);
+        expect(gated.length).toBeGreaterThan(0); // otta:only ottablog ottalanding ottaai shortlinks
         for (const item of gated) {
             expect(PACKAGES_ENABLED[item.requiresPackage!], `${item.href} requires ${item.requiresPackage}`).toBe(true);
         }
     });
 });
 
+// otta:begin webhooks
 describe('mounted routes', () => {
     function buildApp(env: Record<string, unknown>) {
         const registry = createPremiumRegistry<Record<string, unknown>>({
@@ -143,7 +152,8 @@ describe('mounted routes', () => {
     it('mounts the webhooks namespace and serves its free tier without a license', async () => {
         const { app, mounted, env } = buildApp({});
         // Containing, not equal: an app that lists more packages (`otta add pro`) mounts more.
-        expect([...mounted]).toEqual(expect.arrayContaining(['/api/vault', WEBHOOKS_BASE_PATH]));
+        expect([...mounted]).toContain('/api/vault'); // otta:only vault
+        expect([...mounted]).toContain(WEBHOOKS_BASE_PATH);
         const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), env);
         // The free path answers (401 from the caller resolver, since there is no session),
         // never 402: `entitlements` gating keeps the namespace reachable.
@@ -157,3 +167,4 @@ describe('mounted routes', () => {
         expect(response?.status).not.toBe(402);
     });
 });
+// otta:end webhooks

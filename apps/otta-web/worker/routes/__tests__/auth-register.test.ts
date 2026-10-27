@@ -50,9 +50,11 @@ vi.mock('../../../ottabase/config.loader', () => ({
     getOttabaseConfig: vi.fn(() => ({ features: { referrals: { enabled: false } } })),
 }));
 
+// otta:begin referrals
 vi.mock('../../../ottabase/helpers/referral-attribution', () => ({
     processReferralAttribution: vi.fn(),
 }));
+// otta:end referrals
 
 vi.mock('../../../src/email/templates', () => ({
     registerAppEmailTemplates: vi.fn(),

@@ -364,6 +364,7 @@
                 },
             ],
         },
+        // otta:begin demo
         // Public demo (worker `otta-web-demo`): `wrangler deploy --env demo`. Its own D1, KV, R2,
         // queue and rate-limit namespace, so a demo never shares rows with production.
         // DEMO_MODE holds mail to strangers, rate-limits uploads, welcomes sign-ups and shows the
@@ -460,6 +461,7 @@
                 },
             ],
         },
+        // otta:end demo
         // Local staging topology. The app launcher always runs this with --local;
         // wiring these resource names into deployment CI is a separate operation.
         "staging": {

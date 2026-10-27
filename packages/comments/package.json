@@ -4,6 +4,13 @@
     "description": "Threaded comment system for Ottabase apps — polymorphic, nestable, with reactions and moderation",
     "ottabase": {
         "key": "comments",
+        "tables": {
+            "import": "@ottabase/comments/schema",
+            "names": [
+                "commentReactionsTable",
+                "commentsTable"
+            ]
+        },
         "factory": "createCommentsPackage"
     },
     "type": "module",

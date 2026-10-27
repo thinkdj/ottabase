@@ -10,8 +10,8 @@ const requireAdminAccess = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/admin-guard', () => ({ requireAdminAccess }));
 
 import { handleCoreAnalytics } from '../core-analytics';
-import { handleReferralsAnalytics } from '../referrals';
-import { handleShortlinksAnalytics } from '../shortlinks';
+import { handleReferralsAnalytics } from '../referrals'; // otta:only referrals
+import { handleShortlinksAnalytics } from '../shortlinks'; // otta:only shortlinks
 
 const env = {
     ENVIRONMENT: 'development',
@@ -25,8 +25,8 @@ function ctx(path: string) {
 }
 
 const handlers = [
-    ['referrals', () => handleReferralsAnalytics(ctx('/api/referrals/analytics'))],
-    ['shortlinks', () => handleShortlinksAnalytics(ctx('/api/shortlinks/analytics'))],
+    ['referrals', () => handleReferralsAnalytics(ctx('/api/referrals/analytics'))], // otta:only referrals
+    ['shortlinks', () => handleShortlinksAnalytics(ctx('/api/shortlinks/analytics'))], // otta:only shortlinks
     ['core', () => handleCoreAnalytics(ctx('/api/analytics/core'))],
 ] as const;
 

@@ -1,3 +1,6 @@
+// otta:begin demo
+// The Ottabase pitch, rendered from EditorJS blocks: the landing page is the demo. `otta strip demo`
+// (and every `otta new --preset`) replaces it with the starter page at the foot of this file.
 import { APP_META } from '@/ottabase/config';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
@@ -423,3 +426,28 @@ export function HomePage() {
         </>
     );
 }
+// otta:end demo
+/* otta:unless demo
+import { APP_META } from '@/ottabase/config';
+import { Button } from '@ottabase/ui';
+import { Link } from '@tanstack/react-router';
+
+// The starter home page: replace it with your own. The admin is at /admin, your pages live in src/pages.
+// (A block comment cannot nest here: this whole starter sits inside the otta:unless comment until stripped.)
+export function HomePage() {
+    return (
+        <div className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <h1 className="text-3xl font-semibold tracking-tight">{APP_META.appName}</h1>
+            <p className="mt-3 text-muted-foreground">{APP_META.tagline}</p>
+            <div className="mt-8 flex gap-3">
+                <Button asChild>
+                    <Link to="/login">Sign in</Link>
+                </Button>
+                <Button asChild variant="outline">
+                    <Link to="/register">Create an account</Link>
+                </Button>
+            </div>
+        </div>
+    );
+}
+otta:end demo */

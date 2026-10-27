@@ -1,0 +1,132 @@
+{
+    "$comment": "What `otta strip <key>` removes from this app beyond the wiring `otta add` wrote: the files and folders that exist only for the key, the npm dependencies only it uses, and the keys that cannot stay without it. Lines inside shared files are marked `otta:only <key>` / `otta:begin <key> … otta:end <key>` instead. `otta add <key> <other-app>` copies these paths from here. See packages/cli/README.md, Stripping.",
+    "demo": {
+        "description": "The demo gallery, the docs pages, the marketing home page, the demo API routes, the Todo sample model, the seed content and the public-demo deployment.",
+        "paths": [
+            "src/pages/demo",
+            "src/pages/docs",
+            "src/embed/routes/EmbedDocsPage.tsx",
+            "src/pages/home/OttabaseHero.tsx",
+            "src/pages/home/__tests__",
+            "src/components/DemoBanner.tsx",
+            "src/hooks/useDemoMode.ts",
+            "src/__tests__/demo-items.test.ts",
+            "worker/routes/demo.ts",
+            "worker/routes/cloudflare-d1.ts",
+            "worker/routes/cloudflare-queue.ts",
+            "worker/routes/cloudflare-rate.ts",
+            "worker/routes/cloudflare-realtime.ts",
+            "worker/routes/__tests__/demo-mode.test.ts",
+            "worker/routes/__tests__/cloudflare-realtime.test.ts",
+            "worker/fixtures",
+            "ottabase/models/Todo.ts",
+            "ottabase/models/Todo.schema.ts",
+            "public/ottabase-demo",
+            "scripts/gen-screenshots.mjs",
+            "__tests__/blog-kitchensink-fixture.test.ts",
+            "__tests__/demo-seed-fixtures.test.ts"
+        ],
+        "dependencies": ["three", "@types/three"]
+    },
+    "ottablog": {
+        "description": "The blog, the changelog and the studio: pages, admin pages, worker routes, SEO and theme injection.",
+        "paths": [
+            "src/pages/blog",
+            "src/pages/changelog",
+            "src/pages/studio",
+            "src/pages/admin/content/blog",
+            "src/pages/admin/content/changelog",
+            "src/ottabase/blog",
+            "src/hooks/blogHooks.ts",
+            "src/types/blog.ts",
+            "src/components/editor/CrosspostsField.tsx",
+            "worker/routes/blog.ts",
+            "worker/lib/blog-seo-inject.ts",
+            "worker/lib/blog-theme-inject.ts",
+            "worker/lib/content-guard.ts",
+            "worker/lib/__tests__/blog-seo-inject.test.ts",
+            "worker/lib/__tests__/blog-theme-inject.test.ts",
+            "worker/lib/__tests__/content-guard.test.ts"
+        ]
+    },
+    "comments": {
+        "description": "Comments on blog posts. Their security context resolves the post, so they go with the blog.",
+        "needs": ["ottablog"],
+        "paths": ["src/hooks/commentHooks.ts"]
+    },
+    "ottalanding": {
+        "description": "The landing site editor and its worker routes.",
+        "paths": [
+            "src/pages/admin/content/landing",
+            "worker/routes/landing.ts",
+            "worker/lib/landing-notify.ts",
+            "worker/lib/__tests__/landing-notify.test.ts",
+            "worker/routes/__tests__/landing.test.ts"
+        ]
+    },
+    "shortlinks": {
+        "description": "Short URLs with edge click tracking: the admin page and the worker routes.",
+        "paths": ["src/pages/shortlinks", "worker/routes/shortlinks.ts", "src/__tests__/Shortlink.test.ts"]
+    },
+    "referrals": {
+        "description": "Referral links and attribution: the dashboard, the tracker, the page, the worker routes.",
+        "paths": [
+            "src/pages/referrals",
+            "src/components/ReferralDashboard.tsx",
+            "src/components/ReferralTracker.tsx",
+            "worker/routes/referrals.ts",
+            "worker/routes/__tests__/referrals-redirect.test.ts",
+            "ottabase/helpers/referral-attribution.ts",
+            "ottabase/helpers/__tests__/referral-attribution.test.ts"
+        ]
+    },
+    "ottaai": {
+        "description": "OttaAI: provider keys, the gateway page, the completion route. Meters its spend, so it needs meter.",
+        "needs": ["meter"],
+        "paths": [
+            "src/pages/admin/growth/AiProvidersPage.tsx",
+            "src/pages/admin/infrastructure/AiPage.tsx",
+            "src/pages/admin/infrastructure/__tests__/AiPage.test.tsx",
+            "src/pages/user/AiPersonalProviders.tsx",
+            "worker/lib/ai.ts",
+            "worker/lib/ai-config.ts",
+            "worker/lib/ai-rate-limit.ts",
+            "worker/lib/__tests__/ai-config.test.ts",
+            "worker/lib/__tests__/ai-rate-limit.test.ts",
+            "worker/routes/ai.ts",
+            "worker/routes/admin-ai.ts",
+            "worker/routes/__tests__/admin-ai.test.ts",
+            "worker/routes/__tests__/ai-complete.test.ts"
+        ]
+    },
+    "meter": {
+        "description": "Usage metering. Composition only; OttaAI depends on it."
+    },
+    "flags": { "description": "Feature flags. Composition only." },
+    "apikeys": { "description": "API keys. Composition only." },
+    "postmaster": {
+        "description": "Inbound mail, suppressions and unsubscribe links. Composition plus the Worker's email handler."
+    },
+    "legal": {
+        "description": "The legal pages and the config they render from.",
+        "paths": ["src/pages/legal", "ottabase/legal.config.ts"]
+    },
+    "alerts": {
+        "description": "Operator alerts: the admin page and the end-to-end wiring test.",
+        "paths": ["src/pages/admin/infrastructure/AlertsPage.tsx", "ottabase/__tests__/alerts-wiring.test.ts"]
+    },
+    "vault": {
+        "description": "Backups to R2: the admin page. Fleet reports the newest backup through it.",
+        "paths": ["src/pages/admin/infrastructure/VaultPage.tsx"]
+    },
+    "fleet": { "description": "The fleet report for Tower. Composition only." },
+    "screenshot": { "description": "Screenshots through Browser Rendering. Composition only." },
+    "webhooks": {
+        "description": "Outbound webhooks (Premium): the admin page and the quota adapter. The Durable Object stays: it is generic.",
+        "paths": [
+            "src/pages/admin/growth/WebhooksPage.tsx",
+            "worker/lib/webhook-endpoint-quota.ts",
+            "worker/lib/__tests__/webhook-endpoint-quota.test.ts"
+        ]
+    }
+}

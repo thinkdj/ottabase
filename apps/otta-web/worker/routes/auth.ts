@@ -1,4 +1,4 @@
-import { getRequestCountry } from '@ottabase/analytics/track';
+import { getRequestCountry } from '@ottabase/analytics/track'; // otta:only referrals
 import {
     createSessionCookieForUser,
     getSession,
@@ -18,7 +18,7 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
 import { isValidUrl } from '@ottabase/utils/url';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
-import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution';
+import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution'; // otta:only referrals
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import {
     bumpProfileVersion,
@@ -725,6 +725,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             );
         }
 
+        // otta:begin referrals
         let attributionResult;
         if (body.referralCode && getOttabaseConfig(env).features.referrals.enabled) {
             const safeHeaders: Record<string, string> = {};
@@ -759,6 +760,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 meta: meta ?? null,
             });
         }
+        // otta:end referrals
 
         const requireVerified = env.AUTH_REQUIRE_EMAIL_VERIFIED === 'true' || env.AUTH_REQUIRE_EMAIL_VERIFIED === '1';
         let verificationSent = false;
@@ -818,7 +820,7 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             assignedRole,
             requiresEmailVerification: requireVerified,
             verificationSent,
-            referralAttribution: attributionResult || null,
+            referralAttribution: attributionResult || null, // otta:only referrals
         });
         return withAuthCors(response);
     } catch (error) {

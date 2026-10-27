@@ -92,9 +92,9 @@ describe('application Cron registry', () => {
                 'queue:generate-report',
                 'queue:sync-data',
                 'queue:batch-task',
-                'landing:notify-leads',
+                'landing:notify-leads', // otta:only ottalanding
                 'audit:prune',
-                'meter:prune-usage',
+                'meter:prune-usage', // otta:only meter
             ]),
         );
         expect(new Set(names).size).toBe(names.length);

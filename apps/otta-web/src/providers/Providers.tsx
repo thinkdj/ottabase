@@ -1,8 +1,9 @@
 import { api, reportApiError } from '@/lib/api';
 import { AuthSessionBootstrap } from '@/components/AuthSessionBootstrap';
 import enApp from '@/locales/en/app.json';
-import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext';
-import { APP_ID, MEDIA_LIBRARY_ENABLED, appConfig, PACKAGES_ENABLED } from '@/ottabase/config';
+import { BlogStudioProvider } from '@/ottabase/blog/BlogStudioContext'; // otta:only ottablog
+import { APP_ID, MEDIA_LIBRARY_ENABLED, appConfig } from '@/ottabase/config';
+import { PACKAGES_ENABLED } from '@/ottabase/config'; // otta:only ottablog
 import { MediaLibraryPickerBridge } from '@/components/media-library/MediaLibraryPickerBridge';
 import { MediaGalleryConfirmBridge } from '@/components/editor/MediaGalleryConfirmBridge';
 import { i18nConfig } from '@/ottabase/config/i18n.config';
@@ -70,16 +71,22 @@ function ProvidersContent({ children }: { children: React.ReactNode }) {
             resources={appResources}
         >
             <LanguageManager />
-            {PACKAGES_ENABLED.ottablog ? (
-                <BlogStudioProvider>
-                    <ProvidersInner>{children}</ProvidersInner>
-                </BlogStudioProvider>
-            ) : (
-                <ProvidersInner>{children}</ProvidersInner>
-            )}
+            {withBlogStudio(<ProvidersInner>{children}</ProvidersInner>)}
         </I18nProvider>
     );
 }
+
+// otta:begin ottablog
+/** The blog studio's state wraps the tree only while the blog is installed. */
+function withBlogStudio(node: React.ReactNode): React.ReactNode {
+    return PACKAGES_ENABLED.ottablog ? <BlogStudioProvider>{node}</BlogStudioProvider> : node;
+}
+// otta:end ottablog
+/* otta:unless ottablog
+function withBlogStudio(node: React.ReactNode): React.ReactNode {
+    return node;
+}
+otta:end ottablog */
 
 function ProvidersInner({ children }: { children: React.ReactNode }) {
     return (

@@ -643,13 +643,25 @@ These hold on every deploy, demo or not:
   Where they are installed, it links to the pages a signed-in user can open (`/plans`, `/support`, `/my-data`,
   `/status`).
 
-## Deleting Demo Content
+## Stripping the demo, or a package
 
-In production apps, you can safely delete:
+`pnpm otta strip demo` removes the demo gallery, the docs pages, the marketing home page (a starter page takes its
+place), the demo API routes, the Todo sample model, the seed content, the demo assets and the public-demo environment.
+`pnpm otta strip ottablog` (or any package key) removes a package the same way: the inverse of `otta add`. Add
+`--dry-run` to see the plan first.
 
-- `src/pages/demo/` - All demo pages
-- Demo routes in `src/router.tsx` (`/demo*`)
-- Demo-only API handlers in `worker/routes/demo.ts` (without `GET /api/demo/mode` the demo banner simply stays off)
+What goes is declared in two places, and `pnpm otta presets check` scaffolds a stripped app and runs its gates so the
+declarations stay honest:
+
+- `ottabase/footprints.json`: the files and folders that exist only for a key, the npm dependencies only it uses, and
+  the keys that cannot stay without it (`comments` needs `ottablog`).
+- Markers in shared files, on the lines a key owns there: `// otta:only <key>` on one line, `// otta:begin <key>` …
+  `// otta:end <key>` around a block, and `/* otta:unless <key>` … `otta:end <key> */` around code kept commented out
+  until the key is stripped (the starter home page). A marker naming several keys goes when the last of them does. When
+  you add a route, a nav entry or an import for a package to a shared file, mark it.
+
+A new app usually starts stripped: `pnpm otta new web my-app --minimal` (or `--preset blog`, `--preset saas`;
+`pnpm otta presets` lists them). `packages/cli/README.md` has the details.
 
 ## Documentation
 

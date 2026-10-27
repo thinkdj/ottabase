@@ -8,9 +8,10 @@
 import { useRBACToast } from '@/hooks/useToast';
 import { api } from '@/lib/api';
 import { useSession, type User as SessionUser } from '@/lib/auth';
-import { MEDIA_LIBRARY_ENABLED, PACKAGES_ENABLED } from '@/ottabase/config';
+import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
+import { PACKAGES_ENABLED } from '@/ottabase/config'; // otta:only ottaai
 import { changePassword, requestEmailVerification } from '@/lib/auth-api';
-import { AiPersonalProviders } from './AiPersonalProviders';
+import { AiPersonalProviders } from './AiPersonalProviders'; // otta:only ottaai
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import {
     Avatar,
@@ -751,8 +752,10 @@ export function UserProfilePage() {
                 </CardContent>
             </Card>
 
+            {/* otta:begin ottaai */}
             {/* AI providers — personal keys. Dormant unless the ottaai package is enabled. */}
             {PACKAGES_ENABLED.ottaai ? <AiPersonalProviders /> : null}
+            {/* otta:end ottaai */}
 
             {/* Security */}
             <Card>

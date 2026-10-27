@@ -1,15 +1,17 @@
-import { getSession, hashPassword } from '@ottabase/auth/backend';
-import { Comment, CommentReaction } from '@ottabase/comments';
+import { getSession } from '@ottabase/auth/backend';
+import { hashPassword } from '@ottabase/auth/backend'; // otta:only ottablog
+import { Comment, CommentReaction } from '@ottabase/comments'; // otta:only comments
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { ContentValidationError, Post, validatePostWrite } from '@ottabase/ottablog';
+import { ContentValidationError, Post, validatePostWrite } from '@ottabase/ottablog'; // otta:only ottablog
 import {
     executeSecureCrudRequest,
     parseCrudRequest,
     registerConnection,
-    type CrudResponse,
-    type PrepareAuthorizedMutation,
+    type CrudResponse, // otta:only ottablog
+    type PrepareAuthorizedMutation, // otta:only ottablog
 } from '@ottabase/ottaorm';
-import { Organization, OrganizationMember, User, UserGroupMember } from '@ottabase/ottaorm/models';
+import { Organization, OrganizationMember, UserGroupMember } from '@ottabase/ottaorm/models';
+import { User } from '@ottabase/ottaorm/models'; // otta:only comments
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
@@ -21,6 +23,7 @@ export interface OttaormCrudContext {
     url: URL;
 }
 
+// otta:begin comments
 /**
  * Resolve the authoritative organizationId for a comment from its TARGET entity — never from
  * the caller's own ambient/header-supplied org context. This closes two problems:
@@ -119,7 +122,9 @@ function isCommentOwnerOrModerator(
     const permissions = (ambient.permissions as string[] | undefined) ?? [];
     return hasGrantedPermission(permissions, 'comments:moderate');
 }
+// otta:end comments
 
+// otta:begin ottablog
 /**
  * App-global blog taxonomy: one shared vocabulary per app (no organizationId column), referenced
  * by every tenant's posts. Its RLS is AppScoped with NO role/permission requirement, so generic
@@ -238,6 +243,7 @@ const prepareAuthorizedPostMutation: PrepareAuthorizedMutation = async (mutation
 
     return { body: next };
 };
+// otta:end ottablog
 
 /**
  * Methods that mutate or destroy an EXISTING organization row (i.e. everything except create).
@@ -261,6 +267,7 @@ const ORG_MUTATING_METHODS = new Set(['PATCH', 'PUT', 'DELETE']);
  * RLS policy).
  */
 const GENERIC_CRUD_ALLOWLIST = new Set([
+    // otta:begin ottablog
     // Blog / content
     'posts',
     'post_versions',
@@ -270,14 +277,19 @@ const GENERIC_CRUD_ALLOWLIST = new Set([
     'post_tags',
     'post_tag_links',
     'post_category_links',
+    // otta:end ottablog
     // Media library
     'media',
+    // otta:begin comments
     // Comments (org is derived from the target entity, special-cased below)
     'comments',
+    // otta:end comments
     // Organizations (member-scoped reads; a create also provisions the owner membership below)
     'organizations',
+    // otta:begin demo
     // Demo data-table
     'todos',
+    // otta:end demo
 ]);
 
 export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Response> {
@@ -297,7 +309,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     // TARGET, never the caller's own ambient/header-supplied org) — every other model uses the
     // ambient securityContext unchanged.
     let effectiveSecurityContext: typeof securityContext = securityContext;
-    let commentReactionsToDeleteId: string | null = null;
+    let commentReactionsToDeleteId: string | null = null; // otta:only comments
     const crudRequest = await parseCrudRequest(request, url, '/api/ottaorm');
 
     if (!crudRequest) {
@@ -321,6 +333,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    // otta:begin comments
     if (crudRequest.model === 'comment_reactions') {
         return errorResponse('Comment reactions CRUD is disabled via OttaORM', 403, {
             code: 'CRUD_DISABLED',
@@ -338,6 +351,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             hint: "PATCH status to 'deleted' instead — soft-delete preserves thread structure for replies",
         });
     }
+    // otta:end comments
 
     if (crudRequest.model === 'organization_members') {
         return errorResponse('Organization members CRUD is disabled via OttaORM', 403, {
@@ -425,6 +439,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    // otta:begin ottablog
     // Posts intentionally expose PATCH semantics only. A generic PUT cannot express the model's
     // omitted-means-unchanged subtype contract and historically bypassed post-specific password,
     // attribution, and publication handling.
@@ -446,6 +461,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             });
         }
     }
+    // otta:end ottablog
 
     // Mutating or deleting an organization requires owner/admin authority in the TARGET org. The
     // organizations RLS policy only scopes rows to the caller's memberships (ANY role) with no
@@ -486,6 +502,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         delete body.status;
     }
 
+    // otta:begin ottablog
     // Post.prepareForDatabase runs the content validators on every write, so this route-level pass
     // is NOT what makes the caps hold — it makes failures return a 400 naming the offending field
     // instead of surfacing from inside the ORM. Keep both: delete this and the rules still bind,
@@ -529,7 +546,9 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             });
         }
     }
+    // otta:end ottablog
 
+    // otta:begin comments
     if (crudRequest.model === 'comments') {
         const user = session?.user;
 
@@ -661,6 +680,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             effectiveSecurityContext = orgResolution.securityContext;
         }
     }
+    // otta:end comments
 
     if (crudRequest.model === 'organizations' && crudRequest.body && crudRequest.method === 'POST') {
         const userId = session?.user?.id;
@@ -684,7 +704,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
     const affectedMembershipUserIds = await resolveAffectedMembershipUsers(crudRequest, securityContext);
 
     const result = await executeSecureCrudRequest(crudRequest, effectiveSecurityContext, {
-        prepareAuthorizedMutation: prepareAuthorizedPostMutation,
+        prepareAuthorizedMutation: prepareAuthorizedPostMutation, // otta:only ottablog
     });
 
     if (!result.success) {
@@ -712,6 +732,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         });
     }
 
+    // otta:begin comments
     if (commentReactionsToDeleteId) {
         try {
             await CommentReaction.deleteForComment(commentReactionsToDeleteId);
@@ -726,6 +747,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             return errorResponse('Comment cleanup failed', 500, { code: 'COMMENT_CLEANUP_FAILED' });
         }
     }
+    // otta:end comments
 
     if (affectedMembershipUserIds.length > 0) {
         await Promise.all(affectedMembershipUserIds.map((uid) => invalidateMembershipCache(env.OBCF_KV, uid)));
@@ -783,6 +805,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
     }
 
+    // otta:begin comments
     // Enrich comment list responses with author info (name, image, createdAt)
     if (crudRequest.model === 'comments' && crudRequest.method === 'GET' && result.data) {
         try {
@@ -825,6 +848,7 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
             // Non-fatal: comments still returned without user/reaction enrichment
         }
     }
+    // otta:end comments
 
     return jsonResponse(result.data, result.status);
 }

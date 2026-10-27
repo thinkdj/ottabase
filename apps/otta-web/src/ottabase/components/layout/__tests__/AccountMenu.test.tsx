@@ -15,11 +15,13 @@ const mockSession = {
     logout: vi.fn(),
 };
 
+// otta:begin demo
 const mockDemoMode = { enabled: false, ctaLabel: null, ctaUrl: null };
 
 vi.mock('@/hooks/useDemoMode', () => ({
     useDemoMode: () => mockDemoMode,
 }));
+// otta:end demo
 
 vi.mock('@/lib/auth', () => ({
     useSession: () => mockSession,
@@ -177,7 +179,7 @@ describe('AccountMenu', () => {
         };
         mockSession.logout.mockReset();
         mockNavigate.mockReset();
-        mockDemoMode.enabled = false;
+        mockDemoMode.enabled = false; // otta:only demo
     });
 
     it('shows login and sign up when not authenticated', () => {
@@ -208,6 +210,7 @@ describe('AccountMenu', () => {
         expect(labels).toEqual(['Profile', 'Media Library', 'Referrals', 'Billing']);
     });
 
+    // otta:begin demo
     it('marks the Ottabase Pro pages, and only on a public demo', () => {
         mockDemoMode.enabled = true;
         render(<AccountMenu />);
@@ -216,6 +219,7 @@ describe('AccountMenu', () => {
         expect(menu.getByRole('link', { name: /^Billing\s*Pro$/ })).toHaveAttribute('href', '/billing');
         expect(menu.getByRole('link', { name: 'Referrals' })).toBeInTheDocument();
     });
+    // otta:end demo
 
     it('offers a visitor Login from the sidebar and the floating button', () => {
         mockSession.isAuthenticated = false;
@@ -252,7 +256,7 @@ describe('AccountMenu', () => {
 
     it('gates Studio on posts:update and Admin on admin access', () => {
         render(<AccountMenu />);
-        expect(screen.queryByRole('link', { name: 'Blog Studio' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Blog Studio' })).not.toBeInTheDocument(); // otta:only ottablog
         expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
     });
 
@@ -261,7 +265,7 @@ describe('AccountMenu', () => {
 
         render(<AccountMenu />);
 
-        expect(screen.getByRole('link', { name: 'Blog Studio' })).toHaveAttribute('href', '/studio');
+        expect(screen.getByRole('link', { name: 'Blog Studio' })).toHaveAttribute('href', '/studio'); // otta:only ottablog
         expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
     });
 

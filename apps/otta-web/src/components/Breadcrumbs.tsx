@@ -38,7 +38,8 @@ interface BreadcrumbSegment {
  */
 const ROUTE_LABELS: Record<string, string> = {
     '/': 'Home',
-    '/changelog': "What's New",
+    '/changelog': "What's New", // otta:only ottablog
+    // otta:begin demo
     '/demo': 'Demos',
     '/demo/mantine': 'Mantine UI',
     '/demo/ui': 'UI Kit',
@@ -68,6 +69,7 @@ const ROUTE_LABELS: Record<string, string> = {
     '/demo/cloudflare/queues': 'Queues',
     '/demo/cloudflare/rate-limiting': 'Rate Limiting',
     '/demo/cloudflare/realtime': 'Realtime Pub/Sub',
+    // otta:end demo
 };
 
 /**

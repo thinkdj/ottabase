@@ -14,7 +14,6 @@
  * fixes it. The server refuses the data either way.
  */
 import { definePackageClient, installedPackages, packageAdminPages, packageRoutes } from '@ottabase/kernel/client';
-import { WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks';
 import { Archive, BellRing, Gift, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [
@@ -76,7 +75,7 @@ export const CLIENT_PACKAGES = [
         ],
     }),
     definePackageClient({
-        key: WEBHOOKS_PACKAGE_KEY,
+        key: 'webhooks',
         adminPages: [
             {
                 path: '/admin/growth/webhooks',

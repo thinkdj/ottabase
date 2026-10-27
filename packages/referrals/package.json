@@ -44,6 +44,23 @@
     "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/referrals#readme",
     "ottabase": {
         "key": "referrals",
-        "factory": "createReferralsPackage"
+        "factory": "createReferralsPackage",
+        "tables": {
+            "import": "@ottabase/referrals",
+            "names": [
+                "referralTrackingTable"
+            ]
+        },
+        "routes": [
+            {
+                "path": "/referrals",
+                "page": "referrals/ReferralsPage",
+                "export": "ReferralsPage",
+                "menu": {
+                    "title": "Referrals",
+                    "icon": "Gift"
+                }
+            }
+        ]
     }
 }

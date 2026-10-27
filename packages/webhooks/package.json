@@ -12,7 +12,20 @@
                 "webhookDeliveriesTable",
                 "webhookEndpointsTable"
             ]
-        }
+        },
+        "adminPages": [
+            {
+                "path": "/admin/growth/webhooks",
+                "title": "Webhooks",
+                "description": "Outbound event delivery with signed payloads, endpoint health, and a delivery log.",
+                "icon": "Webhook",
+                "group": "growth",
+                "scope": "org",
+                "premium": true,
+                "page": "admin/growth/WebhooksPage",
+                "export": "WebhooksPage"
+            }
+        ]
     },
     "type": "module",
     "main": "dist/index.js",

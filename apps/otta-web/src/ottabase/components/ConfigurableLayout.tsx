@@ -3,8 +3,8 @@
 // Uses expanded config fields + layout slots from @ottabase/ottalayout
 // ---------------------------------------------------------------------------
 
-import { ReferralTracker } from '@/components/ReferralTracker';
-import { PACKAGES_ENABLED } from '@/ottabase/config';
+import { ReferralTracker } from '@/components/ReferralTracker'; // otta:only referrals
+import { PACKAGES_ENABLED } from '@/ottabase/config'; // otta:only referrals
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import {
     accountPlacement,
@@ -54,7 +54,9 @@ export const ConfigurableLayout = memo(function ConfigurableLayout({ config, chi
 
     return (
         <div className="min-h-screen bg-background font-sans flex flex-col">
+            {/* otta:begin referrals */}
             {PACKAGES_ENABLED.referrals && <ReferralTracker />}
+            {/* otta:end referrals */}
 
             {/* Announcement slot – pages can inject banners here */}
             <LayoutSlot name="announcement" />

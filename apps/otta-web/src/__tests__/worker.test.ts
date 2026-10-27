@@ -159,6 +159,7 @@ describe('Cloudflare Worker API', () => {
         });
     });
 
+    // otta:begin shortlinks
     describe('/api/ottaorm/shortlinks', () => {
         // The generic CRUD route is fully disabled for shortlinks (like users/menus/
         // organization_members). The shortlinks RLS policy is platform-admin gated
@@ -195,7 +196,9 @@ describe('Cloudflare Worker API', () => {
             expect(resp.status).toBe(401);
         });
     });
+    // otta:end shortlinks
 
+    // otta:begin demo
     describe('/api/demo', () => {
         it('should handle GET', async () => {
             const resp = await worker.fetch(createRequest('/api/demo'), env);
@@ -209,4 +212,5 @@ describe('Cloudflare Worker API', () => {
             expect(data.message).toBe('Hello, Test!');
         });
     });
+    // otta:end demo
 });

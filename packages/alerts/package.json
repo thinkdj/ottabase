@@ -13,7 +13,19 @@
                 "alertDeliveriesTable",
                 "alertKeysTable"
             ]
-        }
+        },
+        "adminPages": [
+            {
+                "path": "/admin/infrastructure/alerts",
+                "title": "Alerts",
+                "description": "Where operator alerts go, and every alert with where it went.",
+                "icon": "BellRing",
+                "group": "infrastructure",
+                "scope": "platform",
+                "page": "admin/infrastructure/AlertsPage",
+                "export": "AlertsPage"
+            }
+        ]
     },
     "type": "module",
     "exports": {

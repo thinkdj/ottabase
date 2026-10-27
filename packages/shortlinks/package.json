@@ -4,6 +4,12 @@
     "description": "Reusable shortlink management system for Cloudflare infrastructure",
     "ottabase": {
         "key": "shortlinks",
+        "tables": {
+            "import": "@ottabase/shortlinks",
+            "names": [
+                "shortlinksTable"
+            ]
+        },
         "factory": "createShortlinksPackage"
     },
     "type": "module",

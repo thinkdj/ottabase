@@ -16,7 +16,7 @@ import { dispatch } from '@ottabase/queue';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import { ctxOf } from '../../worker/lib/api-context';
 import { handleMediaLibraryPurge } from '../../worker/routes/media-library';
-import { Todo, todosTable } from '../models/Todo';
+import { Todo, todosTable } from '../models/Todo'; // otta:only demo
 import { incrementDispatchStats } from '../queue';
 import {
     batchTaskHandler,
@@ -208,8 +208,8 @@ export const appPackage = definePackage<CloudflareEnv>({
     version: '1.0.0',
     description: "This app's own tables, routes and jobs.",
 
-    tables: { todosTable },
-    models: [Todo],
+    tables: { todosTable }, // otta:only demo
+    models: [Todo], // otta:only demo
 
     routes: [
         {

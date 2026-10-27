@@ -1,7 +1,8 @@
-import { useDemoMode } from '@/hooks/useDemoMode';
+import { useDemoMode } from '@/hooks/useDemoMode'; // otta:only demo
 import { isAdminUser, useSession } from '@/lib/auth';
-import { MEDIA_LIBRARY_ENABLED, PACKAGE_ACCOUNT_LINKS, PACKAGES_ENABLED } from '@/ottabase/config';
-import { PRO_PACKAGE_KEYS } from '@/pages/demo/pro/proPackages';
+import { MEDIA_LIBRARY_ENABLED, PACKAGE_ACCOUNT_LINKS } from '@/ottabase/config';
+import { PACKAGES_ENABLED } from '@/ottabase/config'; // otta:only ottablog
+import { PRO_PACKAGE_KEYS } from '@/pages/demo/pro/proPackages'; // otta:only demo
 import type { PackageIcon } from '@ottabase/kernel/client';
 import {
     Avatar,
@@ -16,9 +17,10 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@ottabase/ui';
-import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import { hasGrantedPermission } from '@ottabase/utils/permissions'; // otta:only ottablog
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronsUpDown, Images, LogIn, LogOut, PenLine, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronsUpDown, Images, LogIn, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { PenLine } from 'lucide-react'; // otta:only ottablog
 import { Fragment, memo, useCallback, useState } from 'react';
 
 /**
@@ -40,7 +42,7 @@ interface AccountLink {
 /** The signed-in destinations, in groups: the person's own pages, then the work surfaces. */
 function useAccountLinks(): AccountLink[][] {
     const { user } = useSession();
-    const demo = useDemoMode();
+    const demo = useDemoMode(); // otta:only demo
     const own: AccountLink[] = [
         { to: '/profile', label: 'Profile', icon: UserRound },
         ...(MEDIA_LIBRARY_ENABLED ? [{ to: '/media-library', label: 'Media Library', icon: Images }] : []),
@@ -48,13 +50,15 @@ function useAccountLinks(): AccountLink[][] {
             to: link.path,
             label: link.title,
             icon: link.icon,
-            pro: demo.enabled && PRO_PACKAGE_KEYS.has(link.pkg),
+            pro: demo.enabled && PRO_PACKAGE_KEYS.has(link.pkg), // otta:only demo
         })),
     ];
     const work: AccountLink[] = [
+        // otta:begin ottablog
         ...(PACKAGES_ENABLED.ottablog && hasGrantedPermission(user?.permissions, 'posts:update')
             ? [{ to: '/studio', label: 'Blog Studio', icon: PenLine }]
             : []),
+        // otta:end ottablog
         ...(isAdminUser(user) ? [{ to: '/admin', label: 'Admin', icon: ShieldCheck }] : []),
     ];
     return [own, work].filter((group) => group.length > 0);

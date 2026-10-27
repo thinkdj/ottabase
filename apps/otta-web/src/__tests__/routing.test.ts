@@ -35,7 +35,7 @@ describe('package pages', () => {
         expect(PACKAGE_ACCOUNT_LINKS.map((link) => link.path)).toEqual(
             PACKAGE_ROUTES.filter((route) => route.menu).map((route) => route.path),
         );
-        expect(PACKAGE_ACCOUNT_LINKS).toContainEqual(expect.objectContaining({ path: '/referrals', pkg: 'referrals' }));
+        expect(PACKAGE_ACCOUNT_LINKS).toContainEqual(expect.objectContaining({ path: '/referrals', pkg: 'referrals' })); // otta:only referrals
     });
 });
 
@@ -57,7 +57,7 @@ describe('shell links', () => {
         for (const path of [
             '/profile',
             '/media-library',
-            '/studio',
+            '/studio', // otta:only ottablog
             '/admin',
             ...PACKAGE_ACCOUNT_LINKS.map((l) => l.path),
         ]) {
@@ -70,8 +70,20 @@ describe('shell links', () => {
 
     it('every default layout mapping a new install is seeded with names a routed page', () => {
         // `/admin/**` is checked at `/admin`, `/blog/*` at `/blog/sample`; the catch-all `/**` needs no page.
+        // Brand Engine seeds layouts for the blog and the demo whether or not they are installed.
+        const unrouted = new Set<string>([
+            /* otta:unless ottablog
+            '/blog/*',
+            otta:end ottablog */
+            /* otta:unless demo
+            '/demo/**',
+            otta:end demo */
+            /* otta:unless referrals
+            '/referrals',
+            otta:end referrals */
+        ]);
         const patterns = DEFAULT_ROUTE_MAPPINGS.map((mapping) => mapping.pathPattern).filter(
-            (pattern) => pattern !== '/**',
+            (pattern) => pattern !== '/**' && !unrouted.has(pattern),
         );
         for (const pattern of patterns) {
             const path = pattern.replace(/\/\*\*$/, '').replace(/\*/g, 'sample') || '/';

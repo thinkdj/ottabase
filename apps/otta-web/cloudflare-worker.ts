@@ -2,8 +2,8 @@ import { RealtimeActor } from '@ottabase/cf-realtime/server';
 import type { QueuedJob } from '@ottabase/queue';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { handleAppScheduled } from './ottabase/cron';
-import { packages } from './ottabase/packages';
-import { handleInboundEmail } from './ottabase/packages/postmaster';
+import { packages } from './ottabase/packages'; // otta:only ottablog shortlinks
+import { handleInboundEmail } from './ottabase/packages/postmaster'; // otta:only postmaster
 import { queueHandler } from './ottabase/queue';
 import {
     handleBootstrapRoute,
@@ -11,14 +11,14 @@ import {
     invalidatePlatformStateCache,
     resolvePlatformState,
 } from './worker/bootstrap';
-import { injectBlogPostSeo } from './worker/lib/blog-seo-inject';
-import { injectBlogThemeCss } from './worker/lib/blog-theme-inject';
+import { injectBlogPostSeo } from './worker/lib/blog-seo-inject'; // otta:only ottablog
+import { injectBlogThemeCss } from './worker/lib/blog-theme-inject'; // otta:only ottablog
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { ensureDbConnection } from './worker/lib/db-utils';
 import { handleUnhandledRequestError } from './worker/lib/http-error-boundary';
 import { checkKillSwitches } from './worker/lib/killswitch';
 import { handleApiRequest } from './worker/routes/router';
-import { handleShortlinkFallback } from './worker/routes/shortlinks';
+import { handleShortlinkFallback } from './worker/routes/shortlinks'; // otta:only shortlinks
 export { WebhookEndpointQuota } from './worker/durable-objects/WebhookEndpointQuota';
 
 export { RealtimeActor };
@@ -111,6 +111,7 @@ export default {
                 return apiResponse;
             }
 
+            // otta:begin shortlinks
             // Bare short codes (/abc) resolve only when the shortlinks package is installed.
             if (packages.has('shortlinks')) {
                 const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
@@ -118,6 +119,7 @@ export default {
                     return shortlinkFallbackResponse;
                 }
             }
+            // otta:end shortlinks
 
             if (!env.OBCF_ASSETS) {
                 return errorResponse('Assets binding not configured', 500, {
@@ -137,6 +139,7 @@ export default {
 
             if (isHtmlRequest(request) && response.ok) {
                 response = await injectBrandCriticalCSS(response, request, env);
+                // otta:begin ottablog
                 if (packages.has('ottablog')) {
                     // Blog detail navigations additionally get per-post SEO meta
                     // (title, description, canonical, OG/Twitter, JSON-LD) so
@@ -147,6 +150,7 @@ export default {
                     // themed, matching what the client applies after hydration.
                     response = await injectBlogThemeCss(response, request, env);
                 }
+                // otta:end ottablog
             }
 
             return response;
@@ -156,5 +160,5 @@ export default {
     },
     scheduled: handleAppScheduled,
     queue: queueHandler,
-    email: handleInboundEmail,
+    email: handleInboundEmail, // otta:only postmaster
 } satisfies ExportedHandler<CloudflareEnv, QueuedJob<unknown>>;

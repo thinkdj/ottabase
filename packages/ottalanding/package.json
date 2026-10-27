@@ -4,6 +4,14 @@
     "description": "Database-backed landing sites for Ottabase apps: typed page sections, site settings, and swappable themes",
     "ottabase": {
         "key": "ottalanding",
+        "tables": {
+            "import": "@ottabase/ottalanding/schema",
+            "names": [
+                "landingLeadsTable",
+                "landingPagesTable",
+                "landingSitesTable"
+            ]
+        },
         "factory": "createOttalandingPackage"
     },
     "type": "module",

@@ -12,14 +12,14 @@ export interface NavLink {
  */
 const NAV_LINKS_ALL: NavLink[] = [
     { to: '/', label: 'Home' },
-    { to: '/demo', label: 'Demo' },
-    { to: '/docs', label: 'Docs' },
-    { to: '/blog', label: 'Blog' },
-    { to: '/changelog', label: "What's New" },
+    { to: '/demo', label: 'Demo' }, // otta:only demo
+    { to: '/docs', label: 'Docs' }, // otta:only demo
+    { to: '/blog', label: 'Blog' }, // otta:only ottablog
+    { to: '/changelog', label: "What's New" }, // otta:only ottablog
 ];
 
 const PACKAGE_ROUTE_MAP: Partial<Record<string, keyof typeof PACKAGES_ENABLED>> = {
-    '/blog': 'ottablog',
+    '/blog': 'ottablog', // otta:only ottablog
 };
 
 /** Returns the visible nav links, filtered by enabled package. */

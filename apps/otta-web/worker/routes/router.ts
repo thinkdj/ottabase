@@ -48,7 +48,7 @@ import {
     handleAdminOrganizationRemoveMember,
     handleAdminOrganizationUpdateMember,
 } from './admin-organization-members';
-import { handleAdminAiConfig } from './admin-ai';
+import { handleAdminAiConfig } from './admin-ai'; // otta:only ottaai
 import { handleAdminPromotePlatformOwner } from './admin-owner';
 import {
     handleAdminQueuesDLQJob,
@@ -82,19 +82,19 @@ import {
     handleVerifyEmailResend,
 } from './auth';
 import { handleBrandApi } from './brand';
-import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
-import { handleCloudflareQueue } from './cloudflare-queue';
-import { handleRateLimiting } from './cloudflare-rate';
-import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from './cloudflare-realtime';
+import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1'; // otta:only demo
+import { handleCloudflareQueue } from './cloudflare-queue'; // otta:only demo
+import { handleRateLimiting } from './cloudflare-rate'; // otta:only demo
+import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from './cloudflare-realtime'; // otta:only demo
 import {
-    handleCloudflareImages,
-    handleCloudflareKV,
-    handleCloudflareR2,
+    handleCloudflareImages, // otta:only demo
+    handleCloudflareKV, // otta:only demo
+    handleCloudflareR2, // otta:only demo
     handleUpload,
     handleUploadFile,
 } from './cloudflare-storage';
 import { handleCoreAnalytics } from './core-analytics';
-import { handleDemo, handleDemoError, handleDemoMode } from './demo';
+import { handleDemo, handleDemoError, handleDemoMode } from './demo'; // otta:only demo
 import { handleEmailProviders, handleEmailTest } from './email';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
@@ -271,10 +271,12 @@ apiRouter.delete('/api/admin/db/tables/*', (c) => {
         : null;
 });
 
+// otta:begin ottaai
 // -------------------------------------------------------
 // Admin: OttaAI / AI Gateway (platform-admin, read-only snapshot)
 // -------------------------------------------------------
 apiRouter.get('/api/admin/ai/config', h(handleAdminAiConfig));
+// otta:end ottaai
 
 // -------------------------------------------------------
 // Admin: dev mail
@@ -287,6 +289,7 @@ apiRouter.delete('/api/admin/dev-mail/:messageId', (c) => handleAdminDevMailDele
 // -------------------------------------------------------
 // Cloudflare platform demos & services
 // -------------------------------------------------------
+// otta:begin demo
 apiRouter.all('/api/demo', h(handleDemo));
 apiRouter.all('/api/demo/error', () => handleDemoError());
 apiRouter.get('/api/demo/mode', h(handleDemoMode));
@@ -303,6 +306,7 @@ apiRouter.post('/api/cloudflare/rate-limiting', h(handleRateLimiting));
 apiRouter.get('/api/cloudflare/realtime/stats', h(handleRealtimeStats));
 apiRouter.post('/api/cloudflare/realtime/broadcast', h(handleRealtimeBroadcast));
 apiRouter.all('/api/cloudflare/realtime/ws', h(handleRealtimeWebsocket));
+// otta:end demo
 // NOTE: there are deliberately no `/api/cloudflare/ai/*` routes. The AI demo posts to
 // `/api/ai/complete` — the SAME endpoint product features use — so the demo exercises the real
 // resolution chain instead of a parallel client whose provider table can drift from it.

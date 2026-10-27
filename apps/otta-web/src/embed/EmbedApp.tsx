@@ -21,7 +21,7 @@ import {
     Router,
     RouterProvider,
     createBrowserHistory,
-    lazyRouteComponent,
+    lazyRouteComponent, // otta:only demo
 } from '@tanstack/react-router';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
@@ -62,6 +62,7 @@ const embedRootRoute = new RootRoute({
     notFoundComponent: NotFoundPage,
 });
 
+// otta:begin demo
 const embedDocsRoute = new Route({
     getParentRoute: () => embedRootRoute,
     path: '/embed/docs/$',
@@ -71,6 +72,7 @@ const embedDocsRoute = new Route({
         })),
     ),
 });
+// otta:end demo
 
 // Catch-all index redirects to a helpful 404
 const embedIndexRoute = new Route({
@@ -79,7 +81,10 @@ const embedIndexRoute = new Route({
     component: NotFoundPage,
 });
 
-const embedRouteTree = embedRootRoute.addChildren([embedIndexRoute, embedDocsRoute]);
+const embedRouteTree = embedRootRoute.addChildren([
+    embedIndexRoute,
+    embedDocsRoute, // otta:only demo
+]);
 
 const embedBrowserHistory = createBrowserHistory();
 
