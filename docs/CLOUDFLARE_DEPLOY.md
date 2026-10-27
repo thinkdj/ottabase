@@ -8,6 +8,22 @@ Complete guide for deploying `otta-web` to Cloudflare Workers with automated CI/
 - GitHub repository with Actions enabled
 - Node.js 24+ and pnpm 10+ installed locally
 
+## The short way: `otta deploy`
+
+No GitHub needed for a first deploy, or for a one-person project:
+
+```bash
+pnpm cf:login
+pnpm otta deploy my-app --owner-email me@example.com --owner-password '…'
+```
+
+That is Steps 1 to 6 below from one terminal: the resources the env block of `wrangler.jsonc` names are created, their
+ids are filled into a gitignored `wrangler.production.jsonc`, the packages and the app are built and deployed, the
+framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`, `BOOTSTRAP_OWNER_SECRET`,
+`CRON_SECRET`, `AUTH_URL`), the database is bootstrapped with that owner, and `/api/health` is checked. Rerun it to
+redeploy. Details and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight
+to Cloudflare". The rest of this guide is the CI/CD setup for a team.
+
 ---
 
 ## Step 1: Setup Cloudflare Resources

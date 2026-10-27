@@ -9,6 +9,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **The lean starter.** `otta new web my-app --minimal` (or `--preset blog`, `--preset saas`; `otta presets` lists them)
+  scaffolds otta-web stripped to what the preset keeps: the core (auth, organizations and RBAC, the admin shell, Brand
+  Engine, the app's own package) is never stripped, the demo gallery always is. A new app also gets its own Cloudflare
+  resource names, its `.env.example`, and a starter home page. `otta strip <demo|package> my-app` is the inverse of
+  `otta add`: it removes the wiring `add` wrote plus what the app declares as the key's in `ottabase/footprints.json`
+  (files, dependencies, the keys that need it) and on marked lines in shared files (`otta:only`,
+  `otta:begin … otta:end`, `otta:unless … otta:end`). `otta presets check` scaffolds a preset and runs every tsconfig,
+  eslint and vitest on it; CI runs it for `minimal`. `otta add <package> my-app` copies a public package's pages from
+  otta-web's footprint when the package ships no `app/` folder, and the vault, alerts, webhooks, referrals, ottablog,
+  comments, ottalanding and shortlinks descriptors now declare their pages and tables.
+- **`otta deploy my-app`**: a first deploy straight to Cloudflare, no GitHub Actions. Creates the resources the env
+  block names (`pnpm cf:setup --json --env`, new flags), fills the placeholders into a gitignored
+  `wrangler.<env>.jsonc`, builds, deploys, generates and sets the framework secrets that are not set yet (`AUTH_SECRET`,
+  `MIGRATION_SECRET`, `BOOTSTRAP_OWNER_SECRET`, `CRON_SECRET`, …, `AUTH_URL`), bootstraps the database when an owner is
+  given, and checks `/api/health`. `pnpm cf:setup --env <name>` names the resources from that env block.
+- **`otta pro update my-app`**: `git subtree pull --squash` of a Pro release tag (the newest by default), `otta add pro`
+  for what is new, the release's changelog entry, and the steps left.
+
 - `@ottabase/alerts`: operator alerts for every package. One `raise(env, { source, kind, title, severity, key })`
   reaches email, Slack, Discord, Telegram, PagerDuty (trigger and resolve share a dedup key) or an HMAC-signed webhook,
   routed per channel by a severity floor and a source filter. Repeats of the same key and state inside a cooldown are
@@ -377,6 +395,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- Deploy: the placeholder substitution (`.github/scripts/substitute-wrangler-secrets.py`, and `otta deploy`) replaces a
+  placeholder in value position only. `"CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID"` used to come out as
+  `"<id>": "<id>"`, so production had a var named after the account id and `env.CLOUDFLARE_ACCOUNT_ID` was unset.
 - otta-web: `/demo/*` pages no longer scroll inside the page. The demo layout's content was its own scroll container
   inside the window's, so a page taller than it (the charts demo) showed a second scrollbar and took the wheel first.
   The window is now the only scroller, and the demo sidebar sticks below the app header instead of sliding under it.

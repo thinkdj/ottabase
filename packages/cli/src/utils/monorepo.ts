@@ -295,7 +295,7 @@ export function getPnpmInvocation(args: string[]): { command: string; args: stri
  * Validates an app name: checks format (regex) and existence (disk I/O via getAppInfo).
  * Returns an error if the name is malformed or an app with that name already exists.
  */
-export function validateAppName(name: string): { valid: true } | { valid: false; error: string } {
+export function validateAppName(name: string, root?: string): { valid: true } | { valid: false; error: string } {
     if (!name) {
         return { valid: false, error: 'App name is required' };
     }
@@ -311,7 +311,12 @@ export function validateAppName(name: string): { valid: true } | { valid: false;
         return { valid: false, error: 'App name must be 50 characters or less' };
     }
 
-    // Check if app already exists (disk I/O — documented side effect)
+    // Check if app already exists (disk I/O — documented side effect). With an explicit root the
+    // check is a plain folder test, so a scaffold into another monorepo needs no cwd.
+    if (root) {
+        const dir = path.join(root, 'apps', name);
+        return fs.existsSync(dir) ? { valid: false, error: `App "${name}" already exists at ${dir}` } : { valid: true };
+    }
     const app = getAppInfo(name);
     if (app) {
         return { valid: false, error: `App "${name}" already exists at ${app.path}` };

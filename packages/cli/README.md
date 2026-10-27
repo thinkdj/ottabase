@@ -23,15 +23,70 @@ pnpm --filter @ottabase/cli build
 ### Scaffolding New Apps
 
 ```bash
-# Create a new web app (Vite + TanStack Router + Cloudflare Workers)
+# Create a new web app (Vite + TanStack Router + Cloudflare Workers), the whole template
 pnpm otta new web my-app
 
-# Create a new landing page (Next.js + Cloudflare Workers)
-pnpm otta new landing my-site
+# The same, stripped to what the product needs: a preset keeps part of the template
+pnpm otta new web my-app --minimal         # auth, organizations, RBAC, the admin shell, Brand Engine
+pnpm otta new web my-app --preset blog     # minimal plus the blog, comments and the legal pages
+pnpm otta new web my-app --preset saas     # minimal plus alerts, API keys, flags, meter, postmaster, legal, referrals, vault, webhooks
 
-# Show available templates
+# Create a landing page (Next.js + Cloudflare Workers), or a single Worker (API-first, no SPA)
+pnpm otta new landing my-site
+pnpm otta new worker my-tool
+
+# Show available templates and presets
 pnpm otta templates
+pnpm otta presets
 ```
+
+A new app gets its own Cloudflare resource names (`my-app-db`, `my-app-bucket`, `my-app-queue`), its own Worker name,
+and the `.env.example` that `pnpm env:secrets --app=my-app` fills. With a preset, the demo gallery and every package the
+preset does not keep are stripped (see below), and a short README replaces otta-web's. Grow the app afterwards with
+`otta add`; ship it with `otta deploy`.
+
+### Stripping the demo or a package
+
+```bash
+pnpm otta strip demo my-app              # the demo gallery, docs, marketing home, demo routes, seed content, Todo
+pnpm otta strip ottablog my-app          # the blog: pages, routes, worker handlers, tables, the dependency
+pnpm otta strip ottaai,shortlinks        # several, from the default app
+pnpm otta strip demo my-app --dry-run    # the plan, nothing written
+```
+
+`otta strip` is the inverse of `otta add`. It removes what `add` wrote (the dependency, the composition, the entry in
+`ottabase/packages.ts`, the client key, the table re-exports, the error reporter) and, beyond that, what the app itself
+declares as the key's:
+
+- **`ottabase/footprints.json`**: per key, the `paths` (files and folders) that exist only for it, the npm
+  `dependencies` only it uses, and the keys it `needs` (a key that needs a stripped one is stripped along: `comments`
+  needs `ottablog`, `ottaai` needs `meter`). A `description` says what the key is.
+- **Markers** in the files the app keeps, on the lines a key owns there (a route, a nav entry, an import, a
+  `packages.has()` branch):
+
+    ```ts
+    import { x } from './x'; // otta:only ottablog
+    // otta:begin ottablog
+    const blogRoute = publicRoute('/blog', …);
+    // otta:end ottablog
+    /* otta:unless demo
+    export function HomePage() { … }      kept commented out until demo is stripped
+    otta:end demo */
+    ```
+
+    `otta:only` takes one line, `otta:begin … otta:end` a block, `otta:unless … otta:end` a block that becomes live when
+    the key goes (the starter home page in otta-web). A marker naming several keys (`otta:only ottablog   shortlinks`,
+    on an import both use) goes when the last of them does. Markers of keys that stay are left in place. An unpaired
+    marker stops the strip with its line number.
+
+A package's pages copied from its `app/` folder are deleted only while they are still the shipped copy; an edited one is
+left and named in the plan. `otta add <key> <app>` later copies the key's footprint paths back from `apps/otta-web`
+(what is marked there is not copied: the plan says so).
+
+`pnpm otta presets check [preset…]` scaffolds each preset into `apps/preset-check-<preset>`, borrows otta-web's
+`node_modules`, and runs every tsconfig, the linter and the tests on the result, plus a check that no import of a
+stripped package remains. CI runs it for `minimal`. Run it after changing the template, a footprint or a marker;
+`--keep` leaves the app in place to look at.
 
 ### Adding a package to an app
 
@@ -78,6 +133,50 @@ A boundary that already has an `onError` is left alone and the plan says what to
 path, or a package routing a path the app owns, stop the app at boot with both names. `page` is a module path under
 `src/pages` (letters, digits, `_`, `-`, `/`), export names are identifiers that are not reserved words, and icons are
 lucide-react export names.
+
+### Deploying straight to Cloudflare
+
+```bash
+pnpm cf:login                                   # once: a browser login for wrangler
+pnpm otta deploy my-app                         # env.production
+pnpm otta deploy my-app --owner-email me@example.com --owner-password 'correct horse'   # and bootstrap
+pnpm otta deploy my-app --env demo --set DEMO_URL=https://demo.example.com
+pnpm otta deploy my-app --url https://my-app.example.com   # after a custom domain points at the Worker
+pnpm otta deploy my-app --dry-run
+```
+
+What the deploy workflow does in CI, from one terminal and without a GitHub repository:
+
+1. **Resources.** `pnpm cf:setup --json --env <env>` creates the D1, KV, R2 and queue the env block of `wrangler.jsonc`
+   names (named after the app by `otta new`), or finds them, and returns their ids.
+2. **Config.** The placeholders of the env block (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`, `CLOUDFLARE_ACCOUNT_ID`, …) are
+   filled into `wrangler.<env>.jsonc`, gitignored. Ids come from step 1, the account id from `wrangler whoami`, anything
+   else from `--set KEY=VALUE` or the environment; a placeholder with no value stops the deploy and names itself.
+3. **Build and deploy.** `pnpm build:pkg` (skip with `--skip-packages`), the app's build (`--skip-build` reuses it),
+   `wrangler deploy --env <env>`.
+4. **Secrets.** The generated secrets the app declares in `.env.example` (`AUTH_SECRET`, `MIGRATION_SECRET`,
+   `BOOTSTRAP_OWNER_SECRET`, `CRON_SECRET`, …) and `AUTH_URL` are set where they are not set yet, and never changed
+   afterwards. Your own secrets (OAuth clients, mail) stay `wrangler secret put`.
+5. **Bootstrap.** With `--owner-email` and `--owner-password` (or `OTTA_OWNER_PASSWORD`), the fresh database gets its
+   tables, roles and owner and is marked READY through `/__bootstrap__/api`. Without them the command prints the wizard
+   URL with the bootstrap secret, once.
+6. **Health.** `GET /api/health` on the Worker.
+
+Run it again after a change: it finds what exists and redeploys. CI stays the better place for a team; this is the first
+deploy, and the solo one.
+
+### Updating Ottabase Pro
+
+```bash
+pnpm otta pro update                 # the newest release, into the default app
+pnpm otta pro update my-app --tag v1.2.0
+pnpm otta pro update --dry-run
+```
+
+Pro lives at `packages/pro` as a git subtree. The command runs `git subtree pull --squash` for the tag (the tree must be
+clean), `otta add pro <app>` for anything the release adds (never overwriting what the app has), and prints the
+release's `CHANGELOG.md` entry, with a warning when it names a newer public Ottabase than this repository may have. Then
+`pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit.
 
 ### Starting apps and environments
 
@@ -249,8 +348,12 @@ bin, so invoke it through the workspace script: `pnpm otta <command>`.
 
 | Command                      | Description                                                                                     |
 | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `otta new <template> <name>` | Create a new app from a template                                                                |
+| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for the web template)          |
 | `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`) |
+| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)             |
+| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                            |
+| `otta deploy [app]`          | Deploy straight to Cloudflare: resources, config, build, deploy, secrets, bootstrap (`--env`)   |
+| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)      |
 | `otta start [app]`           | Start development or a named local Wrangler environment                                         |
 | `otta dev [app]`             | Start the hot-reload development topology                                                       |
 | `otta preview [app]`         | Build and start the preview Wrangler environment locally                                        |
@@ -274,6 +377,10 @@ Full-featured Vite + TanStack Router + Cloudflare Workers app. Includes:
 - Cloudflare Workers for backend
 - OttaORM for database
 - Authentication, RBAC, and more
+
+Copied whole by default. With `--minimal` or `--preset <name>` the demo gallery and the packages the preset does not
+keep are stripped; the core (auth, organizations and RBAC, the admin shell, Brand Engine, the app's own package) always
+stays. An API-only app is the `worker` template, not a preset.
 
 ### `landing`
 

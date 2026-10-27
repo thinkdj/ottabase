@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { getMonorepoRoot, log, resolveApp } from '../utils/index.js';
+import { readFootprints } from './footprints.js';
 
 /**
  * What a package tells the CLI about itself, in its package.json `ottabase` field:
@@ -51,6 +52,8 @@ export interface AdminPageDescriptor {
     icon?: string;
     group: string;
     scope?: string;
+    /** A Premium Package's page: the sidebar entry carries a lock, the page renders its upsell unlicensed. */
+    premium?: boolean;
     /** Page module under `src/pages`, without extension: `admin/infrastructure/TowerPage`. */
     page: string;
     export: string;
@@ -183,6 +186,9 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
         if (page.icon !== undefined && !ICON.test(page.icon)) {
             throw new Error(`${dir}/package.json: adminPages icon "${page.icon}" is not a lucide-react export name.`);
         }
+        if (page.premium !== undefined && typeof page.premium !== 'boolean') {
+            throw new Error(`${dir}/package.json: adminPages premium must be true or false.`);
+        }
     }
     const routes = Array.isArray(meta.routes) ? meta.routes : [];
     for (const route of routes) {
@@ -236,6 +242,43 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
         ...(routes.length > 0 ? { routes } : {}),
         ...(reporter ? { errorReporter: { import: reporter.import, export: reporter.export } } : {}),
     };
+}
+
+/** Every workspace package that carries a descriptor, by key, per monorepo root. Read once per process. */
+const descriptorIndexes = new Map<string, Map<string, PackageDescriptor>>();
+
+/**
+ * The descriptor for a package KEY (`vault`, `tower`), which is usually also its folder name.
+ * When it is not, every descriptor is read once and matched on `key`. Null when no package has it.
+ */
+export function findPackageDescriptor(root: string, key: string): PackageDescriptor | null {
+    if (packageDir(root, key)) {
+        try {
+            const direct = readPackageDescriptor(root, key);
+            if (direct.key === key) return direct;
+        } catch {
+            // The folder exists but has no descriptor: fall through to the index.
+        }
+    }
+    let index = descriptorIndexes.get(root);
+    if (!index) {
+        index = new Map();
+        for (const base of PACKAGE_ROOTS) {
+            const dir = path.join(root, base);
+            if (!fs.existsSync(dir)) continue;
+            for (const name of fs.readdirSync(dir)) {
+                if (!NAME.test(name) || !fs.existsSync(path.join(dir, name, 'package.json'))) continue;
+                try {
+                    const descriptor = readPackageDescriptor(root, base === 'packages' ? name : `pro/${name}`);
+                    index.set(descriptor.key, descriptor);
+                } catch {
+                    // No descriptor, or a malformed one: not addable, so not strippable either.
+                }
+            }
+        }
+        descriptorIndexes.set(root, index);
+    }
+    return index.get(key) ?? null;
 }
 
 function read(file: string): string | null {
@@ -304,6 +347,7 @@ function clientEntry(pkg: PackageDescriptor, eol: string): string {
             ...(page.icon ? [`                icon: ${page.icon},`] : []),
             `                group: ${quote(page.group)},`,
             ...(page.scope ? [`                scope: ${quote(page.scope)},`] : []),
+            ...(page.premium ? ['                premium: true,'] : []),
             `                load: () => import('@/pages/${page.page}'),`,
             `                exportName: ${quote(page.export)},`,
             '            },',
@@ -479,6 +523,41 @@ export function planAdd(root: string, appName: string, pkg: PackageDescriptor): 
                           content: fs.readFileSync(file, 'utf8'),
                       },
             );
+        }
+    }
+
+    // 6b. A public package ships no app/ folder: its pages live in the reference app, listed in that
+    // app's footprint map (what `otta strip` removes). Copied where this app has no such file. What
+    // the reference app wires by hand around them (a route, a nav entry) is marked `otta:only <key>`
+    // there and is not copied: the plan says so.
+    if (appName !== REFERENCE_APP && !fs.existsSync(shippedDir)) {
+        const referenceDir = path.join(root, 'apps', REFERENCE_APP);
+        const footprint = fs.existsSync(referenceDir) ? readFootprints(referenceDir)[pkg.key] : undefined;
+        let copied = 0;
+        for (const p of footprint?.paths ?? []) {
+            const source = path.join(referenceDir, p);
+            if (!fs.existsSync(source)) continue;
+            for (const file of fs.statSync(source).isDirectory() ? walk(source) : [source]) {
+                const target = path.join(appDir, path.relative(referenceDir, file));
+                if (fs.existsSync(target)) {
+                    steps.push({ file: rel(target), action: 'skip', detail: 'exists' });
+                    continue;
+                }
+                copied++;
+                steps.push({
+                    file: rel(target),
+                    action: 'create',
+                    detail: `copied from apps/${REFERENCE_APP}`,
+                    content: fs.readFileSync(file, 'utf8'),
+                });
+            }
+        }
+        if (copied > 0) {
+            steps.push({
+                file: `apps/${REFERENCE_APP}`,
+                action: 'skip',
+                detail: `lines marked "otta:only ${pkg.key}" there (routes, nav) are not copied: carry them by hand`,
+            });
         }
     }
 

@@ -12,8 +12,11 @@ const NC = '\x1b[0m';
 const RESOURCE_IDS = ['d1', 'kv', 'r2', 'queue'] as const;
 type ResourceId = (typeof RESOURCE_IDS)[number];
 
+/** `--json`: the ids go to stdout as one JSON object at the end; everything else goes to stderr. */
+const jsonMode = process.argv.includes('--json');
+
 function log(msg: string, color: string = NC) {
-    console.log(`${color}${msg}${NC}`);
+    (jsonMode ? console.error : console.log)(`${color}${msg}${NC}`);
 }
 
 function runCommand(command: string, ignoreError = false): string {
@@ -104,15 +107,19 @@ async function selectResources(force: boolean, res: CfResourceNames): Promise<Re
 }
 
 async function main() {
-    const force = process.argv.includes('--force');
+    const force = process.argv.includes('--force') || jsonMode;
+    const envFlag = process.argv.find((arg) => arg.startsWith('--env='))?.slice('--env='.length);
+    // Preview resources back `wrangler dev --remote` and PR previews of production; a named env
+    // other than production has its own block and needs none.
+    const withPreview = !envFlag || envFlag === 'production';
 
     log('', NC);
     log(`${BOLD}cf:setup - Cloudflare Resource Creation${NC}`);
     log('', NC);
 
     // Resolve the app + its resource names from wrangler.jsonc (single source of truth).
-    const { appName, packageName, wranglerCmd, resources: res } = resolveCfApp();
-    log(`App: ${appName} (${packageName})`, NC);
+    const { appName, packageName, wranglerCmd, resources: res } = resolveCfApp({ env: envFlag });
+    log(`App: ${appName} (${packageName})${envFlag ? `, env ${envFlag}` : ''}`, NC);
     log('', NC);
 
     // Check wrangler and auth first (fail fast before any prompts)
@@ -164,24 +171,26 @@ async function main() {
         }
 
         // D1 Preview Database (isolated DB for `wrangler dev --remote` / PR preview deployments)
-        log(`Setting up D1 Preview Database '${res.d1.previewName}'...`, YELLOW);
-        try {
-            const d1ListOutput = runCommand(`${wranglerCmd} d1 list --json`, true);
-            const existing = d1ListOutput
-                ? extractJson<{ uuid: string; name: string }[]>(d1ListOutput).find(
-                      (db) => db.name === res.d1.previewName,
-                  )
-                : null;
-            if (existing) {
-                d1PreviewId = existing.uuid;
-                log(`Preview Database already exists. ID: ${d1PreviewId}`, GREEN);
-            } else {
-                const createOutput = runCommand(`${wranglerCmd} d1 create ${res.d1.previewName}`);
-                d1PreviewId = parseD1CreateOutput(createOutput);
-                log(`Created D1 Preview Database. ID: ${d1PreviewId}`, GREEN);
+        if (withPreview) {
+            log(`Setting up D1 Preview Database '${res.d1.previewName}'...`, YELLOW);
+            try {
+                const d1ListOutput = runCommand(`${wranglerCmd} d1 list --json`, true);
+                const existing = d1ListOutput
+                    ? extractJson<{ uuid: string; name: string }[]>(d1ListOutput).find(
+                          (db) => db.name === res.d1.previewName,
+                      )
+                    : null;
+                if (existing) {
+                    d1PreviewId = existing.uuid;
+                    log(`Preview Database already exists. ID: ${d1PreviewId}`, GREEN);
+                } else {
+                    const createOutput = runCommand(`${wranglerCmd} d1 create ${res.d1.previewName}`);
+                    d1PreviewId = parseD1CreateOutput(createOutput);
+                    log(`Created D1 Preview Database. ID: ${d1PreviewId}`, GREEN);
+                }
+            } catch (e) {
+                log(`Error setting up D1 Preview Database: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
-        } catch (e) {
-            log(`Error setting up D1 Preview Database: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
     }
 
@@ -220,31 +229,33 @@ async function main() {
             log(`Error setting up KV namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
 
-        log(`Setting up KV preview namespace '${res.kv.previewTitle}'...`, YELLOW);
-        try {
-            let kvList = getKvList();
-            let existingKvPreview = kvList.find((ns) => ns.title === res.kv.previewTitle);
-            if (existingKvPreview) {
-                kvPreviewId = existingKvPreview.id;
-                log(`KV preview namespace already exists. ID: ${kvPreviewId}`, GREEN);
-            } else {
-                let createErr: unknown;
-                try {
-                    const createOutput = runCommand(`${wranglerCmd} kv namespace create ${res.kv.title} --preview`);
-                    kvPreviewId = parseKvCreateOutput(createOutput);
-                    log(`Created KV preview namespace. ID: ${kvPreviewId}`, GREEN);
-                } catch (e) {
-                    createErr = e;
-                    kvList = getKvList();
-                    existingKvPreview = kvList.find((ns) => ns.title === res.kv.previewTitle);
-                    if (existingKvPreview) {
-                        kvPreviewId = existingKvPreview.id;
-                        log(`KV preview namespace already exists. ID: ${kvPreviewId}`, GREEN);
-                    } else throw createErr;
+        if (withPreview) {
+            log(`Setting up KV preview namespace '${res.kv.previewTitle}'...`, YELLOW);
+            try {
+                let kvList = getKvList();
+                let existingKvPreview = kvList.find((ns) => ns.title === res.kv.previewTitle);
+                if (existingKvPreview) {
+                    kvPreviewId = existingKvPreview.id;
+                    log(`KV preview namespace already exists. ID: ${kvPreviewId}`, GREEN);
+                } else {
+                    let createErr: unknown;
+                    try {
+                        const createOutput = runCommand(`${wranglerCmd} kv namespace create ${res.kv.title} --preview`);
+                        kvPreviewId = parseKvCreateOutput(createOutput);
+                        log(`Created KV preview namespace. ID: ${kvPreviewId}`, GREEN);
+                    } catch (e) {
+                        createErr = e;
+                        kvList = getKvList();
+                        existingKvPreview = kvList.find((ns) => ns.title === res.kv.previewTitle);
+                        if (existingKvPreview) {
+                            kvPreviewId = existingKvPreview.id;
+                            log(`KV preview namespace already exists. ID: ${kvPreviewId}`, GREEN);
+                        } else throw createErr;
+                    }
                 }
+            } catch (e) {
+                log(`Error setting up KV preview namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
-        } catch (e) {
-            log(`Error setting up KV preview namespace: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
     }
 
@@ -267,17 +278,19 @@ async function main() {
             log(`Error setting up R2 Bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
 
-        log(`Setting up R2 preview bucket '${res.r2.previewName}' (for \`wrangler dev --remote\`)...`, YELLOW);
-        try {
-            const r2List = runCommand(`${wranglerCmd} r2 bucket list`, true);
-            if (r2List && r2PreviewExists.test(r2List)) {
-                log('R2 preview bucket already exists.', GREEN);
-            } else {
-                runCommand(`${wranglerCmd} r2 bucket create ${res.r2.previewName}`);
-                log('R2 preview bucket created.', GREEN);
+        if (withPreview) {
+            log(`Setting up R2 preview bucket '${res.r2.previewName}' (for \`wrangler dev --remote\`)...`, YELLOW);
+            try {
+                const r2List = runCommand(`${wranglerCmd} r2 bucket list`, true);
+                if (r2List && r2PreviewExists.test(r2List)) {
+                    log('R2 preview bucket already exists.', GREEN);
+                } else {
+                    runCommand(`${wranglerCmd} r2 bucket create ${res.r2.previewName}`);
+                    log('R2 preview bucket created.', GREEN);
+                }
+            } catch (e) {
+                log(`Error setting up R2 preview bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
-        } catch (e) {
-            log(`Error setting up R2 preview bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
     }
 
@@ -309,27 +322,29 @@ async function main() {
             log(`Error setting up Queue: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
 
-        log(`Setting up Queue '${res.queue.previewName}' (for PR previews)...`, YELLOW);
-        try {
-            const queueList = runCommand(`${wranglerCmd} queues list`, true);
-            const existsPreview = queueList && queuePreviewExists.test(queueList);
-            if (existsPreview) {
-                log('Preview queue already exists.', GREEN);
-            } else {
-                let createErr: unknown;
-                try {
-                    runCommand(`${wranglerCmd} queues create ${res.queue.previewName}`);
-                    log('Preview queue created.', GREEN);
-                } catch (e) {
-                    createErr = e;
-                    const msg = e instanceof Error ? e.message : String(e);
-                    if (msg.includes('already taken') || msg.includes('11009')) {
-                        log('Preview queue already exists.', GREEN);
-                    } else throw createErr;
+        if (withPreview) {
+            log(`Setting up Queue '${res.queue.previewName}' (for PR previews)...`, YELLOW);
+            try {
+                const queueList = runCommand(`${wranglerCmd} queues list`, true);
+                const existsPreview = queueList && queuePreviewExists.test(queueList);
+                if (existsPreview) {
+                    log('Preview queue already exists.', GREEN);
+                } else {
+                    let createErr: unknown;
+                    try {
+                        runCommand(`${wranglerCmd} queues create ${res.queue.previewName}`);
+                        log('Preview queue created.', GREEN);
+                    } catch (e) {
+                        createErr = e;
+                        const msg = e instanceof Error ? e.message : String(e);
+                        if (msg.includes('already taken') || msg.includes('11009')) {
+                            log('Preview queue already exists.', GREEN);
+                        } else throw createErr;
+                    }
                 }
+            } catch (e) {
+                log(`Error setting up preview queue: ${e instanceof Error ? e.message : String(e)}`, RED);
             }
-        } catch (e) {
-            log(`Error setting up preview queue: ${e instanceof Error ? e.message : String(e)}`, RED);
         }
     }
 
@@ -361,6 +376,16 @@ async function main() {
     } catch (e) {
         log(`Warning: could not generate cloudflare-env.d.ts: ${e instanceof Error ? e.message : String(e)}`, YELLOW);
         log(`Run manually: cd apps/${appName} && npx wrangler types`, YELLOW);
+    }
+
+    // The ids, machine-readable, for `otta deploy`: keyed by the placeholder names of the env block.
+    if (jsonMode) {
+        const ids: Record<string, string> = {};
+        if (d1Id) ids[res.secrets.d1Id] = d1Id;
+        if (kvId) ids[res.secrets.kvId] = kvId;
+        if (d1PreviewId) ids[res.secrets.d1PreviewId] = d1PreviewId;
+        if (kvPreviewId) ids[res.secrets.kvPreviewId] = kvPreviewId;
+        console.log(JSON.stringify(ids));
     }
 }
 

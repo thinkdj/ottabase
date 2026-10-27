@@ -3,8 +3,8 @@
 # Cloudflare && OpenNext
 /wrangler.toml.backup
 /wrangler.jsonc.backup
-wrangler.production.jsonc
-wrangler.preview.jsonc
+# Generated per deploy by CI and by `otta deploy` (the env block with its placeholders filled); never the source wrangler.jsonc.
+wrangler.*.jsonc
 .open-next
 .dev.vars
 .wrangler/

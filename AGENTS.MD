@@ -840,10 +840,16 @@ The `otta` CLI provides a streamlined interface for common monorepo tasks:
 ```bash
 # Scaffolding
 otta new web my-app              # Create a new web app (Vite + TanStack Router + Workers)
+otta new web my-app --minimal    # The same, stripped to auth, orgs, RBAC, the admin shell and Brand Engine
+otta new web my-app --preset saas  # Presets keep part of the template: minimal, blog, saas (otta presets lists them)
 otta new landing my-site         # Create a new landing page (Next.js + Workers)
 otta new worker my-tool          # Create a single-Worker app (server-rendered + API, no SPA)
 otta templates                   # Show available templates
 otta add postmaster my-app       # Wire a workspace package into an app (--dry-run to preview)
+otta strip demo my-app           # Take the demo (or a package: otta strip ottablog) out of an app, the inverse of add
+otta presets check minimal       # Scaffold a preset and run its gates: proves footprints.json and the markers
+otta deploy my-app               # First deploy straight to Cloudflare: resources, config, build, secrets, bootstrap
+otta pro update my-app           # Pull an Ottabase Pro release into packages/pro and wire what is new
 
 # Development
 otta dev otta-web                # Start dev server for an app

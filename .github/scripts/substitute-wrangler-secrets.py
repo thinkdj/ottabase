@@ -199,7 +199,8 @@ def main() -> None:
         if not value:
             missing.append(key)
             continue
-        env_text = env_text.replace(key, value)
+        # Value positions only: a var such as "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID" keeps its key.
+        env_text = re.sub(r'(:\s*)"' + re.escape(key) + r'"', lambda m: m.group(1) + '"' + value + '"', env_text)
         substituted.append(key)
 
     # Reassemble file: before env section + substituted env section + after env section

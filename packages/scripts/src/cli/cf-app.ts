@@ -106,22 +106,34 @@ function readDefaultApp(root: string): string | undefined {
     }
 }
 
-function extractResourceNames(cfg: any): CfResourceNames {
+/**
+ * Resource names for one deployment target. Without `envName` the names are the top-level ones
+ * (what `env.production` reuses); with it they come from that `env.<name>` block first, so
+ * `otta deploy --env demo` creates `ottabase-db-demo`, not `ottabase-db`. The KV title carries the
+ * env name for every env but production, because titles are unique per account.
+ */
+function extractResourceNames(cfg: any, envName?: string): CfResourceNames {
     const workerName: string = (cfg && cfg.name) || 'app';
     const preview = (cfg && cfg.env && cfg.env.preview) || {};
     const production = (cfg && cfg.env && cfg.env.production) || {};
+    const target = (envName && cfg && cfg.env && cfg.env[envName]) || {};
+    const pick = (section: any, key: string) => (section && section[key] && section[key][0]) || null;
 
-    const d1 = (cfg && cfg.d1_databases && cfg.d1_databases[0]) || {};
-    const d1Preview = (preview.d1_databases && preview.d1_databases[0]) || {};
-    const kv = (cfg && cfg.kv_namespaces && cfg.kv_namespaces[0]) || {};
-    const r2 = (cfg && cfg.r2_buckets && cfg.r2_buckets[0]) || {};
-    const r2Preview = (preview.r2_buckets && preview.r2_buckets[0]) || {};
-    const queue = (cfg && cfg.queues && cfg.queues.producers && cfg.queues.producers[0]) || {};
+    const d1 = pick(target, 'd1_databases') || pick(cfg, 'd1_databases') || {};
+    const d1Preview = pick(preview, 'd1_databases') || {};
+    const kv = pick(target, 'kv_namespaces') || pick(cfg, 'kv_namespaces') || {};
+    const r2 = pick(target, 'r2_buckets') || pick(cfg, 'r2_buckets') || {};
+    const r2Preview = pick(preview, 'r2_buckets') || {};
+    const queue =
+        (target.queues && target.queues.producers && target.queues.producers[0]) ||
+        (cfg && cfg.queues && cfg.queues.producers && cfg.queues.producers[0]) ||
+        {};
     const queuePreview = (preview.queues && preview.queues.producers && preview.queues.producers[0]) || {};
 
     const d1Name = d1.database_name || `${workerName}-db`;
     const r2Name = r2.bucket_name || `${workerName}-bucket`;
     const queueName = queue.queue || `${workerName}-queue`;
+    const kvTitle = envName && envName !== 'production' ? `${workerName}-${envName}-kv` : `${workerName}-kv`;
 
     return {
         d1: { name: d1Name, previewName: d1Preview.database_name || `${d1Name}-preview` },
@@ -129,14 +141,17 @@ function extractResourceNames(cfg: any): CfResourceNames {
             binding: kv.binding || 'OBCF_KV',
             // Title derived from the (unique-per-account) worker name; wrangler suffixes a
             // `--preview` namespace's title with `_preview`.
-            title: `${workerName}-kv`,
-            previewTitle: `${workerName}-kv_preview`,
+            title: kvTitle,
+            previewTitle: `${kvTitle}_preview`,
         },
         r2: { name: r2Name, previewName: r2.preview_bucket_name || r2Preview.bucket_name || `${r2Name}-preview` },
         queue: { name: queueName, previewName: queuePreview.queue || `${queueName}-preview` },
         secrets: {
-            d1Id: production?.d1_databases?.[0]?.database_id || 'D1_DATABASE_ID',
-            kvId: production?.kv_namespaces?.[0]?.id || 'KV_NAMESPACE_ID',
+            d1Id:
+                d1.database_id && envName
+                    ? d1.database_id
+                    : production?.d1_databases?.[0]?.database_id || 'D1_DATABASE_ID',
+            kvId: kv.id && envName ? kv.id : production?.kv_namespaces?.[0]?.id || 'KV_NAMESPACE_ID',
             d1PreviewId: preview?.d1_databases?.[0]?.database_id || 'D1_PREVIEW_DATABASE_ID',
             kvPreviewId: preview?.kv_namespaces?.[0]?.id || 'KV_PREVIEW_NAMESPACE_ID',
         },
@@ -150,7 +165,7 @@ function extractResourceNames(cfg: any): CfResourceNames {
  * root package.json `ottabase.defaultApp` > the single app present. With multiple apps and no
  * selection it throws, listing the choices.
  */
-export function resolveCfApp(opts: { app?: string } = {}): CfAppContext {
+export function resolveCfApp(opts: { app?: string; env?: string } = {}): CfAppContext {
     const root = findMonorepoRoot(process.cwd());
     const appsRoot = path.join(root, APPS_DIR);
     const apps = discoverApps(appsRoot);
@@ -185,6 +200,10 @@ export function resolveCfApp(opts: { app?: string } = {}): CfAppContext {
     }
 
     const cfg = parseJsonc<any>(fs.readFileSync(wranglerPath, 'utf8'));
+    const envName = opts.env || getFlag('env');
+    if (envName && !(cfg && cfg.env && cfg.env[envName])) {
+        throw new Error(`${WRANGLER_FILE} of ${appName} has no env.${envName} block.`);
+    }
 
     return {
         appName,
@@ -193,6 +212,6 @@ export function resolveCfApp(opts: { app?: string } = {}): CfAppContext {
         wranglerCmd: `pnpm --filter ${packageName} exec wrangler`,
         wranglerPath,
         workerName: (cfg && cfg.name) || appName,
-        resources: extractResourceNames(cfg),
+        resources: extractResourceNames(cfg, envName),
     };
 }

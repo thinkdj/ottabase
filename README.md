@@ -204,13 +204,23 @@ pnpm otta start otta-web --env prod     # Built Worker locally with env.producti
 pnpm otta dev otta-web --process worker # One process from the dev topology
 
 # Scaffold a new app
-pnpm otta new web my-app                # Vite + TanStack Router + Workers
+pnpm otta new web my-app                # Vite + TanStack Router + Workers, the whole template
+pnpm otta new web my-app --minimal      # Stripped to auth, orgs, RBAC, the admin shell and Brand Engine
+pnpm otta new web my-app --preset saas  # Presets: minimal, blog, saas (pnpm otta presets)
 pnpm otta new landing my-site           # Next.js landing page
 pnpm otta new worker my-tool            # Single Worker, server-rendered + API, no SPA
 
 # Install a package into an app (dependency, composition, list entry, client key, tables)
 pnpm otta add postmaster my-app
 pnpm otta add vault my-tool --dry-run
+
+# Take the demo, or a package, out again (the inverse of add)
+pnpm otta strip demo my-app
+pnpm otta strip ottablog my-app --dry-run
+
+# Ship it: Cloudflare resources, config, build, deploy, secrets, bootstrap, from one terminal
+pnpm cf:login
+pnpm otta deploy my-app --owner-email me@example.com --owner-password '…'
 
 # App-scoped quality commands
 pnpm otta build otta-web

@@ -101,6 +101,26 @@ describe('CLI Commands', () => {
         expect(templatesCmd?.description()).toContain('templates');
     });
 
+    it('registers the lean-starter commands: new presets, strip, presets check, deploy, pro update', () => {
+        const newCmd = program.commands.find((cmd) => cmd.name() === 'new');
+        expect(newCmd?.options.find((option) => option.long === '--preset')).toBeDefined();
+        expect(newCmd?.options.find((option) => option.long === '--minimal')).toBeDefined();
+        const strip = program.commands.find((cmd) => cmd.name() === 'strip');
+        expect(strip?.options.find((option) => option.long === '--dry-run')).toBeDefined();
+        const presets = program.commands.find((cmd) => cmd.name() === 'presets');
+        expect(presets?.commands.find((cmd) => cmd.name() === 'check')).toBeDefined();
+        const deploy = program.commands.find((cmd) => cmd.name() === 'deploy');
+        for (const option of ['--env', '--set', '--url', '--owner-email', '--skip-build', '--dry-run']) {
+            expect(
+                deploy?.options.find((candidate) => candidate.long === option),
+                option,
+            ).toBeDefined();
+        }
+        const pro = program.commands.find((cmd) => cmd.name() === 'pro');
+        const update = pro?.commands.find((cmd) => cmd.name() === 'update');
+        expect(update?.options.find((option) => option.long === '--tag')).toBeDefined();
+    });
+
     it('test command should have watch option', () => {
         const testCmd = program.commands.find((cmd) => cmd.name() === 'test');
         const watchOption = testCmd?.options.find((opt) => opt.long === '--watch');

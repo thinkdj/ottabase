@@ -96,6 +96,23 @@ describe('resolveCfApp', () => {
     it('throws a helpful error for an unknown app', () => {
         expect(() => resolveCfApp({ app: 'does-not-exist' })).toThrow(/no wrangler\.jsonc|Available/i);
     });
+
+    it('names the resources of a named env from its own block, and its KV title after the env', () => {
+        const demo = resolveCfApp({ app: 'otta-web', env: 'demo' });
+        expect(demo.resources.d1.name).toBe('ottabase-db-demo');
+        expect(demo.resources.r2.name).toBe('ottabase-bucket-demo');
+        expect(demo.resources.queue.name).toBe('ottabase-queue-demo');
+        expect(demo.resources.kv.title).toBe('otta-web-demo-kv');
+        expect(demo.resources.secrets.d1Id).toBe('DEMO_D1_DATABASE_ID');
+        expect(demo.resources.secrets.kvId).toBe('DEMO_KV_NAMESPACE_ID');
+
+        const production = resolveCfApp({ app: 'otta-web', env: 'production' });
+        expect(production.resources.d1.name).toBe('ottabase-db');
+        expect(production.resources.kv.title).toBe('otta-web-kv');
+        expect(production.resources.secrets.d1Id).toBe('D1_DATABASE_ID');
+
+        expect(() => resolveCfApp({ app: 'otta-web', env: 'nope' })).toThrow(/no env\.nope block/);
+    });
 });
 
 describe('otta-web queue wiring', () => {

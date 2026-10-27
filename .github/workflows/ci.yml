@@ -67,6 +67,12 @@ jobs:
                   TURBO_TEAM: ottabase
                   TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
+            # The lean starter: scaffold the minimal preset from the otta-web template and run its gates
+            # (every tsconfig, eslint, vitest). A footprint that misses a file or a marker that cuts one
+            # line too many fails here, not on the first maker to try `otta new web --minimal`.
+            - name: Check the minimal preset scaffolds a working app
+              run: pnpm otta presets check minimal
+
             # Same job (not a separate one): reuses the install above instead of paying for a second runner + install.
             - name: Validate Cloudflare Configuration
               id: cf-validate

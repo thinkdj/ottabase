@@ -2,124 +2,163 @@ import fs from 'fs-extra';
 import ora from 'ora';
 import path from 'path';
 import { APP_TEMPLATES, getMonorepoRoot, log, validateAppName, type AppTemplate } from '../utils/index.js';
+import { keysToStrip, PRESETS, presetNames } from './presets.js';
+import { applyStrip, planStrip } from './strip.js';
 
 /**
  * Files and directories to skip when copying template (exact name matches).
- * Any file starting with '.env' is also skipped — see shouldSkip().
+ * Any file starting with '.env' is also skipped, except `.env.example`: it is the template
+ * `pnpm env:secrets` fills and `cf-typegen` reads — see shouldSkip().
  */
-const SKIP_PATTERNS = ['node_modules', '.next', '.wrangler', 'dist', '.turbo', 'coverage', 'pnpm-lock.yaml'];
+const SKIP_PATTERNS = ['node_modules', '.next', '.wrangler', 'dist', '.turbo', 'coverage', 'pnpm-lock.yaml', 'tmp'];
 
 /**
  * Files that need content transformation
  */
-const TRANSFORM_FILES = ['package.json', 'wrangler.jsonc', 'README.md'];
+const TRANSFORM_FILES = ['package.json', 'wrangler.jsonc', 'cloudflare-config.json', 'README.md'];
+
+/**
+ * Cloudflare resources the templates name after the framework (`ottabase-db`, `ottabase-bucket-preview`,
+ * `ottabase-queue-demo`). A second app in the same account would share them, so they take the app's name.
+ */
+const RESOURCE_PREFIX = /(?<![a-z0-9-])ottabase-(db|bucket|queue)(?![a-z0-9])/g;
+
+export interface ScaffoldOptions {
+    /** A preset name: strip the demo and every package the preset does not keep. */
+    preset?: string;
+}
+
+export interface ScaffoldResult {
+    appDir: string;
+    /** Keys stripped by the preset, in order. */
+    stripped: string[];
+    /** npm dependencies the preset removed from the app's package.json. */
+    dependenciesDropped: string[];
+}
 
 /**
  * Creates a new app from a template
  */
-export async function newApp(template: AppTemplate, appName: string): Promise<void> {
-    // The template key is validated by the caller (cli.ts) for interactive use,
-    // but newApp also validates here to be safe when called programmatically.
+export async function newApp(template: AppTemplate, appName: string, options: ScaffoldOptions = {}): Promise<void> {
+    const root = getMonorepoRoot();
     const templateConfig = APP_TEMPLATES[template];
     if (!templateConfig) {
         throw new Error(
             `Invalid template "${template}". Available templates: ${Object.keys(APP_TEMPLATES).join(', ')}`,
         );
     }
+    log.info(`Creating new ${template} app: ${appName}`);
+    log.dim(`  Template: ${templateConfig.source}`);
+    log.dim(`  Target: ${path.join(root, 'apps', appName)}`);
+    if (options.preset) log.dim(`  Preset: ${options.preset}`);
 
-    // validateAppName covers format + existence check
-    const validation = validateAppName(appName);
-    if (!validation.valid) {
-        throw new Error(validation.error);
+    const spinner = ora('Copying template files...').start();
+    try {
+        const result = scaffoldApp(root, template, appName, options);
+        spinner.succeed(
+            result.stripped.length
+                ? `Template copied; stripped ${result.stripped.join(', ')}`
+                : 'Template files copied and configured',
+        );
+    } catch (error) {
+        spinner.fail('Failed to create app');
+        throw error;
     }
 
-    const root = getMonorepoRoot();
+    log.success(`\nApp "${appName}" created successfully!`);
+    log.info('\nNext steps:');
+    log.dim('  1. pnpm install');
+    log.dim(`  2. otta dev ${appName}`);
+    log.dim(`  3. otta deploy ${appName}   # when it is ready for the world`);
+    if (options.preset) log.dim(`\nAdd a package later with: otta add <package> ${appName}`);
+}
+
+/**
+ * Copy the template into `apps/<name>`, rename it, and apply the preset. Pure of logging, so the
+ * preset check and the tests can drive it. The target is removed again when anything fails.
+ */
+export function scaffoldApp(
+    root: string,
+    template: AppTemplate,
+    appName: string,
+    options: ScaffoldOptions = {},
+): ScaffoldResult {
+    const templateConfig = APP_TEMPLATES[template];
+    if (!templateConfig) {
+        throw new Error(
+            `Invalid template "${template}". Available templates: ${Object.keys(APP_TEMPLATES).join(', ')}`,
+        );
+    }
+    const preset = options.preset ? PRESETS[options.preset] : undefined;
+    if (options.preset && !preset) {
+        throw new Error(`Unknown preset "${options.preset}". Presets: ${presetNames().join(', ')}.`);
+    }
+    if (preset && template !== 'web') throw new Error('Presets apply to the web template only.');
+
+    // validateAppName covers format + existence check
+    const validation = validateAppName(appName, root);
+    if (!validation.valid) throw new Error(validation.error);
+
     const sourceDir = path.join(root, 'apps', templateConfig.source);
     const targetDir = path.join(root, 'apps', appName);
-
-    // Verify source exists
     if (!fs.existsSync(sourceDir)) {
         throw new Error(`Template source "${templateConfig.source}" not found at ${sourceDir}`);
     }
 
-    log.info(`Creating new ${template} app: ${appName}`);
-    log.dim(`  Template: ${templateConfig.source}`);
-    log.dim(`  Target: ${targetDir}`);
-
-    const spinner = ora('Copying template files...').start();
-
     try {
-        // Copy files
-        await copyTemplateFiles(sourceDir, targetDir);
-        spinner.succeed('Template files copied');
+        copyTemplateFiles(sourceDir, targetDir);
+        transformFiles(targetDir, appName, templateConfig.source);
+        if (!preset) return { appDir: targetDir, stripped: [], dependenciesDropped: [] };
 
-        // Transform package.json
-        spinner.start('Transforming configuration files...');
-        await transformFiles(targetDir, appName, templateConfig.source);
-        spinner.succeed('Configuration files transformed');
-
-        // Show success message
-        log.success(`\nApp "${appName}" created successfully!`);
-        log.info('\nNext steps:');
-        log.dim(`  1. cd apps/${appName}`);
-        log.dim('  2. pnpm install');
-        log.dim(`  3. otta dev ${appName}`);
-        log.info('\nOr from the monorepo root:');
-        log.dim(`  otta dev ${appName}`);
+        const plan = planStrip(root, appName, keysToStrip(targetDir, preset));
+        applyStrip(root, plan);
+        const dropped = plan.steps.find((step) => step.file.endsWith('/package.json') && step.action === 'edit');
+        const dependenciesDropped = dropped ? dropped.detail.replace(/^drop /, '').split(', ') : [];
+        fs.writeFileSync(
+            path.join(targetDir, 'README.md'),
+            presetReadme(appName, options.preset as string, preset.keep),
+        );
+        return { appDir: targetDir, stripped: plan.keys, dependenciesDropped };
     } catch (error) {
-        spinner.fail('Failed to create app');
         // Cleanup on failure
-        if (fs.existsSync(targetDir)) {
-            await fs.remove(targetDir);
-        }
+        if (fs.existsSync(targetDir)) fs.removeSync(targetDir);
         throw error;
     }
 }
 
 /**
  * Returns true if a file/dir should be excluded from the template copy.
- * Handles both exact name matches (SKIP_PATTERNS) and any .env* file
- * (.env, .env.local, .env.production, .env.staging, etc.).
+ * Handles both exact name matches (SKIP_PATTERNS) and any .env* file other than the
+ * example (.env, .env.local, .env.production, .env.staging, etc.).
  */
 function shouldSkip(name: string): boolean {
-    if (name.startsWith('.env')) return true;
+    if (name.startsWith('.env') && name !== '.env.example') return true;
     return SKIP_PATTERNS.includes(name);
 }
 
 /**
  * Recursively copies template files with filtering.
- * Uses Promise.all for parallel I/O within each directory level.
  */
-async function copyTemplateFiles(sourceDir: string, targetDir: string): Promise<void> {
-    await fs.ensureDir(targetDir);
-
-    const entries = await fs.readdir(sourceDir, { withFileTypes: true });
-
-    // Filter first, then copy all entries in parallel
-    const eligible = entries.filter((e) => !shouldSkip(e.name));
-
-    await Promise.all(
-        eligible.map((entry) => {
-            const sourcePath = path.join(sourceDir, entry.name);
-            const targetPath = path.join(targetDir, entry.name);
-
-            if (entry.isDirectory()) {
-                return copyTemplateFiles(sourcePath, targetPath);
-            }
-            return fs.copy(sourcePath, targetPath);
-        }),
-    );
+function copyTemplateFiles(sourceDir: string, targetDir: string): void {
+    fs.ensureDirSync(targetDir);
+    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+        if (shouldSkip(entry.name)) continue;
+        const sourcePath = path.join(sourceDir, entry.name);
+        const targetPath = path.join(targetDir, entry.name);
+        if (entry.isDirectory()) copyTemplateFiles(sourcePath, targetPath);
+        else fs.copySync(sourcePath, targetPath);
+    }
 }
 
 /**
  * Transforms files to use the new app name
  */
-async function transformFiles(targetDir: string, appName: string, sourceName: string): Promise<void> {
+function transformFiles(targetDir: string, appName: string, sourceName: string): void {
     for (const file of TRANSFORM_FILES) {
         const filePath = path.join(targetDir, file);
         if (!fs.existsSync(filePath)) continue;
 
-        let content = await fs.readFile(filePath, 'utf8');
+        let content = fs.readFileSync(filePath, 'utf8');
 
         // Replace scoped package name — specific enough that split/join is safe
         const sourcePackageName = `@ottabase/${sourceName}`;
@@ -131,6 +170,9 @@ async function transformFiles(targetDir: string, appName: string, sourceName: st
         const escapedName = sourceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const namePattern = new RegExp(`(?<![a-z0-9-])${escapedName}(?![a-z0-9-])`, 'g');
         content = content.replace(namePattern, appName);
+
+        // Cloudflare resources get the app's name, so two apps in one account never share a database.
+        if (file === 'wrangler.jsonc') content = content.replace(RESOURCE_PREFIX, `${appName}-$1`);
 
         // For package.json, also update other fields
         if (file === 'package.json') {
@@ -148,13 +190,16 @@ async function transformFiles(targetDir: string, appName: string, sourceName: st
             }
         }
 
-        await fs.writeFile(filePath, content, 'utf8');
+        fs.writeFileSync(filePath, content, 'utf8');
     }
 
     // Create a basic README if the template does not include one
     const readmePath = path.join(targetDir, 'README.md');
-    if (!fs.existsSync(readmePath)) {
-        const readmeContent = `# ${appName}
+    if (!fs.existsSync(readmePath)) fs.writeFileSync(readmePath, starterReadme(appName, sourceName), 'utf8');
+}
+
+function starterReadme(appName: string, sourceName: string): string {
+    return `# ${appName}
 
 A new Ottabase app scaffolded from the \`${sourceName}\` template.
 
@@ -180,6 +225,38 @@ otta build ${appName}
 otta test ${appName}
 \`\`\`
 `;
-        await fs.writeFile(readmePath, readmeContent, 'utf8');
-    }
+}
+
+function presetReadme(appName: string, preset: string, keep: string[]): string {
+    const packages = keep.length ? keep.map((key) => `\`${key}\``).join(', ') : 'none beyond the core';
+    return `# ${appName}
+
+An Ottabase app from the \`web\` template, preset \`${preset}\`: auth, organizations and RBAC, the admin shell and
+Brand Engine, plus ${packages}. The demo gallery and the other packages were stripped; add one back with
+\`otta add <package> ${appName}\` (its pages are copied from \`apps/otta-web\`, whose routes for them are marked
+\`otta:only <package>\`).
+
+## Run it
+
+\`\`\`bash
+pnpm install
+otta dev ${appName}          # Vite + a local Worker; open the URL it prints
+\`\`\`
+
+First run: the app shows its bootstrap wizard (\`/__bootstrap__\`), which creates the tables and the owner account.
+\`pnpm env:secrets --app=${appName}\` fills \`.env.local\` with development secrets.
+
+## Ship it
+
+\`\`\`bash
+otta deploy ${appName}       # creates the Cloudflare resources, sets the secrets, deploys, bootstraps
+\`\`\`
+
+## Where things are
+
+- \`ottabase/packages.ts\`: the one list of installed packages; \`ottabase/packages/*.ts\` their settings.
+- \`ottabase/models/\`, \`ottabase/db/schema.ts\`: your tables and models (OttaORM, see \`AGENTS.MD\` at the root).
+- \`src/pages/\`, \`src/router.tsx\`: the pages; \`worker/routes/\`: the API.
+- \`ottabase/footprints.json\`: what \`otta strip\` can still take out.
+`;
 }
