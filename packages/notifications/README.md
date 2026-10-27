@@ -1,12 +1,14 @@
 # @ottabase/notifications
 
-Minimalistic notifications engine for Ottabase - multi-channel user notifications, system alerts, and real-time updates.
+Minimalistic notifications engine for Ottabase - multi-channel user notifications and real-time updates.
+
+> For alerts to the people running the app (Slack, PagerDuty, an ops inbox, with cooldowns, digests and retries), use
+> `@ottabase/alerts`, which every Ottabase package raises into. This package is for notifying your users.
 
 ## Features
 
 - **Email Notifications** - Via `@ottabase/email` with multiple provider support
 - **Real-time WebSocket** - Via `@ottabase/cf-realtime` for instant updates
-- **System Alerts** - Admin notifications for critical events
 - **Async Processing** - Queue-based delivery via `@ottabase/queue`
 - **User Preferences** - Customizable notification settings per user
 - **Persistence** - OttaORM models for notification storage
@@ -93,33 +95,6 @@ const wsChannel = createWebSocketChannel({
 });
 
 manager.registerChannel(wsChannel);
-```
-
-### System Channel
-
-```typescript
-import { createSystemChannel } from '@ottabase/notifications/channels';
-
-const systemChannel = createSystemChannel({
-    adminUserIds: ['admin-1', 'admin-2'],
-    adminEmails: ['admin@example.com'],
-    enableLogging: true,
-    handler: async (notification) => {
-        // Custom system notification handler
-        console.log('System alert:', notification);
-    },
-});
-
-manager.registerChannel(systemChannel);
-
-// Send system alert
-await manager.notifySystem({
-    title: 'Database Error',
-    message: 'Connection pool exhausted',
-    eventType: 'database.error',
-    severity: 'critical',
-    metadata: { pool: 'primary', connections: 100 },
-});
 ```
 
 ## Async Processing with Queue
@@ -318,7 +293,6 @@ import type {
     NotificationRecipient,
     NotificationOptions,
     SendResult,
-    SystemNotification,
 } from '@ottabase/notifications';
 ```
 
@@ -328,7 +302,6 @@ The package includes Drizzle schemas for SQLite:
 
 - `notifications` - Stores all notifications
 - `notification_preferences` - User notification preferences
-- `system_notifications` - System/admin alerts
 
 To use with your database, import and include in your Drizzle schema:
 

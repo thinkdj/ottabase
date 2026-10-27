@@ -9,7 +9,6 @@
  * Features:
  * - Email notifications via @ottabase/email
  * - Real-time WebSocket notifications via @ottabase/cf-realtime
- * - System/admin alerts
  * - Async queue processing via @ottabase/queue
  * - User preference management
  * - OttaORM models for persistence

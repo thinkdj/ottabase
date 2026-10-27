@@ -5,7 +5,7 @@
 /**
  * Notification channels supported by the system
  */
-export type NotificationChannel = 'email' | 'websocket' | 'system';
+export type NotificationChannel = 'email' | 'websocket';
 
 /**
  * Notification priority levels
@@ -105,24 +105,6 @@ export interface SendResult {
     messageId?: string;
     error?: string;
     metadata?: Record<string, any>;
-}
-
-/**
- * System notification (for admins)
- */
-export interface SystemNotification {
-    /** Notification title */
-    title: string;
-    /** Notification message */
-    message: string;
-    /** System event type */
-    eventType: string;
-    /** Severity level */
-    severity: 'info' | 'warning' | 'error' | 'critical';
-    /** Event metadata */
-    metadata?: Record<string, any>;
-    /** Timestamp */
-    timestamp?: Date;
 }
 
 /**

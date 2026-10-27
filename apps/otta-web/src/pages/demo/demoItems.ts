@@ -276,7 +276,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'Notifications',
         title: 'Notifications',
         description:
-            'Multi-channel notification system with email, WebSocket, and system alerts via @ottabase/notifications',
+            'Notify your users by email and WebSocket with @ottabase/notifications; operator alerts are @ottabase/alerts',
         buttonVariant: 'outline',
     },
     {

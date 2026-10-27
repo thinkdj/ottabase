@@ -61,7 +61,6 @@ export const notificationPreferencesTable = sqliteTable('notification_preference
     // Channel preferences
     enableEmail: integer('enable_email', { mode: 'boolean' }).notNull().default(true),
     enableWebSocket: integer('enable_websocket', { mode: 'boolean' }).notNull().default(true),
-    enableSystem: integer('enable_system', { mode: 'boolean' }).notNull().default(false),
 
     // Category preferences (JSON)
     categoryPreferences: text('category_preferences'), // JSON object
@@ -77,31 +76,6 @@ export const notificationPreferencesTable = sqliteTable('notification_preference
 });
 
 /**
- * System notification table schema
- */
-export const systemNotificationsTable = sqliteTable('system_notifications', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-
-    title: text('title').notNull(),
-    message: text('message').notNull(),
-    eventType: text('event_type').notNull(),
-    severity: text('severity').notNull().default('info'), // info, warning, error, critical
-    metadata: text('metadata'), // JSON string
-
-    // Tracking
-    acknowledged: integer('acknowledged', { mode: 'boolean' }).notNull().default(false),
-    acknowledgedBy: text('acknowledged_by'),
-    acknowledgedAt: integer('acknowledged_at'),
-
-    // Timestamps
-    createdAt: integer('created_at')
-        .$defaultFn(() => Date.now())
-        .notNull(),
-});
-
-/**
  * Notification model types
  */
 export type NotificationType = typeof notificationsTable.$inferSelect;
@@ -109,6 +83,3 @@ export type NewNotificationType = typeof notificationsTable.$inferInsert;
 
 export type NotificationPreferenceType = typeof notificationPreferencesTable.$inferSelect;
 export type NewNotificationPreferenceType = typeof notificationPreferencesTable.$inferInsert;
-
-export type SystemNotificationType = typeof systemNotificationsTable.$inferSelect;
-export type NewSystemNotificationType = typeof systemNotificationsTable.$inferInsert;

@@ -49,12 +49,11 @@ export class NotificationPreference extends BaseModel {
         updatedAt: 'date' as const,
         enableEmail: 'boolean' as const,
         enableWebSocket: 'boolean' as const,
-        enableSystem: 'boolean' as const,
     };
 
     static writable = {
-        create: ['userId', 'enableEmail', 'enableWebSocket', 'enableSystem', 'categoryPreferences'],
-        update: ['enableEmail', 'enableWebSocket', 'enableSystem', 'categoryPreferences'],
+        create: ['userId', 'enableEmail', 'enableWebSocket', 'categoryPreferences'],
+        update: ['enableEmail', 'enableWebSocket', 'categoryPreferences'],
     };
 
     protected static fields: ModelFields = {
@@ -111,21 +110,6 @@ export class NotificationPreference extends BaseModel {
                 visible: true,
             },
         },
-        enableSystem: {
-            type: 'boolean',
-            editable: true,
-            uiConfig: {
-                label: 'Enable System',
-                description: 'Receive system notifications',
-            },
-            formConfig: {
-                visible: true,
-                fieldType: 'boolean',
-            },
-            tableConfig: {
-                visible: true,
-            },
-        },
         categoryPreferences: {
             type: 'string',
             editable: true,
@@ -164,7 +148,6 @@ export class NotificationPreference extends BaseModel {
 
         if (this.get('enableEmail')) channels.push('email');
         if (this.get('enableWebSocket')) channels.push('websocket');
-        if (this.get('enableSystem')) channels.push('system');
 
         return channels;
     }
@@ -216,7 +199,6 @@ export class NotificationPreference extends BaseModel {
                 userId,
                 enableEmail: true,
                 enableWebSocket: true,
-                enableSystem: false,
             });
         }
 

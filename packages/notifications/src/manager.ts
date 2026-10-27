@@ -11,7 +11,6 @@ import type {
     NotificationPayload,
     NotificationRecipient,
     SendResult,
-    SystemNotification,
 } from './types';
 
 /**
@@ -104,44 +103,6 @@ export class NotificationManager {
 
         // Send synchronously
         return this.sendSync(notification, channels);
-    }
-
-    /**
-     * Send a system notification to admins
-     */
-    async notifySystem(alert: SystemNotification): Promise<SendResult> {
-        const systemChannel = this.channels.get('system');
-        if (!systemChannel) {
-            return {
-                success: false,
-                error: 'System channel not registered',
-            };
-        }
-
-        const notification: Notification = {
-            id: this.generateId(),
-            recipient: {
-                userId: 'system',
-                channels: ['system'],
-            },
-            payload: {
-                title: alert.title,
-                message: alert.message,
-                category: alert.eventType,
-                metadata: {
-                    severity: alert.severity,
-                    ...alert.metadata,
-                },
-            },
-            options: {
-                channels: ['system'],
-                priority: this.mapSeverityToPriority(alert.severity),
-            },
-            status: 'pending',
-            createdAt: new Date(),
-        };
-
-        return systemChannel.send(notification);
     }
 
     /**
@@ -241,19 +202,6 @@ export class NotificationManager {
      */
     private generateId(): string {
         return `ntf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-
-    /**
-     * Map severity to priority
-     */
-    private mapSeverityToPriority(severity: SystemNotification['severity']): 'low' | 'normal' | 'high' | 'urgent' {
-        const map: Record<SystemNotification['severity'], 'low' | 'normal' | 'high' | 'urgent'> = {
-            info: 'normal',
-            warning: 'high',
-            error: 'high',
-            critical: 'urgent',
-        };
-        return map[severity] || 'normal';
     }
 
     /**

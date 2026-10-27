@@ -19,7 +19,7 @@ interface DemoNotification {
     id: string;
     title: string;
     message: string;
-    channel: 'email' | 'websocket' | 'system';
+    channel: 'email' | 'websocket';
     priority: 'low' | 'normal' | 'high' | 'urgent';
     status: 'pending' | 'sent' | 'read';
     timestamp: string;
@@ -51,12 +51,14 @@ export function DemoNotificationsPage() {
         },
         {
             id: '3',
-            title: 'System Alert',
-            message: 'A critical system notification for administrators.',
-            channel: 'system',
+            title: 'Payment failed',
+            message: 'Your card was declined. Update it to keep your plan.',
+            channel: 'email',
             priority: 'urgent',
             status: 'sent',
             timestamp: '30 minutes ago',
+            actionUrl: '/billing',
+            actionText: 'Update card',
         },
     ]);
 
@@ -67,7 +69,7 @@ export function DemoNotificationsPage() {
         failed: 2,
     });
 
-    const sendTestNotification = async (channel: 'email' | 'websocket' | 'system') => {
+    const sendTestNotification = async (channel: 'email' | 'websocket') => {
         const newNotification: DemoNotification = {
             id: Date.now().toString(),
             title: `Test ${channel} Notification`,
@@ -106,8 +108,6 @@ export function DemoNotificationsPage() {
                 return <Mail className="h-4 w-4" />;
             case 'websocket':
                 return <Radio className="h-4 w-4" />;
-            case 'system':
-                return <AlertCircle className="h-4 w-4" />;
             default:
                 return <Bell className="h-4 w-4" />;
         }
@@ -117,7 +117,7 @@ export function DemoNotificationsPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="Notifications"
-                description="Multi-channel notification system with email, WebSocket, and system alerts"
+                description="Notify your users by email and WebSocket, with priorities, preferences and status tracking"
             />
 
             {/* Stats Cards */}
@@ -204,15 +204,17 @@ export function DemoNotificationsPage() {
                                         <Radio className="mr-2 h-4 w-4" />
                                         Send WebSocket Notification
                                     </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full justify-start"
-                                        onClick={() => sendTestNotification('system')}
-                                    >
-                                        <AlertCircle className="mr-2 h-4 w-4" />
-                                        Send System Alert
-                                    </Button>
                                 </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-medium mb-2">Not for operators</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Alerts for the people running the app (a failing task, an app down, a new support
+                                    ticket) go through <code>@ottabase/alerts</code> instead: Slack, Discord, Telegram,
+                                    PagerDuty, email or a signed webhook, with cooldowns, digests and retries, managed
+                                    at Admin → Infrastructure → Alerts.
+                                </p>
                             </div>
 
                             <div>
@@ -242,7 +244,6 @@ export function DemoNotificationsPage() {
                                 <ul className="text-sm space-y-1 text-muted-foreground">
                                     <li>✓ Email delivery via multiple providers</li>
                                     <li>✓ Real-time WebSocket notifications</li>
-                                    <li>✓ System alerts for admins</li>
                                     <li>✓ Async queue processing</li>
                                     <li>✓ User preferences</li>
                                     <li>✓ Status tracking</li>
@@ -305,15 +306,6 @@ export function DemoNotificationsPage() {
                                             className="ml-2 rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
                                         >
                                             {notifications.filter((n) => n.channel === 'websocket').length}
-                                        </Badge>
-                                    </TabsTrigger>
-                                    <TabsTrigger value="system">
-                                        System{' '}
-                                        <Badge
-                                            variant="outline"
-                                            className="ml-2 rounded-full border-transparent bg-background text-[0.6875rem] font-medium text-muted-foreground ring-1 ring-border"
-                                        >
-                                            {notifications.filter((n) => n.channel === 'system').length}
                                         </Badge>
                                     </TabsTrigger>
                                 </TabsList>
@@ -398,20 +390,6 @@ export function DemoNotificationsPage() {
                                             <div
                                                 key={notification.id}
                                                 className="rounded-lg bg-background p-4 ring-1 ring-border"
-                                            >
-                                                <h4 className="font-medium mb-2">{notification.title}</h4>
-                                                <p className="text-sm text-muted-foreground">{notification.message}</p>
-                                            </div>
-                                        ))}
-                                </TabsContent>
-
-                                <TabsContent value="system" className="space-y-4 mt-4">
-                                    {notifications
-                                        .filter((n) => n.channel === 'system')
-                                        .map((notification) => (
-                                            <div
-                                                key={notification.id}
-                                                className="rounded-lg border border-destructive/40 bg-destructive/10 p-4"
                                             >
                                                 <h4 className="font-medium mb-2">{notification.title}</h4>
                                                 <p className="text-sm text-muted-foreground">{notification.message}</p>

@@ -175,7 +175,7 @@ describe('NotificationManager', () => {
                 recipient: {
                     userId: '123',
                     email: 'user@test.com',
-                    channels: ['email', 'system'] as any,
+                    channels: ['email', 'push'] as any,
                 },
                 payload: {
                     title: 'Test',
@@ -185,48 +185,8 @@ describe('NotificationManager', () => {
 
             expect(results).toHaveLength(2);
             expect(results[0].success).toBe(true); // email
-            expect(results[1].success).toBe(false); // system (not registered)
+            expect(results[1].success).toBe(false); // push (not registered)
             expect(results[1].error).toContain('not registered');
-        });
-    });
-
-    describe('system notifications', () => {
-        it('should send system notifications', async () => {
-            const systemChannel = {
-                name: 'system' as const,
-                async send(notification: Notification): Promise<SendResult> {
-                    return {
-                        success: true,
-                        messageId: notification.id,
-                    };
-                },
-                async isAvailable() {
-                    return true;
-                },
-            };
-
-            manager.registerChannel(systemChannel);
-
-            const result = await manager.notifySystem({
-                title: 'System Alert',
-                message: 'Something went wrong',
-                eventType: 'system.error',
-                severity: 'critical',
-            });
-
-            expect(result.success).toBe(true);
-        });
-
-        it('should fail if system channel not registered', async () => {
-            const result = await manager.notifySystem({
-                title: 'System Alert',
-                message: 'Something went wrong',
-                eventType: 'system.error',
-                severity: 'critical',
-            });
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain('System channel not registered');
         });
     });
 
