@@ -371,18 +371,19 @@ createTodo.mutate({ title: 'New Todo' });
 The contract every package is built on, and the primitives a SaaS needs on day one. Each is one entry in
 `ottabase/packages.ts` (or `otta add <name> <app>`).
 
-| Package                | Purpose                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle                                                             |
-| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                                                                           |
-| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`                                                            |
-| `@ottabase/legal`      | Terms, privacy (GDPR/CCPA), cookies, acceptable use, refunds and sub-processors from one config: clause toggles, overrides, Worker routes and React |
-| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                             |
-| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                        |
-| `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
-| `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
-| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
-| `@ottabase/alerts`     | Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: cooldowns, hourly limits, digests, retries    |
+| Package                | Purpose                                                                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle                                                                                           |
+| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                                                                                                         |
+| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`                                                                                          |
+| `@ottabase/legal`      | Terms, privacy (GDPR/CCPA), cookies, acceptable use, refunds and sub-processors from one config: clause toggles, overrides, Worker routes and React                               |
+| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                                                           |
+| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                                                      |
+| `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                                               |
+| `@ottabase/context`    | The otta-context schema, version 2: one JSON file that says what a product is, shared by Ottabase, Ottabuzz and Imageine. Writer, reader, hash, founder manifest; no dependencies |
+| `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph                                             |
+| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                                                         |
+| `@ottabase/alerts`     | Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: cooldowns, hourly limits, digests, retries                                  |
 
 ### Premium Packages
 

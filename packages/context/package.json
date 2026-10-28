@@ -1,0 +1,36 @@
+{
+    "name": "@ottabase/context",
+    "version": "0.2.0",
+    "description": "The otta-context schema, version 2: one JSON file that says what a product is, in the shape Ottabase apps serve at /.well-known/otta.json, Ottabuzz serves as context.json and Imageine imports. Types, a clamping defineProduct, the writer, the lenient reader, a founder manifest, a content hash, and a fetch that knows when a file changed. No dependencies, runs in a Worker, Node and the browser.",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "sideEffects": false,
+    "scripts": {
+        "clean": "rimraf .turbo node_modules",
+        "lint": "eslint src",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "packages/context"
+    },
+    "bugs": {
+        "url": "https://github.com/thinkdj/ottabase/issues"
+    },
+    "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/context#readme"
+}

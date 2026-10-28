@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **The otta-context schema, version 2, as its own package.** `@ottabase/context` is the one place the shape of
+  `/.well-known/otta.json` (and Ottabuzz's `context.json`) is defined: no dependencies, so Ottabuzz and Imageine read
+  through it and the shape cannot drift. Version 1 fields stay where they were; version 2 adds the plans as data, a
+  brand block, a founder block with photo and handles, the facts a directory asks for, feed and link addresses, the
+  press kit's copy, screenshot captions and a content hash (`contextHash`, the same facts give the same hash whoever
+  wrote the file). `defineProduct` clamps, `ottaJson` writes (`scope: "owner"` keeps `neverClaim` and the brief in),
+  `parseOttaJson` reads any version leniently, `founderJson` is the manifest of one person and every product,
+  `fetchOtta` reads with ETag and says whether a file changed, `inherit` is the inherit-or-pin merge, `ottaJsonUrl`
+  turns a pasted address into the file's. `@ottabase/discover` now depends on it: the route carries the hash as its ETag
+  and answers 304, an `owner` key (`?key=`) serves the owner copy uncached with the key kept out of the file, the
+  JSON-LD carries the founder as a Person with their profiles, and `brandFromTheme` reads the brand block off a Brand
+  Engine theme so colours and type are never typed twice.
 - **Vault snapshots the bucket too.** With `objects` in `createVault` (otta-web passes it, leaving out the `og/` cache),
   every backup lists the bucket's objects beside the tables and keeps each object's bytes once per etag under
   `vault/<appId>/_objects/`, so an unchanged bucket costs nothing to snapshot again. Restore puts the listed objects
