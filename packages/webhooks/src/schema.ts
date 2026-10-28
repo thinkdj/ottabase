@@ -75,11 +75,7 @@ export const webhookEndpointsTable = sqliteTable(
     }),
 );
 
-/**
- * One delivery attempt. Written only when the `deliveries.log` entitlement is present —
- * retention is the thing being sold, so an unlicensed install keeps `lastStatus` on the
- * endpoint and nothing more.
- */
+/** One dispatched delivery attempt. */
 export const webhookDeliveriesTable = sqliteTable(
     'premium_webhook_deliveries',
     {

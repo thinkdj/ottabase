@@ -22,10 +22,6 @@ export default defineConfig({
         alias: {
             // Dist-only packages aliased to source so this suite runs without a prior
             // `pnpm build:pkg`. Subpaths must come BEFORE the bare specifier.
-            '@ottabase/premium/server': path.resolve(__dirname, '../premium/src/server/index.ts'),
-            '@ottabase/premium/react': path.resolve(__dirname, '../premium/src/react/index.ts'),
-            '@ottabase/premium/license-tools': path.resolve(__dirname, '../premium/src/license-tools.ts'),
-            '@ottabase/premium': path.resolve(__dirname, '../premium/src/index.ts'),
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../utils/src/http-errors.ts'),
             '@ottabase/utils/outbound-url': path.resolve(__dirname, '../utils/src/outbound-url.ts'),
             '@ottabase/utils/hmac-signature': path.resolve(__dirname, '../utils/src/hmac-signature.ts'),

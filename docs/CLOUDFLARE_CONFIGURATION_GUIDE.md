@@ -195,10 +195,6 @@ multi-app: same placeholder name = shared resource; different names = isolated (
                 "name": "OBCF_REALTIME",
                 "class_name": "RealtimeActor",
             },
-            {
-                "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                "class_name": "WebhookEndpointQuota",
-            },
         ],
     },
     "unsafe": {
@@ -227,7 +223,6 @@ interface CloudflareEnv {
     OBCF_D1: D1Database;
     OBCF_QUEUE: Queue;
     OBCF_REALTIME: DurableObjectNamespace<import('./cloudflare-worker').RealtimeActor>;
-    OBCF_WEBHOOK_ENDPOINT_QUOTA: DurableObjectNamespace<import('./cloudflare-worker').WebhookEndpointQuota>;
     OBCF_RATE_LIMITER: RateLimit;
     // ...analytics datasets, OBCF_ASSETS, optional OBCF_AI / OBCF_BROWSER, and vars
 }
@@ -241,7 +236,6 @@ interface CloudflareEnv {
 
 ```typescript
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
-export { WebhookEndpointQuota } from './worker/durable-objects/WebhookEndpointQuota';
 
 export { RealtimeActor };
 ```

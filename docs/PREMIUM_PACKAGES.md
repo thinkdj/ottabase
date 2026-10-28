@@ -2,8 +2,8 @@
 
 How to install, build, license and operate commercial add-ons in an Ottabase app.
 
-The framework is [`@ottabase/premium`](../packages/premium/README.md); the worked example is
-[`@ottabase/webhooks`](../packages/webhooks/README.md).
+The framework is [`@ottabase/premium`](../packages/premium/README.md). Every package in this repository is free; the
+framework is here for the add-ons you sell yourself.
 
 **An app with no Premium Packages is unaffected.** List none and nothing mounts: no routes, no KV reads, no nav entries,
 no tables. Everything below is opt-in.
@@ -76,11 +76,11 @@ tokens and re-issue on renewal.
 
 ### Where a customer puts the key
 
-| Source                  | Precedence | Notes                                                           |
-| ----------------------- | ---------- | --------------------------------------------------------------- |
-| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, key upper-snake-cased                              |
-| `PREMIUM_LICENSES`      | 2          | JSON map `{"webhooks":"otta_premium_v1…"}` for several packages |
-| Admin UI (stored in KV) | 3          | Ignored when an env key exists for that package                 |
+| Source                  | Precedence | Notes                                                          |
+| ----------------------- | ---------- | -------------------------------------------------------------- |
+| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, key upper-snake-cased                             |
+| `PREMIUM_LICENSES`      | 2          | JSON map `{"reports":"otta_premium_v1…"}` for several packages |
+| Admin UI (stored in KV) | 3          | Ignored when an env key exists for that package                |
 
 Env wins deliberately: the key in your infrastructure config must be the key actually in force.
 
@@ -195,22 +195,17 @@ const { publicKey, privateKey } = await generateLicenseKeypair(); // publicKey �
 Keep the private key where release signing material lives — **never in the repo, never in the app, never in an env var
 the app can read**. Anyone holding it can mint licenses for your package forever.
 
-Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See `packages/webhooks`
-for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free tier, and a licensed delivery
-log.
+Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. The package README's
+`reports` example is the whole shape: tables, models, routes behind the gate, a free tier, a feature and a limit.
 
-`packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
-manual backup, restore and delete are free (five kept backups), the nightly schedule, retention and operator tenant
-export are licensed, and a user's own `/export/me` is never gated. **Gating a cron contribution:** a cron handler never
-sees the host, so the manifest keeps the registry `routes.build(host)` received in a closure and the handler and health
-probe ask it; until the routes are mounted the schedule stays off and health says so.
+**Gating a cron contribution.** A cron handler never sees the host, so keep the registry `routes.build(host)` receives
+in a closure and let the handler and the health probe ask it; until the routes are mounted the schedule stays off.
 
-**Where the paywall actually is.** A license on a package whose source is in this public repository is a courtesy, not a
-gate: the demo private key is published and anyone can swap in their own. Vault and webhooks are here as worked examples
-and as free tiers that make clone-and-use credible. Anything meant to earn lives in a private repository and is sold as
-repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: Fleet
-(`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
-cockpit that watches all your apps is a private Premium Package.
+**Where the paywall actually is.** A license on a package whose source the customer can read is a courtesy, not a gate:
+anyone can swap in their own public key. Anything meant to earn lives in a private repository and is sold as repository
+access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: Fleet (`GET /api/fleet/report`)
+is a free package here, because a cockpit needs every app on the board to carry it; the cockpit that watches all your
+apps is a private Premium Package.
 
 That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench,
 Helpdesk and Privacy, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token
@@ -235,7 +230,6 @@ at all because repository access is the license. It is sold as three yearly lice
 ## See also
 
 - [`packages/premium/README.md`](../packages/premium/README.md) — full API
-- [`packages/webhooks/README.md`](../packages/webhooks/README.md) — the worked example
 - [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
 - [ottabase.com/pro](https://ottabase.com/pro) — Ottabase Pro, the commercial bundle

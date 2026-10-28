@@ -7,10 +7,9 @@
 // the wrong layer. These assertions are cheap and they are what stands between "I added
 // the manifest" and "the feature exists".
 // ============================================================
+import { mountPackages } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
-import { createMemoryStateStore, createPremiumRegistry, isPremiumPackage } from '@ottabase/premium';
-import { mountPremiumPackages } from '@ottabase/premium/server';
-import { DEMO_PRO_LICENSE, WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks'; // otta:only webhooks
+import { WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from '@ottabase/webhooks'; // otta:only webhooks
 import { describe, expect, it } from 'vitest';
 import { getAllSchemas, getSchemaSummary } from '../db/schemas-helper';
 import * as drizzleSchema from '../db/schema';
@@ -62,14 +61,14 @@ describe('package tables reach auto-init', () => {
     });
 
     // otta:begin webhooks
-    it('premium tables are contributed regardless of license — activating a key must not need a migration run', () => {
+    it('collects the webhooks tables for auto-init', () => {
         expect(Object.keys(packages.tables())).toEqual(expect.arrayContaining(WEBHOOK_TABLE_KEYS));
     });
     // otta:end webhooks
 });
 
 describe('what the packages contribute', () => {
-    it('every package with tables also registers models, and premium policies fail closed', () => {
+    it('every package with tables also registers models, and their policies fail closed', () => {
         for (const pkg of packages.packages) {
             if (Object.keys(pkg.tables ?? {}).length > 0) {
                 expect(pkg.models?.length, `${pkg.key} has tables but no models`).toBeGreaterThan(0);
@@ -138,33 +137,17 @@ describe('admin navigation', () => {
 
 // otta:begin webhooks
 describe('mounted routes', () => {
-    function buildApp(env: Record<string, unknown>) {
-        const registry = createPremiumRegistry<Record<string, unknown>>({
-            packages: packages.packages.filter(isPremiumPackage) as never,
-            getStore: () => createMemoryStateStore(),
-            cacheTtlMs: 0,
-        });
-        const app = new Router<Record<string, unknown>>();
-        const mounted = mountPremiumPackages(app, registry);
-        return { app, mounted, env };
-    }
-
-    it('mounts the webhooks namespace and serves its free tier without a license', async () => {
-        const { app, mounted, env } = buildApp({});
-        // Containing, not equal: an app that lists more packages (`otta add pro`) mounts more.
-        expect([...mounted]).toContain('/api/vault'); // otta:only vault
-        expect([...mounted]).toContain(WEBHOOKS_BASE_PATH);
-        const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), env);
-        // The free path answers (401 from the caller resolver, since there is no session),
-        // never 402: `entitlements` gating keeps the namespace reachable.
-        expect(response?.status).not.toBe(402);
+    it('mounts the webhooks and vault namespaces with the free packages', async () => {
+        const app = new Router<CloudflareEnv>();
+        const mounted = mountPackages(app, { packages });
+        // Containing, not equal: an app that lists more packages mounts more.
+        expect(mounted).toContain('/api/vault'); // otta:only vault
+        expect(mounted).toContain(WEBHOOKS_BASE_PATH);
+        const response = await app.handle(
+            new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`),
+            {} as CloudflareEnv,
+        );
         expect(response?.status).not.toBe(404);
-    });
-
-    it('still reaches the namespace with the demo license', async () => {
-        const { app, env } = buildApp({ [`PREMIUM_LICENSE_${WEBHOOKS_PACKAGE_KEY.toUpperCase()}`]: DEMO_PRO_LICENSE });
-        const response = await app.handle(new Request(`https://app.test${WEBHOOKS_BASE_PATH}/events`), env);
-        expect(response?.status).not.toBe(402);
     });
 });
 // otta:end webhooks

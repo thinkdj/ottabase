@@ -380,18 +380,21 @@ createTodo.mutate({ title: 'New Todo' });
 The contract every package is built on, and the primitives a SaaS needs on day one. Each is one entry in
 `ottabase/packages.ts` (or `otta add <name> <app>`).
 
-| Package                | Purpose                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle                                                             |
-| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                                                                           |
-| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`                                                            |
-| `@ottabase/legal`      | Terms, privacy (GDPR/CCPA), cookies, acceptable use, refunds and sub-processors from one config: clause toggles, overrides, Worker routes and React |
-| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                             |
-| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                        |
-| `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                 |
-| `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph               |
-| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                           |
-| `@ottabase/alerts`     | Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: cooldowns, hourly limits, digests, retries    |
+| Package                | Purpose                                                                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ottabase/kernel`     | The package contract: `definePackage`, the registry, `mountPackages`, health, lifecycle                                                                                           |
+| `@ottabase/events`     | Typed in-process event bus; queued subscribers fan out through OBCF_QUEUE                                                                                                         |
+| `@ottabase/flags`      | Entitlements: plans, features, limits, operator overrides, 402 guards, client `PlanGate`                                                                                          |
+| `@ottabase/legal`      | Terms, privacy (GDPR/CCPA), cookies, acceptable use, refunds and sub-processors from one config: clause toggles, overrides, Worker routes and React                               |
+| `@ottabase/meter`      | Usage credits: atomic per-tenant balances, periods, top-ups, a pruned ledger, 402 guard                                                                                           |
+| `@ottabase/apikeys`    | API keys for your customers: hashed, scoped, expiring, revocable, shown once                                                                                                      |
+| `@ottabase/fleet`      | App report: `GET /api/fleet/report` behind `FLEET_TOKEN` (packages, licenses, health, cron, backup)                                                                               |
+| `@ottabase/context`    | The otta-context schema, version 2: one JSON file that says what a product is, shared by Ottabase, Ottabuzz and Imageine. Writer, reader, hash, founder manifest; no dependencies |
+| `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph                                             |
+| `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                                                         |
+| `@ottabase/alerts`     | Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: cooldowns, hourly limits, digests, retries                                  |
+| `@ottabase/webhooks`   | Outbound webhooks for your customers: HMAC-signed deliveries, endpoint health and a delivery log                                                                                  |
+| `@ottabase/vault`      | D1 backups to R2 as NDJSON with one-transaction restore, a nightly schedule with retention, and tenant export                                                                     |
 
 ### Premium Packages
 
@@ -401,11 +404,9 @@ free package. Rendered pages and Drizzle's static schema export are explicit bui
 app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
 An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
-| Package              | Purpose                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| `@ottabase/premium`  | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
-| `@ottabase/webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
-| `@ottabase/vault`    | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
+| Package             | Purpose                                                                          |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `@ottabase/premium` | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI |
 
 **Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board), PayPort (sell plans
 to your app's users), Blackbox (error tracking), Beacon (a status page), Workbench (the database inside the admin),
@@ -1895,7 +1896,7 @@ entitlements and lifecycle, and mounts its routes behind the license gate.
    disappears gives a bookmarked link a 404 and no way to reach the screen that fixes it.
 6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
-Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/webhooks`.
+Full guide: `docs/PREMIUM_PACKAGES.md`. Every package in this repository is free; the framework is for add-ons you sell.
 
 ### Quick examples
 
@@ -2273,18 +2274,18 @@ and a drop-in admin surface. Inert until a package is registered — an app that
 
 ```typescript
 // Install (the whole job): one entry in apps/*/ottabase/packages.ts
-definePackageList(() => [corePackage, appPackage, /* … */ createWebhooksPackage({ resolveCaller })]);
+definePackageList(() => [corePackage, appPackage, /* … */ reportsPackage]);
 
 // Enforce (worker)
 import { requirePremiumFeature } from '@ottabase/premium/server';
-const denied = await requirePremiumFeature(premium, env, 'webhooks', 'deliveries.log');
+const denied = await requirePremiumFeature(premium, env, 'reports', 'reports.export');
 if (denied) return denied; // 402 PREMIUM_REQUIRED
 
 // Gate (browser) — a UX affordance; the server guard above is the boundary
 import { PremiumGate } from '@ottabase/premium/react';
 ```
 
-See `docs/PREMIUM_PACKAGES.md`; `@ottabase/webhooks` is the worked example.
+See `docs/PREMIUM_PACKAGES.md` and `packages/premium/README.md`.
 
 ### @ottabase/queue
 
@@ -5238,10 +5239,6 @@ multi-app: same placeholder name = shared resource; different names = isolated (
                 "name": "OBCF_REALTIME",
                 "class_name": "RealtimeActor",
             },
-            {
-                "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                "class_name": "WebhookEndpointQuota",
-            },
         ],
     },
     "unsafe": {
@@ -5270,7 +5267,6 @@ interface CloudflareEnv {
     OBCF_D1: D1Database;
     OBCF_QUEUE: Queue;
     OBCF_REALTIME: DurableObjectNamespace<import('./cloudflare-worker').RealtimeActor>;
-    OBCF_WEBHOOK_ENDPOINT_QUOTA: DurableObjectNamespace<import('./cloudflare-worker').WebhookEndpointQuota>;
     OBCF_RATE_LIMITER: RateLimit;
     // ...analytics datasets, OBCF_ASSETS, optional OBCF_AI / OBCF_BROWSER, and vars
 }
@@ -5284,7 +5280,6 @@ interface CloudflareEnv {
 
 ```typescript
 import { RealtimeActor } from '@ottabase/cf-realtime/server';
-export { WebhookEndpointQuota } from './worker/durable-objects/WebhookEndpointQuota';
 
 export { RealtimeActor };
 ```
@@ -5887,15 +5882,14 @@ silently runs local-only. One-time setup, token format, rotation, and local use 
 
 ### Cloudflare Bindings
 
-| Binding                       | Type           |
-| ----------------------------- | -------------- |
-| `OBCF_D1`                     | D1 Database    |
-| `OBCF_KV`                     | KV Namespace   |
-| `OBCF_R2`                     | R2 Bucket      |
-| `OBCF_QUEUE`                  | Queue          |
-| `OBCF_REALTIME`               | Durable Object |
-| `OBCF_WEBHOOK_ENDPOINT_QUOTA` | Durable Object |
-| `OBCF_RATE_LIMITER`           | Rate Limiter   |
+| Binding             | Type           |
+| ------------------- | -------------- |
+| `OBCF_D1`           | D1 Database    |
+| `OBCF_KV`           | KV Namespace   |
+| `OBCF_R2`           | R2 Bucket      |
+| `OBCF_QUEUE`        | Queue          |
+| `OBCF_REALTIME`     | Durable Object |
+| `OBCF_RATE_LIMITER` | Rate Limiter   |
 
 See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for usage details.
 
@@ -6200,8 +6194,8 @@ import { ComponentName } from '@ottabase/package-name/component-name';
 
 How to install, build, license and operate commercial add-ons in an Ottabase app.
 
-The framework is [`@ottabase/premium`](../packages/premium/README.md); the worked example is
-[`@ottabase/webhooks`](../packages/webhooks/README.md).
+The framework is [`@ottabase/premium`](../packages/premium/README.md). Every package in this repository is free; the
+framework is here for the add-ons you sell yourself.
 
 **An app with no Premium Packages is unaffected.** List none and nothing mounts: no routes, no KV reads, no nav entries,
 no tables. Everything below is opt-in.
@@ -6274,11 +6268,11 @@ tokens and re-issue on renewal.
 
 ### Where a customer puts the key
 
-| Source                  | Precedence | Notes                                                           |
-| ----------------------- | ---------- | --------------------------------------------------------------- |
-| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, key upper-snake-cased                              |
-| `PREMIUM_LICENSES`      | 2          | JSON map `{"webhooks":"otta_premium_v1…"}` for several packages |
-| Admin UI (stored in KV) | 3          | Ignored when an env key exists for that package                 |
+| Source                  | Precedence | Notes                                                          |
+| ----------------------- | ---------- | -------------------------------------------------------------- |
+| `PREMIUM_LICENSE_<KEY>` | 1          | Per package, key upper-snake-cased                             |
+| `PREMIUM_LICENSES`      | 2          | JSON map `{"reports":"otta_premium_v1…"}` for several packages |
+| Admin UI (stored in KV) | 3          | Ignored when an env key exists for that package                |
 
 Env wins deliberately: the key in your infrastructure config must be the key actually in force.
 
@@ -6393,22 +6387,17 @@ const { publicKey, privateKey } = await generateLicenseKeypair(); // publicKey �
 Keep the private key where release signing material lives — **never in the repo, never in the app, never in an env var
 the app can read**. Anyone holding it can mint licenses for your package forever.
 
-Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. See `packages/webhooks`
-for a complete one: tables, models, its own routes, HMAC-signed outbound delivery, a free tier, and a licensed delivery
-log.
+Ship your package as a normal workspace/npm package with a `definePremiumPackage()` manifest. The package README's
+`reports` example is the whole shape: tables, models, routes behind the gate, a free tier, a feature and a limit.
 
-`packages/vault` is the second worked example and shows two more patterns. **A free tier that keeps the customer safe:**
-manual backup, restore and delete are free (five kept backups), the nightly schedule, retention and operator tenant
-export are licensed, and a user's own `/export/me` is never gated. **Gating a cron contribution:** a cron handler never
-sees the host, so the manifest keeps the registry `routes.build(host)` received in a closure and the handler and health
-probe ask it; until the routes are mounted the schedule stays off and health says so.
+**Gating a cron contribution.** A cron handler never sees the host, so keep the registry `routes.build(host)` receives
+in a closure and let the handler and the health probe ask it; until the routes are mounted the schedule stays off.
 
-**Where the paywall actually is.** A license on a package whose source is in this public repository is a courtesy, not a
-gate: the demo private key is published and anyone can swap in their own. Vault and webhooks are here as worked examples
-and as free tiers that make clone-and-use credible. Anything meant to earn lives in a private repository and is sold as
-repository access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: Fleet
-(`GET /api/fleet/report`) is a free package here, because a cockpit needs every app on the board to carry it; the
-cockpit that watches all your apps is a private Premium Package.
+**Where the paywall actually is.** A license on a package whose source the customer can read is a courtesy, not a gate:
+anyone can swap in their own public key. Anything meant to earn lives in a private repository and is sold as repository
+access, with the license token deciding tiers inside it. `packages/fleet` shows the cut: Fleet (`GET /api/fleet/report`)
+is a free package here, because a cockpit needs every app on the board to carry it; the cockpit that watches all your
+apps is a private Premium Package.
 
 That private repository is **Ottabase Pro** (`github.com/ottabase/pro`): Tower, PayPort, Blackbox, Beacon, Workbench,
 Helpdesk and Privacy, installed with `git subtree add --prefix=packages/pro …` and `otta add pro`, with no license token
@@ -6433,7 +6422,6 @@ at all because repository access is the license. It is sold as three yearly lice
 ## See also
 
 - [`packages/premium/README.md`](../packages/premium/README.md) — full API
-- [`packages/webhooks/README.md`](../packages/webhooks/README.md) — the worked example
 - [`packages/kernel/README.md`](../packages/kernel/README.md) — the package contract every manifest shares
 - [`docs/PACKAGE_CREATION_GUIDE.md`](./PACKAGE_CREATION_GUIDE.md) — free packages, for comparison
 - [ottabase.com/pro](https://ottabase.com/pro) — Ottabase Pro, the commercial bundle
@@ -14306,6 +14294,143 @@ export function useAppConfig() {
 
 ---
 
+# packages/context/README.md
+
+# @ottabase/context
+
+One file that says what a product is. The `otta-context` schema, version 2: the shape an Ottabase app serves at
+`/.well-known/otta.json` (through `@ottabase/discover`), Ottabuzz serves for a project as `context.json`, and Imageine
+and Tuskly import. This package is the schema and nothing else: the types, a clamping `defineProduct`, the writer, the
+lenient reader, a founder manifest, a content hash, and a fetch that knows when a file changed. No dependencies. It runs
+in a Worker, in Node and in the browser, so every consumer reads through the same code and the shape cannot drift.
+
+## The idea
+
+The product is the single source of truth and the tools are lenses. An app declares its facts once, in code, next to the
+code they describe. Everything else, the brief in Ottabuzz, the brand kit in Imageine, the press kit, the listings,
+pulls from that one address and follows it. Nothing is typed twice; a changed price shows up everywhere on the next
+read. Integrations between our products are great to have, never mandatory: a product with this file and no other Otta
+tool near it loses nothing, and a tool reading a site without the file reads the page instead.
+
+## Write
+
+```typescript
+import { defineProduct, ottaJson } from '@ottabase/context';
+
+const product = defineProduct({
+    name: 'Alpha',
+    url: 'https://alpha.test',
+    tagline: 'A SaaS starter for Cloudflare.',
+    whatItIs: 'Auth and billing in the box, on one Worker.',
+    whoItIsFor: 'founders who ship alone',
+    problem: 'Every SaaS needs the same plumbing first.',
+    features: ['Auth in the box', 'Billing in the box', 'One Worker'],
+    pricing: {
+        plans: [
+            { name: 'Hobby', price: 'free' },
+            { name: 'Pro', price: 15, period: 'month' },
+        ],
+    },
+    founder: { name: 'Dj', title: 'solo founder', place: 'www', socials: { x: 'https://x.com/thinkdj' } },
+    brand: { primary: '#f5a90a', fontHeading: 'Young Serif', logo: 'https://alpha.test/logo.png' },
+    facts: { founded: '2026', category: 'Developer tools', platforms: ['Web', 'CLI'], license: 'MIT' },
+    feeds: { releases: 'https://alpha.test/releases.xml' },
+    links: { repo: 'https://github.com/thinkdj/alpha', press: 'https://ottabuzz.com/b/alpha/press' },
+    screenshots: [{ url: 'https://alpha.test/1.png', caption: 'The radar at work' }],
+    neverClaim: ['Enterprise ready'], // owner scope only; never in the public file
+    updatedAt: '2026-10-01T10:00:00Z',
+});
+
+const file = ottaJson(product, { from: 'https://alpha.test/.well-known/otta.json' });
+const own = ottaJson(product, { from: '...', scope: 'owner' }); // adds neverClaim and the brief
+```
+
+`defineProduct` clamps every field, drops what it cannot use (a relative address, a colour that is not `#rrggbb`, a plan
+without a price) and throws only without a name or an absolute URL. It never fills a blank.
+
+## Read
+
+```typescript
+import { fetchOtta, inherit, ottaJsonUrl, parseOttaJson } from '@ottabase/context';
+
+const url = ottaJsonUrl('alpha.test'); // https://alpha.test/.well-known/otta.json
+// 'ottabuzz.com/b/alpha/press' becomes https://ottabuzz.com/b/alpha/context.json; a .json address is taken as is.
+// A private product's address keeps its owner key and loses every other query parameter:
+ottaJsonUrl('https://alpha.test/.well-known/otta.json?utm_source=x&key=s3cret');
+// https://alpha.test/.well-known/otta.json?key=s3cret
+// The founder keeps that address where the tool keeps its secrets, and the file the tool writes never repeats it.
+
+const got = await fetchOtta(url, { etag: kept.etag, hash: kept.hash });
+if (got.status === 304 || !got.changed) return; // nothing moved
+const product = got.context!.product;
+
+// The inherit-or-pin rule: a local field that is empty follows upstream, a field the founder set is kept.
+const facts = inherit(mine.facts, product.facts);
+```
+
+`parseOttaJson` reads any file leniently, version 1 or 2, from any writer: a missing or odd field becomes empty, never a
+throw. A version 1 file comes back in the version 2 shape with the new blocks empty and a hash computed. `fetchOtta`
+never throws either: a network failure is status 0, a body over 1 MB is not a context file.
+
+## The document
+
+```text
+version 2, kind "otta-context", at (ISO), from (its own address), scope ("public" | "owner"), hash, product:
+  version 1, unchanged ........ name, url, tagline, stage, launchOn, whatItIs, whoItIsFor, problem, features,
+                                pricing (one line), different, objections, neverClaim, positioning, keywords, hero,
+                                brief, bio, contact, log, feed, press, card, logo, screenshots
+  version 2 ................... plans[], pricingNote, captions{url: caption}, sameAs[], docs, image,
+                                brand{primary, secondary, background, foreground, fontHeading, fontBody, logo,
+                                      logoDark, wordmark, icon, naming, pronounce}
+                                founder{name, title, url, bio, bioShort, photo, place, socials{key: url}}
+                                facts{founded, location, team, category, platforms[], license, stack}
+                                feeds{blog, releases, changelog, log}
+                                links{docs, repo, pricing, changelog, status, press, pressMarkdown, pressZip,
+                                      context, brand, card}
+                                copy{short, medium, long, boilerplate, taglines[], quotes[], angles[], story,
+                                     notA[], milestones[], coverage[], metaTitle, metaDescription}
+```
+
+Every key is present: a string is `''` when unset, a list `[]`, an address `null`. `hash` is a hash of `product` with
+keys in a fixed order, so the same facts give the same hash whoever wrote the file and whenever; `at` is the facts' own
+`updatedAt` when they have one. Each block has one home: facts and plans belong to the product's code, copy to whoever
+writes copy (Ottabuzz), brand to whoever holds the brand (Imageine). A reader takes each block from the file that owns
+it and uses `inherit` for the rest.
+
+`scope: "owner"` is the same document with the writer-only fields in: `neverClaim` and the whole `brief`. A site serves
+it only behind a capability token (see `@ottabase/discover`); the public file always has them empty.
+
+## The founder manifest
+
+```typescript
+import { founderJson, parseFounderJson } from '@ottabase/context';
+
+founderJson(
+    {
+        founder: { name: 'Dj', url: 'https://think.dj', socials: { x: 'https://x.com/thinkdj' } },
+        products: [
+            { name: 'Alpha', url: 'https://alpha.test' },
+            { name: 'Ottabuzz', url: 'https://ottabuzz.com' },
+        ],
+    },
+    { from: 'https://think.dj/.well-known/otta.json' },
+);
+```
+
+`kind: "otta-founder"`: the person and every product, each with the address of its own context file (the product's
+`/.well-known/otta.json` when none is given). One address on the founder's domain lets a tool import the whole shelf.
+`fetchOtta` reads either kind and says which it found.
+
+## Why this is its own package
+
+`@ottabase/discover` had the schema and two consumers had their own copies of the reader, so each grew the shape alone
+and the copies drifted. This package has no dependencies on purpose, so Ottabuzz, Imageine and a Worker can all take it
+as is, and it is the only place the shape is defined. `@ottabase/discover` depends on it and adds the Worker routes,
+robots.txt, the sitemap and JSON-LD.
+
+
+---
+
 # packages/cron/README.md
 
 # @ottabase/cron
@@ -14770,6 +14895,12 @@ export default async () => discoverRobots({ sitemap: 'https://alpha.test/sitemap
 // app/.well-known/otta.json/route.ts
 import { ottaJsonHandler } from '@ottabase/discover/next';
 export const GET = ottaJsonHandler(async () => product); // or null until there is a product
+// With owner keys (one per consumer) and, when the file should not be public at all, 'private':
+export const GET = ottaJsonHandler(
+    async () => product,
+    () => [process.env.OTTA_KEY_PRODUCT1, process.env.OTTA_KEY_PRODUCT2].filter(Boolean) as string[],
+    process.env.OTTA_PRIVATE === '1' ? 'private' : 'public',
+);
 
 // app/page.tsx, the home page only
 import { ProductJsonLd } from '@ottabase/discover/next';
@@ -14788,6 +14919,11 @@ import { product } from './product';
 
 export const discoverPackage = createDiscoverPackage<CloudflareEnv>({
     facts: product, // or (env) => readFromD1(env)
+    // Long random secrets, one per consumer: /.well-known/otta.json?key=<one> serves the owner copy (neverClaim,
+    // the brief), uncached. Drop one from the list and that consumer is cut off; the others keep reading.
+    owner: (env) => [env.OTTA_KEY_PRODUCT1, env.OTTA_KEY_PRODUCT2],
+    // 'private' answers 404 to anyone without a key; leave it out for a public file.
+    visibility: (env) => (env.OTTA_PRIVATE === '1' ? 'private' : 'public'),
     robots: (env) => ({ closed: env.ENVIRONMENT !== 'production', sitemap: `${product.url}sitemap.xml` }),
     sitemap: async () => [{ url: product.url }],
 });
@@ -14797,16 +14933,60 @@ List it in `ottabase/packages.ts`. The Worker then answers `/robots.txt`, `/.wel
 mounted at `/` on static paths that never shadow the host's own routes, and the health report gains one line,
 `discover:facts`, saying whether there are facts to serve.
 
+### A private product, end to end
+
+For a product whose facts should not sit on the open web, or whose owner lines a tool needs:
+
+1. In the product, set `visibility: 'private'` (or leave it public and only add keys) and give `owner` one long random
+   secret per consumer, as env vars: `wrangler secret put OTTA_KEY_PRODUCT1`, `wrangler secret put OTTA_KEY_PRODUCT2`.
+   Deploy. `curl https://product.com/.well-known/otta.json` now answers 404;
+   `curl "https://product.com/.well-known/otta.json?key=$OTTA_KEY_PRODUCT1"` answers the owner document,
+   `scope: "owner"`.
+2. In Ottabuzz, open the project's Brief tab and paste
+   `https://product.com/.well-known/otta.json?key=<the first secret>` into "Facts file", save, then "Read again". The
+   brief is rebuilt from the file with no model call, the hard lines reach "Never claim", and the press kit takes the
+   facts, brand, founder and release feed it had not been told. The key stays on the project row; the `context.json`
+   Ottabuzz writes for the project never carries it.
+3. In Imageine, open Liftoff's Import chip and paste the address with the second secret. `ottaJsonUrl` keeps the `key`
+   and drops everything else in the query, so the same address pasted with tracking parameters still works.
+4. To cut one tool off, remove its secret from the list and redeploy. The other keeps reading. To make the file public
+   again, drop `visibility` and keep the keys: the public shape serves without one, the owner shape with.
+
+The key is a query parameter on purpose: a browser fetch from Imageine needs no preflight, a founder pastes one address
+once, and curl and a cron work unchanged. The address therefore shows in the product's own request logs and nowhere
+else; a leak is answered by dropping that one key.
+
+### The brand block from the theme
+
+An app already has its colours and type in its Brand Engine theme, so the brand block should come from there, not be
+typed twice. `brandFromTheme` reads the light palette and the heading and body families off any theme-shaped object (the
+engine is not imported) and takes the marks the theme does not know by hand:
+
+```typescript
+import { brandFromTheme, defineProduct } from '@ottabase/discover';
+import { theme } from './theme';
+
+export const product = defineProduct({
+    name: 'Alpha',
+    url: 'https://alpha.test',
+    brand: brandFromTheme(theme, { logo: 'https://alpha.test/logo.png', logoDark: 'https://alpha.test/logo-dark.png' }),
+    // ...
+});
+```
+
+HSL channels ("221.2 83.2% 53.3%") become `#2563eb`; a CSS variable or a generic family is left out.
+
 ## Every generator, by hand
 
-| Function                          | Gives                                                                                                                             |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `robotsTxt(opts)` / `robotsRules` | The text file, or the same rules as data in the shape `app/robots.ts` returns. `training: 'block'` blocks the training bots only. |
-| `sitemapXml(entries)`             | XML with `lastmod`, escaped.                                                                                                      |
-| `ottaJson(facts, { from })`       | The `otta-context` v1 document. `parseOttaJson(raw)` reads one back, leniently, from any source.                                  |
-| `jsonLd(facts)` / `jsonLdScript`  | Organization, WebSite and SoftwareApplication (with offers) as one graph, or as the escaped `<script>` string.                    |
-| `canonicalParagraph(facts)`       | "Alpha is a SaaS starter for Cloudflare. It is for founders who ship alone. Made by Dj, since 2026. https://alpha.test/"          |
-| `llmsTxt(facts, sections)`        | For a docs site only.                                                                                                             |
+| Function                           | Gives                                                                                                                             |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `robotsTxt(opts)` / `robotsRules`  | The text file, or the same rules as data in the shape `app/robots.ts` returns. `training: 'block'` blocks the training bots only. |
+| `sitemapXml(entries)`              | XML with `lastmod`, escaped.                                                                                                      |
+| `ottaJson(facts, { from, scope })` | The `otta-context` version 2 document, from `@ottabase/context`. `parseOttaJson(raw)` reads one back, leniently, from any source. |
+| `brandFromTheme(theme, marks)`     | The brand block off a Brand Engine theme: the light palette as `#rrggbb`, the heading and body families, plus the marks given.    |
+| `jsonLd(facts)` / `jsonLdScript`   | Organization, WebSite and SoftwareApplication (with offers) as one graph, or as the escaped `<script>` string.                    |
+| `canonicalParagraph(facts)`        | "Alpha is a SaaS starter for Cloudflare. It is for founders who ship alone. Made by Dj, since 2026. https://alpha.test/"          |
+| `llmsTxt(facts, sections)`         | For a docs site only.                                                                                                             |
 
 ## The training crawlers
 
@@ -14818,10 +14998,26 @@ switch, `training: 'allow' | 'block'`, and the default is allow.
 ## otta.json and the other products
 
 `/.well-known/otta.json` is the same document Ottabuzz serves for a project as `/b/<slug>/context.json`, written here
-from the product's own site. Ottabuzz reads `/.well-known/otta.json` when it exists and reads the page when it does not;
-Imageine's Liftoff imports either. The file carries nothing the site does not already show: `neverClaim` is always empty
-in it, since it sits on the open web. Integrations between our products are great to have, never mandatory: this package
-is complete on its own, and a site without Ottabuzz or Imageine anywhere near it loses nothing.
+from the product's own site. The schema, version 2, lives in `@ottabase/context`, a dependency-free package Ottabuzz and
+Imageine read through as well, so the shape cannot drift: the version 1 fields unchanged, plus the plans as data, a
+brand block, a founder block with photo and handles, the facts a directory asks for, feed and link addresses, the press
+kit's copy, and a content hash. Ottabuzz reads the file when it exists and reads the page when it does not; Imageine's
+Liftoff imports either; both use the hash to know when the product moved.
+
+The public file carries nothing the site does not already show: `neverClaim` and the brief are always empty in it, since
+it sits on the open web. The same document with them in is served to `?key=<owner key>` alone, uncached, and the key
+never appears in the file. `owner` takes one key or a list, one per consumer, so a key pasted into Ottabuzz can be
+revoked without touching the one in Imageine. The founder pastes the keyed address once into each tool. A wrong key gets
+the public file, never an error, so a leaked guess learns nothing.
+
+A founder who wants no public file at all sets `visibility: 'private'`: without a valid key the route answers 404, as if
+the file were not there, while robots.txt and the sitemap stay. The consumers take a keyed address in place of the site:
+Ottabuzz's Brief tab has a "Facts file" field, Imageine's Import chip takes the address as pasted, and `ottaJsonUrl` in
+`@ottabase/context` keeps the key and drops everything else in the query.
+
+The response carries the document's hash as its ETag; a reader that sends it back as `If-None-Match` gets a 304 and no
+bytes while nothing changed. Integrations between our products are great to have, never mandatory: this package is
+complete on its own, and a site without Ottabuzz or Imageine anywhere near it loses nothing.
 
 ## The checklist the package cannot do for you
 
@@ -17227,7 +17423,7 @@ renewal webhook. Undeclared meters have no balance, which `consume` reports as `
 - **The model is for the admin page.** `MeterBalance` and `MeterUsage` make the tables visible to the Database admin and
   the generic CRUD allowlist; the money path is raw SQL on purpose.
 - ponytail: one D1 statement is atomic per row; for a global, strongly consistent counter across regions, front the
-  meter with a Durable Object (`WebhookEndpointQuota` in otta-web is the pattern) and call `consume` from it.
+  meter with a Durable Object (one per tenant, serializing count-then-write) and call `consume` from it.
 
 
 ---
@@ -24476,7 +24672,6 @@ pnpm --filter @ottabase/premium test
 ## See also
 
 - `docs/PREMIUM_PACKAGES.md` — the end-to-end host-integration guide
-- `packages/webhooks` — a complete working Premium Package built on this framework
 
 
 ---
@@ -28360,16 +28555,8 @@ transaction, and any one tenant's rows can be streamed out when a customer asks 
 D1 has point-in-time recovery; that is Cloudflare's safety net. This one is yours: a copy in a bucket you control,
 readable by anything that reads JSON, restorable into a fresh database, portable off the platform.
 
-Vault is a **Premium Package** (`@ottabase/premium`). The part that gets you out of trouble is free; what is sold is not
-having to remember.
-
-|                                                               | Free                      | Licensed                                 |
-| ------------------------------------------------------------- | ------------------------- | ---------------------------------------- |
-| Manual backup, list, restore, delete                          | yes, up to 5 kept backups | yes, up to the license's `backups` limit |
-| A user's own export (`GET /export/me`)                        | yes                       | yes                                      |
-| Nightly schedule (`vault:backup`) with retention pruning      | no                        | yes                                      |
-| Stale-backup health check in `/api/admin/health`              | no                        | yes                                      |
-| Operator export of any tenant (`GET /export?organizationId=`) | no                        | yes                                      |
+Everything is free: manual backup, list, restore and delete, a nightly schedule (`vault:backup`) with retention pruning,
+a stale-backup health check in `/api/admin/health`, operator export of any tenant, and every user's own export.
 
 ## Install
 
@@ -28391,24 +28578,13 @@ export const vaultPackage = createVaultPackage<CloudflareEnv>({
     vault,
     resolveCaller: resolvePackageCaller,
     env: { required: ['OBCF_D1', 'OBCF_R2'] },
-    // licensePublicKey: '…',  // your vendor key; defaults to the DEMO key published in this repo
 });
 ```
 
-List `vaultPackage` in `ottabase/packages.ts`; the premium registry (`worker/lib/premium.ts`) picks it up from the list
-and mounts its routes behind the entitlement gate. The package has no tables of its own. It seeds a `vault:backup` task
-at `23 2 * * *` and renders at **Admin → Infrastructure → Vault** (`VaultSettings` from `@ottabase/vault/react`; add
-`'../../packages/vault/src/**/*.{js,ts,jsx,tsx}'` to the app's Tailwind `content`).
-
-## Licensing
-
-Paste a license at **Admin → Growth → Premium packages**, or set `PREMIUM_LICENSE_VAULT` (or a `PREMIUM_LICENSES` JSON
-map). A license names features (`schedule`, `export`) and may raise the `backups` limit.
-`packages/vault/src/demo-license.ts` holds the demo vendor's keypair and a perpetual pro license, so the whole flow can
-be tried without buying anything; replace the public key for anything you sell (`generateLicenseKeypair` from
-`@ottabase/premium/license-tools`).
-
-A lapsed license closes the schedule and the operator export. Backups stay, restore stays, your data stays.
+List `vaultPackage` in `ottabase/packages.ts`; the kernel mounts its routes like any other package's. The package has no
+tables of its own. It seeds a `vault:backup` task at `23 2 * * *` and renders at **Admin → Infrastructure → Vault**
+(`VaultSettings` from `@ottabase/vault/react`; add `'../../packages/vault/src/**/*.{js,ts,jsx,tsx}'` to the app's
+Tailwind `content`).
 
 ## Layout in the bucket
 
@@ -28433,10 +28609,10 @@ await vault.prune(env, 30); // ids removed
 vault.export(env, { column: 'organization_id', value: orgId }); // ReadableStream of {table,row} NDJSON lines
 ```
 
-The core (`createVault`) is not gated: app code can call any of it. The gates live in the routes and the cron handler.
-Restore intersects the backup's columns with the live table's, so a column dropped since the backup is skipped and
-reported, and a table that no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does),
-the whole restore is one transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
+App code can call any of the core (`createVault`) directly; the routes add the caller checks. Restore intersects the
+backup's columns with the live table's, so a column dropped since the backup is skipped and reported, and a table that
+no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does), the whole restore is one
+transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
 
 ### The bucket's own objects
 
@@ -28454,24 +28630,18 @@ ceiling here (marked `ponytail:`); steady state copies only what changed.
 
 ## Routes
 
-| Route                                  | Who                | Gate             | Does                                                                            |
-| -------------------------------------- | ------------------ | ---------------- | ------------------------------------------------------------------------------- |
-| `GET /backups`                         | platform admin     | free             | newest manifests (`?limit=`)                                                    |
-| `POST /backups`                        | platform admin     | `backups` limit  | run a backup now (`{ tables?, label?, objects? }`); 402 at the cap              |
-| `GET /backups/:id`                     | platform admin     | free             | one manifest                                                                    |
-| `POST /backups/:id/restore`            | platform admin     | free             | `{ confirm: id, tables?, truncate?, objects? }`; replaces live rows and objects |
-| `DELETE /backups/:id`                  | platform admin     | free             | remove every object of the backup                                               |
-| `GET /export?organizationId=\|userId=` | platform admin     | `export` feature | NDJSON download of one tenant                                                   |
-| `GET /export/me`                       | any signed-in user | free             | their organization (if they manage it) or their own rows                        |
-
-A closed gate answers `402 PREMIUM_REQUIRED` with `metadata.reason` (`LIMIT_REACHED`, `LICENSE_MISSING`, …) and the
-purchase URL, which is what the admin page renders as the upsell.
+| Route                                  | Who                | Does                                                                            |
+| -------------------------------------- | ------------------ | ------------------------------------------------------------------------------- |
+| `GET /backups`                         | platform admin     | newest manifests (`?limit=`)                                                    |
+| `POST /backups`                        | platform admin     | run a backup now (`{ tables?, label?, objects? }`)                              |
+| `GET /backups/:id`                     | platform admin     | one manifest                                                                    |
+| `POST /backups/:id/restore`            | platform admin     | `{ confirm: id, tables?, truncate?, objects? }`; replaces live rows and objects |
+| `DELETE /backups/:id`                  | platform admin     | remove every object of the backup                                               |
+| `GET /export?organizationId=\|userId=` | platform admin     | NDJSON download of one tenant                                                   |
+| `GET /export/me`                       | any signed-in user | their organization (if they manage it) or their own rows                        |
 
 ## Design notes
 
-- **The registry arrives at mount time.** A cron handler never sees the host, so `routes.build(host)` keeps the premium
-  registry in a closure and the handler and the health probe ask it. Until the routes are mounted the schedule stays off
-  and health reports why.
 - **NDJSON, not SQLite files.** D1 does not hand out its database file; a row-per-line text format is what every tool
   can read, diff and import, and it slices per tenant.
 - **Internal tables are skipped**: `_cf_KV`, `sqlite_sequence`, the migration ledgers. Pass `exclude` for your own.
@@ -28486,65 +28656,16 @@ purchase URL, which is what the admin page renders as the upsell.
 
 # @ottabase/webhooks
 
-Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
-[`@ottabase/premium`](../premium/README.md).
-
-Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed deliveries. The package ships a
-genuinely usable free tier and sells the parts that cost money to run.
-
-| Tier               | Endpoints | Signed delivery | Endpoint health | Delivery history |
-| ------------------ | --------- | --------------- | --------------- | ---------------- |
-| No license         | 1         | ✓               | ✓               | ✗                |
-| Demo "pro" license | 25        | ✓               | ✓               | ✓                |
-
-That split is the point of the example: it exercises a **limit** gate, a **feature** gate, and a free tier that stays
-reachable when the license lapses.
+Outbound webhooks for Ottabase apps. Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed
+deliveries, with each endpoint's health and a log of every delivery. Free and unlimited: no license, no endpoint cap.
 
 ## Try it in otta-web
 
 The package is already listed in `apps/otta-web/ottabase/packages.ts` (`ottabase/packages/webhooks.ts`).
 
 1. Run migrations so the two tables exist: `curl -X POST http://localhost:3004/api/ottaorm/init`
-2. Open **Admin → Growth → Webhooks**. With no license you can add **one** endpoint; the second attempt is refused with
-   402 and the UI says why.
-3. Open **Admin → Growth → Premium packages**, paste the demo license below, and press _Activate_.
-4. Back on the webhooks page: the ceiling is now 25 and the delivery log has replaced its upsell.
-
-```text
-otta_premium_v1.eyJpZCI6ImxpY19kZW1vX3Byb18wMDAxIiwicGtnIjoid2ViaG9va3MiLCJwbGFuIjoicHJvIiwibGljZW5zZWUiOiJPdHRhYmFzZSBEZW1vIiwiZmVhdHVyZXMiOlsiZGVsaXZlcmllcy5sb2ciLCJjdXN0b20taGVhZGVycyJdLCJsaW1pdHMiOnsiZW5kcG9pbnRzIjoyNX0sImlhdCI6MTczNTY4OTYwMH0.yNy_XM1hjiwMCqOQUwC4INMt6FZ19jObyESanPU_C5hPv6cQhl0FbXwIXCvfn-smOz2ziqFIi784Mp4ErZ68mg
-```
-
-Or set it per deploy, which takes precedence over anything pasted in the UI:
-
-```bash
-PREMIUM_LICENSE_WEBHOOKS=otta_premium_v1.…
-```
-
-## Licensing
-
-**The demo keypair in `src/demo-license.ts` is published on purpose — including the private key.** Anyone can mint a
-license for `webhooks`; that is what makes the flow above try-able without buying anything.
-
-A real vendor generates its own keypair, puts only the **public** key in the manifest, and keeps the private key
-wherever release signing material lives:
-
-```typescript
-import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-tools';
-
-const { publicKey, privateKey } = await generateLicenseKeypair();
-
-const token = await issueLicense(
-    {
-        pkg: 'webhooks',
-        plan: 'pro',
-        licensee: 'Customer Inc',
-        features: ['deliveries.log'],
-        limits: { endpoints: 25 },
-    },
-    privateKey,
-    { expiresInDays: 365 },
-);
-```
+2. Open **Admin → Growth → Webhooks**, add an endpoint, and press _Test_: the outcome shows on the endpoint. Events your
+   app dispatches (below) also land in the delivery log.
 
 ## Registering it in an app
 
@@ -28572,15 +28693,15 @@ export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
 definePackageList(() => [corePackage, appPackage, /* … */ webhooksPackage]);
 ```
 
-The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the premium registry behind
-its entitlement gate) and the nav entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
+The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the kernel) and the nav
+entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
 
 `/events` is an event catalog, not an event bus. `ping` is emitted by the built-in test route; every product event must
 be dispatched from its real, tenant-scoped domain write (as shown below). The template app therefore advertises only
 `ping` until its product adds such producers.
 
-A rendered admin page still needs the explicit app-side client adapter described in `@ottabase/premium`; this keeps
-server authentication code out of the browser bundle.
+The React hooks go through the app's `OttaQueryProvider` client (`useApiQuery` / `useApiMutation`), so the page needs no
+provider of its own.
 
 ## Sending events
 
@@ -28588,29 +28709,19 @@ server authentication code out of the browser bundle.
 import { dispatchWebhookEvent } from '@ottabase/webhooks';
 
 await dispatchWebhookEvent({
-    registry: premium,
-    env,
     event: 'todo.created',
     payload: { id: todo.id, title: todo.title },
     tenant: { organizationId, appId, userId }, // userId is required when organizationId is null
 });
 ```
 
-For a globally strict endpoint ceiling, the host should also pass an `endpointQuota` coordinator to
-`createWebhooksPackage()`. It reserves a short-lived slot using a tenant-scoped coordinator (the template app uses a
-Cloudflare Durable Object) before the OttaORM create, commits or releases it afterwards, and reconciles successful
-deletes. The package's built-in lock is intentionally only an in-isolate fallback for hosts that do not make that
-stronger promise.
-
-Safe to call unconditionally: a disabled or uninstalled package returns `[]`, while an unlicensed package delivers its
-free tier, so host code never has to ask whether the add-on is installed.
+Safe to call unconditionally: a tenant with no subscribed endpoints gets `[]`.
 
 **Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue — a retry loop on the request
 path turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
 consumer can own the retry policy.
 
-An unlicensed package delivers its free tier; only a disabled or uninstalled package returns no deliveries. Personal
-dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
+Personal dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
 
 ## Receiving and verifying
 
@@ -28638,18 +28749,17 @@ recreate the endpoint if it is lost.
 
 ## API
 
-All routes are mounted at `/api/webhooks` with `gate: 'entitlements'` — the namespace stays reachable so the free tier
-works, and each paid path guards itself.
+All routes are mounted at `/api/webhooks` and resolve the caller first; writes need `canManage`.
 
-| Method   | Path          | Gate                     |
-| -------- | ------------- | ------------------------ |
-| `GET`    | `/events`     | free                     |
-| `GET`    | `/`           | free                     |
-| `POST`   | `/`           | limit `endpoints`        |
-| `PATCH`  | `/:id`        | free                     |
-| `DELETE` | `/:id`        | free                     |
-| `POST`   | `/:id/test`   | free                     |
-| `GET`    | `/deliveries` | feature `deliveries.log` |
+| Method   | Path          | Does                                          |
+| -------- | ------------- | --------------------------------------------- |
+| `GET`    | `/events`     | the event catalog                             |
+| `GET`    | `/`           | the tenant's endpoints                        |
+| `POST`   | `/`           | create one; the only response with the secret |
+| `PATCH`  | `/:id`        | edit url, description, events, enabled        |
+| `DELETE` | `/:id`        | remove one                                    |
+| `POST`   | `/:id/test`   | send a signed `ping`                          |
+| `GET`    | `/deliveries` | the tenant's delivery log (`?endpointId=`)    |
 
 ## Security notes
 

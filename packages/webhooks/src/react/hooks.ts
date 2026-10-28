@@ -3,15 +3,12 @@
 // ============================================================
 // @ottabase/webhooks/react — query hooks
 // ============================================================
-// These reuse the premium provider's `requestAbsolute` seam rather than introducing a
-// second client: the app's API client is what attaches `X-Org-Id` and `X-App-Id`, and
-// those headers select the tenant whose endpoints the server returns. Two clients would
-// mean the entitlement gate and the data it guards could answer for two different
-// tenants.
+// Through the framework client (`useApiQuery` / `useApiMutation`), never `fetch()`: the
+// app's one API client attaches `X-Org-Id` and `X-App-Id`, and those headers select the
+// tenant whose endpoints the server returns. Every write invalidates the whole namespace.
 // ============================================================
 
-import { usePremiumClient } from '@ottabase/premium/react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { WEBHOOKS_BASE_PATH } from '../constants';
 import type { WebhookDeliveryView } from '../ottaorm-models/WebhookDelivery';
 import type { WebhookEndpointView } from '../ottaorm-models/WebhookEndpoint';
@@ -30,70 +27,64 @@ export const webhookQueryKeys = {
 /** A created endpoint — the ONE response that ever carries the signing secret. */
 export type CreatedWebhookEndpoint = WebhookEndpointView & { secret?: string };
 
+type Envelope<T> = { data: T };
+const unwrap = <T>(response: Envelope<T>) => response.data;
+const endpointPath = ({ id }: { id: string }) => `${WEBHOOKS_BASE_PATH}/${encodeURIComponent(id)}`;
+
 export function useWebhookEndpoints() {
-    const client = usePremiumClient();
-    const queryClient = useQueryClient();
+    const invalidateEntities = [WEBHOOK_ENDPOINTS_ENTITY];
 
-    const request = <T>(path: string, init?: { method?: string; body?: unknown }) =>
-        client.requestAbsolute<T>(`${WEBHOOKS_BASE_PATH}${path}`, init);
-
-    const query = useQuery<WebhookEndpointView[], Error>({
-        queryKey: webhookQueryKeys.list(),
-        queryFn: () => request<WebhookEndpointView[]>('/'),
-        staleTime: 15_000,
-        enabled: client.mounted,
+    const query = useApiQuery<Envelope<WebhookEndpointView[]>, WebhookEndpointView[]>({
+        entity: WEBHOOK_ENDPOINTS_ENTITY,
+        queryKey: ['list'],
+        endpoint: `${WEBHOOKS_BASE_PATH}/`,
+        select: unwrap,
+        queryOptions: { staleTime: 15_000 },
     });
 
-    const catalog = useQuery<string[], Error>({
-        queryKey: webhookQueryKeys.events(),
-        queryFn: () => request<string[]>('/events'),
+    const catalog = useApiQuery<Envelope<string[]>, string[]>({
+        entity: WEBHOOK_ENDPOINTS_ENTITY,
+        queryKey: ['events'],
+        endpoint: `${WEBHOOKS_BASE_PATH}/events`,
+        select: unwrap,
         // Deployment-static; refetching it on every focus is pure noise.
-        staleTime: 60 * 60 * 1000,
-        enabled: client.mounted,
+        queryOptions: { staleTime: 60 * 60 * 1000 },
     });
 
-    const invalidate = () => void queryClient.invalidateQueries({ queryKey: webhookQueryKeys.all() });
-    const meta = { entity: WEBHOOK_ENDPOINTS_ENTITY };
-
-    const create = useMutation<CreatedWebhookEndpoint, Error, WebhookEndpointInput>({
-        meta,
-        mutationFn: (input) => request<CreatedWebhookEndpoint>('/', { method: 'POST', body: input }),
-        onSuccess: invalidate,
+    const create = useApiMutation<Envelope<CreatedWebhookEndpoint>, WebhookEndpointInput>({
+        endpoint: `${WEBHOOKS_BASE_PATH}/`,
+        invalidateEntities,
     });
 
-    const update = useMutation<WebhookEndpointView, Error, { id: string; data: WebhookEndpointInput }>({
-        meta,
-        mutationFn: ({ id, data }) =>
-            request<WebhookEndpointView>(`/${encodeURIComponent(id)}`, { method: 'PATCH', body: data }),
-        onSuccess: invalidate,
+    const update = useApiMutation<Envelope<WebhookEndpointView>, WebhookEndpointInput & { id: string }>({
+        endpoint: endpointPath,
+        method: 'PATCH',
+        invalidateEntities,
     });
 
-    const remove = useMutation<{ deleted: boolean; id: string }, Error, string>({
-        meta,
-        mutationFn: (id) =>
-            request<{ deleted: boolean; id: string }>(`/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-        onSuccess: invalidate,
+    const remove = useApiMutation<Envelope<{ deleted: boolean; id: string }>, { id: string }>({
+        endpoint: endpointPath,
+        method: 'DELETE',
+        invalidateEntities,
     });
 
-    const test = useMutation<{ ok: boolean; statusCode: number | null }, Error, string>({
-        meta,
-        mutationFn: (id) =>
-            request<{ ok: boolean; statusCode: number | null }>(`/${encodeURIComponent(id)}/test`, { method: 'POST' }),
-        // A test writes the endpoint's health fields, so the list is genuinely stale after it.
-        onSuccess: invalidate,
+    // A test writes the endpoint's health fields, so the list is genuinely stale after it.
+    const test = useApiMutation<Envelope<{ ok: boolean; statusCode: number | null }>, { id: string }>({
+        endpoint: (variables) => `${endpointPath(variables)}/test`,
+        invalidateEntities,
     });
 
-    return { ...query, catalog, create, update, remove, test, invalidate };
+    return { ...query, catalog, create, update, remove, test };
 }
 
 export function useWebhookDeliveries(endpointId?: string) {
-    const client = usePremiumClient();
     const suffix = endpointId ? `?endpointId=${encodeURIComponent(endpointId)}` : '';
 
-    return useQuery<WebhookDeliveryView[], Error>({
-        queryKey: webhookQueryKeys.deliveries(endpointId),
-        queryFn: () => client.requestAbsolute<WebhookDeliveryView[]>(`${WEBHOOKS_BASE_PATH}/deliveries${suffix}`),
-        staleTime: 10_000,
-        enabled: client.mounted,
+    return useApiQuery<Envelope<WebhookDeliveryView[]>, WebhookDeliveryView[]>({
+        entity: WEBHOOK_ENDPOINTS_ENTITY,
+        queryKey: ['deliveries', endpointId ?? 'all'],
+        endpoint: `${WEBHOOKS_BASE_PATH}/deliveries${suffix}`,
+        select: unwrap,
+        queryOptions: { staleTime: 10_000 },
     });
 }

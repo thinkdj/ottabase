@@ -194,7 +194,7 @@ entitlements and lifecycle, and mounts its routes behind the license gate.
    disappears gives a bookmarked link a 404 and no way to reach the screen that fixes it.
 6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
-Full guide: `docs/PREMIUM_PACKAGES.md`. Worked example: `packages/webhooks`.
+Full guide: `docs/PREMIUM_PACKAGES.md`. Every package in this repository is free; the framework is for add-ons you sell.
 
 ### Quick examples
 
@@ -572,18 +572,18 @@ and a drop-in admin surface. Inert until a package is registered — an app that
 
 ```typescript
 // Install (the whole job): one entry in apps/*/ottabase/packages.ts
-definePackageList(() => [corePackage, appPackage, /* … */ createWebhooksPackage({ resolveCaller })]);
+definePackageList(() => [corePackage, appPackage, /* … */ reportsPackage]);
 
 // Enforce (worker)
 import { requirePremiumFeature } from '@ottabase/premium/server';
-const denied = await requirePremiumFeature(premium, env, 'webhooks', 'deliveries.log');
+const denied = await requirePremiumFeature(premium, env, 'reports', 'reports.export');
 if (denied) return denied; // 402 PREMIUM_REQUIRED
 
 // Gate (browser) — a UX affordance; the server guard above is the boundary
 import { PremiumGate } from '@ottabase/premium/react';
 ```
 
-See `docs/PREMIUM_PACKAGES.md`; `@ottabase/webhooks` is the worked example.
+See `docs/PREMIUM_PACKAGES.md` and `packages/premium/README.md`.
 
 ### @ottabase/queue
 

@@ -284,15 +284,14 @@ silently runs local-only. One-time setup, token format, rotation, and local use 
 
 ### Cloudflare Bindings
 
-| Binding                       | Type           |
-| ----------------------------- | -------------- |
-| `OBCF_D1`                     | D1 Database    |
-| `OBCF_KV`                     | KV Namespace   |
-| `OBCF_R2`                     | R2 Bucket      |
-| `OBCF_QUEUE`                  | Queue          |
-| `OBCF_REALTIME`               | Durable Object |
-| `OBCF_WEBHOOK_ENDPOINT_QUOTA` | Durable Object |
-| `OBCF_RATE_LIMITER`           | Rate Limiter   |
+| Binding             | Type           |
+| ------------------- | -------------- |
+| `OBCF_D1`           | D1 Database    |
+| `OBCF_KV`           | KV Namespace   |
+| `OBCF_R2`           | R2 Bucket      |
+| `OBCF_QUEUE`        | Queue          |
+| `OBCF_REALTIME`     | Durable Object |
+| `OBCF_RATE_LIMITER` | Rate Limiter   |
 
 See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for usage details.
 

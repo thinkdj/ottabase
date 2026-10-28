@@ -1,9 +1,8 @@
 // ============================================================
 // WebhookDelivery model (Fat Model)
 // ============================================================
-// The delivery LOG is the paid half of this package: an unlicensed install still sees
-// each endpoint's last outcome, but no history. Retention is what costs money, so
-// retention is what is sold.
+// The delivery LOG: one row per dispatched attempt, beside the last outcome each
+// endpoint keeps on itself.
 // ============================================================
 
 import { BaseModel, type ModelFields, type PackageType } from '@ottabase/ottaorm';

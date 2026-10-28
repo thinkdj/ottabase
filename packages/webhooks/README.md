@@ -1,64 +1,15 @@
 # @ottabase/webhooks
 
-Outbound webhooks for Ottabase apps — and the **worked example** of a Premium Package built on
-[`@ottabase/premium`](../premium/README.md).
-
-Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed deliveries. The package ships a
-genuinely usable free tier and sells the parts that cost money to run.
-
-| Tier               | Endpoints | Signed delivery | Endpoint health | Delivery history |
-| ------------------ | --------- | --------------- | --------------- | ---------------- |
-| No license         | 1         | ✓               | ✓               | ✗                |
-| Demo "pro" license | 25        | ✓               | ✓               | ✓                |
-
-That split is the point of the example: it exercises a **limit** gate, a **feature** gate, and a free tier that stays
-reachable when the license lapses.
+Outbound webhooks for Ottabase apps. Customers register HTTPS endpoints, subscribe to events, and receive HMAC-signed
+deliveries, with each endpoint's health and a log of every delivery. Free and unlimited: no license, no endpoint cap.
 
 ## Try it in otta-web
 
 The package is already listed in `apps/otta-web/ottabase/packages.ts` (`ottabase/packages/webhooks.ts`).
 
 1. Run migrations so the two tables exist: `curl -X POST http://localhost:3004/api/ottaorm/init`
-2. Open **Admin → Growth → Webhooks**. With no license you can add **one** endpoint; the second attempt is refused with
-   402 and the UI says why.
-3. Open **Admin → Growth → Premium packages**, paste the demo license below, and press _Activate_.
-4. Back on the webhooks page: the ceiling is now 25 and the delivery log has replaced its upsell.
-
-```text
-otta_premium_v1.eyJpZCI6ImxpY19kZW1vX3Byb18wMDAxIiwicGtnIjoid2ViaG9va3MiLCJwbGFuIjoicHJvIiwibGljZW5zZWUiOiJPdHRhYmFzZSBEZW1vIiwiZmVhdHVyZXMiOlsiZGVsaXZlcmllcy5sb2ciLCJjdXN0b20taGVhZGVycyJdLCJsaW1pdHMiOnsiZW5kcG9pbnRzIjoyNX0sImlhdCI6MTczNTY4OTYwMH0.yNy_XM1hjiwMCqOQUwC4INMt6FZ19jObyESanPU_C5hPv6cQhl0FbXwIXCvfn-smOz2ziqFIi784Mp4ErZ68mg
-```
-
-Or set it per deploy, which takes precedence over anything pasted in the UI:
-
-```bash
-PREMIUM_LICENSE_WEBHOOKS=otta_premium_v1.…
-```
-
-## Licensing
-
-**The demo keypair in `src/demo-license.ts` is published on purpose — including the private key.** Anyone can mint a
-license for `webhooks`; that is what makes the flow above try-able without buying anything.
-
-A real vendor generates its own keypair, puts only the **public** key in the manifest, and keeps the private key
-wherever release signing material lives:
-
-```typescript
-import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-tools';
-
-const { publicKey, privateKey } = await generateLicenseKeypair();
-
-const token = await issueLicense(
-    {
-        pkg: 'webhooks',
-        plan: 'pro',
-        licensee: 'Customer Inc',
-        features: ['deliveries.log'],
-        limits: { endpoints: 25 },
-    },
-    privateKey,
-    { expiresInDays: 365 },
-);
-```
+2. Open **Admin → Growth → Webhooks**, add an endpoint, and press _Test_: the outcome shows on the endpoint. Events your
+   app dispatches (below) also land in the delivery log.
 
 ## Registering it in an app
 
@@ -86,15 +37,15 @@ export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
 definePackageList(() => [corePackage, appPackage, /* … */ webhooksPackage]);
 ```
 
-The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the premium registry behind
-its entitlement gate) and the nav entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
+The manifest contributes tables, models, RLS policies, routes at `/api/webhooks` (mounted by the kernel) and the nav
+entry; its admin page is a client descriptor in `src/ottabase/config/packages.ts`.
 
 `/events` is an event catalog, not an event bus. `ping` is emitted by the built-in test route; every product event must
 be dispatched from its real, tenant-scoped domain write (as shown below). The template app therefore advertises only
 `ping` until its product adds such producers.
 
-A rendered admin page still needs the explicit app-side client adapter described in `@ottabase/premium`; this keeps
-server authentication code out of the browser bundle.
+The React hooks go through the app's `OttaQueryProvider` client (`useApiQuery` / `useApiMutation`), so the page needs no
+provider of its own.
 
 ## Sending events
 
@@ -102,29 +53,19 @@ server authentication code out of the browser bundle.
 import { dispatchWebhookEvent } from '@ottabase/webhooks';
 
 await dispatchWebhookEvent({
-    registry: premium,
-    env,
     event: 'todo.created',
     payload: { id: todo.id, title: todo.title },
     tenant: { organizationId, appId, userId }, // userId is required when organizationId is null
 });
 ```
 
-For a globally strict endpoint ceiling, the host should also pass an `endpointQuota` coordinator to
-`createWebhooksPackage()`. It reserves a short-lived slot using a tenant-scoped coordinator (the template app uses a
-Cloudflare Durable Object) before the OttaORM create, commits or releases it afterwards, and reconciles successful
-deletes. The package's built-in lock is intentionally only an in-isolate fallback for hosts that do not make that
-stronger promise.
-
-Safe to call unconditionally: a disabled or uninstalled package returns `[]`, while an unlicensed package delivers its
-free tier, so host code never has to ask whether the add-on is installed.
+Safe to call unconditionally: a tenant with no subscribed endpoints gets `[]`.
 
 **Delivery is single-attempt and best-effort.** Retries with backoff belong in a queue — a retry loop on the request
 path turns one slow customer endpoint into your app's latency. `deliverToEndpoint()` is exported so a `@ottabase/queue`
 consumer can own the retry policy.
 
-An unlicensed package delivers its free tier; only a disabled or uninstalled package returns no deliveries. Personal
-dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
+Personal dispatches without `userId` fail closed rather than widening to every endpoint with a null organization.
 
 ## Receiving and verifying
 
@@ -152,18 +93,17 @@ recreate the endpoint if it is lost.
 
 ## API
 
-All routes are mounted at `/api/webhooks` with `gate: 'entitlements'` — the namespace stays reachable so the free tier
-works, and each paid path guards itself.
+All routes are mounted at `/api/webhooks` and resolve the caller first; writes need `canManage`.
 
-| Method   | Path          | Gate                     |
-| -------- | ------------- | ------------------------ |
-| `GET`    | `/events`     | free                     |
-| `GET`    | `/`           | free                     |
-| `POST`   | `/`           | limit `endpoints`        |
-| `PATCH`  | `/:id`        | free                     |
-| `DELETE` | `/:id`        | free                     |
-| `POST`   | `/:id/test`   | free                     |
-| `GET`    | `/deliveries` | feature `deliveries.log` |
+| Method   | Path          | Does                                          |
+| -------- | ------------- | --------------------------------------------- |
+| `GET`    | `/events`     | the event catalog                             |
+| `GET`    | `/`           | the tenant's endpoints                        |
+| `POST`   | `/`           | create one; the only response with the secret |
+| `PATCH`  | `/:id`        | edit url, description, events, enabled        |
+| `DELETE` | `/:id`        | remove one                                    |
+| `POST`   | `/:id/test`   | send a signed `ping`                          |
+| `GET`    | `/deliveries` | the tenant's delivery log (`?endpointId=`)    |
 
 ## Security notes
 

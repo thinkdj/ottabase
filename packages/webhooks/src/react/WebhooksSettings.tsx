@@ -9,11 +9,9 @@
 // completely unstyled.
 // ============================================================
 
-import { PremiumGate, usePremiumLimit } from '@ottabase/premium/react';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { CheckCircle2, Plus, Send, Trash2, TriangleAlert, Webhook } from 'lucide-react';
 import { useState } from 'react';
-import { WEBHOOKS_FEATURE_DELIVERY_LOG, WEBHOOKS_LIMIT_ENDPOINTS, WEBHOOKS_PACKAGE_KEY } from '../constants';
 import { useWebhookDeliveries, useWebhookEndpoints } from './hooks';
 import type { WebhookEndpointView } from '../ottaorm-models/WebhookEndpoint';
 
@@ -117,13 +115,7 @@ export interface WebhooksSettingsProps {
     events?: string[];
 }
 
-/**
- * Endpoint management, plus the paid delivery log behind its own gate.
- *
- * The create form is disabled by the SAME limit the server enforces, read from the
- * server-resolved status — so the button and the 402 can never disagree about what the
- * plan allows.
- */
+/** Endpoint management and the delivery log. */
 export function WebhooksSettings({ events }: WebhooksSettingsProps) {
     const { data, isLoading, create, remove, test, catalog } = useWebhookEndpoints();
     const [url, setUrl] = useState('');
@@ -132,7 +124,6 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
     const [error, setError] = useState<string | null>(null);
 
     const endpoints = data ?? [];
-    const limitGate = usePremiumLimit(WEBHOOKS_PACKAGE_KEY, WEBHOOKS_LIMIT_ENDPOINTS, endpoints.length);
     const options = events ?? catalog.data ?? ['*'];
 
     const onCreate = async () => {
@@ -141,7 +132,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
         try {
             const created = await create.mutateAsync({ url, events: selected.length > 0 ? selected : ['*'] });
             // Shown once, and only here: the server never returns it again.
-            setSecret(created.secret ?? null);
+            setSecret(created.data.secret ?? null);
             setUrl('');
             setSelected([]);
         } catch (cause) {
@@ -156,10 +147,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                     <CardTitle className="flex items-center gap-2 text-[0.9375rem] font-semibold">
                         <Webhook className="h-4 w-4 text-muted-foreground" />
                         Endpoints
-                        <span className="text-xs font-normal text-muted-foreground">
-                            {endpoints.length}
-                            {limitGate.limit !== undefined && limitGate.limit >= 0 ? ` / ${limitGate.limit}` : ''}
-                        </span>
+                        <span className="text-xs font-normal text-muted-foreground">{endpoints.length}</span>
                     </CardTitle>
                     <CardDescription>
                         Every delivery is signed with the endpoint&apos;s secret. Verify it before you trust the body.
@@ -178,8 +166,8 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                                     key={endpoint.id}
                                     endpoint={endpoint}
                                     busy={remove.isPending || test.isPending}
-                                    onDelete={() => void remove.mutateAsync(endpoint.id)}
-                                    onTest={() => void test.mutateAsync(endpoint.id)}
+                                    onDelete={() => void remove.mutateAsync({ id: endpoint.id })}
+                                    onTest={() => void test.mutateAsync({ id: endpoint.id })}
                                 />
                             ))}
                         </div>
@@ -197,13 +185,12 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                                 placeholder="https://example.com/hooks/ottabase"
                                 className="font-mono text-xs"
                                 spellCheck={false}
-                                disabled={!limitGate.allowed}
                             />
                             <Button
                                 size="sm"
                                 className="shrink-0"
                                 onClick={onCreate}
-                                disabled={!url.trim() || create.isPending || !limitGate.allowed}
+                                disabled={!url.trim() || create.isPending}
                             >
                                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                                 {create.isPending ? 'Adding…' : 'Add'}
@@ -238,12 +225,6 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                             </div>
                         ) : null}
 
-                        {!limitGate.allowed && !limitGate.isLoading ? (
-                            <p className="text-xs text-muted-foreground">
-                                Your plan includes {limitGate.limit ?? 0} endpoint
-                                {(limitGate.limit ?? 0) === 1 ? '' : 's'}. Upgrade to add more.
-                            </p>
-                        ) : null}
                         {error ? <p className="text-xs text-destructive">{error}</p> : null}
                     </div>
 
@@ -266,14 +247,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                     <CardDescription>Every attempt, with status and duration.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <PremiumGate
-                        packageKey={WEBHOOKS_PACKAGE_KEY}
-                        feature={WEBHOOKS_FEATURE_DELIVERY_LOG}
-                        title="Delivery history"
-                        description="Retained delivery history is part of the paid plan. Endpoint health above stays available on every plan."
-                    >
-                        <DeliveryLog />
-                    </PremiumGate>
+                    <DeliveryLog />
                 </CardContent>
             </Card>
         </div>

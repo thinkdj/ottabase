@@ -39,18 +39,17 @@ curl -H "Authorization: Bearer $TOKEN" https://my-tool.example.workers.dev/api/a
 
 ## Premium packages
 
-Premium packages in the list (Vault ships in it) are mounted behind their license gate, and `/api/premium` is the
-control plane, behind the operator token. A license comes from env (`PREMIUM_LICENSE_VAULT`, or a `PREMIUM_LICENSES`
-JSON map) or is pasted once:
+None ship in the list; the wiring is there for your own paid add-ons (`@ottabase/premium`). A Premium Package you add is
+mounted behind its license gate, and `/api/premium` is the control plane, behind the operator token. A license comes
+from env (`PREMIUM_LICENSE_<KEY>`, or a `PREMIUM_LICENSES` JSON map) or is pasted once:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" -H "content-type: application/json" \
-     -d '{"license":"otta_premium_v1.…"}' http://127.0.0.1:3005/api/premium/packages/vault/license
+     -d '{"license":"otta_premium_v1.…"}' http://127.0.0.1:3005/api/premium/packages/reports/license
 curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3005/api/premium/packages   # state, plan, features
 ```
 
-Unlicensed, Vault still backs up and restores by hand (five kept backups); the nightly schedule waits for a key. The
-home page shows each premium package's state next to its key.
+The home page shows each premium package's state next to its key.
 
 `@ottabase/fleet` makes this Worker watchable: with `wrangler secret put FLEET_TOKEN`, a cockpit reads
 `GET /api/fleet/report` (packages, health, tasks, newest backup, license states) and can run `POST /api/fleet/init`,

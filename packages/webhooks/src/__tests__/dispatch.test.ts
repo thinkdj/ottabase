@@ -1,17 +1,13 @@
 // ============================================================
 // Outbound delivery — what actually leaves the worker.
 //
-// Three properties matter: the payload is signed, a lapsed license stops delivery
-// entirely, and a failing customer endpoint never escapes as an exception into the
-// caller's request.
+// Three properties matter: the payload is signed, it reaches only the tenant's own
+// subscribed endpoints, and a failing customer endpoint never escapes as an exception
+// into the caller's request.
 // ============================================================
 
-import { createMemoryStateStore, createPremiumRegistry, type PremiumRegistry } from '@ottabase/premium';
-import { generateLicenseKeypair, issueLicense } from '@ottabase/premium/license-tools';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetTables, tables } from './fake-models';
-import { WEBHOOKS_PACKAGE_KEY } from '../constants';
-import { createWebhooksPackage } from '../manifest';
 import { dispatchWebhookEvent, summarizeDeliveryError } from '../dispatch';
 import { EVENT_HEADER, SIGNATURE_HEADER, verifySignatureHeader } from '../signing';
 
@@ -24,30 +20,10 @@ vi.mock('../ottaorm-models/WebhookDelivery', async () => {
     return { WebhookDelivery: FakeWebhookDelivery };
 });
 
-type Env = Record<string, unknown>;
-
 const TENANT = { organizationId: 'org-1', appId: 'otta-web' };
 const SECRET = 'whsec_dispatch_test';
 
-let keys: { publicKey: string; privateKey: string };
-let proLicense: string;
 let fetchMock: ReturnType<typeof vi.fn>;
-
-beforeAll(async () => {
-    keys = await generateLicenseKeypair();
-    proLicense = await issueLicense(
-        { pkg: WEBHOOKS_PACKAGE_KEY, plan: 'pro', licensee: 'Acme', features: ['deliveries.log'] },
-        keys.privateKey,
-    );
-});
-
-function makeRegistry(): PremiumRegistry<Env> {
-    return createPremiumRegistry<Env>({
-        packages: [createWebhooksPackage<Env>({ licensePublicKey: keys.publicKey, resolveCaller: async () => null })],
-        getStore: () => createMemoryStateStore(),
-        cacheTtlMs: 0,
-    });
-}
 
 function seedEndpoint(overrides: Record<string, unknown> = {}) {
     tables.endpoints.push({
@@ -76,8 +52,6 @@ describe('dispatchWebhookEvent', () => {
     it('signs the payload so the receiver can verify it', async () => {
         seedEndpoint();
         await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: { id: 7 },
             tenant: TENANT,
@@ -95,8 +69,6 @@ describe('dispatchWebhookEvent', () => {
     it('never follows a redirect — a 3xx into a private address would be an SSRF', async () => {
         seedEndpoint();
         await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
@@ -105,27 +77,11 @@ describe('dispatchWebhookEvent', () => {
         expect((fetchMock.mock.calls[0][1] as RequestInit).redirect).toBe('manual');
     });
 
-    it('delivers the usable free tier when the package is unlicensed', async () => {
-        seedEndpoint();
-        const outcomes = await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: {},
-            event: 'todo.created',
-            payload: {},
-            tenant: TENANT,
-        });
-
-        expect(outcomes).toHaveLength(1);
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-
     it('addresses personal endpoints by user id and never widens a null organization scope', async () => {
         seedEndpoint({ id: 'ep_mine', organizationId: null, userId: 'user-1' });
         seedEndpoint({ id: 'ep_theirs', organizationId: null, userId: 'user-2' });
 
         await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: { organizationId: null, appId: 'otta-web', userId: 'user-1' },
@@ -138,8 +94,6 @@ describe('dispatchWebhookEvent', () => {
     it('fails closed when a personal dispatch omits its user id', async () => {
         seedEndpoint({ organizationId: null, userId: 'user-1' });
         const outcomes = await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: { organizationId: null, appId: 'otta-web' },
@@ -155,8 +109,6 @@ describe('dispatchWebhookEvent', () => {
         seedEndpoint({ id: 'ep_wildcard', events: ['*'] });
 
         await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
@@ -169,8 +121,6 @@ describe('dispatchWebhookEvent', () => {
         seedEndpoint({ id: 'ep_theirs', organizationId: 'org-2', events: ['*'] });
 
         const outcomes = await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
@@ -179,37 +129,17 @@ describe('dispatchWebhookEvent', () => {
         expect(outcomes).toEqual([]);
     });
 
-    it('records endpoint health on every plan, and the delivery LOG only when licensed for it', async () => {
+    it('records the outcome on the endpoint and in the delivery log', async () => {
         seedEndpoint();
-        const registry = makeRegistry();
 
         await dispatchWebhookEvent({
-            registry,
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
         });
         expect(tables.endpoints[0].lastStatus).toBe('success');
         expect(tables.deliveries).toHaveLength(1);
-
-        // A license WITHOUT the log feature: health still lands, history does not.
-        const basic = await issueLicense(
-            { pkg: WEBHOOKS_PACKAGE_KEY, plan: 'starter', licensee: 'Acme' },
-            keys.privateKey,
-        );
-        resetTables();
-        seedEndpoint();
-        await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: basic },
-            event: 'todo.created',
-            payload: {},
-            tenant: TENANT,
-        });
-
-        expect(tables.endpoints[0].lastStatus).toBe('success');
-        expect(tables.deliveries).toHaveLength(0);
+        expect(tables.deliveries[0]).toMatchObject({ endpointId: 'ep_1', status: 'success', ...TENANT });
     });
 
     it('turns a failing endpoint into an outcome, never an exception', async () => {
@@ -217,8 +147,6 @@ describe('dispatchWebhookEvent', () => {
         fetchMock.mockRejectedValue(new TypeError('network down'));
 
         const outcomes = await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
@@ -233,8 +161,6 @@ describe('dispatchWebhookEvent', () => {
         fetchMock.mockResolvedValue(new Response('nope', { status: 500 }));
 
         const outcomes = await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,
@@ -246,8 +172,6 @@ describe('dispatchWebhookEvent', () => {
     it('resets the failure streak after a success', async () => {
         seedEndpoint({ consecutiveFailures: 4 });
         await dispatchWebhookEvent({
-            registry: makeRegistry(),
-            env: { PREMIUM_LICENSE_WEBHOOKS: proLicense },
             event: 'todo.created',
             payload: {},
             tenant: TENANT,

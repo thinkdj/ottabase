@@ -1,9 +1,6 @@
 import { Router, type Ctx } from '@ottabase/ottarouter';
-import type { PremiumRegistry } from '@ottabase/premium';
-import { requirePremiumFeature, requirePremiumLimit } from '@ottabase/premium/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { VAULT_FEATURE_EXPORT, VAULT_LIMIT_BACKUPS, VAULT_PACKAGE_KEY } from './constants';
 import { VaultError, type Awaitable, type Vault } from './types';
 
 export interface VaultCaller {
@@ -25,12 +22,7 @@ export interface VaultRouterOptions<Env> {
     /** The column a tenant export filters on. Default `organization_id`; personal exports use `user_id`. */
     tenantColumn?: string;
     userColumn?: string;
-    /** The premium registry the package was mounted by; answers the free-tier limit and the paid gates. */
-    registry: PremiumRegistry<Env>;
 }
-
-/** How many existing backups are counted against the limit. Retention keeps real numbers far below this. */
-const COUNT_CEILING = 1000;
 
 async function readJson<T>(request: Request): Promise<T> {
     try {
@@ -54,10 +46,10 @@ function tableList(value: unknown): string[] | undefined {
 }
 
 /**
- * Free (platform admin): `GET|POST /backups` (POST counts against the `backups` limit),
- * `GET|DELETE /backups/:id`, `POST /backups/:id/restore` (body `{ confirm: id, tables?, truncate? }`).
- * Free (any signed-in user): `GET /export/me`, their organization (when they manage it) or their own rows.
- * Licensed (`export` feature): `GET /export?organizationId=|userId=`, any tenant.
+ * Platform admin: `GET|POST /backups`, `GET|DELETE /backups/:id`,
+ * `POST /backups/:id/restore` (body `{ confirm: id, tables?, truncate? }`), and
+ * `GET /export?organizationId=|userId=` for any tenant.
+ * Any signed-in user: `GET /export/me`, their organization (when they manage it) or their own rows.
  */
 export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router<Env> {
     const router = new Router<Env>();
@@ -101,17 +93,6 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
         if (who instanceof Response) return who;
         const body = await readJson<{ tables?: unknown; label?: unknown; objects?: unknown }>(c.req);
         try {
-            // The count is measured HERE, never taken from the client: a client-supplied
-            // number would let the client raise its own ceiling.
-            const existing = (await options.vault.list(c.env, COUNT_CEILING)).length;
-            const denied = await requirePremiumLimit(
-                options.registry,
-                c.env,
-                VAULT_PACKAGE_KEY,
-                VAULT_LIMIT_BACKUPS,
-                existing,
-            );
-            if (denied) return denied;
             const manifest = await options.vault.backup(c.env, {
                 tables: tableList(body.tables),
                 label: typeof body.label === 'string' ? body.label.slice(0, 120) : undefined,
@@ -175,8 +156,6 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
     router.get('/export', async (c) => {
         const who = await admin(c);
         if (who instanceof Response) return who;
-        const denied = await requirePremiumFeature(options.registry, c.env, VAULT_PACKAGE_KEY, VAULT_FEATURE_EXPORT);
-        if (denied) return denied;
         const organizationId = c.url.searchParams.get('organizationId');
         const userId = c.url.searchParams.get('userId');
         if (organizationId) return download(c.env, tenantColumn, organizationId, `organization-${organizationId}`);
@@ -184,7 +163,6 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
         return errorResponse('organizationId or userId is required', 400, { code: 'VALIDATION_ERROR' });
     });
 
-    // A person's own data is never behind a paywall.
     router.get('/export/me', async (c) => {
         const who = await caller(c.req, c.env);
         if (who instanceof Response) return who;

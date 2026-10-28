@@ -65,15 +65,14 @@ describe('the Worker', () => {
     it('mounts package routes behind the same operator token, and 404s the rest as JSON', async () => {
         expect((await call('/api/vault/backups')).status).toBe(401);
         const backups = await call('/api/vault/backups', asOperator);
-        expect(backups.status).toBe(503); // mounted (free tier, no license needed), operator accepted, no bucket bound
+        expect(backups.status).toBe(503); // mounted, operator accepted, no bucket bound
         expect(((await backups.json()) as { code: string }).code).toBe('NOT_CONFIGURED');
 
-        // The premium control plane: operator only, and it knows Vault is installed but unlicensed.
+        // The premium control plane: operator only, and empty until you list a Premium Package.
         expect((await call('/api/premium/packages')).status).toBe(401);
         const premium = await call('/api/premium/packages', asOperator);
         expect(premium.status).toBe(200);
-        const { data: statuses } = (await premium.json()) as { data: Array<{ key: string; state: string }> };
-        expect(statuses).toEqual([expect.objectContaining({ key: 'vault', state: 'unlicensed' })]);
+        expect(((await premium.json()) as { data: unknown[] }).data).toEqual([]);
 
         const missing = await call('/nope');
         expect(missing.status).toBe(404);
@@ -107,8 +106,7 @@ describe('the Worker', () => {
         expect(data.app).toBe('test-app');
         expect(data.environment).toBe('production');
         expect(data.packages.map((pkg) => pkg.key)).toEqual(['core', 'vault', 'fleet']);
-        expect(data.packages.find((pkg) => pkg.key === 'vault')?.premium?.state).toBe('unlicensed');
-        expect(data.packages.find((pkg) => pkg.key === 'fleet')?.premium).toBeUndefined(); // a free package
+        expect(data.packages.find((pkg) => pkg.key === 'vault')?.premium).toBeUndefined(); // a free package
         expect(data.health.ok).toBe(false); // no D1 bound
         expect(data.canInit).toBe(true);
         expect(data.errors.some((error) => error.startsWith('tasks:'))).toBe(true); // no D1: the task read failed, the report stands

@@ -3136,12 +3136,12 @@ importers:
       '@ottabase/kernel':
         specifier: workspace:*
         version: link:../kernel
+      '@ottabase/ottaorm':
+        specifier: workspace:*
+        version: link:../ottaorm
       '@ottabase/ottarouter':
         specifier: workspace:*
         version: link:../ottarouter
-      '@ottabase/premium':
-        specifier: workspace:*
-        version: link:../premium
       '@ottabase/utils':
         specifier: workspace:*
         version: link:../utils
@@ -3176,15 +3176,15 @@ importers:
 
   packages/webhooks:
     dependencies:
+      '@ottabase/kernel':
+        specifier: workspace:*
+        version: link:../kernel
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
       '@ottabase/ottarouter':
         specifier: workspace:*
         version: link:../ottarouter
-      '@ottabase/premium':
-        specifier: workspace:*
-        version: link:../premium
       '@ottabase/utils':
         specifier: workspace:*
         version: link:../utils

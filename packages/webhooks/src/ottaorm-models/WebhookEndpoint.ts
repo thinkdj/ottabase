@@ -60,8 +60,7 @@ export class WebhookEndpoint extends BaseModel {
     /**
      * Record the outcome of one delivery on the endpoint itself.
      *
-     * Always written, licensed or not: this is the free tier's entire observability, and
-     * the delivery LOG (retention) is the part that is sold.
+     * Written for test deliveries too, which the delivery log does not record.
      */
     async recordDelivery(outcome: { ok: boolean; statusCode?: number | null }): Promise<this> {
         this.set('lastStatus', outcome.ok ? 'success' : 'failed');

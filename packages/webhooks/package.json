@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/webhooks",
     "version": "1.0.0",
-    "description": "Outbound webhooks for Ottabase apps — the worked example of a paid package built on @ottabase/premium. HMAC-signed deliveries, endpoint health, and a licensed delivery log",
+    "description": "Outbound webhooks for Ottabase apps: HMAC-signed deliveries, endpoint health, and a delivery log",
     "ottabase": {
         "key": "webhooks",
         "factory": "createWebhooksPackage",
@@ -21,7 +21,6 @@
                 "icon": "Webhook",
                 "group": "growth",
                 "scope": "org",
-                "premium": true,
                 "page": "admin/growth/WebhooksPage",
                 "export": "WebhooksPage"
             }
@@ -61,9 +60,9 @@
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
+        "@ottabase/kernel": "workspace:*",
         "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
-        "@ottabase/premium": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },
     "peerDependencies": {
@@ -104,8 +103,6 @@
     "keywords": [
         "ottabase",
         "webhooks",
-        "premium",
-        "paid-packages",
         "hmac",
         "cloudflare"
     ],

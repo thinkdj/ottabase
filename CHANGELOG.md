@@ -218,6 +218,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Vault and Webhooks are free packages.** Both are plain kernel packages now (`definePackage`), mounted by
+  `mountPackages` like any other, with no license, no feature gates and no limits: Vault's nightly schedule, retention,
+  staleness health check and operator tenant export are always on, and Webhooks has no endpoint cap and always writes
+  the delivery log. Their demo keypairs and licenses (`DEMO_PRO_LICENSE`, `DEMO_LICENSE_*`), the `VAULT_FEATURE_*`,
+  `VAULT_LIMIT_*`, `WEBHOOKS_FEATURE_*`, `WEBHOOKS_LIMIT_*` and free-limit constants, Webhooks' `endpointQuota` option
+  and `dispatchWebhookEvent`'s `registry`/`env` inputs are gone. Their React hooks go through the app's
+  `OttaQueryProvider` client, so the admin pages need no `PremiumProvider`. otta-web drops the `WebhookEndpointQuota`
+  Durable Object and its `OBCF_WEBHOOK_ENDPOINT_QUOTA` binding (Wrangler migration `v3` deletes the class).
+  `@ottabase/premium` is unchanged: offline licenses, entitlements, gates and the key admin page stay for the add-ons
+  you sell yourself.
 - `@ottabase/auth`: a sign-in, magic-link or sign-out request from an origin that isn't allowed now fails with
   `Untrusted origin <origin>: open the app at its configured URL (AUTH_URL)` instead of `Invalid or missing CSRF token`.
   The usual cause is opening the app on another loopback name (`localhost:3003` when `AUTH_URL` is `127.0.0.1:3003`),

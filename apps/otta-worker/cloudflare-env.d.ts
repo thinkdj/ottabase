@@ -9,9 +9,8 @@ interface CloudflareEnv {
     APP_ID?: string;
     /** Bearer token for the operator routes (`/api/admin/*` and every package's admin routes). */
     ADMIN_TOKEN?: string;
-    /** Premium package licenses: one per package (`PREMIUM_LICENSE_VAULT`) or a JSON map. */
+    /** Licenses for Premium Packages you add: `PREMIUM_LICENSE_<KEY>` per package, or this JSON map. */
     PREMIUM_LICENSES?: string;
-    PREMIUM_LICENSE_VAULT?: string;
     /** Lets a cockpit read this Worker's Fleet report (`GET /api/fleet/report`). */
     FLEET_TOKEN?: string;
     MIGRATION_ALLOW_DESTRUCTIVE?: string;

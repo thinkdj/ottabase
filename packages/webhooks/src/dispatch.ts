@@ -3,7 +3,7 @@
 // ============================================================
 // One call from anywhere in the host app:
 //
-//     await dispatchWebhookEvent({ registry, env, event: 'todo.created', payload, tenant });
+//     await dispatchWebhookEvent({ event: 'todo.created', payload, tenant });
 //
 // DELIVERY IS BEST-EFFORT AND SINGLE-ATTEMPT. Retries with backoff belong in a queue
 // (`@ottabase/queue`), not in a fetch loop inside a request: a retry loop on the request
@@ -11,8 +11,6 @@
 // is exported so a queue consumer can own the retry policy.
 // ============================================================
 
-import type { PremiumRegistry } from '@ottabase/premium';
-import { WEBHOOKS_FEATURE_DELIVERY_LOG, WEBHOOKS_PACKAGE_KEY } from './constants';
 import { WebhookDelivery } from './ottaorm-models/WebhookDelivery';
 import { WebhookEndpoint } from './ottaorm-models/WebhookEndpoint';
 import { DELIVERY_HEADER, EVENT_HEADER, SIGNATURE_HEADER, buildSignatureHeader } from './signing';
@@ -90,9 +88,7 @@ export async function deliverToEndpoint(
     }
 }
 
-export interface DispatchWebhookInput<Env> {
-    registry: PremiumRegistry<Env>;
-    env: Env;
+export interface DispatchWebhookInput {
     /** Event name, e.g. `todo.created`. Endpoints subscribe by exact name or `'*'`. */
     event: string;
     payload: unknown;
@@ -103,16 +99,11 @@ export interface DispatchWebhookInput<Env> {
 /**
  * Deliver an event to every subscribed, enabled endpoint of one tenant.
  *
- * Returns one outcome per endpoint. An unlicensed or disabled package delivers nothing
- * and returns an empty array — the caller does not have to know whether the package is
- * licensed, which is what makes `dispatchWebhookEvent` safe to call unconditionally from
- * host code.
+ * Returns one outcome per endpoint, and an empty array when nobody is subscribed. Every
+ * attempt is recorded on the endpoint (its health) and in the delivery log.
  */
-export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>): Promise<DeliveryOutcome[]> {
-    const { registry, env, event, payload, tenant } = input;
-
-    const resolution = await registry.resolve(env, WEBHOOKS_PACKAGE_KEY);
-    if (!resolution || resolution.license.state === 'disabled') return [];
+export async function dispatchWebhookEvent(input: DispatchWebhookInput): Promise<DeliveryOutcome[]> {
+    const { event, payload, tenant } = input;
 
     // A personal scope without a user is ambiguous. Fail closed rather than widening
     // to every endpoint whose organization is null.
@@ -129,9 +120,6 @@ export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>
     const subscribed = endpoints.filter((endpoint) => endpoint.subscribesTo(event));
     if (subscribed.length === 0) return [];
 
-    // Logging is the paid half — checked ONCE per dispatch rather than per endpoint.
-    const logGate = await registry.feature(env, WEBHOOKS_PACKAGE_KEY, WEBHOOKS_FEATURE_DELIVERY_LOG);
-
     const outcomes: DeliveryOutcome[] = [];
     for (const endpoint of subscribed) {
         const deliveryId = crypto.randomUUID();
@@ -140,25 +128,19 @@ export async function dispatchWebhookEvent<Env>(input: DispatchWebhookInput<Env>
         const outcome = await deliverToEndpoint(endpoint, event, body, deliveryId);
         outcomes.push(outcome);
 
-        // Health on the endpoint is FREE — it is the whole observability story of the free
-        // tier, and hiding it behind the licence would make an unlicensed install silently
-        // undebuggable rather than merely limited.
         await endpoint.recordDelivery(outcome);
-
-        if (logGate.allowed) {
-            await WebhookDelivery.create({
-                id: deliveryId,
-                endpointId: outcome.endpointId,
-                event,
-                status: outcome.ok ? 'success' : 'failed',
-                statusCode: outcome.statusCode,
-                error: outcome.error,
-                durationMs: outcome.durationMs,
-                organizationId: tenant.organizationId,
-                userId: tenant.organizationId === null ? (tenant.userId ?? null) : null,
-                appId: tenant.appId,
-            });
-        }
+        await WebhookDelivery.create({
+            id: deliveryId,
+            endpointId: outcome.endpointId,
+            event,
+            status: outcome.ok ? 'success' : 'failed',
+            statusCode: outcome.statusCode,
+            error: outcome.error,
+            durationMs: outcome.durationMs,
+            organizationId: tenant.organizationId,
+            userId: tenant.organizationId === null ? (tenant.userId ?? null) : null,
+            appId: tenant.appId,
+        });
     }
 
     return outcomes;

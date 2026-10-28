@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/vault",
     "version": "0.1.0",
-    "description": "Backups, restore and per-tenant export for Ottabase apps: D1 tables to R2 as NDJSON, restored in one transaction. A Premium Package: manual backups free, the nightly schedule and tenant export licensed",
+    "description": "Backups, restore and per-tenant export for Ottabase apps: D1 tables to R2 as NDJSON, restored in one transaction, with a nightly schedule and retention",
     "ottabase": {
         "key": "vault",
         "factory": "createVaultPackage",
@@ -13,7 +13,6 @@
                 "icon": "Archive",
                 "group": "infrastructure",
                 "scope": "platform",
-                "premium": true,
                 "page": "admin/infrastructure/VaultPage",
                 "export": "VaultPage"
             }
@@ -40,8 +39,8 @@
     },
     "dependencies": {
         "@ottabase/kernel": "workspace:*",
+        "@ottabase/ottaorm": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
-        "@ottabase/premium": "workspace:*",
         "@ottabase/utils": "workspace:*"
     },
     "peerDependencies": {

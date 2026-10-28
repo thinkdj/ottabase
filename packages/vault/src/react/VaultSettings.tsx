@@ -7,25 +7,12 @@
 //     '../../packages/vault/src/**/*.{js,ts,jsx,tsx}'
 // to its Tailwind `content` array, or these components render structurally correct and
 // completely unstyled.
-//
-// No license check is written here. The "Run backup" button is disabled by the SAME limit
-// the server enforces, read from the server-resolved status, and the paid cards sit behind
-// `PremiumGate`, so the UI and the 402 can never disagree.
 // ============================================================
 
-import { PremiumGate, PremiumUpsell, usePremiumLimit } from '@ottabase/premium/react';
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
 import { Archive, Download, Play, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import {
-    DEFAULT_RETENTION_DAYS,
-    DEFAULT_SCHEDULE,
-    VAULT_BASE_PATH,
-    VAULT_FEATURE_EXPORT,
-    VAULT_FEATURE_SCHEDULE,
-    VAULT_LIMIT_BACKUPS,
-    VAULT_PACKAGE_KEY,
-} from '../constants';
+import { DEFAULT_RETENTION_DAYS, DEFAULT_SCHEDULE, VAULT_BASE_PATH } from '../constants';
 import type { BackupManifest } from '../types';
 import { useVaultBackups } from './hooks';
 
@@ -115,12 +102,12 @@ function BackupRow({
                         disabled={busy || confirm !== manifest.id}
                         onClick={async () => {
                             const outcome = (await onRestore()) as
-                                | { tables?: Array<{ name: string; rows: number }> }
+                                | { data?: { tables?: Array<{ name: string; rows: number }> } }
                                 | undefined;
                             setConfirm(null);
                             setResult(
-                                outcome?.tables
-                                    ? `Restored ${outcome.tables.reduce((n, table) => n + table.rows, 0)} rows into ${outcome.tables.length} tables.`
+                                outcome?.data?.tables
+                                    ? `Restored ${outcome.data.tables.reduce((n, table) => n + table.rows, 0)} rows into ${outcome.data.tables.length} tables.`
                                     : 'Restored.',
                             );
                         }}
@@ -143,10 +130,7 @@ export interface VaultSettingsProps {
     exportHref?: (organizationId: string) => string;
 }
 
-/**
- * Backups, restore and delete (free), and the licensed schedule and tenant export behind
- * their gates.
- */
+/** Backups, restore and delete, the nightly schedule, and tenant export. */
 export function VaultSettings({
     schedule = DEFAULT_SCHEDULE,
     retentionDays = DEFAULT_RETENTION_DAYS,
@@ -154,7 +138,6 @@ export function VaultSettings({
 }: VaultSettingsProps) {
     const { backups, isLoading, error, create, restore, remove } = useVaultBackups();
     const [organizationId, setOrganizationId] = useState('');
-    const limitGate = usePremiumLimit(VAULT_PACKAGE_KEY, VAULT_LIMIT_BACKUPS, backups.length);
     const busy = create.isPending || restore.isPending || remove.isPending;
     const failure = error ?? create.error ?? restore.error ?? remove.error;
 
@@ -169,26 +152,14 @@ export function VaultSettings({
                         </CardTitle>
                         <CardDescription>
                             Every table as NDJSON in your bucket. Restore puts the rows back in one transaction.
-                            {limitGate.limit !== undefined ? ` ${backups.length} of ${limitGate.limit} kept.` : ''}
                         </CardDescription>
                     </div>
-                    <Button
-                        size="sm"
-                        onClick={() => create.mutate({ label: 'manual' })}
-                        disabled={busy || limitGate.isLoading || !limitGate.allowed}
-                    >
+                    <Button size="sm" onClick={() => create.mutate({ label: 'manual' })} disabled={busy}>
                         <Play className="mr-1.5 h-3.5 w-3.5" />
                         {create.isPending ? 'Backing up…' : 'Run backup now'}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    {!limitGate.isLoading && !limitGate.allowed && limitGate.upsell ? (
-                        <PremiumUpsell
-                            answer={limitGate}
-                            title="Backup limit reached"
-                            description={`The free tier keeps ${limitGate.limit ?? 5} backups. Delete one, or license Vault for a nightly schedule with retention.`}
-                        />
-                    ) : null}
                     {failure ? <p className="text-sm text-destructive">{failure.message}</p> : null}
                     {isLoading ? (
                         <div className="h-20 animate-pulse rounded-lg bg-background/60" aria-busy="true" />
@@ -203,7 +174,7 @@ export function VaultSettings({
                                     key={manifest.id}
                                     manifest={manifest}
                                     busy={busy}
-                                    onRestore={() => restore.mutateAsync({ id: manifest.id })}
+                                    onRestore={() => restore.mutateAsync({ id: manifest.id, confirm: manifest.id })}
                                     onDelete={() => remove.mutate(manifest.id)}
                                 />
                             ))}
@@ -212,55 +183,41 @@ export function VaultSettings({
                 </CardContent>
             </Card>
 
-            <PremiumGate
-                packageKey={VAULT_PACKAGE_KEY}
-                feature={VAULT_FEATURE_SCHEDULE}
-                title="Nightly schedule and retention"
-                description="A license runs vault:backup every night, prunes backups past the retention window (never the newest), and reports a stale backup in the health check."
-            >
-                <Card className={QUIET_CARD}>
-                    <CardHeader>
-                        <CardTitle className="text-base">Nightly schedule</CardTitle>
-                        <CardDescription>
-                            Runs at <code className="font-mono text-xs">{schedule}</code> (UTC). Backups older than{' '}
-                            {retentionDays} days are pruned after each run; the newest is always kept. A backup older
-                            than two days shows up in <code className="font-mono text-xs">/api/admin/health</code>.
-                        </CardDescription>
-                    </CardHeader>
-                </Card>
-            </PremiumGate>
+            <Card className={QUIET_CARD}>
+                <CardHeader>
+                    <CardTitle className="text-base">Nightly schedule</CardTitle>
+                    <CardDescription>
+                        Runs at <code className="font-mono text-xs">{schedule}</code> (UTC). Backups older than{' '}
+                        {retentionDays} days are pruned after each run; the newest is always kept. A backup older than
+                        two days shows up in <code className="font-mono text-xs">/api/admin/health</code>.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
 
-            <PremiumGate
-                packageKey={VAULT_PACKAGE_KEY}
-                feature={VAULT_FEATURE_EXPORT}
-                title="Tenant export"
-                description="Stream one organization's rows from every table as NDJSON, for a customer's data request or a migration. Users can always export their own data from /api/vault/export/me."
-            >
-                <Card className={QUIET_CARD}>
-                    <CardHeader>
-                        <CardTitle className="text-base">Tenant export</CardTitle>
-                        <CardDescription>
-                            One organization, every table that carries it, as NDJSON lines of{' '}
-                            <code className="font-mono text-xs">{'{ table, row }'}</code>.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap items-center gap-2">
-                        <Input
-                            value={organizationId}
-                            onChange={(event) => setOrganizationId(event.target.value)}
-                            placeholder="organization id"
-                            className="h-9 max-w-xs font-mono text-xs"
-                            aria-label="Organization id"
-                        />
-                        <Button asChild size="sm" variant="outline" disabled={!organizationId.trim()}>
-                            <a href={organizationId.trim() ? exportHref(organizationId.trim()) : '#'} download>
-                                <Download className="mr-1.5 h-3.5 w-3.5" />
-                                Download export
-                            </a>
-                        </Button>
-                    </CardContent>
-                </Card>
-            </PremiumGate>
+            <Card className={QUIET_CARD}>
+                <CardHeader>
+                    <CardTitle className="text-base">Tenant export</CardTitle>
+                    <CardDescription>
+                        One organization, every table that carries it, as NDJSON lines of{' '}
+                        <code className="font-mono text-xs">{'{ table, row }'}</code>.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-wrap items-center gap-2">
+                    <Input
+                        value={organizationId}
+                        onChange={(event) => setOrganizationId(event.target.value)}
+                        placeholder="organization id"
+                        className="h-9 max-w-xs font-mono text-xs"
+                        aria-label="Organization id"
+                    />
+                    <Button asChild size="sm" variant="outline" disabled={!organizationId.trim()}>
+                        <a href={organizationId.trim() ? exportHref(organizationId.trim()) : '#'} download>
+                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                            Download export
+                        </a>
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     );
 }

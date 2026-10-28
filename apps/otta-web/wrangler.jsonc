@@ -213,10 +213,6 @@
                 "name": "OBCF_REALTIME",
                 "class_name": "RealtimeActor", // DOs are scoped per-worker. So inherently isolated
             },
-            {
-                "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                "class_name": "WebhookEndpointQuota",
-            },
         ],
     },
 
@@ -230,6 +226,11 @@
         {
             "tag": "v2",
             "new_sqlite_classes": ["WebhookEndpointQuota"],
+        },
+        {
+            // The webhook endpoint quota enforced a licensed endpoint limit; webhooks are free now.
+            "tag": "v3",
+            "deleted_classes": ["WebhookEndpointQuota"],
         },
     ],
 
@@ -294,10 +295,6 @@
                     {
                         "name": "OBCF_REALTIME",
                         "class_name": "RealtimeActor",
-                    },
-                    {
-                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                        "class_name": "WebhookEndpointQuota",
                     },
                 ],
             },
@@ -402,10 +399,6 @@
                         "name": "OBCF_REALTIME",
                         "class_name": "RealtimeActor",
                     },
-                    {
-                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                        "class_name": "WebhookEndpointQuota",
-                    },
                 ],
             },
             "assets": {
@@ -489,10 +482,6 @@
                         "name": "OBCF_REALTIME",
                         "class_name": "RealtimeActor",
                     },
-                    {
-                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                        "class_name": "WebhookEndpointQuota",
-                    },
                 ],
             },
             "assets": {
@@ -575,10 +564,6 @@
                     {
                         "name": "OBCF_REALTIME",
                         "class_name": "RealtimeActor",
-                    },
-                    {
-                        "name": "OBCF_WEBHOOK_ENDPOINT_QUOTA",
-                        "class_name": "WebhookEndpointQuota",
                     },
                 ],
             },

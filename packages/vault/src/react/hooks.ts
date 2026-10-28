@@ -3,17 +3,16 @@
 // ============================================================
 // @ottabase/vault/react — query hooks
 // ============================================================
-// These reuse the premium provider's `requestAbsolute` seam rather than introducing a
-// second client: the app's API client is what attaches the session and tenant headers, and
-// one client means the entitlement gate and the data it guards answer for the same caller.
+// Through the framework client (`useApiQuery` / `useApiMutation`), never `fetch()`: the
+// app's one API client attaches the session and tenant headers, and every mutation
+// invalidates the whole `vault_backups` namespace.
 // ============================================================
 
-import { usePremiumClient } from '@ottabase/premium/react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useApiMutation, useApiQuery } from '@ottabase/ottaorm/client';
 import { VAULT_BASE_PATH } from '../constants';
 import type { BackupManifest, RestoreResult } from '../types';
 
-/** Entity namespace for query keys and mutation meta. */
+/** Entity namespace for query keys and mutation invalidation. */
 export const VAULT_ENTITY = 'vault_backups';
 
 export const vaultQueryKeys = {
@@ -21,43 +20,34 @@ export const vaultQueryKeys = {
     list: () => [VAULT_ENTITY, 'list'] as const,
 };
 
+type Envelope<T> = { data: T };
+
 export function useVaultBackups() {
-    const client = usePremiumClient();
-    const queryClient = useQueryClient();
-    const request = <T>(path: string, init?: { method?: string; body?: unknown }) =>
-        client.requestAbsolute<T>(`${VAULT_BASE_PATH}${path}`, init);
+    const invalidateEntities = [VAULT_ENTITY];
 
-    const query = useQuery<BackupManifest[], Error>({
-        queryKey: vaultQueryKeys.list(),
-        queryFn: () => request<BackupManifest[]>('/backups?limit=100'),
-        staleTime: 15_000,
-        enabled: client.mounted,
+    const query = useApiQuery<Envelope<BackupManifest[]>, BackupManifest[]>({
+        entity: VAULT_ENTITY,
+        queryKey: ['list'],
+        endpoint: `${VAULT_BASE_PATH}/backups?limit=100`,
+        select: (response) => response.data,
+        queryOptions: { staleTime: 15_000 },
     });
 
-    const invalidate = () => void queryClient.invalidateQueries({ queryKey: vaultQueryKeys.all() });
-    const meta = { entity: VAULT_ENTITY };
-
-    const create = useMutation<BackupManifest, Error, { label?: string }>({
-        meta,
-        mutationFn: (input) => request<BackupManifest>('/backups', { method: 'POST', body: input }),
-        onSuccess: invalidate,
+    const create = useApiMutation<Envelope<BackupManifest>, { label?: string }>({
+        endpoint: `${VAULT_BASE_PATH}/backups`,
+        invalidateEntities,
     });
 
-    const restore = useMutation<RestoreResult, Error, { id: string; tables?: string[] }>({
-        meta,
-        mutationFn: ({ id, tables }) =>
-            request<RestoreResult>(`/backups/${encodeURIComponent(id)}/restore`, {
-                method: 'POST',
-                body: { confirm: id, ...(tables ? { tables } : {}) },
-            }),
-        onSuccess: invalidate,
+    // The route refuses a restore unless the body names the backup it replaces the live rows with.
+    const restore = useApiMutation<Envelope<RestoreResult>, { id: string; confirm: string; tables?: string[] }>({
+        endpoint: ({ id }) => `${VAULT_BASE_PATH}/backups/${encodeURIComponent(id)}/restore`,
+        invalidateEntities,
     });
 
-    const remove = useMutation<{ id: string; removed: boolean }, Error, string>({
-        meta,
-        mutationFn: (id) =>
-            request<{ id: string; removed: boolean }>(`/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-        onSuccess: invalidate,
+    const remove = useApiMutation<Envelope<{ id: string; removed: boolean }>, string>({
+        endpoint: (id) => `${VAULT_BASE_PATH}/backups/${encodeURIComponent(id)}`,
+        method: 'DELETE',
+        invalidateEntities,
     });
 
     return { ...query, backups: query.data ?? [], create, restore, remove };

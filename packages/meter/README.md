@@ -90,4 +90,4 @@ renewal webhook. Undeclared meters have no balance, which `consume` reports as `
 - **The model is for the admin page.** `MeterBalance` and `MeterUsage` make the tables visible to the Database admin and
   the generic CRUD allowlist; the money path is raw SQL on purpose.
 - ponytail: one D1 statement is atomic per row; for a global, strongly consistent counter across regions, front the
-  meter with a Durable Object (`WebhookEndpointQuota` in otta-web is the pattern) and call `consume` from it.
+  meter with a Durable Object (one per tenant, serializing count-then-write) and call `consume` from it.

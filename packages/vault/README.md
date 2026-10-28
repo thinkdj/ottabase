@@ -6,16 +6,8 @@ transaction, and any one tenant's rows can be streamed out when a customer asks 
 D1 has point-in-time recovery; that is Cloudflare's safety net. This one is yours: a copy in a bucket you control,
 readable by anything that reads JSON, restorable into a fresh database, portable off the platform.
 
-Vault is a **Premium Package** (`@ottabase/premium`). The part that gets you out of trouble is free; what is sold is not
-having to remember.
-
-|                                                               | Free                      | Licensed                                 |
-| ------------------------------------------------------------- | ------------------------- | ---------------------------------------- |
-| Manual backup, list, restore, delete                          | yes, up to 5 kept backups | yes, up to the license's `backups` limit |
-| A user's own export (`GET /export/me`)                        | yes                       | yes                                      |
-| Nightly schedule (`vault:backup`) with retention pruning      | no                        | yes                                      |
-| Stale-backup health check in `/api/admin/health`              | no                        | yes                                      |
-| Operator export of any tenant (`GET /export?organizationId=`) | no                        | yes                                      |
+Everything is free: manual backup, list, restore and delete, a nightly schedule (`vault:backup`) with retention pruning,
+a stale-backup health check in `/api/admin/health`, operator export of any tenant, and every user's own export.
 
 ## Install
 
@@ -37,24 +29,13 @@ export const vaultPackage = createVaultPackage<CloudflareEnv>({
     vault,
     resolveCaller: resolvePackageCaller,
     env: { required: ['OBCF_D1', 'OBCF_R2'] },
-    // licensePublicKey: '…',  // your vendor key; defaults to the DEMO key published in this repo
 });
 ```
 
-List `vaultPackage` in `ottabase/packages.ts`; the premium registry (`worker/lib/premium.ts`) picks it up from the list
-and mounts its routes behind the entitlement gate. The package has no tables of its own. It seeds a `vault:backup` task
-at `23 2 * * *` and renders at **Admin → Infrastructure → Vault** (`VaultSettings` from `@ottabase/vault/react`; add
-`'../../packages/vault/src/**/*.{js,ts,jsx,tsx}'` to the app's Tailwind `content`).
-
-## Licensing
-
-Paste a license at **Admin → Growth → Premium packages**, or set `PREMIUM_LICENSE_VAULT` (or a `PREMIUM_LICENSES` JSON
-map). A license names features (`schedule`, `export`) and may raise the `backups` limit.
-`packages/vault/src/demo-license.ts` holds the demo vendor's keypair and a perpetual pro license, so the whole flow can
-be tried without buying anything; replace the public key for anything you sell (`generateLicenseKeypair` from
-`@ottabase/premium/license-tools`).
-
-A lapsed license closes the schedule and the operator export. Backups stay, restore stays, your data stays.
+List `vaultPackage` in `ottabase/packages.ts`; the kernel mounts its routes like any other package's. The package has no
+tables of its own. It seeds a `vault:backup` task at `23 2 * * *` and renders at **Admin → Infrastructure → Vault**
+(`VaultSettings` from `@ottabase/vault/react`; add `'../../packages/vault/src/**/*.{js,ts,jsx,tsx}'` to the app's
+Tailwind `content`).
 
 ## Layout in the bucket
 
@@ -79,10 +60,10 @@ await vault.prune(env, 30); // ids removed
 vault.export(env, { column: 'organization_id', value: orgId }); // ReadableStream of {table,row} NDJSON lines
 ```
 
-The core (`createVault`) is not gated: app code can call any of it. The gates live in the routes and the cron handler.
-Restore intersects the backup's columns with the live table's, so a column dropped since the backup is skipped and
-reported, and a table that no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does),
-the whole restore is one transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
+App code can call any of the core (`createVault`) directly; the routes add the caller checks. Restore intersects the
+backup's columns with the live table's, so a column dropped since the backup is skipped and reported, and a table that
+no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does), the whole restore is one
+transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
 
 ### The bucket's own objects
 
@@ -100,24 +81,18 @@ ceiling here (marked `ponytail:`); steady state copies only what changed.
 
 ## Routes
 
-| Route                                  | Who                | Gate             | Does                                                                            |
-| -------------------------------------- | ------------------ | ---------------- | ------------------------------------------------------------------------------- |
-| `GET /backups`                         | platform admin     | free             | newest manifests (`?limit=`)                                                    |
-| `POST /backups`                        | platform admin     | `backups` limit  | run a backup now (`{ tables?, label?, objects? }`); 402 at the cap              |
-| `GET /backups/:id`                     | platform admin     | free             | one manifest                                                                    |
-| `POST /backups/:id/restore`            | platform admin     | free             | `{ confirm: id, tables?, truncate?, objects? }`; replaces live rows and objects |
-| `DELETE /backups/:id`                  | platform admin     | free             | remove every object of the backup                                               |
-| `GET /export?organizationId=\|userId=` | platform admin     | `export` feature | NDJSON download of one tenant                                                   |
-| `GET /export/me`                       | any signed-in user | free             | their organization (if they manage it) or their own rows                        |
-
-A closed gate answers `402 PREMIUM_REQUIRED` with `metadata.reason` (`LIMIT_REACHED`, `LICENSE_MISSING`, …) and the
-purchase URL, which is what the admin page renders as the upsell.
+| Route                                  | Who                | Does                                                                            |
+| -------------------------------------- | ------------------ | ------------------------------------------------------------------------------- |
+| `GET /backups`                         | platform admin     | newest manifests (`?limit=`)                                                    |
+| `POST /backups`                        | platform admin     | run a backup now (`{ tables?, label?, objects? }`)                              |
+| `GET /backups/:id`                     | platform admin     | one manifest                                                                    |
+| `POST /backups/:id/restore`            | platform admin     | `{ confirm: id, tables?, truncate?, objects? }`; replaces live rows and objects |
+| `DELETE /backups/:id`                  | platform admin     | remove every object of the backup                                               |
+| `GET /export?organizationId=\|userId=` | platform admin     | NDJSON download of one tenant                                                   |
+| `GET /export/me`                       | any signed-in user | their organization (if they manage it) or their own rows                        |
 
 ## Design notes
 
-- **The registry arrives at mount time.** A cron handler never sees the host, so `routes.build(host)` keeps the premium
-  registry in a closure and the handler and the health probe ask it. Until the routes are mounted the schedule stays off
-  and health reports why.
 - **NDJSON, not SQLite files.** D1 does not hand out its database file; a row-per-line text format is what every tool
   can read, diff and import, and it slices per tenant.
 - **Internal tables are skipped**: `_cf_KV`, `sqlite_sequence`, the migration ledgers. Pass `exclude` for your own.

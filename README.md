@@ -384,6 +384,8 @@ The contract every package is built on, and the primitives a SaaS needs on day o
 | `@ottabase/discover`   | AI-readable by default: robots.txt naming the AI search crawlers, sitemap, `/.well-known/otta.json`, JSON-LD, the canonical paragraph                                             |
 | `@ottabase/postmaster` | Inbound mail (Email Routing), suppression list, one-click unsubscribe, Resend/SES bounces                                                                                         |
 | `@ottabase/alerts`     | Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: cooldowns, hourly limits, digests, retries                                  |
+| `@ottabase/webhooks`   | Outbound webhooks for your customers: HMAC-signed deliveries, endpoint health and a delivery log                                                                                  |
+| `@ottabase/vault`      | D1 backups to R2 as NDJSON with one-transaction restore, a nightly schedule with retention, and tenant export                                                                     |
 
 ### Premium Packages
 
@@ -393,11 +395,9 @@ free package. Rendered pages and Drizzle's static schema export are explicit bui
 app's packages-registration test. Licenses are signed tokens verified **offline** (Web Crypto), so nothing phones home.
 An app with no Premium Packages is completely unaffected: nothing mounts and nothing is fetched.
 
-| Package              | Purpose                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| `@ottabase/premium`  | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI                 |
-| `@ottabase/webhooks` | Worked example: HMAC-signed outbound webhooks, free tier + licensed delivery log                 |
-| `@ottabase/vault`    | D1 backups to R2 with restore free (5 kept); nightly schedule, retention, tenant export licensed |
+| Package             | Purpose                                                                          |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `@ottabase/premium` | Manifests, license verification, entitlements, lifecycle, gated routes, admin UI |
 
 **Ottabase Pro** is the commercial bundle built this way: Tower (every app you run, on one board), PayPort (sell plans
 to your app's users), Blackbox (error tracking), Beacon (a status page), Workbench (the database inside the admin),
