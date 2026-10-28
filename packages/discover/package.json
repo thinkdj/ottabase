@@ -31,6 +31,7 @@
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
+        "@ottabase/context": "workspace:*",
         "@ottabase/kernel": "workspace:*",
         "@ottabase/ottarouter": "workspace:*",
         "@ottabase/utils": "workspace:*"

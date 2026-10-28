@@ -13,17 +13,30 @@ import { firstParagraph, type ProductFacts } from './facts';
 
 type Node = Record<string, unknown>;
 
+/** The founder as a Person: name, title, address, photo, the profiles that are the same person. */
+const person = (f: NonNullable<ProductFacts['founder']>): Node => {
+    const sameAs = Object.values(f.socials ?? {});
+    return {
+        '@type': 'Person',
+        name: f.name,
+        ...(f.url ? { url: f.url } : {}),
+        ...(f.title ? { jobTitle: f.title } : {}),
+        ...(f.photo ? { image: f.photo } : {}),
+        ...(f.place ? { address: f.place } : {}),
+        ...(sameAs.length ? { sameAs } : {}),
+    };
+};
+
 const org = (f: ProductFacts): Node => ({
     '@type': 'Organization',
     '@id': `${f.url}#organization`,
     name: f.name,
     url: f.url,
-    ...(f.logo ? { logo: f.logo } : {}),
+    ...(f.brand?.logo || f.logo ? { logo: f.brand?.logo ?? f.logo } : {}),
     ...(f.sameAs?.length ? { sameAs: f.sameAs } : {}),
-    ...(f.founder
-        ? { founder: { '@type': 'Person', name: f.founder.name, ...(f.founder.url ? { url: f.founder.url } : {}) } }
-        : {}),
-    ...(f.launched ? { foundingDate: f.launched } : {}),
+    ...(f.founder ? { founder: person(f.founder) } : {}),
+    ...(f.facts?.founded ? { foundingDate: f.facts.founded } : f.launched ? { foundingDate: f.launched } : {}),
+    ...(f.facts?.location ? { location: f.facts.location } : {}),
     ...(f.contact && f.contact.includes('@') ? { email: f.contact } : {}),
 });
 
@@ -57,16 +70,19 @@ const offers = (f: ProductFacts): Node[] =>
 const app = (f: ProductFacts): Node => {
     const description = f.tagline ?? firstParagraph(f.whatItIs);
     const o = offers(f);
+    const shots = (f.screenshots ?? []).map((s) => (typeof s === 'string' ? s : s.url));
     return {
         '@type': 'SoftwareApplication',
         '@id': `${f.url}#software`,
         name: f.name,
         url: f.url,
         applicationCategory: 'WebApplication',
-        operatingSystem: 'Web',
+        ...(f.facts?.category ? { applicationSubCategory: f.facts.category } : {}),
+        operatingSystem: f.facts?.platforms?.length ? f.facts.platforms.join(', ') : 'Web',
+        ...(f.facts?.license ? { license: f.facts.license } : {}),
         ...(description ? { description } : {}),
         ...(f.image ? { image: f.image } : {}),
-        ...(f.screenshots?.length ? { screenshot: f.screenshots } : {}),
+        ...(shots.length ? { screenshot: shots } : {}),
         ...(f.features.length ? { featureList: f.features } : {}),
         ...(f.keywords?.length ? { keywords: f.keywords.join(', ') } : {}),
         ...(f.launched ? { datePublished: f.launched } : {}),

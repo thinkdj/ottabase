@@ -12,14 +12,22 @@ export {
     httpUrl,
     priceWords,
     pricingLine,
+    type Brand,
+    type Copy,
+    type Facts,
+    type Feeds,
     type Founder,
     type Hero,
+    type Links,
     type Plan,
     type PlanPeriod,
     type Pricing,
     type ProductFacts,
+    type Screenshot,
     type Stage,
 } from './facts';
+export { brandFromTheme, cssColorToHex, fontFamilyName, type ThemeLike } from './brand';
+export { isOwnerKey, OWNER_KEY_PARAM } from './responses';
 export {
     AI_SEARCH_BOTS,
     AI_TRAINING_BOTS,
@@ -31,6 +39,7 @@ export {
 } from './robots';
 export { sitemapXml, type SitemapEntry } from './sitemap';
 export {
+    contextHash,
     OTTA_CONTEXT_KIND,
     OTTA_CONTEXT_VERSION,
     OTTA_JSON_PATH,
@@ -38,6 +47,7 @@ export {
     parseOttaJson,
     type OttaContext,
     type OttaContextProduct,
+    type Scope,
 } from './otta-json';
 export { jsonLd, jsonLdScript } from './json-ld';
 export { canonicalParagraph } from './paragraph';
