@@ -31,7 +31,7 @@ async function brandDefaults(env: CloudflareEnv, request: Request): Promise<Part
         return {
             ...base,
             siteName: brand.brandName || base.siteName,
-            accent: tokenToHex((brand.theme as Record<string, unknown>).primary),
+            accent: tokenToHex(brand.theme.colors.primary),
             logoUrl: httpUrl(brand.logos.primary) ?? undefined,
         };
     } catch {
