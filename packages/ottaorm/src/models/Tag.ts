@@ -42,6 +42,7 @@ export class Tag extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottaorm';
     static packageType: PackageType = 'core';
+    static admin = { enabled: true, scope: 'system' as const, description: 'Platform-wide tags.' };
 
     // UI/Forms metadata
     static displayName = 'Tag';

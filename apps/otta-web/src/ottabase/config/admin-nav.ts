@@ -39,6 +39,7 @@ import {
     Rocket,
     Sparkles, // otta:only ottaai
     Server,
+    Table2,
     Settings, // otta:only ottablog
     Shield,
     ShieldCheck,
@@ -241,6 +242,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Infrastructure',
         icon: Server,
         items: [
+            {
+                title: 'CrudHub',
+                description: 'Browse, search and edit any model that opted in, with its own fields and actions.',
+                href: '/admin/crudhub',
+                icon: Table2,
+                scope: 'org',
+            },
             {
                 title: 'Database',
                 description: 'Browse and manage database tables and records.',

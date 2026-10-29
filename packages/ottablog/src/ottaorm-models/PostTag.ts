@@ -41,6 +41,7 @@ export class PostTag extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+    static admin = { enabled: true, scope: 'org' as const, description: 'Tags attached to blog posts.' };
 
     static writable = {
         create: ['name', 'slug', 'color', 'type', 'appId'],

@@ -19,6 +19,12 @@ export class Organization extends BaseModel {
     static connection = 'default';
     static packageName = '@ottabase/ottaorm';
     static packageType: PackageType = 'core';
+    /**
+     * Read-only in CrudHub: creating an org must provision its owner membership in the same
+     * transaction, which the generic write path does not do. Members and roles stay on the
+     * dedicated admin pages.
+     */
+    static admin = { enabled: true, scope: 'system' as const, readOnly: true, description: 'Tenant organizations.' };
 
     // UI/Forms metadata
     static displayName = 'Organization';

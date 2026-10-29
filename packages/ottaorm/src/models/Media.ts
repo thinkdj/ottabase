@@ -35,6 +35,14 @@ export class Media extends BaseModel {
     static table = mediaTable;
     static primaryKey = 'id';
     static packageType: PackageType = 'core';
+    /** Read-only in CrudHub: a row deleted here would orphan its R2 object; the media library owns writes. */
+    static admin = {
+        enabled: true,
+        scope: 'org' as const,
+        readOnly: true,
+        relations: ['owner:id{name,image}'],
+        description: 'Every uploaded file and its metadata.',
+    };
     static displayName = 'Media';
     static displayNamePlural = 'Media';
     static defaultSort = 'createdAt';

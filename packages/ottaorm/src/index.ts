@@ -22,6 +22,28 @@ export type { ModelMetadata, ModelRegistryEntry } from './registry';
 export { handleCrud, parseCrudRequest, parseStrictQueryInteger, validateCrudQuery } from './crud';
 export type { CrudRequest, CrudResponse } from './crud';
 
+// CrudHub (generic admin data screens): model opt-in and descriptors
+export {
+    CRUDHUB_DENYLIST,
+    CRUDHUB_RELATION_LIMIT,
+    actionDescriptors,
+    clientFields,
+    describeCrudHubModel,
+    fillRouteTokens,
+    getCrudHubModel,
+    isCrudHubModel,
+    listCrudHubModels,
+} from './crudhub';
+export type {
+    AdminAction,
+    AdminActionContext,
+    AdminModelConfig,
+    CrudHubActionDescriptor,
+    CrudHubRelation,
+    CrudHubModelDescriptor,
+    CrudHubScope,
+} from './crudhub';
+
 // Row-Level Security (RLS)
 export {
     RLSError,
@@ -74,13 +96,22 @@ export {
     BaseModel,
     ConcurrentMutationError,
     QueryBindingLimitError,
+    QueryBuilder,
+    RecordNotFoundError,
     MAX_SEARCH_TERM_BYTES,
+    likeCondition,
+    loadRelations,
+    parseRelationSpec,
 } from './base';
 export type {
     IModelConstructorParams,
     AtomicMutationGuard,
     CollectionQueryOptions,
     KeysetPagesOptions,
+    LoadRelationsOptions,
+    PivotWriteOptions,
+    RelationSpec,
+    WhereOperator,
     ModelFieldDescriptor,
     ModelFieldType,
     ModelFields,

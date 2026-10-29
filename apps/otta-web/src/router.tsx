@@ -3,6 +3,7 @@ import { DemoBanner } from '@/components/DemoBanner'; // otta:only demo
 import { NotFoundPage } from '@/components/NotFoundPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { RouteLoadingFallback } from '@/components/RouteLoadingFallback';
+import { UrlNotices } from '@/components/UrlNotices';
 import { usePageViewTracking } from '@/hooks/usePageViewTracking';
 import { ConfigurableLayout } from '@/ottabase/components/ConfigurableLayout';
 import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
@@ -39,6 +40,7 @@ function RootLayout() {
     return (
         <>
             <BrandPathSync pathname={pathname} />
+            <UrlNotices />
             {/* otta:begin demo */}
             <DemoBanner />
             {/* otta:end demo */}
@@ -255,6 +257,7 @@ const resetPasswordRoute = publicRoute('/reset-password', () =>
 // ─── User app surface ────────────────────────────────────────────────────────
 
 const userProfileRoute = protectedRoute('/profile', () => import('@/pages/user/UserProfilePage'), 'UserProfilePage');
+const userSessionsRoute = protectedRoute('/sessions', () => import('@/pages/user/SessionsPage'), 'SessionsPage');
 const userMediaLibraryRoute = protectedRoute(
     '/media-library',
     () => import('@/pages/user/UserMediaLibraryPage'),
@@ -581,6 +584,33 @@ const adminDatabaseRoute = makeAdminRoute(
         }),
     },
 );
+// CrudHub: generic admin data screens. Org admins reach the directory and their org-scoped
+// models; the worker filters system-scoped models out for them (scope 'org' here, server decides).
+const crudHubLoader = () => import('@/pages/admin/infrastructure/crudhub/CrudHubPages');
+const adminCrudHubRoute = makeAdminRoute('/admin/crudhub', crudHubLoader, 'CrudHubDirectoryPage', { scope: 'org' });
+const adminCrudHubListRoute = makeAdminRoute('/admin/crudhub/$model', crudHubLoader, 'CrudHubListPage', {
+    scope: 'org',
+    validateSearch: (search: Record<string, unknown>) => {
+        const perPage = Number(search.perPage);
+        const sort = typeof search.sort === 'string' && search.sort ? search.sort : undefined;
+        return {
+            page: Math.max(1, Number(search.page) || 1),
+            q: typeof search.q === 'string' ? search.q : '',
+            sort,
+            dir: sort ? (search.dir === 'desc' ? ('desc' as const) : ('asc' as const)) : undefined,
+            perPage: Number.isInteger(perPage) && perPage > 0 ? Math.min(perPage, 100) : undefined,
+        };
+    },
+});
+const adminCrudHubNewRoute = makeAdminRoute('/admin/crudhub/$model/new', crudHubLoader, 'CrudHubFormPage', {
+    scope: 'org',
+});
+const adminCrudHubDetailRoute = makeAdminRoute('/admin/crudhub/$model/$id', crudHubLoader, 'CrudHubDetailPage', {
+    scope: 'org',
+});
+const adminCrudHubEditRoute = makeAdminRoute('/admin/crudhub/$model/$id/edit', crudHubLoader, 'CrudHubFormPage', {
+    scope: 'org',
+});
 const adminMigrationsRoute = makeAdminRoute(
     '/admin/infrastructure/migrations',
     () => import('@/pages/admin/infrastructure/MigrationsPage'),
@@ -805,6 +835,7 @@ const coreRoutes = [
     verifyEmailRoute,
     resetPasswordRoute,
     userProfileRoute,
+    userSessionsRoute,
     // Admin
     adminRoute,
     adminAnalyticsRoute,
@@ -829,6 +860,11 @@ const coreRoutes = [
     adminSecurityRLSRoute,
     adminKillSwitchesRoute,
     adminDatabaseRoute,
+    adminCrudHubRoute,
+    adminCrudHubListRoute,
+    adminCrudHubNewRoute,
+    adminCrudHubDetailRoute,
+    adminCrudHubEditRoute,
     adminMigrationsRoute,
     adminQueuesRoute,
     adminCronRoute,

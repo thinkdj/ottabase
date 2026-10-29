@@ -11,6 +11,17 @@ export class Comment extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/comments';
     static packageType: PackageType = 'package';
+    /**
+     * Read-only in CrudHub: comment writes derive their org from the target and a delete must also
+     * remove the reactions, both handled only by the public route.
+     */
+    static admin = {
+        enabled: true,
+        scope: 'org' as const,
+        readOnly: true,
+        relations: ['author:id{name,image}', 'parent:id{content,status}', 'replies:id{content,status}'],
+        description: 'Comments and moderation state.',
+    };
 
     static displayName = 'Comment';
     static displayNamePlural = 'Comments';

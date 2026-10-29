@@ -23,6 +23,7 @@ export class PostSeries extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+    static admin = { enabled: true, scope: 'org' as const, description: 'Post series and their order.' };
 
     static writable = {
         create: ['title', 'slug', 'description', 'coverImage', 'isComplete', 'sortOrder', 'appId'],

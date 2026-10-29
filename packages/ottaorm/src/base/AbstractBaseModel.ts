@@ -248,6 +248,23 @@ export abstract class AbstractBaseModel {
     };
 
     /**
+     * CrudHub opt-in (the generic admin data screens). Absent = not in the hub.
+     * See `AdminModelConfig` in `@ottabase/ottaorm` for every option.
+     *
+     * @example
+     * static admin = { enabled: true, scope: 'org', titleField: 'title', routes: { edit: '/admin/content/blog/:id/edit' } };
+     */
+    static admin?: import('../crudhub').AdminModelConfig;
+
+    /**
+     * Server-only row actions CrudHub offers in its row menu. Only declared keys are callable.
+     *
+     * @example
+     * static adminActions = { publish: { title: 'Publish', when: (row) => row.status === 'draft', run: async (row) => ... } };
+     */
+    static adminActions?: Record<string, import('../crudhub').AdminAction<any, any>>;
+
+    /**
      * Initialize instance with model defaults
      */
     protected constructor() {

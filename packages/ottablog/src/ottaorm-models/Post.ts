@@ -10,7 +10,6 @@ import {
     DomainValidationError,
     ModelFields,
     User,
-    type IModelConstructorParams,
     type PackageType,
     type UpdateMutationContext,
 } from '@ottabase/ottaorm';
@@ -332,6 +331,42 @@ export class Post extends BaseModel {
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
 
+    /**
+     * CrudHub: org admins browse their posts; editing opens the real blog editor. Read-only in the
+     * hub because post writes need the public route's guards (content validation, publish rules,
+     * platform-owned rows); the feature toggles below are declared actions and still run.
+     */
+    static admin = {
+        enabled: true,
+        scope: 'org' as const,
+        readOnly: true,
+        titleField: 'title',
+        searchField: 'title',
+        listFields: ['title', 'status', 'contentType', 'isFeatured', 'publishAt', 'createdAt'],
+        routes: { view: '/blog/:slug', edit: '/admin/content/blog/:id/edit' },
+        relations: ['author:id{name,image}', 'tags:id{name,slug}', 'categories:id{name,slug}'],
+        description: 'Posts, drafts and scheduled articles.',
+    };
+
+    static adminActions = {
+        feature: {
+            title: 'Feature post',
+            when: (row: Record<string, unknown>) => row.isFeatured !== true,
+            run: async (row: Record<string, unknown>) => {
+                await Post.update(String(row.id), { isFeatured: true });
+                return { isFeatured: true };
+            },
+        },
+        unfeature: {
+            title: 'Remove from featured',
+            when: (row: Record<string, unknown>) => row.isFeatured === true,
+            run: async (row: Record<string, unknown>) => {
+                await Post.update(String(row.id), { isFeatured: false });
+                return { isFeatured: false };
+            },
+        },
+    };
+
     /** Delete dependent translations before the canonical row. This IS the cascade: OttaORM
      * auto-init emits no FOREIGN KEY clauses, so the schema's `onDelete: 'cascade'` never reaches
      * the database and translations would otherwise keep their localized slugs as orphans. */
@@ -460,10 +495,8 @@ export class Post extends BaseModel {
         ],
     };
 
-    constructor(params: IModelConstructorParams) {
-        super(params);
-        this.hidden = [...this.hidden, 'passwordHash'];
-    }
+    /** Static, not per instance, so CrudHub's field descriptors drop it too. */
+    protected static hidden = ['passwordHash'];
 
     protected static fields: ModelFields = {
         id: {

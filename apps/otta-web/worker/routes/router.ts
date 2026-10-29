@@ -16,6 +16,7 @@
 // by mountPackages() and mountPremiumPackages() below.
 // ============================================================
 
+import { wasSessionRevoked } from '@ottabase/auth/backend';
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { mountPackages, runHealth } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
@@ -28,8 +29,16 @@ import { requireAdminAccess } from '../lib/admin-guard';
 import { buildCorsHeaders, ctxOf, h, makeApiRouteContext, type ApiRouteContext } from '../lib/api-context';
 import { premium } from '../lib/premium';
 import { handleUnhandledRequestError } from '../lib/http-error-boundary';
+import {
+    handleMeSessionRename,
+    handleMeSessionRevoke,
+    handleMeSessionsList,
+    handleMeSessionsRevokeOthers,
+} from './me-sessions';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
+import { handleCrudHubAction, handleCrudHubCrud, handleCrudHubModel, handleCrudHubModels } from './admin-crudhub';
+import { handleAdminSystemReadiness } from './admin-system';
 import {
     handleAdminDbRowDelete,
     handleAdminDbTableData,
@@ -130,6 +139,9 @@ apiRouter.get('/api/health', () =>
         timestamp: Date.now(),
     }),
 );
+// System readiness for the /admin overview: declared settings, bindings and probes with the
+// package that asked for each. Platform admins only; no secret value ever appears.
+apiRouter.get('/api/admin/system/readiness', h(handleAdminSystemReadiness));
 // Readiness: every package's required env and its own probe, for platform admins. The
 // per-check detail names bindings, so it is not public.
 apiRouter.get(
@@ -168,6 +180,11 @@ apiRouter.post('/api/auth/password/reset/confirm', h(handlePasswordResetConfirm)
 apiRouter.post('/api/auth/password/change', h(handlePasswordChange));
 apiRouter.all('/api/auth/*', h(handleAuthApiRequest));
 apiRouter.on(['GET', 'PATCH'], '/api/users/me', h(handleUserProfile));
+// The signed-in user's own sessions (see me-sessions.ts). Static before :id so revoke-others wins.
+apiRouter.get('/api/users/me/sessions', h(handleMeSessionsList));
+apiRouter.post('/api/users/me/sessions/revoke-others', h(handleMeSessionsRevokeOthers));
+apiRouter.patch('/api/users/me/sessions/:id', (c) => handleMeSessionRename(ctxOf(c), c.params.id));
+apiRouter.delete('/api/users/me/sessions/:id', (c) => handleMeSessionRevoke(ctxOf(c), c.params.id));
 
 // -------------------------------------------------------
 // Email
@@ -253,6 +270,27 @@ apiRouter.all('/api/admin/queues/dlq/:jobId', (c) => handleAdminQueuesDLQJob(ctx
 // so a percent-encoded table name (valid or malformed) simply fails
 // the charset test and falls through.
 // -------------------------------------------------------
+// -------------------------------------------------------
+// CrudHub: generic admin data screens over opted-in models (see admin-crudhub.ts).
+// The model segment is matched as a plain entity name; everything else falls through.
+// -------------------------------------------------------
+const ENTITY_NAME = /^[a-z][a-z0-9_]{0,63}$/;
+apiRouter.get('/api/admin/crudhub', h(handleCrudHubModels));
+apiRouter.get('/api/admin/crudhub/:model/_meta', (c) =>
+    ENTITY_NAME.test(c.params.model) ? handleCrudHubModel(ctxOf(c), c.params.model) : null,
+);
+apiRouter.post('/api/admin/crudhub/:model/:id/actions/:key', (c) =>
+    ENTITY_NAME.test(c.params.model) && ENTITY_NAME.test(c.params.key)
+        ? handleCrudHubAction(ctxOf(c), c.params.model, c.params.id, c.params.key)
+        : null,
+);
+apiRouter.all('/api/admin/crudhub/:model', (c) =>
+    ENTITY_NAME.test(c.params.model) ? handleCrudHubCrud(ctxOf(c), c.params.model) : null,
+);
+apiRouter.all('/api/admin/crudhub/:model/:id', (c) =>
+    ENTITY_NAME.test(c.params.model) ? handleCrudHubCrud(ctxOf(c), c.params.model) : null,
+);
+
 apiRouter.get('/api/admin/db/tables', h(handleAdminDbTables));
 apiRouter.get('/api/admin/db/tables/*', (c) => {
     const tableName = c.params['*'];
@@ -389,5 +427,21 @@ export async function handleApiRequest(
     env: CloudflareEnv,
     ctx?: ExecutionContext,
 ): Promise<Response | null> {
-    return apiRouter.handle(request, env, ctx);
+    const response = await apiRouter.handle(request, env, ctx);
+    return response?.status === 401 ? markRevokedSession(request, env, response) : response;
+}
+
+/** The header a 401 carries when the session was revoked, so the browser can say so (notice `session-revoked`). */
+export const SESSION_ENDED_HEADER = 'X-Session-Ended';
+
+/**
+ * Every 401 passes through here: when the caller still holds a validly signed cookie whose session
+ * was revoked (from another device, or by a password change), say so in a header. Only 401s pay
+ * the two KV reads; a missing or expired cookie gets no header and reads as "expired".
+ */
+async function markRevokedSession(request: Request, env: CloudflareEnv, response: Response): Promise<Response> {
+    if (!(await wasSessionRevoked(request, env as never))) return response;
+    const marked = new Response(response.body, response);
+    marked.headers.set(SESSION_ENDED_HEADER, 'revoked');
+    return marked;
 }

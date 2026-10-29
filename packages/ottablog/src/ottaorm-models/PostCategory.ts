@@ -22,6 +22,7 @@ export class PostCategory extends BaseModel {
     static primaryKey = 'id';
     static packageName = '@ottabase/ottablog';
     static packageType: PackageType = 'package';
+    static admin = { enabled: true, scope: 'org' as const, description: 'Blog categories.' };
 
     static writable = {
         create: ['name', 'slug', 'description', 'parentId', 'sortOrder', 'type', 'appId'],
