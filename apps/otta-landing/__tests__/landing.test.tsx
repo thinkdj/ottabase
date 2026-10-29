@@ -280,7 +280,8 @@ describe('the product for machines', () => {
         const body = await res.json();
         expect(body).toMatchObject({
             kind: 'otta-context',
-            version: 1,
+            version: 2,
+            scope: 'public',
             from: 'https://landing.acme.test/.well-known/otta.json',
         });
         expect(body.product).toMatchObject({
@@ -292,6 +293,11 @@ describe('the product for machines', () => {
         });
         expect(body.product.features[0]).toMatch(/^Auth & RBAC: /);
         expect(body.product.pricing).toMatch(/^Hobby free; /);
+        expect(body.product.plans.map((p: { name: string; price: unknown }) => [p.name, p.price])).toEqual([
+            ['Hobby', 'free'],
+            ['Pro', 29],
+            ['Team', 99],
+        ]);
         expect(store.findPage).toHaveBeenCalledWith('acme', '/');
     });
 
