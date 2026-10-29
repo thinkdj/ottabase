@@ -233,5 +233,9 @@ export const appPackage = definePackage<CloudflareEnv>({
         'batch-task': batchTaskHandler,
     },
 
-    env: { optional: ['OBCF_BROWSER'] },
+    env: {
+        optional: [
+            { key: 'OBCF_BROWSER', kind: 'binding', description: 'Browser Rendering for screenshots and PDFs.' },
+        ],
+    },
 });

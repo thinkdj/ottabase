@@ -53,5 +53,6 @@ export const packages: PackageRegistry<CloudflareEnv> = {
     events: () => resolved().events(),
     nav: () => resolved().nav(),
     env: () => resolved().env(),
+    envDeclarations: () => resolved().envDeclarations(),
     report: (incident) => resolved().report(incident),
 };

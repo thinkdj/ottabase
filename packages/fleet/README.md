@@ -44,6 +44,8 @@ curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/ap
     "data": {
         "app": "my-tool",
         "environment": "production",
+        // The build that answered, when the host wires `version` (see below); null otherwise
+        "version": { "id": "9f2c…", "tag": "abc1234", "createdAt": "2026-10-29T10:00:00Z" },
         "takenAt": 1792584000000,
         "packages": [
             {
@@ -75,6 +77,13 @@ curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/ap
 A source that throws (no bucket, no D1) is named in `errors`; the rest of the report stands. `summarize(report)` is the
 shared verdict a board applies: any failing health check, or an active scheduled task whose last run failed, makes the
 app `degraded`.
+
+### Which build is running
+
+Pass `version: (env) => readDeploymentVersion(env.OBCF_VERSION)` (from `@ottabase/kernel`) and bind Cloudflare's version
+metadata in `wrangler.jsonc` (`"version_metadata": { "binding": "OBCF_VERSION" }`, in every env block: bindings are not
+inherited). The report then names the Worker version id and its deploy tag; Tower shows the tag on each app. CI deploys
+with `--tag <short sha>`, so the tag is the commit.
 
 ## Why a token, and why a secret
 

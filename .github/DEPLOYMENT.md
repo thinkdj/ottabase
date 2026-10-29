@@ -293,7 +293,8 @@ node .github/scripts/discover-deployable-apps.mjs
 7. **Build Worker** - `pnpm run <workerBuildCommand>`
 8. **Verify Worker Bundle** - Check all `verifyPaths` exist
 9. **Generate Wrangler Config** - Substitute production secrets
-10. **Deploy** - `wrangler deploy --env production`
+10. **Deploy** - `wrangler deploy --env production --tag <short sha>` (the tag reaches the Worker through its
+    `OBCF_VERSION` version metadata binding)
 11. **Health Check** - Verify deployment accessible (3 retries)
 12. **Summary** - Report status
 

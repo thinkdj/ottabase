@@ -63,6 +63,8 @@ interface __BaseEnv_CloudflareEnv {
 	POLAR_ENV?: string;
 	OBCF_BROWSER?: BrowserRun;
 	OBCF_AI?: Ai;
+	/** The running Worker version (id, deploy tag, time). Optional: unbound in tests. */
+	OBCF_VERSION?: WorkerVersionMetadata;
 	OBCF_IMAGES?: ImagesBinding;
 	AUTH_ALLOW_INSECURE_DEV_SECRET?: string;
 	R2_PUBLIC_URL?: string;

@@ -34,5 +34,13 @@ export const referralsPackage = createReferralsPackage<CloudflareEnv>({
                 ),
         },
     ],
-    env: { optional: ['OBCF_ANALYTICS_REFERRALS'] },
+    env: {
+        optional: [
+            {
+                key: 'OBCF_ANALYTICS_REFERRALS',
+                kind: 'binding',
+                description: 'Analytics Engine dataset for referral events.',
+            },
+        ],
+    },
 });

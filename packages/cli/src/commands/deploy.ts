@@ -139,6 +139,20 @@ export function parseAccountId(whoami: string): string | null {
     return /\b([0-9a-f]{32})\b/.exec(whoami)?.[1] ?? null;
 }
 
+/** The short commit of the checkout at `cwd`, or null outside git (a tarball, no git installed). */
+export function shortCommit(cwd: string): string | null {
+    try {
+        const out = execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], {
+            cwd,
+            stdio: ['ignore', 'pipe', 'ignore'],
+        });
+        const sha = out.toString().trim();
+        return /^[0-9a-f]{7,40}$/.test(sha) ? sha : null;
+    } catch {
+        return null;
+    }
+}
+
 /** The first deployed URL `wrangler deploy` prints. */
 export function parseDeployedUrl(output: string): string | null {
     return /https:\/\/[a-z0-9.-]+\.workers\.dev\b/i.exec(output)?.[0] ?? null;
@@ -258,7 +272,10 @@ export async function deployApp(
 
     // 5. Deploy.
     log.step(`Deploying env.${env}`);
-    const deployed = wrangler(['deploy', '--env', env, '--config', configName], true);
+    // Tag the version with the short commit, which the Worker reads back through its version
+    // metadata binding (readiness and the Fleet report show it). Outside a git checkout, no tag.
+    const tag = shortCommit(appDir);
+    const deployed = wrangler(['deploy', '--env', env, '--config', configName, ...(tag ? ['--tag', tag] : [])], true);
     console.log(deployed.trim());
     result.workerUrl = options.url ?? parseDeployedUrl(deployed);
     if (result.workerUrl) log.success(result.workerUrl);

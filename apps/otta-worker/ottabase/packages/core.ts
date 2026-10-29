@@ -17,7 +17,7 @@ export const corePackage = definePackage<CloudflareEnv>({
     description: 'The scheduler, the event bus and the operator token.',
     env: {
         required: ['OBCF_D1'],
-        optional: ['OBCF_KV', 'OBCF_R2', 'OBCF_QUEUE', 'ADMIN_TOKEN'],
+        optional: ['OBCF_KV', 'OBCF_R2', 'OBCF_QUEUE', 'ADMIN_TOKEN', { key: 'OBCF_VERSION', kind: 'binding' }],
     },
     queue: {
         // The consumer half of the event bus: runs every `via: 'queue'` subscriber.

@@ -15,7 +15,18 @@ import type { FleetOptions } from './types';
 
 /** Fleet as the app registers it: two token-guarded routes and a health line saying whether it can be watched. */
 export function createFleetPackage<Env = unknown>(options: FleetOptions<Env>): OttaPackage<Env> {
-    const { basePath = FLEET_BASE_PATH, env = { optional: [FLEET_TOKEN_ENV] } } = options;
+    const {
+        basePath = FLEET_BASE_PATH,
+        env = {
+            optional: [
+                {
+                    key: FLEET_TOKEN_ENV,
+                    kind: 'secret',
+                    description: 'Bearer token Tower uses to read the fleet report.',
+                },
+            ],
+        },
+    } = options;
     const token = options.token ?? ((requestEnv: Env) => (requestEnv as { FLEET_TOKEN?: string } | null)?.FLEET_TOKEN);
 
     return definePackage<Env>({

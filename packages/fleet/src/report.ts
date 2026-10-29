@@ -69,6 +69,7 @@ export function createReporter<Env>(
         return {
             app: appId,
             environment: options.environment?.(env) ?? 'unknown',
+            version: options.version?.(env) ?? null,
             takenAt: now(),
             packages: packages.packages.map((pkg) => {
                 const status = licenses.get(pkg.key);

@@ -24,6 +24,10 @@ framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`,
 redeploy. Details and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight
 to Cloudflare". The rest of this guide is the CI/CD setup for a team.
 
+Both `otta deploy` and the CI workflow tag each deploy with the short commit (`wrangler deploy --tag abc1234`). The
+Worker reads it back through its version metadata binding (`OBCF_VERSION` in `wrangler.jsonc`), so the `/admin`
+readiness line and the Fleet report say which build is running. Outside a git checkout `otta deploy` deploys untagged.
+
 ---
 
 ## Step 1: Setup Cloudflare Resources

@@ -46,5 +46,11 @@ export const ottaaiPackage = createOttaaiPackage<CloudflareEnv>({
                 .post('/vision', (c) => handleAiVision(ctxOf(c), (promise) => c.ctx.waitUntil(promise)))
                 .post('/embed', (c) => handleAiEmbed(ctxOf(c), (promise) => c.ctx.waitUntil(promise))),
     },
-    env: { optional: ['OBCF_AI', 'CFAI_GATEWAY_NAME', 'OTTAAI_MASTER_KEY'] },
+    env: {
+        optional: [
+            { key: 'OBCF_AI', kind: 'binding', description: 'Workers AI binding for the Cloudflare provider.' },
+            { key: 'CFAI_GATEWAY_NAME', secret: false, description: 'AI Gateway name requests are routed through.' },
+            { key: 'OTTAAI_MASTER_KEY', kind: 'secret', description: 'Encrypts stored provider credentials (BYOK).' },
+        ],
+    },
 });

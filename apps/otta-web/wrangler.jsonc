@@ -198,6 +198,14 @@
         "binding": "OBCF_BROWSER",
     },
 
+    // Version metadata: which build is running (version id, deploy tag, creation time). Shown on
+    // /admin readiness and in the Fleet report. CI deploys with `--tag <short sha>`, so the tag is
+    // the commit. Bindings are not inherited by named envs, so each env block repeats it.
+    // @see https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/
+    "version_metadata": {
+        "binding": "OBCF_VERSION",
+    },
+
     // Images binding — the edge optimization pass for @ottabase/screenshot (local dev runs it
     // through sharp). Counts against Cloudflare Images transformations (free tier: 5,000/month).
     // Remove it and screenshots are served as Chrome encodes them.
@@ -314,6 +322,7 @@
                 },
             ],
             // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "version_metadata": { "binding": "OBCF_VERSION" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -412,6 +421,7 @@
                     "database_id": "DEMO_D1_DATABASE_ID",
                 },
             ],
+            "version_metadata": { "binding": "OBCF_VERSION" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -495,6 +505,7 @@
                     "database_id": "YOUR_STAGING_D1_DATABASE_ID",
                 },
             ],
+            "version_metadata": { "binding": "OBCF_VERSION" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -580,6 +591,7 @@
                 },
             ],
             // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            "version_metadata": { "binding": "OBCF_VERSION" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",

@@ -47,7 +47,15 @@ export function createPostmasterPackage<Env = unknown>(options: PostmasterPackag
         policies: postmasterPolicies,
         routes: routes ?? { basePath, build: () => createPostmasterRouter<Env>(router) },
         env: env ?? {
-            optional: ['EMAIL_RESEND_WEBHOOK_SECRET', 'EMAIL_SES_WEBHOOK_SECRET', 'EMAIL_UNSUBSCRIBE_SECRET'],
+            optional: [
+                {
+                    key: 'EMAIL_RESEND_WEBHOOK_SECRET',
+                    kind: 'secret',
+                    description: 'Verifies Resend bounce and complaint webhooks.',
+                },
+                { key: 'EMAIL_SES_WEBHOOK_SECRET', kind: 'secret', description: 'Verifies SES notification webhooks.' },
+                { key: 'EMAIL_UNSUBSCRIBE_SECRET', kind: 'secret', description: 'Signs one-click unsubscribe links.' },
+            ],
         },
         ...(cron ? { cron } : {}),
         ...(queue ? { queue } : {}),

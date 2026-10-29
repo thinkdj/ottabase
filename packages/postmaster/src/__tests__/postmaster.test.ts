@@ -422,6 +422,8 @@ describe('routes and package', () => {
         const { pkg } = build();
         expect(Object.keys(pkg.tables!)).toEqual(['emailSuppressionsTable']);
         expect(pkg.policies?.[0].model).toBe('email_suppressions');
-        expect(pkg.env?.optional).toContain('EMAIL_RESEND_WEBHOOK_SECRET');
+        expect(pkg.env?.optional?.map((k) => (typeof k === 'string' ? k : k.key))).toContain(
+            'EMAIL_RESEND_WEBHOOK_SECRET',
+        );
     });
 });

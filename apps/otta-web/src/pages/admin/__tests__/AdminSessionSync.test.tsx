@@ -10,6 +10,9 @@ vi.mock('@/lib/auth', () => ({
     useSession,
 }));
 
+// The readiness section fetches through the query client; this test is about session sync only.
+vi.mock('@/pages/admin/SystemReadiness', () => ({ SystemReadiness: () => null }));
+
 vi.mock('@/ottabase/config/admin-nav', () => ({
     getEnabledAdminNav: () => [],
 }));

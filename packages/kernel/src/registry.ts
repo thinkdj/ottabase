@@ -2,8 +2,10 @@ import type { Subscription } from '@ottabase/events';
 import type { Migration, ModelRLSConfig } from '@ottabase/ottaorm';
 import type { JobHandler } from '@ottabase/queue';
 import { routesOf } from './define';
+import { normalizeEnvKey } from './health';
 import type {
     CronContribution,
+    EnvKey,
     ErrorIncident,
     ModelEntry,
     NavContribution,
@@ -112,9 +114,22 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
                 })),
             ),
         env: () => ({
-            required: [...new Set(flat<string>((pkg) => pkg.env?.required))],
-            optional: [...new Set(flat<string>((pkg) => pkg.env?.optional))],
+            required: [...new Set(flat<EnvKey>((pkg) => pkg.env?.required).map((key) => normalizeEnvKey(key).key))],
+            optional: [...new Set(flat<EnvKey>((pkg) => pkg.env?.optional).map((key) => normalizeEnvKey(key).key))],
         }),
+        envDeclarations: () =>
+            packages.flatMap((pkg) => [
+                ...(pkg.env?.required ?? []).map((key) => ({
+                    ...normalizeEnvKey(key),
+                    required: true,
+                    package: pkg.key,
+                })),
+                ...(pkg.env?.optional ?? []).map((key) => ({
+                    ...normalizeEnvKey(key),
+                    required: false,
+                    package: pkg.key,
+                })),
+            ]),
         report,
     };
 }

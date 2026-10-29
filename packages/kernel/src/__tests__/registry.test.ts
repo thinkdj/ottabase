@@ -314,3 +314,52 @@ describe('applyPackageLifecycle', () => {
         expect(await store.get('notes')).toEqual({ version: '1.1.0', installedAt: 100, updatedAt: 200 });
     });
 });
+
+describe('runReadiness', () => {
+    it('lists every declared key with its package, masks previews, and never shows a secret', async () => {
+        const registry = createPackageRegistry<Env & { PUBLIC_URL?: string; TOKEN?: string; OBCF_KV?: unknown }>({
+            packages: [
+                pkg({
+                    key: 'core',
+                    env: {
+                        required: [{ key: 'OBCF_D1', kind: 'binding', description: 'The database' }, 'TOKEN'],
+                        optional: [
+                            { key: 'PUBLIC_URL', secret: false },
+                            { key: 'OBCF_KV', kind: 'binding' },
+                        ],
+                    },
+                }),
+                pkg({ key: 'slow', health: () => new Promise(() => {}) }),
+            ],
+        });
+        const { runReadiness } = await import('../health');
+        const report = await runReadiness(
+            registry,
+            {
+                OBCF_D1: { prepare() {} },
+                TOKEN: 'super-secret-token',
+                PUBLIC_URL: 'https://example.com/path',
+                OBCF_KV: {},
+            },
+            { probeTimeoutMs: 20 },
+        );
+        expect(report.ok).toBe(false);
+        expect(report.summary).toEqual({ total: 4, set: 3, missingRequired: 0, optionalUnset: 1, failedChecks: 1 });
+        const byKey = Object.fromEntries(report.settings.map((s) => [s.key, s]));
+        expect(byKey.OBCF_D1).toMatchObject({
+            package: 'core',
+            required: true,
+            kind: 'binding',
+            set: true,
+            description: 'The database',
+        });
+        expect(byKey.TOKEN).toMatchObject({ secret: true, set: true });
+        expect(byKey.TOKEN.preview).toBeUndefined();
+        expect(byKey.PUBLIC_URL.preview).toBe('ht************th');
+        // A KV binding without `get` is wired to the wrong resource: not set.
+        expect(byKey.OBCF_KV.set).toBe(false);
+        expect(report.checks).toEqual([{ package: 'slow', name: 'probe', ok: false, detail: 'timed out' }]);
+        expect(JSON.stringify(report)).not.toContain('super-secret');
+        expect(registry.env()).toEqual({ required: ['OBCF_D1', 'TOKEN'], optional: ['PUBLIC_URL', 'OBCF_KV'] });
+    });
+});

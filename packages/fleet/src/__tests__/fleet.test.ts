@@ -71,7 +71,7 @@ describe('the fleet package', () => {
         const { pkg, mounted } = app();
         expect(pkg.premium).toBeUndefined();
         expect(mounted).toEqual(['/api/fleet']);
-        expect(pkg.env).toEqual({ optional: ['FLEET_TOKEN'] });
+        expect(pkg.env).toEqual({ optional: [expect.objectContaining({ key: 'FLEET_TOKEN', kind: 'secret' })] });
         expect(await pkg.health!({})).toMatchObject({
             name: 'fleet:token',
             ok: true,
@@ -94,6 +94,7 @@ describe('the fleet package', () => {
         expect(report).toEqual({
             app: 'tool',
             environment: 'test',
+            version: null,
             takenAt: T0,
             packages: [
                 {
@@ -147,6 +148,7 @@ describe('summarize', () => {
     const report = (over: Partial<FleetReport>): FleetReport => ({
         app: 'tool',
         environment: 'test',
+        version: null,
         takenAt: T0,
         packages: [],
         health: { ok: true, checks: [] },
@@ -170,5 +172,21 @@ describe('summarize', () => {
                 }),
             ),
         ).toEqual({ status: 'degraded', detail: 'core/env:OBCF_R2, cron vault:backup' });
+    });
+});
+
+describe('report version', () => {
+    it('carries the running Worker version when the host wires it', async () => {
+        const { createReporter } = await import('../report');
+        const registry = createPackageRegistry<Record<string, never>>({ packages: [] });
+        const version = { id: 'v-9', tag: 'abc1234', createdAt: '2026-10-29T10:00:00Z' };
+        const report = await createReporter(registry, {
+            appId: () => 'tool',
+            version: () => version,
+            sources: { tasks: () => [] },
+        })({});
+        expect(report.version).toEqual(version);
+        const bare = await createReporter(registry, { appId: () => 'tool', sources: { tasks: () => [] } })({});
+        expect(bare.version).toBeNull();
     });
 });

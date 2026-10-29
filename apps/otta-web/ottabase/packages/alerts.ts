@@ -58,5 +58,15 @@ export const alertsPackage = createAlertsPackage<CloudflareEnv>({
             ([{ enforceRateLimit }, { getClientIpAddress }]) =>
                 enforceRateLimit(request, env, `alerts:ingest:${getClientIpAddress(request)}`),
         ),
-    env: { optional: ['ALERTS_EMAIL_TO', 'ALERTS_SECRET', 'ALERTS_INGEST_TOKEN'] },
+    env: {
+        optional: [
+            { key: 'ALERTS_EMAIL_TO', secret: false, description: 'Operator inbox for the default email channel.' },
+            { key: 'ALERTS_SECRET', kind: 'secret', description: 'Encrypts channel credentials at rest.' },
+            {
+                key: 'ALERTS_INGEST_TOKEN',
+                kind: 'secret',
+                description: 'Bearer token for the external ingest endpoint.',
+            },
+        ],
+    },
 });

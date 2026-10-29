@@ -39,6 +39,8 @@
         },
     ],
     "kv_namespaces": [{ "binding": "OBCF_KV", "id": "YOUR_KV_NAMESPACE_ID" }],
+    // Which build is running (version id, deploy tag, time), for the Fleet report. Not inherited by envs.
+    "version_metadata": { "binding": "OBCF_VERSION" },
     "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "otta-worker" }],
 
     "env": {
@@ -46,6 +48,7 @@
             "vars": { "ENVIRONMENT": "production", "APP_ID": "otta-worker" },
             "d1_databases": [{ "binding": "OBCF_D1", "database_name": "otta-worker", "database_id": "D1_DATABASE_ID" }],
             "kv_namespaces": [{ "binding": "OBCF_KV", "id": "KV_NAMESPACE_ID" }],
+            "version_metadata": { "binding": "OBCF_VERSION" },
             "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "otta-worker" }],
             "triggers": { "crons": ["* * * * *"] },
         },

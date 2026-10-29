@@ -1,5 +1,6 @@
 import { isOrgAdmin, isPlatformAdmin, useSession } from '@/lib/auth';
 import { getEnabledAdminNav } from '@/ottabase/config/admin-nav';
+import { SystemReadiness } from '@/pages/admin/SystemReadiness';
 import { Card, CardDescription, CardHeader, CardTitle, PageHeader, PremiumMark } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
@@ -25,6 +26,9 @@ export function AdminIndexPage() {
                 title="Overview"
                 description="Everything that keeps the platform running — identity, content, infrastructure, growth — in one place. Tenant-isolated, role-gated, and built for production operations."
             />
+
+            {/* Platform admins see whether every setting, binding and probe is in place; org admins do not. */}
+            {isPlatformAdmin(user) && <SystemReadiness />}
 
             {groups.map((group) => (
                 <section key={group.id} className="flex flex-col gap-3">

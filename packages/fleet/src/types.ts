@@ -1,4 +1,4 @@
-import type { EnvContribution, HealthReport } from '@ottabase/kernel';
+import type { DeploymentVersion, EnvContribution, HealthReport } from '@ottabase/kernel';
 
 export type Awaitable<T> = T | Promise<T>;
 
@@ -33,6 +33,8 @@ export interface FleetReportTask {
 export interface FleetReport {
     app: string;
     environment: string;
+    /** Which build answered: the Worker version id and deploy tag, when the host wired `version`. */
+    version: DeploymentVersion | null;
     takenAt: number;
     packages: FleetReportPackage[];
     health: HealthReport;
@@ -61,6 +63,8 @@ export interface FleetOptions<Env> {
     appId: (env: Env) => string;
     /** Environment name for the report (`production`, `development`). */
     environment?: (env: Env) => string;
+    /** The running Worker version, e.g. `(env) => readDeploymentVersion(env.OBCF_VERSION)`. */
+    version?: (env: Env) => DeploymentVersion | null;
     /** The Fleet token this app expects. Default `env.FLEET_TOKEN`. Unset means the report refuses. */
     token?: (env: Env) => string | null | undefined;
     sources?: FleetSources<Env>;

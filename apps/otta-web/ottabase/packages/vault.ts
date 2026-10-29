@@ -23,5 +23,10 @@ export const vault = createVault<CloudflareEnv>({
 export const vaultPackage = createVaultPackage<CloudflareEnv>({
     vault,
     resolveCaller: resolvePackageCaller,
-    env: { required: ['OBCF_D1', 'OBCF_R2'] },
+    env: {
+        required: [
+            { key: 'OBCF_D1', kind: 'binding', description: 'The database Vault backs up.' },
+            { key: 'OBCF_R2', kind: 'binding', description: 'Where backup snapshots are stored.' },
+        ],
+    },
 });

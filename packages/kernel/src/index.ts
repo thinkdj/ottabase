@@ -1,5 +1,6 @@
 export { definePackage, PACKAGE_KEY_RE, routesOf } from './define';
-export { runHealth } from './health';
+export { normalizeEnvKey, previewValue, runHealth, runReadiness } from './health';
+export { readDeploymentVersion, type DeploymentVersion } from './version';
 export {
     applyPackageLifecycle,
     createKvInstallStore,
@@ -18,6 +19,11 @@ export type {
     Awaitable,
     CronContribution,
     EnvContribution,
+    EnvDeclaration,
+    EnvKey,
+    EnvKeyDeclaration,
+    ReadinessReport,
+    ReadinessSetting,
     ErrorContribution,
     ErrorIncident,
     HealthCheck,

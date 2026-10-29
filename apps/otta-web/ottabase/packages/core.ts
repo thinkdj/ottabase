@@ -19,9 +19,27 @@ export const corePackage = definePackage<CloudflareEnv>({
     version: '1.0.0',
     description: 'Auth, organizations, RBAC, audit log, media and the scheduler.',
 
+    // Descriptions feed the admin "System readiness" view; a value is shown only for `secret: false`.
     env: {
-        required: ['OBCF_D1'],
-        optional: ['OBCF_KV', 'OBCF_QUEUE', 'OBCF_R2', 'OBCF_ASSETS'],
+        required: [
+            { key: 'OBCF_D1', kind: 'binding', description: 'The D1 database: users, organizations, every model.' },
+            { key: 'AUTH_SECRET', kind: 'secret', description: 'Signs session cookies and tokens (16+ chars).' },
+        ],
+        optional: [
+            {
+                key: 'OBCF_KV',
+                kind: 'binding',
+                description: 'Sessions, caches and install records. Required in production.',
+            },
+            { key: 'OBCF_QUEUE', kind: 'binding', description: 'Background jobs; without it jobs run inline.' },
+            { key: 'OBCF_R2', kind: 'binding', description: 'Uploads and backups.' },
+            { key: 'OBCF_ASSETS', kind: 'binding', description: 'The built SPA served by the Worker.' },
+            { key: 'OBCF_VERSION', kind: 'binding', description: 'Version metadata: which build is running.' },
+            { key: 'ENVIRONMENT', secret: false, description: 'development, staging, preview, demo or production.' },
+            { key: 'AUTH_URL', secret: false, description: 'Public origin used in auth redirects and emails.' },
+            { key: 'MIGRATION_SECRET', kind: 'secret', description: 'Protects /api/ottaorm/init in production.' },
+            { key: 'BOOTSTRAP_OWNER_SECRET', kind: 'secret', description: 'Protects the first-run bootstrap wizard.' },
+        ],
     },
 
     cron: {

@@ -99,10 +99,33 @@ export interface ErrorContribution<Env = unknown> {
     report: (incident: ErrorIncident<Env>) => Awaitable<void>;
 }
 
+/**
+ * One env key a package reads. A plain string means `{ key, secret: true, kind: 'var' }`: showing
+ * a value in the admin readiness view is opt-in (`secret: false`), never the default.
+ */
+export interface EnvKeyDeclaration {
+    key: string;
+    /** One line for the readiness view; replaces `.env.example` comments. */
+    description?: string;
+    /** False lets the readiness view show a masked preview. Default true. */
+    secret?: boolean;
+    /** `binding` = D1/KV/R2/Queue/etc object, `secret` = wrangler secret, `var` = plain var. */
+    kind?: 'var' | 'secret' | 'binding';
+}
+
+export type EnvKey = string | EnvKeyDeclaration;
+
 /** Env keys (vars, secrets and bindings) this package reads. Checked by the health report. */
 export interface EnvContribution {
-    required?: string[];
-    optional?: string[];
+    required?: EnvKey[];
+    optional?: EnvKey[];
+}
+
+/** A declared env key with the package that asked for it: what the readiness view groups by. */
+export interface EnvDeclaration extends Required<Pick<EnvKeyDeclaration, 'key' | 'secret' | 'kind'>> {
+    description?: string;
+    required: boolean;
+    package: string;
 }
 
 export interface HealthCheck {
@@ -216,6 +239,8 @@ export interface PackageRegistry<Env = unknown> {
     events(): Array<Subscription<Env, never>>;
     nav(): Array<NavContribution & { packageKey: string }>;
     env(): { required: string[]; optional: string[] };
+    /** Every declared env key with its package, description, kind and secrecy (the readiness view). */
+    envDeclarations(): EnvDeclaration[];
     /**
      * Hand an unhandled error to every package that reports errors. Never throws or rejects.
      * A host with an execution context passes `incident.waitUntil` and need not wait; a host
@@ -228,4 +253,18 @@ export interface PackageRegistry<Env = unknown> {
 export interface HealthReport {
     ok: boolean;
     checks: Array<HealthCheck & { package: string }>;
+}
+
+/** One env key in the readiness report. `preview` appears only for `secret: false` vars that are set. */
+export interface ReadinessSetting extends EnvDeclaration {
+    set: boolean;
+    preview?: string;
+}
+
+/** The admin "System readiness" section: every declared env key, every health probe, plus counts. */
+export interface ReadinessReport {
+    ok: boolean;
+    settings: ReadinessSetting[];
+    checks: HealthReport['checks'];
+    summary: { total: number; set: number; missingRequired: number; optionalUnset: number; failedChecks: number };
 }

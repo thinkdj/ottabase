@@ -685,6 +685,13 @@ jobs:
                   fi
                   echo "✅ wrangler.production.jsonc ready for deploy"
 
+            # The version tag is the short commit: the Worker reads it back through its version
+            # metadata binding (OBCF_VERSION), so /admin readiness and the Fleet report name the build.
+            - name: Version tag
+              id: version
+              if: github.ref == 'refs/heads/main'
+              run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
             # Deploy to Cloudflare Workers (NOT Cloudflare Pages)
             # Uses wrangler.production.jsonc - secrets substituted by Generate step above
             - name: Deploy to Cloudflare Workers
@@ -694,7 +701,9 @@ jobs:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
                   workingDirectory: apps/${{ matrix.folder }}
-                  command: deploy --env ${{ steps.config.outputs.wrangler-env }} --config wrangler.production.jsonc
+                  command:
+                      deploy --env ${{ steps.config.outputs.wrangler-env }} --config wrangler.production.jsonc --tag ${{
+                      steps.version.outputs.tag }}
               continue-on-error: false # Fail the workflow if deployment fails
 
             # Health check deployed worker

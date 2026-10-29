@@ -25,5 +25,13 @@ export const shortlinksPackage = createShortlinksPackage<CloudflareEnv>({
                 .delete('/api/shortlinks/*', (c) => handleShortlinkById(ctxOf(c), c.params['*'], 'DELETE'))
                 .get('/shortlinks/go', h(handleShortlinkExplicitGo)),
     },
-    env: { optional: ['OBCF_ANALYTICS_SHORTLINKS'] },
+    env: {
+        optional: [
+            {
+                key: 'OBCF_ANALYTICS_SHORTLINKS',
+                kind: 'binding',
+                description: 'Analytics Engine dataset for shortlink clicks.',
+            },
+        ],
+    },
 });

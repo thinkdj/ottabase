@@ -4,6 +4,8 @@ interface CloudflareEnv {
     OBCF_D1: D1Database;
     OBCF_KV?: KVNamespace;
     OBCF_R2?: R2Bucket;
+    /** The running Worker version (id, deploy tag, time) for the Fleet report. */
+    OBCF_VERSION?: WorkerVersionMetadata;
     OBCF_QUEUE?: Queue;
     ENVIRONMENT?: string;
     APP_ID?: string;
