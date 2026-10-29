@@ -6,14 +6,25 @@
 export { AbstractBaseModel } from './AbstractBaseModel';
 
 // SQL base model
-export { BaseModel, ConcurrentMutationError, QueryBindingLimitError, MAX_SEARCH_TERM_BYTES } from './BaseModel';
+export {
+    BaseModel,
+    ConcurrentMutationError,
+    QueryBindingLimitError,
+    MAX_SEARCH_TERM_BYTES,
+    likeCondition,
+} from './BaseModel';
 export type {
     AtomicMutationGuard,
     CollectionQueryOptions,
     IModelConstructorParams,
     KeysetPagesOptions,
+    PivotWriteOptions,
     UpdateMutationContext,
 } from './BaseModel';
+
+// Chainable query builder (`Model.query()`)
+export { QueryBuilder, RecordNotFoundError, loadRelations, parseRelationSpec } from './QueryBuilder';
+export type { LoadRelationsOptions, RelationSpec, WhereOperator } from './QueryBuilder';
 
 // Shared types
 export type {

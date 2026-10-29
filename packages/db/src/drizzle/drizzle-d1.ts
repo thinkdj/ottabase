@@ -9,7 +9,7 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { SQL } from 'drizzle-orm';
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1';
-import { BaseDbDriver, raw, type DbDriverConfig, type DbRawResult } from './drizzle';
+import { BaseDbDriver, raw, type BatchStatement, type DbDriverConfig, type DbRawResult } from './drizzle';
 
 // Re-export raw query functionality
 export { raw, type DbRawResult };
@@ -78,11 +78,15 @@ export class D1Driver extends BaseDbDriver {
      * Execute multiple SQL statements as a batch/transaction
      * Uses D1's native batch API for atomicity
      */
-    async executeBatch(sqls: string[]): Promise<any> {
-        this.log(`Executing batch of ${sqls.length} statements`, 'query');
+    async executeBatch(batch: BatchStatement[]): Promise<any> {
+        this.log(`Executing batch of ${batch.length} statements`, 'query');
 
         try {
-            const statements = sqls.map((sql) => this.d1Binding.prepare(sql));
+            const statements = batch.map((statement) =>
+                typeof statement === 'string'
+                    ? this.d1Binding.prepare(statement)
+                    : this.d1Binding.prepare(statement.sql).bind(...(statement.params ?? [])),
+            );
             return await this.d1Binding.batch(statements);
         } catch (error) {
             this.log(`Batch query error: ${error instanceof Error ? error.message : String(error)}`, 'error');

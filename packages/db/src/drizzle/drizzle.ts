@@ -8,6 +8,9 @@
 
 import type { SQL } from 'drizzle-orm';
 
+/** One statement of an atomic batch: raw SQL, or SQL with bound parameters. */
+export type BatchStatement = string | { sql: string; params?: unknown[] };
+
 /**
  * Database driver interface
  * Provides a unified interface for database operations
@@ -25,9 +28,11 @@ export interface DbDriver {
 
     /**
      * Execute multiple SQL statements as a batch/transaction
-     * All statements succeed or all fail (atomicity)
+     * All statements succeed or all fail (atomicity). A statement is a raw SQL string or a
+     * bound `{ sql, params }` pair (what Drizzle's `toSQL()` returns), so values never
+     * need to be inlined into SQL text.
      */
-    executeBatch?(sqls: string[]): Promise<any>;
+    executeBatch?(statements: BatchStatement[]): Promise<any>;
 
     /**
      * Get the underlying Drizzle database instance

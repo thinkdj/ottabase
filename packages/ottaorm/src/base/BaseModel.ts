@@ -4,7 +4,7 @@
 // SQL-specific implementation using Drizzle ORM
 // ============================================================
 
-import type { DbDriver } from '@ottabase/db/drizzle';
+import type { BatchStatement, DbDriver } from '@ottabase/db/drizzle';
 import {
     and,
     asc,
@@ -16,10 +16,10 @@ import {
     inArray,
     isNotNull,
     isNull,
-    like,
     lt,
     lte,
     ne,
+    notInArray,
     or,
     sql,
 } from 'drizzle-orm';
@@ -27,6 +27,7 @@ import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { getConnection } from '../context';
 import { ValidationError } from '../validation';
 import { getOttaORMMaxAllRows, OttaORMAllRowsLimitError } from '../runtime-config';
+import { QueryBuilder } from './QueryBuilder';
 import {
     AbstractBaseModel,
     ModelFieldDescriptor,
@@ -66,6 +67,19 @@ export interface KeysetPagesOptions {
     orderDirection?: 'asc' | 'desc';
     select?: string[];
     withDeferred?: boolean;
+}
+
+/** Key overrides for the belongsToMany write helpers (`attachPivot`, `detachPivot`, `syncPivot`). */
+export interface PivotWriteOptions {
+    /** Column in the pivot table pointing at this model (default `{singular entity}Id`). */
+    foreignKey?: string;
+    /** Column in the pivot table pointing at the related model (default `{singular related}Id`). */
+    otherKey?: string;
+    /** Key on this model stored in the pivot (default: primary key). */
+    localKey?: string;
+    /** Extra pivot columns written with every new join row. */
+    pivot?: Record<string, unknown>;
+    driver?: DbDriver;
 }
 
 /** Trusted predicates that must still match in the statement that mutates a row. */
@@ -109,6 +123,24 @@ const D1_FILTER_BINDING_BUDGET = D1_BOUND_PARAMETER_LIMIT - D1_COLLECTION_RESERV
 const MAX_FILTER_QUERY_PLANS = 16;
 export const MAX_SEARCH_TERM_BYTES = 48;
 const AGGREGATE_MERGE_PAGE_SIZE = 100;
+const LIKE_OPERATORS = new Set(['$contains', '$startsWith', '$endsWith']);
+
+/**
+ * Build an escaped `LIKE` condition. `%`, `_` and the escape character itself are escaped so
+ * a search for "100%" matches the literal text, and the pattern is held under D1's 50-byte
+ * LIKE limit (48 bytes of escaped term plus the two `%` wrappers). SQLite's LIKE is ASCII
+ * case-insensitive by default; non-ASCII letters match case-sensitively.
+ */
+export function likeCondition(column: unknown, operator: string, operand: unknown) {
+    if (typeof operand !== 'string') throw new TypeError(`${operator} needs a string operand`);
+    const escaped = operand.replace(/[\\%_]/g, (char) => `\\${char}`);
+    if (new TextEncoder().encode(escaped).byteLength > MAX_SEARCH_TERM_BYTES) {
+        throw new QueryBindingLimitError(`Search term exceeds ${MAX_SEARCH_TERM_BYTES} bytes`);
+    }
+    const pattern =
+        operator === '$startsWith' ? `${escaped}%` : operator === '$endsWith' ? `%${escaped}` : `%${escaped}%`;
+    return sql`${column} LIKE ${pattern} ESCAPE '\\'`;
+}
 
 interface FilterListLocation {
     path: Array<string | number>;
@@ -423,12 +455,17 @@ export class BaseModel extends AbstractBaseModel {
             if (typeof rawValue === 'object') {
                 let recognized = false;
                 for (const [operator, operand] of Object.entries(rawValue as Record<string, unknown>)) {
-                    if (operator === '$in') {
-                        if (!Array.isArray(operand)) throw new TypeError('$in must be an array');
+                    if (operator === '$in' || operator === '$nin') {
+                        if (!Array.isArray(operand)) throw new TypeError(`${operator} must be an array`);
                         count += new Set(operand).size;
                         recognized = true;
                     } else if (['$eq', '$ne', '$gt', '$gte', '$lt', '$lte'].includes(operator)) {
                         if (operand !== null && operand !== undefined) count += 1;
+                        recognized = true;
+                    } else if (LIKE_OPERATORS.has(operator)) {
+                        count += 1;
+                        recognized = true;
+                    } else if (operator === '$null') {
                         recognized = true;
                     }
                 }
@@ -1062,6 +1099,24 @@ export class BaseModel extends AbstractBaseModel {
                             if (!Array.isArray(operand)) throw new TypeError('$in must be an array');
                             conditions.push(operand.length > 0 ? inArray(column, operand) : sql`0 = 1`);
                             break;
+                        case '$nin':
+                            // NOT IN over an empty list excludes nothing: no condition is the right answer.
+                            // Large lists are never split across statements (the chunks could not be
+                            // recombined), so the binding planner refuses them instead.
+                            recognizedOperator = true;
+                            if (!Array.isArray(operand)) throw new TypeError('$nin must be an array');
+                            if (operand.length > 0) conditions.push(notInArray(column, operand));
+                            break;
+                        case '$null':
+                            recognizedOperator = true;
+                            conditions.push(operand === false ? isNotNull(column) : isNull(column));
+                            break;
+                        case '$contains':
+                        case '$startsWith':
+                        case '$endsWith':
+                            recognizedOperator = true;
+                            conditions.push(likeCondition(column, operator, operand));
+                            break;
                         default:
                             // Unknown object keys are not operators; retain
                             // the old equality fallback below.
@@ -1084,15 +1139,12 @@ export class BaseModel extends AbstractBaseModel {
      */
     protected static buildSearchCondition(search: string, fields: string[]) {
         if (!search || fields.length === 0) return null;
-        if (new TextEncoder().encode(search).byteLength > MAX_SEARCH_TERM_BYTES) {
-            throw new QueryBindingLimitError(`Search term exceeds ${MAX_SEARCH_TERM_BYTES} bytes`);
-        }
         const table = this.getTable();
         const conditions = fields
             .map((field) => {
                 const column = (table as any)[field];
                 if (!column) return null;
-                return like(column, `%${search}%`);
+                return likeCondition(column, '$contains', search);
             })
             .filter(Boolean) as any[];
 
@@ -1692,7 +1744,7 @@ export class BaseModel extends AbstractBaseModel {
         return results.map((row: any) => new this({ entity: this.entity, data: row, omitted }) as InstanceType<T>);
     }
 
-    private static async countSearch<T extends typeof BaseModel>(
+    static async countSearch<T extends typeof BaseModel>(
         this: T,
         search: string,
         fields: string[],
@@ -1832,12 +1884,30 @@ export class BaseModel extends AbstractBaseModel {
      * ]);
      * ```
      */
-    static async batch(sqls: string[], driver?: DbDriver): Promise<any> {
+    static async batch(statements: BatchStatement[], driver?: DbDriver): Promise<any> {
         const d = this.getDriver(driver);
         if (typeof d.executeBatch !== 'function') {
             throw new Error('Driver does not support executeBatch. D1Driver supports atomic batches natively.');
         }
-        return d.executeBatch(sqls);
+        return d.executeBatch(statements);
+    }
+
+    /**
+     * Start a chainable query. Every call returns a fresh builder; see `QueryBuilder`.
+     *
+     * @example
+     * ```typescript
+     * const page = await Post.query()
+     *     .where('status', 'published')
+     *     .where('views', '>=', 100)
+     *     .whereContains('title', q)
+     *     .orderBy('publishedAt', 'desc')
+     *     .with('author:id{name,image}')
+     *     .paginate(1, 20);
+     * ```
+     */
+    static query<T extends typeof BaseModel>(this: T): QueryBuilder<T> {
+        return new QueryBuilder(this);
     }
 
     // ============================================================
@@ -1933,9 +2003,14 @@ export class BaseModel extends AbstractBaseModel {
             if (result === null || result === undefined) {
                 this.set(rel, null);
             } else if (Array.isArray(result)) {
+                // A belongsToMany row with `withPivot` data flattens to the related row itself,
+                // plus the extra join-table columns under `pivot`.
                 this.set(
                     rel,
-                    result.map((r: any) => (typeof r.toJson === 'function' ? r.toJson() : r)),
+                    result.map((r: any) => {
+                        if (typeof r.toJson !== 'function') return r;
+                        return r._pivot ? { ...r.toJson(), pivot: r._pivot } : r.toJson();
+                    }),
                 );
             } else if (typeof result.toJson === 'function') {
                 this.set(rel, result.toJson());
@@ -2269,6 +2344,133 @@ export class BaseModel extends AbstractBaseModel {
         }
 
         return results;
+    }
+
+    /**
+     * Resolve the pivot columns of a belongsToMany relation, sharing the inference rules of
+     * `belongsToMany` so a model's read and write helpers agree on the key names.
+     */
+    private resolvePivotKeys(relatedModel: typeof BaseModel, pivotTable: SQLiteTable, options?: PivotWriteOptions) {
+        const ModelClass = this.constructor as typeof BaseModel;
+        const foreignKey = options?.foreignKey || `${singularizeEntity(ModelClass.entity)}Id`;
+        const otherKey = options?.otherKey || `${singularizeEntity(relatedModel.entity)}Id`;
+        const localValue = this.get(options?.localKey || ModelClass.primaryKey);
+        const fkColumn = (pivotTable as any)[foreignKey];
+        const otherColumn = (pivotTable as any)[otherKey];
+        if (!fkColumn || !otherColumn) {
+            throw new Error(
+                `Pivot table column(s) not found: ${[!fkColumn && foreignKey, !otherColumn && otherKey].filter(Boolean).join(', ')}`,
+            );
+        }
+        if (localValue === null || localValue === undefined) {
+            throw new Error(`${ModelClass.entity} has no primary key value; save it before writing relations`);
+        }
+        return { foreignKey, otherKey, localValue, fkColumn, otherColumn };
+    }
+
+    /**
+     * Add join rows for a belongsToMany relation. Ids already attached are skipped, so attaching
+     * twice is harmless. `pivot` fills any extra join-table columns (e.g. `{ order: 2 }`).
+     *
+     * Models wrap this in a named method, keeping the fat-model shape:
+     * ```typescript
+     * attachTags(ids: string[]) { return this.attachPivot(PostTag, postTagLinksTable, ids); }
+     * ```
+     */
+    protected async attachPivot(
+        relatedModel: typeof BaseModel,
+        pivotTable: SQLiteTable,
+        ids: Array<string | number>,
+        options?: PivotWriteOptions,
+    ): Promise<number> {
+        const keys = this.resolvePivotKeys(relatedModel, pivotTable, options);
+        const unique = [...new Set(ids)];
+        if (unique.length === 0) return 0;
+        const db = (relatedModel as any).getDriver(options?.driver).getDb();
+        const existing = await db
+            .select({ other: keys.otherColumn })
+            .from(pivotTable)
+            .where(and(eq(keys.fkColumn, keys.localValue), inArray(keys.otherColumn, unique)));
+        const present = new Set(existing.map((row: any) => row.other));
+        const fresh = unique.filter((id) => !present.has(id));
+        if (fresh.length === 0) return 0;
+        await db.insert(pivotTable).values(
+            fresh.map((id) => ({
+                ...(options?.pivot ?? {}),
+                [keys.foreignKey]: keys.localValue,
+                [keys.otherKey]: id,
+            })),
+        );
+        return fresh.length;
+    }
+
+    /** Remove join rows for the given ids, or every join row of this record when `ids` is omitted. */
+    protected async detachPivot(
+        relatedModel: typeof BaseModel,
+        pivotTable: SQLiteTable,
+        ids?: Array<string | number>,
+        options?: PivotWriteOptions,
+    ): Promise<void> {
+        const keys = this.resolvePivotKeys(relatedModel, pivotTable, options);
+        if (ids && ids.length === 0) return;
+        const db = (relatedModel as any).getDriver(options?.driver).getDb();
+        const scope = eq(keys.fkColumn, keys.localValue);
+        await db.delete(pivotTable).where(ids ? and(scope, inArray(keys.otherColumn, [...new Set(ids)])) : scope);
+    }
+
+    /**
+     * Make the relation equal to exactly `ids`: rows no longer listed are deleted, new ones are
+     * inserted, and rows that stay are untouched (so their own pivot columns survive). Both
+     * statements run in one atomic D1 batch.
+     */
+    protected async syncPivot(
+        relatedModel: typeof BaseModel,
+        pivotTable: SQLiteTable,
+        ids: Array<string | number>,
+        options?: PivotWriteOptions,
+    ): Promise<{ attached: number; detached: number }> {
+        const keys = this.resolvePivotKeys(relatedModel, pivotTable, options);
+        const wanted = [...new Set(ids)];
+        const driver = (relatedModel as any).getDriver(options?.driver) as DbDriver;
+        const db = driver.getDb();
+        const current: Array<{ other: string | number }> = await db
+            .select({ other: keys.otherColumn })
+            .from(pivotTable)
+            .where(eq(keys.fkColumn, keys.localValue));
+        const have = new Set(current.map((row) => row.other));
+        const toAttach = wanted.filter((id) => !have.has(id));
+        const toDetach = current.map((row) => row.other).filter((id) => !wanted.includes(id));
+
+        const statements: BatchStatement[] = [];
+        if (toDetach.length > 0) {
+            statements.push(
+                db
+                    .delete(pivotTable)
+                    .where(and(eq(keys.fkColumn, keys.localValue), inArray(keys.otherColumn, toDetach)))
+                    .toSQL(),
+            );
+        }
+        if (toAttach.length > 0) {
+            statements.push(
+                db
+                    .insert(pivotTable)
+                    .values(
+                        toAttach.map((id) => ({
+                            ...(options?.pivot ?? {}),
+                            [keys.foreignKey]: keys.localValue,
+                            [keys.otherKey]: id,
+                        })),
+                    )
+                    .toSQL(),
+            );
+        }
+        if (statements.length > 0) {
+            if (typeof driver.executeBatch === 'function') await driver.executeBatch(statements);
+            else
+                for (const statement of statements)
+                    await driver.executeRaw((statement as any).sql, (statement as any).params);
+        }
+        return { attached: toAttach.length, detached: toDetach.length };
     }
 
     /**
