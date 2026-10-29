@@ -35,6 +35,12 @@ export interface WebhooksRouterConfig<Env> {
      * from this list still delivers.
      */
     events?: string[];
+    /**
+     * Endpoints one tenant may register; creating one more answers 409 `ENDPOINT_LIMIT`.
+     * Default 10. Every event is delivered to each subscribed endpoint in turn, so this also
+     * bounds the outbound requests one event costs.
+     */
+    maxEndpoints?: number;
 }
 
 /** Request body accepted when creating or updating an endpoint. */

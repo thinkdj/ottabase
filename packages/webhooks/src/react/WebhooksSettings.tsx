@@ -9,7 +9,17 @@
 // completely unstyled.
 // ============================================================
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    ConfirmDialog,
+    Input,
+} from '@ottabase/ui';
 import { CheckCircle2, Plus, Send, Trash2, TriangleAlert, Webhook } from 'lucide-react';
 import { useState } from 'react';
 import { useWebhookDeliveries, useWebhookEndpoints } from './hooks';
@@ -122,6 +132,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
     const [selected, setSelected] = useState<string[]>([]);
     const [secret, setSecret] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<WebhookEndpointView | null>(null);
 
     const endpoints = data ?? [];
     const options = events ?? catalog.data ?? ['*'];
@@ -155,6 +166,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
+                    {remove.error ? <p className="text-xs text-destructive">{remove.error.message}</p> : null}
                     {isLoading ? (
                         <div className="h-16 animate-pulse rounded-lg bg-background/60" aria-busy="true" />
                     ) : endpoints.length === 0 ? (
@@ -166,7 +178,7 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                                     key={endpoint.id}
                                     endpoint={endpoint}
                                     busy={remove.isPending || test.isPending}
-                                    onDelete={() => void remove.mutateAsync({ id: endpoint.id })}
+                                    onDelete={() => setPendingDelete(endpoint)}
                                     onTest={() => void test.mutateAsync({ id: endpoint.id })}
                                 />
                             ))}
@@ -250,6 +262,25 @@ export function WebhooksSettings({ events }: WebhooksSettingsProps) {
                     <DeliveryLog />
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                onOpenChange={(open) => !open && setPendingDelete(null)}
+                title="Delete this endpoint?"
+                description={
+                    <>
+                        <strong className="break-all">{pendingDelete?.url}</strong> stops receiving events, and its
+                        signing secret is gone for good. Adding the URL again gives it a new secret.
+                    </>
+                }
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText="Delete endpoint"
+                onConfirm={() => {
+                    if (pendingDelete) remove.mutate({ id: pendingDelete.id });
+                    setPendingDelete(null);
+                }}
+            />
         </div>
     );
 }

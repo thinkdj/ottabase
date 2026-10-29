@@ -7,9 +7,11 @@
 // ============================================================
 
 import { createWebhooksPackage } from '@ottabase/webhooks';
+import { getOttabaseConfig } from '../config.loader';
 import { resolvePackageCaller } from './caller';
 
 export const webhooksPackage = createWebhooksPackage<CloudflareEnv>({
     resolveCaller: resolvePackageCaller,
+    appId: (env) => getOttabaseConfig(env).appId,
     events: ['ping'],
 });

@@ -8,7 +8,7 @@
 import { Router } from '@ottabase/ottarouter';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { WEBHOOKS_DELIVERY_PAGE_SIZE } from './constants';
+import { DEFAULT_MAX_ENDPOINTS, WEBHOOKS_DELIVERY_PAGE_SIZE } from './constants';
 import { deliverToEndpoint } from './dispatch';
 import { WebhookDelivery } from './ottaorm-models/WebhookDelivery';
 import { WebhookEndpoint } from './ottaorm-models/WebhookEndpoint';
@@ -61,9 +61,18 @@ function normalizeEvents(input: unknown): string[] {
     return events.length > 0 ? [...new Set(events)] : ['*'];
 }
 
+/** Refuse a config count that is not a whole number at or above `min`: a NaN cap would silently mean "no cap". */
+export function assertCount(name: string, value: number, min = 0): void {
+    if (!Number.isInteger(value) || value < min) {
+        throw new Error(`[webhooks] ${name} must be a whole number of at least ${min}, got ${String(value)}`);
+    }
+}
+
 export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Router<Env> {
     const router = new Router<Env>();
     const events = config.events ?? DEFAULT_WEBHOOK_EVENTS;
+    const maxEndpoints = config.maxEndpoints ?? DEFAULT_MAX_ENDPOINTS;
+    assertCount('maxEndpoints', maxEndpoints);
 
     /** Resolve the caller or produce the 401. Every route starts here. */
     const caller = async (request: Request, env: Env): Promise<WebhookCaller | Response> =>
@@ -89,6 +98,16 @@ export function createWebhooksRouter<Env>(config: WebhooksRouterConfig<Env>): Ro
         const scopeError = tenantScopeError(who);
         if (scopeError) return scopeError;
         if (!who.canManage) return errorResponse('Forbidden', 403);
+
+        // ponytail: count-then-create, so two simultaneous creates can land one over the cap;
+        // a per-tenant Durable Object reservation closes that if the cap ever has to be exact.
+        if ((await WebhookEndpoint.count(tenantFilter(who))) >= maxEndpoints) {
+            return errorResponse(
+                `This workspace already has ${maxEndpoints} endpoints, the most allowed. Remove one to add another.`,
+                409,
+                { code: 'ENDPOINT_LIMIT' },
+            );
+        }
 
         const body = await readJsonBody<WebhookEndpointInput>(c.req);
         if (typeof body.url !== 'string' || !body.url.trim()) {

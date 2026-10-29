@@ -32,6 +32,7 @@ let caller: TestCaller | null;
 function build(): Router<Env> {
     const pkg = createWebhooksPackage<Env>({
         resolveCaller: async () => caller,
+        appId: () => 'otta-web',
         events: ['*', 'todo.created'],
     });
     const app = new Router<Env>();
@@ -56,7 +57,7 @@ beforeEach(() => {
 
 describe('the package', () => {
     it('is a free package, mounted by the kernel like any other', () => {
-        const pkg = createWebhooksPackage<Env>({ resolveCaller: async () => caller });
+        const pkg = createWebhooksPackage<Env>({ resolveCaller: async () => caller, appId: () => 'otta-web' });
         expect(pkg.premium).toBeUndefined();
         expect(pkg.routes).toMatchObject({ basePath: '/api/webhooks' });
     });
@@ -213,5 +214,54 @@ describe('the signing secret', () => {
 
         const listed = await (await app.handle(req('/'), ENV))?.text();
         expect(listed).not.toContain(created.data.secret);
+    });
+});
+
+describe('limits and retention', () => {
+    it('refuses an endpoint past the per-tenant cap, counting only this tenant', async () => {
+        const pkg = createWebhooksPackage<Env>({
+            resolveCaller: async () => caller,
+            appId: () => 'otta-web',
+            maxEndpoints: 2,
+        });
+        const app = new Router<Env>();
+        mountPackages(app, { packages: createPackageRegistry<Env>({ packages: [pkg] }) });
+
+        expect((await app.handle(post('/', { url: 'https://example.com/a' }), ENV))?.status).toBe(201);
+        expect((await app.handle(post('/', { url: 'https://example.com/b' }), ENV))?.status).toBe(201);
+        const third = await app.handle(post('/', { url: 'https://example.com/c' }), ENV);
+        expect(third?.status).toBe(409);
+        expect(await third?.json()).toMatchObject({ code: 'ENDPOINT_LIMIT' });
+
+        caller = { userId: 'user-2', canManage: true, ...OTHER_ORG };
+        expect((await app.handle(post('/', { url: 'https://example.com/d' }), ENV))?.status).toBe(201);
+    });
+
+    it('refuses a cap or retention that is not a whole number', () => {
+        const base = { resolveCaller: async () => caller, appId: () => 'otta-web' };
+        expect(() => createWebhooksPackage<Env>({ ...base, maxEndpoints: Number.NaN })).toThrow(/maxEndpoints/);
+        expect(() => createWebhooksPackage<Env>({ ...base, maxEndpoints: -1 })).toThrow(/maxEndpoints/);
+        expect(() => createWebhooksPackage<Env>({ ...base, deliveryRetentionDays: 0 })).toThrow(
+            /deliveryRetentionDays/,
+        );
+    });
+
+    it('seeds a nightly prune that deletes delivery rows past the retention window', async () => {
+        const pkg = createWebhooksPackage<Env>({
+            resolveCaller: async () => caller,
+            appId: () => 'otta-web',
+            deliveryRetentionDays: 7,
+        });
+        const prune = pkg.cron?.['webhooks:prune-deliveries'];
+        expect(prune).toMatchObject({ schedule: '17 4 * * *', payload: { olderThanDays: 7 } });
+
+        const day = 86_400_000;
+        tables.deliveries.push(
+            { id: 'old', appId: 'otta-web', createdAt: Date.now() - 8 * day },
+            { id: 'new', appId: 'otta-web', createdAt: Date.now() - 1 * day },
+            { id: 'other-app', appId: 'other', createdAt: Date.now() - 8 * day },
+        );
+        await prune!.handler({ env: ENV, payload: null } as never);
+        expect(tables.deliveries.map((row) => row.id)).toEqual(['new', 'other-app']);
     });
 });

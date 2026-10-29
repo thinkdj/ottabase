@@ -5,7 +5,14 @@
 // delivery with a delivery log. Rendered React lives behind `@ottabase/webhooks/react`.
 // ============================================================
 
-export { WEBHOOKS_BASE_PATH, WEBHOOKS_DELIVERY_PAGE_SIZE, WEBHOOKS_PACKAGE_KEY } from './constants';
+export {
+    DEFAULT_DELIVERY_RETENTION_DAYS,
+    DEFAULT_MAX_ENDPOINTS,
+    WEBHOOKS_BASE_PATH,
+    WEBHOOKS_DELIVERY_PAGE_SIZE,
+    WEBHOOKS_PACKAGE_KEY,
+    WEBHOOKS_PRUNE_HANDLER,
+} from './constants';
 
 export { createWebhooksPackage, type WebhooksPackageOptions } from './manifest';
 export { createWebhooksRouter, DEFAULT_WEBHOOK_EVENTS } from './routes';

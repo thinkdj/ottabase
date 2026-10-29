@@ -7,15 +7,25 @@
 // ============================================================
 
 import { definePackage, type OttaPackage } from '@ottabase/kernel';
-import { WEBHOOKS_BASE_PATH, WEBHOOKS_PACKAGE_KEY } from './constants';
+import {
+    DEFAULT_DELIVERY_RETENTION_DAYS,
+    WEBHOOKS_BASE_PATH,
+    WEBHOOKS_PACKAGE_KEY,
+    WEBHOOKS_PRUNE_HANDLER,
+} from './constants';
 import { WebhookDelivery } from './ottaorm-models/WebhookDelivery';
 import { WebhookEndpoint } from './ottaorm-models/WebhookEndpoint';
 import { webhookPolicies } from './policy';
-import { createWebhooksRouter } from './routes';
+import { assertCount, createWebhooksRouter } from './routes';
 import { webhookDeliveriesTable, webhookEndpointsTable } from './schema';
 import type { WebhooksRouterConfig } from './types';
 
-export type WebhooksPackageOptions<Env> = WebhooksRouterConfig<Env>;
+export interface WebhooksPackageOptions<Env> extends WebhooksRouterConfig<Env> {
+    /** The app whose delivery log the nightly prune trims. Cron has no caller, so it comes from env. */
+    appId: (env: Env) => string;
+    /** Days of delivery log kept; older rows are deleted nightly. Default 30. */
+    deliveryRetentionDays?: number;
+}
 
 /**
  * Build the webhooks package manifest.
@@ -25,6 +35,9 @@ export type WebhooksPackageOptions<Env> = WebhooksRouterConfig<Env>;
  * from inventing a second, diverging notion of "who is calling".
  */
 export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>): OttaPackage<Env> {
+    const { appId, deliveryRetentionDays = DEFAULT_DELIVERY_RETENTION_DAYS, ...routerConfig } = options;
+    assertCount('deliveryRetentionDays', deliveryRetentionDays, 1);
+    if (routerConfig.maxEndpoints !== undefined) assertCount('maxEndpoints', routerConfig.maxEndpoints);
     return definePackage<Env>({
         key: WEBHOOKS_PACKAGE_KEY,
         name: 'Outbound Webhooks',
@@ -39,7 +52,24 @@ export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>)
 
         routes: {
             basePath: WEBHOOKS_BASE_PATH,
-            build: () => createWebhooksRouter(options),
+            build: () => createWebhooksRouter(routerConfig),
+        },
+
+        cron: {
+            [WEBHOOKS_PRUNE_HANDLER]: {
+                description: `Delete delivery log rows older than the retention window (payload olderThanDays, default ${deliveryRetentionDays}).`,
+                handler: async ({ env, payload }) => {
+                    const days =
+                        payload &&
+                        typeof payload === 'object' &&
+                        typeof (payload as { olderThanDays?: unknown }).olderThanDays === 'number'
+                            ? (payload as { olderThanDays: number }).olderThanDays
+                            : deliveryRetentionDays;
+                    await WebhookDelivery.pruneOlderThan(days, appId(env));
+                },
+                schedule: '17 4 * * *',
+                payload: { olderThanDays: deliveryRetentionDays },
+            },
         },
 
         nav: [

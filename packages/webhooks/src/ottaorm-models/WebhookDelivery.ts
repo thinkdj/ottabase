@@ -35,6 +35,23 @@ export class WebhookDelivery extends BaseModel {
         createdAt: { type: 'date', editable: false, uiConfig: { label: 'At' } },
     };
 
+    /**
+     * Delete one app's log rows older than `days`, across its tenants. Returns how many went.
+     * Scoped by app so two apps sharing a database each keep their own retention.
+     */
+    static async pruneOlderThan(days: number, appId: string): Promise<number> {
+        if (!Number.isFinite(days) || days <= 0) {
+            throw new Error(`[webhooks] delivery retention must be a positive number of days, got ${String(days)}`);
+        }
+        const cutoff = Date.now() - days * 86_400_000;
+        // ponytail: one DELETE per run; batch by `id IN (SELECT … LIMIT n)` if a run ever exceeds D1's statement time.
+        const result = await this.getDriver().executeRaw(
+            `DELETE FROM ${this.entity} WHERE created_at < ? AND app_id = ?`,
+            [cutoff, appId],
+        );
+        return result?.meta?.changes ?? 0;
+    }
+
     toView(): WebhookDeliveryView {
         const createdAt = this.get('createdAt');
         return {

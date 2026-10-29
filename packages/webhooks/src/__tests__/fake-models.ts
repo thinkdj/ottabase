@@ -54,6 +54,10 @@ export class FakeWebhookEndpoint extends FakeRecord {
             .map((row) => new FakeWebhookEndpoint(row, tables.endpoints));
     }
 
+    static async count(filter: Record<string, unknown>): Promise<number> {
+        return tables.endpoints.filter((row) => matches(row, filter)).length;
+    }
+
     static async create(data: Record<string, unknown>): Promise<FakeWebhookEndpoint> {
         const row: Row = { id: `ep_${tables.endpoints.length + 1}`, consecutiveFailures: 0, ...data } as Row;
         tables.endpoints.push(row);
@@ -100,6 +104,15 @@ export class FakeWebhookDelivery extends FakeRecord {
         const row: Row = { id: `dl_${tables.deliveries.length + 1}`, ...data } as Row;
         tables.deliveries.push(row);
         return new FakeWebhookDelivery(row, tables.deliveries);
+    }
+
+    static async pruneOlderThan(days: number, appId: string): Promise<number> {
+        const cutoff = Date.now() - days * 86_400_000;
+        const before = tables.deliveries.length;
+        tables.deliveries = tables.deliveries.filter(
+            (row) => row.appId !== appId || Number(row.createdAt ?? 0) >= cutoff,
+        );
+        return before - tables.deliveries.length;
     }
 
     static async paginate(page: number, perPage: number, filter: Record<string, unknown>) {
