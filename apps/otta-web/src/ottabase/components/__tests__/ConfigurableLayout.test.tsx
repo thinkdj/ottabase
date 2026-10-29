@@ -104,6 +104,7 @@ vi.mock('@ottabase/ui', () => ({
 vi.mock('lucide-react', () => ({
     ChevronsUpDown: () => null,
     Images: () => null,
+    MonitorSmartphone: () => null,
     PenLine: () => null,
     ShieldCheck: () => null,
     UserRound: () => null,

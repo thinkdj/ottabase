@@ -30,6 +30,8 @@
 
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { userKey } from '@ottabase/cf/cache-keys';
+import { hmacSign } from './crypto';
+import { describeRequestDevice, type SessionDevice } from './device';
 import { registerConnection } from '@ottabase/ottaorm';
 import { OrganizationMember, PLATFORM_ADMIN_PERMISSION, User } from '@ottabase/ottaorm/models';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
@@ -156,6 +158,9 @@ interface UserContext {
     name: string | null;
     image: string | null;
     emailVerified: number | null;
+    /** The person's formatting preferences, so emails, digests and cron can format without a D1 read. */
+    timezone: string | null;
+    locale: string | null;
 }
 
 /**
@@ -181,6 +186,8 @@ interface RegistrySnapshot {
     name: string | null;
     image: string | null;
     emailVerified: number | null;
+    timezone: string | null;
+    locale: string | null;
 }
 
 async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContext> {
@@ -235,11 +242,15 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
     let name: string | null = null;
     let image: string | null = null;
     let emailVerified: number | null = null;
+    let timezone: string | null = null;
+    let locale: string | null = null;
 
     try {
         if (user) {
             name = (user.get('name') as string | null) ?? null;
             image = (user.get('image') as string | null) ?? null;
+            timezone = (user.get('timezone') as string | null) || null;
+            locale = (user.get('locale') as string | null) || null;
             const emailVerifiedRaw = user.get('emailVerified');
             emailVerified =
                 emailVerifiedRaw == null
@@ -292,7 +303,18 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
         console.warn('Failed to load user roles/permissions for session:', error);
     }
 
-    return { organizationId, roles, permissions, platformAdmin, createdAt, name, image, emailVerified };
+    return {
+        organizationId,
+        roles,
+        permissions,
+        platformAdmin,
+        createdAt,
+        name,
+        image,
+        emailVerified,
+        timezone,
+        locale,
+    };
 }
 
 /**
@@ -306,6 +328,8 @@ export interface CreateSessionInput {
     name?: string | null;
     image?: string | null;
     emailVerified?: number | null;
+    /** Device facts shown on the sessions page; `createSessionCookieForUser` fills them from the request. */
+    device?: SessionDevice | null;
 }
 
 export interface CreatedSession {
@@ -326,16 +350,38 @@ async function readProfileVersion(userId: string, env: AuthEnv): Promise<number>
     }
 }
 
+/**
+ * KV key metadata on the registry record (under 1 KB, returned by `list()` without a get). This
+ * is what the sessions page shows: created/expires, device, masked IP, location and a name.
+ * Rewrites of the record must carry it along, or `list()` loses the device facts.
+ */
+export interface SessionMetadata {
+    /** createdMs */
+    c: number;
+    /** expiresMs */
+    e: number;
+    /** "Chrome on Windows" */
+    ua?: string;
+    /** masked IP */
+    ip?: string;
+    /** "City, CC" */
+    geo?: string;
+    /** user-chosen name */
+    n?: string;
+}
+
 async function writeRegistrySnapshot(
     userId: string,
     jti: string,
     snapshot: RegistrySnapshot,
     maxAgeSeconds: number,
     env: AuthEnv,
+    metadata?: SessionMetadata | null,
 ): Promise<void> {
     if (!env.OBCF_KV) return;
     await env.OBCF_KV.put(sessionRegistryKey(userId, jti), JSON.stringify(snapshot), {
         expirationTtl: maxAgeSeconds,
+        ...(metadata ? { metadata } : {}),
     });
 }
 
@@ -396,15 +442,25 @@ export async function createSessionForUser(
         name: input.name ?? null,
         image: input.image ?? null,
         emailVerified: input.emailVerified ?? null,
+        timezone: context.timezone,
+        locale: context.locale,
+    };
+
+    const metadata: SessionMetadata = {
+        c: createdMs,
+        e: expiresAt,
+        ...(input.device?.userAgent ? { ua: input.device.userAgent.slice(0, 80) } : {}),
+        ...(input.device?.ip ? { ip: input.device.ip.slice(0, 48) } : {}),
+        ...(input.device?.geo ? { geo: input.device.geo.slice(0, 80) } : {}),
     };
 
     // KV is guaranteed bound by the guard at the top of this function.
     try {
-        await writeRegistrySnapshot(input.id, jti, snapshot, maxAgeSeconds, env);
+        await writeRegistrySnapshot(input.id, jti, snapshot, maxAgeSeconds, env, metadata);
     } catch (error) {
         // Retry once, then fail the sign-in: fail-closed must be end-to-end.
         try {
-            await writeRegistrySnapshot(input.id, jti, snapshot, maxAgeSeconds, env);
+            await writeRegistrySnapshot(input.id, jti, snapshot, maxAgeSeconds, env, metadata);
         } catch (retryError) {
             console.error('Failed to persist session registry record:', retryError);
             throw new Error('Failed to persist session; sign-in aborted');
@@ -455,7 +511,11 @@ export async function createSessionCookieForUser(
     options?: CreateAuthConfigOptions,
 ): Promise<{ cookie: string; session: CreatedSession }> {
     const maxAgeSeconds = resolveSessionMaxAge(env, options);
-    const session = await createSessionForUser(input, env, options);
+    const session = await createSessionForUser(
+        { ...input, device: input.device ?? describeRequestDevice(request) },
+        env,
+        options,
+    );
     return { cookie: buildSessionCookie(session.token, env, request, maxAgeSeconds), session };
 }
 
@@ -475,6 +535,8 @@ function parseSnapshot(raw: string | null): RegistrySnapshot | null {
             name: parsed.name ?? null,
             image: parsed.image ?? null,
             emailVerified: parsed.emailVerified ?? null,
+            timezone: typeof parsed.timezone === 'string' ? parsed.timezone : null,
+            locale: typeof parsed.locale === 'string' ? parsed.locale : null,
         };
     } catch {
         return null;
@@ -489,6 +551,7 @@ async function refreshSnapshotIfStale(
     currentVersion: number,
     env: AuthEnv,
     options?: CreateAuthConfigOptions,
+    metadata?: SessionMetadata | null,
 ): Promise<RegistrySnapshot> {
     if (!env.OBCF_KV || !env.OBCF_D1) return snapshot;
     if (currentVersion <= snapshot.v) return snapshot;
@@ -506,9 +569,14 @@ async function refreshSnapshotIfStale(
             name: context.name,
             image: context.image,
             emailVerified: context.emailVerified,
+            timezone: context.timezone,
+            locale: context.locale,
         };
-        // Rewrite so the version matches and subsequent requests skip the D1 read.
-        await writeRegistrySnapshot(userId, jti, refreshed, resolveSessionMaxAge(env, options), env).catch(() => {});
+        // Rewrite so the version matches and subsequent requests skip the D1 read. The device
+        // metadata rides along, or the sessions page would lose it on the first profile edit.
+        await writeRegistrySnapshot(userId, jti, refreshed, resolveSessionMaxAge(env, options), env, metadata).catch(
+            () => {},
+        );
         return refreshed;
     } catch (error) {
         console.warn('Failed to refresh session snapshot from D1:', error);
@@ -531,6 +599,8 @@ function buildUser(payload: SessionTokenPayload, snapshot: RegistrySnapshot | nu
         permissions: snapshot?.permissions ?? [],
         platformAdmin: snapshot?.platformAdmin ?? false,
         createdAt: snapshot?.createdAt ?? payload.createdAt ?? null,
+        timezone: snapshot?.timezone ?? null,
+        locale: snapshot?.locale ?? null,
     };
 }
 
@@ -579,14 +649,20 @@ export async function getSession(
     let revokedSinceRaw: string | null;
     let tombstoneRaw: string | null;
     let registryRaw: string | null;
+    let registryMetadata: SessionMetadata | null;
     let profileVersionRaw: string | null;
     try {
-        [revokedSinceRaw, tombstoneRaw, registryRaw, profileVersionRaw] = await Promise.all([
+        const [revokedSince, tombstone, registry, profileVersion] = await Promise.all([
             env.OBCF_KV.get(revokedSinceKey(payload.sub)),
             env.OBCF_KV.get(revokedJtiKey(payload.sub, payload.jti)),
-            env.OBCF_KV.get(sessionRegistryKey(payload.sub, payload.jti)),
+            env.OBCF_KV.getWithMetadata<SessionMetadata>(sessionRegistryKey(payload.sub, payload.jti)),
             env.OBCF_KV.get(profileVersionKey(payload.sub)),
         ]);
+        revokedSinceRaw = revokedSince;
+        tombstoneRaw = tombstone;
+        registryRaw = registry.value;
+        registryMetadata = registry.metadata ?? null;
+        profileVersionRaw = profileVersion;
     } catch (error) {
         // A transient KV read error must not silently trust the token.
         console.warn('Failed to read session revocation state; failing closed:', error);
@@ -607,7 +683,15 @@ export async function getSession(
     }
 
     if (snapshot) {
-        snapshot = await refreshSnapshotIfStale(payload.sub, payload.jti, snapshot, currentVersion, env, options);
+        snapshot = await refreshSnapshotIfStale(
+            payload.sub,
+            payload.jti,
+            snapshot,
+            currentVersion,
+            env,
+            options,
+            registryMetadata,
+        );
     } else {
         // No registry record. Either (a) freshly issued and not yet propagated across
         // colos / registry write is catching up, or (b) signed out / expired.
@@ -629,14 +713,13 @@ export async function getSession(
                 name: context.name,
                 image: context.image,
                 emailVerified: context.emailVerified,
+                timezone: context.timezone,
+                locale: context.locale,
             };
-            await writeRegistrySnapshot(
-                payload.sub,
-                payload.jti,
-                snapshot,
-                resolveSessionMaxAge(env, options),
-                env,
-            ).catch(() => {});
+            await writeRegistrySnapshot(payload.sub, payload.jti, snapshot, resolveSessionMaxAge(env, options), env, {
+                c: snapshot.c,
+                e: Number(payload.exp) * 1000,
+            }).catch(() => {});
         }
     }
 
@@ -671,4 +754,230 @@ export async function revokeAllUserSessions(
     // Millisecond granularity so a session reissued in the same second as the revoke
     // (e.g. change-password-then-stay-signed-in) is not wrongly invalidated.
     await env.OBCF_KV.put(revokedSinceKey(userId), String(Date.now()), { expirationTtl: maxAgeSeconds });
+}
+
+// ============================================================
+// Listing and managing a user's own sessions (the sessions page)
+// ============================================================
+
+/** One of a user's sessions, as the sessions page sees it. Never carries the raw `jti`. */
+export interface SessionSummary {
+    /** Opaque id: an HMAC of the jti under AUTH_SECRET. Only the owner's listing can map it back. */
+    id: string;
+    name: string | null;
+    createdAt: number;
+    expiresAt: number;
+    device: string | null;
+    ip: string | null;
+    geo: string | null;
+    current: boolean;
+}
+
+/** The maximum sessions a listing walks; KV `list` pages are 1000 keys, so one page is plenty. */
+const SESSION_LIST_LIMIT = 200;
+const SESSION_NAME_MAX = 40;
+
+/** Opaque, stable public id for a session: HMAC-SHA256 of the jti, truncated. */
+export async function sessionPublicId(jti: string, env: AuthEnv): Promise<string> {
+    return (await hmacSign(`sess:${jti}`, resolveAuthSecret(env))).slice(0, 22);
+}
+
+/** `{ userId, jti }` of the caller's cookie after signature + expiry checks, or null. No KV read. */
+export async function readSessionIdentity(
+    request: Request,
+    env: AuthEnv,
+): Promise<{ userId: string; jti: string } | null> {
+    const token = parseCookies(request.headers.get('Cookie'))[resolveSessionCookieName(env)];
+    if (!token) return null;
+    try {
+        const payload = await verifyJwt<SessionTokenPayload>(token, resolveAuthSecret(env));
+        return payload?.sub && payload.jti ? { userId: payload.sub, jti: payload.jti } : null;
+    } catch {
+        return null;
+    }
+}
+
+interface ListedSession {
+    key: string;
+    jti: string;
+    metadata: SessionMetadata | null;
+    expiration?: number;
+}
+
+/**
+ * The user's live registry records. Records created before a bulk "revoked since" marker
+ * (password change or reset) are already dead for getSession but stay in KV until their TTL,
+ * so they are left out here too.
+ */
+async function listRegistryKeys(userId: string, env: AuthEnv): Promise<ListedSession[]> {
+    if (!env.OBCF_KV) return [];
+    const prefix = `${userKey('auth', userId, 'sess')}:`;
+    const [result, revokedSinceRaw] = await Promise.all([
+        env.OBCF_KV.list<SessionMetadata>({ prefix, limit: SESSION_LIST_LIMIT }),
+        env.OBCF_KV.get(revokedSinceKey(userId)),
+    ]);
+    const revokedAt = Number(revokedSinceRaw) || 0;
+    return result.keys
+        .map((key) => ({
+            key: key.name,
+            jti: key.name.slice(prefix.length),
+            metadata: (key.metadata as SessionMetadata | undefined) ?? null,
+            expiration: key.expiration,
+        }))
+        .filter((entry) => !revokedAt || (entry.metadata?.c ?? 0) >= revokedAt);
+}
+
+/**
+ * Every live session of `userId`, newest first. `currentJti` marks the caller's own session.
+ * KV `list` is eventually consistent (up to about a minute), so a session opened seconds ago may
+ * be missing briefly. Expired records vanish through their TTL, so there is no "expired" state.
+ */
+export async function listUserSessions(
+    userId: string,
+    env: AuthEnv,
+    currentJti?: string | null,
+): Promise<SessionSummary[]> {
+    const keys = await listRegistryKeys(userId, env);
+    const summaries = await Promise.all(
+        keys.map(async (entry): Promise<SessionSummary> => {
+            const meta = entry.metadata;
+            return {
+                id: await sessionPublicId(entry.jti, env),
+                name: meta?.n ?? null,
+                createdAt: meta?.c ?? 0,
+                expiresAt: meta?.e ?? (entry.expiration ? entry.expiration * 1000 : 0),
+                device: meta?.ua ?? null,
+                ip: meta?.ip ?? null,
+                geo: meta?.geo ?? null,
+                current: Boolean(currentJti) && entry.jti === currentJti,
+            };
+        }),
+    );
+    return summaries.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Map a public id back to the owner's jti. Only `userId`'s own keys are searched, so a caller
+ * can never address another user's session, whatever id they send.
+ */
+export async function findUserSessionJti(
+    userId: string,
+    publicId: string,
+    env: AuthEnv,
+): Promise<ListedSession | null> {
+    for (const entry of await listRegistryKeys(userId, env)) {
+        if ((await sessionPublicId(entry.jti, env)) === publicId) return entry;
+    }
+    return null;
+}
+
+/** Rename one of the user's sessions (1 to 40 characters). Re-puts the record with new metadata, same TTL. */
+export async function renameUserSession(
+    userId: string,
+    publicId: string,
+    name: string,
+    env: AuthEnv,
+): Promise<SessionSummary | null> {
+    if (!env.OBCF_KV) return null;
+    const trimmed = name.trim().slice(0, SESSION_NAME_MAX);
+    if (!trimmed) throw new RangeError('Session name is required');
+    const entry = await findUserSessionJti(userId, publicId, env);
+    if (!entry) return null;
+    const value = await env.OBCF_KV.get(entry.key);
+    if (value === null) return null;
+    const ttl = entry.expiration ? Math.max(60, entry.expiration - Math.floor(Date.now() / 1000)) : undefined;
+    const metadata: SessionMetadata = { ...(entry.metadata ?? { c: 0, e: 0 }), n: trimmed };
+    await env.OBCF_KV.put(entry.key, value, { ...(ttl ? { expirationTtl: ttl } : {}), metadata });
+    return {
+        id: publicId,
+        name: trimmed,
+        createdAt: metadata.c,
+        expiresAt: metadata.e,
+        device: metadata.ua ?? null,
+        ip: metadata.ip ?? null,
+        geo: metadata.geo ?? null,
+        current: false,
+    };
+}
+
+/** Revoke one of the user's sessions by public id. False when no such session is theirs. */
+export async function revokeUserSessionById(
+    userId: string,
+    publicId: string,
+    env: AuthEnv,
+    options?: CreateAuthConfigOptions,
+): Promise<boolean> {
+    const entry = await findUserSessionJti(userId, publicId, env);
+    if (!entry) return false;
+    await revokeSession(userId, entry.jti, env, options);
+    return true;
+}
+
+/**
+ * Sign out every listed session except `currentJti`. Unlike `revokeAllUserSessions`, whose
+ * "revoked since" marker would also kill the current one, this tombstones each other jti.
+ */
+export async function revokeOtherUserSessions(
+    userId: string,
+    currentJti: string,
+    env: AuthEnv,
+    options?: CreateAuthConfigOptions,
+): Promise<number> {
+    const others = (await listRegistryKeys(userId, env)).filter((entry) => entry.jti !== currentJti);
+    await Promise.all(others.map((entry) => revokeSession(userId, entry.jti, env, options)));
+    return others.length;
+}
+
+/**
+ * Was the caller's session ended on purpose (revoked from another device, or by a password
+ * change) rather than simply missing or expired? Lets a 401 tell the person what happened.
+ * Two KV reads; call it only on a request that already failed authentication.
+ */
+export async function wasSessionRevoked(request: Request, env: AuthEnv): Promise<boolean> {
+    if (!env.OBCF_KV) return false;
+    const token = parseCookies(request.headers.get('Cookie'))[resolveSessionCookieName(env)];
+    if (!token) return false;
+    let payload: SessionTokenPayload | null;
+    try {
+        payload = await verifyJwt<SessionTokenPayload>(token, resolveAuthSecret(env));
+    } catch {
+        return false;
+    }
+    if (!payload?.sub || !payload.jti) return false;
+    try {
+        const [tombstone, revokedSince] = await Promise.all([
+            env.OBCF_KV.get(revokedJtiKey(payload.sub, payload.jti)),
+            env.OBCF_KV.get(revokedSinceKey(payload.sub)),
+        ]);
+        if (tombstone) return true;
+        const revokedAt = Number(revokedSince) || 0;
+        const createdMs = Number(payload.cms) || 0;
+        return revokedAt > 0 && createdMs > 0 && createdMs < revokedAt;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Sign the user out everywhere AND delete every session record, with its device, masked IP and
+ * location. For an erasure: a "revoked since" marker alone would leave those records in KV until
+ * their TTL. Returns how many records were deleted.
+ */
+export async function purgeUserSessions(
+    userId: string,
+    env: AuthEnv,
+    options?: CreateAuthConfigOptions,
+): Promise<number> {
+    if (!env.OBCF_KV) return 0;
+    await revokeAllUserSessions(userId, env, options);
+    const prefix = `${userKey('auth', userId, 'sess')}:`;
+    let deleted = 0;
+    let cursor: string | undefined;
+    do {
+        const page = await env.OBCF_KV.list({ prefix, cursor, limit: 1000 });
+        await Promise.all(page.keys.map((key) => env.OBCF_KV!.delete(key.name)));
+        deleted += page.keys.length;
+        cursor = page.list_complete ? undefined : (page as { cursor?: string }).cursor;
+    } while (cursor);
+    return deleted;
 }

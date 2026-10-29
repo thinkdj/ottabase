@@ -61,6 +61,9 @@ function createFakeKv() {
         async get(key: string) {
             return store.get(key) ?? null;
         },
+        async getWithMetadata(key: string) {
+            return { value: store.get(key) ?? null, metadata: null };
+        },
         async put(key: string, value: string) {
             store.set(key, value);
         },
@@ -314,6 +317,9 @@ describe('session revocation', () => {
         const session = await createSessionForUser({ id: 'user-1', email: 'u@e.com' }, env);
         const throwingKv = {
             get: async () => {
+                throw new Error('KV outage');
+            },
+            getWithMetadata: async () => {
                 throw new Error('KV outage');
             },
             put: async () => {},

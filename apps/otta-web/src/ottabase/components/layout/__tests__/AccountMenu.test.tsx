@@ -161,6 +161,7 @@ vi.mock('lucide-react', () => ({
     Images: () => null,
     LogIn: () => <span data-testid="icon-login" />,
     LogOut: () => null,
+    MonitorSmartphone: () => null,
     PenLine: () => null,
     ShieldCheck: () => null,
     UserRound: () => null,
@@ -207,7 +208,7 @@ describe('AccountMenu', () => {
         const labels = within(screen.getByRole('menu'))
             .getAllByRole('link')
             .map((link) => link.textContent);
-        expect(labels).toEqual(['Profile', 'Media Library', 'Referrals', 'Billing']);
+        expect(labels).toEqual(['Profile', 'Sessions', 'Media Library', 'Referrals', 'Billing']);
     });
 
     // otta:begin demo
@@ -243,7 +244,7 @@ describe('AccountMenu', () => {
             within(nav)
                 .getAllByRole('link')
                 .map((link) => link.getAttribute('href')),
-        ).toEqual(['/profile', '/media-library', '/referrals', '/billing', '/admin']);
+        ).toEqual(['/profile', '/sessions', '/media-library', '/referrals', '/billing', '/admin']);
         fireEvent.click(within(nav).getByRole('link', { name: 'Billing' }));
         expect(onNavigate).toHaveBeenCalledTimes(1);
 

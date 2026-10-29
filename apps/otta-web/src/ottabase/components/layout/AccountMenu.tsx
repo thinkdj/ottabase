@@ -19,7 +19,7 @@ import {
 } from '@ottabase/ui';
 import { hasGrantedPermission } from '@ottabase/utils/permissions'; // otta:only ottablog
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronsUpDown, Images, LogIn, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronsUpDown, Images, LogIn, LogOut, MonitorSmartphone, ShieldCheck, UserRound } from 'lucide-react';
 import { PenLine } from 'lucide-react'; // otta:only ottablog
 import { Fragment, memo, useCallback, useState } from 'react';
 
@@ -45,6 +45,7 @@ function useAccountLinks(): AccountLink[][] {
     const demo = useDemoMode(); // otta:only demo
     const own: AccountLink[] = [
         { to: '/profile', label: 'Profile', icon: UserRound },
+        { to: '/sessions', label: 'Sessions', icon: MonitorSmartphone },
         ...(MEDIA_LIBRARY_ENABLED ? [{ to: '/media-library', label: 'Media Library', icon: Images }] : []),
         ...PACKAGE_ACCOUNT_LINKS.map((link) => ({
             to: link.path,
