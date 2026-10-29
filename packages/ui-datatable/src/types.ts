@@ -182,10 +182,18 @@ export interface DataTableProps<TData> {
     onRowClick?: (row: TData) => void;
     /** Cell click handler — receives row data, column ID, and cell value */
     onCellClick?: (row: TData, columnId: string, value: unknown) => void;
-    /** Loading state */
+    /** Loading state: no rows yet, show the skeleton */
     isLoading?: boolean;
+    /**
+     * Refetching with rows already on screen: the old rows stay put under a blurred overlay
+     * with a spinner, so nothing jumps between pages. Pair with TanStack Query's `isFetching`
+     * and `placeholderData: keepPreviousData`.
+     */
+    isFetching?: boolean;
     /** Empty state message */
     emptyMessage?: string;
+    /** Row ids to flash briefly (a fading primary tint), e.g. after a copy or a settled action. */
+    flashRowIds?: ReadonlySet<string>;
     /** Empty state icon */
     emptyIcon?: React.ElementType;
     /** Whether to show column visibility toggle */

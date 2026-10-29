@@ -213,6 +213,19 @@ export interface ModelFormProps<T = Record<string, unknown>> {
     serverErrors?: Record<string, string>;
     /** Clears a parent-controlled server error after the user edits a field. */
     onServerErrorClear?: (field: string) => void;
+    /** Fires when the form becomes dirty or clean again (relative to its initial values). */
+    onDirtyChange?: (dirty: boolean) => void;
+    /** Keep the submit button disabled until the user changed something. */
+    disableUntilDirty?: boolean;
+    /** Submit button text; defaults to "Create" / "Save Changes". */
+    submitLabel?: string;
+    /** Hide the built-in title row (the host renders its own heading). */
+    hideHeader?: boolean;
+    /**
+     * Bumping this value marks the current values as the clean baseline, e.g. right after a
+     * successful save when the form stays mounted.
+     */
+    cleanKey?: number | string;
 }
 
 /**

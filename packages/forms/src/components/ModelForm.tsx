@@ -9,7 +9,7 @@
 import { validateField } from '@ottabase/ottaorm';
 import { clsx } from 'clsx';
 import { AlertCircle, Loader2, Save, X } from 'lucide-react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getServerErrorData, useFormRequest } from '../hooks/useFormRequest';
 import type { ModelFieldDescriptor, ModelFormProps } from '../types';
 import { FormField } from './FormField';
@@ -55,6 +55,11 @@ export function ModelForm<T extends Record<string, unknown>>({
     onError,
     serverErrors,
     onServerErrorClear,
+    onDirtyChange,
+    disableUntilDirty = false,
+    submitLabel,
+    hideHeader = false,
+    cleanKey,
 }: ModelFormProps<T>) {
     const request = useFormRequest();
 
@@ -92,6 +97,26 @@ export function ModelForm<T extends Record<string, unknown>>({
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const touchedRef = useRef<Set<string>>(new Set());
+
+    // Dirty tracking: the baseline is the initial values, re-taken whenever `cleanKey` changes
+    // (a host bumps it after a save that keeps the form mounted). Compared by JSON so a value
+    // typed and then reverted reads as clean again.
+    const [baseline, setBaseline] = useState(() => JSON.stringify(formData));
+    const latestData = useRef(formData);
+    latestData.current = formData;
+    const firstCleanKey = useRef(cleanKey);
+    useEffect(() => {
+        if (cleanKey === firstCleanKey.current) return;
+        firstCleanKey.current = cleanKey;
+        setBaseline(JSON.stringify(latestData.current));
+    }, [cleanKey]);
+    const isDirty = JSON.stringify(formData) !== baseline;
+    const lastDirty = useRef<boolean | null>(null);
+    useEffect(() => {
+        if (lastDirty.current === isDirty) return;
+        lastDirty.current = isDirty;
+        onDirtyChange?.(isDirty);
+    }, [isDirty, onDirtyChange]);
 
     // Merge external server errors into displayed errors
     const displayErrors = useMemo(() => {
@@ -306,24 +331,27 @@ export function ModelForm<T extends Record<string, unknown>>({
     const displayName = config.displayName || capitalize(singularize(config.entity));
     const title = mode === 'create' ? `Create ${displayName}` : `Edit ${displayName}`;
     const loading = isLoading || isSubmitting;
+    const submitDisabled = loading || (disableUntilDirty && !isDirty);
 
     return (
-        <form onSubmit={handleSubmit} className={clsx('space-y-6', className)} noValidate>
+        <form onSubmit={handleSubmit} className={clsx('space-y-6', className)} noValidate data-dirty={isDirty}>
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-[0.9375rem] font-semibold text-foreground">{title}</h2>
-                {onCancel && (
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        disabled={loading}
-                        aria-label="Close"
-                        className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground disabled:opacity-50"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
-                )}
-            </div>
+            {!hideHeader && (
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[0.9375rem] font-semibold text-foreground">{title}</h2>
+                    {onCancel && (
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            disabled={loading}
+                            aria-label="Close"
+                            className="rounded-lg p-2 text-muted-foreground transition-colors duration-normal hover:bg-muted/70 hover:text-foreground disabled:opacity-50"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Submit Error Banner */}
             {submitError && (
@@ -371,7 +399,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                 )}
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={submitDisabled}
                     className={clsx(
                         'flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-normal',
                         'bg-primary text-primary-foreground',
@@ -388,7 +416,7 @@ export function ModelForm<T extends Record<string, unknown>>({
                     ) : (
                         <>
                             <Save className="h-4 w-4" />
-                            {mode === 'create' ? 'Create' : 'Save Changes'}
+                            {submitLabel ?? (mode === 'create' ? 'Create' : 'Save Changes')}
                         </>
                     )}
                 </button>

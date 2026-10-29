@@ -7,7 +7,7 @@
 
 import { flexRender } from '@tanstack/react-table';
 import { clsx } from 'clsx';
-import { Inbox } from 'lucide-react';
+import { Inbox, Loader2 } from 'lucide-react';
 import type { DataTableProps } from '../types';
 import { DataTableColumnHeader } from './DataTableColumnHeader';
 import { DataTablePagination } from './DataTablePagination';
@@ -37,6 +37,8 @@ export function DataTable<TData extends Record<string, unknown>>({
     onRowClick,
     onCellClick,
     isLoading = false,
+    isFetching = false,
+    flashRowIds,
     emptyMessage = 'No results found.',
     emptyIcon: EmptyIcon = Inbox,
     showColumnVisibility = true,
@@ -98,12 +100,20 @@ export function DataTable<TData extends Record<string, unknown>>({
             )}
 
             {/* Table container */}
-            <div
-                className={clsx(
-                    'overflow-hidden rounded-xl border border-border/60',
-                    stickyHeader || maxHeight ? 'relative' : '',
+            <div className={clsx('relative overflow-hidden rounded-xl border border-border/60')}>
+                {/* Refetch overlay: stale rows stay visible, blurred, under a spinner */}
+                {isFetching && !isLoading && rows.length > 0 && (
+                    <div
+                        className="absolute inset-0 z-20 flex items-center justify-center bg-background/40 backdrop-blur-[1px]"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <span className="inline-flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm ring-1 ring-border">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                            Loading…
+                        </span>
+                    </div>
                 )}
-            >
                 <div
                     className="overflow-x-auto"
                     style={
@@ -194,14 +204,19 @@ export function DataTable<TData extends Record<string, unknown>>({
                             ) : (
                                 rows.map((row, rowIdx) => {
                                     const isSelected = row.getIsSelected();
+                                    const flashing = flashRowIds?.has(row.id) ?? false;
 
                                     return (
                                         <tr
                                             key={row.id}
                                             data-state={isSelected ? 'selected' : undefined}
+                                            data-flash={flashing ? 'true' : undefined}
                                             className={clsx(
                                                 'border-b border-border/60 transition-colors',
                                                 'hover:bg-muted/40',
+                                                // A row flash: primary tint that fades over ~2s (motion-safe only)
+                                                flashing &&
+                                                    'bg-primary/15 motion-safe:[transition-duration:2000ms] motion-safe:ease-out',
                                                 isSelected && 'bg-background ring-1 ring-inset ring-border',
                                                 striped && !isSelected && rowIdx % 2 === 1 && 'bg-muted/20',
                                                 onRowClick && 'cursor-pointer',

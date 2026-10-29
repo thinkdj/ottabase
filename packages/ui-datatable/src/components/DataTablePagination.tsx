@@ -121,8 +121,9 @@ export function DataTablePagination<TData>({
 
                 {/* Navigation buttons */}
                 <div className="flex items-center gap-1">
+                    {/* First/last hide on small screens; prev/next always stay reachable */}
                     <button
-                        className={btnBase}
+                        className={clsx(btnBase, 'hidden sm:inline-flex')}
                         onClick={() => goToPage(1)}
                         disabled={!canPreviousPage}
                         aria-label="First page"
@@ -146,7 +147,7 @@ export function DataTablePagination<TData>({
                         <ChevronRight className="h-4 w-4" />
                     </button>
                     <button
-                        className={btnBase}
+                        className={clsx(btnBase, 'hidden sm:inline-flex')}
                         onClick={() => goToPage(totalPages)}
                         disabled={!canNextPage}
                         aria-label="Last page"
