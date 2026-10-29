@@ -630,6 +630,120 @@ export class Post extends BaseModel {
 }
 ```
 
+### Query builder (`Model.query()`)
+
+A chainable builder that compiles to the where object and options the statics above already run, so the binding budget,
+bounded reads, soft deletes and RLS keep working unchanged.
+
+```typescript
+import { Post } from '@ottabase/ottablog';
+
+const page = await Post.query()
+    .where('status', 'published') // equality
+    .where('views', '>=', 100) // '=', '!=', '>', '>=', '<', '<=', 'in', 'notIn', 'contains', 'startsWith', 'endsWith'
+    .whereIn('categoryId', ids)
+    .whereNull('deletedAt') // and whereNotNull, whereBetween
+    .whereContains('title', q) // escaped LIKE (also whereStartsWith / whereEndsWith)
+    .orWhere((q) => q.where('isFeatured', true).where('views', '>', 1000)) // a grouped OR branch
+    .search(q, ['title', 'excerpt']) // the same LIKE path as searchPaginate
+    .with('author:id{name,image}', 'tags:id{name,slug}', 'tags.category:id{name}') // eager load, nested too
+    .orderBy('publishedAt', 'desc')
+    .select('id', 'title', 'slug')
+    .withTrashed()
+    .paginate(1, 20);
+```
+
+- Every call returns the builder; `clone()` branches. Repeated `where`s on one column AND together.
+- `orWhere` starts a new OR branch (`a AND b OR c` reads `(a AND b) OR (c)`); a callback adds a parenthesised group.
+- One `orderBy` column; the primary key is always the tie-breaker (a second `orderBy` on it is a no-op).
+- Terminals: `first`, `firstOrFail` (throws `RecordNotFoundError`), `get` (bounded like `all()` unless `limit` is set),
+  `paginate`, `count`, `exists`, `pluck(column)`, `pages(perPage)` (keyset iterator) and `chunk(size, fn)`.
+- `with('rel:key{a,b}')` runs the relation after the main read and keeps only the listed fields plus the key. Dotted
+  paths load nested relations (`'tags.category'`, `'tags.category:id{name}'`): each level calls the model's own
+  relationship method on the related instances, and a projection applies to the last segment (child relations are always
+  kept). Specs sharing a prefix load it once. A `belongsToMany` loaded with `withPivot` arrives as the related row plus
+  a `pivot` object. One relationship query per instance per level; `loadRelations(instances, specs)` is the same loader
+  for instances you already hold.
+- `makeVisible(...)` reveals `hidden` fields on the result. Server-side only: the generic CRUD API never exposes it.
+- `toWhere()` returns the compiled where object, handy in tests.
+
+New where operators the builder compiles to, usable in plain where objects too: `$nin`, `$null: true | false`,
+`$contains`, `$startsWith`, `$endsWith`. The LIKE operators escape `%`, `_` and `\` (with `ESCAPE '\'`) and refuse a
+pattern over 48 bytes (D1's limit is 50). SQLite's LIKE is ASCII case-insensitive. `$nin` is never split across
+statements like `$in` is; an oversized list fails with `QueryBindingLimitError`.
+
+### Relation writes (`attachPivot`, `detachPivot`, `syncPivot`)
+
+Protected instance helpers for `belongsToMany`, wrapped by a named model method:
+
+```typescript
+export class Post extends BaseModel {
+    syncTags(ids: string[]) {
+        return this.syncPivot(PostTag, postTagLinksTable, ids);
+    }
+    attachTags(ids: string[], order?: number) {
+        return this.attachPivot(PostTag, postTagLinksTable, ids, { pivot: { order } });
+    }
+    detachTags(ids?: string[]) {
+        return this.detachPivot(PostTag, postTagLinksTable, ids);
+    }
+}
+```
+
+The names are deliberately specific, so they never collide with a model's own `sync()` or `attach()`. `syncPivot` diffs
+the current join rows against `ids`: rows that stay are untouched (their own pivot columns survive), the rest are
+deleted and inserted in one atomic D1 batch. Keys follow the `belongsToMany` inference (`postId` / `tagId`) and take the
+same `foreignKey` / `otherKey` overrides. `BaseModel.batch()` now accepts `{ sql, params }` statements (what Drizzle's
+`toSQL()` returns) next to raw strings.
+
+### CrudHub opt-in (`static admin`)
+
+CrudHub is the generic admin data screen at `/admin/crudhub`. A model joins it by declaring:
+
+```typescript
+export class Post extends BaseModel {
+    static admin = {
+        enabled: true,
+        scope: 'org', // 'system' (default): platform admins only; 'org': org admins (their org's rows) and platform admins
+        permissions: { read: 'posts:read', write: 'posts:update' }, // optional RBAC keys on top of the scope
+        readOnly: true, // no generic create/edit/delete; declared actions and routes.edit still work
+        listFields: ['title', 'status', 'createdAt'], // list columns; defaults to tableConfig
+        searchField: 'title', // defaults to the first searchable field
+        titleField: 'title', // links, breadcrumbs, the details heading
+        routes: { view: '/blog/:slug', edit: '/admin/content/blog/:id/edit' }, // the row menu's View / Edit targets
+        description: 'Posts, drafts and scheduled articles.',
+    };
+
+    static adminActions = {
+        feature: {
+            title: 'Feature post',
+            when: (row) => row.isFeatured !== true, // evaluated server-side, for the list and before the run
+            confirm: 'Feature this post?', // ConfirmDialog text; required for destructive actions
+            run: async (row, ctx) => Post.update(String(row.id), { isFeatured: true }),
+        },
+    };
+}
+```
+
+Grant and auth tables (`users`, `roles`, `user_roles`, `accounts`, `verification_tokens`, `audit_logs` and friends) are
+on a hard denylist (`CRUDHUB_DENYLIST`) and never appear, however `admin` is set. `hidden` fields are dropped from the
+descriptors the client receives (declare them `static hidden`; a per-instance hidden list is invisible to the
+descriptor), and the action functions never leave the server. `listCrudHubModels()`, `describeCrudHubModel()` and
+`getCrudHubModel()` build the descriptors the worker route serves.
+
+Hub writes go through secure CRUD with RLS, but **not** through the per-model guards of the public `/api/ottaorm` route
+(post content validation and publish rules, organization owner provisioning, comment org derivation and reaction
+cleanup). A model whose writes need such a guard is `readOnly: true` in the hub and exposes its changes as
+`adminActions` or a `routes.edit` page; posts, comments, media and organizations ship that way. `routes.edit` also
+replaces the generic edit page: opening `/admin/crudhub/:model/:id/edit` redirects there. `routes.view` is the row
+menu's View target; the hub's own details page stays reachable from the title link.
+
+`relations` lists what the details page shows under "Related", in `with()` spec syntax:
+`relations: ['author:id{name,image}', 'tags:id{name,slug}']`. They load through the model's relationship methods for a
+row the caller could read, but the related rows themselves are not filtered by RLS, so project to what an admin of this
+model may see. A relation into a denylisted table without a projection is cut to `id` and `name`. At most
+`CRUDHUB_RELATION_LIMIT` (50) rows per relation are shown; related rows of another hub model link to its details page.
+
 ## Relationships
 
 ### belongsTo (N:1)

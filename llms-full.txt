@@ -1808,6 +1808,11 @@ Use this as the default decision tree when shipping new work.
     - If it is standard entity CRUD, use model + `createModelHooks()` + `/api/ottaorm/{entity}`.
     - Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
     - Exception: Menu, MenuItem use `/api/brand/menus` (cache-invalidating CRUD), not OttaORM.
+    - An admin data screen for a model is a `static admin` opt-in (CrudHub, `/admin/crudhub`), not a new page.
+    - A redirect that should show a message carries a notice **code**, never text: `withNotice(url, code)` from
+      `@ottabase/utils/url`, registered in `src/ottabase/config/notices.ts` (or a package's client `notices`).
+    - Dates and numbers shown to a person go through `formatDateForUser` / `formatNumberForUser`
+      (`@ottabase/utils/timezone`), which follow the signed-in user's timezone and locale.
 2. **Keep data logic in models**
     - Put domain logic in model methods, not page/component handlers.
 3. **Theme-safe UI**
@@ -5621,6 +5626,10 @@ framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`,
 `CRON_SECRET`, `AUTH_URL`), the database is bootstrapped with that owner, and `/api/health` is checked. Rerun it to
 redeploy. Details and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight
 to Cloudflare". The rest of this guide is the CI/CD setup for a team.
+
+Both `otta deploy` and the CI workflow tag each deploy with the short commit (`wrangler deploy --tag abc1234`). The
+Worker reads it back through its version metadata binding (`OBCF_VERSION` in `wrangler.jsonc`), so the `/admin`
+readiness line and the Fleet report say which build is running. Outside a git checkout `otta deploy` deploys untagged.
 
 ---
 
@@ -11123,7 +11132,7 @@ same owner's next sign-in repairs the missing organization; another user cannot 
 Everyone after the first user is the app's to finish, through `onSignIn`. It runs on every credentials, OAuth and
 magic-link sign-in, after `bootstrapFirstUser()` and before the session is issued. A throw refuses the sign-in the same
 way: credentials answer 500 `ACCOUNT_PROVISIONING_FAILED`, OAuth and magic links redirect to the error page with
-`?error=AccountProvisioning`, and no session cookie is set. Catch anything in the hook that is only best-effort.
+`?notice=auth.account-provisioning`, and no session cookie is set. Catch anything in the hook that is only best-effort.
 
 ```typescript
 const options: CreateAuthConfigOptions = {
@@ -11196,6 +11205,51 @@ const required = requireAuth(session); // throws if not authenticated
 const userId = getUserId(session); // string | null
 const verified = hasVerifiedEmail(session); // boolean
 ```
+
+### The user's own sessions
+
+Every registry record carries KV **key metadata** (under 1 KB, returned by `list()` without a read): created and expiry
+times, a device summary (`Chrome on Windows`), a masked IP (`203.0.113.x`), `City, CC` from Cloudflare's geolocation and
+an optional name. `createSessionCookieForUser` fills the device facts from the request; `createSessionForUser` takes
+them as `input.device`. Rewrites of the record (a profile-version refresh, the grace-window self-heal) carry the
+metadata along.
+
+```typescript
+import {
+    listUserSessions,
+    readSessionIdentity,
+    renameUserSession,
+    revokeOtherUserSessions,
+    revokeUserSessionById,
+} from '@ottabase/auth/backend';
+
+const me = await readSessionIdentity(request, env); // { userId, jti } from the cookie, no KV read
+const sessions = await listUserSessions(me.userId, env, me.jti); // newest first, `current` marked
+await renameUserSession(me.userId, sessions[0].id, 'Work laptop', env);
+await revokeUserSessionById(me.userId, sessions[1].id, env);
+await revokeOtherUserSessions(me.userId, me.jti, env); // tombstones every other jti; the current one survives
+```
+
+Sessions are addressed by an **opaque id**, an HMAC of the jti under `AUTH_SECRET`. The helpers map it back by listing
+the caller's own keys, so a request can never reach another user's session; raw jtis never leave the server. KV `list`
+is eventually consistent (about a minute), so a just-opened session may be missing briefly. Expired records vanish
+through their TTL, so there is no "expired" state to show. There is no "last active" (a write per request).
+
+`describeUserAgent`, `maskIp` and `describeRequestDevice` are exported for other surfaces that show device facts.
+
+`purgeUserSessions(userId, env)` signs the user out everywhere and deletes every session record, device facts
+included: what an erasure needs, since a "revoked since" marker alone leaves the records until their TTL.
+
+`wasSessionRevoked(request, env)` answers why a request with a validly signed cookie failed: true when its jti was
+tombstoned (revoked from another session) or it predates a "revoked since" marker (password change). Call it only on a
+request that already failed authentication; it costs two KV reads.
+
+### Locale and timezone defaults for new accounts
+
+`requestLocaleDefaults(request, supportedLanguages?)` reads Cloudflare's `request.cf.timezone` and the best
+`Accept-Language` tag (restricted to the languages the app ships when a list is given). The OAuth and magic-link
+handlers apply it on `User.create`; pass `supportedLanguages` in `CreateAuthConfigOptions`. The session snapshot and
+`SessionUser` carry `timezone` and `locale`, so emails, digests and cron can format for the person without a D1 read.
 
 ## Password Hashing
 
@@ -13551,6 +13605,9 @@ A package with a user interface can say more, and `otta add` writes that too:
   signed-in account menu.
 - `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
   `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
+- `notices`: `{ "checkout-complete": { "type": "success", "message": "You're in.", "inline": true } }` adds the URL
+  notices the package redirects with to its client descriptor; the app registry names them `<key>.<code>`. Codes are
+  kebab-case; `type` is success, info, warning or error.
 
 A boundary that already has an `onError` is left alone and the plan says what to do by hand. Two packages routing one
 path, or a package routing a path the app owns, stop the app at boot with both names. `page` is a module path under
@@ -15656,6 +15713,8 @@ curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/ap
     "data": {
         "app": "my-tool",
         "environment": "production",
+        // The build that answered, when the host wires `version` (see below); null otherwise
+        "version": { "id": "9f2c…", "tag": "abc1234", "createdAt": "2026-10-29T10:00:00Z" },
         "takenAt": 1792584000000,
         "packages": [
             {
@@ -15687,6 +15746,13 @@ curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/ap
 A source that throws (no bucket, no D1) is named in `errors`; the rest of the report stands. `summarize(report)` is the
 shared verdict a board applies: any failing health check, or an active scheduled task whose last run failed, makes the
 app `degraded`.
+
+### Which build is running
+
+Pass `version: (env) => readDeploymentVersion(env.OBCF_VERSION)` (from `@ottabase/kernel`) and bind Cloudflare's
+version metadata in `wrangler.jsonc` (`"version_metadata": { "binding": "OBCF_VERSION" }`, in every env block: bindings
+are not inherited). The report then names the Worker version id and its deploy tag; Tower shows the tag on each app.
+CI deploys with `--tag <short sha>`, so the tag is the commit.
 
 ## Why a token, and why a secret
 
@@ -15974,6 +16040,51 @@ const config = defineModelConfig({
   `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
   `@ottabase/ui` react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
 
+## CrudHub (generic admin data screens)
+
+CrudHub renders any model that opted in with `static admin` (see the OttaORM README) from the descriptors the worker
+serves at `GET /api/admin/crudhub`. Models are server code, so nothing here imports a model class.
+
+```tsx
+import { CrudHubDirectory, CrudHubList, CrudHubDetail, CrudHubForm, useCrudHubModels } from '@ottabase/forms/react';
+
+const models = useCrudHubModels(); // { models: CrudHubModelDescriptor[] }
+<CrudHubDirectory models={models.data.models} onNavigate={(path) => navigate({ to: path })} />;
+<CrudHubList model={model} state={{ page, search }} onStateChange={patch} onNavigate={go} canWrite />;
+<CrudHubDetail model={model} id={id} onNavigate={go} />;
+<CrudHubForm model={model} id={id} onNavigate={go} />; // id undefined = create
+```
+
+What the pieces do:
+
+- **Directory**: search as you type, groups Core / one heading per package / App, a card per model with a lazy row
+  count and chips (package, scope, read-only).
+- **List**: server search on the model's search field (debounced, "Reset" while active, disabled with a hint when there
+  is none), column menu (sort ascending / descending, choosing the active one clears it, hide), the stale rows stay
+  under a blurred overlay while the next page loads, 5 / 10 / 20 / 50 / 100 rows per page, first / previous / next /
+  last. Row menu: the model's actions (only those whose `when` passed server-side), View, Edit, Copy ID (copies
+  `model:id` and flashes the row), Delete behind `ConfirmDialog`. Bulk actions for `bulk: true` actions with a summary
+  toast. `page` and `search` live in the URL (the host passes them in `state`); page size, sort and visible columns are
+  remembered per model in localStorage (`ottabase.crudhub.<entity>`), URL winning over storage.
+- **Cells** (`CrudHubCell`): a registered client renderer first (`registerCrudHubRenderer('posts.status', fn)`), then the
+  title field as a link to details plus a pencil to edit, then by type: ids shortened to `abcd…wxyz` (full in details,
+  click to copy), Yes / No, dates in the user's timezone and locale with the raw value in the tooltip, JSON as a preview
+  chip opening a viewer, URLs as middle-truncated external links, arrays and objects inline. Empties are typed and grey
+  italic: `null`, `—` (undefined), `''`, `[]`, `{}`.
+- **Details**: title, `Model · id` with copy, the model's actions, Edit and Delete; every field through the cell
+  renderer in details mode; then a "Related" section for the model's `admin.relations`, one chip per related row
+  (linked to its own details page when its model is in the hub; pass the directory's `models` to enable links).
+- **Form**: `ModelForm` from the descriptor, "Create <model>" / "Save changes" disabled until dirty, server
+  `fieldErrors` inline. After a create the host is told to replace the URL with the edit page (the new row is primed in
+  the query cache, so there is no reload or refetch flash). Leaving dirty asks "Discard changes?": pass
+  `onDirtyChange` and guard navigation in the host (otta-web uses a router blocker, covering links, Back and reload);
+  without it the form asks on Cancel only.
+- **What a caller may do**: `crudHubAbilities(model, canWrite)`. `readOnly` hides generic New / Edit / Delete but keeps
+  the model's actions and a custom `routes.edit` link. `resolveListPrefs` is the URL > storage > model-default rule.
+
+`ModelForm` gained `onDirtyChange`, `disableUntilDirty`, `submitLabel`, `hideHeader` and `cleanKey` for hosts that
+need the same behaviour.
+
 ## Exports
 
 `@ottabase/forms` (headless — no rendered UI in its import graph):
@@ -15986,6 +16097,9 @@ const config = defineModelConfig({
 `@ottabase/forms/react` (rendered React components):
 
 - **Components**: `ModelCrud`, `ModelForm`, `ModelTable`, `ModelDetail`, `FormField` (plus their prop types)
+- **CrudHub**: `CrudHubDirectory`, `CrudHubList`, `CrudHubDetail`, `CrudHubForm`, `CrudHubCell`,
+  `registerCrudHubRenderer`, `useCrudHubModels`, `useCrudHubModel`, `crudHubModelConfig`, `crudHubPaths`,
+  `fillRouteTokens`, `rowTitle`, `readRemembered`, `writeRemembered`, `CRUDHUB_API`, `CRUDHUB_PATH`
 
 
 ---
@@ -16327,6 +16441,27 @@ await runHealth(packages, env); // → { ok, checks: [{ package, name, ok }] }
 `createPackageRegistry` collects eagerly and throws at boot on a duplicate package key, table export name, cron handler
 name or queue job type. Everything else is a plain getter that returns a copy.
 
+### Env declarations and readiness
+
+A manifest's `env` lists the vars, secrets and bindings it reads. A plain string means a secret var; an object adds a
+description, the kind and whether a masked preview may be shown:
+
+```typescript
+env: {
+    required: [
+        { key: 'OBCF_D1', kind: 'binding', description: 'The D1 database.' },
+        { key: 'AUTH_SECRET', kind: 'secret', description: 'Signs session cookies.' },
+    ],
+    optional: [{ key: 'AUTH_URL', secret: false, description: 'Public origin used in redirects.' }],
+},
+```
+
+`registry.env()` still gives the deduped key lists; `registry.envDeclarations()` keeps the package behind each key.
+`runReadiness(registry, env, { probeTimeoutMs })` is the admin "System readiness" report: every declared key with
+`set` (a binding must also look right: D1 has `prepare`, KV `get`, R2 `head`, a queue `send`), a masked `preview` only
+for `secret: false` vars (first and last two characters, cut in the middle past 48), every health probe under a
+timeout, and summary counts. No secret character ever reaches the report.
+
 ## Premium packages
 
 A manifest with `premium: true` (which `definePremiumPackage` sets) is collected like any other, but `mountPackages`
@@ -16369,7 +16504,16 @@ export const notesClient = definePackageClient({
 ```
 
 `adminPages` join the admin nav. `routes` are the package's other pages: `access` is `protected` (a signed-in page, the
-default) or `public`, and `menu` puts a link in the signed-in account menu. The app lists client descriptors next to the
+default) or `public`, and `menu` puts a link in the signed-in account menu. `notices` declares the URL notices the
+package may redirect with (`{ 'checkout-complete': { type: 'success', message: 'Paid.' } }`); `packageNotices(clients)`
+namespaces them as `payport.checkout-complete` for the app's registry, and a server builds the link with
+`withNotice(url, code)` from `@ottabase/utils/url`. A page that shows its notice itself (an error on its own sign-in
+page) calls `claimNotice((code) => code.startsWith('sso.'))`: the app's root handler strips the code from the URL on
+arrival and parks it (`parkNotice`), which on a cold load happens before a lazily loaded page renders, so reading
+`location.search` would miss it. A code only the package's own page shows needs no registration.
+
+`readDeploymentVersion(env.OBCF_VERSION)` reads Cloudflare's version metadata binding into
+`{ id, tag, createdAt }` (null when unbound, as in tests). Readiness and the Fleet report use it. The app lists client descriptors next to the
 server manifests and derives everything from them: `installedPackages(clients)` gives the browser the same
 `{ [key]: true }` map `registry.installed()` gives the Worker, `packageAdminPages` and `packageRoutes` give the router
 and the menus their pages (two packages routing one path throw), and a parity test keeps the two lists honest.
@@ -21751,6 +21895,120 @@ export class Post extends BaseModel {
     }
 }
 ```
+
+### Query builder (`Model.query()`)
+
+A chainable builder that compiles to the where object and options the statics above already run, so the binding
+budget, bounded reads, soft deletes and RLS keep working unchanged.
+
+```typescript
+import { Post } from '@ottabase/ottablog';
+
+const page = await Post.query()
+    .where('status', 'published') // equality
+    .where('views', '>=', 100) // '=', '!=', '>', '>=', '<', '<=', 'in', 'notIn', 'contains', 'startsWith', 'endsWith'
+    .whereIn('categoryId', ids)
+    .whereNull('deletedAt') // and whereNotNull, whereBetween
+    .whereContains('title', q) // escaped LIKE (also whereStartsWith / whereEndsWith)
+    .orWhere((q) => q.where('isFeatured', true).where('views', '>', 1000)) // a grouped OR branch
+    .search(q, ['title', 'excerpt']) // the same LIKE path as searchPaginate
+    .with('author:id{name,image}', 'tags:id{name,slug}', 'tags.category:id{name}') // eager load, nested too
+    .orderBy('publishedAt', 'desc')
+    .select('id', 'title', 'slug')
+    .withTrashed()
+    .paginate(1, 20);
+```
+
+- Every call returns the builder; `clone()` branches. Repeated `where`s on one column AND together.
+- `orWhere` starts a new OR branch (`a AND b OR c` reads `(a AND b) OR (c)`); a callback adds a parenthesised group.
+- One `orderBy` column; the primary key is always the tie-breaker (a second `orderBy` on it is a no-op).
+- Terminals: `first`, `firstOrFail` (throws `RecordNotFoundError`), `get` (bounded like `all()` unless `limit` is set),
+  `paginate`, `count`, `exists`, `pluck(column)`, `pages(perPage)` (keyset iterator) and `chunk(size, fn)`.
+- `with('rel:key{a,b}')` runs the relation after the main read and keeps only the listed fields plus the key. Dotted
+  paths load nested relations (`'tags.category'`, `'tags.category:id{name}'`): each level calls the model's own
+  relationship method on the related instances, and a projection applies to the last segment (child relations are
+  always kept). Specs sharing a prefix load it once. A `belongsToMany` loaded with `withPivot` arrives as the related
+  row plus a `pivot` object. One relationship query per instance per level; `loadRelations(instances, specs)` is the
+  same loader for instances you already hold.
+- `makeVisible(...)` reveals `hidden` fields on the result. Server-side only: the generic CRUD API never exposes it.
+- `toWhere()` returns the compiled where object, handy in tests.
+
+New where operators the builder compiles to, usable in plain where objects too: `$nin`, `$null: true | false`,
+`$contains`, `$startsWith`, `$endsWith`. The LIKE operators escape `%`, `_` and `\` (with `ESCAPE '\'`) and refuse a
+pattern over 48 bytes (D1's limit is 50). SQLite's LIKE is ASCII case-insensitive. `$nin` is never split across
+statements like `$in` is; an oversized list fails with `QueryBindingLimitError`.
+
+### Relation writes (`attachPivot`, `detachPivot`, `syncPivot`)
+
+Protected instance helpers for `belongsToMany`, wrapped by a named model method:
+
+```typescript
+export class Post extends BaseModel {
+    syncTags(ids: string[]) {
+        return this.syncPivot(PostTag, postTagLinksTable, ids);
+    }
+    attachTags(ids: string[], order?: number) {
+        return this.attachPivot(PostTag, postTagLinksTable, ids, { pivot: { order } });
+    }
+    detachTags(ids?: string[]) {
+        return this.detachPivot(PostTag, postTagLinksTable, ids);
+    }
+}
+```
+
+The names are deliberately specific, so they never collide with a model's own `sync()` or `attach()`.
+`syncPivot` diffs the current join rows against `ids`: rows that stay are untouched (their own pivot columns survive), the
+rest are deleted and inserted in one atomic D1 batch. Keys follow the `belongsToMany` inference (`postId` / `tagId`) and
+take the same `foreignKey` / `otherKey` overrides. `BaseModel.batch()` now accepts `{ sql, params }` statements (what
+Drizzle's `toSQL()` returns) next to raw strings.
+
+### CrudHub opt-in (`static admin`)
+
+CrudHub is the generic admin data screen at `/admin/crudhub`. A model joins it by declaring:
+
+```typescript
+export class Post extends BaseModel {
+    static admin = {
+        enabled: true,
+        scope: 'org', // 'system' (default): platform admins only; 'org': org admins (their org's rows) and platform admins
+        permissions: { read: 'posts:read', write: 'posts:update' }, // optional RBAC keys on top of the scope
+        readOnly: true, // no generic create/edit/delete; declared actions and routes.edit still work
+        listFields: ['title', 'status', 'createdAt'], // list columns; defaults to tableConfig
+        searchField: 'title', // defaults to the first searchable field
+        titleField: 'title', // links, breadcrumbs, the details heading
+        routes: { view: '/blog/:slug', edit: '/admin/content/blog/:id/edit' }, // the row menu's View / Edit targets
+        description: 'Posts, drafts and scheduled articles.',
+    };
+
+    static adminActions = {
+        feature: {
+            title: 'Feature post',
+            when: (row) => row.isFeatured !== true, // evaluated server-side, for the list and before the run
+            confirm: 'Feature this post?', // ConfirmDialog text; required for destructive actions
+            run: async (row, ctx) => Post.update(String(row.id), { isFeatured: true }),
+        },
+    };
+}
+```
+
+Grant and auth tables (`users`, `roles`, `user_roles`, `accounts`, `verification_tokens`, `audit_logs` and friends) are
+on a hard denylist (`CRUDHUB_DENYLIST`) and never appear, however `admin` is set. `hidden` fields are dropped from the
+descriptors the client receives (declare them `static hidden`; a per-instance hidden list is invisible to the
+descriptor), and the action functions never leave the server. `listCrudHubModels()`, `describeCrudHubModel()` and
+`getCrudHubModel()` build the descriptors the worker route serves.
+
+Hub writes go through secure CRUD with RLS, but **not** through the per-model guards of the public `/api/ottaorm`
+route (post content validation and publish rules, organization owner provisioning, comment org derivation and reaction
+cleanup). A model whose writes need such a guard is `readOnly: true` in the hub and exposes its changes as
+`adminActions` or a `routes.edit` page; posts, comments, media and organizations ship that way. `routes.edit`
+also replaces the generic edit page: opening `/admin/crudhub/:model/:id/edit` redirects there. `routes.view` is the
+row menu's View target; the hub's own details page stays reachable from the title link.
+
+`relations` lists what the details page shows under "Related", in `with()` spec syntax:
+`relations: ['author:id{name,image}', 'tags:id{name,slug}']`. They load through the model's relationship methods for
+a row the caller could read, but the related rows themselves are not filtered by RLS, so project to what an admin of
+this model may see. A relation into a denylisted table without a projection is cut to `id` and `name`. At most
+`CRUDHUB_RELATION_LIMIT` (50) rows per relation are shown; related rows of another hub model link to its details page.
 
 ## Relationships
 
@@ -27597,7 +27855,9 @@ custom editors and filter server-side via `useServerTable`.
     table: Table<T>;           // From useDataTable/useServerTable
     onRowClick?: (row: T) => void;
     onCellClick?: (row: T, columnId: string, value: unknown) => void;
-    isLoading?: boolean;
+    isLoading?: boolean;       // No rows yet: skeleton
+    isFetching?: boolean;      // Refetch with rows on screen: stale rows stay under a blurred overlay
+    flashRowIds?: ReadonlySet<string>; // Rows to tint briefly (after a copy or a settled action)
     emptyMessage?: string;
     showColumnVisibility?: boolean;
     searchValue?: string;
@@ -27619,6 +27879,18 @@ custom editors and filter server-side via `useServerTable`.
 > **`onCellClick` vs `onRowClick`:** When both are provided, `onCellClick` fires on cell clicks (with `stopPropagation`)
 > while `onRowClick` fires on clicks that don't hit a cell handler. Use `onCellClick` when you need to know _which_
 > column was clicked.
+
+> **Loading states:** pass `isLoading` for the first load (skeleton) and `isFetching` for later pages (TanStack Query's
+> `isFetching` with `placeholderData: keepPreviousData`): the old rows stay visible under a blurred overlay with a
+> spinner, so nothing jumps between pages.
+
+> **Column header menu:** a sortable or hideable column's header opens a small menu: Ascending (smallest first),
+> Descending (largest first), and Hide column. Choosing the active direction again clears the sort. The current sort
+> shows as an arrow in the primary colour.
+
+> **Dates follow the person:** `format: 'date' | 'datetime'` renders through `formatDateForUser` from
+> `@ottabase/utils/timezone`, so cells use the signed-in user's locale and timezone (the raw value sits in the
+> tooltip). First and last page buttons hide on small screens; previous and next always stay.
 
 ### Row Action (`DataTableAction<T>`)
 
@@ -28181,6 +28453,11 @@ import {
 - **`prependBaseUrlForRelativePath(url: string, baseUrl?: string): string`** - Prepend base URL to relative paths
 - **`isValidUrl(url: string): boolean`** - Check if string is valid URL
 - **`replaceDoubleSlashes(url: string): string`** - Replace multiple slashes with single slash
+- **`withNotice(url: string, code: string): string`** - Append `notice=<code>` (keeps other params and the hash). The
+  one way servers build redirect links that should show a message; codes travel, never text
+- **`readNotice(search: string): { code, search }`** - Read and strip the notice from a search string; malformed codes
+  read as `null` and are still stripped
+- **`isNoticeCode(code: string): boolean`** - kebab-case with one optional package namespace (`payport.checkout-complete`)
 
 ### Sanitization Utilities (`@ottabase/utils/sanitize`)
 
@@ -28286,6 +28563,16 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 ### Timezone Utilities (`@ottabase/utils/timezone`)
 
 **Production-ready timezone standardization for SaaS applications**
+
+Formatting for a person follows two module configs: `setTimezoneConfig({ userTimezone })` and
+`setLocaleConfig({ userLocale })`. The app pushes the signed-in user's `timezone` and `locale` into both, and every
+"for a person" formatter reads them (user preference, then the browser, then `UTC` / `en`):
+
+- **`formatDateForUser(date, style?: 'date' | 'datetime' | 'time' | 'long', { locale?, timeZone? })`** - Intl formatting
+  in the user's locale and timezone; empty string for an invalid date
+- **`formatNumberForUser(value, options?)`** - Intl number formatting in the user's locale
+- **`getUserLocale()`**, **`isValidLocale(tag)`**, **`canonicalLocale(tag)`** (`en-us` to `en-US`),
+  **`canonicalTimezone(zone)`** (the zone as given when Intl accepts it, else `null`)
 
 Core principles:
 

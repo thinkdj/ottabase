@@ -41,6 +41,10 @@ Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
     // <ModelCrud config={config} />  → list + detail + create/edit/delete + delete-confirm
     ```
     Field UI/validation come from the model's field metadata — define it once on the model, not in the form.
+6. For a platform-wide admin view of a model (browse, search, actions), opt it into **CrudHub** instead of building a
+   page: `static admin = { enabled: true, scope: 'org' }` on the model (plus `static adminActions` for row actions). It
+   appears at `/admin/crudhub`. Make it `readOnly: true` when its writes need guards the public CRUD route applies (see
+   the OttaORM README, "CrudHub opt-in").
 
 ## Gotchas
 

@@ -138,6 +138,12 @@ import {
 - **`prependBaseUrlForRelativePath(url: string, baseUrl?: string): string`** - Prepend base URL to relative paths
 - **`isValidUrl(url: string): boolean`** - Check if string is valid URL
 - **`replaceDoubleSlashes(url: string): string`** - Replace multiple slashes with single slash
+- **`withNotice(url: string, code: string): string`** - Append `notice=<code>` (keeps other params and the hash). The
+  one way servers build redirect links that should show a message; codes travel, never text
+- **`readNotice(search: string): { code, search }`** - Read and strip the notice from a search string; malformed codes
+  read as `null` and are still stripped
+- **`isNoticeCode(code: string): boolean`** - kebab-case with one optional package namespace
+  (`payport.checkout-complete`)
 
 ### Sanitization Utilities (`@ottabase/utils/sanitize`)
 
@@ -243,6 +249,16 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 ### Timezone Utilities (`@ottabase/utils/timezone`)
 
 **Production-ready timezone standardization for SaaS applications**
+
+Formatting for a person follows two module configs: `setTimezoneConfig({ userTimezone })` and
+`setLocaleConfig({ userLocale })`. The app pushes the signed-in user's `timezone` and `locale` into both, and every "for
+a person" formatter reads them (user preference, then the browser, then `UTC` / `en`):
+
+- **`formatDateForUser(date, style?: 'date' | 'datetime' | 'time' | 'long', { locale?, timeZone? })`** - Intl formatting
+  in the user's locale and timezone; empty string for an invalid date
+- **`formatNumberForUser(value, options?)`** - Intl number formatting in the user's locale
+- **`getUserLocale()`**, **`isValidLocale(tag)`**, **`canonicalLocale(tag)`** (`en-us` to `en-US`),
+  **`canonicalTimezone(zone)`** (the zone as given when Intl accepts it, else `null`)
 
 Core principles:
 

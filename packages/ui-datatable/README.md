@@ -217,7 +217,9 @@ custom editors and filter server-side via `useServerTable`.
     table: Table<T>;           // From useDataTable/useServerTable
     onRowClick?: (row: T) => void;
     onCellClick?: (row: T, columnId: string, value: unknown) => void;
-    isLoading?: boolean;
+    isLoading?: boolean;       // No rows yet: skeleton
+    isFetching?: boolean;      // Refetch with rows on screen: stale rows stay under a blurred overlay
+    flashRowIds?: ReadonlySet<string>; // Rows to tint briefly (after a copy or a settled action)
     emptyMessage?: string;
     showColumnVisibility?: boolean;
     searchValue?: string;
@@ -239,6 +241,18 @@ custom editors and filter server-side via `useServerTable`.
 > **`onCellClick` vs `onRowClick`:** When both are provided, `onCellClick` fires on cell clicks (with `stopPropagation`)
 > while `onRowClick` fires on clicks that don't hit a cell handler. Use `onCellClick` when you need to know _which_
 > column was clicked.
+
+> **Loading states:** pass `isLoading` for the first load (skeleton) and `isFetching` for later pages (TanStack Query's
+> `isFetching` with `placeholderData: keepPreviousData`): the old rows stay visible under a blurred overlay with a
+> spinner, so nothing jumps between pages.
+
+> **Column header menu:** a sortable or hideable column's header opens a small menu: Ascending (smallest first),
+> Descending (largest first), and Hide column. Choosing the active direction again clears the sort. The current sort
+> shows as an arrow in the primary colour.
+
+> **Dates follow the person:** `format: 'date' | 'datetime'` renders through `formatDateForUser` from
+> `@ottabase/utils/timezone`, so cells use the signed-in user's locale and timezone (the raw value sits in the tooltip).
+> First and last page buttons hide on small screens; previous and next always stay.
 
 ### Row Action (`DataTableAction<T>`)
 

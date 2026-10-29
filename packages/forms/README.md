@@ -273,6 +273,51 @@ const config = defineModelConfig({
   `useState` and re-renders on each keystroke — fine for typical forms; for a very large administrative form prefer the
   `@ottabase/ui` react-hook-form primitives directly (uncontrolled, no per-keystroke re-render).
 
+## CrudHub (generic admin data screens)
+
+CrudHub renders any model that opted in with `static admin` (see the OttaORM README) from the descriptors the worker
+serves at `GET /api/admin/crudhub`. Models are server code, so nothing here imports a model class.
+
+```tsx
+import { CrudHubDirectory, CrudHubList, CrudHubDetail, CrudHubForm, useCrudHubModels } from '@ottabase/forms/react';
+
+const models = useCrudHubModels(); // { models: CrudHubModelDescriptor[] }
+<CrudHubDirectory models={models.data.models} onNavigate={(path) => navigate({ to: path })} />;
+<CrudHubList model={model} state={{ page, search }} onStateChange={patch} onNavigate={go} canWrite />;
+<CrudHubDetail model={model} id={id} onNavigate={go} />;
+<CrudHubForm model={model} id={id} onNavigate={go} />; // id undefined = create
+```
+
+What the pieces do:
+
+- **Directory**: search as you type, groups Core / one heading per package / App, a card per model with a lazy row count
+  and chips (package, scope, read-only).
+- **List**: server search on the model's search field (debounced, "Reset" while active, disabled with a hint when there
+  is none), column menu (sort ascending / descending, choosing the active one clears it, hide), the stale rows stay
+  under a blurred overlay while the next page loads, 5 / 10 / 20 / 50 / 100 rows per page, first / previous / next /
+  last. Row menu: the model's actions (only those whose `when` passed server-side), View, Edit, Copy ID (copies
+  `model:id` and flashes the row), Delete behind `ConfirmDialog`. Bulk actions for `bulk: true` actions with a summary
+  toast. `page` and `search` live in the URL (the host passes them in `state`); page size, sort and visible columns are
+  remembered per model in localStorage (`ottabase.crudhub.<entity>`), URL winning over storage.
+- **Cells** (`CrudHubCell`): a registered client renderer first (`registerCrudHubRenderer('posts.status', fn)`), then
+  the title field as a link to details plus a pencil to edit, then by type: ids shortened to `abcd…wxyz` (full in
+  details, click to copy), Yes / No, dates in the user's timezone and locale with the raw value in the tooltip, JSON as
+  a preview chip opening a viewer, URLs as middle-truncated external links, arrays and objects inline. Empties are typed
+  and grey italic: `null`, `—` (undefined), `''`, `[]`, `{}`.
+- **Details**: title, `Model · id` with copy, the model's actions, Edit and Delete; every field through the cell
+  renderer in details mode; then a "Related" section for the model's `admin.relations`, one chip per related row (linked
+  to its own details page when its model is in the hub; pass the directory's `models` to enable links).
+- **Form**: `ModelForm` from the descriptor, "Create <model>" / "Save changes" disabled until dirty, server
+  `fieldErrors` inline. After a create the host is told to replace the URL with the edit page (the new row is primed in
+  the query cache, so there is no reload or refetch flash). Leaving dirty asks "Discard changes?": pass `onDirtyChange`
+  and guard navigation in the host (otta-web uses a router blocker, covering links, Back and reload); without it the
+  form asks on Cancel only.
+- **What a caller may do**: `crudHubAbilities(model, canWrite)`. `readOnly` hides generic New / Edit / Delete but keeps
+  the model's actions and a custom `routes.edit` link. `resolveListPrefs` is the URL > storage > model-default rule.
+
+`ModelForm` gained `onDirtyChange`, `disableUntilDirty`, `submitLabel`, `hideHeader` and `cleanKey` for hosts that need
+the same behaviour.
+
 ## Exports
 
 `@ottabase/forms` (headless — no rendered UI in its import graph):
@@ -285,3 +330,6 @@ const config = defineModelConfig({
 `@ottabase/forms/react` (rendered React components):
 
 - **Components**: `ModelCrud`, `ModelForm`, `ModelTable`, `ModelDetail`, `FormField` (plus their prop types)
+- **CrudHub**: `CrudHubDirectory`, `CrudHubList`, `CrudHubDetail`, `CrudHubForm`, `CrudHubCell`,
+  `registerCrudHubRenderer`, `useCrudHubModels`, `useCrudHubModel`, `crudHubModelConfig`, `crudHubPaths`,
+  `fillRouteTokens`, `rowTitle`, `readRemembered`, `writeRemembered`, `CRUDHUB_API`, `CRUDHUB_PATH`

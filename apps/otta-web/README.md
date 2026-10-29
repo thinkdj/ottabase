@@ -243,7 +243,7 @@ to inspect cache, logging, and rate limits on the gateway itself.
 - Every later account gets a workspace of its own too, whichever way it signs in: credentials sign-up provisions it, and
   the sign-in hook (`getAuthOptions().onSignIn`) provisions one for a GitHub, OAuth or magic-link account that belongs
   to no organization once its pending invites are activated. If that fails, the sign-in is refused
-  (`?error=AccountProvisioning`).
+  (`?notice=auth.account-provisioning`).
 - Set `ALLOW_NULL_TENANT=true` to run in single-founder mode (no org required; system scope is used by default).
 - Manual recovery: `POST /api/admin/platform-owner/promote` with header `x-bootstrap-secret: $BOOTSTRAP_OWNER_SECRET`
   and body `{ "userId": "..." }` or `{ "email": "..." }` to provision the owner's workspace (in multi-tenant mode) and
@@ -435,7 +435,13 @@ apps/otta-web/
 - `/demo` - Demo gallery index
 - `/login` - Login (OAuth / Magic Link / Credentials)
 - `/register` - Registration (Credentials)
-- `/profile` - Account management (protected)
+- `/profile` - Account management (protected), including the Language and region card (locale and timezone, with a live
+  format preview and "Use this device's timezone")
+- `/sessions` - Every device signed in to the account (protected): inline rename, device and location, expiry countdown,
+  Sign out / Revoke behind a confirmation, and "Sign out all other sessions". Backed by `/api/users/me/sessions`.
+- `/admin/crudhub` - CrudHub, the generic admin data screens: a directory of every model that opted in with
+  `static admin`, then `/admin/crudhub/:model` (list), `/:id` (details), `/new` and `/:id/edit`. Grant and auth tables
+  never appear. Backed by `/api/admin/crudhub`, audit-logged on every write.
 - `/admin/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and drag-and-drop
   image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
 - `/admin/appearance/brand-kits` - Brand Kit gallery (admin only). Each card is a live specimen rendered in the kit's
@@ -662,6 +668,34 @@ declarations stay honest:
 
 A new app usually starts stripped: `pnpm otta new web my-app --minimal` (or `--preset blog`, `--preset saas`;
 `pnpm otta presets` lists them). `packages/cli/README.md` has the details.
+
+## URL notices
+
+A redirect that should show a message carries a **code**, never text: `/login?notice=email-verified`. The registry in
+`src/ottabase/config/notices.ts` maps codes to a toast (`type`, `title`, `message`); packages add theirs through
+`notices` on their client descriptor and arrive namespaced (`payport.checkout-complete`). The handler mounted at the
+router root (`components/UrlNotices.tsx`) toasts a known code and replaces the URL without the parameter, so a refresh,
+Back or a copied link never re-fires it; unknown codes are ignored and still stripped. A page claims an `inline` code
+with `useNotice()` and renders it itself: the login page does this for `email-verified`, `password-changed` and the
+`auth.*` failures. Servers build the links with `withNotice(url, code)` from `@ottabase/utils/url`.
+
+When a session ends, the next API call that gets a 401 sends the person to `/login?notice=session-revoked` or
+`?notice=session-expired`. The worker tells the two apart: every 401 passes through `handleApiRequest`, which adds
+`X-Session-Ended: revoked` when the cookie is validly signed but its session was revoked from another device (the
+sessions page) or by a password change. Only 401s pay the two KV reads. A cold load with a dead cookie shows the
+signed-out state without a notice, since no API call fails.
+
+## System readiness (`/admin`)
+
+Platform admins see a "System readiness" line at the top of the overview: a green dot and "All systems ready · N
+settings · N health checks" when everything is fine, or a red banner naming each missing required setting with its
+package and description. Details list every declared env key and binding grouped by package (kind chip, optional pill,
+description, a masked preview only for `secret: false` vars, otherwise Set / Not set), the health probes under their
+package, search and "Missing only" / "Required only" filters, and a copyable `wrangler secret put KEY` for a missing
+secret. Backed by `GET /api/admin/system/readiness` (system scope, `Cache-Control: no-store`), which never returns a
+secret character. Each package declares its keys in its manifest `env`, with descriptions, see `ottabase/packages/*.ts`.
+The summary line also names the running build (`abc1234 · deployed 2 h ago`) from the `OBCF_VERSION` version metadata
+binding, declared in every env block of `wrangler.jsonc` because bindings are not inherited.
 
 ## Documentation
 

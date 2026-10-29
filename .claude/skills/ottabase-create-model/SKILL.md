@@ -41,6 +41,9 @@ controllers/services. Do not write raw SQL or vanilla Drizzle unless there is a 
 - RLS context (`organizationId`, `userId`, `appId`) is mandatory and comes from a verified session, never request
   headers.
 - Menu/MenuItem are the exception — they use `/api/brand/menus`, not OttaORM.
+- To show it in the generic admin data screens, add `static admin = { enabled: true }` (CrudHub). Grant/auth tables are
+  denylisted there whatever they declare. Put never-shown columns in `static hidden`, not a per-instance list, or the
+  hub's field descriptors still name them.
 
 ## Authoritative sources
 

@@ -96,6 +96,27 @@ await runHealth(packages, env); // → { ok, checks: [{ package, name, ok }] }
 `createPackageRegistry` collects eagerly and throws at boot on a duplicate package key, table export name, cron handler
 name or queue job type. Everything else is a plain getter that returns a copy.
 
+### Env declarations and readiness
+
+A manifest's `env` lists the vars, secrets and bindings it reads. A plain string means a secret var; an object adds a
+description, the kind and whether a masked preview may be shown:
+
+```typescript
+env: {
+    required: [
+        { key: 'OBCF_D1', kind: 'binding', description: 'The D1 database.' },
+        { key: 'AUTH_SECRET', kind: 'secret', description: 'Signs session cookies.' },
+    ],
+    optional: [{ key: 'AUTH_URL', secret: false, description: 'Public origin used in redirects.' }],
+},
+```
+
+`registry.env()` still gives the deduped key lists; `registry.envDeclarations()` keeps the package behind each key.
+`runReadiness(registry, env, { probeTimeoutMs })` is the admin "System readiness" report: every declared key with `set`
+(a binding must also look right: D1 has `prepare`, KV `get`, R2 `head`, a queue `send`), a masked `preview` only for
+`secret: false` vars (first and last two characters, cut in the middle past 48), every health probe under a timeout, and
+summary counts. No secret character ever reaches the report.
+
 ## Premium packages
 
 A manifest with `premium: true` (which `definePremiumPackage` sets) is collected like any other, but `mountPackages`
@@ -138,7 +159,16 @@ export const notesClient = definePackageClient({
 ```
 
 `adminPages` join the admin nav. `routes` are the package's other pages: `access` is `protected` (a signed-in page, the
-default) or `public`, and `menu` puts a link in the signed-in account menu. The app lists client descriptors next to the
+default) or `public`, and `menu` puts a link in the signed-in account menu. `notices` declares the URL notices the
+package may redirect with (`{ 'checkout-complete': { type: 'success', message: 'Paid.' } }`); `packageNotices(clients)`
+namespaces them as `payport.checkout-complete` for the app's registry, and a server builds the link with
+`withNotice(url, code)` from `@ottabase/utils/url`. A page that shows its notice itself (an error on its own sign-in
+page) calls `claimNotice((code) => code.startsWith('sso.'))`: the app's root handler strips the code from the URL on
+arrival and parks it (`parkNotice`), which on a cold load happens before a lazily loaded page renders, so reading
+`location.search` would miss it. A code only the package's own page shows needs no registration.
+
+`readDeploymentVersion(env.OBCF_VERSION)` reads Cloudflare's version metadata binding into `{ id, tag, createdAt }`
+(null when unbound, as in tests). Readiness and the Fleet report use it. The app lists client descriptors next to the
 server manifests and derives everything from them: `installedPackages(clients)` gives the browser the same
 `{ [key]: true }` map `registry.installed()` gives the Worker, `packageAdminPages` and `packageRoutes` give the router
 and the menus their pages (two packages routing one path throw), and a parity test keeps the two lists honest.

@@ -9,6 +9,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **CrudHub, the generic admin data screens.** A model joins with
+  `static admin = { enabled, scope, readOnly, permissions, listFields, searchField, titleField, routes, relations }` and
+  appears at `/admin/crudhub`: a directory grouped Core / packages / App with lazy row counts, a server-paged list
+  (search, column menu, typed empty values, short ids, JSON viewer, URL cells, Copy ID with a row flash, bulk actions,
+  remembered page size, sort and columns), a details page with a "Related" section, and create / edit forms that are
+  dirty-gated, switch the URL to the edit page after a create and ask before leaving unsaved changes.
+  `static adminActions` declares server-only row actions whose `when` is checked again before they run.
+  `/api/admin/crudhub` reuses secure CRUD (same caps and RLS), audit-logs every write with field names only, and refuses
+  the grant and auth tables (`CRUDHUB_DENYLIST`) whatever they declare. Posts, comments, media and organizations are
+  opted in read-only, since their writes need the public route's guards.
+- **A chainable query builder.** `Model.query()` compiles to the existing where object: `where` with operator names or
+  symbols, `orWhere` branches and callback groups, `whereIn` / `whereNotIn` / `whereNull` / `whereBetween`, escaped
+  `whereContains` / `whereStartsWith` / `whereEndsWith`, `search`, `with('tags.category:id{name}')` (nested eager
+  loading with projections, `loadRelations`), `select`, `withTrashed`, `makeVisible`, and the terminals `first`,
+  `firstOrFail`, `get`, `paginate`, `count`, `exists`, `pluck`, `pages`, `chunk`. New where operators `$nin`, `$null`,
+  `$contains`, `$startsWith`, `$endsWith` (LIKE escaped, 48-byte cap). `attachPivot`, `detachPivot` and `syncPivot`
+  write many-to-many rows (`syncPivot` diffs, in one D1 batch), and `BaseModel.batch` takes bound `{ sql, params }`
+  statements.
+- **Per-user locale and timezone.** `users.locale` beside `users.timezone`, both in the session snapshot, validated with
+  `Intl` on `PATCH /api/users/me` and filled on sign-up from `request.cf.timezone` and `Accept-Language`
+  (`requestLocaleDefaults`). `formatDateForUser` / `formatNumberForUser` in `@ottabase/utils/timezone` follow them, and
+  ui-datatable and the forms package use them. The profile has a "Language and region" card.
+- **A sessions page.** `/sessions` lists every signed-in device (browser and OS, masked IP, city, a name) from KV key
+  metadata, renames inline, revokes one, or signs out all the others. Ids are opaque HMACs. `listUserSessions`,
+  `renameUserSession`, `revokeUserSessionById`, `revokeOtherUserSessions` and `purgeUserSessions` in
+  `@ottabase/auth/backend`. A 401 for a revoked session carries `X-Session-Ended: revoked` and lands on
+  `/login?notice=session-revoked`.
+- **URL notices.** A redirect carries a code (`withNotice(url, 'email-verified')`), never text. The root handler toasts
+  a registered code once and strips it; a page shows its own with `useNotice` or, from a package, `claimNotice` in
+  `@ottabase/kernel/client`. Packages declare codes in their client descriptor (`notices`, carried by `otta add`).
+- **System readiness on `/admin`.** Platform admins see every declared setting and binding by package (described, masked
+  previews for non-secret vars only, a copyable `wrangler secret put` for a missing secret) and every health probe under
+  a timeout, collapsed to one line when all is well. `runReadiness` and `registry.envDeclarations()` in the kernel;
+  `GET /api/admin/system/readiness`.
+- **Which build is running.** The `OBCF_VERSION` version metadata binding (every env block), `readDeploymentVersion` in
+  the kernel, deploys tagged with the short commit by CI and `otta deploy`; readiness and the Fleet report show it.
+
 - **The otta-context schema, version 2, as its own package.** `@ottabase/context` is the one place the shape of
   `/.well-known/otta.json` (and Ottabuzz's `context.json`) is defined: no dependencies, so Ottabuzz and Imageine read
   through it and the shape cannot drift. Version 1 fields stay where they were; version 2 adds the plans as data, a
@@ -217,6 +254,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `ensurePackageSchedules` seeds a `scheduled_tasks` row for every cron contribution that declares a `schedule`.
 
 ### Changed (Unreleased)
+
+- **Notices replace the ad-hoc redirect parameters.** `?verified=1` is `?notice=email-verified`, `?passwordChanged=1` is
+  `?notice=password-changed`, and auth failures are `?notice=auth.<code>` (`auth.oauth-signin`,
+  `auth.account-provisioning`, …) instead of `?error=<Code>`.
+- **Env declarations are described.** `EnvContribution` keys may be `{ key, description, secret, kind }`; a plain name
+  means a secret var. `PackageRegistry` gains `envDeclarations()`. Every app and package manifest describes its keys,
+  and core declares `AUTH_SECRET` as required.
+- **Tables and forms.** The ui-datatable header opens a menu (sort ascending / descending, clear, hide) instead of
+  toggling on click; first and last page buttons hide on small screens; `isFetching` and `flashRowIds` are new.
+  `ModelForm` gains `onDirtyChange`, `disableUntilDirty`, `submitLabel`, `hideHeader` and `cleanKey`.
+- **Post hides `passwordHash` on the class** (`static hidden`), not per instance.
 
 - **Vault and Webhooks are free packages.** Both are plain kernel packages now (`definePackage`), mounted by
   `mountPackages` like any other, with no license and no feature gates. Vault's nightly schedule (on for every install),

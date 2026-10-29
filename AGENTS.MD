@@ -106,6 +106,11 @@ Use this as the default decision tree when shipping new work.
     - If it is standard entity CRUD, use model + `createModelHooks()` + `/api/ottaorm/{entity}`.
     - Do not introduce custom CRUD endpoints unless there is a real non-CRUD need.
     - Exception: Menu, MenuItem use `/api/brand/menus` (cache-invalidating CRUD), not OttaORM.
+    - An admin data screen for a model is a `static admin` opt-in (CrudHub, `/admin/crudhub`), not a new page.
+    - A redirect that should show a message carries a notice **code**, never text: `withNotice(url, code)` from
+      `@ottabase/utils/url`, registered in `src/ottabase/config/notices.ts` (or a package's client `notices`).
+    - Dates and numbers shown to a person go through `formatDateForUser` / `formatNumberForUser`
+      (`@ottabase/utils/timezone`), which follow the signed-in user's timezone and locale.
 2. **Keep data logic in models**
     - Put domain logic in model methods, not page/component handlers.
 3. **Theme-safe UI**

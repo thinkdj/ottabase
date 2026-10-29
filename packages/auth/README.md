@@ -103,7 +103,7 @@ same owner's next sign-in repairs the missing organization; another user cannot 
 Everyone after the first user is the app's to finish, through `onSignIn`. It runs on every credentials, OAuth and
 magic-link sign-in, after `bootstrapFirstUser()` and before the session is issued. A throw refuses the sign-in the same
 way: credentials answer 500 `ACCOUNT_PROVISIONING_FAILED`, OAuth and magic links redirect to the error page with
-`?error=AccountProvisioning`, and no session cookie is set. Catch anything in the hook that is only best-effort.
+`?notice=auth.account-provisioning`, and no session cookie is set. Catch anything in the hook that is only best-effort.
 
 ```typescript
 const options: CreateAuthConfigOptions = {
@@ -176,6 +176,51 @@ const required = requireAuth(session); // throws if not authenticated
 const userId = getUserId(session); // string | null
 const verified = hasVerifiedEmail(session); // boolean
 ```
+
+### The user's own sessions
+
+Every registry record carries KV **key metadata** (under 1 KB, returned by `list()` without a read): created and expiry
+times, a device summary (`Chrome on Windows`), a masked IP (`203.0.113.x`), `City, CC` from Cloudflare's geolocation and
+an optional name. `createSessionCookieForUser` fills the device facts from the request; `createSessionForUser` takes
+them as `input.device`. Rewrites of the record (a profile-version refresh, the grace-window self-heal) carry the
+metadata along.
+
+```typescript
+import {
+    listUserSessions,
+    readSessionIdentity,
+    renameUserSession,
+    revokeOtherUserSessions,
+    revokeUserSessionById,
+} from '@ottabase/auth/backend';
+
+const me = await readSessionIdentity(request, env); // { userId, jti } from the cookie, no KV read
+const sessions = await listUserSessions(me.userId, env, me.jti); // newest first, `current` marked
+await renameUserSession(me.userId, sessions[0].id, 'Work laptop', env);
+await revokeUserSessionById(me.userId, sessions[1].id, env);
+await revokeOtherUserSessions(me.userId, me.jti, env); // tombstones every other jti; the current one survives
+```
+
+Sessions are addressed by an **opaque id**, an HMAC of the jti under `AUTH_SECRET`. The helpers map it back by listing
+the caller's own keys, so a request can never reach another user's session; raw jtis never leave the server. KV `list`
+is eventually consistent (about a minute), so a just-opened session may be missing briefly. Expired records vanish
+through their TTL, so there is no "expired" state to show. There is no "last active" (a write per request).
+
+`describeUserAgent`, `maskIp` and `describeRequestDevice` are exported for other surfaces that show device facts.
+
+`purgeUserSessions(userId, env)` signs the user out everywhere and deletes every session record, device facts included:
+what an erasure needs, since a "revoked since" marker alone leaves the records until their TTL.
+
+`wasSessionRevoked(request, env)` answers why a request with a validly signed cookie failed: true when its jti was
+tombstoned (revoked from another session) or it predates a "revoked since" marker (password change). Call it only on a
+request that already failed authentication; it costs two KV reads.
+
+### Locale and timezone defaults for new accounts
+
+`requestLocaleDefaults(request, supportedLanguages?)` reads Cloudflare's `request.cf.timezone` and the best
+`Accept-Language` tag (restricted to the languages the app ships when a list is given). The OAuth and magic-link
+handlers apply it on `User.create`; pass `supportedLanguages` in `CreateAuthConfigOptions`. The session snapshot and
+`SessionUser` carry `timezone` and `locale`, so emails, digests and cron can format for the person without a D1 read.
 
 ## Password Hashing
 
