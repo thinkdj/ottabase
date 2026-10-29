@@ -13,7 +13,13 @@
  * lapsed, rendering its upsell, because the operator needs a route to the screen that
  * fixes it. The server refuses the data either way.
  */
-import { definePackageClient, installedPackages, packageAdminPages, packageRoutes } from '@ottabase/kernel/client';
+import {
+    definePackageClient,
+    installedPackages,
+    packageAdminPages,
+    packageNotices,
+    packageRoutes,
+} from '@ottabase/kernel/client';
 import { Archive, BellRing, Gift, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [
@@ -103,6 +109,9 @@ export const PACKAGE_ADMIN_PAGES = packageAdminPages(CLIENT_PACKAGES);
 
 /** Every other page a package renders. Drives the router. */
 export const PACKAGE_ROUTES = packageRoutes(CLIENT_PACKAGES);
+
+/** Every URL notice a package may redirect with, namespaced `key.code`. Merged into `config/notices.ts`. */
+export const PACKAGE_NOTICES = packageNotices(CLIENT_PACKAGES);
 
 /** The package pages linked from the signed-in account menu, in list order. */
 export const PACKAGE_ACCOUNT_LINKS = PACKAGE_ROUTES.flatMap((route) =>

@@ -64,3 +64,50 @@ describe('definePackageClient', () => {
         expect(() => packageRoutes(clients)).toThrow('"payport" and "stripe" both route /billing.');
     });
 });
+
+describe('packageNotices', () => {
+    it('namespaces every notice by its package key and rejects bad codes', async () => {
+        const { packageNotices } = await import('../client');
+        const payport = definePackageClient({
+            key: 'payport',
+            notices: { 'checkout-complete': { type: 'success', message: 'Paid.' } },
+        });
+        expect(packageNotices([payport])).toEqual({
+            'payport.checkout-complete': { type: 'success', message: 'Paid.' },
+        });
+        expect(() => definePackageClient({ key: 'x1', notices: { BadCode: { type: 'info', message: 'x' } } })).toThrow(
+            /kebab-case/,
+        );
+    });
+});
+
+describe('readDeploymentVersion', () => {
+    it('reads the version metadata binding and returns null when it is unbound or empty', async () => {
+        const { readDeploymentVersion } = await import('../version');
+        expect(readDeploymentVersion({ id: 'v-1', tag: 'abc1234', timestamp: '2026-10-29T10:00:00Z' })).toEqual({
+            id: 'v-1',
+            tag: 'abc1234',
+            createdAt: '2026-10-29T10:00:00Z',
+        });
+        expect(readDeploymentVersion({ id: 'v-2', tag: '', timestamp: '' })).toEqual({
+            id: 'v-2',
+            tag: null,
+            createdAt: null,
+        });
+        expect(readDeploymentVersion(undefined)).toBeNull();
+        expect(readDeploymentVersion({ id: '' })).toBeNull();
+    });
+});
+
+describe('notice hand-off', () => {
+    it('claims from the URL first, else the notice parked for this path, once', async () => {
+        const { claimNotice, parkNotice } = await import('../client');
+        const sso = (code: string) => code.startsWith('sso.');
+        expect(claimNotice(sso, { pathname: '/sso', search: '?notice=sso.denied' })).toBe('sso.denied');
+        expect(claimNotice(sso, { pathname: '/sso', search: '?notice=other' })).toBeNull();
+        parkNotice('sso.state', '/sso');
+        expect(claimNotice(sso, { pathname: '/elsewhere', search: '' })).toBeNull();
+        expect(claimNotice(sso, { pathname: '/sso', search: '' })).toBe('sso.state');
+        expect(claimNotice(sso, { pathname: '/sso', search: '' })).toBeNull();
+    });
+});

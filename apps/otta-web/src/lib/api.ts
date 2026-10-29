@@ -8,6 +8,7 @@
 import { appIdAtom, globalStore, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
 import { ApiError, createApiClient } from '@ottabase/api';
 import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
+import { withNotice } from '@ottabase/utils/url';
 import { toast } from 'sonner';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
@@ -120,7 +121,7 @@ export function reportApiError(error: unknown): void {
 
     // Show different toast styles based on error type
     if (error.isUnauthorized()) {
-        handleUnauthorized();
+        handleUnauthorized(error.response?.headers.get('X-Session-Ended') === 'revoked');
         return;
     }
 
@@ -159,7 +160,12 @@ export function reportApiError(error: unknown): void {
     });
 }
 
-function handleUnauthorized(): void {
+/**
+ * The session is gone: clear client auth state and land on /login with a notice saying why.
+ * `revoked` comes from the worker (`X-Session-Ended: revoked` on the 401) when the session was
+ * signed out from another device or by a password change; otherwise it simply expired.
+ */
+function handleUnauthorized(revoked = false): void {
     // A successful sign-in can occur without reloading the module (for example
     // while already on /login). Re-arm the guard for that new session.
     if (authInvalidationStarted) {
@@ -175,9 +181,7 @@ function handleUnauthorized(): void {
     if (authInvalidationStarted) return;
     authInvalidationStarted = true;
 
-    toast.error('Session expired', {
-        description: 'Please log in again',
-    });
+    const code = revoked ? 'session-revoked' : 'session-expired';
     invalidateAuthSession();
     try {
         globalStore.set(organizationIdAtom, null);
@@ -191,9 +195,9 @@ function handleUnauthorized(): void {
     } catch {
         // ignore storage failures
     }
-    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login';
-    }
+    // A full load on purpose (even from /login): it drops every in-memory trace of the old
+    // session, and the root notice handler shows the code on arrival.
+    if (typeof window !== 'undefined') window.location.href = withNotice('/login', code);
 }
 
 /**

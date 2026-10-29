@@ -44,15 +44,30 @@ export interface PageRouteContribution {
     menu?: { title: string; icon: PackageIcon };
 }
 
+/**
+ * A message the app shows when a URL arrives with `?notice=<code>` (after a redirect). Codes,
+ * never text, travel in the URL; the message lives here. `inline` means a page claims the code
+ * and renders it itself (with `useNotice`) instead of a toast.
+ */
+export interface NoticeContribution {
+    type: 'success' | 'info' | 'warning' | 'error';
+    title?: string;
+    message: string;
+    inline?: boolean;
+}
+
 export interface OttaPackageClient {
     /** The same key as the server manifest. */
     key: string;
     adminPages?: AdminPageContribution[];
     routes?: PageRouteContribution[];
+    /** URL notices this package may redirect with, keyed by a kebab-case code (namespaced as `key.code`). */
+    notices?: Record<string, NoticeContribution>;
 }
 
 const PACKAGE_KEY_RE = /^[a-z][a-z0-9-]{1,48}$/;
 const ROUTE_PATH_RE = /^\/[a-z0-9/_-]*$/;
+const NOTICE_CODE_RE = /^[a-z][a-z0-9-]*$/;
 
 /** Validate a client descriptor at definition time. A checked identity function. */
 export function definePackageClient(client: OttaPackageClient): OttaPackageClient {
@@ -68,6 +83,9 @@ export function definePackageClient(client: OttaPackageClient): OttaPackageClien
         if (!page.exportName?.trim() || typeof page.load !== 'function') {
             fail(`admin page "${page.path}" needs load() and exportName`);
         }
+    }
+    for (const code of Object.keys(client.notices ?? {})) {
+        if (!NOTICE_CODE_RE.test(code)) fail(`notice code "${code}" must be kebab-case`);
     }
     for (const route of client.routes ?? []) {
         if (!ROUTE_PATH_RE.test(route.path) || route.path === '/admin' || route.path.startsWith('/admin/')) {
@@ -95,6 +113,15 @@ export function packageAdminPages(
     return clients.flatMap((client) => (client.adminPages ?? []).map((page) => ({ ...page, pkg: client.key })));
 }
 
+/** Every URL notice across the listed packages, namespaced `key.code` so two packages never collide. */
+export function packageNotices(clients: ReadonlyArray<OttaPackageClient>): Record<string, NoticeContribution> {
+    const out: Record<string, NoticeContribution> = {};
+    for (const client of clients) {
+        for (const [code, notice] of Object.entries(client.notices ?? {})) out[`${client.key}.${code}`] = notice;
+    }
+    return out;
+}
+
 /** Every other page across the listed packages, tagged with its package key. Two packages may not share a path. */
 export function packageRoutes(
     clients: ReadonlyArray<OttaPackageClient>,
@@ -107,4 +134,37 @@ export function packageRoutes(
         owner.set(route.path, route.pkg);
     }
     return routes;
+}
+
+// ── URL notice hand-off ─────────────────────────────────────
+// The app's root handler strips `?notice=<code>` on its first effect. On a cold load that runs
+// before a lazily loaded page has rendered, so a page that shows its notice inline (a login
+// error, a checkout return) could never read it from the URL. The handler parks every code it
+// does not toast; the page claims it. Packages use this too, since they cannot import the app.
+
+let parkedNotice: { code: string; pathname: string } | null = null;
+
+/** The root handler parks a notice for the page at `pathname`. */
+export function parkNotice(code: string, pathname: string): void {
+    parkedNotice = { code, pathname };
+}
+
+/**
+ * Claim this page's notice: from the URL when it is still there, else the one parked for this
+ * path. `accept` says which codes the page owns (`(code) => code.startsWith('sso.')`). A parked
+ * notice is handed out once.
+ */
+export function claimNotice(
+    accept: (code: string) => boolean,
+    location: { pathname: string; search: string } | undefined = typeof window === 'undefined'
+        ? undefined
+        : window.location,
+): string | null {
+    if (!location) return null;
+    const fromUrl = new URLSearchParams(location.search).get('notice');
+    if (fromUrl && accept(fromUrl)) return fromUrl;
+    const parked = parkedNotice;
+    if (!parked || parked.pathname !== location.pathname || !accept(parked.code)) return null;
+    parkedNotice = null;
+    return parked.code;
 }

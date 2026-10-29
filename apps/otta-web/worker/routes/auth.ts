@@ -5,6 +5,7 @@ import {
     handleAuthRequest,
     hashPassword,
     hashToken,
+    requestLocaleDefaults,
     revokeAllUserSessions,
     verifyPassword,
 } from '@ottabase/auth/backend';
@@ -16,8 +17,10 @@ import { OrganizationMember, User, VerificationToken } from '@ottabase/ottaorm/m
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
-import { isValidUrl } from '@ottabase/utils/url';
+import { canonicalLocale, canonicalTimezone } from '@ottabase/utils/timezone';
+import { isValidUrl, withNotice } from '@ottabase/utils/url';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { SUPPORTED_LANGUAGES } from '../../ottabase/locale';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution'; // otta:only referrals
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import {
@@ -189,7 +192,7 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
     const accept = request.headers.get('Accept') || '';
     if (accept.includes('text/html')) {
         const redirectUrl = env.AUTH_URL || new URL(request.url).origin;
-        return Response.redirect(`${redirectUrl}/login?verified=1`, 303);
+        return Response.redirect(withNotice(`${redirectUrl}/login`, 'email-verified'), 303);
     }
 
     return withAuthCors(jsonResponse({ success: true }));
@@ -519,6 +522,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
             name?: string;
             image?: string | null;
             timezone?: string | null;
+            locale?: string | null;
             activeOrganizationId?: string | null;
         }>(request);
 
@@ -547,9 +551,31 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
             }
         }
 
+        // Timezone and locale are validated with Intl and stored in their canonical spelling.
+        // `null` or '' clears the preference (the app falls back to the request/device defaults).
         if (body.timezone !== undefined) {
-            const timezone = typeof body.timezone === 'string' ? body.timezone.trim() : null;
-            updates.timezone = timezone || null;
+            const raw = typeof body.timezone === 'string' ? body.timezone.trim() : '';
+            if (!raw) updates.timezone = null;
+            else {
+                const zone = canonicalTimezone(raw);
+                if (!zone) fieldErrors.timezone = ['Unknown timezone. Use an IANA name such as Europe/Paris.'];
+                else updates.timezone = zone;
+            }
+        }
+
+        if (body.locale !== undefined) {
+            const raw = typeof body.locale === 'string' ? body.locale.trim() : '';
+            if (!raw) updates.locale = null;
+            else {
+                const locale = canonicalLocale(raw);
+                const language = locale?.split('-')[0].toLowerCase();
+                if (!locale) fieldErrors.locale = ['Unknown locale. Use a BCP 47 tag such as en-GB.'];
+                else if (!(SUPPORTED_LANGUAGES as readonly string[]).includes(language ?? '')) {
+                    fieldErrors.locale = [
+                        `Language "${language}" is not available. Choose one of: ${SUPPORTED_LANGUAGES.join(', ')}.`,
+                    ];
+                } else updates.locale = locale;
+            }
         }
 
         // Persist the user's active organization (cross-device). Membership is validated
@@ -678,11 +704,13 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
 
         const passwordHash = await hashPassword(password);
 
+        // No blank state: the zone comes from Cloudflare's geolocation, the locale from the browser.
         const newUser = await User.create({
             email,
             name: name || null,
             emailVerified: null,
             passwordHash,
+            ...requestLocaleDefaults(request, SUPPORTED_LANGUAGES),
         });
 
         const newUserId = newUser.get('id') as string;

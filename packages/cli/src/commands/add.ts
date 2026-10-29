@@ -38,7 +38,9 @@ import { readFootprints } from './footprints.js';
  *
  * `routes` join the client descriptor next to `adminPages`, and the app router mounts them from
  * there (`access` defaults to `protected`, a signed-in page); `menu` links the page from the
- * signed-in account menu. `errorReporter` is handed every render error the root `<ErrorBoundary>`
+ * signed-in account menu. `notices` are the URL notices the package redirects with, keyed by a
+ * kebab-case code (`{ "checkout-complete": { "type": "success", "message": "…" } }`); the app
+ * registry namespaces them as `<key>.<code>`. `errorReporter` is handed every render error the root `<ErrorBoundary>`
  * in `src/main.tsx` catches.
  *
  * A package lives in `packages/<name>` or, inside a bundle such as Ottabase Pro, in
@@ -70,6 +72,15 @@ export interface RouteDescriptor {
     menu?: { title: string; icon: string };
 }
 
+/** A URL notice a package redirects with (`?notice=<key>.<code>`). */
+export interface NoticeDescriptor {
+    type: 'success' | 'info' | 'warning' | 'error';
+    title?: string;
+    message: string;
+    /** The package's own page renders it (claimNotice) instead of a toast. */
+    inline?: boolean;
+}
+
 export interface PackageDescriptor {
     name: string;
     key: string;
@@ -81,6 +92,7 @@ export interface PackageDescriptor {
     tables?: { import: string; names: string[] };
     adminPages?: AdminPageDescriptor[];
     routes?: RouteDescriptor[];
+    notices?: Record<string, NoticeDescriptor>;
     /** A function the root `<ErrorBoundary>` hands every caught render error to; `import` is as `src/main.tsx` reads it. */
     errorReporter?: { import: string; export: string };
 }
@@ -117,6 +129,8 @@ const RESERVED = new Set(
 const isBinding = (value: unknown): value is string =>
     typeof value === 'string' && IDENTIFIER.test(value) && !RESERVED.has(value);
 const ROUTE_PATH = /^\/[a-z0-9/_-]*$/;
+const NOTICE_CODE = /^[a-z][a-z0-9-]*$/;
+const NOTICE_TYPES = new Set(['success', 'info', 'warning', 'error']);
 /** A page module under the app's `src/pages`: path segments only, no `..`, nothing to escape. */
 const PAGE = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/;
 
@@ -219,6 +233,23 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
             );
         }
     }
+    const notices: Record<string, NoticeDescriptor> =
+        meta.notices && typeof meta.notices === 'object' && !Array.isArray(meta.notices) ? meta.notices : {};
+    for (const [code, notice] of Object.entries(notices)) {
+        if (!NOTICE_CODE.test(code)) throw new Error(`${dir}/package.json: notice code "${code}" must be kebab-case.`);
+        if (
+            !notice ||
+            !NOTICE_TYPES.has(notice.type) ||
+            typeof notice.message !== 'string' ||
+            !notice.message.trim() ||
+            (notice.title !== undefined && typeof notice.title !== 'string') ||
+            (notice.inline !== undefined && typeof notice.inline !== 'boolean')
+        ) {
+            throw new Error(
+                `${dir}/package.json: notice "${code}" needs a type (success, info, warning, error) and a message.`,
+            );
+        }
+    }
     const reporter = meta.errorReporter;
     if (
         reporter !== undefined &&
@@ -240,6 +271,7 @@ export function readPackageDescriptor(root: string, requested: string): PackageD
             : {}),
         ...(adminPages.length > 0 ? { adminPages } : {}),
         ...(routes.length > 0 ? { routes } : {}),
+        ...(Object.keys(notices).length > 0 ? { notices } : {}),
         ...(reporter ? { errorReporter: { import: reporter.import, export: reporter.export } } : {}),
     };
 }
@@ -337,7 +369,7 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$
 
 /** The `definePackageClient(...)` entry: bare for a headless package, with its pages otherwise. */
 function clientEntry(pkg: PackageDescriptor, eol: string): string {
-    if (!pkg.adminPages && !pkg.routes) return `    definePackageClient({ key: ${quote(pkg.key)} }),`;
+    if (!pkg.adminPages && !pkg.routes && !pkg.notices) return `    definePackageClient({ key: ${quote(pkg.key)} }),`;
     const pages = (pkg.adminPages ?? []).map((page) =>
         [
             '            {',
@@ -366,11 +398,22 @@ function clientEntry(pkg: PackageDescriptor, eol: string): string {
             '            },',
         ].join(eol),
     );
+    const notices = Object.entries(pkg.notices ?? {}).map(([code, notice]) =>
+        [
+            `            ${quote(code)}: {`,
+            `                type: ${quote(notice.type)},`,
+            ...(notice.title ? [`                title: ${quote(notice.title)},`] : []),
+            `                message: ${quote(notice.message)},`,
+            ...(notice.inline ? ['                inline: true,'] : []),
+            '            },',
+        ].join(eol),
+    );
     return [
         '    definePackageClient({',
         `        key: ${quote(pkg.key)},`,
         ...(pages.length ? ['        adminPages: [', ...pages, '        ],'] : []),
         ...(routes.length ? ['        routes: [', ...routes, '        ],'] : []),
+        ...(notices.length ? ['        notices: {', ...notices, '        },'] : []),
         '    }),',
     ].join(eol);
 }

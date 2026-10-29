@@ -11,6 +11,7 @@ vi.mock('sonner', () => ({
     },
 }));
 
+import { globalStore, isAuthenticatedAtom } from '@/ottabase/state/appState';
 import { reportApiError } from '../api';
 
 describe('reportApiError', () => {
@@ -43,5 +44,24 @@ describe('reportApiError', () => {
         );
 
         expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it('sends a revoked session to /login with the session-revoked notice, an expired one with session-expired', () => {
+        const original = window.location;
+        const fake = { pathname: '/admin', href: '/admin' };
+        Object.defineProperty(window, 'location', { value: fake, writable: true, configurable: true });
+        try {
+            const revokedResponse = new Response(null, { status: 401, headers: { 'X-Session-Ended': 'revoked' } });
+            globalStore.set(isAuthenticatedAtom, true);
+            reportApiError(new ApiError({ error: 'Unauthorized', status: 401 }, revokedResponse));
+            expect(fake.href).toBe('/login?notice=session-revoked');
+
+            fake.href = '/admin';
+            globalStore.set(isAuthenticatedAtom, true);
+            reportApiError(new ApiError({ error: 'Unauthorized', status: 401 }, new Response(null, { status: 401 })));
+            expect(fake.href).toBe('/login?notice=session-expired');
+        } finally {
+            Object.defineProperty(window, 'location', { value: original, writable: true, configurable: true });
+        }
     });
 });

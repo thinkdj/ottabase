@@ -13,7 +13,9 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Account, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { withNotice } from '@ottabase/utils/url';
 import { bootstrapFirstUser } from './bootstrap';
+import { requestLocaleDefaults } from './request-locale';
 import { serializeCookie, parseCookies, clearCookie } from './cookies';
 import { hashPassword, verifyPassword, randomToken, getDummyPasswordHash, hashToken } from './crypto';
 import { createCsrfCookiePair, verifyCsrfToken } from './csrf';
@@ -43,7 +45,26 @@ export type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, CredentialsAutho
 export type { FirstUserBootstrapResult } from './bootstrap';
 export { hashPassword, verifyPassword, hashToken } from './crypto';
 export { bootstrapFirstUser, provisionPlatformOwnerOrganization } from './bootstrap';
-export { getSession, revokeAllUserSessions, revokeSession, createSessionCookieForUser } from './session-store';
+export {
+    getSession,
+    revokeAllUserSessions,
+    revokeSession,
+    createSessionCookieForUser,
+    buildClearSessionCookie,
+    listUserSessions,
+    readSessionIdentity,
+    renameUserSession,
+    revokeOtherUserSessions,
+    revokeUserSessionById,
+    sessionPublicId,
+    wasSessionRevoked,
+    purgeUserSessions,
+} from './session-store';
+export type { SessionSummary, SessionMetadata } from './session-store';
+export { describeRequestDevice, describeUserAgent, maskIp } from './device';
+export type { SessionDevice } from './device';
+export { pickLocaleFromAcceptLanguage, requestLocaleDefaults } from './request-locale';
+export type { RequestLocaleDefaults } from './request-locale';
 
 const CSRF_COOKIE_BASE = 'ottabase.csrf-token';
 const CSRF_COOKIE_MAX_AGE = 60 * 60; // 1 hour
@@ -115,11 +136,22 @@ function sanitizeCallbackPath(raw: string | null | undefined, fallback = '/'): s
     }
 }
 
-/** Absolute URL of the configured error page (`options.errorPage`, default `/login`) with `error=<code>`. */
+/**
+ * The URL notice code for each auth failure. Codes, never messages, travel in the URL; the app's
+ * notice registry owns the wording (`auth.oauth-signin` and friends).
+ */
+const AUTH_NOTICE_CODES: Record<string, string> = {
+    OAuthAccountNotLinked: 'auth.oauth-account-not-linked',
+    OAuthCallback: 'auth.oauth-callback',
+    OAuthSignin: 'auth.oauth-signin',
+    Verification: 'auth.verification',
+    AccountProvisioning: 'auth.account-provisioning',
+};
+
+/** Absolute URL of the configured error page (`options.errorPage`, default `/login`) with `notice=<code>`. */
 function errorPageUrl(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string): string {
     const errorPage = options?.errorPage || '/login';
-    const separator = errorPage.includes('?') ? '&' : '?';
-    return `${resolveFrontendUrl(env)}${errorPage}${separator}error=${encodeURIComponent(code)}`;
+    return withNotice(`${resolveFrontendUrl(env)}${errorPage}`, AUTH_NOTICE_CODES[code] ?? 'auth.failed');
 }
 
 function errorRedirect(env: AuthEnv, options: CreateAuthConfigOptions | undefined, code: string): Response {
@@ -451,6 +483,7 @@ async function handleOAuthCallback(
                 name: profile.name,
                 image: profile.image,
                 emailVerified: profile.emailVerified ? Date.now() : null,
+                ...requestLocaleDefaults(request, options?.supportedLanguages),
             });
 
             userId = String(newUser.get('id'));
@@ -621,7 +654,12 @@ async function handleMagicLinkCallback(
 
     let user = await User.first({ email });
     if (!user) {
-        user = await User.create({ email, name: null, emailVerified: Date.now() });
+        user = await User.create({
+            email,
+            name: null,
+            emailVerified: Date.now(),
+            ...requestLocaleDefaults(request, options?.supportedLanguages),
+        });
     } else if (!user.get('emailVerified')) {
         await User.update(String(user.get('id')), { emailVerified: Date.now() });
     }

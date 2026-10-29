@@ -22,6 +22,10 @@ export interface SessionUser {
      */
     platformAdmin?: boolean;
     createdAt?: number | null;
+    /** IANA zone the person formats dates in; null until set (the app fills it from the request on sign-up). */
+    timezone?: string | null;
+    /** BCP 47 tag (`en-GB`) for language and number/date formats; null until set. */
+    locale?: string | null;
     [key: string]: unknown;
 }
 
@@ -92,13 +96,18 @@ export interface CredentialsAuthorizeOptions {
 export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
     sessionMaxAge?: number;
     disableCredentials?: boolean;
-    /** App path OAuth/magic-link failures redirect to, with `?error=<code>` appended (default: `/login`). */
+    /** App path OAuth/magic-link failures redirect to, with `?notice=auth.<code>` appended (default: `/login`). */
     errorPage?: string;
+    /**
+     * Languages the app ships translations for (`['en', 'fr']`). A new account's `locale` is taken
+     * from `Accept-Language` only when its language is in this list; omitted = any language.
+     */
+    supportedLanguages?: readonly string[];
     /** Called after a user signs out (session revoked). Use to clear app-level caches. */
     onSignOut?: (userId: string) => Promise<void> | void;
     /**
      * Called on every sign-in (credentials, magic link, OAuth) just before the session is issued.
-     * A throw refuses the sign-in with `ACCOUNT_PROVISIONING_FAILED` / `?error=AccountProvisioning`,
+     * A throw refuses the sign-in with `ACCOUNT_PROVISIONING_FAILED` / `?notice=auth.account-provisioning`,
      * so use it to finish an account (its workspace) and catch anything that is merely best-effort.
      */
     onSignIn?: (params: { userId: string; email?: string | null }) => Promise<void> | void;

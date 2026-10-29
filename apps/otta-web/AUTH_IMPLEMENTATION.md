@@ -247,7 +247,7 @@ handleAuthRequest(request, env, {
     disableCredentials: false,
     requireVerifiedEmail: false,
 
-    // Where OAuth / magic-link failures redirect (default '/login'); `?error=<code>` is appended
+    // Where OAuth / magic-link failures redirect (default '/login'); `?notice=auth.<code>` is appended
     errorPage: '/custom-login',
 
     // Lifecycle hooks

@@ -48,6 +48,7 @@ function fixture(): string {
                     },
                 ],
                 errorReporter: { import: './lib/pulse', export: 'report' },
+                notices: { 'checkout-complete': { type: 'success', message: "You're in.", inline: true } },
             },
         }),
     );
@@ -405,6 +406,13 @@ describe('routes and the error reporter', () => {
                 "                menu: { title: 'Plans', icon: Sparkles },",
                 '            },',
                 '        ],',
+                '        notices: {',
+                "            'checkout-complete': {",
+                "                type: 'success',",
+                "                message: 'You\\'re in.',",
+                '                inline: true,',
+                '            },',
+                '        },',
                 '    }),',
             ].join('\n'),
         );

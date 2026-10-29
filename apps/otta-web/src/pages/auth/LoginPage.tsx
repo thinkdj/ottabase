@@ -1,3 +1,4 @@
+import { useNotice } from '@/components/UrlNotices';
 import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
 import { requestPasswordReset, sendMagicLink, signInWithCredentials, signInWithProvider } from '@/lib/auth-api';
@@ -47,23 +48,13 @@ export function LoginPage() {
                 authSecretConfigured: false,
             }) as ReturnType<typeof getLoginConfig> & { authSecretConfigured: boolean },
     );
-    const passwordChanged = new URLSearchParams(window.location.search).get('passwordChanged') === '1';
-    const emailVerified = new URLSearchParams(window.location.search).get('verified') === '1';
-
-    // Surface OAuth / magic-link failures that redirect back as ?error=CODE.
+    // Redirects arrive as `?notice=<code>` (email-verified, password-changed, auth.* failures).
+    // The page claims the inline codes: successes render as a banner, failures as the form error.
+    const notice = useNotice();
+    const successNotice = notice && notice.type === 'success' ? notice : null;
     useEffect(() => {
-        const code = new URLSearchParams(window.location.search).get('error');
-        if (!code) return;
-        const messages: Record<string, string> = {
-            OAuthAccountNotLinked:
-                'An account already exists for this email. Sign in with your original method, then link this provider from your profile.',
-            OAuthCallback: 'We could not complete sign-in with that provider. Please try again.',
-            OAuthSignin: 'That provider is not available right now. Please try another sign-in method.',
-            Verification: 'Your sign-in link is invalid or has expired. Request a new one.',
-            AccountProvisioning: 'Your account workspace could not be initialized. Please try signing in again.',
-        };
-        setError(messages[code] ?? 'Sign-in failed. Please try again.');
-    }, []);
+        if (notice && notice.type === 'error') setError(notice.message);
+    }, [notice]);
 
     useEffect(() => {
         let mounted = true;
@@ -246,15 +237,9 @@ export function LoginPage() {
                     </div>
                 </div>
 
-                {passwordChanged && (
+                {successNotice && (
                     <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
-                        Password changed successfully. Please sign in with your new password.
-                    </div>
-                )}
-
-                {emailVerified && (
-                    <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success">
-                        Email verified successfully. Please sign in.
+                        {successNotice.message}
                     </div>
                 )}
 

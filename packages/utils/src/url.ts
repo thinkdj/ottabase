@@ -188,3 +188,43 @@ function parseSearchString(searchString: string): Record<string, string> {
 
     return params;
 }
+
+// ── URL notices ─────────────────────────────────────────────
+// A redirect tells the app to show a message by putting a CODE in the URL, never text:
+// `/login?notice=email-verified`. The client looks the code up in its registry, toasts (or
+// renders inline) and strips the parameter again. Unknown codes are ignored and still stripped.
+
+export const NOTICE_PARAM = 'notice';
+
+/** Codes are kebab-case, optionally namespaced by a package key: `coming-soon`, `payport.checkout-complete`. */
+export const NOTICE_CODE_RE = /^(?:[a-z][a-z0-9-]*\.)?[a-z][a-z0-9-]*$/;
+
+export function isNoticeCode(code: string): boolean {
+    return NOTICE_CODE_RE.test(code) && code.length <= 64;
+}
+
+/**
+ * Append `notice=<code>` to a URL (absolute or path), keeping its other parameters and hash.
+ * The one way servers build these links.
+ */
+export function withNotice(url: string, code: string): string {
+    if (!isNoticeCode(code)) throw new TypeError(`Invalid notice code "${code}"`);
+    const hashIndex = url.indexOf('#');
+    const hash = hashIndex === -1 ? '' : url.slice(hashIndex);
+    const base = hashIndex === -1 ? url : url.slice(0, hashIndex);
+    const separator = base.includes('?') ? '&' : '?';
+    return `${base}${separator}${NOTICE_PARAM}=${encodeURIComponent(code)}${hash}`;
+}
+
+/**
+ * Read and remove the notice from a search string. `search` is the cleaned string (with its
+ * leading `?`, or empty), every other parameter untouched. Malformed codes read as null.
+ */
+export function readNotice(search: string): { code: string | null; search: string } {
+    const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+    const raw = params.get(NOTICE_PARAM);
+    if (raw === null) return { code: null, search };
+    params.delete(NOTICE_PARAM);
+    const rest = params.toString();
+    return { code: isNoticeCode(raw) ? raw : null, search: rest ? `?${rest}` : '' };
+}

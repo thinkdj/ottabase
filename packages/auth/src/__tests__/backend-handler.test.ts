@@ -103,17 +103,19 @@ describe('handleAuthRequest', () => {
         expect(response.status).toBe(302);
         const location = response.headers.get('Location');
         expect(location).toContain('/login');
-        expect(location).toContain('error=OAuthSignin');
+        expect(location).toContain('notice=auth.oauth-signin');
     });
 
-    it('honors a custom errorPage, appending the error code to an existing query', async () => {
+    it('honors a custom errorPage, appending the notice code to an existing query', async () => {
         const env = createEnv();
         const response = await handleAuthRequest(request('/api/auth/signin/not-a-real-provider'), env, {
             errorPage: '/auth/failed?from=oauth',
         });
 
         expect(response.status).toBe(302);
-        expect(response.headers.get('Location')).toBe('http://127.0.0.1:3003/auth/failed?from=oauth&error=OAuthSignin');
+        expect(response.headers.get('Location')).toBe(
+            'http://127.0.0.1:3003/auth/failed?from=oauth&notice=auth.oauth-signin',
+        );
     });
 
     it('keeps only a same-site callbackUrl through OAuth sign-in, and falls back to the home page', async () => {

@@ -128,6 +128,9 @@ A package with a user interface can say more, and `otta add` writes that too:
   signed-in account menu.
 - `errorReporter`: `{ "import": "./lib/blackbox", "export": "captureException" }` imports the function into
   `src/main.tsx` and passes it to the root `<ErrorBoundary onError>`.
+- `notices`: `{ "checkout-complete": { "type": "success", "message": "You're in.", "inline": true } }` adds the URL
+  notices the package redirects with to its client descriptor; the app registry names them `<key>.<code>`. Codes are
+  kebab-case; `type` is success, info, warning or error.
 
 A boundary that already has an `onError` is left alone and the plan says what to do by hand. Two packages routing one
 path, or a package routing a path the app owns, stop the app at boot with both names. `page` is a module path under
