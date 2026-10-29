@@ -1,5 +1,7 @@
 export { decodeRow, encodeRow, isInternalTable, ndjsonLines, quoteIdent } from './codec';
 export {
+    DEFAULT_MAX_MANUAL_BACKUPS,
+    DEFAULT_MIN_BACKUP_INTERVAL_MINUTES,
     DEFAULT_RETENTION_DAYS,
     DEFAULT_SCHEDULE,
     DEFAULT_STALE_AFTER_HOURS,
@@ -17,6 +19,7 @@ export {
     type BackupManifest,
     type BackupObjects,
     type BackupTable,
+    type BackupTrigger,
     type BucketLike,
     type ExportScope,
     type ObjectsOptions,

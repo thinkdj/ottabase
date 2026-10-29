@@ -89,11 +89,15 @@ export interface BackupTable {
     columns: string[];
 }
 
+export type BackupTrigger = 'manual' | 'scheduled';
+
 export interface BackupManifest {
     version: 1;
     id: string;
     appId: string;
     label: string | null;
+    /** Who asked for it: an admin, or the nightly schedule. The manual-backup cap counts only `manual`. */
+    trigger: BackupTrigger;
     createdAt: string;
     durationMs: number;
     tables: BackupTable[];
@@ -151,8 +155,14 @@ export interface VaultOptions<Env> {
 export interface Vault<Env> {
     /** User tables, with their CREATE statements. */
     tables(env: Env): Promise<Array<{ name: string; sql: string }>>;
-    /** `objects: false` leaves the bucket out of this backup even when snapshots are configured. */
-    backup(env: Env, options?: { tables?: string[]; label?: string; objects?: boolean }): Promise<BackupManifest>;
+    /**
+     * `objects: false` leaves the bucket out of this backup even when snapshots are configured.
+     * `trigger` defaults to `manual`; the cron job passes `scheduled`.
+     */
+    backup(
+        env: Env,
+        options?: { tables?: string[]; label?: string; objects?: boolean; trigger?: BackupTrigger },
+    ): Promise<BackupManifest>;
     /** Newest first. */
     list(env: Env, limit?: number): Promise<BackupManifest[]>;
     manifest(env: Env, id: string): Promise<BackupManifest | null>;

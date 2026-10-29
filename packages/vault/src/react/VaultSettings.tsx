@@ -9,10 +9,26 @@
 // completely unstyled.
 // ============================================================
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@ottabase/ui';
+import {
+    Badge,
+    Button,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    ConfirmDialog,
+    Input,
+} from '@ottabase/ui';
 import { Archive, Download, Play, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { DEFAULT_RETENTION_DAYS, DEFAULT_SCHEDULE, VAULT_BASE_PATH } from '../constants';
+import {
+    DEFAULT_MAX_MANUAL_BACKUPS,
+    DEFAULT_MIN_BACKUP_INTERVAL_MINUTES,
+    DEFAULT_RETENTION_DAYS,
+    DEFAULT_SCHEDULE,
+    VAULT_BASE_PATH,
+} from '../constants';
 import type { BackupManifest } from '../types';
 import { useVaultBackups } from './hooks';
 
@@ -126,6 +142,9 @@ export interface VaultSettingsProps {
     schedule?: string;
     /** Retention days shown for the schedule. Match the composition. */
     retentionDays?: number;
+    /** Manual-backup limits shown on the Backups card. Match the composition. */
+    maxManualBackups?: number;
+    minBackupIntervalMinutes?: number;
     /** URL of the operator export for one organization. Default `/api/vault/export?organizationId=…`. */
     exportHref?: (organizationId: string) => string;
 }
@@ -134,12 +153,21 @@ export interface VaultSettingsProps {
 export function VaultSettings({
     schedule = DEFAULT_SCHEDULE,
     retentionDays = DEFAULT_RETENTION_DAYS,
+    maxManualBackups = DEFAULT_MAX_MANUAL_BACKUPS,
+    minBackupIntervalMinutes = DEFAULT_MIN_BACKUP_INTERVAL_MINUTES,
     exportHref = (organizationId) => `${VAULT_BASE_PATH}/export?organizationId=${encodeURIComponent(organizationId)}`,
 }: VaultSettingsProps) {
     const { backups, isLoading, error, create, restore, remove } = useVaultBackups();
     const [organizationId, setOrganizationId] = useState('');
+    const [pendingDelete, setPendingDelete] = useState<BackupManifest | null>(null);
     const busy = create.isPending || restore.isPending || remove.isPending;
     const failure = error ?? create.error ?? restore.error ?? remove.error;
+    // Each action clears the others' errors, so a refusal from one click does not outlive the next.
+    const clearErrors = () => {
+        create.reset();
+        restore.reset();
+        remove.reset();
+    };
 
     return (
         <div className="space-y-6">
@@ -151,10 +179,20 @@ export function VaultSettings({
                             Backups
                         </CardTitle>
                         <CardDescription>
-                            Every table as NDJSON in your bucket. Restore puts the rows back in one transaction.
+                            Every table as NDJSON in your bucket. Restore puts the rows back in one transaction. Up to{' '}
+                            {maxManualBackups} manual backups at a time
+                            {minBackupIntervalMinutes > 0 ? `, at least ${minBackupIntervalMinutes} minutes apart` : ''}
+                            .
                         </CardDescription>
                     </div>
-                    <Button size="sm" onClick={() => create.mutate({ label: 'manual' })} disabled={busy}>
+                    <Button
+                        size="sm"
+                        onClick={() => {
+                            clearErrors();
+                            create.mutate({ label: 'manual' });
+                        }}
+                        disabled={busy}
+                    >
                         <Play className="mr-1.5 h-3.5 w-3.5" />
                         {create.isPending ? 'Backing up…' : 'Run backup now'}
                     </Button>
@@ -174,8 +212,11 @@ export function VaultSettings({
                                     key={manifest.id}
                                     manifest={manifest}
                                     busy={busy}
-                                    onRestore={() => restore.mutateAsync({ id: manifest.id, confirm: manifest.id })}
-                                    onDelete={() => remove.mutate(manifest.id)}
+                                    onRestore={() => {
+                                        clearErrors();
+                                        return restore.mutateAsync({ id: manifest.id, confirm: manifest.id });
+                                    }}
+                                    onDelete={() => setPendingDelete(manifest)}
                                 />
                             ))}
                         </div>
@@ -218,6 +259,28 @@ export function VaultSettings({
                     </Button>
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                onOpenChange={(open) => !open && setPendingDelete(null)}
+                title="Delete this backup?"
+                description={
+                    <>
+                        Backup <strong className="font-mono">{pendingDelete?.id}</strong> and every file in it are
+                        removed from the bucket. It cannot be restored afterwards.
+                    </>
+                }
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText="Delete backup"
+                onConfirm={() => {
+                    if (pendingDelete) {
+                        clearErrors();
+                        remove.mutate(pendingDelete.id);
+                    }
+                    setPendingDelete(null);
+                }}
+            />
         </div>
     );
 }

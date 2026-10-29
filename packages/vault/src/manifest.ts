@@ -20,7 +20,7 @@ import {
     VAULT_BASE_PATH,
     VAULT_PACKAGE_KEY,
 } from './constants';
-import { createVaultRouter, type VaultRouterOptions } from './routes';
+import { assertCount, createVaultRouter, type VaultRouterOptions } from './routes';
 
 export interface VaultPackageOptions<Env> extends VaultRouterOptions<Env> {
     /** Default `/api/vault`. */
@@ -45,6 +45,8 @@ export function createVaultPackage<Env = unknown>(options: VaultPackageOptions<E
         requireAdmin,
         tenantColumn,
         userColumn,
+        maxManualBackups,
+        minBackupIntervalMinutes,
         basePath = VAULT_BASE_PATH,
         schedule = DEFAULT_SCHEDULE,
         retentionDays = DEFAULT_RETENTION_DAYS,
@@ -52,6 +54,9 @@ export function createVaultPackage<Env = unknown>(options: VaultPackageOptions<E
         env,
         health,
     } = options;
+    assertCount('retentionDays', retentionDays, 1);
+    if (maxManualBackups !== undefined) assertCount('maxManualBackups', maxManualBackups);
+    if (minBackupIntervalMinutes !== undefined) assertCount('minBackupIntervalMinutes', minBackupIntervalMinutes);
 
     const probe = async (requestEnv: Env): Promise<HealthCheck> => {
         try {
@@ -78,14 +83,23 @@ export function createVaultPackage<Env = unknown>(options: VaultPackageOptions<E
 
         routes: {
             basePath,
-            build: () => createVaultRouter<Env>({ vault, resolveCaller, requireAdmin, tenantColumn, userColumn }),
+            build: () =>
+                createVaultRouter<Env>({
+                    vault,
+                    resolveCaller,
+                    requireAdmin,
+                    tenantColumn,
+                    userColumn,
+                    maxManualBackups,
+                    minBackupIntervalMinutes,
+                }),
         },
 
         cron: {
             [VAULT_BACKUP_HANDLER]: {
                 description: `Back up every table to the bucket, then prune backups older than the retention window (payload retentionDays, default ${retentionDays}).`,
                 handler: async ({ env: requestEnv, payload }) => {
-                    await vault.backup(requestEnv, { label: 'scheduled' });
+                    await vault.backup(requestEnv, { label: 'scheduled', trigger: 'scheduled' });
                     const keep =
                         payload &&
                         typeof payload === 'object' &&

@@ -135,7 +135,7 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
     const api: Vault<Env> = {
         tables,
 
-        async backup(env, { tables: only, label, objects: withObjects = true } = {}) {
+        async backup(env, { tables: only, label, objects: withObjects = true, trigger = 'manual' } = {}) {
             const started = now();
             const t0 = Date.now();
             const driver = options.driver(env);
@@ -172,6 +172,7 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 id,
                 appId: options.appId(env),
                 label: label ?? null,
+                trigger,
                 createdAt: started.toISOString(),
                 durationMs: Date.now() - t0,
                 tables: out,

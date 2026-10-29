@@ -402,7 +402,7 @@ describe('routes and package', () => {
         who?: { userId: string; organizationId: string | null; platformAdmin?: boolean; canManage?: boolean } | null;
     };
 
-    function mount() {
+    function mount(limits: { maxManualBackups?: number; minBackupIntervalMinutes?: number } = {}) {
         const { vault, env } = build();
         const pkg = createVaultPackage<RouteEnv>({
             vault: vault as never,
@@ -411,6 +411,7 @@ describe('routes and package', () => {
                     ? { userId: 'u1', organizationId: 'org-a', appId: 'app', platformAdmin: true, canManage: true }
                     : e.who && { appId: 'app', ...e.who },
             retentionDays: 7,
+            ...limits,
         });
         const router = new Router<RouteEnv>();
         mountPackages(router, { packages: createPackageRegistry<RouteEnv>({ packages: [pkg] }) });
@@ -454,9 +455,29 @@ describe('routes and package', () => {
         expect((await call('/backups', {}, { bucket: null }))?.status).toBe(503);
     });
 
-    it('keeps any number of backups, and exports a tenant for the operator and a person their own rows', async () => {
+    it('caps manual backups and spaces them out, leaving scheduled ones uncounted', async () => {
+        const { call } = mount({ maxManualBackups: 2 });
+        expect((await call('/backups', post({})))?.status).toBe(201);
+        const tooSoon = await call('/backups', post({}));
+        expect(tooSoon?.status).toBe(429);
+        expect(Number(tooSoon?.headers.get('Retry-After'))).toBeGreaterThan(0);
+
+        const unspaced = mount({ maxManualBackups: 2, minBackupIntervalMinutes: 0 });
+        expect((await unspaced.call('/backups', post({})))?.status).toBe(201);
+        await unspaced.vault.backup(unspaced.env, { trigger: 'scheduled' });
+        expect((await unspaced.call('/backups', post({})))?.status).toBe(201);
+        const full = await unspaced.call('/backups', post({}));
+        expect(full?.status).toBe(409);
+        expect(await full!.json()).toMatchObject({ code: 'BACKUP_LIMIT' });
+    });
+
+    it('refuses a limit that is not a whole number', () => {
+        expect(() => mount({ maxManualBackups: Number.NaN })).toThrow(/maxManualBackups/);
+        expect(() => mount({ minBackupIntervalMinutes: -5 })).toThrow(/minBackupIntervalMinutes/);
+    });
+
+    it('exports a tenant for the operator and a person their own rows', async () => {
         const { call } = mount();
-        for (let i = 0; i < 6; i++) expect((await call('/backups', post({})))?.status).toBe(201);
 
         const admin = await call('/export?organizationId=org-b');
         expect(admin?.status).toBe(200);

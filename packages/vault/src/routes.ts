@@ -1,6 +1,7 @@
 import { Router, type Ctx } from '@ottabase/ottarouter';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { DEFAULT_MAX_MANUAL_BACKUPS, DEFAULT_MIN_BACKUP_INTERVAL_MINUTES } from './constants';
 import { VaultError, type Awaitable, type Vault } from './types';
 
 export interface VaultCaller {
@@ -22,6 +23,10 @@ export interface VaultRouterOptions<Env> {
     /** The column a tenant export filters on. Default `organization_id`; personal exports use `user_id`. */
     tenantColumn?: string;
     userColumn?: string;
+    /** Manual backups that may exist at once; one more answers 409 `BACKUP_LIMIT`. Default 10. */
+    maxManualBackups?: number;
+    /** Minutes between two manual backups; sooner answers 429 `TOO_SOON`. Default 10; 0 turns it off. */
+    minBackupIntervalMinutes?: number;
 }
 
 async function readJson<T>(request: Request): Promise<T> {
@@ -41,6 +46,13 @@ function failed(error: unknown): Response {
     throw error;
 }
 
+/** Refuse a config count that is not a whole number at or above `min`: a NaN cap would silently mean "no cap". */
+export function assertCount(name: string, value: number, min = 0): void {
+    if (!Number.isInteger(value) || value < min) {
+        throw new Error(`[vault] ${name} must be a whole number of at least ${min}, got ${String(value)}`);
+    }
+}
+
 function tableList(value: unknown): string[] | undefined {
     return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? (value as string[]) : undefined;
 }
@@ -55,6 +67,11 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
     const router = new Router<Env>();
     const tenantColumn = options.tenantColumn ?? 'organization_id';
     const userColumn = options.userColumn ?? 'user_id';
+    const maxManual = options.maxManualBackups ?? DEFAULT_MAX_MANUAL_BACKUPS;
+    const minIntervalMinutes = options.minBackupIntervalMinutes ?? DEFAULT_MIN_BACKUP_INTERVAL_MINUTES;
+    assertCount('maxManualBackups', maxManual);
+    assertCount('minBackupIntervalMinutes', minIntervalMinutes);
+    const minIntervalMs = minIntervalMinutes * 60_000;
     const caller = async (request: Request, env: Env): Promise<VaultCaller | Response> =>
         (await options.resolveCaller(request, env)) ?? errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
     const admin = async (c: Ctx<Env>): Promise<VaultCaller | Response> => {
@@ -93,6 +110,28 @@ export function createVaultRouter<Env>(options: VaultRouterOptions<Env>): Router
         if (who instanceof Response) return who;
         const body = await readJson<{ tables?: unknown; label?: unknown; objects?: unknown }>(c.req);
         try {
+            // ponytail: list-then-backup, so two simultaneous clicks can both pass; fine for an admin-only button.
+            const manual = (await options.vault.list(c.env, Number.MAX_SAFE_INTEGER)).filter(
+                (manifest) => manifest.trigger === 'manual',
+            );
+            if (manual.length >= maxManual) {
+                return errorResponse(
+                    `${manual.length} manual backups already exist, the most allowed. Delete an older one first.`,
+                    409,
+                    { code: 'BACKUP_LIMIT' },
+                );
+            }
+            const waitMs = manual[0] ? Date.parse(manual[0].createdAt) + minIntervalMs - Date.now() : 0;
+            if (waitMs > 0) {
+                const minutes = Math.ceil(waitMs / 60_000);
+                const response = errorResponse(
+                    `The last manual backup was moments ago. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+                    429,
+                    { code: 'TOO_SOON' },
+                );
+                response.headers.set('Retry-After', String(Math.ceil(waitMs / 1000)));
+                return response;
+            }
             const manifest = await options.vault.backup(c.env, {
                 tables: tableList(body.tables),
                 label: typeof body.label === 'string' ? body.label.slice(0, 120) : undefined,

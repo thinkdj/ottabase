@@ -17,3 +17,7 @@ export const VAULT_BACKUP_HANDLER = 'vault:backup';
 export const DEFAULT_SCHEDULE = '23 2 * * *';
 export const DEFAULT_RETENTION_DAYS = 30;
 export const DEFAULT_STALE_AFTER_HOURS = 48;
+/** Manual backups kept at once; scheduled ones are not counted. Retention still prunes both. */
+export const DEFAULT_MAX_MANUAL_BACKUPS = 10;
+/** Minutes an admin waits between two manual backups. */
+export const DEFAULT_MIN_BACKUP_INTERVAL_MINUTES = 10;

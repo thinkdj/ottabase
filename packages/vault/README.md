@@ -37,6 +37,24 @@ tables of its own. It seeds a `vault:backup` task at `23 2 * * *` and renders at
 (`VaultSettings` from `@ottabase/vault/react`; add `'../../packages/vault/src/**/*.{js,ts,jsx,tsx}'` to the app's
 Tailwind `content`).
 
+## The schedule and the limits
+
+**Installing Vault turns on a nightly backup.** The seeded `vault:backup` task backs up every table (and the bucket's
+objects, when configured) at `23 2 * * *`, then deletes backups older than the retention window. That is one full read
+of D1 and one write to R2 per night. Pause or edit it under **Admin → Infrastructure → Cron**, or change the defaults in
+code:
+
+| Option                     | Default      | Does                                                                               |
+| -------------------------- | ------------ | ---------------------------------------------------------------------------------- |
+| `schedule`                 | `23 2 * * *` | when the nightly backup runs (seeded once, on install)                             |
+| `retentionDays`            | `30`         | backups older than this are pruned after each nightly run; the newest always stays |
+| `staleAfterHours`          | `48`         | the health check fails when the newest backup is older                             |
+| `maxManualBackups`         | `10`         | manual backups kept at once; one more answers 409 `BACKUP_LIMIT`                   |
+| `minBackupIntervalMinutes` | `10`         | wait between two manual backups; sooner answers 429 `TOO_SOON` (`0` turns it off)  |
+
+Each manifest records its `trigger` (`manual` or `scheduled`). The manual-backup cap counts only `manual`; retention
+prunes both kinds by age.
+
 ## Layout in the bucket
 
 ```
@@ -84,7 +102,7 @@ ceiling here (marked `ponytail:`); steady state copies only what changed.
 | Route                                  | Who                | Does                                                                            |
 | -------------------------------------- | ------------------ | ------------------------------------------------------------------------------- |
 | `GET /backups`                         | platform admin     | newest manifests (`?limit=`)                                                    |
-| `POST /backups`                        | platform admin     | run a backup now (`{ tables?, label?, objects? }`)                              |
+| `POST /backups`                        | platform admin     | run a backup now (`{ tables?, label?, objects? }`), within the manual limits    |
 | `GET /backups/:id`                     | platform admin     | one manifest                                                                    |
 | `POST /backups/:id/restore`            | platform admin     | `{ confirm: id, tables?, truncate?, objects? }`; replaces live rows and objects |
 | `DELETE /backups/:id`                  | platform admin     | remove every object of the backup                                               |
