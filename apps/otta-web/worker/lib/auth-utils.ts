@@ -9,6 +9,7 @@ import { sendTemplatedEmail } from '@ottabase/email';
 import { redactErrorForLog, ServiceError } from '@ottabase/utils/http-errors';
 import { sanitizeInlineHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { SUPPORTED_LANGUAGES } from '../../ottabase/locale';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { resolveAppMailer } from './email-provider';
 import { ensurePersonalOrganization } from './user-provisioning';
@@ -88,6 +89,7 @@ export async function createVerificationToken(
 export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
     const options: CreateAuthConfigOptions = {
         errorPage: '/login',
+        supportedLanguages: SUPPORTED_LANGUAGES,
     };
 
     const maxAge = Number(env.AUTH_SESSION_MAX_AGE);

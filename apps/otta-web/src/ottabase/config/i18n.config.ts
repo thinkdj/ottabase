@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from '@ottabase/i18n/react';
+import { DEFAULT_LOCALE, SUPPORTED_LANGUAGES } from '../../../ottabase/locale';
 
 /**
  * i18n Configuration
@@ -19,7 +20,8 @@ export interface I18nConfig {
  * Default i18n configuration
  */
 export const i18nConfig: I18nConfig = {
-    defaultLanguage: 'en',
-    enabledLanguages: ['en', 'es', 'fr', 'de'],
-    fallbackLanguage: 'en',
+    defaultLanguage: DEFAULT_LOCALE as SupportedLanguage,
+    // One list for the worker (locale validation, sign-up defaults) and the browser: ottabase/locale.ts
+    enabledLanguages: [...SUPPORTED_LANGUAGES] as SupportedLanguage[],
+    fallbackLanguage: DEFAULT_LOCALE as SupportedLanguage,
 };

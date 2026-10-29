@@ -51,6 +51,9 @@ interface AdminUserDetailResponse {
     name: string | null;
     email: string | null;
     image: string | null;
+    /** The person's formatting preferences, shown read-only (they change them on /profile). */
+    timezone?: string | null;
+    locale?: string | null;
     memberships?: OrganizationMemberRecord[];
 }
 
@@ -104,6 +107,8 @@ export function UserRBACPage() {
             name: r.data.name,
             email: r.data.email,
             image: r.data.image,
+            timezone: r.data.timezone ?? null,
+            locale: r.data.locale ?? null,
             memberships: r.data.memberships ?? [],
         }),
         queryOptions: { enabled: !!userId },
@@ -256,6 +261,9 @@ export function UserRBACPage() {
                             <code className="mt-1 inline-block rounded bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground ring-1 ring-border">
                                 {displayUser.id}
                             </code>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Timezone {userDetail?.timezone || 'not set'} · Locale {userDetail?.locale || 'not set'}
+                            </p>
                         </div>
                     </div>
                 )}

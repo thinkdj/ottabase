@@ -7,7 +7,8 @@
 //
 // ============================================================
 
-import { appIdAtom, isAuthenticatedAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
+import { appIdAtom, isAuthenticatedAtom, languageAtom, organizationIdAtom, userAtom } from '@/ottabase/state/appState';
+import { setLocaleConfig, setTimezoneConfig } from '@ottabase/utils/timezone';
 import {
     AUTH_SESSION_INVALIDATED_EVENT,
     AUTH_STORAGE_KEY,
@@ -106,6 +107,20 @@ function useAppSessionState(sessionData: SessionState): SessionState {
     const setGlobalIsAuthenticated = useSetAtom(isAuthenticatedAtom);
     const setAppId = useSetAtom(appIdAtom);
     const setOrganizationId = useSetAtom(organizationIdAtom);
+    const setLanguage = useSetAtom(languageAtom);
+
+    // The person's formatting preferences: user preference > localStorage > navigator > default.
+    // Every "for a person" formatter (dates in tables, the Intl helpers) reads these two configs;
+    // the language atom drives i18n through useLanguageManager.
+    const userTimezone = sessionData.user?.timezone;
+    const userLocale = sessionData.user?.locale;
+    useEffect(() => {
+        setTimezoneConfig({
+            userTimezone: typeof userTimezone === 'string' && userTimezone ? userTimezone : undefined,
+        });
+        setLocaleConfig({ userLocale: typeof userLocale === 'string' ? userLocale : null });
+        if (typeof userLocale === 'string' && userLocale) setLanguage(userLocale.split('-')[0].toLowerCase());
+    }, [userTimezone, userLocale, setLanguage]);
 
     // Sync auth user to global state
     useEffect(() => {

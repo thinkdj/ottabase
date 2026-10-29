@@ -7,6 +7,7 @@
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { JsonEditor, type JsonValue } from '@ottabase/ui/json-editor';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { formatDateForUser } from '@ottabase/utils/timezone';
 import { clsx } from 'clsx';
 import { AlertCircle, Calendar, Check, Eye, EyeOff, Loader2, Upload, X } from 'lucide-react';
 import React, { useCallback } from 'react';
@@ -908,9 +909,9 @@ function formatDisplayValue(value: unknown, field: ModelFieldDescriptor): string
         case 'boolean':
             return value ? 'Yes' : 'No';
         case 'date':
-            return new Date(value as string).toLocaleDateString();
+            return formatDateForUser(value as string, 'date') || String(value);
         case 'datetime':
-            return new Date(value as string).toLocaleString();
+            return formatDateForUser(value as string, 'datetime') || String(value);
         case 'json':
             return JSON.stringify(value, null, 2);
         case 'array':

@@ -12,7 +12,7 @@ import { MEDIA_LIBRARY_ENABLED } from '@/ottabase/config';
 import { PACKAGES_ENABLED } from '@/ottabase/config'; // otta:only ottaai
 import { changePassword, requestEmailVerification } from '@/lib/auth-api';
 import { AiPersonalProviders } from './AiPersonalProviders'; // otta:only ottaai
-import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
+import { LanguageRegionCard } from './LanguageRegionCard';
 import {
     Avatar,
     AvatarFallback,
@@ -33,7 +33,6 @@ import {
     Separator,
 } from '@ottabase/ui';
 import { invalidateAuthSession } from '@ottabase/auth/react';
-import { getTimezonesForSelect, setTimezoneConfig } from '@ottabase/utils/timezone';
 import { IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { Calendar, Check, Loader2, Mail, User } from 'lucide-react';
@@ -52,6 +51,7 @@ interface UserProfileRecord {
     name?: string | null;
     image?: string | null;
     timezone?: string | null;
+    locale?: string | null;
     emailVerified?: number | null;
     createdAt?: number | null;
     updatedAt?: number | null;
@@ -59,12 +59,20 @@ interface UserProfileRecord {
 }
 
 type SessionProfileUpdate = Partial<
-    Pick<UserProfileRecord, 'name' | 'email' | 'image' | 'timezone' | 'emailVerified' | 'createdAt' | 'updatedAt'>
+    Pick<
+        UserProfileRecord,
+        'name' | 'email' | 'image' | 'timezone' | 'locale' | 'emailVerified' | 'createdAt' | 'updatedAt'
+    >
 >;
 
 function getSessionTimezone(user: SessionUser | null): string {
     const timezone: unknown = user?.timezone;
     return typeof timezone === 'string' ? timezone : '';
+}
+
+function getSessionLocale(user: SessionUser | null): string {
+    const locale: unknown = user?.locale;
+    return typeof locale === 'string' ? locale : '';
 }
 
 function normalize(value: string): string {
@@ -75,11 +83,13 @@ export function UserProfilePage() {
     const { user, updateUser, refreshSession } = useSession();
     const toast = useRBACToast();
     const sessionTimezone = getSessionTimezone(user);
+    const sessionLocale = getSessionLocale(user);
 
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
         timezone: sessionTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        locale: sessionLocale || navigator.language || 'en-US',
     });
 
     const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccountRecord[]>([]);
@@ -102,37 +112,18 @@ export function UserProfilePage() {
         confirmPassword: '',
     });
 
-    // OttaSelect items: id = IANA name, name = display label (searchable). Browser timezone always first.
-    const browserTz = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
-    const timezoneItems = useMemo(
-        () =>
-            getTimezonesForSelect({ preferredTimezone: browserTz || undefined }).map((tz) => ({
-                id: tz.name,
-                name: tz.label,
-                offset: tz.offset,
-            })),
-        [browserTz],
-    );
-
-    // Current value for OttaSelect (find in list or create synthetic for saved tz not in list)
-    const timezoneValue = useMemo((): OttaSelectItem | null => {
-        const tz = formData.timezone?.trim();
-        if (!tz) return null;
-        const found = timezoneItems.find((i) => i.id === tz);
-        return found ?? { id: tz, name: tz.replace(/_/g, ' ') };
-    }, [formData.timezone, timezoneItems]);
-
     const computeHasChanges = useCallback(
-        (next: { name: string; email: string; timezone: string }) => {
+        (next: { name: string; email: string; timezone: string; locale: string }) => {
             const currentName = normalize(user?.name ?? '');
             const currentEmail = normalize(user?.email ?? '');
             return (
                 normalize(next.name) !== currentName ||
                 normalize(next.email) !== currentEmail ||
-                normalize(next.timezone) !== sessionTimezone
+                normalize(next.timezone) !== sessionTimezone ||
+                normalize(next.locale) !== sessionLocale
             );
         },
-        [sessionTimezone, user?.email, user?.name],
+        [sessionLocale, sessionTimezone, user?.email, user?.name],
     );
 
     useEffect(() => {
@@ -141,10 +132,11 @@ export function UserProfilePage() {
                 name: user.name || '',
                 email: user.email || '',
                 timezone: sessionTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+                locale: sessionLocale || navigator.language || 'en-US',
             });
             setHasChanges(false);
         }
-    }, [sessionTimezone, user]);
+    }, [sessionLocale, sessionTimezone, user]);
 
     // Fetch full profile (including timezone) - the session may not include DB-only fields
     useEffect(() => {
@@ -158,14 +150,16 @@ export function UserProfilePage() {
                 if (!cancelled && data) {
                     setLinkedAccounts(data?.linkedAccounts || []);
                     const tz = data.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+                    const loc = data.locale?.trim() || navigator.language || 'en-US';
                     setFormData((prev) => ({
                         ...prev,
                         name: data.name ?? prev.name,
                         email: data.email ?? prev.email,
                         timezone: tz,
+                        locale: loc,
                     }));
-                    // Sync session so computeHasChanges and future visits have timezone
-                    updateUser({ timezone: tz } satisfies Partial<SessionUser>);
+                    // Sync session so computeHasChanges and future visits have the preferences
+                    updateUser({ timezone: tz, locale: loc } satisfies Partial<SessionUser>);
                 }
             } catch (error) {
                 console.error('Failed to load profile', error);
@@ -192,7 +186,7 @@ export function UserProfilePage() {
               .toUpperCase()
         : user?.email?.[0]?.toUpperCase() || '?';
 
-    const handleChange = (field: 'name' | 'email' | 'timezone', value: string) => {
+    const handleChange = (field: 'name' | 'email' | 'timezone' | 'locale', value: string) => {
         setFormData((prev) => {
             const next = { ...prev, [field]: value };
             setHasChanges(computeHasChanges(next));
@@ -211,13 +205,14 @@ export function UserProfilePage() {
             const trimmedName = normalize(formData.name);
             const trimmedEmail = normalize(formData.email);
             const trimmedTimezone = normalize(formData.timezone);
+            const trimmedLocale = normalize(formData.locale);
 
             if (!trimmedName) {
                 toast.error('Name is required', 'Please enter your full name.');
                 return;
             }
 
-            const updates: { name?: string; timezone?: string | null } = {};
+            const updates: { name?: string; timezone?: string | null; locale?: string | null } = {};
 
             if (trimmedName !== normalize(user.name ?? '')) {
                 updates.name = trimmedName;
@@ -227,13 +222,22 @@ export function UserProfilePage() {
                 toast.warning('Email changes are disabled', 'Contact support to update your login email.');
                 setFormData((prev) => ({ ...prev, email: user.email ?? '' }));
                 setHasChanges(
-                    computeHasChanges({ name: trimmedName, email: user.email ?? '', timezone: formData.timezone }),
+                    computeHasChanges({
+                        name: trimmedName,
+                        email: user.email ?? '',
+                        timezone: formData.timezone,
+                        locale: formData.locale,
+                    }),
                 );
                 return;
             }
 
             if (trimmedTimezone !== sessionTimezone) {
                 updates.timezone = trimmedTimezone || null;
+            }
+
+            if (trimmedLocale !== sessionLocale) {
+                updates.locale = trimmedLocale || null;
             }
 
             if (Object.keys(updates).length === 0) {
@@ -252,32 +256,27 @@ export function UserProfilePage() {
             if (updatedUser.email !== undefined) safeUpdates.email = updatedUser.email;
             if (updatedUser.image !== undefined) safeUpdates.image = updatedUser.image;
             if (updatedUser.timezone !== undefined) safeUpdates.timezone = updatedUser.timezone;
+            if (updatedUser.locale !== undefined) safeUpdates.locale = updatedUser.locale;
             if (updatedUser.emailVerified !== undefined) safeUpdates.emailVerified = updatedUser.emailVerified;
             if (updatedUser.createdAt !== undefined) safeUpdates.createdAt = updatedUser.createdAt;
             if (updatedUser.updatedAt !== undefined) safeUpdates.updatedAt = updatedUser.updatedAt;
 
+            // The session snapshot carries timezone and locale, so the app-level sync in
+            // lib/auth.ts pushes them into the Intl formatters and i18n on the next render.
             if (Object.keys(safeUpdates).length > 0) {
                 updateUser(safeUpdates satisfies Partial<SessionUser>);
-                if (typeof safeUpdates.timezone === 'string' && safeUpdates.timezone) {
-                    setTimezoneConfig({ userTimezone: safeUpdates.timezone });
-                }
             }
 
             setFormData({
                 name: updatedUser.name ?? user.name ?? '',
                 email: updatedUser.email ?? user.email ?? '',
                 timezone: updatedUser.timezone ?? formData.timezone,
+                locale: updatedUser.locale ?? formData.locale,
             });
             if (updatedUser.linkedAccounts) {
                 setLinkedAccounts(updatedUser.linkedAccounts);
             }
             await refreshSession();
-            // refreshSession replaces the whole session from the server, which does NOT carry
-            // the client-only timezone (it isn't part of the session snapshot). Re-apply the
-            // just-saved value so it isn't reverted to the browser default (phantom "unsaved").
-            if (typeof safeUpdates.timezone === 'string' && safeUpdates.timezone) {
-                updateUser({ timezone: safeUpdates.timezone } satisfies Partial<SessionUser>);
-            }
             setHasChanges(false);
             toast.success('Profile updated', 'Your profile has been updated successfully');
         } catch (error) {
@@ -366,7 +365,7 @@ export function UserProfilePage() {
             setIsPasswordDialogOpen(false);
             invalidateAuthSession();
             if (typeof window !== 'undefined') {
-                window.location.href = '/login?passwordChanged=1';
+                window.location.href = '/login?notice=password-changed';
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to update password.';
@@ -577,26 +576,6 @@ export function UserProfilePage() {
                         </p>
                     </div>
 
-                    {/* Timezone */}
-                    <div className="space-y-2">
-                        <Label htmlFor="timezone">Timezone</Label>
-                        <OttaSelect
-                            mode="single"
-                            items={timezoneItems}
-                            value={timezoneValue}
-                            onChange={(v) => handleChange('timezone', (v as OttaSelectItem)?.id ?? '')}
-                            placeholder="Select timezone"
-                            searchable
-                            searchPlaceholder="Search timezones..."
-                            disabled={isSaving}
-                            clearable={false}
-                            className="w-full"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                            Used for displaying dates and times in your local timezone.
-                        </p>
-                    </div>
-
                     {/* Save Button */}
                     {hasChanges && (
                         <div className="pt-2">
@@ -617,6 +596,31 @@ export function UserProfilePage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Language and region (shares the profile card's save button) */}
+            <LanguageRegionCard
+                locale={formData.locale}
+                timezone={formData.timezone}
+                onChange={handleChange}
+                disabled={isSaving}
+            />
+            {hasChanges && (
+                <div className="-mt-4">
+                    <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Saving...
+                            </>
+                        ) : (
+                            <>
+                                <Check className="mr-2 h-4 w-4" />
+                                Save Changes
+                            </>
+                        )}
+                    </Button>
+                </div>
+            )}
 
             {/* Account Info */}
             <Card>

@@ -15,7 +15,9 @@ export const usersTable = sqliteTable('users', {
     email: text('email').notNull().unique(),
     emailVerified: integer('email_verified'),
     image: text('image'),
+    // IANA zone and BCP 47 tag the person formats dates and numbers with (null = not set yet)
     timezone: text('timezone'),
+    locale: text('locale'),
     passwordHash: text('password_hash'),
     // Referral fields
     referralUsername: text('referral_username').unique(),

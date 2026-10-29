@@ -4,6 +4,7 @@
 // Auto-generated detail view from model metadata
 // ============================================================
 
+import { formatDateForUser } from '@ottabase/utils/timezone';
 import { clsx } from 'clsx';
 import { ArrowLeft, Check, Edit2, ExternalLink, Trash2, X } from 'lucide-react';
 import { useMemo } from 'react';
@@ -175,16 +176,15 @@ function DetailValue({ value, field }: DetailValueProps) {
             case 'date':
                 return (
                     <span className="text-foreground">
-                        {new Date(value as string).toLocaleDateString(undefined, {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                        })}
+                        {formatDateForUser(value as string, 'long') || String(value)}
                     </span>
                 );
             case 'datetime':
-                return <span className="text-foreground">{new Date(value as string).toLocaleString()}</span>;
+                return (
+                    <span className="text-foreground">
+                        {formatDateForUser(value as string, 'datetime') || String(value)}
+                    </span>
+                );
             case 'boolean':
                 return value ? (
                     <span className="inline-flex items-center gap-1 text-success">
@@ -259,18 +259,15 @@ function DetailValue({ value, field }: DetailValueProps) {
 
         case 'date':
             return (
-                <span className="text-foreground">
-                    {new Date(value as string).toLocaleDateString(undefined, {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                    })}
-                </span>
+                <span className="text-foreground">{formatDateForUser(value as string, 'long') || String(value)}</span>
             );
 
         case 'datetime':
-            return <span className="text-foreground">{new Date(value as string).toLocaleString()}</span>;
+            return (
+                <span className="text-foreground">
+                    {formatDateForUser(value as string, 'datetime') || String(value)}
+                </span>
+            );
 
         case 'json':
             return (

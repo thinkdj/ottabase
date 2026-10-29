@@ -97,6 +97,105 @@ export function getUserTimezone(): Timezone {
     return currentConfig.defaultTimezone || 'UTC';
 }
 
+// ── Locale (the user's preference, next to their timezone) ──
+
+let userLocale: string | undefined;
+
+/**
+ * Set the locale every "for a person" formatter uses. Push the signed-in user's `locale` here
+ * (and their timezone through `setTimezoneConfig`) so dates and numbers follow the account,
+ * not the device.
+ */
+export function setLocaleConfig(config: { userLocale?: string | null }): void {
+    userLocale = config.userLocale || undefined;
+}
+
+/** The configured user locale, else the browser language, else `en`. */
+export function getUserLocale(): string {
+    if (userLocale) return userLocale;
+    if (typeof navigator !== 'undefined' && navigator.language) return navigator.language;
+    return 'en';
+}
+
+/** True when `Intl` accepts the tag. The canonical form is what `canonicalLocale` returns. */
+export function isValidLocale(tag: string): boolean {
+    try {
+        return Intl.getCanonicalLocales(tag).length === 1;
+    } catch {
+        return false;
+    }
+}
+
+/** `en-us` → `en-US`; null when the tag is not a BCP 47 locale. */
+export function canonicalLocale(tag: string): string | null {
+    try {
+        return Intl.getCanonicalLocales(tag)[0] ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * The zone trimmed, when `Intl` accepts it; null otherwise. The input spelling is kept on
+ * purpose: ICU "canonicalises" `Asia/Kolkata` to the legacy `Asia/Calcutta`, which is not what a
+ * person picked from a list.
+ */
+export function canonicalTimezone(zone: string): string | null {
+    const trimmed = zone.trim();
+    try {
+        new Intl.DateTimeFormat('en', { timeZone: trimmed });
+        return trimmed;
+    } catch {
+        return null;
+    }
+}
+
+export type UserDateStyle = 'date' | 'datetime' | 'time' | 'long';
+
+/**
+ * Format a date for a person: their locale and timezone, `Intl` under the hood. Returns an
+ * empty string for an invalid input, so a table cell never shows "Invalid Date".
+ *
+ * @example
+ * formatDateForUser(post.publishedAt);            // "Feb 10, 2025, 5:34 PM"
+ * formatDateForUser(post.publishedAt, 'date');    // "Feb 10, 2025"
+ */
+export function formatDateForUser(
+    date: DateInput | null | undefined,
+    style: UserDateStyle = 'datetime',
+    options?: { locale?: string; timeZone?: Timezone },
+): string {
+    if (date === null || date === undefined || date === '') return '';
+    const value = validateAndConvertToDate(date);
+    if (!value) return '';
+    const base: Intl.DateTimeFormatOptions =
+        style === 'date'
+            ? { dateStyle: 'medium' }
+            : style === 'time'
+              ? { timeStyle: 'short' }
+              : style === 'long'
+                ? { dateStyle: 'full', timeStyle: 'short' }
+                : { dateStyle: 'medium', timeStyle: 'short' };
+    try {
+        return new Intl.DateTimeFormat(options?.locale ?? getUserLocale(), {
+            ...base,
+            timeZone: options?.timeZone ?? getUserTimezone(),
+        }).format(value);
+    } catch {
+        return value.toISOString();
+    }
+}
+
+/** Format a number for a person (their locale), e.g. a count or an amount. */
+export function formatNumberForUser(value: number, options?: Intl.NumberFormatOptions & { locale?: string }): string {
+    const { locale, ...rest } = options ?? {};
+    try {
+        return new Intl.NumberFormat(locale ?? getUserLocale(), rest).format(value);
+    } catch {
+        return String(value);
+    }
+}
+
 /**
  * Validate and convert a date input to a Date object
  * Handles Date objects, ISO strings, and timestamps

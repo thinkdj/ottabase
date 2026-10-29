@@ -16,6 +16,7 @@ vi.mock('@ottabase/auth/backend', () => ({
     handleAuthRequest: vi.fn(),
     hashPassword: vi.fn(async () => 'hashed-password'),
     hashToken: vi.fn(),
+    requestLocaleDefaults: vi.fn(() => ({ timezone: null, locale: null })),
     revokeAllUserSessions: vi.fn(),
     verifyPassword: vi.fn(),
 }));

@@ -70,8 +70,8 @@ export class User extends BaseModel {
     };
 
     static writable = {
-        create: ['name', 'email', 'image', 'referralUsername', 'timezone'],
-        update: ['name', 'image', 'timezone'],
+        create: ['name', 'email', 'image', 'referralUsername', 'timezone', 'locale'],
+        update: ['name', 'image', 'timezone', 'locale'],
     };
 
     protected static fields: ModelFields = {
@@ -143,6 +143,20 @@ export class User extends BaseModel {
             tableConfig: {
                 visible: false,
             },
+        },
+        timezone: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Timezone', description: 'IANA zone, e.g. Europe/Paris' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
+        },
+        locale: {
+            type: 'string',
+            editable: true,
+            uiConfig: { label: 'Language and region', description: 'BCP 47 tag, e.g. en-GB' },
+            formConfig: { visible: true, fieldType: 'input' },
+            tableConfig: { visible: false },
         },
         image: {
             type: 'string',

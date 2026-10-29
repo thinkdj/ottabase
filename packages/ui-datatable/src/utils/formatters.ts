@@ -5,6 +5,7 @@
 // ============================================================
 
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { formatDateForUser } from '@ottabase/utils/timezone';
 import React from 'react';
 
 /**
@@ -21,11 +22,15 @@ export function formatCellValue(
     }
 
     switch (format) {
+        // Dates follow the signed-in user's locale and timezone (see @ottabase/utils/timezone);
+        // the raw value sits in the tooltip for anyone who needs the exact instant.
         case 'date':
-            return new Date(value as string).toLocaleDateString();
-
         case 'datetime':
-            return new Date(value as string).toLocaleString();
+            return React.createElement(
+                'span',
+                { title: String(value) },
+                formatDateForUser(value as string | number | Date, format) || String(value),
+            );
 
         case 'boolean':
             return value
