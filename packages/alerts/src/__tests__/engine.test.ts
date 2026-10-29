@@ -493,19 +493,26 @@ describe('feed, summary and prune', () => {
 
 describe("D1's 100 bound values", () => {
     it('routes one alert to many channels, and lists more alerts than one IN (…) can hold', async () => {
+        // One alert goes to 20 channels; then 19 are switched off, and 120 more alerts to the one left push the
+        // feed's alert ids past one IN (…). All 121 to all 20 would prove nothing more for 2,420 signed sends.
         const { alerts, clock, net } = makeEngine();
+        const channels: { id: string }[] = [];
         for (let i = 0; i < 20; i++)
-            await alerts.createChannel(ENV, { name: `Ops ${i}`, type: 'slack', url: SLACK_URL });
+            channels.push(await alerts.createChannel(ENV, { name: `Ops ${i}`, type: 'slack', url: SLACK_URL }));
         const many = await alerts.raise(ENV, { source: 's', kind: 'k', title: 'Everyone' });
         expect(many.routed).toBe(20);
         expect(net.sent).toHaveLength(20);
 
+        for (const channel of channels.slice(1)) await alerts.updateChannel(ENV, channel.id, { enabled: false });
         for (let i = 0; i < 120; i++) {
             clock.now += 1000;
             await alerts.raise(ENV, { source: 'bulk', kind: 'k', title: `Alert ${i}`, severity: 'info' });
         }
         const feed = await alerts.feed(ENV, { limit: 200 });
         expect(feed).toHaveLength(121);
-        expect(feed.every((alert) => alert.deliveries.length === 20)).toBe(true);
-    });
+        const everyone = feed.find((alert) => alert.title === 'Everyone');
+        expect(everyone?.deliveries).toHaveLength(20);
+        expect(feed.filter((alert) => alert !== everyone).every((alert) => alert.deliveries.length === 1)).toBe(true);
+        // 121 raises on real SQLite: over the 5 s default when the whole monorepo tests in parallel.
+    }, 20_000);
 });

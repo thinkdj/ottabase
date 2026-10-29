@@ -108,7 +108,7 @@ describe('Layout Renderer', () => {
         });
 
         it('should have aria-label for accessibility', () => {
-            render(
+            const { container } = render(
                 <Layout
                     data={{
                         preset: '1-2',
@@ -119,7 +119,9 @@ describe('Layout Renderer', () => {
                     }}
                 />,
             );
-            expect(screen.getByRole('region', { name: /1-2 column layout/ })).toBeTruthy();
+            // An attribute query, not getByRole: computing every accessible name in jsdom took over 5 s under load.
+            const region = container.querySelector('[role="region"]');
+            expect(region?.getAttribute('aria-label')).toBe('1-2 column layout');
         });
     });
 });

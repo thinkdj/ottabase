@@ -73,7 +73,8 @@ describe('Integration Tests', () => {
             });
 
             // Switch to French
-            act(() => {
+            // Awaited: React flushes the language change and the re-render before the assertions poll.
+            await act(async () => {
                 screen.getByTestId('btn-fr').click();
             });
 
@@ -86,7 +87,8 @@ describe('Integration Tests', () => {
             expect(localStorage.getItem('ottabase.language')).toBe('fr');
 
             // Switch to German
-            act(() => {
+            // Awaited: React flushes the language change and the re-render before the assertions poll.
+            await act(async () => {
                 screen.getByTestId('btn-de').click();
             });
 
@@ -145,7 +147,8 @@ describe('Integration Tests', () => {
             });
 
             // Switch to Spanish
-            act(() => {
+            // Awaited: React flushes the language change and the re-render before the assertions poll.
+            await act(async () => {
                 screen.getByTestId('switch').click();
             });
 
@@ -243,7 +246,8 @@ describe('Integration Tests', () => {
             });
 
             // Switch language
-            act(() => {
+            // Awaited: React flushes the language change and the re-render before the assertions poll.
+            await act(async () => {
                 screen.getByTestId('switcher').click();
             });
 
