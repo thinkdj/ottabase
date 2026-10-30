@@ -9,6 +9,7 @@ import { sendTemplatedEmail } from '@ottabase/email';
 import { redactErrorForLog, ServiceError } from '@ottabase/utils/http-errors';
 import { sanitizeInlineHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { events } from '../../ottabase/events';
 import { SUPPORTED_LANGUAGES } from '../../ottabase/locale';
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import { resolveAppMailer } from './email-provider';
@@ -147,6 +148,20 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
         if (organizationId) {
             await invalidateMembershipCache(env.OBCF_KV, userId);
             await sendDemoWelcomeEmail(env, email);
+        }
+
+        // Tell the bus. Packages that keep a timeline or run sequences subscribe to
+        // `user.signed-in` without the auth flow knowing them. Best-effort: a listener's
+        // failure never refuses a sign-in.
+        try {
+            await events.emit(
+                env,
+                'user.signed-in',
+                { userId, email, organizationId: organizationId ?? null },
+                { actor: { userId, organizationId: organizationId ?? null, appId: getOttabaseConfig(env).appId } },
+            );
+        } catch (error) {
+            console.warn(JSON.stringify({ event: 'signed_in_event_failed', error: redactErrorForLog(error) }));
         }
     };
 

@@ -7,6 +7,10 @@
 //
 // Queued subscribers travel through OBCF_QUEUE as `events:deliver` jobs; the core
 // package registers the matching queue handler. Without the binding they run inline.
+//
+// The app's own events, beside what packages emit (`post.published`, `email.inbound`,
+// `email.provider`, `email.unsubscribed`):
+//   `user.signed-in`  { userId, email, organizationId }  every sign-in, after provisioning
 // ============================================================
 
 import { createEventBus } from '@ottabase/events';

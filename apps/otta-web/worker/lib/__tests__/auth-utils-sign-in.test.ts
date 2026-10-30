@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     activateGroupInvites: vi.fn(),
     sendTemplatedEmail: vi.fn(),
     resolveAppMailer: vi.fn(),
+    emit: vi.fn(),
 }));
 
 vi.mock('../user-provisioning', () => ({ ensurePersonalOrganization: mocks.ensurePersonalOrganization }));
@@ -24,6 +25,7 @@ vi.mock('@ottabase/ottaorm/models', () => ({
 vi.mock('../../../ottabase/config.loader', () => ({
     getOttabaseConfig: vi.fn(() => ({ appId: 'test-app', appName: 'Demo App' })),
 }));
+vi.mock('../../../ottabase/events', () => ({ events: { emit: mocks.emit } }));
 
 import { getAuthOptions } from '../auth-utils';
 
@@ -40,6 +42,39 @@ describe('onSignIn: every account gets a workspace', () => {
             mailer: { provider: 'resend', send: vi.fn() },
             from: 'noreply@example.com',
         });
+        mocks.emit.mockResolvedValue({ delivered: 0 });
+    });
+
+    it('tells the bus about every sign-in, after the workspace exists', async () => {
+        mocks.ensurePersonalOrganization.mockResolvedValue('org-new');
+
+        await getAuthOptions(env()).onSignIn!({ userId: 'user-1', email: 'new@example.com' });
+
+        expect(mocks.emit).toHaveBeenCalledWith(
+            expect.anything(),
+            'user.signed-in',
+            { userId: 'user-1', email: 'new@example.com', organizationId: 'org-new' },
+            { actor: { userId: 'user-1', organizationId: 'org-new', appId: 'test-app' } },
+        );
+        expect(mocks.emit.mock.invocationCallOrder[0]).toBeGreaterThan(
+            mocks.ensurePersonalOrganization.mock.invocationCallOrder[0]!,
+        );
+    });
+
+    it('never fails the sign-in over a listener', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        mocks.ensurePersonalOrganization.mockResolvedValue(null);
+        mocks.emit.mockRejectedValue(new Error('listener down'));
+
+        await expect(
+            getAuthOptions(env()).onSignIn!({ userId: 'user-1', email: 'new@example.com' }),
+        ).resolves.toBeUndefined();
+        expect(mocks.emit).toHaveBeenCalledWith(
+            expect.anything(),
+            'user.signed-in',
+            expect.objectContaining({ organizationId: null }),
+            expect.anything(),
+        );
     });
 
     it('provisions a workspace for an account with none, after activating its invites', async () => {
