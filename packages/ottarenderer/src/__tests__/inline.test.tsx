@@ -22,6 +22,10 @@ describe('parseInline', () => {
         expect(parseInline('<img src=x onerror=alert(1)>text')).toEqual(['text']);
     });
 
+    it('drops a void or self-closed dangerous tag alone, not the text after it', () => {
+        expect(parseInline('a<embed src="x.swf">b <svg/>c')).toEqual(['a', 'b ', 'c']);
+    });
+
     it('strips HTML comments instead of showing them as text', () => {
         expect(parseInline('a<!-- hidden <b>x</b> -->b')).toEqual(['ab']);
     });

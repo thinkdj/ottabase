@@ -116,7 +116,8 @@ export function parseInline(input: string | number | null | undefined): InlineNo
             continue;
         }
         if (DROP_CONTENT.has(tag)) {
-            dropUntil = tag;
+            // <embed> is void and <svg/> may self-close: drop the tag alone, or the rest of the text would go with it.
+            if (tag !== 'embed' && !whole.endsWith('/>')) dropUntil = tag;
             continue;
         }
         const allowed = ALLOWED[tag];
