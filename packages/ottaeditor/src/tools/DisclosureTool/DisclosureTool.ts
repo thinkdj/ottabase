@@ -1,5 +1,7 @@
-import type { API, BlockTool } from '@editorjs/editorjs';
-import './DisclosureTool.css';
+import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import { toolboxEntry } from '../../blocks';
+import { field, h, segment, select, stack, textInput, textarea, toggle } from '../../ui/kit';
+import { BlockShell } from '../../ui/shell';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,7 +29,7 @@ export interface DisclosureToolConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Standard wording presets
+// Standard wording presets (mirrored by the renderer)
 // ---------------------------------------------------------------------------
 
 export const AI_LEVEL_LABELS: Record<AIDisclosureLevel, string> = {
@@ -47,71 +49,33 @@ export const AI_LEVEL_WORDING: Record<Exclude<AIDisclosureLevel, 'none' | 'custo
 export const SPONSORED_PRESET_TEXT =
     'This content was created in partnership with a sponsor. Our editorial standards remain independent.';
 
-// ---------------------------------------------------------------------------
-// Tool implementation
-// ---------------------------------------------------------------------------
+const AI_LEVEL_OPTIONS = (['slight', 'mid', 'high', 'custom'] as const).map((value) => ({
+    value,
+    label: AI_LEVEL_LABELS[value],
+}));
 
+/**
+ * Disclosure block: two switches (AI use, sponsorship), each revealing its options when on.
+ * Preview is the renderer's notice with the exact wording that will publish.
+ */
 export default class DisclosureTool implements BlockTool {
-    private api: API;
+    private readonly api: API;
+    private readonly config: DisclosureToolConfig;
     private data: DisclosureData;
-    private config: DisclosureToolConfig;
-    private wrapper: HTMLElement | null = null;
-    private instanceId: string;
-
-    private static idSeed = 0;
-
-    static get CSS() {
-        return {
-            baseClass: 'cdx-disclosure',
-            wrapper: 'cdx-disclosure__wrapper',
-            section: 'cdx-disclosure__section',
-            sectionHeader: 'cdx-disclosure__section-header',
-            sectionToggle: 'cdx-disclosure__section-toggle',
-            sectionBody: 'cdx-disclosure__section-body',
-            label: 'cdx-disclosure__label',
-            sublabel: 'cdx-disclosure__sublabel',
-            select: 'cdx-disclosure__select',
-            input: 'cdx-disclosure__input',
-            textarea: 'cdx-disclosure__textarea',
-            previewText: 'cdx-disclosure__preview',
-            row: 'cdx-disclosure__row',
-            toggle: 'cdx-disclosure__toggle',
-            toggleSlider: 'cdx-disclosure__toggle-slider',
-            radioGroup: 'cdx-disclosure__radio-group',
-            radio: 'cdx-disclosure__radio',
-            radioLabel: 'cdx-disclosure__radio-label',
-        };
-    }
+    private shell: BlockShell | null = null;
 
     static get toolbox() {
-        return {
-            title: 'Disclosure',
-            // Tabler icon: shield (disclosure/transparency feel)
-            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v4c0 5-3.5 9.74-8 11-4.5-1.26-8-6-8-11V7l8-4z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
-        };
+        return toolboxEntry('disclosure');
     }
 
     static get enableLineBreaks() {
         return true;
     }
 
-    constructor({
-        data,
-        config,
-        api,
-        block,
-    }: {
-        data?: Partial<DisclosureData>;
-        config?: DisclosureToolConfig;
-        api: API;
-        block?: { id?: string };
-    }) {
+    constructor({ data, config, api }: BlockToolConstructorOptions<Partial<DisclosureData>, DisclosureToolConfig>) {
         this.api = api;
         this.config = config || {};
-        this.instanceId = block?.id || DisclosureTool.nextId();
-
         const defaultAI = this.config.defaultAILevel || 'none';
-
         this.data = {
             aiEnabled: data?.aiEnabled ?? defaultAI !== 'none',
             aiLevel: data?.aiLevel || defaultAI,
@@ -122,145 +86,126 @@ export default class DisclosureTool implements BlockTool {
         };
     }
 
-    private static nextId(): string {
-        DisclosureTool.idSeed += 1;
-        return `disclosure-${DisclosureTool.idSeed}`;
-    }
-
-    private domId(name: string): string {
-        return `${name}-${this.instanceId}`;
-    }
-
     render(): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add(DisclosureTool.CSS.baseClass, DisclosureTool.CSS.wrapper, 'ob-plugin');
+        const shell = new BlockShell({
+            type: 'disclosure',
+            hasContent: this.validate(this.data),
+            summary: this.summary(),
+        });
+        this.shell = shell;
 
-        wrapper.appendChild(this.buildAISection());
-        wrapper.appendChild(this.buildSponsoredSection());
+        // AI section
+        const percent = field({
+            label: 'AI share',
+            hint: 'Percent of the content, 1 to 100',
+            control: textInput({
+                value: String(this.data.aiPercent ?? 50),
+                type: 'number',
+                min: 1,
+                max: 100,
+                ariaLabel: 'AI usage percent',
+                onInput: (v) => {
+                    const n = parseInt(v, 10);
+                    if (Number.isFinite(n) && n >= 1 && n <= 100) this.update({ aiPercent: n });
+                },
+            }),
+        });
+        const level = field({
+            label: 'How much AI',
+            control: select<AIDisclosureLevel>({
+                value: this.data.aiLevel === 'none' ? 'slight' : this.data.aiLevel,
+                options: AI_LEVEL_OPTIONS,
+                ariaLabel: 'AI usage level',
+                onChange: (v) => {
+                    this.update({ aiLevel: v });
+                    percent.hidden = v !== 'custom';
+                },
+            }),
+        });
+        percent.hidden = this.data.aiLevel !== 'custom';
+        const aiBody = stack(level, percent);
+        aiBody.hidden = !this.data.aiEnabled;
+        const aiToggle = toggle({
+            checked: this.data.aiEnabled,
+            label: 'AI disclosure',
+            hint: 'Say how much of this was made with AI',
+            onChange: (on) => {
+                // Turning the switch on with no level picked would save an invalid block
+                this.update({
+                    aiEnabled: on,
+                    aiLevel: on && this.data.aiLevel === 'none' ? 'slight' : this.data.aiLevel,
+                });
+                aiBody.hidden = !on;
+            },
+        });
 
-        this.wrapper = wrapper;
-        return wrapper;
+        // Sponsored section
+        const customText = field({
+            label: 'Your wording',
+            control: textarea({
+                value: this.data.sponsoredText ?? '',
+                rows: 2,
+                placeholder: 'This post is sponsored by…',
+                ariaLabel: 'Custom sponsored text',
+                onInput: (v) => this.update({ sponsoredText: v }),
+            }),
+        });
+        customText.hidden = this.data.sponsoredType !== 'custom';
+        const type = field({
+            label: 'Wording',
+            control: segment<'preset' | 'custom'>({
+                value: this.data.sponsoredType,
+                ariaLabel: 'Sponsored wording',
+                options: [
+                    { value: 'preset', label: 'Standard' },
+                    { value: 'custom', label: 'Custom' },
+                ],
+                onChange: (v) => {
+                    this.update({ sponsoredType: v });
+                    customText.hidden = v !== 'custom';
+                },
+            }),
+        });
+        const sponsoredBody = stack(type, customText);
+        sponsoredBody.hidden = !this.data.sponsoredEnabled;
+        const sponsoredToggle = toggle({
+            checked: this.data.sponsoredEnabled,
+            label: 'Sponsored content',
+            hint: 'Note a commercial relationship',
+            onChange: (on) => {
+                this.update({ sponsoredEnabled: on });
+                sponsoredBody.hidden = !on;
+            },
+        });
+
+        shell.fields.append(
+            stack(
+                h('div', { className: 'oe-stack' }, aiToggle, aiBody),
+                h('hr', { className: 'oe-divider' }),
+                h('div', { className: 'oe-stack' }, sponsoredToggle, sponsoredBody),
+            ),
+        );
+        shell.preview(this.previewData());
+        return shell.element;
     }
 
-    // -------------------------------------------------------------------------
-    // AI Disclosure section
-    // -------------------------------------------------------------------------
-
-    private buildAISection(): HTMLElement {
-        const section = document.createElement('div');
-        section.classList.add(DisclosureTool.CSS.section);
-
-        // Header with toggle
-        const header = document.createElement('div');
-        header.classList.add(DisclosureTool.CSS.sectionHeader);
-
-        const titleGroup = document.createElement('div');
-        // Tabler robot icon
-        titleGroup.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>';
-        const titleSpan = document.createElement('span');
-        titleSpan.classList.add(DisclosureTool.CSS.label);
-        titleSpan.textContent = 'AI Disclosure';
-        titleGroup.appendChild(titleSpan);
-        titleGroup.style.display = 'inline-flex';
-        titleGroup.style.alignItems = 'center';
-        titleGroup.style.gap = '6px';
-
-        const aiEnabledId = this.domId('ai-enabled');
-        const toggle = this.buildToggle(aiEnabledId, this.data.aiEnabled, (checked) => {
-            this.data.aiEnabled = checked;
-            body.style.display = checked ? 'flex' : 'none';
-        });
-
-        header.appendChild(titleGroup);
-        header.appendChild(toggle);
-        section.appendChild(header);
-
-        // Body (shown when toggle on)
-        const body = document.createElement('div');
-        body.classList.add(DisclosureTool.CSS.sectionBody);
-        body.style.display = this.data.aiEnabled ? 'flex' : 'none';
-
-        // Level select
-        const levelGroup = document.createElement('div');
-        levelGroup.classList.add(DisclosureTool.CSS.row);
-
-        const levelLabel = document.createElement('label');
-        levelLabel.classList.add(DisclosureTool.CSS.sublabel, 'ob-hint');
-        levelLabel.textContent = 'AI usage level';
-        const aiLevelId = this.domId('disclosure-ai-level');
-        levelLabel.setAttribute('for', aiLevelId);
-
-        const levelSelect = document.createElement('select');
-        levelSelect.id = aiLevelId;
-        levelSelect.classList.add(DisclosureTool.CSS.select, 'ob-select');
-
-        const levels: AIDisclosureLevel[] = ['slight', 'mid', 'high', 'custom'];
-        levels.forEach((level) => {
-            const opt = document.createElement('option');
-            opt.value = level;
-            opt.textContent = AI_LEVEL_LABELS[level];
-            opt.selected = level === this.data.aiLevel;
-            levelSelect.appendChild(opt);
-        });
-
-        // Custom percent input (shown only when 'custom' selected)
-        const percentGroup = document.createElement('div');
-        percentGroup.classList.add(DisclosureTool.CSS.row);
-        percentGroup.style.display = this.data.aiLevel === 'custom' ? 'flex' : 'none';
-
-        const percentLabel = document.createElement('label');
-        percentLabel.classList.add(DisclosureTool.CSS.sublabel);
-        percentLabel.textContent = 'AI usage %';
-        const aiPercentId = this.domId('disclosure-ai-percent');
-        percentLabel.setAttribute('for', aiPercentId);
-
-        const percentInput = document.createElement('input');
-        percentInput.id = aiPercentId;
-        percentInput.type = 'number';
-        percentInput.min = '1';
-        percentInput.max = '100';
-        percentInput.classList.add(DisclosureTool.CSS.input, 'ob-input');
-        percentInput.value = String(this.data.aiPercent ?? 50);
-        percentInput.placeholder = '1–100';
-        percentInput.addEventListener('input', () => {
-            const val = parseInt(percentInput.value);
-            if (Number.isFinite(val) && val >= 1 && val <= 100) {
-                this.data.aiPercent = val;
-                this.updateAIPreview(previewEl);
-            }
-        });
-
-        percentGroup.appendChild(percentLabel);
-        percentGroup.appendChild(percentInput);
-
-        // Preview text
-        const previewEl = document.createElement('div');
-        previewEl.classList.add(DisclosureTool.CSS.previewText);
-
-        levelSelect.addEventListener('change', () => {
-            this.data.aiLevel = levelSelect.value as AIDisclosureLevel;
-            percentGroup.style.display = this.data.aiLevel === 'custom' ? 'flex' : 'none';
-            this.updateAIPreview(previewEl);
-        });
-
-        this.updateAIPreview(previewEl);
-
-        levelGroup.appendChild(levelLabel);
-        levelGroup.appendChild(levelSelect);
-
-        body.appendChild(levelGroup);
-        body.appendChild(percentGroup);
-        body.appendChild(previewEl);
-
-        section.appendChild(body);
-        return section;
+    private update(patch: Partial<DisclosureData>) {
+        this.data = { ...this.data, ...patch };
+        this.shell?.setSummary(this.summary());
+        this.shell?.preview(this.previewData());
     }
 
-    private updateAIPreview(el: HTMLElement): void {
-        const text = this.getAIDisclosureText();
-        el.textContent = text ? `Preview: "${text}"` : '';
-        el.style.display = text ? 'block' : 'none';
+    private summary(): string {
+        const parts = [];
+        if (this.data.aiEnabled && this.data.aiLevel !== 'none') parts.push(AI_LEVEL_LABELS[this.data.aiLevel]);
+        if (this.data.sponsoredEnabled) parts.push('sponsored');
+        return parts.length ? parts.join(' · ') : 'nothing to disclose yet';
+    }
+
+    private previewData(): Record<string, unknown> {
+        return this.validate(this.data)
+            ? { ...this.data }
+            : { aiEnabled: true, aiLevel: 'slight', sponsoredEnabled: false, sponsoredType: 'preset' };
     }
 
     getAIDisclosureText(): string {
@@ -272,172 +217,27 @@ export default class DisclosureTool implements BlockTool {
         return AI_LEVEL_WORDING[this.data.aiLevel as keyof typeof AI_LEVEL_WORDING] || '';
     }
 
-    // -------------------------------------------------------------------------
-    // Sponsored Disclosure section
-    // -------------------------------------------------------------------------
-
-    private buildSponsoredSection(): HTMLElement {
-        const section = document.createElement('div');
-        section.classList.add(DisclosureTool.CSS.section);
-        section.style.borderTop = '1px solid hsl(var(--border))';
-        section.style.marginTop = '4px';
-        section.style.paddingTop = '8px';
-
-        // Header with toggle
-        const header = document.createElement('div');
-        header.classList.add(DisclosureTool.CSS.sectionHeader);
-
-        const titleGroup = document.createElement('div');
-        // Tabler tag icon (sponsored/commercial)
-        titleGroup.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 21l-8.5-8.5 7.5-7.5H20v9.5l-8.5 6.5z"/><circle cx="17" cy="7" r="1"/></svg>';
-        const titleSpan = document.createElement('span');
-        titleSpan.classList.add(DisclosureTool.CSS.label);
-        titleSpan.textContent = 'Sponsored Disclosure';
-        titleGroup.appendChild(titleSpan);
-        titleGroup.style.display = 'inline-flex';
-        titleGroup.style.alignItems = 'center';
-        titleGroup.style.gap = '6px';
-
-        const sponsoredEnabledId = this.domId('sponsored-enabled');
-        const toggle = this.buildToggle(sponsoredEnabledId, this.data.sponsoredEnabled, (checked) => {
-            this.data.sponsoredEnabled = checked;
-            body.style.display = checked ? 'flex' : 'none';
-        });
-
-        header.appendChild(titleGroup);
-        header.appendChild(toggle);
-        section.appendChild(header);
-
-        // Body
-        const body = document.createElement('div');
-        body.classList.add(DisclosureTool.CSS.sectionBody);
-        body.style.display = this.data.sponsoredEnabled ? 'flex' : 'none';
-
-        // Type radio: Preset vs Custom
-        const typeGroup = document.createElement('div');
-        typeGroup.classList.add(DisclosureTool.CSS.radioGroup);
-
-        const previewEl = document.createElement('div');
-        previewEl.classList.add(DisclosureTool.CSS.previewText);
-
-        const customTextGroup = document.createElement('div');
-        customTextGroup.classList.add(DisclosureTool.CSS.row);
-        customTextGroup.style.display = this.data.sponsoredType === 'custom' ? 'flex' : 'none';
-
-        const customLabel = document.createElement('label');
-        customLabel.classList.add(DisclosureTool.CSS.sublabel, 'ob-hint');
-        customLabel.textContent = 'Custom disclaimer';
-        const sponsoredTextId = this.domId('disclosure-sponsored-text');
-        customLabel.setAttribute('for', sponsoredTextId);
-
-        const customTextarea = document.createElement('textarea');
-        customTextarea.id = sponsoredTextId;
-        customTextarea.classList.add(DisclosureTool.CSS.textarea, 'ob-textarea');
-        customTextarea.placeholder = 'Enter your custom sponsored disclaimer...';
-        customTextarea.value = this.data.sponsoredText || '';
-        customTextarea.rows = 2;
-        customTextarea.addEventListener('input', () => {
-            this.data.sponsoredText = customTextarea.value;
-            this.updateSponsoredPreview(previewEl);
-        });
-
-        customTextGroup.appendChild(customLabel);
-        customTextGroup.appendChild(customTextarea);
-
-        const radioTypes: Array<{ value: 'preset' | 'custom'; label: string }> = [
-            { value: 'preset', label: 'Standard text' },
-            { value: 'custom', label: 'Custom text' },
-        ];
-
-        const sponsoredTypeName = this.domId('disclosure-sponsored-type');
-        radioTypes.forEach(({ value, label }) => {
-            const radioWrapper = document.createElement('label');
-            radioWrapper.classList.add(DisclosureTool.CSS.radioLabel);
-
-            const radio = document.createElement('input');
-            radio.type = 'radio';
-            radio.name = sponsoredTypeName;
-            radio.classList.add(DisclosureTool.CSS.radio);
-            radio.value = value;
-            radio.checked = value === this.data.sponsoredType;
-            radio.addEventListener('change', () => {
-                this.data.sponsoredType = value;
-                customTextGroup.style.display = value === 'custom' ? 'flex' : 'none';
-                this.updateSponsoredPreview(previewEl);
-            });
-
-            radioWrapper.appendChild(radio);
-            radioWrapper.appendChild(document.createTextNode(label));
-            typeGroup.appendChild(radioWrapper);
-        });
-
-        this.updateSponsoredPreview(previewEl);
-
-        body.appendChild(typeGroup);
-        body.appendChild(customTextGroup);
-        body.appendChild(previewEl);
-
-        section.appendChild(body);
-        return section;
-    }
-
-    private updateSponsoredPreview(el: HTMLElement): void {
-        const text = this.getSponsoredText();
-        el.textContent = text ? `Preview: "${text}"` : '';
-        el.style.display = text ? 'block' : 'none';
-    }
-
     getSponsoredText(): string {
         if (!this.data.sponsoredEnabled) return '';
         if (this.data.sponsoredType === 'custom') return this.data.sponsoredText?.trim() || '';
         return SPONSORED_PRESET_TEXT;
     }
 
-    // -------------------------------------------------------------------------
-    // Shared: toggle switch
-    // -------------------------------------------------------------------------
-
-    private buildToggle(id: string, checked: boolean, onChange: (checked: boolean) => void): HTMLElement {
-        const label = document.createElement('label');
-        label.classList.add(DisclosureTool.CSS.toggle);
-        label.setAttribute('for', id);
-
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.id = id;
-        input.checked = checked;
-        input.style.display = 'none';
-        input.addEventListener('change', () => onChange(input.checked));
-
-        const slider = document.createElement('span');
-        slider.classList.add(DisclosureTool.CSS.toggleSlider);
-        if (checked) slider.classList.add('cdx-disclosure__toggle-slider--on');
-
-        input.addEventListener('change', () => {
-            slider.classList.toggle('cdx-disclosure__toggle-slider--on', input.checked);
-        });
-
-        label.appendChild(input);
-        label.appendChild(slider);
-        return label;
-    }
-
-    // -------------------------------------------------------------------------
-    // EditorJS lifecycle
-    // -------------------------------------------------------------------------
-
     save(): DisclosureData {
         return { ...this.data };
     }
 
     validate(savedData: DisclosureData): boolean {
-        // Valid if at least one disclosure type is active and coherent
         if (!savedData.aiEnabled && !savedData.sponsoredEnabled) return false;
         if (savedData.aiEnabled && savedData.aiLevel === 'none') return false;
         if (savedData.sponsoredEnabled && savedData.sponsoredType === 'custom') {
             return (savedData.sponsoredText?.trim() || '') !== '';
         }
         return true;
+    }
+
+    destroy(): void {
+        this.shell?.destroy();
+        this.shell = null;
     }
 }

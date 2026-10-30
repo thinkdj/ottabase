@@ -1,5 +1,7 @@
-import type { API, BlockTool } from '@editorjs/editorjs';
-import './CodeTool.css';
+import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import { toolboxEntry } from '../../blocks';
+import { field, row, select, stack, textInput, textarea, toggle } from '../../ui/kit';
+import { BlockShell } from '../../ui/shell';
 
 const LANGUAGE_OPTIONS = [
     { value: 'plaintext', label: 'Plain' },
@@ -16,14 +18,16 @@ const LANGUAGE_OPTIONS = [
     { value: 'python', label: 'Python' },
     { value: 'markdown', label: 'Markdown' },
     { value: 'toml', label: 'TOML' },
-    { value: '__custom__', label: 'Custom' },
+    { value: '__custom__', label: 'Custom…' },
 ] as const;
+
+type LanguageOption = (typeof LANGUAGE_OPTIONS)[number]['value'];
 
 const PREDEFINED_LANGS: Set<string> = new Set(
     LANGUAGE_OPTIONS.filter((o) => o.value !== '__custom__').map((o) => o.value),
 );
 
-const TAB_OPTIONS = [2, 4, 8] as const;
+const TAB_OPTIONS = ['2', '4', '8'] as const;
 
 /** Valid: number optionally followed by px, em, rem */
 function isValidMaxHeight(s: string): boolean {
@@ -58,46 +62,29 @@ export interface CodeToolData {
     collapsibleThreshold?: number;
 }
 
+/**
+ * Code block. The source is typed in a monospace textarea; everything the highlighter can do
+ * (language, line numbers, wrapping, collapse, highlighted lines) sits in rows below it. Preview
+ * is the renderer's highlighted block.
+ */
 export default class CodeTool implements BlockTool {
-    private api: API;
+    private readonly api: API;
+    private readonly config: CodeToolConfig;
     private data: CodeToolData;
-    private config: CodeToolConfig;
-    private wrapper: HTMLElement | null = null;
-    private langInput: HTMLInputElement | null = null;
-
-    static get CSS() {
-        return {
-            baseClass: 'cdx-code',
-            wrapper: 'cdx-code__wrapper',
-            header: 'cdx-code__header',
-            headerLabel: 'cdx-code__header-label',
-            optionsRow: 'cdx-code__options-row',
-            opt: 'cdx-code__opt',
-            optGroup: 'cdx-code__opt-group',
-            optNumber: 'cdx-code__opt-number',
-            optLabel: 'cdx-code__opt-label',
-            optDesc: 'cdx-code__opt-desc',
-            optInput: 'cdx-code__opt-input',
-            optSelect: 'cdx-code__opt-select',
-            optToggle: 'cdx-code__opt-toggle',
-            langSelect: 'cdx-code__lang-select',
-            langInput: 'cdx-code__lang-input',
-            textarea: 'cdx-code__textarea',
-        };
-    }
+    private shell: BlockShell | null = null;
+    /** Raw field values that are only validated on save, exactly as the previous version did */
+    private raw = { lineStart: '', threshold: '', maxHeight: '', highlight: '', customLang: '' };
+    private customLangInput: HTMLInputElement | null = null;
 
     static get toolbox() {
-        return {
-            title: 'Code',
-            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(3 3)"><polyline points="17 18 23 12 17 6"/><polyline points="7 6 1 12 7 18"/><line x1="15" y1="4" x2="9" y2="20"/></g></svg>',
-        };
+        return toolboxEntry('code');
     }
 
     static get enableLineBreaks() {
         return true;
     }
 
-    constructor({ data, config, api }: { data?: Partial<CodeToolData>; config?: CodeToolConfig; api: API }) {
+    constructor({ data, config, api }: BlockToolConstructorOptions<Partial<CodeToolData>, CodeToolConfig>) {
         this.api = api;
         this.config = config || {};
         this.data = {
@@ -114,319 +101,207 @@ export default class CodeTool implements BlockTool {
             collapsible: data?.collapsible ?? false,
             collapsibleThreshold: data?.collapsibleThreshold ?? 20,
         };
+        this.raw = {
+            lineStart: String(this.data.lineNumberStart),
+            threshold: this.data.collapsibleThreshold ? String(this.data.collapsibleThreshold) : '',
+            maxHeight: this.data.maxHeight || '',
+            highlight: this.data.highlightLines || '',
+            customLang: this.isCustomLang() ? this.data.language || '' : '',
+        };
     }
 
     private isCustomLang(): boolean {
         return !PREDEFINED_LANGS.has(this.data.language || '');
     }
 
-    private createToggle(
-        label: string,
-        checked: boolean,
-        onChange: (v: boolean) => void,
-        title?: string,
-    ): HTMLSpanElement {
-        const wrap = document.createElement('span');
-        wrap.classList.add(CodeTool.CSS.opt, CodeTool.CSS.optToggle);
-        if (title) wrap.title = title;
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = checked;
-        cb.classList.add(CodeTool.CSS.optInput);
-        cb.setAttribute('aria-label', label);
-        cb.addEventListener('change', () => onChange(cb.checked));
-        const lb = document.createElement('label');
-        lb.classList.add(CodeTool.CSS.optLabel);
-        lb.textContent = label;
-        lb.addEventListener('click', () => {
-            cb.checked = !cb.checked;
-            onChange(cb.checked);
-        });
-        wrap.appendChild(cb);
-        wrap.appendChild(lb);
-        return wrap;
-    }
-
-    private createLabeledInput(
-        label: string,
-        description: string,
-        input: HTMLInputElement | HTMLSelectElement,
-    ): HTMLDivElement {
-        const group = document.createElement('div');
-        group.classList.add(CodeTool.CSS.optGroup);
-        group.title = description;
-        const lb = document.createElement('span');
-        lb.classList.add(CodeTool.CSS.optLabel);
-        lb.textContent = label;
-        group.appendChild(lb);
-        group.appendChild(input);
-        return group;
-    }
-
     render(): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add(CodeTool.CSS.baseClass, CodeTool.CSS.wrapper, 'ob-plugin');
-
-        // Row 1: Language (label + dropdown + file type)
-        const header = document.createElement('div');
-        header.classList.add(CodeTool.CSS.header);
-
-        const langLabel = document.createElement('span');
-        langLabel.classList.add(CodeTool.CSS.optLabel);
-        langLabel.textContent = 'Language';
-        langLabel.title = 'Syntax highlighting language';
-        header.appendChild(langLabel);
-
-        const langSelect = document.createElement('select');
-        langSelect.classList.add(CodeTool.CSS.langSelect, 'ob-select');
-        for (const opt of LANGUAGE_OPTIONS) {
-            const o = document.createElement('option');
-            o.value = opt.value;
-            o.textContent = opt.label;
-            const isCustom = this.isCustomLang();
-            if (opt.value === '__custom__' && isCustom) o.selected = true;
-            else if (opt.value === this.data.language && !isCustom) o.selected = true;
-            langSelect.appendChild(o);
-        }
-
-        const langInput = document.createElement('input');
-        langInput.type = 'text';
-        langInput.classList.add(CodeTool.CSS.langInput, 'ob-input');
-        const customMode = this.isCustomLang();
-        langInput.disabled = !customMode;
-        langInput.placeholder = customMode ? 'e.g. rust, go, kotlin' : '';
-        langInput.title = customMode
-            ? 'Custom file type / language identifier for syntax highlighting'
-            : 'Current language (select Custom above to type your own)';
-        langInput.setAttribute('aria-label', customMode ? 'Custom file type' : 'File type');
-        langInput.value = customMode ? this.data.language || '' : this.data.language || 'plaintext';
-        this.langInput = langInput;
-
-        langSelect.addEventListener('change', () => {
-            if (langSelect.value === '__custom__') {
-                this.data.language = langInput.value || 'plaintext';
-                langInput.disabled = false;
-                langInput.placeholder = 'e.g. rust, go, kotlin';
-            } else {
-                this.data.language = langSelect.value;
-                langInput.disabled = true;
-                langInput.placeholder = '';
-                langInput.value = langSelect.value;
-            }
+        const shell = new BlockShell({
+            type: 'code',
+            hasContent: this.data.code.trim() !== '',
+            summary: this.summary(),
         });
-        langInput.addEventListener('input', () => {
-            if (langSelect.value === '__custom__') this.data.language = langInput.value || 'plaintext';
+        this.shell = shell;
+
+        const code = textarea({
+            value: this.data.code,
+            rows: 8,
+            mono: true,
+            placeholder: this.config.placeholder || 'Paste or type code',
+            ariaLabel: 'Code',
+            onInput: (v) => this.update({ code: v }),
         });
 
-        header.appendChild(langSelect);
-        header.appendChild(langInput);
-        wrapper.appendChild(header);
+        const custom = this.isCustomLang();
+        const customLang = textInput({
+            value: this.raw.customLang,
+            placeholder: 'e.g. rust, go, kotlin',
+            ariaLabel: 'Custom language',
+            onInput: (v) => {
+                this.raw.customLang = v;
+                if (!this.customLangInput?.disabled) this.update({ language: v || 'plaintext' });
+            },
+        });
+        customLang.disabled = !custom;
+        this.customLangInput = customLang;
 
-        // Row 2: Lines, Start, Wrap, Indent
-        const row1 = document.createElement('div');
-        row1.classList.add(CodeTool.CSS.optionsRow);
+        const language = select<LanguageOption>({
+            value: custom ? '__custom__' : (this.data.language as LanguageOption),
+            options: LANGUAGE_OPTIONS,
+            ariaLabel: 'Language',
+            onChange: (v) => {
+                if (v === '__custom__') {
+                    customLang.disabled = false;
+                    this.update({ language: this.raw.customLang || 'plaintext' });
+                    customLang.focus();
+                } else {
+                    customLang.disabled = true;
+                    this.update({ language: v });
+                }
+            },
+        });
 
-        row1.appendChild(
-            this.createToggle(
-                'Lines',
-                this.data.showLineNumbers ?? false,
-                (v) => {
-                    this.data.showLineNumbers = v;
-                },
-                'Show line numbers in the rendered code block',
+        const lineNumbers = toggle({
+            checked: this.data.showLineNumbers ?? false,
+            label: 'Line numbers',
+            onChange: (v) => this.update({ showLineNumbers: v }),
+        });
+        const lineStart = textInput({
+            value: this.raw.lineStart,
+            type: 'number',
+            min: 1,
+            size: 'sm',
+            ariaLabel: 'First line number',
+            onInput: (v) => {
+                this.raw.lineStart = v;
+                const n = parseInt(v, 10);
+                this.update({ lineNumberStart: !isNaN(n) && n >= 1 ? n : 1 });
+            },
+        });
+        const wrap = toggle({
+            checked: this.data.wrapLongLines ?? false,
+            label: 'Wrap long lines',
+            onChange: (v) => this.update({ wrapLongLines: v }),
+        });
+        const tabSize = select<(typeof TAB_OPTIONS)[number]>({
+            value: String(this.data.tabSize ?? 4) as (typeof TAB_OPTIONS)[number],
+            options: TAB_OPTIONS.map((t) => ({ value: t, label: `${t} spaces` })),
+            ariaLabel: 'Tab size',
+            size: 'sm',
+            onChange: (v) => this.update({ tabSize: parseInt(v, 10) }),
+        });
+
+        const hideHeader = toggle({
+            checked: this.data.hideHeader ?? false,
+            label: 'Hide header',
+            onChange: (v) => this.update({ hideHeader: v }),
+        });
+        const hideCopy = toggle({
+            checked: this.data.hideCopyButton ?? false,
+            label: 'Hide copy button',
+            onChange: (v) => this.update({ hideCopyButton: v }),
+        });
+        const collapsible = toggle({
+            checked: this.data.collapsible ?? false,
+            label: 'Collapsible',
+            onChange: (v) => this.update({ collapsible: v }),
+        });
+        const threshold = textInput({
+            value: this.raw.threshold,
+            type: 'number',
+            min: 5,
+            size: 'sm',
+            placeholder: '20',
+            ariaLabel: 'Collapse after lines',
+            onInput: (v) => {
+                this.raw.threshold = v;
+                const n = parseInt(v, 10);
+                this.update({ collapsibleThreshold: !isNaN(n) && n >= 5 ? n : 20 });
+            },
+        });
+        const maxHeight = textInput({
+            value: this.raw.maxHeight,
+            size: 'sm',
+            placeholder: '200px',
+            ariaLabel: 'Max height',
+            onInput: (v) => {
+                this.raw.maxHeight = v;
+                const t = v.trim();
+                this.update({ maxHeight: isValidMaxHeight(t) ? t : '' });
+            },
+        });
+        const highlight = textInput({
+            value: this.raw.highlight,
+            size: 'sm',
+            placeholder: '3,5-7',
+            ariaLabel: 'Highlight lines',
+            onInput: (v) => {
+                this.raw.highlight = v;
+                const t = v.trim();
+                this.update({ highlightLines: isValidHighlightLines(t) ? t : '' });
+            },
+        });
+
+        shell.fields.append(
+            stack(
+                code,
+                row(
+                    field({ label: 'Language', control: language }),
+                    field({ label: 'Custom language', control: customLang }),
+                ),
+                row(
+                    lineNumbers,
+                    field({ label: 'First line', control: lineStart }),
+                    wrap,
+                    field({ label: 'Tab size', control: tabSize }),
+                ),
+                row(hideHeader, hideCopy, collapsible, field({ label: 'Collapse after (lines)', control: threshold })),
+                row(
+                    field({ label: 'Max height', control: maxHeight, hint: 'e.g. 200px, 15rem' }),
+                    field({ label: 'Highlight lines', control: highlight, hint: 'e.g. 3,5-7,9' }),
+                ),
             ),
         );
+        shell.preview(this.previewData());
+        return shell.element;
+    }
 
-        const startWrap = document.createElement('span');
-        startWrap.classList.add(CodeTool.CSS.opt, CodeTool.CSS.optGroup, CodeTool.CSS.optNumber);
-        startWrap.title = 'First line number (e.g. 1 for full file, 42 for snippet from line 42)';
-        const startLbl = document.createElement('span');
-        startLbl.classList.add(CodeTool.CSS.optLabel);
-        startLbl.textContent = 'Start';
-        const startInput = document.createElement('input');
-        startInput.type = 'number';
-        startInput.min = '1';
-        startInput.value = String(Math.max(1, Math.floor(Number(this.data.lineNumberStart)) || 1));
-        startInput.classList.add(CodeTool.CSS.optInput);
-        startInput.setAttribute('aria-label', 'Line number start');
-        startInput.dataset.codeOpt = 'lineStart';
-        startInput.addEventListener('input', () => {
-            const v = parseInt(startInput.value, 10);
-            this.data.lineNumberStart = !isNaN(v) && v >= 1 ? v : 1;
-        });
-        startWrap.appendChild(startLbl);
-        startWrap.appendChild(startInput);
-        row1.appendChild(startWrap);
+    private update(patch: Partial<CodeToolData>) {
+        this.data = { ...this.data, ...patch };
+        this.shell?.setSummary(this.summary());
+        this.shell?.preview(this.previewData());
+    }
 
-        row1.appendChild(
-            this.createToggle(
-                'Wrap',
-                this.data.wrapLongLines ?? false,
-                (v) => {
-                    this.data.wrapLongLines = v;
-                },
-                'Wrap long lines instead of horizontal scroll',
-            ),
-        );
+    private summary(): string {
+        const lines = this.data.code ? this.data.code.split('\n').length : 0;
+        return `${this.data.language || 'plaintext'} · ${lines} ${lines === 1 ? 'line' : 'lines'}`;
+    }
 
-        const tabWrap = document.createElement('span');
-        tabWrap.classList.add(CodeTool.CSS.opt, CodeTool.CSS.optGroup);
-        tabWrap.title = 'Indentation width in spaces (tab-size)';
-        const tabLbl = document.createElement('span');
-        tabLbl.classList.add(CodeTool.CSS.optLabel);
-        tabLbl.textContent = 'Indent';
-        const tabSelect = document.createElement('select');
-        tabSelect.classList.add(CodeTool.CSS.optSelect);
-        tabSelect.setAttribute('aria-label', 'Tab size');
-        for (const t of TAB_OPTIONS) {
-            const o = document.createElement('option');
-            o.value = String(t);
-            o.textContent = `Tab ${t}`;
-            if (t === (this.data.tabSize ?? 4)) o.selected = true;
-            tabSelect.appendChild(o);
-        }
-        tabSelect.addEventListener('change', () => {
-            this.data.tabSize = parseInt(tabSelect.value, 10);
-        });
-        tabWrap.appendChild(tabLbl);
-        tabWrap.appendChild(tabSelect);
-        row1.appendChild(tabWrap);
-
-        wrapper.appendChild(row1);
-
-        // Row 3: Hide header, Hide copy btn, Collapsible, Collapse after
-        const row2 = document.createElement('div');
-        row2.classList.add(CodeTool.CSS.optionsRow);
-
-        row2.appendChild(
-            this.createToggle(
-                'Hide header',
-                this.data.hideHeader ?? false,
-                (v) => {
-                    this.data.hideHeader = v;
-                },
-                'Hide the header bar (language/filename + copy button)',
-            ),
-        );
-        row2.appendChild(
-            this.createToggle(
-                'Hide copy btn',
-                this.data.hideCopyButton ?? false,
-                (v) => {
-                    this.data.hideCopyButton = v;
-                },
-                'Hide the copy-to-clipboard button',
-            ),
-        );
-        row2.appendChild(
-            this.createToggle(
-                'Collapsible',
-                this.data.collapsible ?? false,
-                (v) => {
-                    this.data.collapsible = v;
-                },
-                'Allow expand/collapse when code exceeds threshold',
-            ),
-        );
-
-        const threshInput = document.createElement('input');
-        threshInput.type = 'number';
-        threshInput.min = '5';
-        threshInput.placeholder = '20';
-        threshInput.value = this.data.collapsibleThreshold ? String(this.data.collapsibleThreshold) : '';
-        threshInput.classList.add(CodeTool.CSS.optInput);
-        threshInput.dataset.codeOpt = 'collapseThresh';
-        threshInput.addEventListener('input', () => {
-            const v = parseInt(threshInput.value, 10);
-            // Number only: min 5, else default 20
-            this.data.collapsibleThreshold = !isNaN(v) && v >= 5 ? v : 20;
-        });
-        const threshWrap = this.createLabeledInput(
-            'Collapse after',
-            'Collapse when line count exceeds this (min 5)',
-            threshInput,
-        );
-        threshWrap.classList.add(CodeTool.CSS.opt, CodeTool.CSS.optNumber);
-        const threshSuffix = document.createElement('span');
-        threshSuffix.classList.add(CodeTool.CSS.optLabel);
-        threshSuffix.textContent = 'lines';
-        threshWrap.appendChild(threshSuffix);
-        row2.appendChild(threshWrap);
-
-        wrapper.appendChild(row2);
-
-        // Row 4: Max height, Highlight
-        const row3 = document.createElement('div');
-        row3.classList.add(CodeTool.CSS.optionsRow);
-
-        const maxHInput = document.createElement('input');
-        maxHInput.type = 'text';
-        maxHInput.placeholder = '200px';
-        maxHInput.value = this.data.maxHeight || '';
-        maxHInput.classList.add(CodeTool.CSS.optInput);
-        maxHInput.style.width = '70px';
-        maxHInput.dataset.codeOpt = 'maxHeight';
-        maxHInput.addEventListener('input', () => {
-            const v = maxHInput.value.trim();
-            this.data.maxHeight = isValidMaxHeight(v) ? v : '';
-        });
-        const maxHWrap = this.createLabeledInput('Max height', 'Max height with scroll (e.g. 200px, 15rem)', maxHInput);
-        maxHWrap.classList.add(CodeTool.CSS.opt);
-        row3.appendChild(maxHWrap);
-
-        const hlInput = document.createElement('input');
-        hlInput.type = 'text';
-        hlInput.placeholder = '3,5-7';
-        hlInput.value = this.data.highlightLines || '';
-        hlInput.classList.add(CodeTool.CSS.optInput);
-        hlInput.style.width = '80px';
-        hlInput.dataset.codeOpt = 'highlightLines';
-        hlInput.addEventListener('input', () => {
-            const v = hlInput.value.trim();
-            this.data.highlightLines = isValidHighlightLines(v) ? v : '';
-        });
-        const hlWrap = this.createLabeledInput('Highlight', 'Lines to highlight (e.g. 3,5-7,9)', hlInput);
-        hlWrap.classList.add(CodeTool.CSS.opt);
-        row3.appendChild(hlWrap);
-
-        wrapper.appendChild(row3);
-
-        const textarea = document.createElement('textarea');
-        textarea.classList.add(CodeTool.CSS.textarea, 'ob-textarea');
-        textarea.placeholder = this.config.placeholder || 'Enter your code here...';
-        textarea.value = this.data.code;
-        textarea.rows = 8;
-        textarea.spellcheck = false;
-        textarea.addEventListener('input', () => {
-            this.data.code = textarea.value;
-        });
-        wrapper.appendChild(textarea);
-
-        this.wrapper = wrapper;
-        return wrapper;
+    private previewData(): Record<string, unknown> {
+        return { ...this.data, code: this.data.code || '// Nothing here yet' };
     }
 
     save(): CodeToolData {
-        if (this.langInput && !this.langInput.disabled) {
-            this.data.language = this.langInput.value.trim() || 'plaintext';
+        if (this.customLangInput && !this.customLangInput.disabled) {
+            this.data.language = this.customLangInput.value.trim() || 'plaintext';
         }
-        // Re-validate on save (min 1, invalid -> 1)
-        const startEl = this.wrapper?.querySelector<HTMLInputElement>('[data-code-opt="lineStart"]');
-        const startVal = parseInt(startEl?.value ?? '', 10);
+        // Re-validate the free-text options on save, exactly as before
+        const startVal = parseInt(this.raw.lineStart, 10);
         this.data.lineNumberStart = !isNaN(startVal) && startVal >= 1 ? startVal : 1;
 
-        const threshEl = this.wrapper?.querySelector<HTMLInputElement>('[data-code-opt="collapseThresh"]');
-        const threshVal = parseInt(threshEl?.value ?? '', 10);
+        const threshVal = parseInt(this.raw.threshold, 10);
         this.data.collapsibleThreshold = !isNaN(threshVal) && threshVal >= 5 ? threshVal : 20;
 
-        const maxHEl = this.wrapper?.querySelector<HTMLInputElement>('[data-code-opt="maxHeight"]');
-        const maxH = maxHEl?.value?.trim() ?? '';
+        const maxH = this.raw.maxHeight.trim();
         this.data.maxHeight = maxH && isValidMaxHeight(maxH) ? maxH : '';
 
-        const hlEl = this.wrapper?.querySelector<HTMLInputElement>('[data-code-opt="highlightLines"]');
-        const hl = hlEl?.value?.trim() ?? '';
+        const hl = this.raw.highlight.trim();
         this.data.highlightLines = hl && isValidHighlightLines(hl) ? hl : '';
 
         return this.data;
+    }
+
+    destroy(): void {
+        this.shell?.destroy();
+        this.shell = null;
     }
 }

@@ -1,172 +1,88 @@
-/* Layout Tool - custom/overrides only */
+/* Columns block: layout only, controls come from the kit (oe-*) */
 
-.cdx-layout__toolbar {
+.oe-layout__toolbar {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: hsl(var(--muted) / 0.4);
-    border-bottom: 1px solid hsl(var(--border) / 0.6);
-    border-radius: calc(var(--radius) + 4px) calc(var(--radius) + 4px) 0 0;
     flex-wrap: wrap;
-}
-
-.cdx-layout__toolbar-label {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: hsl(var(--muted-foreground));
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    margin-right: 0.5rem;
-}
-
-/* Preset buttons — segment pattern on the toolbar tint */
-.cdx-layout__preset-btn {
-    display: inline-flex;
-    align-items: center;
     gap: 0.5rem;
-    padding: 0.375rem 0.625rem;
-    border: none;
-    border-radius: calc(var(--radius) - 2px);
-    background: transparent;
-    color: hsl(var(--muted-foreground));
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        box-shadow var(--duration-normal) var(--ease);
-    white-space: nowrap;
+    margin-bottom: 0.75rem;
 }
 
-.cdx-layout__preset-btn:hover {
-    color: hsl(var(--foreground));
-}
-
-.cdx-layout__preset-btn--active {
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-}
-
-.cdx-layout__preset-icon {
-    display: inline-flex;
-    gap: 2px;
-    align-items: stretch;
-    height: 0.75rem;
-}
-
-.cdx-layout__preset-icon span {
-    display: block;
-    background: currentColor;
-    border-radius: 1px;
-    opacity: 0.8;
-    min-width: 0.25rem;
-}
-
-.cdx-layout__columns {
+.oe-layout__columns {
     display: flex;
-    gap: 0;
-    min-height: 80px;
+    min-height: 5rem;
+    border-radius: var(--oe-radius-inner, var(--radius));
+    border: 1px solid var(--oe-hairline, hsl(var(--border) / 0.6));
+    overflow: hidden;
 }
 
-.cdx-layout__column {
+.oe-layout__column {
     flex: 1;
     min-width: 0;
     position: relative;
-    border-right: 1px solid hsl(var(--border) / 0.6);
+    border-right: 1px solid var(--oe-hairline, hsl(var(--border) / 0.6));
 }
 
-.cdx-layout__column:last-child {
+.oe-layout__column:last-child {
     border-right: none;
 }
 
-.cdx-layout__col-header {
+.oe-layout__col-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    background: hsl(var(--muted) / 0.4);
-    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    gap: 0.5rem;
+    padding: 0.25rem 0.375rem 0.25rem 0.75rem;
+    background: var(--oe-tint, hsl(var(--muted) / 0.4));
+    border-bottom: 1px solid var(--oe-hairline, hsl(var(--border) / 0.6));
 }
 
-.cdx-layout__col-label {
-    font-size: 0.6875rem;
+.oe-layout__col-label,
+.oe-layout__col-width {
+    font-size: var(--oe-label, 0.6875rem);
     font-weight: 500;
-    color: hsl(var(--muted-foreground));
-    text-transform: uppercase;
     letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
 }
 
-.cdx-layout__col-width {
-    font-size: 0.6875rem;
-    color: hsl(var(--muted-foreground));
+.oe-layout__col-width {
     opacity: 0.7;
 }
 
-.cdx-layout__col-meta {
+.oe-layout__col-meta {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
 }
 
-.cdx-layout__col-clear {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.375rem;
-    height: 1.375rem;
-    border: 1px solid transparent;
-    background: transparent;
-    color: hsl(var(--muted-foreground));
-    border-radius: calc(var(--radius) - 2px);
-    padding: 0;
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        border-color var(--duration-normal) var(--ease);
-    flex-shrink: 0;
-}
-
-.cdx-layout__col-clear:hover {
-    border-color: hsl(var(--destructive) / 0.4);
-    background: hsl(var(--destructive) / 0.08);
-    color: hsl(var(--destructive));
-}
-
-.cdx-layout__col-editor {
-    min-height: 80px;
+.oe-layout__col-editor {
+    min-height: 5rem;
     padding: 0.5rem;
     outline: none;
     position: relative;
 }
 
-.cdx-layout__col-editor .codex-editor {
-    min-height: 60px;
+/* Nested editors sit inside the block: no toolbar gutter, compact rhythm */
+.oe-layout__col-editor .codex-editor {
+    min-height: 3.75rem;
 }
 
-.cdx-layout__col-editor .codex-editor__redactor {
+.oe-layout__col-editor .codex-editor__redactor {
     padding-bottom: 1rem !important;
 }
 
-.cdx-layout__col-editor .ce-block {
-    font-size: 0.875rem;
+.oe-layout__col-editor .ce-block {
+    font-size: var(--text-sm, 0.875rem);
 }
 
-.cdx-layout__col-editor .codex-editor__redactor:only-child::before {
-    font-size: 0.875rem;
-}
-
-.cdx-layout__col-placeholder {
-    padding: 1rem 0.75rem;
-    color: hsl(var(--muted-foreground));
-    font-size: 0.875rem;
-    font-style: italic;
-    text-align: center;
-    min-height: 60px;
+.oe-layout__col-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 3.75rem;
+    padding: 1rem 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-size: var(--text-sm, 0.875rem);
+    text-align: center;
 }

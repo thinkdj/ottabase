@@ -4,6 +4,10 @@ import EditorJS, {
     type BlockToolConstructorOptions,
     type OutputData,
 } from '@editorjs/editorjs';
+import { officialBlockTools } from '../../official-tools';
+import { toolboxEntry } from '../../blocks';
+import { h, iconButton, segment } from '../../ui/kit';
+import { BlockShell } from '../../ui/shell';
 import './LayoutTool.css';
 
 /** Column width preset keys */
@@ -36,58 +40,28 @@ export interface LayoutData {
 
 export interface LayoutToolConfig {
     /** EditorJS tools to use inside nested column editors */
-    tools?: Record<string, any>;
+    tools?: Record<string, unknown>;
 }
 
-// Tabler icon: columns (layout-columns feel)
-const TOOLBOX_ICON =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(3 3)"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></g></svg>';
-
-// Tabler icon: trash (clear column)
-const TRASH_ICON =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+const PLACEHOLDER = 'Type or press / to add blocks…';
 
 /**
- * LayoutTool – multi-column layout where each column contains a full
- * nested EditorJS instance. Supports presets 50/50, 25/75, 75/25,
- * 33/67, 67/33, and three equal columns.
+ * Columns block: each column is a full nested Editor.js instance, so the columns themselves are
+ * the editing surface. The shell has no preview mode here; the preset switch is a segment.
  */
 export default class LayoutTool implements BlockTool {
-    private api: API;
+    private readonly api: API;
+    private readonly config: LayoutToolConfig;
     private data: LayoutData;
-    private config: LayoutToolConfig;
-    private wrapper: HTMLElement | null = null;
+    private shell: BlockShell | null = null;
+    private columnsEl: HTMLElement | null = null;
     /** Nested EditorJS instances keyed by column index */
     private nestedEditors: Map<number, EditorJS> = new Map();
     /** Block ID used to generate unique holder IDs */
-    private blockId: string;
-
-    static get CSS() {
-        return {
-            baseClass: 'cdx-layout',
-            wrapper: 'cdx-layout__wrapper',
-            toolbar: 'cdx-layout__toolbar',
-            toolbarLabel: 'cdx-layout__toolbar-label',
-            presetBtn: 'cdx-layout__preset-btn',
-            presetBtnActive: 'cdx-layout__preset-btn--active',
-            presetIcon: 'cdx-layout__preset-icon',
-            columns: 'cdx-layout__columns',
-            column: 'cdx-layout__column',
-            colHeader: 'cdx-layout__col-header',
-            colLabel: 'cdx-layout__col-label',
-            colWidth: 'cdx-layout__col-width',
-            colMeta: 'cdx-layout__col-meta',
-            colClearBtn: 'cdx-layout__col-clear',
-            colEditor: 'cdx-layout__col-editor',
-            colPlaceholder: 'cdx-layout__col-placeholder',
-        };
-    }
+    private readonly blockId: string;
 
     static get toolbox() {
-        return {
-            title: 'Layout',
-            icon: TOOLBOX_ICON,
-        };
+        return toolboxEntry('layout');
     }
 
     static get enableLineBreaks() {
@@ -95,216 +69,119 @@ export default class LayoutTool implements BlockTool {
     }
 
     constructor(options: BlockToolConstructorOptions<LayoutData, LayoutToolConfig>) {
-        const { data, config, api } = options;
-        const block = (options as any).block;
+        const { data, config, api, block } = options;
         this.api = api;
         this.config = config || {};
         this.blockId = block?.id || `layout-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-        const defaultPreset: LayoutPreset = '1-1';
-        const preset: LayoutPreset = data?.preset || defaultPreset;
+        const preset: LayoutPreset = data?.preset || '1-1';
         const presetDef = PRESETS.find((p) => p.key === preset) || PRESETS[0];
-        const columnCount = presetDef.widths.length;
-
-        const columns: LayoutColumnData[] = [];
-        for (let i = 0; i < columnCount; i++) {
-            columns.push({
-                content: data?.columns?.[i]?.content || { blocks: [] },
-            });
-        }
-
-        this.data = { preset, columns };
+        this.data = {
+            preset: presetDef.key,
+            columns: presetDef.widths.map((_, i) => ({ content: data?.columns?.[i]?.content || { blocks: [] } })),
+        };
     }
 
     render(): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add(LayoutTool.CSS.baseClass, LayoutTool.CSS.wrapper, 'ob-plugin');
+        const shell = new BlockShell({ type: 'layout', previewable: false, summary: this.summary() });
+        this.shell = shell;
 
-        wrapper.appendChild(this.buildToolbar());
-        wrapper.appendChild(this.buildColumns());
+        const presets = segment<LayoutPreset>({
+            value: this.data.preset,
+            ariaLabel: 'Column layout',
+            options: PRESETS.map((p) => ({ value: p.key, label: p.label })),
+            onChange: (key) => void this.switchPreset(key),
+        });
+        this.columnsEl = h('div', { className: 'oe-layout__columns', dataset: { key: 'columns' } });
+        this.buildColumns();
 
-        this.wrapper = wrapper;
-
+        shell.fields.append(h('div', { className: 'oe-layout__toolbar' }, presets), this.columnsEl);
         requestAnimationFrame(() => this.initNestedEditors());
-
-        return wrapper;
+        return shell.element;
     }
 
-    private buildToolbar(): HTMLElement {
-        const toolbar = document.createElement('div');
-        toolbar.classList.add(LayoutTool.CSS.toolbar);
-
-        const label = document.createElement('span');
-        label.classList.add(LayoutTool.CSS.toolbarLabel);
-        label.textContent = 'Layout';
-        toolbar.appendChild(label);
-
-        PRESETS.forEach((preset) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.classList.add(LayoutTool.CSS.presetBtn);
-            btn.title = preset.label;
-            if (preset.key === this.data.preset) {
-                btn.classList.add(LayoutTool.CSS.presetBtnActive);
-            }
-
-            btn.appendChild(this.buildPresetIcon(preset.widths));
-
-            const btnLabel = document.createElement('span');
-            btnLabel.textContent = preset.label;
-            btn.appendChild(btnLabel);
-
-            btn.addEventListener('click', () => this.switchPreset(preset.key));
-            toolbar.appendChild(btn);
-        });
-
-        return toolbar;
+    private summary(): string {
+        return PRESETS.find((p) => p.key === this.data.preset)?.label ?? this.data.preset;
     }
 
-    private buildPresetIcon(widths: number[]): HTMLElement {
-        const icon = document.createElement('span');
-        icon.classList.add(LayoutTool.CSS.presetIcon);
-        icon.setAttribute('aria-hidden', 'true');
-        const total = widths.reduce((s, w) => s + w, 0);
-        widths.forEach((w) => {
-            const bar = document.createElement('span');
-            bar.style.width = `${Math.round((w / total) * 20)}px`;
-            icon.appendChild(bar);
-        });
-        return icon;
+    private presetDef(): PresetDef {
+        return PRESETS.find((p) => p.key === this.data.preset) || PRESETS[0];
     }
 
-    private buildColumns(): HTMLElement {
-        const columnsEl = document.createElement('div');
-        columnsEl.classList.add(LayoutTool.CSS.columns);
-        columnsEl.setAttribute('data-key', 'columns');
-
-        const presetDef = PRESETS.find((p) => p.key === this.data.preset) || PRESETS[0];
-
-        presetDef.widths.forEach((width, idx) => {
-            columnsEl.appendChild(this.buildColumn(idx, width));
-        });
-
-        return columnsEl;
+    private buildColumns(): void {
+        if (!this.columnsEl) return;
+        this.columnsEl.innerHTML = '';
+        this.presetDef().widths.forEach((width, idx) => this.columnsEl!.appendChild(this.buildColumn(idx, width)));
     }
 
     private buildColumn(idx: number, width: number): HTMLElement {
-        const col = document.createElement('div');
-        col.classList.add(LayoutTool.CSS.column);
+        const header = h(
+            'div',
+            { className: 'oe-layout__col-header' },
+            h('span', { className: 'oe-layout__col-label' }, `Column ${idx + 1}`),
+            h(
+                'div',
+                { className: 'oe-layout__col-meta' },
+                h('span', { className: 'oe-layout__col-width' }, `${width}%`),
+                iconButton({
+                    icon: 'trash',
+                    label: `Clear column ${idx + 1}`,
+                    danger: true,
+                    onClick: () => void this.clearColumn(idx),
+                }),
+            ),
+        );
+        const holder = h('div', { className: 'oe-layout__col-editor', id: this.colHolderId(idx) }, this.placeholder());
+        const col = h('div', { className: 'oe-layout__column', dataset: { col: String(idx) } }, header, holder);
         col.style.flexBasis = `${width}%`;
         col.style.flexGrow = '0';
         col.style.flexShrink = '0';
-        col.setAttribute('data-col', String(idx));
-
-        const header = document.createElement('div');
-        header.classList.add(LayoutTool.CSS.colHeader);
-
-        const colLabel = document.createElement('span');
-        colLabel.classList.add(LayoutTool.CSS.colLabel);
-        colLabel.textContent = `Column ${idx + 1}`;
-
-        const colMeta = document.createElement('div');
-        colMeta.classList.add(LayoutTool.CSS.colMeta);
-
-        const colWidth = document.createElement('span');
-        colWidth.classList.add(LayoutTool.CSS.colWidth);
-        colWidth.textContent = `${width}%`;
-        colMeta.appendChild(colWidth);
-
-        // Clear button with trash icon
-        const clearBtn = document.createElement('button');
-        clearBtn.type = 'button';
-        clearBtn.classList.add(LayoutTool.CSS.colClearBtn);
-        clearBtn.title = 'Clear column';
-        clearBtn.setAttribute('aria-label', `Clear column ${idx + 1}`);
-        clearBtn.innerHTML = TRASH_ICON;
-        clearBtn.addEventListener('click', () => this.clearColumn(idx));
-        colMeta.appendChild(clearBtn);
-
-        header.appendChild(colLabel);
-        header.appendChild(colMeta);
-        col.appendChild(header);
-
-        const editorHolder = document.createElement('div');
-        editorHolder.classList.add(LayoutTool.CSS.colEditor);
-        editorHolder.id = this.colHolderId(idx);
-
-        const placeholder = document.createElement('div');
-        placeholder.classList.add(LayoutTool.CSS.colPlaceholder);
-        placeholder.textContent = 'Type or press / to add blocks…';
-        editorHolder.appendChild(placeholder);
-
-        col.appendChild(editorHolder);
         return col;
     }
 
+    private placeholder(): HTMLElement {
+        return h('div', { className: 'oe-layout__col-placeholder' }, PLACEHOLDER);
+    }
+
     private colHolderId(idx: number): string {
-        return `cdx-layout-col-${this.blockId}-${idx}`;
+        return `oe-layout-col-${this.blockId}-${idx}`;
     }
 
     private async initNestedEditors(): Promise<void> {
         this.destroyNestedEditors();
-
-        const presetDef = PRESETS.find((p) => p.key === this.data.preset) || PRESETS[0];
-
-        for (let idx = 0; idx < presetDef.widths.length; idx++) {
+        const widths = this.presetDef().widths;
+        for (let idx = 0; idx < widths.length; idx++) {
             const holderId = this.colHolderId(idx);
             const holderEl = document.getElementById(holderId);
             if (!holderEl) continue;
-
             holderEl.innerHTML = '';
-
-            const colData = this.data.columns[idx]?.content || { blocks: [] };
-
             try {
                 const editor = new EditorJS({
                     holder: holderId,
-                    data: colData,
-                    tools: this.config.tools || this.buildDefaultTools(),
-                    placeholder: 'Type or press / to add blocks…',
+                    data: this.data.columns[idx]?.content || { blocks: [] },
+                    tools: (this.config.tools || LayoutTool.defaultNestedTools()) as never,
+                    placeholder: PLACEHOLDER,
                     minHeight: 60,
-                    logLevel: 'ERROR' as any,
+                    logLevel: 'ERROR' as never,
                 });
-
                 await editor.isReady;
                 this.nestedEditors.set(idx, editor);
             } catch {
-                if (holderEl) {
-                    const ph = document.createElement('div');
-                    ph.classList.add(LayoutTool.CSS.colPlaceholder);
-                    ph.textContent = 'Type or press / to add blocks…';
-                    holderEl.appendChild(ph);
-                }
+                holderEl.appendChild(this.placeholder());
             }
         }
     }
 
-    /**
-     * Default tools for nested editors.
-     * Excludes Layout to prevent infinite nesting.
-     */
-    private buildDefaultTools(): Record<string, any> {
-        const tools: Record<string, any> = {};
-        const toolImports: Array<{ name: string; module: string; config?: Record<string, any> }> = [
-            { name: 'paragraph', module: '@editorjs/paragraph' },
-            { name: 'header', module: '@editorjs/header', config: { levels: [1, 2, 3, 4, 5, 6], defaultLevel: 2 } },
-            { name: 'delimiter', module: '@editorjs/delimiter' },
-            { name: 'list', module: '@editorjs/nested-list', config: { defaultStyle: 'unordered' } },
-            { name: 'checklist', module: '@editorjs/checklist' },
-            { name: 'table', module: '@editorjs/table', config: { rows: 2, cols: 3 } },
-        ];
-
-        for (const { name, module, config } of toolImports) {
-            try {
-                // eslint-disable-next-line @typescript-eslint/no-var-requires
-                const Tool = require(module).default || require(module);
-                tools[name] = config ? { class: Tool, config } : { class: Tool };
-            } catch {
-                // Tool not available – skip silently
-            }
-        }
-
-        return tools;
+    /** Tools for a column when the host passes none. Excludes Layout itself: no nesting columns in columns. */
+    static defaultNestedTools(): Record<string, unknown> {
+        return {
+            paragraph: { class: officialBlockTools.Paragraph },
+            header: { class: officialBlockTools.Header, config: { levels: [1, 2, 3, 4, 5, 6], defaultLevel: 2 } },
+            delimiter: { class: officialBlockTools.Delimiter },
+            list: { class: officialBlockTools.NestedList, config: { defaultStyle: 'unordered' } },
+            checklist: { class: officialBlockTools.CheckList },
+            table: { class: officialBlockTools.Table, config: { rows: 2, cols: 3 } },
+        };
     }
 
     private destroyNestedEditors(): void {
@@ -320,78 +197,47 @@ export default class LayoutTool implements BlockTool {
 
     private async clearColumn(idx: number): Promise<void> {
         if (!this.data.columns[idx]) return;
-
         this.data.columns[idx] = { content: { blocks: [] } };
-
-        const editor = this.nestedEditors.get(idx) as any;
+        const editor = this.nestedEditors.get(idx) as (EditorJS & { clear?: () => Promise<void> }) | undefined;
         if (editor) {
             try {
                 await (editor.clear?.() ?? editor.render?.({ blocks: [] }));
             } catch {
                 /* ignore editor clearing errors */
             }
+            return;
         }
-
         const holderEl = document.getElementById(this.colHolderId(idx));
-        if (holderEl && !editor) {
+        if (holderEl) {
             holderEl.innerHTML = '';
-            const placeholder = document.createElement('div');
-            placeholder.classList.add(LayoutTool.CSS.colPlaceholder);
-            placeholder.textContent = 'Type or press / to add blocks…';
-            holderEl.appendChild(placeholder);
+            holderEl.appendChild(this.placeholder());
         }
     }
 
     private async switchPreset(preset: LayoutPreset): Promise<void> {
         if (preset === this.data.preset) return;
-
         await this.collectColumnData();
-
-        const newPresetDef = PRESETS.find((p) => p.key === preset) || PRESETS[0];
-        const newColumnCount = newPresetDef.widths.length;
-
-        const newColumns: LayoutColumnData[] = [];
-        for (let i = 0; i < newColumnCount; i++) {
-            newColumns.push({
-                content: this.data.columns[i]?.content || { blocks: [] },
-            });
-        }
-
-        this.data.preset = preset;
-        this.data.columns = newColumns;
-
-        if (this.wrapper) {
-            this.wrapper.querySelectorAll(`.${LayoutTool.CSS.presetBtn}`).forEach((btn, i) => {
-                btn.classList.toggle(LayoutTool.CSS.presetBtnActive, PRESETS[i]?.key === preset);
-            });
-        }
-
-        const columnsEl = this.wrapper?.querySelector('[data-key="columns"]') as HTMLElement | null;
-        if (columnsEl) {
-            columnsEl.innerHTML = '';
-            newPresetDef.widths.forEach((width, idx) => {
-                columnsEl.appendChild(this.buildColumn(idx, width));
-            });
-        }
-
+        const next = PRESETS.find((p) => p.key === preset) || PRESETS[0];
+        this.data.preset = next.key;
+        this.data.columns = next.widths.map((_, i) => ({ content: this.data.columns[i]?.content || { blocks: [] } }));
+        this.shell?.setSummary(this.summary());
+        this.buildColumns();
         requestAnimationFrame(() => this.initNestedEditors());
     }
 
     private async collectColumnData(): Promise<void> {
-        const savePromises: Array<Promise<void>> = [];
+        const saves: Array<Promise<void>> = [];
         this.nestedEditors.forEach((editor, idx) => {
-            savePromises.push(
+            saves.push(
                 editor
                     .save()
                     .then((outputData) => {
-                        if (this.data.columns[idx]) {
-                            this.data.columns[idx].content = outputData;
-                        }
+                        if (this.data.columns[idx]) this.data.columns[idx].content = outputData;
                     })
                     .catch(() => {}),
             );
         });
-        await Promise.all(savePromises);
+        await Promise.all(saves);
     }
 
     async save(): Promise<LayoutData> {
@@ -411,5 +257,7 @@ export default class LayoutTool implements BlockTool {
 
     destroy(): void {
         this.destroyNestedEditors();
+        this.shell?.destroy();
+        this.shell = null;
     }
 }

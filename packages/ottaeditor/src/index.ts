@@ -1,10 +1,25 @@
 /**
  * @ottabase/ottaeditor
  *
- * A flexible EditorJS wrapper with easy plugin management for Ottabase applications
+ * Editor.js, wired for Ottabase: one plugin list, undo/redo, JSON and Markdown export, and a
+ * set of custom blocks that edit in a shared kit and preview through @ottabase/ottarenderer,
+ * so the editor shows exactly what the reader will get.
  */
+import '@ottabase/ottarenderer/styles';
+import './styles/ottaeditor.css';
 
 export { OttaEditor } from './OttaEditor';
+
+// Block registry, palette and the kit third-party blocks build with
+export { BLOCK_GROUPS, BLOCKS, blockMeta, toolboxEntry } from './blocks';
+export type { BlockGroup, BlockMeta } from './blocks';
+export { BlockPalette } from './BlockPalette';
+export type { BlockPaletteProps } from './BlockPalette';
+export * as kit from './ui/kit';
+export { icon as blockIcon } from './ui/icons';
+export type { IconName } from './ui/icons';
+export { BlockShell } from './ui/shell';
+export type { BlockShellOptions, ShellMode } from './ui/shell';
 export { OttaEditorComponent } from './OttaEditorComponent';
 export { useOttaEditor } from './useOttaEditor';
 
@@ -51,7 +66,6 @@ export {
 } from './defaultPlugins';
 
 // Export custom tools
-export { default as AdvancedImageRenderer } from './tools/AdvancedImageTool/AdvancedImageRenderer';
 export { default as AdvancedImageTool } from './tools/AdvancedImageTool/AdvancedImageTool';
 export type { AdvancedImageData } from './tools/AdvancedImageTool/types';
 export type { AIDisclosureLevel, DisclosureData } from './tools/DisclosureTool/DisclosureTool';

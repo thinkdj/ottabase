@@ -1,156 +1,100 @@
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { MediaEmbedData } from './MediaEmbedTool';
 import MediaEmbedTool from './MediaEmbedTool';
 
-// Mock CSS import
-vi.mock('./MediaEmbedTool.css', () => ({}));
+const tools: MediaEmbedTool[] = [];
+
+function mount(data: Partial<MediaEmbedData> = {}) {
+    const tool = new MediaEmbedTool({ data });
+    const element = tool.render();
+    document.body.appendChild(element);
+    tools.push(tool);
+    return { tool, element };
+}
+
+afterEach(() => {
+    tools.splice(0).forEach((t) => t.destroy());
+    document.body.innerHTML = '';
+});
 
 describe('MediaEmbedTool', () => {
-    describe('Toolbox', () => {
-        it('should not appear in the toolbox', () => {
-            // MediaEmbedTool is inserted via MediaLibraryTool, not shown directly
-            expect(MediaEmbedTool.toolbox).toBeFalsy();
-        });
-
-        it('should support read-only mode', () => {
-            expect(MediaEmbedTool.isReadOnlySupported).toBe(true);
-        });
+    it('is in the toolbox as "Video & files" and supports read-only', () => {
+        expect(MediaEmbedTool.toolbox.title).toBe('Video & files');
+        expect(MediaEmbedTool.isReadOnlySupported).toBe(true);
     });
 
-    describe('Initialization', () => {
-        it('should initialize with default empty values', () => {
-            const tool = new MediaEmbedTool({ data: {} as MediaEmbedData });
-            const saved = tool.save();
-            expect(saved.url).toBe('');
-            expect(saved.mediaKind).toBe('other');
-            expect(saved.mimeType).toBe('');
-            expect(saved.title).toBe('');
+    it('starts with default empty values and keeps provided data', () => {
+        expect(new MediaEmbedTool({ data: {} }).save()).toEqual({
+            url: '',
+            title: '',
+            caption: '',
+            mediaId: '',
+            mimeType: '',
+            mediaKind: 'other',
+            thumbnailUrl: '',
+            previewUrl: '',
         });
-
-        it('should initialize with provided data', () => {
-            const tool = new MediaEmbedTool({
-                data: {
-                    url: 'https://cdn.example.com/clip.mp4',
-                    title: 'Demo video',
-                    caption: 'A quick demo',
-                    mediaId: 'media-42',
-                    mimeType: 'video/mp4',
-                    mediaKind: 'video',
-                },
-            });
-
-            const saved = tool.save();
-            expect(saved.url).toBe('https://cdn.example.com/clip.mp4');
-            expect(saved.title).toBe('Demo video');
-            expect(saved.caption).toBe('A quick demo');
-            expect(saved.mediaId).toBe('media-42');
-            expect(saved.mimeType).toBe('video/mp4');
-            expect(saved.mediaKind).toBe('video');
-        });
+        const data: MediaEmbedData = {
+            url: 'https://cdn.example.com/track.mp3',
+            title: 'My Track',
+            caption: 'Listen now',
+            mediaId: 'media-99',
+            mimeType: 'audio/mpeg',
+            mediaKind: 'audio',
+            thumbnailUrl: 'https://cdn.example.com/track-thumb.jpg',
+            previewUrl: 'https://cdn.example.com/track-preview.mp3',
+        };
+        expect(new MediaEmbedTool({ data }).save()).toEqual(data);
     });
 
-    describe('Rendering', () => {
-        it('should render a video element for video kind', () => {
-            const tool = new MediaEmbedTool({
-                data: {
-                    url: 'https://cdn.example.com/clip.mp4',
-                    mimeType: 'video/mp4',
-                    mediaKind: 'video',
-                    title: 'My Video',
-                },
-            });
-            const wrapper = tool.render();
-            const video = wrapper.querySelector('video');
-            expect(video).toBeTruthy();
-            expect(video?.getAttribute('src')).toBe('https://cdn.example.com/clip.mp4');
-            expect(video?.hasAttribute('controls')).toBe(true);
-        });
-
-        it('should render an audio element for audio kind', () => {
-            const tool = new MediaEmbedTool({
-                data: {
-                    url: 'https://cdn.example.com/track.mp3',
-                    mimeType: 'audio/mpeg',
-                    mediaKind: 'audio',
-                    title: 'My Track',
-                },
-            });
-            const wrapper = tool.render();
-            const audio = wrapper.querySelector('audio');
-            expect(audio).toBeTruthy();
-            expect(audio?.getAttribute('src')).toBe('https://cdn.example.com/track.mp3');
-            expect(audio?.hasAttribute('controls')).toBe(true);
-        });
-
-        it('should render an iframe for PDF documents', () => {
-            const tool = new MediaEmbedTool({
-                data: {
-                    url: 'https://cdn.example.com/guide.pdf',
-                    mimeType: 'application/pdf',
-                    mediaKind: 'document',
-                    title: 'User Guide',
-                },
-            });
-            const wrapper = tool.render();
-            const iframe = wrapper.querySelector('iframe');
-            expect(iframe).toBeTruthy();
-            expect(iframe?.getAttribute('src')).toBe('https://cdn.example.com/guide.pdf');
-            expect(iframe?.getAttribute('sandbox')).toBe('allow-same-origin');
-        });
-
-        it('should render a placeholder for unknown/other kinds', () => {
-            const tool = new MediaEmbedTool({
-                data: {
-                    url: 'https://cdn.example.com/data.zip',
-                    mimeType: 'application/zip',
-                    mediaKind: 'archive',
-                    title: 'Project bundle',
-                },
-            });
-            const wrapper = tool.render();
-            const placeholder = wrapper.querySelector('.media-embed-placeholder');
-            expect(placeholder).toBeTruthy();
-            expect(placeholder?.textContent).toContain('Project bundle');
-            expect(placeholder?.textContent).toContain('archive');
-        });
-
-        it('should render empty message when no URL', () => {
-            const tool = new MediaEmbedTool({ data: {} as MediaEmbedData });
-            const wrapper = tool.render();
-            const empty = wrapper.querySelector('.media-embed-empty');
-            expect(empty).toBeTruthy();
-        });
-
-        it('should render caption when provided', () => {
-            const tool = new MediaEmbedTool({
-                data: {
-                    url: 'https://cdn.example.com/clip.mp4',
-                    mediaKind: 'video',
-                    caption: 'Watch this demo',
-                },
-            });
-            const wrapper = tool.render();
-            const caption = wrapper.querySelector('.media-embed-caption');
-            expect(caption).toBeTruthy();
-            expect(caption?.textContent).toBe('Watch this demo');
-        });
+    it('opens in edit when empty, preview when it has a file', () => {
+        expect(mount().element.dataset.mode).toBe('edit');
+        expect(mount({ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }).element.dataset.mode).toBe(
+            'preview',
+        );
     });
 
-    describe('Save', () => {
-        it('should return the full data shape', () => {
-            const data: MediaEmbedData = {
-                url: 'https://cdn.example.com/track.mp3',
-                title: 'My Track',
-                caption: 'Listen now',
-                mediaId: 'media-99',
-                mimeType: 'audio/mpeg',
-                mediaKind: 'audio',
-                thumbnailUrl: 'https://cdn.example.com/track-thumb.jpg',
-                previewUrl: 'https://cdn.example.com/track-preview.mp3',
-            };
-            const tool = new MediaEmbedTool({ data });
-            const saved = tool.save();
-            expect(saved).toEqual(data);
+    it('title and caption fields flow into save()', () => {
+        const { tool } = mount({ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' });
+        fireEvent.input(screen.getByLabelText('Title'), { target: { value: 'Demo video' } });
+        fireEvent.input(screen.getByLabelText('Caption'), { target: { value: 'A quick demo' } });
+        expect(tool.save()).toMatchObject({ title: 'Demo video', caption: 'A quick demo', mediaKind: 'video' });
+    });
+
+    it('a library pick fills url, kind and metadata', () => {
+        const { tool, element } = mount();
+        let field: string | undefined;
+        window.addEventListener(
+            'media-library-open',
+            ((e: CustomEvent<{ field: string; acceptKinds: string[] }>) => {
+                field = e.detail.field;
+                expect(e.detail.acceptKinds).toContain('video');
+            }) as EventListener,
+            { once: true },
+        );
+        fireEvent.click(screen.getByRole('button', { name: /choose from library/i }));
+        window.dispatchEvent(
+            new CustomEvent('media-library-selected-item', {
+                detail: {
+                    field,
+                    media: {
+                        url: 'https://cdn.example.com/guide.pdf',
+                        mediaId: 'm7',
+                        mimeType: 'application/pdf',
+                        mediaKind: 'document',
+                        title: 'User Guide',
+                    },
+                },
+            }),
+        );
+        expect(tool.save()).toMatchObject({
+            url: 'https://cdn.example.com/guide.pdf',
+            mediaId: 'm7',
+            mimeType: 'application/pdf',
+            mediaKind: 'document',
+            title: 'User Guide',
         });
+        expect(element.dataset.mode).toBe('preview');
     });
 });

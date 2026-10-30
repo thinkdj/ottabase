@@ -1,242 +1,122 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ReferencesTool, { type ReferencesData } from '../ReferencesTool';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { API } from '@editorjs/editorjs';
+import ReferencesTool, { type ReferencesData, type ReferencesToolConfig } from '../ReferencesTool';
 
-// Mock CSS import
-vi.mock('../ReferencesTool.css', () => ({}));
+const tools: ReferencesTool[] = [];
 
-const createMockAPI = () => ({
-    blocks: {
-        getCurrentBlockIndex: vi.fn(() => 0),
-    },
+function mount(data?: Partial<ReferencesData>, config: ReferencesToolConfig = {}) {
+    const tool = new ReferencesTool({ api: {} as API, data, config, block: {} as never, readOnly: false });
+    const element = tool.render();
+    document.body.appendChild(element);
+    tools.push(tool);
+    return { tool, element };
+}
+
+afterEach(() => {
+    tools.splice(0).forEach((t) => t.destroy());
+    document.body.innerHTML = '';
 });
 
 describe('ReferencesTool', () => {
-    let mockAPI: ReturnType<typeof createMockAPI>;
-
-    beforeEach(() => {
-        mockAPI = createMockAPI();
+    it('takes its toolbox entry from the registry and allows line breaks', () => {
+        expect(ReferencesTool.toolbox.title).toBe('References');
+        expect(ReferencesTool.toolbox.icon).toContain('<svg');
+        expect(ReferencesTool.enableLineBreaks).toBe(true);
     });
 
-    // ── Static metadata ──────────────────────────────────────────────────────
-
-    describe('Toolbox', () => {
-        it('should have correct toolbox title and icon', () => {
-            expect(ReferencesTool.toolbox.title).toBe('References');
-            expect(ReferencesTool.toolbox.icon).toContain('svg');
-        });
+    it('starts with one empty row that does not save, and honours the configured style', () => {
+        const { tool, element } = mount();
+        expect(element.dataset.mode).toBe('edit');
+        expect(tool.save()).toEqual({ style: 'numbered', items: [] });
+        expect(mount({}, { defaultStyle: 'footnote' }).tool.save().style).toBe('footnote');
     });
 
-    describe('enableLineBreaks', () => {
-        it('should allow line breaks', () => {
-            expect(ReferencesTool.enableLineBreaks).toBe(true);
+    it('keeps ids, trims, omits empty optionals and drops rows without a URL', () => {
+        const { tool, element } = mount({
+            style: 'footnote',
+            items: [
+                {
+                    id: 'a',
+                    url: '  https://example.com ',
+                    title: ' Example ',
+                    authors: 'Author',
+                    year: '2024',
+                    accessedDate: '',
+                    note: '',
+                },
+                { id: 'b', url: '', title: 'No url' },
+                { id: 'c', url: 'https://editorjs.io', title: 'EditorJS' },
+            ],
         });
+        expect(element.dataset.mode).toBe('preview');
+        expect(tool.save()).toEqual({
+            style: 'footnote',
+            items: [
+                {
+                    id: 'a',
+                    url: 'https://example.com',
+                    title: 'Example',
+                    authors: 'Author',
+                    year: '2024',
+                    accessedDate: undefined,
+                    note: undefined,
+                },
+                {
+                    id: 'c',
+                    url: 'https://editorjs.io',
+                    title: 'EditorJS',
+                    authors: undefined,
+                    year: undefined,
+                    accessedDate: undefined,
+                    note: undefined,
+                },
+            ],
+        });
+        expect(element.querySelector('.oe-block__summary')?.textContent).toBe('2 sources · footnotes');
     });
 
-    // ── Constructor / defaults ────────────────────────────────────────────────
+    it('edits through the kit: style, fields, add and reorder', () => {
+        const { tool } = mount();
+        fireEvent.click(
+            within(screen.getByRole('radiogroup', { name: 'References style' })).getByRole('radio', {
+                name: 'Footnotes',
+            }),
+        );
+        fireEvent.input(screen.getByLabelText('URL 1'), { target: { value: 'https://one.test' } });
+        fireEvent.input(screen.getByLabelText('Title 1'), { target: { value: 'One' } });
+        fireEvent.input(screen.getByLabelText('Year 1'), { target: { value: '2020' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add reference' }));
+        fireEvent.input(screen.getByLabelText('URL 2'), { target: { value: 'https://two.test' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Move reference 2 up' }));
+        const saved = tool.save();
+        expect(saved.style).toBe('footnote');
+        expect(saved.items.map((i) => i.url)).toEqual(['https://two.test', 'https://one.test']);
+        expect(saved.items[1]).toMatchObject({ title: 'One', year: '2020' });
+        expect(saved.items[0]!.id).toBeTruthy();
+    });
 
-    describe('Constructor defaults', () => {
-        it('should start with one empty item when no data provided', () => {
-            const tool = new ReferencesTool({ api: mockAPI as any, config: {} });
-            const saved = tool.save();
-            // Empty items (no url) are filtered on save, so expect empty array
-            expect(saved.items).toHaveLength(0);
-            expect(saved.style).toBe('numbered');
-        });
-
-        it('should accept defaultStyle from config', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: { defaultStyle: 'footnote' },
-            });
-            expect(tool.save().style).toBe('footnote');
-        });
-
-        it('should preserve provided data', () => {
-            const initialData: ReferencesData = {
-                style: 'footnote',
+    it('validates on at least one URL', () => {
+        const { tool } = mount();
+        expect(tool.validate({ style: 'numbered', items: [] })).toBe(false);
+        expect(
+            tool.validate({
+                style: 'numbered',
                 items: [
-                    { id: '1', url: 'https://example.com', title: 'Example', authors: 'Jane Doe', year: '2024' },
-                    { id: '2', url: 'https://editorjs.io', title: 'EditorJS', year: '2023' },
+                    { id: '1', url: '' },
+                    { id: '2', url: '  ' },
                 ],
-            };
-            const tool = new ReferencesTool({ api: mockAPI as any, config: {}, data: initialData });
-            const saved = tool.save();
-            expect(saved.style).toBe('footnote');
-            expect(saved.items).toHaveLength(2);
-            expect(saved.items[0].url).toBe('https://example.com');
-            expect(saved.items[1].title).toBe('EditorJS');
-        });
-    });
-
-    // ── save ──────────────────────────────────────────────────────────────────
-
-    describe('save()', () => {
-        it('should return items array with correct structure', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [{ id: '1', url: 'https://example.com', title: 'Example', authors: 'Author', year: '2024' }],
-                },
-            });
-            const saved = tool.save();
-            expect(saved.items).toHaveLength(1);
-            expect(saved.items[0].url).toBe('https://example.com');
-            expect(saved.items[0].title).toBe('Example');
-            expect(saved.items[0].authors).toBe('Author');
-            expect(saved.items[0].year).toBe('2024');
-        });
-
-        it('should filter out items where url is empty', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [
-                        { id: '1', url: '', title: 'No URL item' },
-                        { id: '2', url: 'https://example.com', title: 'Has URL' },
-                    ],
-                },
-            });
-            const saved = tool.save();
-            expect(saved.items).toHaveLength(1);
-            expect(saved.items[0].url).toBe('https://example.com');
-        });
-
-        it('should trim whitespace from saved items', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [{ id: '1', url: '  https://example.com  ', title: '  Trimmed  ' }],
-                },
-            });
-            const saved = tool.save();
-            expect(saved.items[0].url).toBe('https://example.com');
-            expect(saved.items[0].title).toBe('Trimmed');
-        });
-
-        it('should omit optional fields that are empty strings', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [{ id: '1', url: 'https://example.com', title: '', authors: '', year: '' }],
-                },
-            });
-            const saved = tool.save();
-            expect(saved.items[0].title).toBeUndefined();
-            expect(saved.items[0].authors).toBeUndefined();
-            expect(saved.items[0].year).toBeUndefined();
-        });
-    });
-
-    // ── validate ──────────────────────────────────────────────────────────────
-
-    describe('validate()', () => {
-        it('should return false for empty items array', () => {
-            const tool = new ReferencesTool({ api: mockAPI as any, config: {} });
-            expect(tool.validate({ style: 'numbered', items: [] })).toBe(false);
-        });
-
-        it('should return false when no item has a url', () => {
-            const tool = new ReferencesTool({ api: mockAPI as any, config: {} });
-            expect(
-                tool.validate({
-                    style: 'numbered',
-                    items: [{ id: '1', url: '', title: 'No URL' }],
-                }),
-            ).toBe(false);
-        });
-
-        it('should return true when at least one item has a url', () => {
-            const tool = new ReferencesTool({ api: mockAPI as any, config: {} });
-            expect(
-                tool.validate({
-                    style: 'numbered',
-                    items: [{ id: '1', url: 'https://example.com' }],
-                }),
-            ).toBe(true);
-        });
-
-        it('should return true when some items have urls and some do not', () => {
-            const tool = new ReferencesTool({ api: mockAPI as any, config: {} });
-            expect(
-                tool.validate({
-                    style: 'numbered',
-                    items: [
-                        { id: '1', url: '' },
-                        { id: '2', url: 'https://example.com' },
-                    ],
-                }),
-            ).toBe(true);
-        });
-    });
-
-    // ── DOM rendering ──────────────────────────────────────────────────────────
-
-    describe('render()', () => {
-        it('should return an HTMLElement', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [{ id: '1', url: 'https://example.com' }],
-                },
-            });
-            const el = tool.render();
-            expect(el).toBeInstanceOf(HTMLElement);
-            expect(el.classList.contains('cdx-references__wrapper')).toBe(true);
-        });
-
-        it('should render one card per item', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [
-                        { id: '1', url: 'https://example.com', title: 'First' },
-                        { id: '2', url: 'https://editorjs.io', title: 'Second' },
-                    ],
-                },
-            });
-            const el = tool.render();
-            const cards = el.querySelectorAll('.cdx-references__card');
-            expect(cards).toHaveLength(2);
-        });
-
-        it('should populate url inputs from data', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'numbered',
-                    items: [{ id: '1', url: 'https://example.com/article', title: 'My Article' }],
-                },
-            });
-            const el = tool.render();
-            const urlInput = el.querySelector<HTMLInputElement>('.cdx-references__url-input');
-            expect(urlInput?.value).toBe('https://example.com/article');
-        });
-
-        it('should render style select with correct selected option', () => {
-            const tool = new ReferencesTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'footnote',
-                    items: [{ id: '1', url: 'https://example.com' }],
-                },
-            });
-            const el = tool.render();
-            const select = el.querySelector<HTMLSelectElement>('select');
-            expect(select?.value).toBe('footnote');
-        });
+            }),
+        ).toBe(false);
+        expect(tool.validate({ style: 'numbered', items: [{ id: '1', url: 'https://x.test' }] })).toBe(true);
+        expect(
+            tool.validate({
+                style: 'numbered',
+                items: [
+                    { id: '1', url: '' },
+                    { id: '2', url: 'https://x.test' },
+                ],
+            }),
+        ).toBe(true);
     });
 });

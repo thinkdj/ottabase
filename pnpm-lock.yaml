@@ -2105,6 +2105,9 @@ importers:
       '@editorjs/warning':
         specifier: ^1.4.0
         version: 1.4.1
+      '@ottabase/ottarenderer':
+        specifier: workspace:*
+        version: link:../ottarenderer
       '@ottabase/ottaupload':
         specifier: workspace:*
         version: link:../ottaupload

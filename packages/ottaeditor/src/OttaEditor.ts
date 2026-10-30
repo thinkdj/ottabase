@@ -1,4 +1,5 @@
 import EditorJS, { OutputData } from '@editorjs/editorjs';
+import { toolNames } from './blocks';
 import type { IOttaEditor, OttaEditorConfig, OttaEditorPlugin, OttaEditorTools } from './types';
 import type { UndoRedoState } from './undo-redo';
 import { UndoRedoManager } from './undo-redo';
@@ -45,6 +46,18 @@ export class OttaEditor implements IOttaEditor {
             onStateChange: this.config.onUndoRedoStateChange,
         });
 
+        // The canvas class carries the editor's typography and chrome styling
+        this.holderElement()?.classList.add('ottaeditor');
+
+        // Official tools are renamed to the registry's names ("Warning" → "Callout"); the host's i18n wins
+        const i18n = {
+            ...this.config.i18n,
+            messages: {
+                ...this.config.i18n?.messages,
+                toolNames: { ...toolNames(), ...this.config.i18n?.messages?.toolNames },
+            },
+        };
+
         // Create EditorJS instance
         this.editor = new EditorJS({
             holder: this.config.holder,
@@ -85,10 +98,28 @@ export class OttaEditor implements IOttaEditor {
                 this.config.onChange?.(api, event);
             },
             defaultBlock: this.config.defaultBlock,
-            i18n: this.config.i18n as any,
+            i18n: i18n as any,
         });
 
         await this.editor.isReady;
+    }
+
+    private holderElement(): HTMLElement | null {
+        return typeof this.config.holder === 'string'
+            ? document.getElementById(this.config.holder)
+            : this.config.holder;
+    }
+
+    /**
+     * Insert a block of `type` after the current block (or at the end) and focus it.
+     * This is what the BlockPalette calls.
+     */
+    insertBlock(type: string, data?: Record<string, unknown>): void {
+        if (!this.editor) throw new Error('Editor is not initialized');
+        const current = this.editor.blocks.getCurrentBlockIndex();
+        const index = current >= 0 ? current + 1 : this.editor.blocks.getBlocksCount();
+        this.editor.blocks.insert(type, data, undefined, index, true);
+        this.hasUserInteracted = true;
     }
 
     /**
@@ -242,8 +273,8 @@ export class OttaEditor implements IOttaEditor {
      */
     async destroy(): Promise<void> {
         // Remove keyboard shortcut listener
-        const holder =
-            typeof this.config.holder === 'string' ? document.getElementById(this.config.holder) : this.config.holder;
+        const holder = this.holderElement();
+        holder?.classList.remove('ottaeditor');
         holder?.removeEventListener('keydown', this.handleKeyDown);
         holder?.removeEventListener('pointerdown', this.handleInteraction, true);
         holder?.removeEventListener('keydown', this.handleInteraction, true);

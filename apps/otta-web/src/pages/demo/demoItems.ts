@@ -95,7 +95,8 @@ export const DEMO_ITEMS: DemoItem[] = [
         icon: Type,
         label: 'OttaEditor',
         title: 'OttaEditor',
-        description: 'Rich text editor with custom plugins and formatting capabilities',
+        description:
+            'Block editor on Editor.js: twenty Ottabase blocks that edit in one kit and preview exactly as published, a grouped block palette, undo/redo, JSON and Markdown export.',
         buttonVariant: 'outline',
     },
     {

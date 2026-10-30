@@ -34,6 +34,7 @@ import {
 import { parseFuzzyInput, type FuzzyDateTime } from '@ottabase/ottadate';
 import {
     AdvancedImageTool,
+    BlockPalette,
     MediaLibraryTool,
     useOttaEditor,
     type BlockToolConstructable,
@@ -73,6 +74,9 @@ import {
     Label,
     NativeSelect,
     NativeSelectOption,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
     Tabs,
     TabsContent,
     TabsList,
@@ -1527,8 +1531,26 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        {/* Undo/Redo and Export toolbar */}
+                                        {/* Add block, undo/redo and export toolbar */}
                                         <div className="flex items-center gap-1 mb-3">
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        title="Add a block after the current one"
+                                                    >
+                                                        <Plus className="h-4 w-4 mr-1" />
+                                                        Add block
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent
+                                                    align="start"
+                                                    className="w-80 max-h-[70vh] overflow-y-auto p-3"
+                                                >
+                                                    <BlockPalette editor={mainEditor.editor} />
+                                                </PopoverContent>
+                                            </Popover>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -1578,9 +1600,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                                 </DropdownMenu>
                                             </div>
                                         </div>
+                                        {/* The canvas styles itself (typography, toolbar): no prose wrapper, no inner padding */}
                                         <div
                                             ref={mainEditor.editorRef}
-                                            className="min-h-[400px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                            className="min-h-[400px] rounded-xl border border-border/60 bg-background py-3"
                                         />
                                     </CardContent>
                                 </Card>
@@ -1614,7 +1637,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     <CardContent>
                                         <div
                                             ref={notesEditor.editorRef}
-                                            className="min-h-[300px] prose dark:prose-invert max-w-none rounded-lg border border-warning/30 p-4 bg-warning/5"
+                                            className="min-h-[300px] rounded-xl border border-warning/30 bg-warning/5 py-3"
                                         />
                                     </CardContent>
                                 </Card>
@@ -1633,7 +1656,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     <CardContent>
                                         <div
                                             ref={footnotesEditor.editorRef}
-                                            className="min-h-[200px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
+                                            className="min-h-[200px] rounded-xl border border-border/60 bg-background py-3"
                                         />
                                     </CardContent>
                                 </Card>

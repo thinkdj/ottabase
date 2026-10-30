@@ -1,457 +1,116 @@
-/* Image Hotspots Tool - custom/overrides only */
+/* Hotspots block: the editing canvas with numbered markers and the note card. Fields are the kit. */
 
-.cdx-image-hotspots__url-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 0.5rem;
-}
-
-/* ── Height / Image Fit Row ──────────────────────────────────────────────── */
-
-.cdx-image-hotspots__size-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: start;
-}
-
-.cdx-image-hotspots__size-row > .ob-input-group:first-child {
-    width: 12.5rem;
-    flex-shrink: 0;
-}
-
-.cdx-image-hotspots__fit-toggle {
-    display: inline-flex;
-    gap: 0.125rem;
-    padding: 0.125rem;
-    background: hsl(var(--muted) / 0.4);
-    border-radius: var(--radius);
-    height: 2.25rem; /* match h-9 control rhythm */
-    box-sizing: border-box;
-}
-
-.cdx-image-hotspots__fit-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem 0.625rem;
-    background: transparent;
-    border: none;
-    border-radius: calc(var(--radius) - 2px);
-    color: hsl(var(--muted-foreground));
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        box-shadow var(--duration-normal) var(--ease);
-}
-
-.cdx-image-hotspots__fit-btn:hover {
-    color: hsl(var(--foreground));
-}
-
-.cdx-image-hotspots__fit-btn--active {
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-}
-
-/* ── Size Controls (below canvas) ────────────────────────────────────────── */
-
-.cdx-image-hotspots__size-controls {
-    margin-top: 0.75rem;
-}
-
-/* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
-
-.cdx-image-hotspots__position-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.125rem;
-    width: 4.5rem;
-    height: 4.5rem;
-    padding: 0.125rem;
-    background: hsl(var(--muted) / 0.4);
-    border-radius: var(--radius);
-}
-
-.cdx-image-hotspots__position-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: calc(var(--radius) - 2px);
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        box-shadow var(--duration-normal) var(--ease);
+.oe-hotspots__canvas {
     position: relative;
-}
-
-.cdx-image-hotspots__position-btn::before {
-    content: '';
-    width: 0.375rem;
-    height: 0.375rem;
-    border-radius: 50%;
-    background: hsl(var(--muted-foreground) / 0.4);
-    transition: background var(--duration-normal) var(--ease);
-}
-
-.cdx-image-hotspots__position-btn:hover::before {
-    background: hsl(var(--foreground) / 0.6);
-}
-
-.cdx-image-hotspots__position-btn--active {
-    background: hsl(var(--background));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-}
-
-.cdx-image-hotspots__position-btn--active::before {
-    background: hsl(var(--primary));
-    width: 0.5rem;
-    height: 0.5rem;
-}
-
-/* ── Input with Gallery Button ───────────────────────────────────────────── */
-
-.cdx-image-hotspots__input-with-gallery {
-    display: flex;
-    gap: 0.25rem;
-}
-
-.cdx-image-hotspots__input-with-gallery .ob-input {
-    flex: 1;
-}
-
-.cdx-image-hotspots__gallery-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    flex-shrink: 0;
-    background: hsl(var(--background));
-    border: 1px solid hsl(var(--input));
-    border-radius: calc(var(--radius) - 2px);
-    color: hsl(var(--muted-foreground));
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        border-color var(--duration-normal) var(--ease);
-}
-
-.cdx-image-hotspots__gallery-btn:hover {
-    background: hsl(var(--muted) / 0.7);
-    color: hsl(var(--foreground));
-}
-
-.cdx-image-hotspots__gallery-btn svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-/* ── Canvas ──────────────────────────────────────────────────────────────── */
-
-.cdx-image-hotspots__canvas {
-    position: relative;
-    margin-top: 0.75rem;
     min-height: 12.5rem;
-    border-radius: var(--radius);
-    border: 1px solid hsl(var(--border) / 0.6);
-    background: hsl(var(--muted) / 0.4);
-    cursor: crosshair;
-    /* Allow tooltip to overflow */
     overflow: visible;
+    border-radius: var(--oe-radius-inner, var(--radius));
+    background: var(--oe-tint, hsl(var(--muted) / 0.4));
+    box-shadow: inset 0 0 0 1px var(--oe-hairline, hsl(var(--border) / 0.6));
+    cursor: crosshair;
+    user-select: none;
 }
 
-.cdx-image-hotspots__canvas img {
+.oe-hotspots__img {
     display: block;
     width: 100%;
     height: auto;
-    margin: 0; /* Reset prose styles */
+    margin: 0;
+    border-radius: inherit;
     pointer-events: none;
-    user-select: none;
-    object-fit: contain;
 }
 
-/* When height is set with cover mode */
-.cdx-image-hotspots__canvas--cover img {
+.oe-hotspots__canvas--cover .oe-hotspots__img {
     height: 100%;
     object-fit: cover;
 }
 
-.cdx-image-hotspots__hint {
+.oe-hotspots__hint {
     position: absolute;
-    bottom: 0.5rem;
+    bottom: 0.75rem;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.6875rem;
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary) / 0.8);
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    pointer-events: none;
-    z-index: 5;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    background: hsl(var(--background) / 0.8);
+    box-shadow: 0 0 0 1px var(--oe-hairline, hsl(var(--border) / 0.6));
     backdrop-filter: blur(4px);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
     white-space: nowrap;
 }
 
-/* ── Dot (hotspot marker) — primary fill + ring, floats over imagery ─────── */
-
-.cdx-image-hotspots__dot {
+.oe-hotspots__pin {
     position: absolute;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 50%;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    border: 3px solid hsl(var(--primary-foreground));
-    box-shadow: var(--shadow-md);
+    width: 0;
+    height: 0;
+}
+
+.oe-hotspots__dot {
+    position: absolute;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 3px solid hsl(var(--primary-foreground));
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    box-shadow: var(--shadow-md);
+    color: hsl(var(--primary-foreground));
+    font: inherit;
     font-size: 0.75rem;
     font-weight: 600;
+    line-height: 1;
     cursor: grab;
     transform: translate(-50%, -50%);
-    z-index: 10;
-    transition: box-shadow var(--duration-normal) var(--ease);
-    user-select: none;
+    touch-action: none;
+    transition: box-shadow var(--oe-transition, 200ms ease);
 }
 
-.cdx-image-hotspots__dot:hover {
+.oe-hotspots__pin .oe-hotspots__dot {
+    left: 0;
+    top: 0;
+}
+
+.oe-hotspots__dot:hover {
     box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
-.cdx-image-hotspots__dot--active {
+.oe-hotspots__dot--active {
     box-shadow: 0 0 0 0.375rem hsl(var(--primary) / 0.35);
-    z-index: 15;
+    z-index: 2;
 }
 
-/* Dragging state */
-.cdx-image-hotspots__dot--dragging {
-    cursor: grabbing !important;
-    opacity: 0.8;
+.oe-hotspots__dot:active {
+    cursor: grabbing;
 }
 
-/* ── Tooltip (inline form on dot click) — floating UI, keeps elevation ───── */
-
-.cdx-image-hotspots__tooltip {
+.oe-hotspots__card {
     position: absolute;
-    top: calc(100% + 0.75rem);
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 15rem;
-    background: hsl(var(--background));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
+    top: 1.25rem;
+    left: 0;
+    z-index: 3;
+    width: 16rem;
     padding: 0.75rem;
-    box-shadow: var(--shadow-md);
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    border-radius: var(--oe-radius-inner, var(--radius));
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--popover, var(--background)));
+    box-shadow: var(--shadow-lg);
     cursor: default;
-}
-
-/* Arrow pointing up (default: tooltip below dot) */
-.cdx-image-hotspots__tooltip::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
     transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-bottom-color: hsl(var(--border));
 }
 
-.cdx-image-hotspots__tooltip::after {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-bottom-color: hsl(var(--background));
-}
-
-/* Tooltip opens above dot when hotspot is below 70% of canvas height */
-.cdx-image-hotspots__tooltip--above {
+.oe-hotspots__card--above {
     top: auto;
-    bottom: calc(100% + 0.75rem);
+    bottom: 1.25rem;
 }
 
-/* Arrow pointing down (tooltip above dot) */
-.cdx-image-hotspots__tooltip--above::before {
-    top: 100%;
-    bottom: auto;
-    border-bottom-color: transparent;
-    border-top-color: hsl(var(--border));
-}
-
-.cdx-image-hotspots__tooltip--above::after {
-    top: 100%;
-    bottom: auto;
-    border-bottom-color: transparent;
-    border-top-color: hsl(var(--background));
-}
-
-/* Button row inside tooltip */
-.cdx-image-hotspots__tooltip-buttons {
+.oe-hotspots__card-actions {
     display: flex;
     justify-content: space-between;
-    align-items: center;
     gap: 0.5rem;
-    margin-top: 0.25rem;
-}
-
-/* Remove button inside tooltip */
-.cdx-image-hotspots__remove-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: hsl(var(--destructive) / 0.1);
-    color: hsl(var(--destructive));
-    border: 1px solid hsl(var(--destructive) / 0.25);
-    border-radius: calc(var(--radius) - 2px);
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        border-color var(--duration-normal) var(--ease);
-}
-
-.cdx-image-hotspots__remove-btn:hover {
-    background: hsl(var(--destructive));
-    color: hsl(var(--destructive-foreground));
-}
-
-.cdx-image-hotspots__remove-btn svg {
-    width: 0.875rem;
-    height: 0.875rem;
-}
-
-/* Save button inside tooltip */
-.cdx-image-hotspots__save-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    border: 1px solid hsl(var(--primary));
-    border-radius: calc(var(--radius) - 2px);
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background var(--duration-normal) var(--ease);
-}
-
-.cdx-image-hotspots__save-btn:hover {
-    background: hsl(var(--primary) / 0.9);
-}
-
-.cdx-image-hotspots__save-btn svg {
-    width: 0.875rem;
-    height: 0.875rem;
-}
-
-/* ── List (below canvas) ─────────────────────────────────────────────────── */
-
-.cdx-image-hotspots__list {
-    margin-top: 0.5rem;
-}
-
-.cdx-image-hotspots__list-header {
-    padding: 0.25rem 0;
-    border-top: 1px solid hsl(var(--border) / 0.6);
-    margin-top: 0.25rem;
-}
-
-.cdx-image-hotspots__list-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: calc(var(--radius) - 2px);
-    cursor: pointer;
-    transition: background var(--duration-normal) var(--ease);
-}
-
-/* Inline list rows rest transparent, so hover one tint step (menus use /0.7) */
-.cdx-image-hotspots__list-item:hover {
-    background: hsl(var(--muted) / 0.4);
-}
-
-.cdx-image-hotspots__list-badge {
-    width: 1.375rem;
-    height: 1.375rem;
-    border-radius: calc(var(--radius) - 2px);
-    background: hsl(var(--background));
-    color: hsl(var(--muted-foreground));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    flex-shrink: 0;
-}
-
-.cdx-image-hotspots__list-title {
-    flex: 1;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: hsl(var(--foreground));
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.cdx-image-hotspots__list-coords {
-    font-size: 0.6875rem;
-    color: hsl(var(--muted-foreground));
-    font-variant-numeric: tabular-nums;
-}
-
-.cdx-image-hotspots__list-remove {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: hsl(var(--muted-foreground));
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: calc(var(--radius) - 2px);
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease);
-}
-
-.cdx-image-hotspots__list-remove:hover {
-    color: hsl(var(--destructive));
-    background: hsl(var(--destructive) / 0.1);
-}
-
-.cdx-image-hotspots__list-remove svg {
-    width: 0.875rem;
-    height: 0.875rem;
-}
-
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-
-@media (max-width: 480px) {
-    .cdx-image-hotspots__url-row {
-        grid-template-columns: 1fr;
-    }
-
-    .cdx-image-hotspots__tooltip {
-        min-width: 12.5rem;
-    }
 }

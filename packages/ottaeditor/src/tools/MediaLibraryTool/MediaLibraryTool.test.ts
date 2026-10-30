@@ -1,10 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MediaLibraryTool from './MediaLibraryTool';
 
-// Mock CSS import
-vi.mock('./MediaLibraryTool.css', () => ({}));
-
-// Track block insertions
 const insertedBlocks: { type: string; data: Record<string, unknown> }[] = [];
 
 const createMockAPI = () => ({
@@ -21,166 +18,68 @@ const createMockAPI = () => ({
 
 describe('MediaLibraryTool', () => {
     let mockAPI: ReturnType<typeof createMockAPI>;
+    const tools: MediaLibraryTool[] = [];
+
+    const make = (config: Record<string, unknown> = {}, id = 'block-0') => {
+        const tool = new MediaLibraryTool({ api: mockAPI as never, config, block: { id } });
+        tools.push(tool);
+        return tool;
+    };
 
     beforeEach(() => {
         insertedBlocks.length = 0;
         mockAPI = createMockAPI();
     });
 
-    describe('Toolbox', () => {
-        it('should have correct toolbox configuration', () => {
-            expect(MediaLibraryTool.toolbox.title).toBe('Media Library');
-            expect(MediaLibraryTool.toolbox.icon).toBeTruthy();
-        });
+    afterEach(() => {
+        tools.splice(0).forEach((t) => t.destroy());
+        document.body.innerHTML = '';
     });
 
-    describe('Kind-aware insertion', () => {
-        it('should insert an image block for image media', async () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-0' },
-            });
-
-            await tool.handleMediaSelected({
-                media: {
-                    url: 'https://cdn.example.com/photo.webp',
-                    name: 'photo.webp',
-                    mediaKind: 'image',
-                    mimeType: 'image/webp',
-                    mediaId: 'media-1',
-                },
-                openedVia: 'programmatic',
-            });
-
-            expect(insertedBlocks).toHaveLength(1);
-            expect(insertedBlocks[0].type).toBe('image');
-            expect(insertedBlocks[0].data.url).toBe('https://cdn.example.com/photo.webp');
-        });
-
-        it('should insert a mediaEmbed block for video media', async () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-0' },
-            });
-
-            await tool.handleMediaSelected({
-                media: {
-                    url: 'https://cdn.example.com/clip.mp4',
-                    name: 'clip.mp4',
-                    mediaKind: 'video',
-                    mimeType: 'video/mp4',
-                    mediaId: 'media-2',
-                },
-                openedVia: 'programmatic',
-            });
-
-            expect(insertedBlocks).toHaveLength(1);
-            expect(insertedBlocks[0].type).toBe('mediaEmbed');
-            expect(insertedBlocks[0].data.mediaKind).toBe('video');
-        });
-
-        it('should insert a mediaEmbed block for audio media', async () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-0' },
-            });
-
-            await tool.handleMediaSelected({
-                media: {
-                    url: 'https://cdn.example.com/track.mp3',
-                    name: 'track.mp3',
-                    mediaKind: 'audio',
-                    mimeType: 'audio/mpeg',
-                },
-                openedVia: 'programmatic',
-            });
-
-            expect(insertedBlocks).toHaveLength(1);
-            expect(insertedBlocks[0].type).toBe('mediaEmbed');
-            expect(insertedBlocks[0].data.mediaKind).toBe('audio');
-        });
-
-        it('should insert a mediaEmbed block for document media', async () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-0' },
-            });
-
-            await tool.handleMediaSelected({
-                media: {
-                    url: 'https://cdn.example.com/guide.pdf',
-                    name: 'guide.pdf',
-                    mediaKind: 'document',
-                    mimeType: 'application/pdf',
-                },
-                openedVia: 'programmatic',
-            });
-
-            expect(insertedBlocks).toHaveLength(1);
-            expect(insertedBlocks[0].type).toBe('mediaEmbed');
-            expect(insertedBlocks[0].data.mediaKind).toBe('document');
-        });
-
-        it('should default to image when mediaKind is missing', async () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-0' },
-            });
-
-            await tool.handleMediaSelected({
-                media: {
-                    url: 'https://cdn.example.com/photo.jpg',
-                    name: 'photo.jpg',
-                },
-                openedVia: 'programmatic',
-            });
-
-            expect(insertedBlocks).toHaveLength(1);
-            expect(insertedBlocks[0].type).toBe('image');
-        });
+    it('takes its toolbox entry from the registry', () => {
+        expect(MediaLibraryTool.toolbox.title).toBe('From library');
+        expect(MediaLibraryTool.toolbox.icon).toContain('<svg');
     });
 
-    describe('Namespace isolation', () => {
-        it('should accept a namespace from config', () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: { namespace: 'editor-a' },
-                block: { id: 'block-ns' },
-            });
-
-            // Tool construction should not throw
-            expect(tool).toBeTruthy();
+    it.each([
+        ['image', { mediaKind: 'image', mimeType: 'image/webp' }, 'image'],
+        ['video', { mediaKind: 'video', mimeType: 'video/mp4' }, 'mediaEmbed'],
+        ['audio', { mediaKind: 'audio', mimeType: 'audio/mpeg' }, 'mediaEmbed'],
+        ['document', { mediaKind: 'document', mimeType: 'application/pdf' }, 'mediaEmbed'],
+        ['missing kind', {}, 'image'],
+    ])('inserts the right block type for %s media', async (_, media, expectedType) => {
+        const tool = make();
+        await tool.handleMediaSelected({
+            media: { url: 'https://cdn.example.com/file', name: 'file', ...media },
+            openedVia: 'programmatic',
         });
+        expect(insertedBlocks).toHaveLength(1);
+        expect(insertedBlocks[0]!.type).toBe(expectedType);
+        expect(insertedBlocks[0]!.data.url).toBe('https://cdn.example.com/file');
     });
 
-    describe('Render', () => {
-        it('should render a placeholder element', () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-r' },
-            });
-
-            const wrapper = tool.render();
-            expect(wrapper.classList.contains('cdx-media-library')).toBe(true);
-            expect(wrapper.querySelector('.cdx-media-library-placeholder')).toBeTruthy();
+    it('renders a picker row whose button opens the library without a field token', () => {
+        const tool = make({ namespace: 'editor-a' }, 'block-r');
+        document.body.appendChild(tool.render());
+        let detail: { source?: string; field?: string } | undefined;
+        window.addEventListener('media-library-open', ((e: CustomEvent) => (detail = e.detail)) as EventListener, {
+            once: true,
         });
+        fireEvent.click(screen.getByRole('button', { name: 'Choose from library' }));
+        expect(detail).toEqual({ source: 'editor' });
     });
 
-    describe('Save', () => {
-        it('should return an empty object', () => {
-            const tool = new MediaLibraryTool({
-                api: mockAPI as any,
-                config: {},
-                block: { id: 'block-s' },
-            });
-
-            expect(tool.save()).toEqual({});
-        });
+    it('ignores selections addressed to a block field, and saves an empty object', async () => {
+        const tool = make({}, 'block-f');
+        document.body.appendChild(tool.render());
+        fireEvent.click(screen.getByRole('button', { name: 'Choose from library' }));
+        window.dispatchEvent(
+            new CustomEvent('media-library-selected-item', {
+                detail: { field: 'oe-media-1', media: { url: 'https://x.io/a.png' } },
+            }),
+        );
+        await Promise.resolve();
+        expect(insertedBlocks).toHaveLength(0);
+        expect(tool.save()).toEqual({});
     });
 });

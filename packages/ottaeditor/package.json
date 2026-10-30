@@ -51,6 +51,7 @@
         "@editorjs/table": "^2.4.1",
         "@editorjs/underline": "^1.1.0",
         "@editorjs/warning": "^1.4.0",
+        "@ottabase/ottarenderer": "workspace:*",
         "@ottabase/ottaupload": "workspace:*"
     },
     "peerDependencies": {

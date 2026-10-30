@@ -1,0 +1,1394 @@
+/**
+ * @ottabase/ottaeditor — Stylesheet
+ *
+ * One sheet for the whole editor:
+ *   1. Canvas: the Editor.js surface, typed like the published page (`@ottabase/ottarenderer/styles`
+ *      is loaded alongside, so a heading in the editor is the heading readers get).
+ *   2. Chrome: Editor.js toolbars, popovers and selection on the design tokens.
+ *   3. Kit: `oe-*` controls every custom block is built from (src/ui/kit.ts).
+ *   4. Shell: the frame around a custom block with its Edit / Preview switch (src/ui/shell.tsx).
+ *   5. Inline tools: the annotation popup.
+ * Block-specific layout lives next to the block (oe-<block>__* in its own small file).
+ *
+ * Tokens follow the shadcn convention (raw HSL channels in --background etc.); everything here reads
+ * them through hsl(). The `!important`s on Editor.js classes exist because Editor.js injects its own
+ * stylesheet after ours at runtime.
+ */
+
+/* ======================================================================
+ * 1. Canvas
+ * ==================================================================== */
+
+.ottaeditor {
+    --oe-tint: hsl(var(--muted) / 0.4);
+    --oe-tint-hover: hsl(var(--muted) / 0.7);
+    --oe-hairline: hsl(var(--border) / 0.6);
+    --oe-radius: calc(var(--radius) + 4px);
+    --oe-radius-inner: var(--radius);
+    --oe-radius-chip: calc(var(--radius) - 2px);
+    --oe-control: 2.25rem; /* h-9, the app's input height */
+    --oe-label: 0.6875rem;
+    --oe-transition: var(--duration-normal, 200ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+
+    position: relative;
+    /* Room on the left for the + and ⋮⋮ toolbar, which Editor.js places outside the content */
+    padding-inline-start: 3.25rem;
+    padding-inline-end: 0.5rem;
+    font-family: var(--font-body, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
+    color: hsl(var(--foreground));
+}
+
+/* Full-width canvas: Editor.js caps content at 650px; the host decides the measure. */
+.ottaeditor .ce-block__content,
+.ottaeditor .ce-toolbar__content {
+    max-width: none;
+}
+
+.ottaeditor .codex-editor__redactor {
+    padding-bottom: 6rem !important;
+}
+
+/* Empty-editor placeholder */
+.ottaeditor .codex-editor--empty .ce-block:first-child .ce-paragraph[data-placeholder]:empty::before,
+.ottaeditor .ce-paragraph[data-placeholder-active]:empty::before {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.8;
+}
+
+/* Native blocks read like the renderer. Selectors mirror .otta-* in ottarenderer/styles.css. */
+.ottaeditor .ce-paragraph {
+    font-size: var(--text-base, 1rem);
+    line-height: 1.75;
+    padding: 0.2em 0;
+}
+
+.ottaeditor .ce-header {
+    font-family: var(--font-heading, inherit);
+    font-weight: 600;
+    letter-spacing: var(--typography-heading-spacing, -0.02em);
+    text-transform: var(--typography-heading-transform, none);
+    margin: 0;
+    padding: 0.35em 0 0.15em;
+    text-wrap: balance;
+}
+.ottaeditor h1.ce-header {
+    font-size: var(--text-4xl, 2.25rem);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: var(--typography-heading-spacing, -0.03em);
+}
+.ottaeditor h2.ce-header {
+    font-size: var(--text-3xl, 1.75rem);
+    line-height: 1.2;
+    font-weight: 700;
+}
+.ottaeditor h3.ce-header {
+    font-size: var(--text-2xl, 1.375rem);
+    line-height: 1.3;
+}
+.ottaeditor h4.ce-header {
+    font-size: var(--text-xl, 1.125rem);
+    line-height: 1.4;
+}
+.ottaeditor h5.ce-header,
+.ottaeditor h6.ce-header {
+    font-size: var(--text-base, 1rem);
+    line-height: 1.5;
+}
+.ottaeditor h6.ce-header {
+    font-size: var(--oe-label);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+/* Quiet inputs: the official tools wrap their text in .cdx-input, which ships with a border and shadow */
+.ottaeditor .cdx-input {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.ottaeditor .cdx-input:focus-within {
+    outline: none;
+}
+
+/* Lists */
+.ottaeditor .cdx-nested-list {
+    font-size: var(--text-base, 1rem);
+    line-height: 1.75;
+}
+.ottaeditor .cdx-nested-list__item::before {
+    color: hsl(var(--muted-foreground));
+}
+
+/* Quote */
+.ottaeditor .cdx-quote {
+    padding: 0.25rem 0 0.25rem 1.5rem;
+    border-left: 3px solid hsl(var(--primary) / 0.5);
+    margin: 0.5rem 0;
+}
+.ottaeditor .cdx-quote__text {
+    min-height: 0;
+    margin-bottom: 0.5rem;
+    font-size: var(--text-xl, 1.25rem);
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+}
+.ottaeditor .cdx-quote__caption {
+    font-size: var(--oe-label);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+/* Checklist */
+.ottaeditor .cdx-checklist__item-checkbox {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: 0.35rem;
+    border-radius: var(--oe-radius-chip);
+}
+.ottaeditor .cdx-checklist__item-checkbox-check {
+    border-radius: var(--oe-radius-chip) !important;
+    border-color: hsl(var(--input)) !important;
+    background: hsl(var(--background)) !important;
+}
+.ottaeditor .cdx-checklist__item--checked .cdx-checklist__item-checkbox-check {
+    background: hsl(var(--primary)) !important;
+    border-color: hsl(var(--primary)) !important;
+}
+.ottaeditor .cdx-checklist__item--checked .cdx-checklist__item-text {
+    color: hsl(var(--muted-foreground));
+}
+
+/* Divider: the renderer's three quiet dots instead of Editor.js's asterisks */
+.ottaeditor .ce-delimiter {
+    line-height: 1;
+    padding: 1rem 0;
+}
+.ottaeditor .ce-delimiter::before {
+    content: '\2022\00a0\00a0\00a0\2022\00a0\00a0\00a0\2022';
+    display: inline-block;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.7;
+    line-height: 1;
+}
+
+/* Callout (warning): the renderer's status tint */
+.ottaeditor .cdx-warning {
+    position: relative;
+    padding: 1rem 1rem 1rem 3.5rem;
+    border-radius: var(--oe-radius);
+    background: hsl(var(--warning-soft, var(--warning) / 0.1));
+    border: 1px solid hsl(var(--warning-line, var(--warning) / 0.3));
+    margin: 0.5rem 0;
+}
+.ottaeditor .cdx-warning::before {
+    left: 1rem;
+    top: 1rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--oe-radius-inner);
+    background-color: hsl(var(--background));
+    background-size: 1rem;
+    box-shadow: 0 0 0 1px hsl(var(--warning) / 0.3);
+}
+.ottaeditor .cdx-warning__title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+.ottaeditor .cdx-warning__message {
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.625;
+    color: hsl(var(--warning-text, var(--muted-foreground)));
+}
+
+/* Embeds and link previews */
+.ottaeditor .embed-tool__content {
+    border-radius: var(--oe-radius);
+}
+.ottaeditor .embed-tool__caption {
+    font-size: var(--oe-label);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: hsl(var(--muted-foreground));
+    text-align: center;
+}
+.ottaeditor .link-tool__content {
+    border-radius: var(--oe-radius) !important;
+    background: var(--oe-tint) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+.ottaeditor .link-tool__input-holder .link-tool__input {
+    border-radius: var(--oe-radius-inner);
+    border: 1px solid hsl(var(--input));
+    background: hsl(var(--background));
+    padding: 0.4375rem 0.75rem 0.4375rem 2.25rem;
+}
+
+/* ======================================================================
+ * 2. Chrome — Editor.js toolbars, popovers, selection
+ * ==================================================================== */
+
+.ottaeditor .ce-toolbar__plus,
+.ottaeditor .ce-toolbar__settings-btn {
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: var(--oe-radius-chip) !important;
+    transition:
+        background var(--oe-transition),
+        color var(--oe-transition);
+}
+
+.ottaeditor .ce-toolbar__plus:hover,
+.ottaeditor .ce-toolbar__settings-btn:hover {
+    background: hsl(var(--muted) / 0.7) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.ottaeditor .ce-toolbar__plus svg,
+.ottaeditor .ce-toolbar__settings-btn svg {
+    fill: currentColor !important;
+}
+
+/* Keep Editor.js menus above custom block UIs */
+.ce-toolbar,
+.ce-inline-toolbar,
+.ce-conversion-toolbar,
+.ce-popover,
+.ce-settings,
+.ce-toolbox {
+    z-index: var(--z-popover, 60) !important;
+}
+
+/* Editor.js paints menu items, inline tools and icons from these custom properties, which it
+ * hardcodes to a light palette on each menu root (so they ignore a class-driven dark mode).
+ * Retargeting them at the root is the one place that recolors every item they feed. */
+.ottaeditor .ce-popover,
+.ottaeditor .ce-inline-toolbar,
+.ottaeditor .ce-conversion-toolbar {
+    --color-background: hsl(var(--popover, var(--background)));
+    --color-border: hsl(var(--border));
+    --color-text-primary: hsl(var(--popover-foreground, var(--foreground)));
+    --color-text-secondary: hsl(var(--muted-foreground));
+    --color-border-icon: hsl(var(--border));
+    --color-border-icon-disabled: hsl(var(--border) / 0.5);
+    --color-text-icon-active: hsl(var(--primary));
+    --color-background-icon-active: hsl(var(--primary) / 0.15);
+    --color-background-item-focus: hsl(var(--muted) / 0.7);
+    --color-shadow-item-focus: hsl(var(--ring) / 0.2);
+    --color-background-item-hover: hsl(var(--muted) / 0.7);
+    --color-background-item-confirm: hsl(var(--destructive));
+    --color-background-item-confirm-hover: hsl(var(--destructive) / 0.85);
+}
+
+/* Editor.js hardcodes a pale-blue ::selection that swallows light text in dark mode */
+.ottaeditor .codex-editor ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+}
+.ottaeditor .codex-editor ::-moz-selection {
+    background-color: hsl(var(--primary) / 0.3);
+}
+
+/* Floating menus: the only editor surfaces that carry a shadow */
+.ce-popover__container,
+.ce-inline-toolbar,
+.ce-conversion-toolbar {
+    border-radius: var(--radius) !important;
+    border-color: hsl(var(--border)) !important;
+    background: hsl(var(--popover, var(--background))) !important;
+    color: hsl(var(--popover-foreground, var(--foreground))) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+.ce-popover__item:hover,
+.ce-popover-item:hover,
+.ce-inline-tool:hover,
+.ce-conversion-tool:hover {
+    background: hsl(var(--muted) / 0.7) !important;
+}
+
+.ce-popover__item--selected,
+.ce-popover-item--selected,
+.ce-popover__item--active,
+.ce-popover-item--active,
+.ce-inline-tool--active {
+    background: hsl(var(--accent, var(--primary) / 0.15)) !important;
+    color: hsl(var(--accent-foreground, var(--foreground))) !important;
+}
+
+.ce-popover__item--selected *,
+.ce-popover-item--selected *,
+.ce-popover__item--active *,
+.ce-popover-item--active * {
+    color: inherit !important;
+}
+
+.ce-popover-item__icon,
+.ce-popover__item-icon {
+    border-radius: var(--oe-radius-chip) !important;
+    background: hsl(var(--background)) !important;
+    box-shadow: 0 0 0 1px hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.ce-popover-item__title {
+    font-size: var(--text-sm, 0.875rem) !important;
+}
+
+.ce-block--selected .ce-block__content {
+    background: hsl(var(--muted) / 0.7) !important;
+    border-radius: var(--oe-radius-inner);
+}
+
+/* Toolbox search field: tint fill, hairline on focus */
+.cdx-search-field {
+    background: hsl(var(--muted) / 0.4) !important;
+    border: 1px solid transparent !important;
+    border-radius: var(--oe-radius-chip) !important;
+    transition:
+        border-color var(--oe-transition),
+        box-shadow var(--oe-transition);
+}
+.cdx-search-field:focus-within {
+    border-color: hsl(var(--ring)) !important;
+    box-shadow: 0 0 0 1px hsl(var(--ring) / 0.2) !important;
+}
+.cdx-search-field__input {
+    border: none !important;
+    color: hsl(var(--foreground)) !important;
+}
+.cdx-search-field__input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Table tool */
+.tc-wrap {
+    --color-background: hsl(var(--background));
+    --color-border: hsl(var(--border));
+    --color-text: hsl(var(--foreground));
+}
+.tc-table,
+.tc-row,
+.tc-cell {
+    border-color: hsl(var(--border)) !important;
+}
+.tc-cell {
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    font-size: var(--text-sm, 0.875rem);
+}
+.tc-cell::before {
+    background: transparent !important;
+}
+.tc-cell--selected {
+    background: hsl(var(--muted) / 0.7) !important;
+}
+.tc-row--head .tc-cell {
+    background: var(--oe-tint, hsl(var(--muted) / 0.4)) !important;
+    font-size: var(--oe-label, 0.6875rem);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground)) !important;
+}
+.tc-toolbox,
+.tc-toolbox--row,
+.tc-toolbox--column,
+.tc-toolbox__toggler,
+.tc-add-row,
+.tc-add-column {
+    background: hsl(var(--background)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+}
+.tc-toolbox__toggler:hover,
+.tc-add-row:hover,
+.tc-add-column:hover {
+    background: hsl(var(--muted) / 0.7) !important;
+    color: hsl(var(--foreground)) !important;
+}
+.tc-toolbox__toggler svg,
+.tc-add-row svg,
+.tc-add-column svg {
+    fill: currentColor !important;
+}
+.tc-popover {
+    background: hsl(var(--popover, var(--background))) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+.tc-popover__item {
+    color: hsl(var(--foreground)) !important;
+}
+.tc-popover__item:hover {
+    background: hsl(var(--muted) / 0.7) !important;
+}
+.tc-popover__item-icon {
+    color: hsl(var(--muted-foreground)) !important;
+}
+.tc-popover__item--confirm {
+    color: hsl(var(--destructive)) !important;
+}
+.tc-popover__item--confirm:hover {
+    background: hsl(var(--destructive) / 0.1) !important;
+}
+
+/* ======================================================================
+ * 3. Kit — oe-* controls
+ * ==================================================================== */
+
+.oe-block *,
+.oe-popup * {
+    box-sizing: border-box;
+}
+
+.oe-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    line-height: 0;
+}
+
+/* Layout */
+.oe-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.oe-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.oe-row > .oe-field {
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+
+.oe-row > .oe-field--grow {
+    flex-basis: 16rem;
+}
+
+.oe-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3125rem;
+    min-width: 0;
+}
+
+.oe-field--inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oe-label,
+.oe-section-label {
+    font-size: var(--oe-label);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    line-height: 1.5;
+}
+
+.oe-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: hsl(var(--muted-foreground));
+}
+
+/* Text controls, h-9 rhythm */
+.oe-input,
+.oe-select,
+.oe-textarea {
+    display: block;
+    width: 100%;
+    min-height: var(--oe-control);
+    padding: 0.4375rem 0.75rem;
+    border: 1px solid hsl(var(--input));
+    border-radius: var(--oe-radius-inner);
+    background: hsl(var(--card, var(--background)));
+    color: hsl(var(--foreground));
+    font: inherit;
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.25rem;
+    transition:
+        border-color var(--oe-transition),
+        box-shadow var(--oe-transition);
+}
+
+.oe-input::placeholder,
+.oe-textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.8;
+}
+
+.oe-input:focus,
+.oe-select:focus,
+.oe-textarea:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2);
+}
+
+.oe-input--sm,
+.oe-select--sm {
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.oe-textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.oe-textarea--mono {
+    font-family: var(--font-mono, ui-monospace, Menlo, Consolas, monospace);
+    font-size: 0.8125rem;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.oe-select {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+}
+
+/* Segmented control */
+.oe-segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border-radius: var(--oe-radius-inner);
+    background: var(--oe-tint);
+}
+
+.oe-segment__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-width: 1.875rem;
+    height: 1.875rem;
+    padding: 0 0.625rem;
+    border: 0;
+    border-radius: var(--oe-radius-chip);
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        background var(--oe-transition),
+        color var(--oe-transition),
+        box-shadow var(--oe-transition);
+}
+
+.oe-segment__btn:hover {
+    color: hsl(var(--foreground));
+}
+
+.oe-segment__btn[aria-checked='true'] {
+    background: hsl(var(--card, var(--background)));
+    color: hsl(var(--foreground));
+    box-shadow: 0 0 0 1px hsl(var(--border));
+}
+
+.oe-segment__btn:has(.oe-icon):not(:has(span:not(.oe-icon))) {
+    padding: 0;
+    width: 1.875rem;
+}
+
+/* Switch */
+.oe-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    cursor: pointer;
+    font-size: var(--text-sm, 0.875rem);
+    color: hsl(var(--foreground));
+}
+
+.oe-switch__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.oe-switch__track {
+    position: relative;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 1.125rem;
+    border-radius: 999px;
+    background: hsl(var(--input));
+    transition: background var(--oe-transition);
+}
+
+.oe-switch__thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: calc(1.125rem - 4px);
+    height: calc(1.125rem - 4px);
+    border-radius: 50%;
+    background: hsl(var(--background));
+    box-shadow: var(--shadow-xs, 0 1px 2px rgb(0 0 0 / 0.1));
+    transition: transform var(--oe-transition);
+}
+
+.oe-switch__input:checked + .oe-switch__track {
+    background: hsl(var(--primary));
+}
+
+.oe-switch__input:checked + .oe-switch__track .oe-switch__thumb {
+    transform: translateX(0.875rem);
+}
+
+.oe-switch__input:focus-visible + .oe-switch__track {
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
+}
+
+.oe-switch__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+/* Checkbox */
+.oe-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-sm, 0.875rem);
+    cursor: pointer;
+}
+
+.oe-checkbox {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: hsl(var(--primary));
+    cursor: pointer;
+}
+
+/* Range */
+.oe-range {
+    width: 100%;
+    height: var(--oe-control);
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+.oe-range::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, hsl(var(--foreground)) 16%, hsl(var(--border)));
+}
+.oe-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-top: -0.3125rem;
+    border-radius: 50%;
+    border: 2px solid hsl(var(--background));
+    background: hsl(var(--foreground));
+    box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.2);
+}
+.oe-range::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, hsl(var(--foreground)) 16%, hsl(var(--border)));
+}
+.oe-range::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    border: 2px solid hsl(var(--background));
+    background: hsl(var(--foreground));
+}
+.oe-range:focus-visible {
+    outline: none;
+}
+.oe-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.35);
+}
+
+/* Stars */
+.oe-stars-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.oe-stars {
+    display: inline-flex;
+    gap: 0.125rem;
+}
+.oe-stars__star {
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--oe-radius-chip);
+    background: transparent;
+    color: hsl(var(--muted-foreground) / 0.5);
+    cursor: pointer;
+    transition: color var(--oe-transition);
+}
+.oe-stars__star:hover {
+    color: hsl(var(--warning));
+}
+.oe-stars__star--on {
+    color: hsl(var(--warning));
+}
+.oe-stars__star--on svg {
+    fill: currentColor;
+}
+
+/* Buttons */
+.oe-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    height: var(--oe-control);
+    padding: 0 0.875rem;
+    border: 1px solid transparent;
+    border-radius: var(--oe-radius-inner);
+    font: inherit;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background var(--oe-transition),
+        color var(--oe-transition),
+        border-color var(--oe-transition);
+}
+.oe-btn--sm {
+    height: 2rem;
+    padding: 0 0.625rem;
+    font-size: 0.75rem;
+}
+.oe-btn--outline {
+    background: hsl(var(--card, var(--background)));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+}
+.oe-btn--outline:hover {
+    background: var(--oe-tint-hover);
+}
+.oe-btn--ghost {
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+}
+.oe-btn--ghost:hover {
+    background: var(--oe-tint-hover);
+    color: hsl(var(--foreground));
+}
+.oe-btn--primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}
+.oe-btn--primary:hover {
+    background: hsl(var(--primary-hover, var(--primary) / 0.9));
+}
+.oe-btn--danger {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground, 0 0% 100%));
+}
+.oe-btn--danger:hover {
+    filter: brightness(0.95);
+}
+.oe-btn:disabled,
+.oe-icon-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+    pointer-events: none;
+}
+
+.oe-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.875rem;
+    height: 1.875rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--oe-radius-chip);
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition:
+        background var(--oe-transition),
+        color var(--oe-transition);
+}
+.oe-icon-btn:hover {
+    background: var(--oe-tint-hover);
+    color: hsl(var(--foreground));
+}
+.oe-icon-btn--danger:hover {
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+}
+.oe-icon-btn[aria-pressed='true'] {
+    background: hsl(var(--accent, var(--muted)));
+    color: hsl(var(--accent-foreground, var(--foreground)));
+}
+
+.oe-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    width: 100%;
+    height: var(--oe-control);
+    border: 1px dashed hsl(var(--border));
+    border-radius: var(--oe-radius-inner);
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    font: inherit;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background var(--oe-transition),
+        border-color var(--oe-transition),
+        color var(--oe-transition);
+}
+.oe-add:hover {
+    background: hsl(var(--primary) / 0.05);
+    border-color: hsl(var(--primary) / 0.5);
+    color: hsl(var(--primary));
+}
+
+/* Focus ring for every kit button */
+.oe-btn:focus-visible,
+.oe-icon-btn:focus-visible,
+.oe-add:focus-visible,
+.oe-segment__btn:focus-visible,
+.oe-stars__star:focus-visible,
+.oe-posgrid__cell:focus-visible,
+.oe-list__row:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+/* Focal-point grid */
+.oe-posgrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1.25rem);
+    gap: 0.1875rem;
+    padding: 0.25rem;
+    border-radius: var(--oe-radius-chip);
+    background: var(--oe-tint);
+    width: max-content;
+}
+.oe-posgrid__cell {
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    background: hsl(var(--background));
+    box-shadow: 0 0 0 1px var(--oe-hairline);
+    cursor: pointer;
+    transition: background var(--oe-transition);
+}
+.oe-posgrid__cell:hover {
+    background: var(--oe-tint-hover);
+}
+.oe-posgrid__cell[aria-checked='true'] {
+    background: hsl(var(--primary));
+    box-shadow: none;
+}
+
+/* Inline confirmation */
+.oe-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--oe-radius-inner);
+    background: hsl(var(--destructive) / 0.08);
+    font-size: var(--text-sm, 0.875rem);
+    color: hsl(var(--foreground));
+}
+.oe-confirm__text {
+    flex: 1 1 auto;
+}
+
+/* Media input: thumb · url · library */
+.oe-media {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.oe-media .oe-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.oe-media__thumb {
+    flex-shrink: 0;
+    width: var(--oe-control);
+    height: var(--oe-control);
+    border-radius: var(--oe-radius-chip);
+    background: var(--oe-tint) center / cover no-repeat;
+    box-shadow: inset 0 0 0 1px var(--oe-hairline);
+}
+.oe-media--no-thumb .oe-media__thumb {
+    display: none;
+}
+.oe-media .oe-icon-btn {
+    width: var(--oe-control);
+    height: var(--oe-control);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card, var(--background)));
+    border-radius: var(--oe-radius-inner);
+}
+
+/* Sortable list */
+.oe-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.oe-list__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.625rem;
+    padding: 0.75rem;
+    border-radius: var(--oe-radius-inner);
+    background: hsl(var(--muted) / 0.55);
+    border: 1px solid hsl(var(--border) / 0.5);
+    transition:
+        background var(--oe-transition),
+        box-shadow var(--oe-transition);
+}
+.oe-list__row--dragging {
+    opacity: 0.5;
+}
+.oe-list__row--over {
+    box-shadow: inset 0 2px 0 hsl(var(--primary));
+}
+.oe-list__handle {
+    display: inline-flex;
+    align-items: center;
+    height: var(--oe-control);
+    color: hsl(var(--faint-foreground, var(--muted-foreground)));
+    cursor: grab;
+}
+.oe-list__handle:active {
+    cursor: grabbing;
+}
+.oe-list__index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: calc((var(--oe-control) - 1.5rem) / 2);
+    border-radius: var(--oe-radius-chip);
+    background: hsl(var(--accent, var(--muted)));
+    box-shadow: 0 0 0 1px hsl(var(--accent-line, var(--border)));
+    font-size: var(--oe-label);
+    font-weight: 600;
+    color: hsl(var(--accent-foreground, var(--foreground)));
+}
+.oe-list__body {
+    min-width: 0;
+}
+.oe-list__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    margin-top: calc((var(--oe-control) - 1.875rem) / 2);
+}
+.oe-list__empty {
+    padding: 1rem;
+    border-radius: var(--oe-radius-inner);
+    border: 1px dashed hsl(var(--border));
+    text-align: center;
+    font-size: var(--text-sm, 0.875rem);
+    color: hsl(var(--muted-foreground));
+}
+.oe-list__row .oe-confirm {
+    grid-column: 1 / -1;
+}
+
+/* ======================================================================
+ * 4. Shell — the frame around a custom block
+ * ==================================================================== */
+
+.oe-block {
+    position: relative;
+    margin: 0.5rem 0;
+    border-radius: var(--oe-radius);
+    border: 1px solid transparent;
+    transition:
+        border-color var(--oe-transition),
+        background var(--oe-transition);
+}
+
+/* Editing: a quiet card. Preview: invisible chrome, the block sits in the document like published. */
+/*
+ * Edit mode has three surface levels so a block reads at a glance on any page colour:
+ *   card (the block)  >  tint (header, list rows)  >  field (inputs, chips: card again, with a stronger edge)
+ * The card is --card, which most themes make lighter than --background (white on the verdant off-white).
+ */
+.oe-block[data-mode='edit'] {
+    border-color: hsl(var(--border));
+    background: hsl(var(--card, var(--background)));
+    box-shadow: var(--shadow-xs, 0 1px 2px rgb(0 0 0 / 0.05));
+}
+
+.oe-block[data-mode='edit']:focus-within {
+    border-color: hsl(var(--ring) / 0.45);
+}
+
+/* A preview shows its outline only when pointed at, so the document stays clean */
+.oe-block[data-mode='preview']:hover,
+.oe-block[data-mode='preview']:focus-within {
+    border-color: var(--oe-hairline);
+}
+
+.oe-block__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.375rem 0.5rem 0.375rem 0.875rem;
+    border-radius: var(--oe-radius) var(--oe-radius) 0 0;
+}
+
+.oe-block[data-mode='edit'] .oe-block__header {
+    background: hsl(var(--muted) / 0.6);
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+/* In preview the header is a floating strip that appears on hover, so the document stays clean */
+.oe-block[data-mode='preview'] .oe-block__header {
+    position: absolute;
+    top: -0.75rem;
+    right: 0.5rem;
+    z-index: 2;
+    min-height: 0;
+    padding: 0.125rem 0.25rem 0.125rem 0.625rem;
+    border-radius: var(--oe-radius-inner);
+    background: hsl(var(--popover, var(--background)));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-sm);
+    opacity: 0;
+    transform: translateY(2px);
+    transition:
+        opacity var(--oe-transition),
+        transform var(--oe-transition);
+    pointer-events: none;
+}
+
+.oe-block[data-mode='preview']:hover .oe-block__header,
+.oe-block[data-mode='preview']:focus-within .oe-block__header,
+.ce-block--selected .oe-block[data-mode='preview'] .oe-block__header {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+.oe-block__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    font-size: var(--oe-label);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+.oe-block__title .oe-icon {
+    color: hsl(var(--foreground));
+}
+
+.oe-block__name {
+    color: hsl(var(--foreground));
+}
+
+.oe-block__summary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 400;
+}
+
+.oe-block__summary:not(:empty)::before {
+    content: '·';
+    margin-right: 0.5rem;
+}
+
+.oe-block__fields {
+    padding: 1rem;
+}
+
+.oe-block[data-mode='preview'] .oe-block__fields {
+    display: none;
+}
+
+.oe-block__preview {
+    cursor: text;
+}
+
+.oe-block[data-mode='edit'] .oe-block__preview {
+    display: none;
+}
+
+/* The renderer root inside a preview keeps its own typography but no outer rhythm */
+.oe-block__render > .otta-block {
+    margin: 0;
+}
+
+/* Things inside a preview are for looking at */
+.oe-block__preview a,
+.oe-block__preview button,
+.oe-block__preview iframe,
+.oe-block__preview summary {
+    pointer-events: none;
+}
+
+/* ======================================================================
+ * 5. Inline tools — annotation popup
+ * ==================================================================== */
+
+.oe-popup {
+    position: absolute;
+    z-index: var(--z-popover, 70);
+    width: 20rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--popover, var(--background)));
+    color: hsl(var(--popover-foreground, var(--foreground)));
+    box-shadow: var(--shadow-lg);
+    font-family: var(--font-body, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
+}
+
+.oe-popup__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+}
+
+.oe-popup__title {
+    font-size: var(--oe-label, 0.6875rem);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+.oe-popup__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* Inline spoiler in the canvas: the author must read it, so it stays sharp; a hatched chip and an
+   eye-off mark say "readers see this blurred" */
+.ottaeditor .cdx-spoiler {
+    padding: 0.05em 0.3em;
+    border-radius: var(--oe-radius-chip);
+    background: repeating-linear-gradient(
+        -45deg,
+        hsl(var(--muted)),
+        hsl(var(--muted)) 4px,
+        hsl(var(--muted-foreground) / 0.12) 4px,
+        hsl(var(--muted-foreground) / 0.12) 8px
+    );
+    box-shadow: inset 0 -1px 0 hsl(var(--muted-foreground) / 0.35);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.ottaeditor .cdx-spoiler::after {
+    content: '';
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin-left: 0.25em;
+    vertical-align: -0.05em;
+    background: hsl(var(--muted-foreground));
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.7 5.1A10.7 10.7 0 0 1 22 11.7a10.8 10.8 0 0 1-1.4 2.5'/%3E%3Cpath d='M14.1 14.2a3 3 0 0 1-4.2-4.2'/%3E%3Cpath d='M17.5 17.5A10.8 10.8 0 0 1 2 12a10.8 10.8 0 0 1 4.5-5.1'/%3E%3Cpath d='m2 2 20 20'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.7 5.1A10.7 10.7 0 0 1 22 11.7a10.8 10.8 0 0 1-1.4 2.5'/%3E%3Cpath d='M14.1 14.2a3 3 0 0 1-4.2-4.2'/%3E%3Cpath d='M17.5 17.5A10.8 10.8 0 0 1 2 12a10.8 10.8 0 0 1 4.5-5.1'/%3E%3Cpath d='m2 2 20 20'/%3E%3C/svg%3E")
+        center / contain no-repeat;
+    opacity: 0.7;
+}
+
+/* Annotated text in the canvas, as the renderer draws it */
+.ottaeditor .cdx-annotation {
+    text-decoration: underline dotted hsl(var(--primary) / 0.7);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.2em;
+    cursor: help;
+}
+
+/* Inline toolbar marks match the renderer */
+.ottaeditor .cdx-marker {
+    padding: 0.05em 0.25em;
+    border-radius: var(--oe-radius-chip);
+    background: hsl(var(--warning) / 0.3);
+}
+.ottaeditor .inline-code {
+    font-family: var(--font-mono, ui-monospace, Menlo, Consolas, monospace);
+    font-size: 0.875em;
+    padding: 0.1em 0.4em;
+    border-radius: var(--oe-radius-chip);
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    box-shadow: inset 0 0 0 1px var(--oe-hairline);
+}
+
+/* ======================================================================
+ * Reduced motion
+ * ==================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .ottaeditor *,
+    .oe-block *,
+    .oe-popup * {
+        transition: none !important;
+    }
+}
+
+/* ======================================================================
+ * 6. Block palette — grouped, searchable "add a block" list for hosts
+ * ==================================================================== */
+
+.oe-palette {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    font-family: var(--font-body, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
+    color: hsl(var(--foreground));
+}
+
+.oe-palette__group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.oe-palette__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.oe-palette__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--duration-normal, 200ms) var(--ease, ease);
+}
+
+.oe-palette__item:hover,
+.oe-palette__item:focus-visible {
+    background: hsl(var(--muted) / 0.7);
+    outline: none;
+}
+
+.oe-palette__item:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.oe-palette__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background));
+    box-shadow: 0 0 0 1px hsl(var(--border));
+    color: hsl(var(--foreground));
+}
+
+.oe-palette__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.oe-palette__title {
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.oe-palette__desc {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: hsl(var(--muted-foreground));
+}
+
+.oe-palette__empty {
+    padding: 0.5rem 0;
+}
+
+/* A hairline between groups of fields inside a block */
+.oe-divider {
+    border: 0;
+    border-top: 1px solid hsl(var(--border) / 0.6);
+    margin: 0.25rem 0;
+}

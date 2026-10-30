@@ -1,278 +1,114 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ReviewTool from './ReviewTool';
+import { fireEvent, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { API } from '@editorjs/editorjs';
+import ReviewTool, { type ReviewData, type ReviewToolConfig } from './ReviewTool';
 
-const createMockAPI = () => ({
-    blocks: {
-        getCurrentBlockIndex: vi.fn(() => 0),
-    },
-    ui: {
-        notifier: {
-            show: vi.fn(),
-        },
-    },
+const tools: ReviewTool[] = [];
+
+function mount(data: Partial<ReviewData> = {}, config: ReviewToolConfig = {}) {
+    const tool = new ReviewTool({ api: {} as API, data, config, block: {} as never, readOnly: false });
+    const element = tool.render();
+    document.body.appendChild(element);
+    tools.push(tool);
+    return { tool, element };
+}
+
+afterEach(() => {
+    tools.splice(0).forEach((t) => t.destroy());
+    document.body.innerHTML = '';
 });
 
 describe('ReviewTool', () => {
-    let tool: ReviewTool;
-    let mockAPI: ReturnType<typeof createMockAPI>;
+    it('takes its toolbox entry from the registry and allows line breaks', () => {
+        expect(ReviewTool.toolbox.title).toBe('Review');
+        expect(ReviewTool.toolbox.icon).toContain('<svg');
+        expect(ReviewTool.enableLineBreaks).toBe(true);
+    });
 
-    beforeEach(() => {
-        mockAPI = createMockAPI();
-        tool = new ReviewTool({
-            data: {},
-            config: {},
-            api: mockAPI as any,
+    it('starts from defaults and config', () => {
+        const { tool, element } = mount();
+        expect(element.dataset.mode).toBe('edit');
+        expect(tool.save()).toEqual({
+            image: '',
+            title: '',
+            content: '',
+            linkUrl: '',
+            linkLabel: '',
+            pros: [],
+            cons: [],
+            rating: 0,
+            maxStars: 5,
+            allowHalfStars: true,
+            summary: '',
+            compact: false,
+        });
+        expect(mount({}, { maxStars: 10, allowHalfStars: false }).tool.save()).toMatchObject({
+            maxStars: 10,
+            allowHalfStars: false,
         });
     });
 
-    describe('Toolbox', () => {
-        it('should have correct toolbox configuration', () => {
-            expect(ReviewTool.toolbox.title).toBe('Review');
-            expect(ReviewTool.toolbox.icon).toBeTruthy();
+    it('keeps provided data and filters empty pros and cons', () => {
+        const { tool, element } = mount({
+            title: 'Great Product',
+            content: 'This is a detailed review.',
+            image: 'https://example.com/img.jpg',
+            linkUrl: 'https://example.com',
+            linkLabel: 'Buy Now',
+            pros: ['Fast', '', 'Reliable', '  '],
+            cons: ['Expensive', ''],
+            rating: 4.5,
+            summary: 'Highly recommended.',
         });
-
-        it('should enable line breaks', () => {
-            expect(ReviewTool.enableLineBreaks).toBe(true);
+        expect(element.dataset.mode).toBe('preview');
+        expect(tool.save()).toMatchObject({
+            title: 'Great Product',
+            image: 'https://example.com/img.jpg',
+            pros: ['Fast', 'Reliable'],
+            cons: ['Expensive'],
+            rating: 4.5,
+            maxStars: 5,
+            summary: 'Highly recommended.',
         });
+        expect(element.querySelector('.oe-block__summary')?.textContent).toBe('4.5/5');
     });
 
-    describe('Initialization', () => {
-        it('should initialize with default values', () => {
-            const saved = tool.save();
-            expect(saved.title).toBe('');
-            expect(saved.content).toBe('');
-            expect(saved.image).toBe('');
-            expect(saved.linkUrl).toBe('');
-            expect(saved.linkLabel).toBe('');
-            expect(saved.rating).toBe(0);
-            expect(saved.maxStars).toBe(5);
-            expect(saved.allowHalfStars).toBe(true);
-            expect(saved.summary).toBe('');
-        });
-
-        it('should initialize with provided data', () => {
-            const customTool = new ReviewTool({
-                data: {
-                    title: 'Great Product',
-                    content: 'This is a detailed review.',
-                    image: 'https://example.com/img.jpg',
-                    linkUrl: 'https://example.com',
-                    linkLabel: 'Buy Now',
-                    pros: ['Fast', 'Reliable'],
-                    cons: ['Expensive'],
-                    rating: 4.5,
-                    maxStars: 5,
-                    allowHalfStars: true,
-                    summary: 'Highly recommended.',
-                },
-                config: {},
-                api: mockAPI as any,
-            });
-
-            const saved = customTool.save();
-            expect(saved.title).toBe('Great Product');
-            expect(saved.content).toBe('This is a detailed review.');
-            expect(saved.image).toBe('https://example.com/img.jpg');
-            expect(saved.linkUrl).toBe('https://example.com');
-            expect(saved.linkLabel).toBe('Buy Now');
-            expect(saved.pros).toEqual(['Fast', 'Reliable']);
-            expect(saved.cons).toEqual(['Expensive']);
-            expect(saved.rating).toBe(4.5);
-            expect(saved.maxStars).toBe(5);
-            expect(saved.allowHalfStars).toBe(true);
-            expect(saved.summary).toBe('Highly recommended.');
-        });
-
-        it('should use config defaults for maxStars', () => {
-            const toolWithConfig = new ReviewTool({
-                data: {},
-                config: { maxStars: 10 },
-                api: mockAPI as any,
-            });
-            expect(toolWithConfig.save().maxStars).toBe(10);
-        });
-
-        it('should use config defaults for allowHalfStars', () => {
-            const toolWithConfig = new ReviewTool({
-                data: {},
-                config: { allowHalfStars: false },
-                api: mockAPI as any,
-            });
-            expect(toolWithConfig.save().allowHalfStars).toBe(false);
-        });
+    it('edits fields, rating and pros/cons through the kit', () => {
+        const { tool } = mount();
+        fireEvent.input(screen.getByLabelText('Title'), { target: { value: 'New Title' } });
+        fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'https://img.test/p.png' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Rate 3 out of 5' }));
+        expect(tool.save()).toMatchObject({ title: 'New Title', image: 'https://img.test/p.png', rating: 3 });
+        // clicking the same star clears; the rating never goes negative
+        fireEvent.click(screen.getByRole('button', { name: 'Rate 3 out of 5' }));
+        expect(tool.save().rating).toBe(0);
+        fireEvent.input(screen.getByLabelText('Rating value'), { target: { value: '4.5' } });
+        expect(tool.save().rating).toBe(4.5);
+        fireEvent.input(screen.getByLabelText('Pro 1'), { target: { value: 'Good' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add pro' }));
+        fireEvent.input(screen.getByLabelText('Pro 2'), { target: { value: 'Great' } });
+        fireEvent.input(screen.getByLabelText('Con 1'), { target: { value: 'Bad' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add con' }));
+        expect(tool.save()).toMatchObject({ pros: ['Good', 'Great'], cons: ['Bad'] });
+        fireEvent.click(screen.getByRole('switch'));
+        expect(tool.save().compact).toBe(true);
     });
 
-    describe('Rendering', () => {
-        it('should render wrapper element', () => {
-            const element = tool.render();
-            expect(element).toBeInstanceOf(HTMLElement);
-            expect(element.classList.contains('cdx-review')).toBe(true);
-            expect(element.classList.contains('cdx-review__wrapper')).toBe(true);
-        });
-
-        it('should render form with all sections', () => {
-            const element = tool.render();
-            const form = element.querySelector('.cdx-review__form');
-            expect(form).toBeTruthy();
-        });
-
-        it('should render image upload area', () => {
-            const element = tool.render();
-            const imageArea = element.querySelector('.cdx-review__image-area');
-            expect(imageArea).toBeTruthy();
-        });
-
-        it('should render star rating', () => {
-            const element = tool.render();
-            const stars = element.querySelector('.cdx-review__stars');
-            expect(stars).toBeTruthy();
-            expect(stars?.querySelectorAll('.cdx-review__star').length).toBe(5);
-        });
-
-        it('should render 10 stars when maxStars is 10', () => {
-            const tool10 = new ReviewTool({
-                data: { maxStars: 10 } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-            const element = tool10.render();
-            const stars = element.querySelectorAll('.cdx-review__star');
-            expect(stars.length).toBe(10);
-        });
-
-        it('should render pros/cons lists', () => {
-            const element = tool.render();
-            const proscons = element.querySelector('.cdx-review__proscons');
-            expect(proscons).toBeTruthy();
-        });
-
-        it('should update title when input changes', () => {
-            const element = tool.render();
-            // Title is the first text input within the form (image section has file + url inputs)
-            const textInputs = element.querySelectorAll('input[type="text"]');
-            const titleInput = textInputs[0] as HTMLInputElement;
-            titleInput.value = 'New Title';
-            titleInput.dispatchEvent(new Event('input'));
-            expect(tool.save().title).toBe('New Title');
-        });
-
-        it('should update rating when star is clicked', () => {
-            const element = tool.render();
-            const stars = element.querySelectorAll('.cdx-review__star');
-            (stars[2] as HTMLElement).click();
-            expect(tool.save().rating).toBe(3);
-        });
-
-        it('should never produce negative rating when clicking first star multiple times', () => {
-            const element = tool.render();
-            const stars = element.querySelectorAll('.cdx-review__star');
-            const firstStar = stars[0] as HTMLElement;
-            // Click first star: rating = 1
-            firstStar.click();
-            expect(tool.save().rating).toBe(1);
-            // Click again: rating = 0.5 (half star)
-            firstStar.click();
-            expect(tool.save().rating).toBe(0.5);
-            // Click again: rating = 0 (not negative)
-            firstStar.click();
-            expect(tool.save().rating).toBe(0);
-        });
+    it('switches scale and half-star support, clamping and rounding the rating', () => {
+        const { tool } = mount({ rating: 8, maxStars: 10 });
+        expect(screen.getAllByRole('button', { name: /Rate \d+ out of 10/ })).toHaveLength(10);
+        fireEvent.change(screen.getByLabelText('Max stars'), { target: { value: '5' } });
+        expect(tool.save()).toMatchObject({ maxStars: 5, rating: 5 });
+        expect(screen.getAllByRole('button', { name: /Rate \d+ out of 5/ })).toHaveLength(5);
+        fireEvent.input(screen.getByLabelText('Rating value'), { target: { value: '3.5' } });
+        fireEvent.click(screen.getByLabelText('Half stars'));
+        expect(tool.save()).toMatchObject({ allowHalfStars: false, rating: 4 });
     });
 
-    describe('Save', () => {
-        it('should filter empty pros and cons on save', () => {
-            const toolWithEmpty = new ReviewTool({
-                data: {
-                    title: 'Test',
-                    pros: ['Good', '', 'Great', '  '],
-                    cons: ['', 'Bad'],
-                } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-
-            const saved = toolWithEmpty.save();
-            expect(saved.pros).toEqual(['Good', 'Great']);
-            expect(saved.cons).toEqual(['Bad']);
-        });
-    });
-
-    describe('Validation', () => {
-        it('should validate when title is provided', () => {
-            const validTool = new ReviewTool({
-                data: { title: 'My Review' } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-            expect(validTool.validate(validTool.save())).toBe(true);
-        });
-
-        it('should fail validation when title is empty', () => {
-            expect(tool.validate(tool.save())).toBe(false);
-        });
-
-        it('should fail validation when title is only whitespace', () => {
-            const invalidTool = new ReviewTool({
-                data: { title: '   ' } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-            expect(invalidTool.validate(invalidTool.save())).toBe(false);
-        });
-    });
-
-    describe('Pros/Cons Management', () => {
-        it('should add a new pro item', () => {
-            const element = tool.render();
-            const addBtns = element.querySelectorAll('.cdx-review__proscons-add');
-            (addBtns[0] as HTMLElement).click();
-
-            // The data should have 2 entries now (1 default + 1 added)
-            expect(tool.save().pros.length).toBeLessThanOrEqual(2);
-        });
-
-        it('should add a new con item', () => {
-            const element = tool.render();
-            const addBtns = element.querySelectorAll('.cdx-review__proscons-add');
-            (addBtns[1] as HTMLElement).click();
-
-            expect(tool.save().cons.length).toBeLessThanOrEqual(2);
-        });
-    });
-
-    describe('Rating Configuration', () => {
-        it('should switch between 5 and 10 star modes', () => {
-            const element = tool.render();
-            const maxSelect = element.querySelector('.cdx-review__select') as HTMLSelectElement;
-            maxSelect.value = '10';
-            maxSelect.dispatchEvent(new Event('change'));
-
-            expect(tool.save().maxStars).toBe(10);
-            const stars = element.querySelectorAll('.cdx-review__star');
-            expect(stars.length).toBe(10);
-        });
-
-        it('should toggle half star support', () => {
-            const element = tool.render();
-            const halfCheck = element.querySelector('.cdx-review__checkbox') as HTMLInputElement;
-            halfCheck.checked = false;
-            halfCheck.dispatchEvent(new Event('change'));
-
-            expect(tool.save().allowHalfStars).toBe(false);
-        });
-
-        it('should clamp rating when switching from 10 to 5 stars', () => {
-            const tool10 = new ReviewTool({
-                data: { rating: 8, maxStars: 10 } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-            const element = tool10.render();
-            const maxSelect = element.querySelector('.cdx-review__select') as HTMLSelectElement;
-            maxSelect.value = '5';
-            maxSelect.dispatchEvent(new Event('change'));
-
-            expect(tool10.save().rating).toBe(5);
-        });
+    it('validates on a non-blank title', () => {
+        const { tool } = mount();
+        expect(tool.validate({ title: 'Ok' })).toBe(true);
+        expect(tool.validate({ title: '' })).toBe(false);
+        expect(tool.validate({ title: '   ' })).toBe(false);
     });
 });

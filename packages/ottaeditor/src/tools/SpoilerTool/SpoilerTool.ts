@@ -1,74 +1,71 @@
 import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
-import './SpoilerTool.css';
+import { toolboxEntry } from '../../blocks';
+import { field, textarea } from '../../ui/kit';
+import { BlockShell } from '../../ui/shell';
 
-interface SpoilerConfig {
+export interface SpoilerConfig {
     placeholder?: string;
 }
 
-interface SpoilerData {
+export interface SpoilerData {
     text: string;
 }
 
+/** Spoiler block: one textarea; preview is the renderer's blurred text. */
 export default class SpoilerTool implements BlockTool {
-    private api: API;
+    private readonly api: API;
+    private readonly config: SpoilerConfig;
     private data: SpoilerData;
-    private config: SpoilerConfig;
-    private wrapper: HTMLElement | null = null;
-
-    static get CSS() {
-        return {
-            baseClass: 'cdx-spoiler',
-            wrapper: 'cdx-spoiler__wrapper',
-            title: 'cdx-spoiler__title',
-            textarea: 'cdx-spoiler__textarea',
-        };
-    }
+    private shell: BlockShell | null = null;
 
     static get toolbox() {
-        return {
-            title: 'Spoiler',
-            icon: '<svg width="17" height="17" viewBox="-80 0 512 512" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M285 221Q243 246 210 256 243 266 285 291L261 333Q215 305 193 286 200 317 200 368L152 368Q152 317 159 286 137 305 91 333L67 291Q109 266 142 256 109 246 67 221L91 179Q137 207 159 226 152 195 152 144L200 144Q200 195 193 226 215 207 261 179L285 221Z"/></svg>',
-        };
+        return toolboxEntry('spoiler');
     }
 
     static get enableLineBreaks() {
         return true;
     }
 
-    constructor({ data, config, api }: BlockToolConstructorOptions<SpoilerData, SpoilerConfig>) {
+    constructor({ data, config, api }: BlockToolConstructorOptions<Partial<SpoilerData>, SpoilerConfig>) {
         this.api = api;
         this.config = config || {};
-        this.data = {
-            text: data?.text || '',
-        };
+        this.data = { text: data?.text || '' };
     }
 
     render(): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add(SpoilerTool.CSS.baseClass, SpoilerTool.CSS.wrapper, 'ob-plugin');
-
-        // Add title
-        const title = document.createElement('div');
-        title.classList.add(SpoilerTool.CSS.title, 'ob-section-label');
-        title.textContent = 'Spoiler';
-        wrapper.appendChild(title);
-
-        const textarea = document.createElement('textarea');
-        textarea.classList.add(SpoilerTool.CSS.textarea, 'ob-textarea');
-        textarea.placeholder = this.config.placeholder || 'Enter spoiler text...';
-        textarea.value = this.data.text;
-        textarea.rows = 3;
-
-        textarea.addEventListener('input', (event) => {
-            const target = event.target as HTMLTextAreaElement;
-            this.data.text = target.value;
+        const shell = new BlockShell({
+            type: 'spoiler',
+            hasContent: this.data.text.trim() !== '',
+            summary: this.summary(),
         });
+        this.shell = shell;
+        shell.fields.append(
+            field({
+                label: 'Hidden text',
+                hint: 'Readers click to reveal it',
+                control: textarea({
+                    value: this.data.text,
+                    rows: 3,
+                    placeholder: this.config.placeholder || 'Text to hide',
+                    onInput: (v) => {
+                        this.data.text = v;
+                        shell.setSummary(this.summary());
+                        shell.preview(this.previewData());
+                    },
+                }),
+            }),
+        );
+        shell.preview(this.previewData());
+        return shell.element;
+    }
 
-        wrapper.appendChild(textarea);
+    private summary(): string {
+        const n = this.data.text.trim().length;
+        return n === 0 ? 'empty' : `${n} characters`;
+    }
 
-        this.wrapper = wrapper;
-
-        return wrapper;
+    private previewData(): Record<string, unknown> {
+        return { text: this.data.text.trim() || 'Hidden text appears here' };
     }
 
     save(): SpoilerData {
@@ -77,5 +74,10 @@ export default class SpoilerTool implements BlockTool {
 
     validate(savedData: SpoilerData): boolean {
         return savedData.text.trim() !== '';
+    }
+
+    destroy(): void {
+        this.shell?.destroy();
+        this.shell = null;
     }
 }

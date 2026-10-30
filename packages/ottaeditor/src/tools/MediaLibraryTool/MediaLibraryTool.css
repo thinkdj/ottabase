@@ -1,38 +1,19 @@
-/* MediaLibrary Tool - custom/overrides only */
+/* "From library" picker row */
 
-.cdx-media-library {
-    padding: 1rem 0;
-}
-
-.cdx-media-library-placeholder {
-    min-height: 10rem;
+.oe-picker {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: center;
-    background: hsl(var(--muted) / 0.3);
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+    padding: 0.75rem 1rem;
     border: 1px dashed hsl(var(--border));
-    cursor: pointer;
-    border-radius: var(--radius);
-    transition:
-        border-color var(--duration-normal) var(--ease),
-        background var(--duration-normal) var(--ease);
+    border-radius: var(--oe-radius, calc(var(--radius) + 4px));
+    background: var(--oe-tint, hsl(var(--muted) / 0.4));
+    color: hsl(var(--muted-foreground));
+    font-size: var(--text-sm, 0.875rem);
 }
 
-.cdx-media-library-placeholder:hover {
-    border-color: hsl(var(--primary) / 0.5);
-    background: hsl(var(--muted) / 0.5);
-}
-
-.cdx-media-library-image {
-    max-width: 100%;
-    cursor: pointer;
-}
-
-.cdx-media-library-caption {
-    margin-top: 0.5rem;
-}
-
-.cdx-media-library-caption:focus {
-    border-color: hsl(var(--ring));
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+.oe-picker__text {
+    flex: 1 1 12rem;
 }

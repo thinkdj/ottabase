@@ -1,369 +1,125 @@
-/* Before/After Slider Tool - custom/overrides only */
+/* Before/after block: the live comparison stage the author drags. Fields are the kit. */
 
-.cdx-before-after__url-row,
-.cdx-before-after__label-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-}
-
-.cdx-before-after__options-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+.oe-compare__range {
+    display: flex;
+    align-items: center;
     gap: 0.75rem;
-    align-items: end;
 }
 
-/* ── Input with Gallery Button ───────────────────────────────────────────── */
-
-.cdx-before-after__input-with-gallery {
-    display: flex;
-    gap: 0.25rem;
+.oe-compare__pos {
+    min-width: 2.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
-.cdx-before-after__input-with-gallery .ob-input {
-    flex: 1;
-}
-
-.cdx-before-after__gallery-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    flex-shrink: 0;
-    background: hsl(var(--background));
-    border: 1px solid hsl(var(--input));
-    border-radius: calc(var(--radius) - 2px);
-    color: hsl(var(--muted-foreground));
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        border-color var(--duration-normal) var(--ease);
-}
-
-.cdx-before-after__gallery-btn:hover {
-    background: hsl(var(--muted) / 0.7);
-    color: hsl(var(--foreground));
-}
-
-.cdx-before-after__gallery-btn svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-/* ── Orientation Toggle — segment pattern ────────────────────────────────── */
-
-.cdx-before-after__orientation-toggle {
-    display: inline-flex;
-    gap: 0.125rem;
-    padding: 0.125rem;
-    background: hsl(var(--muted) / 0.4);
-    border-radius: var(--radius);
-}
-
-.cdx-before-after__orientation-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2rem;
-    background: transparent;
-    border: none;
-    border-radius: calc(var(--radius) - 2px);
-    color: hsl(var(--muted-foreground));
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        box-shadow var(--duration-normal) var(--ease);
-}
-
-.cdx-before-after__orientation-btn:hover {
-    color: hsl(var(--foreground));
-}
-
-.cdx-before-after__orientation-btn--active {
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-}
-
-.cdx-before-after__orientation-btn svg {
-    width: 1.125rem;
-    height: 1.125rem;
-}
-
-.cdx-before-after__slider-input {
-    width: 100%;
-    accent-color: hsl(var(--primary));
-    padding: 0.25rem 0 !important;
-    border: none !important;
-    background: transparent !important;
-}
-
-/* ── Height / Image Fit Row ──────────────────────────────────────────────── */
-
-.cdx-before-after__size-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: start;
-}
-
-.cdx-before-after__size-row > .ob-input-group:first-child {
-    width: 12.5rem;
-    flex-shrink: 0;
-}
-
-.cdx-before-after__fit-toggle {
-    display: inline-flex;
-    gap: 0.125rem;
-    padding: 0.125rem;
-    background: hsl(var(--muted) / 0.4);
-    border-radius: var(--radius);
-    height: 2.25rem; /* match h-9 control rhythm */
-    box-sizing: border-box;
-}
-
-.cdx-before-after__fit-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem 0.625rem;
-    background: transparent;
-    border: none;
-    border-radius: calc(var(--radius) - 2px);
-    color: hsl(var(--muted-foreground));
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        color var(--duration-normal) var(--ease),
-        box-shadow var(--duration-normal) var(--ease);
-}
-
-.cdx-before-after__fit-btn:hover {
-    color: hsl(var(--foreground));
-}
-
-.cdx-before-after__fit-btn--active {
-    background: hsl(var(--background));
-    color: hsl(var(--foreground));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-}
-
-/* ── Size Controls (single row above preview) ───────────────────────────── */
-
-.cdx-before-after__size-controls {
-    margin-top: 0.75rem;
-}
-
-/* ── Position Grid (3x3) ─────────────────────────────────────────────────── */
-
-.cdx-before-after__position-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.125rem;
-    width: 4.5rem;
-    height: 4.5rem;
-    padding: 0.125rem;
-    background: hsl(var(--muted) / 0.4);
-    border-radius: var(--radius);
-}
-
-.cdx-before-after__position-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: calc(var(--radius) - 2px);
-    cursor: pointer;
-    transition:
-        background var(--duration-normal) var(--ease),
-        box-shadow var(--duration-normal) var(--ease);
+.oe-compare__stage {
+    --oe-compare-pos: 50%;
     position: relative;
-}
-
-.cdx-before-after__position-btn::before {
-    content: '';
-    width: 0.375rem;
-    height: 0.375rem;
-    border-radius: 50%;
-    background: hsl(var(--muted-foreground) / 0.4);
-    transition: background var(--duration-normal) var(--ease);
-}
-
-.cdx-before-after__position-btn:hover::before {
-    background: hsl(var(--foreground) / 0.6);
-}
-
-.cdx-before-after__position-btn--active {
-    background: hsl(var(--background));
-    box-shadow: 0 0 0 1px hsl(var(--border));
-}
-
-.cdx-before-after__position-btn--active::before {
-    background: hsl(var(--primary));
-    width: 0.5rem;
-    height: 0.5rem;
-}
-
-/* ── Preview Container ──────────────────────────────────────────────────── */
-
-.cdx-before-after__preview {
-    margin-top: 0.75rem;
-}
-
-.cdx-before-after__container {
-    position: relative;
-    width: 100%;
     min-height: 12.5rem;
     overflow: hidden;
-    border-radius: var(--radius);
-    border: 1px solid hsl(var(--border) / 0.6);
-    background: hsl(var(--muted) / 0.4);
+    border-radius: var(--oe-radius-inner, var(--radius));
+    background: var(--oe-tint, hsl(var(--muted) / 0.4));
+    box-shadow: inset 0 0 0 1px var(--oe-hairline, hsl(var(--border) / 0.6));
     cursor: ew-resize;
     user-select: none;
     touch-action: none;
 }
 
-.cdx-before-after__container--vertical {
+.oe-compare__stage--vertical {
     cursor: ns-resize;
 }
 
-/* Cover mode: images fill container */
-.cdx-before-after__container--cover .cdx-before-after__after {
+.oe-compare__stage:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+.oe-compare__after,
+.oe-compare__before img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    pointer-events: none;
+}
+
+.oe-compare__stage--cover .oe-compare__after,
+.oe-compare__stage--cover .oe-compare__before img {
     height: 100%;
     object-fit: cover;
 }
 
-/* After image: full width/height base layer */
-.cdx-before-after__after {
-    display: block;
-    width: 100%;
-    height: auto;
-    margin: 0; /* Reset prose styles */
-    pointer-events: none;
-    object-fit: contain;
-}
-
-/* Before image: clipped overlay */
-.cdx-before-after__before {
+.oe-compare__before {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     overflow: hidden;
     pointer-events: none;
 }
 
-.cdx-before-after__before img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    margin: 0; /* Reset prose styles */
-    object-fit: contain;
-}
-
-/* In cover mode, before image must match the after image's cover fit */
-.cdx-before-after__container--cover .cdx-before-after__before img {
-    object-fit: cover;
-}
-
-/* ── Drag Handle — floating control over imagery, keeps elevation ────────── */
-
-.cdx-before-after__handle {
+.oe-compare__label {
     position: absolute;
-    background: hsl(var(--primary));
-    z-index: 10;
-    cursor: grab;
-    transition: box-shadow var(--duration-normal) var(--ease);
+    top: 0.75rem;
+    z-index: 2;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--oe-radius-chip, calc(var(--radius) - 2px));
+    background: hsl(var(--background) / 0.7);
+    box-shadow: 0 0 0 1px var(--oe-hairline, hsl(var(--border) / 0.6));
+    backdrop-filter: blur(4px);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--foreground));
+    pointer-events: none;
 }
 
-.cdx-before-after__handle::before {
+.oe-compare__label--before {
+    left: 0.75rem;
+}
+
+.oe-compare__label--after {
+    right: 0.75rem;
+}
+
+.oe-compare__stage--vertical .oe-compare__label--after {
+    top: auto;
+    right: auto;
+    bottom: 0.75rem;
+    left: 0.75rem;
+}
+
+.oe-compare__handle {
+    position: absolute;
+    z-index: 3;
+    background: hsl(var(--primary));
+    pointer-events: none;
+    top: 0;
+    bottom: 0;
+    left: var(--oe-compare-pos);
+    width: 3px;
+    transform: translateX(-50%);
+}
+
+.oe-compare__stage--vertical .oe-compare__handle {
+    top: var(--oe-compare-pos);
+    bottom: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 3px;
+    transform: translateY(-50%);
+}
+
+.oe-compare__handle::before {
     content: '';
     position: absolute;
+    top: 50%;
+    left: 50%;
     width: 1.75rem;
     height: 1.75rem;
     border-radius: 50%;
     background: hsl(var(--primary));
     border: 3px solid hsl(var(--primary-foreground));
     box-shadow: var(--shadow-md);
-}
-
-/* Horizontal handle: vertical bar with centered circle */
-.cdx-before-after__container:not(.cdx-before-after__container--vertical) .cdx-before-after__handle::before {
-    top: 50%;
-    left: 50%;
     transform: translate(-50%, -50%);
-}
-
-/* Vertical handle: horizontal bar with centered circle */
-.cdx-before-after__container--vertical .cdx-before-after__handle::before {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.cdx-before-after__handle:hover {
-    box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
-}
-
-.cdx-before-after__handle:active {
-    cursor: grabbing;
-}
-
-/* ── Labels ──────────────────────────────────────────────────────────────── */
-
-/* Micro-label chips on a soft scrim — matches the renderer's .otta-before-after__label */
-.cdx-before-after__label {
-    position: absolute;
-    padding: 0.25rem 0.5rem;
-    border-radius: calc(var(--radius) - 2px);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    color: hsl(var(--foreground));
-    background: hsl(var(--background) / 0.7);
-    box-shadow: 0 0 0 1px hsl(var(--border) / 0.6);
-    pointer-events: none;
-    z-index: 5;
-    backdrop-filter: blur(4px);
-}
-
-.cdx-before-after__label--before {
-    top: 0.75rem;
-    left: 0.75rem;
-}
-
-.cdx-before-after__label--after {
-    top: 0.75rem;
-    right: 0.75rem;
-}
-
-/* Vertical: labels at top-left and bottom-left */
-.cdx-before-after__container--vertical .cdx-before-after__label--before {
-    top: 0.75rem;
-    left: 0.75rem;
-}
-
-.cdx-before-after__container--vertical .cdx-before-after__label--after {
-    top: auto;
-    bottom: 0.75rem;
-    left: 0.75rem;
-    right: auto;
-}
-
-/* ── Responsive ──────────────────────────────────────────────────────────── */
-
-@media (max-width: 480px) {
-    .cdx-before-after__url-row,
-    .cdx-before-after__label-row,
-    .cdx-before-after__options-row {
-        grid-template-columns: 1fr;
-    }
 }

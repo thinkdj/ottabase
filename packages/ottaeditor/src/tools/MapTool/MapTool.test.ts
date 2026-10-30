@@ -1,191 +1,117 @@
-// @ts-nocheck - EditorJS BlockToolConstructorOptions has inconsistent required fields across versions
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import MapTool from './MapTool';
+import { fireEvent, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { API } from '@editorjs/editorjs';
+import MapTool, { type MapData, type MapToolConfig } from './MapTool';
 
-// Mock CSS import
-vi.mock('./MapTool.css', () => ({}));
+const tools: MapTool[] = [];
 
-const createMockAPI = () => ({
-    blocks: { getCurrentBlockIndex: vi.fn(() => 0) },
-    ui: { notifier: { show: vi.fn() } },
+function create(data: Partial<MapData> = {}, config: MapToolConfig = {}) {
+    const tool = new MapTool({ api: {} as API, data: data as MapData, config, block: {} as never, readOnly: false });
+    tools.push(tool);
+    return tool;
+}
+
+function mount(data: Partial<MapData> = {}, config: MapToolConfig = {}) {
+    const tool = create(data, config);
+    const element = tool.render();
+    document.body.appendChild(element);
+    return { tool, element };
+}
+
+afterEach(() => {
+    tools.splice(0).forEach((t) => t.destroy());
+    document.body.innerHTML = '';
 });
 
 describe('MapTool', () => {
-    let tool: MapTool;
-    let mockAPI: ReturnType<typeof createMockAPI>;
-
-    beforeEach(() => {
-        mockAPI = createMockAPI();
-        tool = new MapTool({ data: {} as any, config: {}, api: mockAPI as any });
+    it('takes its toolbox entry from the registry', () => {
+        expect(MapTool.toolbox.title).toBe('Map');
+        expect(MapTool.toolbox.icon).toContain('<svg');
     });
 
-    describe('Toolbox', () => {
-        it('should have correct toolbox configuration', () => {
-            expect(MapTool.toolbox.title).toBe('Map');
-            expect(MapTool.toolbox.icon).toBeTruthy();
+    it('starts from defaults, config and data', () => {
+        expect(create().save()).toEqual({
+            url: '',
+            provider: 'openstreetmap',
+            theme: 'default',
+            height: 400,
+            caption: '',
+            zoom: 13,
         });
+        expect(
+            create({}, { defaultProvider: 'gmaps', defaultHeight: 300, defaultTheme: 'satellite' }).save(),
+        ).toMatchObject({ provider: 'gmaps', height: 300, theme: 'satellite' });
+        expect(
+            create({
+                url: 'https://www.openstreetmap.org/#map=13/51.5/-0.1',
+                theme: 'dark',
+                height: 500,
+                caption: 'London',
+            }).save(),
+        ).toMatchObject({ theme: 'dark', height: 500, caption: 'London' });
     });
 
-    describe('Initialization', () => {
-        it('should initialize with default values', () => {
-            const saved = tool.save();
-            expect(saved.url).toBe('');
-            expect(saved.provider).toBe('openstreetmap');
-            expect(saved.theme).toBe('default');
-            expect(saved.height).toBe(400);
-            expect(saved.caption).toBe('');
-            expect(saved.zoom).toBe(13);
-        });
-
-        it('should initialize with provided data', () => {
-            const customTool = new MapTool({
-                data: {
-                    url: 'https://www.openstreetmap.org/#map=13/51.5/-0.1',
-                    provider: 'openstreetmap',
-                    theme: 'dark',
-                    height: 500,
-                    caption: 'London',
-                    zoom: 13,
-                } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-
-            const saved = customTool.save();
-            expect(saved.url).toBe('https://www.openstreetmap.org/#map=13/51.5/-0.1');
-            expect(saved.provider).toBe('openstreetmap');
-            expect(saved.theme).toBe('dark');
-            expect(saved.height).toBe(500);
-            expect(saved.caption).toBe('London');
-        });
-
-        it('should respect config defaults', () => {
-            const configuredTool = new MapTool({
-                data: {} as any,
-                config: { defaultProvider: 'gmaps', defaultHeight: 300, defaultTheme: 'satellite' },
-                api: mockAPI as any,
-            });
-            const saved = configuredTool.save();
-            expect(saved.provider).toBe('gmaps');
-            expect(saved.height).toBe(300);
-            expect(saved.theme).toBe('satellite');
-        });
+    it('opens in edit mode without a link and in preview with one', () => {
+        expect(mount().element.dataset.mode).toBe('edit');
+        expect(mount({ url: 'https://www.openstreetmap.org/#map=13/51.5/-0.1' }).element.dataset.mode).toBe('preview');
     });
 
-    describe('Rendering', () => {
-        it('should render wrapper element', () => {
-            const el = tool.render();
-            expect(el).toBeInstanceOf(HTMLElement);
-            expect(el.classList.contains('cdx-map')).toBe(true);
-            expect(el.classList.contains('cdx-map__wrapper')).toBe(true);
-        });
-
-        it('should render URL input', () => {
-            const el = tool.render();
-            const input = el.querySelector('input[type="url"]') as HTMLInputElement;
-            expect(input).toBeTruthy();
-        });
-
-        it('auto-detects Google provider for maps.app.goo.gl links', () => {
-            const el = tool.render();
-            const input = el.querySelector('input[type="url"]') as HTMLInputElement;
-            const providerSelect = el.querySelector('[data-key="provider"]') as HTMLSelectElement;
-
-            input.value = 'https://maps.app.goo.gl/example';
-            input.dispatchEvent(new Event('change'));
-
-            expect(providerSelect.value).toBe('gmaps');
-            expect(tool.save().provider).toBe('gmaps');
-        });
-
-        it('should render provider select', () => {
-            const el = tool.render();
-            const select = el.querySelector('[data-key="provider"]') as HTMLSelectElement;
-            expect(select).toBeTruthy();
-            const options = Array.from(select.options).map((o) => o.value);
-            expect(options).toContain('openstreetmap');
-            expect(options).toContain('gmaps');
-        });
-
-        it('should render theme select', () => {
-            const el = tool.render();
-            const select = el.querySelector('[data-key="theme"]') as HTMLSelectElement;
-            expect(select).toBeTruthy();
-            const options = Array.from(select.options).map((o) => o.value);
-            expect(options).toContain('default');
-            expect(options).toContain('dark');
-            expect(options).toContain('satellite');
-            expect(options).toContain('terrain');
-        });
-
-        it('should render height input', () => {
-            const el = tool.render();
-            const input = el.querySelector('input[type="number"]') as HTMLInputElement;
-            expect(input).toBeTruthy();
-            expect(input.value).toBe('400');
-        });
-
-        it('should show placeholder when no URL is provided', () => {
-            const el = tool.render();
-            const placeholder = el.querySelector('.cdx-map__placeholder');
-            expect(placeholder).toBeTruthy();
-        });
+    it('detects the provider from a pasted link and syncs the segment', () => {
+        const { tool } = mount();
+        const link = screen.getByLabelText('Map link');
+        fireEvent.input(link, { target: { value: 'https://maps.app.goo.gl/example' } });
+        fireEvent.blur(link);
+        expect(tool.save().provider).toBe('gmaps');
+        expect(
+            within(screen.getByRole('radiogroup', { name: 'Provider' }))
+                .getByRole('radio', { name: 'Google Maps' })
+                .getAttribute('aria-checked'),
+        ).toBe('true');
     });
 
-    describe('Validation', () => {
-        it('should fail validation when URL is empty', () => {
-            expect(tool.validate(tool.save())).toBe(false);
-        });
+    it('edits theme, height, zoom and caption through the kit', () => {
+        const { tool, element } = mount();
+        fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'terrain' } });
+        fireEvent.input(screen.getByLabelText('Height (px)'), { target: { value: '500' } });
+        fireEvent.input(screen.getByLabelText('Height (px)'), { target: { value: '9000' } }); // out of range, ignored
+        fireEvent.input(screen.getByLabelText('Zoom'), { target: { value: '8' } });
+        fireEvent.input(screen.getByLabelText('Caption'), { target: { value: 'HQ' } });
+        expect(tool.save()).toMatchObject({ theme: 'terrain', height: 500, zoom: 8, caption: 'HQ' });
+        expect(element.querySelector('.oe-block__summary')?.textContent).toBe('OpenStreetMap · 500px');
+    });
 
-        it('should pass validation when URL is provided', () => {
-            const mapWithUrl = new MapTool({
-                data: { url: 'https://www.openstreetmap.org/#map=13/51.5/-0.1' } as any,
-                config: {},
-                api: mockAPI as any,
-            });
-            expect(mapWithUrl.validate(mapWithUrl.save())).toBe(true);
-        });
+    it('validates on the presence of a URL', () => {
+        expect(create().validate(create().save())).toBe(false);
+        const t = create({ url: 'https://www.openstreetmap.org/#map=13/51.5/-0.1' });
+        expect(t.validate(t.save())).toBe(true);
     });
 
     describe('toEmbedUrl', () => {
-        it('should pass through existing embed URLs unchanged', () => {
-            const embedUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=1,2,3,4';
-            expect(MapTool.toEmbedUrl(embedUrl, 'openstreetmap', 'default', 13)).toBe(embedUrl);
+        it('passes existing embed URLs through for known hosts only', () => {
+            const embed = 'https://www.openstreetmap.org/export/embed.html?bbox=1,2,3,4';
+            expect(MapTool.toEmbedUrl(embed, 'openstreetmap', 'default', 13)).toBe(embed);
+            expect(MapTool.toEmbedUrl('https://evil.io/embed', 'openstreetmap', 'default', 13)).toBe('');
         });
 
-        it('should convert Google Maps URL to embed format', () => {
+        it('converts Google Maps links with the theme map type', () => {
             const url = 'https://www.google.com/maps/place/London';
-            const result = MapTool.toEmbedUrl(url, 'gmaps', 'default', 13);
-            expect(result).toContain('output=embed');
+            expect(MapTool.toEmbedUrl(url, 'gmaps', 'default', 13)).toContain('output=embed');
+            expect(MapTool.toEmbedUrl(url, 'gmaps', 'satellite', 13)).toContain('t=k');
+            expect(MapTool.toEmbedUrl(url, 'gmaps', 'terrain', 13)).toContain('t=p');
         });
 
-        it('should set satellite map type for Google Maps', () => {
-            const url = 'https://www.google.com/maps/place/London';
-            const result = MapTool.toEmbedUrl(url, 'gmaps', 'satellite', 13);
-            expect(result).toContain('t=k');
-        });
-
-        it('should set terrain map type for Google Maps', () => {
-            const url = 'https://www.google.com/maps/place/London';
-            const result = MapTool.toEmbedUrl(url, 'gmaps', 'terrain', 13);
-            expect(result).toContain('t=p');
-        });
-
-        it('should convert OSM hash URL to embed format', () => {
+        it('converts OpenStreetMap hash links with a bbox and layer', () => {
             const url = 'https://www.openstreetmap.org/#map=13/51.5/-0.1';
-            const result = MapTool.toEmbedUrl(url, 'openstreetmap', 'default', 13);
-            expect(result).toContain('openstreetmap.org/export/embed.html');
-            expect(result).toContain('bbox=');
+            expect(MapTool.toEmbedUrl(url, 'openstreetmap', 'default', 13)).toContain(
+                'openstreetmap.org/export/embed.html?bbox=',
+            );
+            expect(MapTool.toEmbedUrl(url, 'openstreetmap', 'dark', 13)).toContain('layer=HOT');
         });
 
-        it('should apply dark layer for OpenStreetMap dark theme', () => {
-            const url = 'https://www.openstreetmap.org/#map=13/51.5/-0.1';
-            const result = MapTool.toEmbedUrl(url, 'openstreetmap', 'dark', 13);
-            expect(result).toContain('layer=HOT');
-        });
-
-        it('should return empty string for empty URL', () => {
+        it('refuses empty, non-http and unknown shapes', () => {
             expect(MapTool.toEmbedUrl('', 'openstreetmap', 'default', 13)).toBe('');
+            expect(MapTool.toEmbedUrl('javascript:alert(1)', 'gmaps', 'default', 13)).toBe('');
+            expect(MapTool.toEmbedUrl('https://www.openstreetmap.org/about', 'openstreetmap', 'default', 13)).toBe('');
         });
     });
 });

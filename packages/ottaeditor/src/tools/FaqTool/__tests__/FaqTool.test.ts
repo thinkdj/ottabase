@@ -1,203 +1,85 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import FaqTool, { type FaqData } from '../FaqTool';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { API } from '@editorjs/editorjs';
+import FaqTool, { type FaqData, type FaqToolConfig } from '../FaqTool';
 
-// Mock CSS import
-vi.mock('../FaqTool.css', () => ({}));
+const tools: FaqTool[] = [];
 
-const createMockAPI = () => ({
-    blocks: {
-        getCurrentBlockIndex: vi.fn(() => 0),
-    },
+function mount(data?: Partial<FaqData>, config: FaqToolConfig = {}) {
+    const tool = new FaqTool({ api: {} as API, data, config, block: {} as never, readOnly: false });
+    const element = tool.render();
+    document.body.appendChild(element);
+    tools.push(tool);
+    return { tool, element };
+}
+
+afterEach(() => {
+    tools.splice(0).forEach((t) => t.destroy());
+    document.body.innerHTML = '';
 });
 
 describe('FaqTool', () => {
-    let mockAPI: ReturnType<typeof createMockAPI>;
-
-    beforeEach(() => {
-        mockAPI = createMockAPI();
+    it('takes its toolbox entry from the registry and allows line breaks', () => {
+        expect(FaqTool.toolbox.title).toBe('FAQ');
+        expect(FaqTool.toolbox.icon).toContain('<svg');
+        expect(FaqTool.enableLineBreaks).toBe(true);
     });
 
-    // ── Static metadata ──────────────────────────────────────────────────────
-
-    describe('Toolbox', () => {
-        it('should have correct toolbox title and icon', () => {
-            expect(FaqTool.toolbox.title).toBe('FAQ');
-            expect(FaqTool.toolbox.icon).toContain('svg');
-        });
+    it('starts empty in edit mode; saves nothing until a question exists', () => {
+        const { tool, element } = mount();
+        expect(element.dataset.mode).toBe('edit');
+        expect(tool.save()).toEqual({ style: 'accordion', items: [] });
+        expect(mount({}, { defaultStyle: 'flat' }).tool.save().style).toBe('flat');
     });
 
-    describe('enableLineBreaks', () => {
-        it('should allow line breaks in answers', () => {
-            expect(FaqTool.enableLineBreaks).toBe(true);
+    it('preserves, trims and filters items on save', () => {
+        const { tool, element } = mount({
+            style: 'flat',
+            items: [
+                { question: '  What is it? ', answer: ' A thing. ' },
+                { question: '', answer: '' },
+                { question: 'Price?', answer: '' },
+            ],
         });
-    });
-
-    // ── Constructor / default data ────────────────────────────────────────────
-
-    describe('Constructor defaults', () => {
-        it('should start with one empty item when no data provided', () => {
-            const tool = new FaqTool({ api: mockAPI as any, config: {} });
-            const saved = tool.save();
-            // Empty items are filtered out on save, so expect an empty array
-            expect(saved.items).toHaveLength(0);
-            expect(saved.style).toBe('accordion');
-        });
-
-        it('should accept defaultStyle from config', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: { defaultStyle: 'flat' },
-            });
-            expect(tool.save().style).toBe('flat');
-        });
-
-        it('should preserve provided data', () => {
-            const initialData: FaqData = {
-                style: 'flat',
-                items: [
-                    { question: 'What is it?', answer: 'It is great.' },
-                    { question: 'How much?', answer: 'Free.' },
-                ],
-            };
-            const tool = new FaqTool({ api: mockAPI as any, config: {}, data: initialData });
-            const saved = tool.save();
-            expect(saved.style).toBe('flat');
-            expect(saved.items).toHaveLength(2);
-            expect(saved.items[0].question).toBe('What is it?');
-            expect(saved.items[1].answer).toBe('Free.');
+        expect(element.dataset.mode).toBe('preview');
+        expect(tool.save()).toEqual({
+            style: 'flat',
+            items: [
+                { question: 'What is it?', answer: 'A thing.' },
+                { question: 'Price?', answer: '' },
+            ],
         });
     });
 
-    // ── save / validate ───────────────────────────────────────────────────────
-
-    describe('save()', () => {
-        it('should filter out items where both question and answer are empty', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'accordion',
-                    items: [
-                        { question: '', answer: '' },
-                        { question: 'Real Q', answer: 'Real A' },
-                    ],
-                },
-            });
-            const saved = tool.save();
-            expect(saved.items).toHaveLength(1);
-            expect(saved.items[0].question).toBe('Real Q');
+    it('edits through the kit: style segment, question and answer fields, add and remove', async () => {
+        const { tool, element } = mount();
+        fireEvent.click(
+            within(screen.getByRole('radiogroup', { name: 'FAQ style' })).getByRole('radio', { name: 'Flat' }),
+        );
+        fireEvent.input(screen.getByLabelText('Question 1'), { target: { value: 'Is it good?' } });
+        fireEvent.input(screen.getByLabelText('Answer 1'), { target: { value: 'Yes.' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add question' }));
+        fireEvent.input(screen.getByLabelText('Question 2'), { target: { value: 'Free?' } });
+        expect(tool.save()).toEqual({
+            style: 'flat',
+            items: [
+                { question: 'Is it good?', answer: 'Yes.' },
+                { question: 'Free?', answer: '' },
+            ],
         });
-
-        it('should trim whitespace from saved items', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'accordion',
-                    items: [{ question: '  Spaced Q  ', answer: '  Spaced A  ' }],
-                },
-            });
-            const saved = tool.save();
-            expect(saved.items[0].question).toBe('Spaced Q');
-            expect(saved.items[0].answer).toBe('Spaced A');
-        });
-
-        it('should keep items that have only a question (empty answer)', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'accordion',
-                    items: [{ question: 'Q only', answer: '' }],
-                },
-            });
-            expect(tool.save().items).toHaveLength(1);
-        });
+        expect(element.querySelector('.oe-block__summary')?.textContent).toBe('2 questions · flat');
+        fireEvent.click(screen.getByRole('button', { name: 'Move question 2 up' }));
+        expect(tool.save().items[0]!.question).toBe('Free?');
+        fireEvent.click(screen.getByRole('button', { name: 'Remove question 1' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+        await waitFor(() => expect(tool.save().items).toHaveLength(1));
+        expect((screen.getByRole('button', { name: 'Remove question 1' }) as HTMLButtonElement).disabled).toBe(true);
     });
 
-    describe('validate()', () => {
-        it('should return true when at least one item has a non-empty question', () => {
-            const tool = new FaqTool({ api: mockAPI as any, config: {} });
-            const result = tool.validate({
-                style: 'accordion',
-                items: [{ question: 'Does it work?', answer: 'Yes.' }],
-            });
-            expect(result).toBe(true);
-        });
-
-        it('should return false when all items have empty questions', () => {
-            const tool = new FaqTool({ api: mockAPI as any, config: {} });
-            const result = tool.validate({
-                style: 'accordion',
-                items: [{ question: '', answer: 'Some answer' }],
-            });
-            expect(result).toBe(false);
-        });
-
-        it('should return false when items array is empty', () => {
-            const tool = new FaqTool({ api: mockAPI as any, config: {} });
-            const result = tool.validate({ style: 'accordion', items: [] });
-            expect(result).toBe(false);
-        });
-    });
-
-    // ── DOM rendering ──────────────────────────────────────────────────────────
-
-    describe('render()', () => {
-        it('should return an HTMLElement', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'accordion',
-                    items: [{ question: 'Q1', answer: 'A1' }],
-                },
-            });
-            const el = tool.render();
-            expect(el).toBeInstanceOf(HTMLElement);
-            expect(el.classList.contains('cdx-faq')).toBe(true);
-        });
-
-        it('should render one card per item', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'accordion',
-                    items: [
-                        { question: 'Q1', answer: 'A1' },
-                        { question: 'Q2', answer: 'A2' },
-                    ],
-                },
-            });
-            const el = tool.render();
-            const cards = el.querySelectorAll('.cdx-faq__card');
-            expect(cards).toHaveLength(2);
-        });
-
-        it('should populate question inputs from data', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: {
-                    style: 'accordion',
-                    items: [{ question: 'Is it good?', answer: 'Very.' }],
-                },
-            });
-            const el = tool.render();
-            const qInput = el.querySelector<HTMLInputElement>('.cdx-faq__question-input');
-            expect(qInput?.value).toBe('Is it good?');
-        });
-
-        it('should render style select with correct selected option', () => {
-            const tool = new FaqTool({
-                api: mockAPI as any,
-                config: {},
-                data: { style: 'flat', items: [{ question: 'Q', answer: 'A' }] },
-            });
-            const el = tool.render();
-            const select = el.querySelector<HTMLSelectElement>('.cdx-faq__style-select');
-            expect(select?.value).toBe('flat');
-        });
+    it('validates on a non-empty question', () => {
+        const { tool } = mount();
+        expect(tool.validate({ style: 'accordion', items: [{ question: 'Q', answer: '' }] })).toBe(true);
+        expect(tool.validate({ style: 'accordion', items: [{ question: '  ', answer: 'A' }] })).toBe(false);
+        expect(tool.validate({ style: 'accordion', items: [] })).toBe(false);
     });
 });

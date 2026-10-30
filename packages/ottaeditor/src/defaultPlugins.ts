@@ -30,6 +30,7 @@ import SpoilerTool from './tools/SpoilerTool/SpoilerTool';
 import StepsTool from './tools/StepsTool/StepsTool';
 import ReferencesTool from './tools/ReferencesTool/ReferencesTool';
 import TestimonialTool from './tools/TestimonialTool/TestimonialTool';
+import { BLOCKS } from './blocks';
 import type { OttaEditorPlugin } from './types';
 
 const Raw = RawHtmlTool;
@@ -97,7 +98,7 @@ function buildLayoutNestedTools(): Record<string, any> {
  * Default EditorJS plugins configuration
  * These plugins are pre-installed with ottaeditor and ready to use
  */
-export const defaultPlugins: OttaEditorPlugin[] = [
+const registeredPlugins: OttaEditorPlugin[] = [
     {
         name: DEFAULT_PLUGIN_NAMES.HEADER,
         tool: Header as any,
@@ -289,6 +290,15 @@ export const defaultPlugins: OttaEditorPlugin[] = [
         config: {} as any,
     },
 ];
+
+/**
+ * The toolbox lists tools in registration order, so the list follows the block registry: writing
+ * blocks first, then media, layout, embeds, engagement and trust. Inline tools keep their place at the end.
+ */
+const registryOrder = new Map(BLOCKS.map((b, i) => [b.type, i]));
+export const defaultPlugins: OttaEditorPlugin[] = [...registeredPlugins].sort(
+    (a, b) => (registryOrder.get(a.name) ?? 999) - (registryOrder.get(b.name) ?? 999),
+);
 
 /**
  * Map of default plugin names to their plugin configurations

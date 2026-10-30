@@ -1,6 +1,9 @@
-import './MediaEmbedTool.css';
+import type { API, BlockTool } from '@editorjs/editorjs';
+import { toolboxEntry } from '../../blocks';
+import { field, mediaInput, row, stack, textInput, type MediaSelection } from '../../ui/kit';
+import { BlockShell } from '../../ui/shell';
 
-/** EditorJS block data for a non-image media embed */
+/** Editor.js block data for a non-image media embed */
 export interface MediaEmbedData {
     url: string;
     title?: string;
@@ -13,22 +16,23 @@ export interface MediaEmbedData {
 }
 
 /**
- * EditorJS tool for non-image media embeds (video, audio, PDF, document, archive).
- * Inserted programmatically by MediaLibraryTool — not shown in the toolbox.
+ * Video, audio, PDF or document from the library (MediaLibraryTool also inserts these).
+ * Edit: pick the file, name it, caption it. Preview: the renderer's player.
  */
-export default class MediaEmbedTool {
+export default class MediaEmbedTool implements BlockTool {
     private data: MediaEmbedData;
-    private wrapper: HTMLElement;
+    private shell: BlockShell | null = null;
+    private unsubscribe: (() => void) | null = null;
 
     static get toolbox() {
-        return undefined as any; // Hidden from toolbox — inserted via MediaLibraryTool only
+        return toolboxEntry('mediaEmbed');
     }
 
     static get isReadOnlySupported() {
         return true;
     }
 
-    constructor({ data }: { data: MediaEmbedData }) {
+    constructor({ data }: { data: Partial<MediaEmbedData>; api?: API }) {
         this.data = {
             url: data?.url || '',
             title: data?.title || '',
@@ -39,90 +43,82 @@ export default class MediaEmbedTool {
             thumbnailUrl: data?.thumbnailUrl || '',
             previewUrl: data?.previewUrl || '',
         };
-
-        this.wrapper = document.createElement('div');
-        this.wrapper.classList.add('media-embed-tool', 'ob-plugin');
     }
 
-    render() {
-        this.wrapper.innerHTML = '';
+    render(): HTMLElement {
+        const shell = new BlockShell({
+            type: 'mediaEmbed',
+            hasContent: Boolean(this.data.url),
+            summary: this.summary(),
+        });
+        this.shell = shell;
 
-        if (!this.data.url) {
-            this.wrapper.innerHTML = `<p class="media-embed-empty">No media URL provided</p>`;
-            return this.wrapper;
-        }
+        const media = mediaInput({
+            value: this.data.url,
+            ariaLabel: 'Media file',
+            placeholder: 'Choose a video, audio file or document',
+            accept: ['video', 'audio', 'document', 'archive', 'other'],
+            noThumb: true,
+            onChange: (url, picked) => this.setMedia(url, picked),
+        });
+        this.unsubscribe = media.destroy;
 
-        const kind = this.data.mediaKind || 'other';
-        const title = this.data.title || this.data.url.substring(this.data.url.lastIndexOf('/') + 1);
+        const title = textInput({
+            value: this.data.title || '',
+            placeholder: 'Shown as the file name',
+            onInput: (v) => this.update({ title: v }),
+        });
+        const caption = textInput({
+            value: this.data.caption || '',
+            placeholder: 'Shown under the player (optional)',
+            onInput: (v) => this.update({ caption: v }),
+        });
 
-        // Build preview based on media kind
-        if (kind === 'video') {
-            const video = document.createElement('video');
-            video.src = this.data.previewUrl || this.data.url;
-            video.controls = true;
-            video.playsInline = true;
-            video.preload = 'metadata';
-            video.className = 'media-embed-video';
-            this.wrapper.appendChild(video);
-        } else if (kind === 'audio') {
-            const audioContainer = document.createElement('div');
-            audioContainer.className = 'media-embed-audio-container';
-            audioContainer.innerHTML = `
-                <div class="media-embed-audio-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                    </svg>
-                </div>
-            `;
-            const audio = document.createElement('audio');
-            audio.src = this.data.previewUrl || this.data.url;
-            audio.controls = true;
-            audio.preload = 'metadata';
-            audio.className = 'media-embed-audio';
-            audioContainer.appendChild(audio);
-            this.wrapper.appendChild(audioContainer);
-        } else if (kind === 'document' && (this.data.mimeType || '').toLowerCase() === 'application/pdf') {
-            const iframe = document.createElement('iframe');
-            iframe.src = this.data.previewUrl || this.data.url;
-            iframe.title = title;
-            iframe.className = 'media-embed-pdf';
-            iframe.setAttribute('sandbox', 'allow-same-origin');
-            iframe.loading = 'lazy';
-            this.wrapper.appendChild(iframe);
-        } else {
-            // Generic file placeholder
-            const placeholder = document.createElement('div');
-            placeholder.className = 'media-embed-placeholder';
-            placeholder.innerHTML = `
-                <div class="media-embed-placeholder-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
-                    </svg>
-                </div>
-                <p class="media-embed-placeholder-title">${this.escapeHtml(title)}</p>
-                <p class="media-embed-placeholder-kind">${this.escapeHtml(kind)}</p>
-            `;
-            this.wrapper.appendChild(placeholder);
-        }
+        shell.fields.append(
+            stack(
+                field({ label: 'File', control: media.element }),
+                row(
+                    field({ label: 'Title', control: title, grow: true }),
+                    field({ label: 'Caption', control: caption, grow: true }),
+                ),
+            ),
+        );
+        shell.preview({ ...this.data });
+        return shell.element;
+    }
 
-        // Caption input
-        if (this.data.caption || this.data.title) {
-            const captionEl = document.createElement('div');
-            captionEl.className = 'media-embed-caption';
-            captionEl.textContent = this.data.caption || this.data.title || '';
-            this.wrapper.appendChild(captionEl);
-        }
+    private setMedia(url: string, picked?: MediaSelection) {
+        this.update({
+            url,
+            mediaId: picked?.mediaId || picked?.id || this.data.mediaId,
+            mimeType: picked?.mimeType || this.data.mimeType,
+            mediaKind: picked?.mediaKind || this.data.mediaKind || 'other',
+            thumbnailUrl: picked?.thumbnailUrl || this.data.thumbnailUrl,
+            previewUrl: picked?.previewUrl || this.data.previewUrl,
+            title: picked ? picked.title || picked.originalName || this.data.title : this.data.title,
+        });
+        if (picked) this.shell?.setMode('preview');
+    }
 
-        return this.wrapper;
+    private update(patch: Partial<MediaEmbedData>) {
+        this.data = { ...this.data, ...patch };
+        this.shell?.setSummary(this.summary());
+        this.shell?.preview({ ...this.data });
+    }
+
+    private summary(): string {
+        if (!this.data.url) return 'no file yet';
+        return this.data.mediaKind && this.data.mediaKind !== 'other' ? this.data.mediaKind : 'file';
     }
 
     save(): MediaEmbedData {
         return { ...this.data };
     }
 
-    private escapeHtml(text: string): string {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    destroy() {
+        this.unsubscribe?.();
+        this.unsubscribe = null;
+        this.shell?.destroy();
+        this.shell = null;
     }
 }

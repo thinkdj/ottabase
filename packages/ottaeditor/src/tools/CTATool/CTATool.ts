@@ -1,76 +1,54 @@
-import type { API, BlockTool } from '@editorjs/editorjs';
-import './CTATool.css';
+import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import { toolboxEntry } from '../../blocks';
+import { field, row, segment, stack, textInput, toggle } from '../../ui/kit';
+import { BlockShell } from '../../ui/shell';
 
-interface CTAToolConfig {
+export type CTAStyle = 'primary' | 'secondary' | 'outline' | 'ghost';
+export type CTAAlignment = 'left' | 'center' | 'right';
+
+export interface CTAToolConfig {
     placeholder?: string;
-    defaultStyle?: 'primary' | 'secondary' | 'outline' | 'ghost';
-    defaultAlignment?: 'left' | 'center' | 'right';
+    defaultStyle?: CTAStyle;
+    defaultAlignment?: CTAAlignment;
 }
 
-interface CTAData {
+export interface CTAData {
     text: string;
     url: string;
-    style: 'primary' | 'secondary' | 'outline' | 'ghost';
-    alignment: 'left' | 'center' | 'right';
+    style: CTAStyle;
+    alignment: CTAAlignment;
     openInNewTab: boolean;
     icon?: string;
 }
 
+const STYLES: ReadonlyArray<{ value: CTAStyle; label: string }> = [
+    { value: 'primary', label: 'Primary' },
+    { value: 'secondary', label: 'Secondary' },
+    { value: 'outline', label: 'Outline' },
+    { value: 'ghost', label: 'Ghost' },
+];
+
+/**
+ * Button block. Edit mode is two rows of fields; preview is the renderer's own CTA, so the
+ * author sees the exact button readers get, in the brand's colours.
+ */
 export default class CTATool implements BlockTool {
-    private api: API;
+    private readonly api: API;
+    private readonly config: CTAToolConfig;
     private data: CTAData;
-    private config: CTAToolConfig;
-    private wrapper: HTMLElement | null = null;
-    private instanceId: string;
-
-    private static idSeed = 0;
-
-    static get CSS() {
-        return {
-            baseClass: 'cdx-cta',
-            wrapper: 'cdx-cta__wrapper',
-            form: 'cdx-cta__form',
-            row: 'cdx-cta__row',
-            inputGroup: 'cdx-cta__input-group',
-            label: 'cdx-cta__label',
-            input: 'cdx-cta__input',
-            select: 'cdx-cta__select',
-            checkbox: 'cdx-cta__checkbox',
-            checkboxLabel: 'cdx-cta__checkbox-label',
-            preview: 'cdx-cta__preview',
-            previewButton: 'cdx-cta__preview-button',
-            alignBtnGroup: 'cdx-cta__align-group',
-            alignBtn: 'cdx-cta__align-btn',
-            alignBtnActive: 'cdx-cta__align-btn--active',
-        };
-    }
+    private shell: BlockShell | null = null;
 
     static get toolbox() {
-        return {
-            title: 'Call to Action',
-            // Tabler-style CTA button icon with improved spacing
-            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="3"/><path d="M9 12h6"/><path d="M13 10l2 2-2 2"/></svg>',
-        };
+        return toolboxEntry('cta');
     }
 
     static get enableLineBreaks() {
         return true;
     }
 
-    constructor({
-        data,
-        config,
-        api,
-        block,
-    }: {
-        data?: Partial<CTAData>;
-        config?: CTAToolConfig;
-        api: API;
-        block?: { id?: string };
-    }) {
+    constructor({ data, config, api }: BlockToolConstructorOptions<Partial<CTAData>, CTAToolConfig>) {
         this.api = api;
         this.config = config || {};
-        this.instanceId = block?.id || CTATool.nextId();
         this.data = {
             text: data?.text || 'Get Started',
             url: data?.url || '',
@@ -81,258 +59,73 @@ export default class CTATool implements BlockTool {
         };
     }
 
-    private static nextId(): string {
-        CTATool.idSeed += 1;
-        return `cta-${CTATool.idSeed}`;
-    }
-
-    private domId(name: string): string {
-        return `${name}-${this.instanceId}`;
-    }
-
     render(): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add(CTATool.CSS.baseClass, CTATool.CSS.wrapper, 'ob-plugin');
+        const shell = new BlockShell({ type: 'cta', hasContent: Boolean(this.data.url), summary: this.summary() });
+        this.shell = shell;
 
-        const form = document.createElement('div');
-        form.classList.add(CTATool.CSS.form, 'ob-form');
-
-        // Row 1: Text input + Style select
-        const row1 = document.createElement('div');
-        row1.classList.add(CTATool.CSS.row);
-
-        // Text input
-        const textGroup = document.createElement('div');
-        textGroup.classList.add(CTATool.CSS.inputGroup, 'ob-input-group');
-        textGroup.style.flex = '1';
-
-        const textLabel = document.createElement('label');
-        textLabel.classList.add(CTATool.CSS.label, 'ob-label');
-        textLabel.textContent = 'Button Text';
-        const textInputId = this.domId('cta-text');
-        textLabel.setAttribute('for', textInputId);
-
-        const textInput = document.createElement('input');
-        textInput.id = textInputId;
-        textInput.type = 'text';
-        textInput.classList.add(CTATool.CSS.input, 'ob-input');
-        textInput.placeholder = this.config.placeholder || 'Enter button text...';
-        textInput.value = this.data.text;
-        textInput.addEventListener('input', (event) => {
-            this.data.text = (event.target as HTMLInputElement).value;
-            this.updatePreview();
+        const text = textInput({
+            value: this.data.text,
+            placeholder: this.config.placeholder || 'Button text',
+            onInput: (v) => this.update({ text: v }),
+        });
+        const url = textInput({
+            value: this.data.url,
+            type: 'url',
+            placeholder: 'https://example.com/signup',
+            onInput: (v) => this.update({ url: v }),
+        });
+        const style = segment<CTAStyle>({
+            value: this.data.style,
+            ariaLabel: 'Button style',
+            options: STYLES,
+            onChange: (v) => this.update({ style: v }),
+        });
+        const alignment = segment<CTAAlignment>({
+            value: this.data.alignment,
+            ariaLabel: 'Alignment',
+            options: [
+                { value: 'left', icon: 'alignLeft', label: 'Left' },
+                { value: 'center', icon: 'alignCenter', label: 'Center' },
+                { value: 'right', icon: 'alignRight', label: 'Right' },
+            ],
+            onChange: (v) => this.update({ alignment: v }),
+        });
+        const newTab = toggle({
+            checked: this.data.openInNewTab,
+            label: 'Open in a new tab',
+            onChange: (v) => this.update({ openInNewTab: v }),
         });
 
-        textGroup.appendChild(textLabel);
-        textGroup.appendChild(textInput);
-
-        // Style select
-        const styleGroup = document.createElement('div');
-        styleGroup.classList.add(CTATool.CSS.inputGroup, 'ob-input-group');
-        styleGroup.style.width = '110px';
-
-        const styleLabel = document.createElement('label');
-        styleLabel.classList.add(CTATool.CSS.label, 'ob-label');
-        styleLabel.textContent = 'Style';
-        const styleSelectId = this.domId('cta-style');
-        styleLabel.setAttribute('for', styleSelectId);
-
-        const styleSelect = document.createElement('select');
-        styleSelect.id = styleSelectId;
-        styleSelect.classList.add(CTATool.CSS.select, 'ob-select');
-
-        const styles: Array<{ value: CTAData['style']; label: string }> = [
-            { value: 'primary', label: 'Primary' },
-            { value: 'secondary', label: 'Secondary' },
-            { value: 'outline', label: 'Outline' },
-            { value: 'ghost', label: 'Ghost' },
-        ];
-
-        styles.forEach((style) => {
-            const option = document.createElement('option');
-            option.value = style.value;
-            option.textContent = style.label;
-            option.selected = style.value === this.data.style;
-            styleSelect.appendChild(option);
-        });
-
-        styleSelect.addEventListener('change', (event) => {
-            this.data.style = (event.target as HTMLSelectElement).value as CTAData['style'];
-            this.updatePreview();
-        });
-
-        styleGroup.appendChild(styleLabel);
-        styleGroup.appendChild(styleSelect);
-
-        row1.appendChild(textGroup);
-        row1.appendChild(styleGroup);
-
-        // Row 2: URL input
-        const urlGroup = document.createElement('div');
-        urlGroup.classList.add(CTATool.CSS.inputGroup, 'ob-input-group');
-
-        const urlLabel = document.createElement('label');
-        urlLabel.classList.add(CTATool.CSS.label, 'ob-label');
-        urlLabel.textContent = 'URL';
-        const urlInputId = this.domId('cta-url');
-        urlLabel.setAttribute('for', urlInputId);
-
-        const urlInput = document.createElement('input');
-        urlInput.id = urlInputId;
-        urlInput.type = 'url';
-        urlInput.classList.add(CTATool.CSS.input, 'ob-input');
-        urlInput.placeholder = 'https://example.com';
-        urlInput.value = this.data.url;
-        urlInput.addEventListener('input', (event) => {
-            this.data.url = (event.target as HTMLInputElement).value;
-            this.updatePreview();
-        });
-
-        urlGroup.appendChild(urlLabel);
-        urlGroup.appendChild(urlInput);
-
-        // Row 3: Alignment + Open in new tab
-        const row3 = document.createElement('div');
-        row3.classList.add(CTATool.CSS.row);
-
-        // Alignment buttons
-        const alignGroup = document.createElement('div');
-        alignGroup.classList.add(CTATool.CSS.inputGroup, 'ob-input-group');
-        alignGroup.style.flex = '1';
-
-        const alignLabel = document.createElement('label');
-        alignLabel.classList.add(CTATool.CSS.label, 'ob-label');
-        alignLabel.textContent = 'Alignment';
-
-        const alignBtnGroup = document.createElement('div');
-        alignBtnGroup.classList.add(CTATool.CSS.alignBtnGroup);
-
-        const alignments: Array<{ value: CTAData['alignment']; icon: string; title: string }> = [
-            {
-                value: 'left',
-                title: 'Left',
-                // Tabler icon: align-left
-                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>',
-            },
-            {
-                value: 'center',
-                title: 'Center',
-                // Tabler icon: align-center
-                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/></svg>',
-            },
-            {
-                value: 'right',
-                title: 'Right',
-                // Tabler icon: align-right
-                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="6" y1="18" x2="20" y2="18"/></svg>',
-            },
-        ];
-
-        alignments.forEach(({ value, icon, title }) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.classList.add(CTATool.CSS.alignBtn);
-            if (value === this.data.alignment) btn.classList.add(CTATool.CSS.alignBtnActive);
-            btn.innerHTML = icon;
-            btn.title = title;
-            btn.setAttribute('data-align', value);
-            btn.addEventListener('click', () => {
-                this.data.alignment = value;
-                alignBtnGroup.querySelectorAll(`.${CTATool.CSS.alignBtn}`).forEach((b) => {
-                    b.classList.toggle(CTATool.CSS.alignBtnActive, b.getAttribute('data-align') === value);
-                });
-                this.updatePreview();
-            });
-            alignBtnGroup.appendChild(btn);
-        });
-
-        alignGroup.appendChild(alignLabel);
-        alignGroup.appendChild(alignBtnGroup);
-
-        // Open in new tab checkbox
-        const checkboxGroup = document.createElement('div');
-        checkboxGroup.classList.add(CTATool.CSS.inputGroup);
-        checkboxGroup.style.justifyContent = 'flex-end';
-        checkboxGroup.style.flexDirection = 'row';
-        checkboxGroup.style.alignItems = 'flex-end';
-        checkboxGroup.style.gap = '6px';
-        checkboxGroup.style.paddingBottom = '4px';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        const newTabId = this.domId('cta-new-tab');
-        checkbox.id = newTabId;
-        checkbox.classList.add(CTATool.CSS.checkbox, 'ob-checkbox');
-        checkbox.checked = this.data.openInNewTab;
-        checkbox.addEventListener('change', (event) => {
-            this.data.openInNewTab = (event.target as HTMLInputElement).checked;
-            this.updatePreview();
-        });
-
-        const checkboxLabel = document.createElement('label');
-        checkboxLabel.classList.add(CTATool.CSS.checkboxLabel, 'ob-checkbox-label');
-        checkboxLabel.setAttribute('for', newTabId);
-        checkboxLabel.textContent = ' New tab';
-        checkboxLabel.style.cursor = 'pointer';
-        checkboxLabel.style.margin = '0';
-
-        checkboxGroup.appendChild(checkbox);
-        checkboxGroup.appendChild(checkboxLabel);
-
-        row3.appendChild(alignGroup);
-        row3.appendChild(checkboxGroup);
-
-        // Preview
-        const preview = document.createElement('div');
-        preview.classList.add(CTATool.CSS.preview);
-
-        const previewButton = document.createElement('a');
-        previewButton.classList.add(CTATool.CSS.previewButton);
-        previewButton.href = this.data.url || '#';
-        previewButton.textContent = this.data.text || 'Button';
-        previewButton.target = this.data.openInNewTab ? '_blank' : '_self';
-        previewButton.rel = this.data.openInNewTab ? 'noopener noreferrer' : '';
-
-        preview.appendChild(previewButton);
-
-        form.appendChild(row1);
-        form.appendChild(urlGroup);
-        form.appendChild(row3);
-        form.appendChild(preview);
-
-        wrapper.appendChild(form);
-
-        this.wrapper = wrapper;
-        this.updatePreview();
-
-        return wrapper;
+        shell.fields.append(
+            stack(
+                row(
+                    field({ label: 'Label', control: text, grow: true }),
+                    field({ label: 'Link', control: url, grow: true }),
+                ),
+                row(
+                    field({ label: 'Style', control: style }),
+                    field({ label: 'Alignment', control: alignment }),
+                    newTab,
+                ),
+            ),
+        );
+        shell.preview(this.previewData());
+        return shell.element;
     }
 
-    private updatePreview(): void {
-        if (!this.wrapper) return;
+    private update(patch: Partial<CTAData>) {
+        this.data = { ...this.data, ...patch };
+        this.shell?.setSummary(this.summary());
+        this.shell?.preview(this.previewData());
+    }
 
-        const previewButton = this.wrapper.querySelector(`.${CTATool.CSS.previewButton}`) as HTMLAnchorElement;
-        if (!previewButton) return;
+    private summary(): string {
+        const style = STYLES.find((s) => s.value === this.data.style)?.label ?? this.data.style;
+        return `${style} · ${this.data.alignment}`;
+    }
 
-        previewButton.textContent = this.data.text || 'Button';
-        previewButton.href = this.data.url || '#';
-        previewButton.target = this.data.openInNewTab ? '_blank' : '_self';
-        previewButton.rel = this.data.openInNewTab ? 'noopener noreferrer' : '';
-
-        // Update style classes
-        previewButton.classList.remove(
-            'cdx-cta__preview-button--primary',
-            'cdx-cta__preview-button--secondary',
-            'cdx-cta__preview-button--outline',
-            'cdx-cta__preview-button--ghost',
-        );
-        previewButton.classList.add(`cdx-cta__preview-button--${this.data.style}`);
-
-        // Update preview alignment
-        const preview = this.wrapper.querySelector(`.${CTATool.CSS.preview}`) as HTMLElement;
-        if (preview) {
-            preview.style.textAlign = this.data.alignment;
-        }
+    private previewData(): Record<string, unknown> {
+        return { ...this.data, text: this.data.text || 'Button' };
     }
 
     save(): CTAData {
@@ -341,5 +134,10 @@ export default class CTATool implements BlockTool {
 
     validate(savedData: CTAData): boolean {
         return savedData.text.trim() !== '' && savedData.url.trim() !== '';
+    }
+
+    destroy(): void {
+        this.shell?.destroy();
+        this.shell = null;
     }
 }
