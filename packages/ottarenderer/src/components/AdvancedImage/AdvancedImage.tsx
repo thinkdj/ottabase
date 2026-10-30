@@ -5,20 +5,24 @@ import type { BlockRenderer } from '../../types';
 import React from 'react';
 import { AdvancedImageData } from './advancedimage.types';
 
+/**
+ * Image (advancedImage, and @editorjs/image's `file.url` shape). The stylesheet owns every
+ * look: the figure shrink-wraps the image so a frame or tint hugs it, the modifiers
+ * (`--with-border`, `--with-background`, `--featured`, `--stretched`, `--aspect-*`) compose,
+ * and "featured" is a presentation (lead image, full column, shadow, caption bar), not a badge.
+ */
 const AdvancedImageBlock: BlockRenderer<AdvancedImageData> = ({ data, className = '' }) => {
-    // Support both AdvancedImage (data.url) and legacy @editorjs/image (data.file.url)
-    const resolvedUrl: string = safeUrl(data?.url || (data as { file?: { url?: string } })?.file?.url) ?? '';
-
+    const resolvedUrl = safeUrl(data?.url || data?.file?.url) ?? '';
     const {
         caption,
-        withBorder = false,
-        withBackground = false,
-        stretched = false,
+        withBorder,
+        withBackground,
+        stretched,
         alt,
         linkUrl,
         width,
         height,
-        featuredImage = false,
+        featuredImage,
         aspectRatio = 'original',
         mediaId,
         mimeType,
@@ -48,102 +52,26 @@ const AdvancedImageBlock: BlockRenderer<AdvancedImageData> = ({ data, className 
 
     if (!resolvedUrl) return null;
 
-    // Base Tailwind classes for the figure (includes otta-image container styles)
-    let figureTailwindClasses = [
-        'rounded-xl',
-        'flex',
-        'items-center',
-        'justify-center',
-        'flex-col',
-        'box-border',
-        'text-foreground',
-    ];
+    const fileStem = resolvedUrl
+        .split('/')
+        .pop()
+        ?.replace(/\.[^.]+$/, '');
+    const altFinal = alt || caption || fileStem || 'Image';
+    const ratio = aspectRatio !== 'original' ? aspectRatio.replace(':', '-') : null;
+    const classes = [
+        className,
+        'otta-image',
+        stretched && 'otta-image--stretched',
+        withBorder && 'otta-image--with-border',
+        withBackground && 'otta-image--with-background',
+        featuredImage && 'otta-image--featured',
+        ratio && `otta-image--aspect-${ratio}`,
+    ]
+        .filter(Boolean)
+        .join(' ');
+    const zoomable = !linkUrl && hasLightbox;
 
-    // Add default width and centering if not stretched
-    if (!stretched) {
-        figureTailwindClasses.push('mx-auto', 'w-full', 'p-4', 'overflow-hidden');
-    }
-
-    // Conditional Tailwind classes based on data props
-    if (withBorder) {
-        figureTailwindClasses.push('border', 'border-border/60', 'p-1');
-    }
-    if (withBackground) {
-        figureTailwindClasses.push('bg-muted/40', 'p-2');
-    }
-    if (stretched) {
-        // Width and centring belong to the --stretched CSS rule alone. Anything set here fights it:
-        // `w-screen` meant 100vw (scrollbar included, so the page scrolled sideways), and even
-        // `w-full` over-constrains the box against that rule's margins, which pushes the whole
-        // image to one edge instead of centring it.
-        //
-        // `items-stretch` overrides the figure's default `items-center`: in a column flex container,
-        // centring the cross axis shrink-wraps the child, so the image sat narrow inside a
-        // correctly-sized frame.
-        figureTailwindClasses.push('relative', 'items-stretch');
-    }
-
-    if (featuredImage) {
-        figureTailwindClasses.push('shadow-lg', 'relative');
-    }
-
-    // Modifier classes the stylesheet targets; the base class used to come from the renderer config.
-    let modifiedClassName = `${className} otta-image`.trim();
-    if (stretched) {
-        modifiedClassName += ' otta-image--stretched';
-    }
-    if (withBorder) {
-        modifiedClassName += ' otta-image--with-border';
-    }
-    if (withBackground) {
-        modifiedClassName += ' otta-image--with-background';
-    }
-    if (featuredImage) {
-        modifiedClassName += ' otta-image--featured';
-    }
-    if (aspectRatio && aspectRatio !== 'original') {
-        modifiedClassName += ` otta-image--aspect-${aspectRatio.replace(':', '-')}`;
-    }
-
-    const combinedClassName = `block ${figureTailwindClasses.join(' ')} ${modifiedClassName}`.trim();
-
-    let altText = alt || caption;
-    if (!altText && resolvedUrl) {
-        try {
-            const urlParts = resolvedUrl.substring(resolvedUrl.lastIndexOf('/') + 1).split('.');
-            altText = urlParts.length > 1 ? urlParts.slice(0, -1).join('.') : urlParts[0];
-        } catch (e) {
-            altText = 'Image'; // Fallback if URL parsing fails
-        }
-    } else if (!altText) {
-        altText = 'Image'; // Ultimate fallback
-    }
-    const altFinal: string = altText || 'Image';
-
-    // Image classes based on stretched state and aspect ratio
-    // No `max-h` on a stretched image: capping the height of a replaced element that has an
-    // intrinsic ratio and `h-auto` makes the browser shrink its WIDTH to match, so the image stops
-    // filling the frame it was just given.
-    let imageClasses = stretched
-        ? `w-full h-auto object-cover ${!linkUrl ? 'cursor-pointer' : ''}`
-        : `w-full h-auto max-w-2xl mx-auto object-contain ${!linkUrl ? 'cursor-pointer' : ''}`;
-
-    // Apply aspect ratio classes
-    if (aspectRatio && aspectRatio !== 'original') {
-        switch (aspectRatio) {
-            case '16:9':
-                imageClasses += ' aspect-video object-cover';
-                break;
-            case '4:3':
-                imageClasses += ' aspect-[4/3] object-cover';
-                break;
-            case '1:1':
-                imageClasses += ' aspect-square object-cover';
-                break;
-        }
-    }
-
-    const imageComponent = (
+    const image = (
         <img
             src={resolvedUrl}
             alt={altFinal}
@@ -151,43 +79,29 @@ const AdvancedImageBlock: BlockRenderer<AdvancedImageData> = ({ data, className 
             height={height || undefined}
             loading="lazy"
             decoding="async"
-            className={imageClasses}
-            onClick={() => {
-                if (!linkUrl && hasLightbox) {
-                    openLightbox();
-                }
-            }}
+            className="otta-image__img"
+            data-zoom={zoomable || undefined}
+            onClick={zoomable ? () => openLightbox() : undefined}
         />
     );
 
     return (
-        <>
-            <figure className={combinedClassName}>
-                {featuredImage && (
-                    <div className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background text-warning ring-1 ring-border text-xs">
-                        ★
-                    </div>
-                )}
-                {linkUrl ? (
-                    <a
-                        href={sanitizeUrl(linkUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block no-underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring rounded-sm"
-                        aria-label={caption || altFinal}
-                    >
-                        {imageComponent}
-                    </a>
-                ) : (
-                    imageComponent
-                )}
-                {caption && (
-                    <figcaption className="mt-2 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                        {caption}
-                    </figcaption>
-                )}
-            </figure>
-        </>
+        <figure className={classes}>
+            {linkUrl ? (
+                <a
+                    href={sanitizeUrl(linkUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="otta-image__link"
+                    aria-label={caption || altFinal}
+                >
+                    {image}
+                </a>
+            ) : (
+                image
+            )}
+            {caption && <figcaption className="otta-caption">{caption}</figcaption>}
+        </figure>
     );
 };
 

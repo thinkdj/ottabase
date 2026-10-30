@@ -197,7 +197,6 @@ describe('standard blocks', () => {
         expect(img.getAttribute('width')).toBe('1200');
         expect(img.getAttribute('height')).toBe('800');
         expect(img.getAttribute('loading')).toBe('lazy');
-        expect(img.className).toContain('aspect-video');
         expect(c.querySelector('figure')?.className).toContain('otta-image--aspect-16-9');
         expect(c.querySelector('figcaption')?.textContent).toBe('Cap');
         expect(

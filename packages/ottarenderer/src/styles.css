@@ -913,35 +913,125 @@ print {
  * Image (image + advancedImage)
  * ==================================================================== */
 
+/*
+ * The figure shrink-wraps the image so a frame or tint hugs it instead of the column. The
+ * width cap lives on the figure: a percentage max-width on the image would not feed back into
+ * the figure's fit-content width, leaving a frame wider than its picture.
+ */
 .otta-image {
-    margin: 0;
+    width: fit-content;
+    max-width: min(100%, 34rem);
+    margin: 0 auto;
 }
 
-.otta-image img {
+.otta-image__img {
     display: block;
-    max-width: min(100%, 34rem);
+    max-width: 100%;
     height: auto;
     border-radius: var(--otta-radius-inner);
 }
 
-.otta-image figcaption {
-    margin-top: 0.625rem;
+.otta-image__img[data-zoom] {
+    cursor: zoom-in;
+}
+
+.otta-image__link {
+    display: block;
+    border-radius: inherit;
+}
+
+.otta-image__link:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+.otta-image--aspect-16-9 .otta-image__img {
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+}
+
+.otta-image--aspect-4-3 .otta-image__img {
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.otta-image--aspect-1-1 .otta-image__img {
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+}
+
+/* Hairline frame: the image runs edge to edge, the caption becomes a bar under it. */
+.otta-image--with-border {
+    border: 1px solid var(--otta-hairline);
+    border-radius: var(--otta-radius);
+    overflow: hidden;
+}
+
+.otta-image--with-border .otta-image__img {
+    border-radius: 0;
+}
+
+.otta-image--with-border > .otta-caption {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: var(--otta-tint);
+    border-top: 1px solid var(--otta-hairline);
+}
+
+/* Tint mat: a thin pad around the image, which keeps its own corners. */
+.otta-image--with-background {
+    padding: 0.75rem;
+    background: var(--otta-tint);
+    border-radius: var(--otta-radius);
+}
+
+.otta-image--with-background .otta-image__img {
+    border-radius: var(--otta-radius-inner);
+}
+
+.otta-image--with-background > .otta-caption {
+    margin: 0;
+    padding: 0.625rem 0.25rem 0;
+    background: none;
+    border-top: 0;
 }
 
 /*
- * A stretched image breaks out of the reading column symmetrically, by as much as the page is
- * known to have spare. `width` accounts for both negative margins so the box is not over-
- * constrained; the tiers are stepped by media query because 100vw includes the scrollbar.
- * Thresholds are sized for the worst case, a 48rem column beside a 14rem sidebar.
+ * Featured: the lead image. Full reading column, outer radius, shadow, caption bar. Stretched is
+ * the same card breaking out of the column symmetrically, by as much as the page is known to
+ * have spare. `width` accounts for both negative margins so the box is not over-constrained; the
+ * tiers are stepped by media query because 100vw includes the scrollbar. Thresholds are sized
+ * for the worst case, a 48rem column beside a 14rem sidebar.
  */
+.otta-image--featured,
 .otta-image--stretched {
-    width: calc(100% + 2rem);
+    width: 100%;
     max-width: none;
-    margin-inline: -1rem;
     padding: 0;
     overflow: hidden;
     border-radius: var(--otta-radius);
     box-shadow: var(--shadow-lg);
+}
+
+.otta-image--featured .otta-image__img,
+.otta-image--stretched .otta-image__img {
+    width: 100%;
+    max-width: none;
+    border-radius: 0;
+    object-fit: cover;
+}
+
+.otta-image--featured > .otta-caption,
+.otta-image--stretched > .otta-caption {
+    margin: 0;
+    padding: 0.875rem 1.5rem;
+    background: var(--otta-tint);
+    border-top: 1px solid var(--otta-hairline);
+}
+
+.otta-image--stretched {
+    width: calc(100% + 2rem);
+    margin-inline: -1rem;
 }
 
 @media (min-width: 1152px) {
@@ -963,40 +1053,6 @@ print {
         width: calc(100% + 24rem);
         margin-inline: -12rem;
     }
-}
-
-.otta-image--stretched > img,
-.otta-image--stretched > a > img {
-    width: 100%;
-    max-width: none;
-    max-height: none;
-    height: auto;
-    object-fit: cover;
-    border-radius: 0;
-}
-
-.otta-image--stretched figcaption {
-    margin: 0;
-    padding: 0.875rem 1.5rem;
-    background: var(--otta-tint);
-    border-top: 1px solid var(--otta-hairline);
-}
-
-.otta-image--with-border {
-    border: 1px solid var(--otta-hairline);
-    border-radius: var(--otta-radius);
-    overflow: hidden;
-}
-
-.otta-image--with-background {
-    background: var(--otta-tint);
-    padding: 1rem;
-    border-radius: var(--otta-radius);
-}
-
-.otta-image--featured {
-    box-shadow: var(--shadow-lg);
-    border-radius: var(--otta-radius);
 }
 
 /* ======================================================================

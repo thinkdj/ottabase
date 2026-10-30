@@ -11,7 +11,6 @@ export interface AdvancedImageData {
     linkUrl?: string;
     width?: number;
     height?: number;
-    useNextImage?: boolean;
     featuredImage?: boolean;
     aspectRatio?: string;
 }
