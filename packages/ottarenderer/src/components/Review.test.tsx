@@ -11,7 +11,7 @@ describe('Review Renderer', () => {
 
         it('should not render when title is empty', () => {
             const { container } = render(<Review data={{}} />);
-            expect(container.querySelector('.cdc-content-review')).toBeFalsy();
+            expect(container.querySelector('.otta-review')).toBeFalsy();
         });
 
         it('should render content', () => {
@@ -213,15 +213,15 @@ describe('Review Renderer', () => {
             const { container } = render(
                 <Review data={{ title: 'Compact Review', rating: 4, maxStars: 5, compact: true }} />,
             );
-            expect(container.querySelector('.cdc-content-review--compact')).toBeTruthy();
+            expect(container.querySelector('.otta-review--compact')).toBeTruthy();
         });
 
         it('should render full layout when compact is false', () => {
             const { container } = render(
                 <Review data={{ title: 'Full Review', rating: 4, maxStars: 5, compact: false }} />,
             );
-            expect(container.querySelector('.cdc-content-review--compact')).toBeFalsy();
-            expect(container.querySelector('.cdc-content-review')).toBeTruthy();
+            expect(container.querySelector('.otta-review--compact')).toBeFalsy();
+            expect(container.querySelector('.otta-review')).toBeTruthy();
         });
 
         it('should show thumbnail image in compact mode', () => {
@@ -252,7 +252,7 @@ describe('Review Renderer', () => {
 
         it('should default to full layout when compact is not set', () => {
             const { container } = render(<Review data={{ title: 'Default' }} />);
-            expect(container.querySelector('.cdc-content-review--compact')).toBeFalsy();
+            expect(container.querySelector('.otta-review--compact')).toBeFalsy();
         });
     });
 });

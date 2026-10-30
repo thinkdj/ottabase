@@ -78,13 +78,13 @@ const record = createMediaLibraryRecordInput({
 
 ```tsx
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaRenderer } from '@ottabase/ottarenderer';
 
 // Admin / editor preview — shows metadata sidebar
 export function PostPreview({ content }: { content: any }) {
     return (
         <MediaLightboxProvider>
-            <Blocks data={content} renderers={customRenderers} config={defaultEJSRConfigs} />
+            <OttaRenderer data={content} />
         </MediaLightboxProvider>
     );
 }
@@ -93,7 +93,7 @@ export function PostPreview({ content }: { content: any }) {
 export function PostContent({ content }: { content: any }) {
     return (
         <MediaLightboxProvider variant="immersive">
-            <Blocks data={content} renderers={customRenderers} config={defaultEJSRConfigs} />
+            <OttaRenderer data={content} />
         </MediaLightboxProvider>
     );
 }
@@ -126,7 +126,7 @@ thumbnail scrolling.
     onNavigate={(item, index, direction) => console.log('navigate', { item, index, direction })}
     onClose={() => console.log('closed')}
 >
-    <Blocks data={content} renderers={customRenderers} config={defaultEJSRConfigs} />
+    <OttaRenderer data={content} />
 </MediaLightboxProvider>
 ```
 
@@ -137,12 +137,12 @@ You can sync lightbox state with the URL query string using `syncWithUrl`:
 ```tsx
 // Uses ?mgi=<registryKey>
 <MediaLightboxProvider syncWithUrl>
-    <Blocks data={content} renderers={customRenderers} config={defaultEJSRConfigs} />
+    <OttaRenderer data={content} />
 </MediaLightboxProvider>
 
 // Custom query parameter name
 <MediaLightboxProvider syncWithUrl={{ paramName: 'media' }}>
-    <Blocks data={content} renderers={customRenderers} config={defaultEJSRConfigs} />
+    <OttaRenderer data={content} />
 </MediaLightboxProvider>
 ```
 

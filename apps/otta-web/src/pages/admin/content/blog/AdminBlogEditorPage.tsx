@@ -41,7 +41,7 @@ import {
     type ToolSettings,
 } from '@ottabase/ottaeditor';
 import { createModelHooks, useApiClient, useApiQuery } from '@ottabase/ottaorm/client';
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaRenderer } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { OttaSelect, type OttaSelectItem } from '@ottabase/ottaselect';
 import { JsonEditor, type JsonValue } from '@ottabase/ui/json-editor';
@@ -2496,13 +2496,9 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
 
                             {/* Main Content */}
                             {hasPreviewContent && (
-                                <div className="prose prose-slate dark:prose-invert max-w-none mb-12">
+                                <div className="mb-12">
                                     <MediaLightboxProvider>
-                                        <Blocks
-                                            data={{ version: '2.30.0', time: Date.now(), ...previewPost.content! }}
-                                            renderers={customRenderers}
-                                            config={defaultEJSRConfigs}
-                                        />
+                                        <OttaRenderer data={previewPost.content} />
                                     </MediaLightboxProvider>
                                 </div>
                             )}
@@ -2511,19 +2507,12 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             {hasPreviewFootnotes && (
                                 <aside className="border-t pt-8 mt-12">
                                     <h2 className="text-xl font-semibold mb-4">Footnotes</h2>
-                                    <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
-                                        <MediaLightboxProvider>
-                                            <Blocks
-                                                data={{
-                                                    version: '2.30.0',
-                                                    time: Date.now(),
-                                                    ...previewPost.footnotes!,
-                                                }}
-                                                renderers={customRenderers}
-                                                config={defaultEJSRConfigs}
-                                            />
-                                        </MediaLightboxProvider>
-                                    </div>
+                                    <MediaLightboxProvider>
+                                        <OttaRenderer
+                                            className="ottarenderer--sm text-muted-foreground"
+                                            data={previewPost.footnotes}
+                                        />
+                                    </MediaLightboxProvider>
                                 </aside>
                             )}
                         </article>

@@ -1,5 +1,5 @@
 import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 
 export interface FaqItem {
     question?: string;
@@ -21,7 +21,7 @@ export interface FaqData {
  * The block also emits `application/ld+json` structured data (FAQPage schema) when there is
  * at least one valid item, helping Google display rich FAQ results in search.
  */
-const Faq: RenderFn<FaqData> = ({ data, className = '' }) => {
+const Faq: BlockRenderer<FaqData> = ({ data, className = '' }) => {
     const style = data?.style ?? 'accordion';
     const items = (data?.items ?? [])
         .map((item) => ({
@@ -54,14 +54,14 @@ const Faq: RenderFn<FaqData> = ({ data, className = '' }) => {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: sanitizeJsonForScript(structuredData) }}
             />
-            <section className={`${className} my-6 not-prose cdc-content-faq`} aria-label="Frequently asked questions">
+            <section className={`${className} not-prose otta-faq`} aria-label="Frequently asked questions">
                 {style === 'accordion' ? (
-                    <div className="cdc-faq-accordion" role="list">
+                    <div className="otta-faq-accordion" role="list">
                         {items.map((item, index) => (
-                            <details key={`${item.question}-${index}`} className="cdc-faq-item" role="listitem">
-                                <summary className="cdc-faq-question">
-                                    <span className="cdc-faq-question-text">{item.question}</span>
-                                    <span className="cdc-faq-chevron" aria-hidden="true">
+                            <details key={`${item.question}-${index}`} className="otta-faq-item" role="listitem">
+                                <summary className="otta-faq-question">
+                                    <span className="otta-faq-question-text">{item.question}</span>
+                                    <span className="otta-faq-chevron" aria-hidden="true">
                                         {/* CSS-only rotate chevron */}
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
@@ -78,21 +78,21 @@ const Faq: RenderFn<FaqData> = ({ data, className = '' }) => {
                                         </svg>
                                     </span>
                                 </summary>
-                                {item.answer && <p className="cdc-faq-answer">{item.answer}</p>}
+                                {item.answer && <p className="otta-faq-answer">{item.answer}</p>}
                             </details>
                         ))}
                     </div>
                 ) : (
                     /* Flat style: all answers always visible */
-                    <div className="cdc-faq-flat" role="list">
+                    <div className="otta-faq-flat" role="list">
                         {items.map((item, index) => (
                             <div
                                 key={`${item.question}-${index}`}
-                                className="cdc-faq-item cdc-faq-item--flat"
+                                className="otta-faq-item otta-faq-item--flat"
                                 role="listitem"
                             >
-                                <h3 className="cdc-faq-question cdc-faq-question--flat">{item.question}</h3>
-                                {item.answer && <p className="cdc-faq-answer">{item.answer}</p>}
+                                <h3 className="otta-faq-question otta-faq-question--flat">{item.question}</h3>
+                                {item.answer && <p className="otta-faq-answer">{item.answer}</p>}
                             </div>
                         ))}
                     </div>

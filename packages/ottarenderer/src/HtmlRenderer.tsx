@@ -1,22 +1,22 @@
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
-import React from 'react';
 
-interface HtmlRendererProps {
+export interface HtmlRendererProps {
     content: string;
     className?: string;
 }
 
 /**
- * HtmlRenderer - Renders basic HTML content with proper styling
- * Supports: p, h1, h2, h3, h4, h5, h6, ul, ol, li, a, strong, em, code, pre, blockquote
+ * Renders a trusted-ish HTML string (an imported post, a CMS field) with the same typography the
+ * block renderer uses. Everything passes through `sanitizeBlockHtml` first.
  */
-const HtmlRenderer: React.FC<HtmlRendererProps> = ({ content, className = '' }) => {
+export function HtmlRenderer({ content, className }: HtmlRendererProps) {
     return (
         <div
-            className={`html-renderer prose dark:prose-invert max-w-none ${className}`}
+            className={['ottarenderer ottarenderer--html', className].filter(Boolean).join(' ')}
+            data-slot="renderer"
             dangerouslySetInnerHTML={{ __html: sanitizeBlockHtml(content) }}
         />
     );
-};
+}
 
 export default HtmlRenderer;

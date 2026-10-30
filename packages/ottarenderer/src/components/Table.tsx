@@ -1,36 +1,40 @@
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { Inline } from '../inline';
+import type { BlockRenderer } from '../types';
 
-const Table: RenderFn<{ withHeadings?: boolean; content: string[][] }> = ({ data }) => {
-    const { withHeadings, content } = data;
-    const plainTextContent = content.map((row: string[]) =>
-        row.map((cell: string) => cell.replace(/<\/?[^>]+(>|$)/g, '')),
-    ); // Strip HTML tags from cells
-    const headers = plainTextContent[0];
-    const rows = plainTextContent.slice(withHeadings ? 1 : 0);
+export interface TableData {
+    withHeadings?: boolean;
+    stretched?: boolean;
+    content?: string[][];
+}
 
+/** A data table. Cells keep their inline formatting; the wrapper scrolls instead of breaking the column. */
+const Table: BlockRenderer<TableData> = ({ data }) => {
+    const rows = (data?.content ?? []).filter((row) => Array.isArray(row));
+    if (rows.length === 0) return null;
+    const cols = Math.max(...rows.map((r) => r.length));
+    const pad = (row: string[]) => Array.from({ length: cols }, (_, i) => row[i] ?? '');
+    const head = data?.withHeadings ? pad(rows[0]!) : null;
+    const body = data?.withHeadings ? rows.slice(1) : rows;
     return (
-        <div className="cdc-content-table overflow-x-auto my-4 rounded-xl border border-border/60">
-            <table className="min-w-full divide-y divide-border/60 not-prose">
-                {withHeadings && (
-                    <thead className="bg-muted/40">
+        <div className="otta-table-wrap" data-stretched={data?.stretched || undefined}>
+            <table className="otta-table">
+                {head && (
+                    <thead>
                         <tr>
-                            {headers.map((header: string, index: number) => (
-                                <th
-                                    key={index}
-                                    className="px-4 py-4 text-left text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground"
-                                >
-                                    {header}
+                            {head.map((cell, i) => (
+                                <th key={i} scope="col">
+                                    <Inline html={cell} />
                                 </th>
                             ))}
                         </tr>
                     </thead>
                 )}
-                <tbody className="bg-background divide-y divide-border/60">
-                    {rows.map((row: string[], rowIndex: number) => (
-                        <tr key={rowIndex} className="hover:bg-muted/40 transition-colors">
-                            {row.map((cell: string, cellIndex: number) => (
-                                <td key={cellIndex} className="px-4 py-3 text-sm text-foreground">
-                                    {cell}
+                <tbody>
+                    {body.map((row, r) => (
+                        <tr key={r}>
+                            {pad(row).map((cell, c) => (
+                                <td key={c}>
+                                    <Inline html={cell} />
                                 </td>
                             ))}
                         </tr>

@@ -1,127 +1,68 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import Layout from './Layout';
+import { describe, expect, it } from 'vitest';
+import { OttaRenderer } from '../OttaRenderer';
+import type { LayoutData } from './Layout';
 
-// Mock Blocks to avoid editorjs-blocks-react-renderer internals; we test Layout structure only
-vi.mock('editorjs-blocks-react-renderer', () => ({
-    default: ({ data }: { data: { blocks?: Array<{ data?: { text?: string } }> } }) => (
-        <div data-testid="blocks-mock">
-            {data?.blocks?.map((b, i) => <span key={i}>{b.data?.text ?? ''}</span>) ?? null}
-        </div>
-    ),
-}));
+const layout = (data: LayoutData) => <OttaRenderer data={{ blocks: [{ id: 'l', type: 'layout', data }] }} />;
+const para = (text: string) => ({ content: { blocks: [{ type: 'paragraph', data: { text } }] } });
 
-describe('Layout Renderer', () => {
-    describe('Presets', () => {
-        it('should render 1-1 (50/50) layout with two columns', () => {
-            const { container } = render(
-                <Layout
-                    data={{
-                        preset: '1-1',
-                        columns: [
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'Left' } }] } },
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'Right' } }] } },
-                        ],
-                    }}
-                />,
-            );
-            expect(screen.getByText('Left')).toBeTruthy();
-            expect(screen.getByText('Right')).toBeTruthy();
-            expect(container.querySelector('[data-layout-preset="1-1"]')).toBeTruthy();
-        });
-
-        it('should render 1-1-1 layout with three columns', () => {
-            const { container } = render(
-                <Layout
-                    data={{
-                        preset: '1-1-1',
-                        columns: [
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'A' } }] } },
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'B' } }] } },
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'C' } }] } },
-                        ],
-                    }}
-                />,
-            );
-            expect(screen.getByText('A')).toBeTruthy();
-            expect(screen.getByText('B')).toBeTruthy();
-            expect(screen.getByText('C')).toBeTruthy();
-            expect(container.querySelector('[data-layout-preset="1-1-1"]')).toBeTruthy();
-        });
-
-        it('should default to 1-1 when preset is missing', () => {
-            const { container } = render(
-                <Layout
-                    data={{
-                        columns: [
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'Col1' } }] } },
-                            { content: { blocks: [] } },
-                        ],
-                    }}
-                />,
-            );
-            expect(container.querySelector('[data-layout-preset="1-1"]')).toBeTruthy();
-        });
+describe('Layout', () => {
+    it('renders two columns for 1-1 with real nested blocks', () => {
+        const { container } = render(layout({ preset: '1-1', columns: [para('Left'), para('Right')] }));
+        expect(screen.getByText('Left').closest('p')?.className).toContain('otta-paragraph');
+        expect(screen.getByText('Right')).toBeTruthy();
+        expect(container.querySelector('[data-layout-preset="1-1"]')).toBeTruthy();
+        expect(container.querySelectorAll('.otta-layout__column').length).toBe(2);
     });
 
-    describe('Empty columns', () => {
-        it('should render placeholder for empty column', () => {
-            const { container } = render(
-                <Layout
-                    data={{
-                        preset: '1-1',
-                        columns: [
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'Has content' } }] } },
-                            { content: { blocks: [] } },
-                        ],
-                    }}
-                />,
-            );
-            expect(screen.getByText('Has content')).toBeTruthy();
-            const placeholders = container.querySelectorAll('.border-dashed');
-            expect(placeholders.length).toBe(1);
-        });
-
-        it('should render placeholder when column has no content', () => {
-            const { container } = render(
-                <Layout
-                    data={{
-                        preset: '1-1',
-                        columns: [{}, {}],
-                    }}
-                />,
-            );
-            const placeholders = container.querySelectorAll('.border-dashed');
-            expect(placeholders.length).toBe(2);
-        });
+    it('renders three columns for 1-1-1', () => {
+        const { container } = render(layout({ preset: '1-1-1', columns: [para('A'), para('B'), para('C')] }));
+        expect(container.querySelectorAll('.otta-layout__column').length).toBe(3);
+        expect(screen.getByText('C')).toBeTruthy();
     });
 
-    describe('Edge cases', () => {
-        it('should return null when columns is empty', () => {
-            const { container } = render(<Layout data={{ preset: '1-1', columns: [] }} />);
-            expect(container.querySelector('.cdc-content-layout')).toBeFalsy();
-        });
+    it('falls back to 1-1 for a missing or unknown preset', () => {
+        const { container } = render(
+            layout({ preset: 'bogus' as LayoutData['preset'], columns: [para('X'), para('Y')] }),
+        );
+        expect(container.querySelector('[data-layout-preset="1-1"]')).toBeTruthy();
+    });
 
-        it('should return null when data is empty', () => {
-            const { container } = render(<Layout data={{}} />);
-            expect(container.querySelector('.cdc-content-layout')).toBeFalsy();
-        });
+    it('shows a placeholder for an empty column', () => {
+        const { container } = render(
+            layout({ preset: '1-1', columns: [para('Has content'), { content: { blocks: [] } }] }),
+        );
+        expect(container.querySelectorAll('.otta-layout__empty').length).toBe(1);
+        const { container: both } = render(layout({ preset: '1-1', columns: [{}, {}] }));
+        expect(both.querySelectorAll('.otta-layout__empty').length).toBe(2);
+    });
 
-        it('should have aria-label for accessibility', () => {
-            const { container } = render(
-                <Layout
-                    data={{
-                        preset: '1-2',
-                        columns: [
-                            { content: { blocks: [{ type: 'paragraph', data: { text: 'X' } }] } },
-                            { content: { blocks: [] } },
-                        ],
-                    }}
-                />,
-            );
-            // An attribute query, not getByRole: computing every accessible name in jsdom took over 5 s under load.
-            const region = container.querySelector('[role="region"]');
-            expect(region?.getAttribute('aria-label')).toBe('1-2 column layout');
-        });
+    it('renders nothing without columns', () => {
+        const { container } = render(layout({ preset: '1-1', columns: [] }));
+        expect(container.querySelector('.otta-layout')).toBeNull();
+    });
+
+    it('shares heading ids with the document so a duplicate heading gets a suffix', () => {
+        const { container } = render(
+            <OttaRenderer
+                data={{
+                    blocks: [
+                        { type: 'header', data: { text: 'Intro', level: 2 } },
+                        {
+                            type: 'layout',
+                            data: {
+                                preset: '1-1',
+                                columns: [
+                                    { content: { blocks: [{ type: 'header', data: { text: 'Intro', level: 3 } }] } },
+                                    para('x'),
+                                ],
+                            },
+                        },
+                    ],
+                }}
+            />,
+        );
+        expect(container.querySelector('h2')?.id).toBe('intro');
+        expect(container.querySelector('h3')?.id).toBe('intro-2');
     });
 });

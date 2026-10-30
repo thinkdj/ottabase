@@ -9,22 +9,22 @@ describe('Disclosure Renderer', () => {
     describe('Null rendering', () => {
         it('should return null when no disclosures are active', () => {
             const { container } = render(<Disclosure data={{}} />);
-            expect(container.querySelector('.cdc-content-disclosure')).toBeFalsy();
+            expect(container.querySelector('.otta-disclosure')).toBeFalsy();
         });
 
         it('should return null when AI is disabled', () => {
             const { container } = render(<Disclosure data={{ aiEnabled: false, aiLevel: 'slight' }} />);
-            expect(container.querySelector('.cdc-content-disclosure')).toBeFalsy();
+            expect(container.querySelector('.otta-disclosure')).toBeFalsy();
         });
 
         it('should return null when sponsored is disabled', () => {
             const { container } = render(<Disclosure data={{ sponsoredEnabled: false, sponsoredType: 'preset' }} />);
-            expect(container.querySelector('.cdc-content-disclosure')).toBeFalsy();
+            expect(container.querySelector('.otta-disclosure')).toBeFalsy();
         });
 
         it('should return null when AI level is none', () => {
             const { container } = render(<Disclosure data={{ aiEnabled: true, aiLevel: 'none' }} />);
-            expect(container.querySelector('.cdc-content-disclosure')).toBeFalsy();
+            expect(container.querySelector('.otta-disclosure')).toBeFalsy();
         });
     });
 
@@ -82,7 +82,7 @@ describe('Disclosure Renderer', () => {
             const { container } = render(
                 <Disclosure data={{ sponsoredEnabled: true, sponsoredType: 'custom', sponsoredText: '' }} />,
             );
-            expect(container.querySelector('.cdc-content-disclosure')).toBeFalsy();
+            expect(container.querySelector('.otta-disclosure')).toBeFalsy();
         });
 
         it('should have correct ARIA role', () => {

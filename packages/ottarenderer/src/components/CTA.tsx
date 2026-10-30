@@ -1,5 +1,5 @@
 import { sanitizeJsonForScript, sanitizeSvgHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 import { useMemo } from 'react';
 
 export interface CTAData {
@@ -24,7 +24,7 @@ const buttonStyleClass: Record<NonNullable<CTAData['style']>, string> = {
     ghost: 'bg-transparent text-foreground border-transparent hover:bg-muted/70',
 };
 
-const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
+const CTA: BlockRenderer<CTAData> = ({ data, className = '' }) => {
     const buttonText = data?.text || 'Get Started';
     const url = sanitizeUrl(data?.url);
     const style = data?.style || 'primary';
@@ -61,7 +61,7 @@ const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
                     dangerouslySetInnerHTML={{ __html: sanitizeJsonForScript(structuredData) }}
                 />
             )}
-            <div className={`${className} my-6 flex ${justify} cdc-content-cta`} data-alignment={alignment}>
+            <div className={`${className} flex ${justify} otta-cta`} data-alignment={alignment}>
                 <a
                     href={url}
                     target={openInNewTab ? '_blank' : '_self'}
@@ -77,7 +77,7 @@ const CTA: RenderFn<CTAData> = ({ data, className = '' }) => {
                 </a>
             </div>
             <noscript>
-                <div className={`my-6 flex ${justify}`}>
+                <div className={`flex ${justify}`}>
                     <a href={url} className={buttonClass}>
                         {buttonText}
                     </a>

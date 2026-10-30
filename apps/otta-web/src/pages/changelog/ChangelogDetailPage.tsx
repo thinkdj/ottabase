@@ -11,7 +11,7 @@ import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import type { HeroImage } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaRenderer } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { Badge, Button } from '@ottabase/ui';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
@@ -185,17 +185,7 @@ export function ChangelogDetailPage() {
 
                 {entry.content && entry.content.blocks?.length > 0 && (
                     <MediaLightboxProvider variant="immersive">
-                        <div className="changelog-prose prose prose-neutral max-w-none dark:prose-invert prose-headings:scroll-mt-20 prose-p:leading-relaxed">
-                            <Blocks
-                                data={{
-                                    ...entry.content,
-                                    time: entry.content.time ?? 0,
-                                    version: entry.content.version ?? '2.30.0',
-                                }}
-                                config={{ ...defaultEJSRConfigs }}
-                                renderers={customRenderers}
-                            />
-                        </div>
+                        <OttaRenderer data={entry.content} />
                     </MediaLightboxProvider>
                 )}
 

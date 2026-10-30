@@ -1,5 +1,5 @@
-import { RenderFn } from 'editorjs-blocks-react-renderer';
 import { CodeBlock } from '@ottabase/ui-code-highlight';
+import type { BlockRenderer } from '../types';
 
 export interface CodeBlockData {
     code: string;
@@ -16,13 +16,14 @@ export interface CodeBlockData {
     collapsibleThreshold?: number;
 }
 
-const Code: RenderFn<CodeBlockData> = ({ data }) => {
-    const { code, language = 'plaintext' } = data;
+/** Syntax-highlighted code via @ottabase/ui-code-highlight; the host imports that package's stylesheet. */
+const Code: BlockRenderer<CodeBlockData> = ({ data }) => {
+    if (!data?.code) return null;
     return (
-        <div className="cdc-content-code my-4 pt-1">
+        <div className="otta-code not-prose">
             <CodeBlock
-                code={code}
-                language={language || 'plaintext'}
+                code={data.code}
+                language={data.language || 'plaintext'}
                 showLineNumbers={data.showLineNumbers}
                 lineNumberStart={data.lineNumberStart}
                 maxHeight={data.maxHeight}
@@ -33,7 +34,7 @@ const Code: RenderFn<CodeBlockData> = ({ data }) => {
                 tabSize={data.tabSize}
                 collapsible={data.collapsible}
                 collapsibleThreshold={data.collapsibleThreshold}
-                className="cdc-content-code-block"
+                className="otta-code__block"
             />
         </div>
     );

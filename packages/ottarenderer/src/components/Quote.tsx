@@ -1,11 +1,5 @@
-import { RenderFn } from 'editorjs-blocks-react-renderer';
-
-// Simple quote icon SVG component
-const IconQuote = ({ className = '' }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path d="M10 8H7a1 1 0 00-1 1v4a1 1 0 001 1h3a1 1 0 001-1V9a1 1 0 00-1-1zm0 0V5a3 3 0 00-3-3m10 6h-3a1 1 0 00-1 1v4a1 1 0 001 1h3a1 1 0 001-1V9a1 1 0 00-1-1zm0 0V5a3 3 0 00-3-3" />
-    </svg>
-);
+import { Inline } from '../inline';
+import type { BlockRenderer } from '../types';
 
 export interface QuoteData {
     text?: string;
@@ -13,52 +7,25 @@ export interface QuoteData {
     alignment?: 'left' | 'center' | 'right';
 }
 
-const Quote: RenderFn<QuoteData> = ({ data, className = '' }) => {
-    const { text, caption, alignment = 'left' } = data || {};
-
-    // Determine text alignment class based on alignment prop
-    const alignmentClass =
-        {
-            left: 'text-left',
-            center: 'text-center',
-            right: 'text-right',
-        }[alignment] || 'text-left';
-    const captionAlignmentClass =
-        {
-            left: 'justify-start',
-            center: 'justify-center',
-            right: 'justify-end',
-        }[alignment] || 'justify-start';
-
+/** A pull quote: larger, lighter text on a hairline rule, attribution as a micro-label. */
+const Quote: BlockRenderer<QuoteData> = ({ data }) => {
+    if (!data?.text && !data?.caption) return null;
+    const align = data.alignment === 'center' || data.alignment === 'right' ? data.alignment : 'left';
     return (
-        <div className={`${className} not-prose ${alignmentClass}`}>
-            <blockquote className="relative group my-16 mx-0 border-0 pl-0 pr-0">
-                {/* Floating quote mark */}
-                <div className="absolute -top-4 -left-2 text-muted-foreground/20 leading-none select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity duration-normal">
-                    <IconQuote className="w-10 h-10" />
-                </div>
-                {/* QUOTE*/}
-                {text && (
-                    <div className="relative z-10 text-2xl font-light text-foreground leading-relaxed tracking-normal mb-4 pl-8 m-0">
-                        {text}
-                    </div>
-                )}
-                {/* Author / Caption */}
-                {caption && (
-                    <footer className={`flex items-center ${captionAlignmentClass}`}>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-px bg-border/60"></div>
-                            <cite className="text-[0.6875rem] font-medium text-muted-foreground not-italic tracking-wide uppercase m-0">
-                                {caption}
-                            </cite>
-                        </div>
-                    </footer>
-                )}
-
-                {/* Subtle background accent */}
-                <div className="absolute inset-0 bg-muted/30 rounded-xl -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-slow"></div>
-            </blockquote>
-        </div>
+        <blockquote className="otta-quote" data-align={align}>
+            {data.text && (
+                <p className="otta-quote__text">
+                    <Inline html={data.text} />
+                </p>
+            )}
+            {data.caption && (
+                <footer className="otta-quote__caption">
+                    <cite>
+                        <Inline html={data.caption} />
+                    </cite>
+                </footer>
+            )}
+        </blockquote>
     );
 };
 

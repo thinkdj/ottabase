@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { customRenderers } from '../EditorJsRenderer';
+import { blockRenderers } from '../renderers';
 import Steps from './Steps';
 
 describe('Steps renderer', () => {
@@ -43,6 +43,6 @@ describe('Steps renderer', () => {
     });
 
     it('is registered in the renderer map', () => {
-        expect(customRenderers.steps).toBe(Steps);
+        expect(blockRenderers.steps).toBe(Steps);
     });
 });

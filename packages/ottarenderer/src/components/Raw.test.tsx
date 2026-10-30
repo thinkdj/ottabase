@@ -1,11 +1,11 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { customRenderers } from '../EditorJsRenderer';
+import { blockRenderers } from '../renderers';
 import Raw from './Raw';
 
 describe('Raw renderer', () => {
-    it('is registered, replacing the unsanitized library default', () => {
-        expect(customRenderers.raw).toBe(Raw);
+    it('is registered for the raw block type', () => {
+        expect(blockRenderers.raw).toBe(Raw);
     });
 
     it('sanitizes data.html', () => {

@@ -1,5 +1,6 @@
 import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { safeUrl } from '../inline';
+import type { BlockRenderer } from '../types';
 import React from 'react';
 
 export interface MediaEmbedData {
@@ -17,19 +18,16 @@ export interface MediaEmbedData {
  * Renderer for non-image media blocks (video, audio, PDF, document, archive).
  * Delegates presentation to MediaPreview which already handles all media kinds.
  */
-const MediaEmbed: RenderFn<MediaEmbedData> = ({ data, className = '' }) => {
-    if (!data?.url) {
-        return <></>;
-    }
-
-    const { url, title, caption, mediaId, mimeType, mediaKind, thumbnailUrl, previewUrl } = data;
+const MediaEmbed: BlockRenderer<MediaEmbedData> = ({ data, className = '' }) => {
+    const { title, caption, mediaId, mimeType, mediaKind, thumbnailUrl, previewUrl } = data ?? {};
+    const url = safeUrl(data?.url) ?? '';
 
     const item = React.useMemo(
         () => ({
             id: mediaId || url,
             url,
-            previewUrl: previewUrl || url,
-            thumbnailUrl: thumbnailUrl || url,
+            previewUrl: safeUrl(previewUrl) ?? url,
+            thumbnailUrl: safeUrl(thumbnailUrl) ?? url,
             title: title || null,
             originalName: title || url.substring(url.lastIndexOf('/') + 1),
             altText: title || null,
@@ -42,8 +40,10 @@ const MediaEmbed: RenderFn<MediaEmbedData> = ({ data, className = '' }) => {
 
     const { open: openLightbox, isEnabled: hasLightbox } = useMediaLightboxRegistration(mediaId || url, item as any);
 
+    if (!url) return null;
+
     return (
-        <figure className={`${className} my-6 overflow-hidden rounded-xl border border-border/60`}>
+        <figure className={`${className} overflow-hidden rounded-xl border border-border/60`}>
             <div
                 className={`min-h-[12rem] ${hasLightbox ? 'cursor-pointer' : ''}`}
                 role={hasLightbox ? 'button' : undefined}

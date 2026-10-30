@@ -116,7 +116,7 @@ describe('Map Renderer', () => {
     describe('Edge cases', () => {
         it('should return null when url is empty', () => {
             const { container } = render(<Map data={{ provider: 'openstreetmap' }} />);
-            expect(container.querySelector('.cdc-content-map')).toBeFalsy();
+            expect(container.querySelector('.otta-map')).toBeFalsy();
         });
 
         it('should have schema.org markup', () => {

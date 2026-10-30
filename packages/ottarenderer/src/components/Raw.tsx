@@ -1,12 +1,15 @@
 import { sanitizeBlockHtml } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 
-/**
- * Raw HTML block. Replaces the library default, which parses `data.html` unsanitized.
- */
-const Raw: RenderFn<{ html?: string }> = ({ data, className = '' }) => {
+/** Author-supplied HTML, passed through `sanitizeBlockHtml` and styled like HtmlRenderer output. */
+const Raw: BlockRenderer<{ html?: string }> = ({ data }) => {
     if (!data?.html) return null;
-    return <div className={className} dangerouslySetInnerHTML={{ __html: sanitizeBlockHtml(data.html) }} />;
+    return (
+        <div
+            className="otta-raw ottarenderer--html"
+            dangerouslySetInnerHTML={{ __html: sanitizeBlockHtml(data.html) }}
+        />
+    );
 };
 
 export default Raw;

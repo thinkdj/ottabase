@@ -1,5 +1,4 @@
-import { sanitizeInlineHtml } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 
 export interface StepItem {
     title?: string;
@@ -10,7 +9,7 @@ export interface StepsData {
     items?: StepItem[];
 }
 
-const Steps: RenderFn<StepsData> = ({ data, className = '' }) => {
+const Steps: BlockRenderer<StepsData> = ({ data, className = '' }) => {
     const items = (data?.items || [])
         .map((item) => ({
             title: item?.title?.trim() || '',
@@ -23,29 +22,29 @@ const Steps: RenderFn<StepsData> = ({ data, className = '' }) => {
     }
 
     return (
-        <section className={`${className} my-6 not-prose cdc-content-steps`} aria-label="Step list">
+        <section className={`${className} not-prose otta-steps`} aria-label="Step list">
             <div role="list">
                 {items.map((item, index) => (
                     <div
                         key={`${item.title}-${index}`}
-                        className="cdc-steps-item"
+                        className="otta-steps-item"
                         role="listitem"
                         data-step-index={index + 1}
                     >
                         {/* Rail: badge + connecting line */}
-                        <div className="cdc-steps-rail" aria-hidden="true">
-                            <div className="cdc-steps-badge">{index + 1}</div>
-                            {index < items.length - 1 ? <div className="cdc-steps-line" /> : null}
+                        <div className="otta-steps-rail" aria-hidden="true">
+                            <div className="otta-steps-badge">{index + 1}</div>
+                            {index < items.length - 1 ? <div className="otta-steps-line" /> : null}
                         </div>
 
                         {/* Content: title + description */}
-                        <article className="cdc-steps-content">
-                            {item.title ? <h3 className="cdc-steps-title">{item.title}</h3> : null}
+                        <article className="otta-steps-content">
+                            {item.title ? <h3 className="otta-steps-title">{item.title}</h3> : null}
                             {item.content ? (
-                                <p
-                                    className={`cdc-steps-text${item.title ? '' : ' cdc-steps-text--no-title'}`}
-                                    dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(item.content) }}
-                                />
+                                /* Textarea content is plain text; the stylesheet's pre-line keeps its line breaks */
+                                <p className={`otta-steps-text${item.title ? '' : ' otta-steps-text--no-title'}`}>
+                                    {item.content}
+                                </p>
                             ) : null}
                         </article>
                     </div>

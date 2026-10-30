@@ -1,5 +1,6 @@
 import { sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { safeUrl } from '../inline';
+import type { BlockRenderer } from '../types';
 import { useId, useMemo } from 'react';
 
 /** NOTE: Do not remove `not-prose` class from the component. It is used to prevent the component from being styled by the parent prose class.  */
@@ -138,10 +139,10 @@ const RatingBadge = ({ rating, maxStars, size = 'lg' }: { rating: number; maxSta
     );
 };
 
-const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
+const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
     const title = data?.title || '';
     const content = data?.content || '';
-    const image = data?.image;
+    const image = safeUrl(data?.image) ?? undefined;
     const linkUrl = data?.linkUrl;
     const linkLabel = data?.linkLabel || 'Learn more';
     const pros = data?.pros?.filter((p) => p.trim()) || [];
@@ -150,8 +151,6 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
     const maxStars = data?.maxStars || 5;
     const summary = data?.summary;
     const compact = data?.compact ?? false;
-
-    if (!title) return null;
 
     const structuredData = useMemo(() => {
         if (!title) return null;
@@ -178,6 +177,8 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
         return schema;
     }, [title, content, rating, maxStars, image]);
 
+    if (!title) return null;
+
     return (
         <>
             {structuredData && (
@@ -190,7 +191,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             {compact ? (
                 /* ── Compact layout: stamp image left, content right, summary bottom ── */
                 <div
-                    className={`not-prose ${className} my-4 rounded-xl overflow-hidden bg-muted/40 cdc-content-review cdc-content-review--compact`}
+                    className={`not-prose ${className} rounded-xl overflow-hidden bg-muted/40 otta-review otta-review--compact`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >
@@ -272,7 +273,7 @@ const Review: RenderFn<ReviewData> = ({ data, className = '' }) => {
             ) : (
                 /* ── Full layout ── */
                 <div
-                    className={`not-prose ${className} my-5 rounded-xl overflow-hidden bg-muted/40 cdc-content-review`}
+                    className={`not-prose ${className} rounded-xl overflow-hidden bg-muted/40 otta-review`}
                     itemScope
                     itemType="https://schema.org/Review"
                 >

@@ -1,5 +1,5 @@
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 import { useMemo } from 'react';
 
 export type MapProvider = 'gmaps' | 'openstreetmap';
@@ -119,7 +119,7 @@ function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: n
     return '';
 }
 
-const Map: RenderFn<MapData> = ({ data, className = '' }) => {
+const Map: BlockRenderer<MapData> = ({ data, className = '' }) => {
     const url = data?.url || '';
     const provider = data?.provider || 'openstreetmap';
     const theme = data?.theme || 'default';
@@ -144,11 +144,7 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
 
     if (!embedUrl) {
         return (
-            <figure
-                className={`${className} my-6 cdc-content-map not-prose`}
-                itemScope
-                itemType="https://schema.org/Map"
-            >
+            <figure className={`${className} otta-map not-prose`} itemScope itemType="https://schema.org/Map">
                 <div className="relative rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
                     <p className="mb-1 text-[0.9375rem] font-semibold text-foreground">Map preview unavailable</p>
                     <p className="mb-3 leading-relaxed">
@@ -178,7 +174,7 @@ const Map: RenderFn<MapData> = ({ data, className = '' }) => {
     }
 
     return (
-        <figure className={`${className} my-6 cdc-content-map not-prose`} itemScope itemType="https://schema.org/Map">
+        <figure className={`${className} otta-map not-prose`} itemScope itemType="https://schema.org/Map">
             <div
                 className="relative rounded-xl overflow-hidden border border-border/60"
                 style={shouldInvert ? { filter: 'invert(90%) hue-rotate(180deg)' } : undefined}

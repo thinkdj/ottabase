@@ -72,7 +72,7 @@
 - [@ottabase/ottalayout](packages/ottalayout/README.md): Layout system for Ottabase — types, presets, path resolver, validators, utility classes, and React slots.
 - [@ottabase/ottamenu](packages/ottamenu/README.md): Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in render types, zero persistence.
 - [@ottabase/ottaorm](packages/ottaorm/README.md): An ORM for Cloudflare D1 and SQLite. Fat model pattern with all logic in one place.
-- [@ottabase/ottarenderer](packages/ottarenderer/README.md): React renderer for Editor.js content and generic HTML.
+- [@ottabase/ottarenderer](packages/ottarenderer/README.md): Renders content written in @ottabase/ottaeditor (Editor.js) and sanitized HTML, in the Ottabase visual language. Every block and every inline tag is handled in this package against the design tokens:…
 - [@ottabase/ottarouter](packages/ottarouter/README.md): The simplest opinionated router for Cloudflare Workers — zero dependencies, order-free precedence, onion middleware, gated mounts, and null-based fall-through.
 - [@ottabase/ottaselect](packages/ottaselect/README.md): A select component that accepts any object format and always returns a standardized output. Perfect for React applications with dynamic data sources and CrudHub integration.
 - [@ottabase/ottaupload](packages/ottaupload/README.md): A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and Cloudflare Images.

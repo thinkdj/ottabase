@@ -41,13 +41,13 @@ describe('References Renderer', () => {
 
         it('should render the correct number of list items', () => {
             const { container } = render(<References data={baseData} />);
-            const items = container.querySelectorAll('.cdc-references-item');
+            const items = container.querySelectorAll('.otta-references-item');
             expect(items).toHaveLength(2);
         });
 
         it('should render [1] label for numbered style', () => {
             const { container } = render(<References data={baseData} />);
-            const labels = container.querySelectorAll('.cdc-references-label');
+            const labels = container.querySelectorAll('.otta-references-label');
             expect(labels[0].textContent).toBe('[1]');
             expect(labels[1].textContent).toBe('[2]');
         });
@@ -61,8 +61,8 @@ describe('References Renderer', () => {
 
         it('should render authors and year', () => {
             const { container } = render(<References data={baseData} />);
-            expect(container.querySelector('.cdc-references-authors')?.textContent).toBe('Jane Doe');
-            expect(container.querySelector('.cdc-references-year')?.textContent).toBe(' (2024)');
+            expect(container.querySelector('.otta-references-authors')?.textContent).toBe('Jane Doe');
+            expect(container.querySelector('.otta-references-year')?.textContent).toBe(' (2024)');
         });
 
         it('should open links in a new tab', () => {
@@ -72,10 +72,10 @@ describe('References Renderer', () => {
             expect(link.getAttribute('rel')).toBe('noopener noreferrer');
         });
 
-        it('should render the cdc-references container class', () => {
+        it('should render the otta-references container class', () => {
             const { container } = render(<References data={baseData} />);
-            expect(container.querySelector('.cdc-references')).toBeTruthy();
-            expect(container.querySelector('.cdc-references--numbered')).toBeTruthy();
+            expect(container.querySelector('.otta-references')).toBeTruthy();
+            expect(container.querySelector('.otta-references--numbered')).toBeTruthy();
         });
     });
 
@@ -94,13 +94,13 @@ describe('References Renderer', () => {
 
         it('should render plain superscript-style label (no brackets)', () => {
             const { container } = render(<References data={footnoteData} />);
-            const label = container.querySelector('.cdc-references-label');
+            const label = container.querySelector('.otta-references-label');
             expect(label?.textContent).toBe('1');
         });
 
-        it('should render cdc-references--footnote class', () => {
+        it('should render otta-references--footnote class', () => {
             const { container } = render(<References data={footnoteData} />);
-            expect(container.querySelector('.cdc-references--footnote')).toBeTruthy();
+            expect(container.querySelector('.otta-references--footnote')).toBeTruthy();
         });
     });
 
@@ -110,7 +110,7 @@ describe('References Renderer', () => {
         const { container } = render(
             <References data={{ items: [{ id: '1', url: 'https://example.com/article' }], style: 'numbered' }} />,
         );
-        const link = container.querySelector('.cdc-references-link');
+        const link = container.querySelector('.otta-references-link');
         expect(link?.getAttribute('href')).toBe('https://example.com/article');
         // Title is absent so link text shows the cleaned URL
         expect(link?.textContent).toContain('example.com');
@@ -127,7 +127,7 @@ describe('References Renderer', () => {
                 }}
             />,
         );
-        expect(container.querySelector('.cdc-references-accessed')?.textContent).toContain('2024-01-15');
+        expect(container.querySelector('.otta-references-accessed')?.textContent).toContain('2024-01-15');
     });
 
     it('should render note when provided', () => {
@@ -139,7 +139,7 @@ describe('References Renderer', () => {
                 }}
             />,
         );
-        expect(container.querySelector('.cdc-references-note')?.textContent).toContain('Very useful resource');
+        expect(container.querySelector('.otta-references-note')?.textContent).toContain('Very useful resource');
     });
 
     // ── className passthrough ──────────────────────────────────────────────────
@@ -151,7 +151,7 @@ describe('References Renderer', () => {
                 className="custom-class"
             />,
         );
-        const wrapper = container.querySelector('.cdc-references');
+        const wrapper = container.querySelector('.otta-references');
         expect(wrapper?.className).toContain('custom-class');
     });
 

@@ -47,9 +47,9 @@ describe('Testimonial Renderer', () => {
             expect(screen.getByText('CTO · Techcorp')).toBeTruthy();
         });
 
-        it('should render the card wrapper with cdc-testimonial-card class', () => {
+        it('should render the card wrapper with otta-testimonial-card class', () => {
             const { container } = render(<Testimonial data={baseData} />);
-            expect(container.querySelector('.cdc-testimonial-card')).toBeTruthy();
+            expect(container.querySelector('.otta-testimonial-card')).toBeTruthy();
         });
 
         it('should render avatar when provided', () => {
@@ -60,14 +60,14 @@ describe('Testimonial Renderer', () => {
 
         it('should NOT render avatar when not provided', () => {
             const { container } = render(<Testimonial data={baseData} />);
-            expect(container.querySelector('.cdc-testimonial-avatar')).toBeNull();
+            expect(container.querySelector('.otta-testimonial-avatar')).toBeNull();
         });
 
         it('should render company logo when provided', () => {
             const { container } = render(
                 <Testimonial data={{ ...baseData, companyLogo: 'https://cdn.example.com/logo.png' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-company-logo')).toBeTruthy();
+            expect(container.querySelector('.otta-testimonial-company-logo')).toBeTruthy();
         });
     });
 
@@ -78,21 +78,21 @@ describe('Testimonial Renderer', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Great!', authorName: 'Bob', rating: 4, variant: 'card' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-stars')).toBeTruthy();
+            expect(container.querySelector('.otta-testimonial-stars')).toBeTruthy();
         });
 
         it('should not render stars when rating is 0 or absent', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Good.', authorName: 'Charlie', variant: 'card' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-stars')).toBeNull();
+            expect(container.querySelector('.otta-testimonial-stars')).toBeNull();
         });
 
         it('should mark correct number of filled stars', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Nice!', authorName: 'Dana', rating: 3, variant: 'card' }} />,
             );
-            const filled = container.querySelectorAll('.cdc-testimonial-star--filled');
+            const filled = container.querySelectorAll('.otta-testimonial-star--filled');
             expect(filled).toHaveLength(3);
         });
 
@@ -100,7 +100,7 @@ describe('Testimonial Renderer', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Perfect!', authorName: 'Eve', rating: 10, variant: 'card' }} />,
             );
-            const filled = container.querySelectorAll('.cdc-testimonial-star--filled');
+            const filled = container.querySelectorAll('.otta-testimonial-star--filled');
             expect(filled).toHaveLength(5);
         });
     });
@@ -108,36 +108,36 @@ describe('Testimonial Renderer', () => {
     // ── Minimal variant ─────────────────────────────────────────────────────────
 
     describe('Minimal variant', () => {
-        it('should render with cdc-testimonial-minimal class', () => {
+        it('should render with otta-testimonial-minimal class', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Minimal works.', authorName: 'Frank', variant: 'minimal' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-minimal')).toBeTruthy();
+            expect(container.querySelector('.otta-testimonial-minimal')).toBeTruthy();
         });
 
         it('should NOT render card class in minimal variant', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Minimal.', authorName: 'George', variant: 'minimal' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-card')).toBeNull();
+            expect(container.querySelector('.otta-testimonial-card')).toBeNull();
         });
     });
 
     // ── Featured variant ─────────────────────────────────────────────────────────
 
     describe('Featured variant', () => {
-        it('should render with cdc-testimonial-featured class', () => {
+        it('should render with otta-testimonial-featured class', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Featured is large.', authorName: 'Hannah', variant: 'featured' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-featured')).toBeTruthy();
+            expect(container.querySelector('.otta-testimonial-featured')).toBeTruthy();
         });
 
         it('should render the large quote class', () => {
             const { container } = render(
                 <Testimonial data={{ quote: 'Big quote.', authorName: 'Ivan', variant: 'featured' }} />,
             );
-            expect(container.querySelector('.cdc-testimonial-quote--large')).toBeTruthy();
+            expect(container.querySelector('.otta-testimonial-quote--large')).toBeTruthy();
         });
     });
 

@@ -4,7 +4,7 @@
  * Clean, minimalist theme with focus on typography and readability
  */
 
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaRenderer } from '@ottabase/ottarenderer';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
@@ -32,8 +32,7 @@ export const minimalTheme: Theme = {
             metadata:
                 'flex flex-wrap items-center gap-x-6 gap-y-2 mb-8 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
             excerpt: 'text-lg text-muted-foreground mb-10 leading-relaxed font-light',
-            content:
-                'prose prose-lg prose-slate dark:prose-invert max-w-none mb-16 prose-headings:font-light prose-headings:tracking-tight',
+            content: 'mb-16 ottarenderer--lg [&_.otta-heading]:font-light [&_.otta-heading]:tracking-tight',
             footnotes: 'border-t border-border/60 pt-10 mt-16',
             series: 'border-b border-border/60 pb-6 mb-10',
             footer: 'mt-16 pt-10 border-t border-border/60',
@@ -119,13 +118,7 @@ export const minimalTheme: Theme = {
             if (!hasContent) return null;
             return (
                 <div className={`${props.contentClassName || ''} ${minimalTheme.config?.classes?.content || ''}`}>
-                    <Blocks
-                        // Ensure version and time are always present — editorjs-blocks-react-renderer
-                        // calls data.version.includes() unconditionally and will throw if absent.
-                        data={{ version: '2.30.0', time: Date.now(), ...(post.content as EditorJSData) }}
-                        renderers={customRenderers}
-                        config={defaultEJSRConfigs}
-                    />
+                    <OttaRenderer data={post.content as EditorJSData} />
                 </div>
             );
         },
@@ -137,13 +130,10 @@ export const minimalTheme: Theme = {
                     <h2 className="mb-6 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Footnotes
                     </h2>
-                    <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
-                        <Blocks
-                            data={{ version: '2.30.0', time: Date.now(), ...(post.footnotes as EditorJSData) }}
-                            renderers={customRenderers}
-                            config={defaultEJSRConfigs}
-                        />
-                    </div>
+                    <OttaRenderer
+                        className="ottarenderer--sm text-muted-foreground"
+                        data={post.footnotes as EditorJSData}
+                    />
                 </aside>
             );
         },

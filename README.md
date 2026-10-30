@@ -150,7 +150,7 @@ ottabase/
 │   ├── ui-code-highlight/ # Code syntax highlighting
 │   ├── ottaeditor/       # EditorJS wrapper with 15+ plugins
 │   ├── ottaupload/       # File uploads (R2, CF Images)
-│   ├── ottarenderer/     # EditorJS block renderer
+│   ├── ottarenderer/     # Editor.js block + sanitized HTML renderer, token-styled
 │   ├── ottaselect/       # Headless select/combobox
 │   ├── ui-cropper/       # Vanilla JS image cropper, fixed viewfinder (~9 KB)
 │   ├── spotlight/        # Command palette
@@ -426,7 +426,7 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 | `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                      |
 | `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                     |
 | `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                |
-| `@ottabase/ottarenderer`      | EditorJS block renderer for React                                                                                                                            |
+| `@ottabase/ottarenderer`      | Editor.js block + sanitized HTML renderer, styled by the design tokens                                                                                       |
 | `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                           |
 | `@ottabase/ui-cropper`        | Vanilla JS image cropper, fixed-viewfinder model (~9 KB, zero deps)                                                                                          |
 | `@ottabase/spotlight`         | Spotlight/command palette component                                                                                                                          |

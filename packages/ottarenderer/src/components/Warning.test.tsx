@@ -2,26 +2,24 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import Warning from './Warning';
 
-describe('Warning Renderer', () => {
-    it('stacks message content under title instead of inline with icon row', () => {
+describe('Warning', () => {
+    it('renders a note with an icon well, title and message stacked', () => {
         const { container } = render(
             <Warning
-                data={{
-                    title: 'Important Note',
-                    message: 'Always backup your data before making changes to production systems.',
-                }}
+                data={{ title: 'Important <b>Note</b>', message: 'Always back up before changing production.' }}
             />,
         );
+        const note = container.querySelector('aside[role="note"].otta-warning')!;
+        expect(note).toBeTruthy();
+        expect(note.querySelector('.otta-warning__icon svg')).toBeTruthy();
+        const body = note.querySelector('.otta-warning__body')!;
+        expect(body.querySelector('.otta-warning__title strong')?.textContent).toBe('Note');
+        expect(body.querySelector('.otta-warning__text')?.textContent).toContain('Always back up');
+        expect(screen.getByText(/Always back up/)).toBeTruthy();
+    });
 
-        const alert = container.querySelector('[role="alert"]');
-        expect(alert).toBeTruthy();
-
-        const textStack = alert?.querySelector('.min-w-0');
-        expect(textStack).toBeTruthy();
-        expect(textStack?.querySelector('h4')?.textContent).toContain('Important Note');
-        expect(textStack?.querySelector('p')?.textContent).toContain('Always backup your data');
-
-        expect(screen.getByText('Important Note')).toBeTruthy();
-        expect(screen.getByText(/Always backup your data/)).toBeTruthy();
+    it('renders nothing when both fields are empty', () => {
+        const { container } = render(<Warning data={{}} />);
+        expect(container.firstChild).toBeNull();
     });
 });

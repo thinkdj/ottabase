@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/ottarenderer",
     "version": "1.0.0",
-    "description": "Content renderer for EditorJS and HTML content in Ottabase applications",
+    "description": "Editor.js block + sanitized HTML renderer for @ottabase/ottaeditor content, styled by the Ottabase design tokens.",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",
@@ -42,9 +42,7 @@
     "dependencies": {
         "@ottabase/medialibrary": "workspace:*",
         "@ottabase/ui-code-highlight": "workspace:*",
-        "@ottabase/utils": "workspace:*",
-        "editorjs-blocks-react-renderer": "^1.3.0",
-        "html-react-parser": "^5.1.18"
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "catalog:",

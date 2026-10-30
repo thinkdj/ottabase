@@ -1,6 +1,7 @@
 import { type MediaKind, type MediaViewerItem } from '@ottabase/medialibrary';
 import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { safeUrl } from '../inline';
+import type { BlockRenderer } from '../types';
 import React from 'react';
 
 export type MediaGalleryLayoutPreset = 'grid-balanced' | 'grid-featured' | 'masonry' | 'filmstrip' | 'mosaic';
@@ -34,9 +35,9 @@ const normalizeItem = (item: MediaGalleryItem): MediaViewerItem => {
 
     return {
         id: item.mediaId || item.id || item.url,
-        url: item.url,
-        previewUrl: item.previewUrl || item.url,
-        thumbnailUrl: item.thumbnailUrl || item.url,
+        url: safeUrl(item.url) ?? '',
+        previewUrl: safeUrl(item.previewUrl) ?? safeUrl(item.url) ?? '',
+        thumbnailUrl: safeUrl(item.thumbnailUrl) ?? safeUrl(item.url) ?? '',
         title,
         originalName: title,
         altText: item.altText || title,
@@ -49,7 +50,7 @@ const normalizeItem = (item: MediaGalleryItem): MediaViewerItem => {
 };
 
 const getGalleryItems = (data: MediaGalleryData): MediaGalleryItem[] => {
-    return (data.items || []).filter((item) => Boolean(item?.url));
+    return (data.items || []).filter((item) => safeUrl(item?.url) !== null);
 };
 
 const layoutClassByPreset: Record<MediaGalleryLayoutPreset, string> = {
@@ -155,7 +156,7 @@ function MediaGalleryItemCard({ item, index, layout }: MediaGalleryItemCardProps
     );
 }
 
-const MediaGallery: RenderFn<MediaGalleryData> = ({ data, className = '' }) => {
+const MediaGallery: BlockRenderer<MediaGalleryData> = ({ data, className = '' }) => {
     if (!data) {
         return <></>;
     }
@@ -175,7 +176,7 @@ const MediaGallery: RenderFn<MediaGalleryData> = ({ data, className = '' }) => {
     const containerClass = isMasonry ? `gap-3 ${layoutClass}` : `grid grid-cols-1 gap-3 ${layoutClass}`;
 
     return (
-        <figure className={`${className} my-6 not-prose rounded-xl bg-muted/40 p-4`}>
+        <figure className={`${className} not-prose rounded-xl bg-muted/40 p-4`}>
             {hasTitle && (
                 <h4 className="mb-3 text-[0.9375rem] font-semibold text-center text-foreground">{data.title}</h4>
             )}

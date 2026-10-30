@@ -1,5 +1,5 @@
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -35,20 +35,20 @@ function ReferenceEntry({
     const urlDisplay = item.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
     return (
-        <li className="cdc-references-item">
-            <span className="cdc-references-label" aria-label={`Reference ${index + 1}`}>
+        <li className="otta-references-item">
+            <span className="otta-references-label" aria-label={`Reference ${index + 1}`}>
                 {label}
             </span>
-            <span className="cdc-references-body">
-                {item.authors && <span className="cdc-references-authors">{item.authors}</span>}
-                {item.year && <span className="cdc-references-year"> ({item.year})</span>}
+            <span className="otta-references-body">
+                {item.authors && <span className="otta-references-authors">{item.authors}</span>}
+                {item.year && <span className="otta-references-year"> ({item.year})</span>}
                 {(item.authors || item.year) && '. '}
                 {item.title ? (
                     <a
                         href={sanitizeUrl(item.url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="cdc-references-link"
+                        className="otta-references-link"
                     >
                         {item.title}
                     </a>
@@ -57,13 +57,13 @@ function ReferenceEntry({
                         href={sanitizeUrl(item.url)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="cdc-references-link"
+                        className="otta-references-link"
                     >
                         {urlDisplay}
                     </a>
                 )}
-                {item.accessedDate && <span className="cdc-references-accessed"> (accessed {item.accessedDate})</span>}
-                {item.note && <span className="cdc-references-note"> — {item.note}</span>}
+                {item.accessedDate && <span className="otta-references-accessed"> (accessed {item.accessedDate})</span>}
+                {item.note && <span className="otta-references-note"> — {item.note}</span>}
             </span>
         </li>
     );
@@ -78,7 +78,7 @@ function ReferenceEntry({
  * - `numbered` (default): renders `[1] Authors (Year). Title. URL`
  * - `footnote`: renders with superscript-style numbering
  */
-const References: RenderFn<ReferencesData> = ({ data, className = '' }) => {
+const References: BlockRenderer<ReferencesData> = ({ data, className = '' }) => {
     const items = data?.items ?? [];
     const style = data?.style ?? 'numbered';
 
@@ -92,8 +92,8 @@ const References: RenderFn<ReferencesData> = ({ data, className = '' }) => {
     const ListTag = style === 'numbered' ? 'ol' : 'ul';
 
     return (
-        <div className={`${className} cdc-references cdc-references--${style} not-prose`}>
-            <ListTag className="cdc-references-list">
+        <div className={`${className} otta-references otta-references--${style} not-prose`}>
+            <ListTag className="otta-references-list">
                 {validItems.map((item, index) => (
                     <ReferenceEntry key={item.id ?? index} item={item} index={index} style={style} />
                 ))}

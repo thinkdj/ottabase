@@ -318,7 +318,7 @@
 
 /* ── Labels ──────────────────────────────────────────────────────────────── */
 
-/* Micro-label chips on a soft scrim — matches the renderer's .cdc-before-after__label */
+/* Micro-label chips on a soft scrim — matches the renderer's .otta-before-after__label */
 .cdx-before-after__label {
     position: absolute;
     padding: 0.25rem 0.5rem;

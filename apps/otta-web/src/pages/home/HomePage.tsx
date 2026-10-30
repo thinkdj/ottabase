@@ -3,7 +3,7 @@
 // (and every `otta new --preset`) replaces it with the starter page at the foot of this file.
 import { APP_META } from '@/ottabase/config';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaRenderer } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import { useMemo } from 'react';
 import { OttabaseHero } from './OttabaseHero';
@@ -417,9 +417,9 @@ export function HomePage() {
             </div>
 
             <div className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 md:px-10 md:py-16 lg:px-12">
-                <div className="prose dark:prose-invert max-w-none text-left">
+                <div className="text-left">
                     <MediaLightboxProvider variant="immersive">
-                        <Blocks data={editorData} config={defaultEJSRConfigs} renderers={customRenderers} />
+                        <OttaRenderer data={editorData} />
                     </MediaLightboxProvider>
                 </div>
             </div>

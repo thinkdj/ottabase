@@ -1,5 +1,5 @@
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
-import { Blocks, customRenderers, defaultEJSRConfigs, HtmlRenderer } from '@ottabase/ottarenderer';
+import { HtmlRenderer, OttaRenderer } from '@ottabase/ottarenderer';
 import '@ottabase/ottarenderer/styles';
 import {
     Card,
@@ -201,25 +201,12 @@ const sampleEditorJSData = {
             id: 'code1',
             type: 'code',
             data: {
-                code: `import {
-  Blocks,
-  customRenderers,
-  defaultEJSRConfigs,
-  HtmlRenderer
-} from "@ottabase/ottarenderer";
+                code: `import { HtmlRenderer, OttaRenderer } from "@ottabase/ottarenderer";
 import "@ottabase/ottarenderer/styles";
 
-// Render EditorJS content
+// Render Editor.js content: no prose wrapper, the renderer owns its typography
 function MyContent({ editorData }) {
-  return (
-    <div className="prose dark:prose-invert max-w-none">
-      <Blocks
-        data={editorData}
-        config={defaultEJSRConfigs}
-        renderers={customRenderers}
-      />
-    </div>
-  );
+  return <OttaRenderer data={editorData} />;
 }
 
 // Render HTML content
@@ -341,7 +328,7 @@ function MyHtmlContent({ htmlString }) {
 // Sample HTML content
 const sampleHtmlContent = `
 <h2>HTML Renderer Demo</h2>
-<p>The <strong>HtmlRenderer</strong> component can render basic HTML content with proper styling using Tailwind's prose classes.</p>
+<p>The <strong>HtmlRenderer</strong> component can render basic HTML content with the same typography the block renderer uses.</p>
 <h3>Supported Elements</h3>
 <ul>
     <li>Headings (h1-h6)</li>
@@ -357,7 +344,7 @@ const sampleHtmlContent = `
 <pre><code>const example = "HTML code block";
 console.log(example);
 
-// This is rendered using the prose plugin
+// Styled by the renderer's own stylesheet
 function greet(name) {
   return \`Hello, \${name}!\`;
 }</code></pre>
@@ -388,15 +375,9 @@ export function RendererDemoPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="prose dark:prose-invert max-w-none">
-                                <MediaLightboxProvider variant="immersive">
-                                    <Blocks
-                                        data={sampleEditorJSData}
-                                        config={defaultEJSRConfigs}
-                                        renderers={customRenderers}
-                                    />
-                                </MediaLightboxProvider>
-                            </div>
+                            <MediaLightboxProvider variant="immersive">
+                                <OttaRenderer data={sampleEditorJSData} />
+                            </MediaLightboxProvider>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -406,7 +387,7 @@ export function RendererDemoPage() {
                         <CardHeader>
                             <CardTitle className="text-[0.9375rem] font-semibold">HTML Content</CardTitle>
                             <CardDescription>
-                                Rendering basic HTML content with Tailwind prose styling and dark mode support.
+                                Sanitized HTML rendered with the renderer's typography contract and dark mode support.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -430,6 +411,7 @@ export function RendererDemoPage() {
                                 <li>• Interactive Checklist</li>
                                 <li>• Steps timeline / walkthrough block</li>
                                 <li>• Code Block (with language labels)</li>
+                                <li>• Embeds, link previews, delimiters</li>
                                 <li>• List (ordered/unordered with nesting)</li>
                                 <li>• Quote (with alignment options)</li>
                                 <li>• Table (with headers)</li>
@@ -440,11 +422,11 @@ export function RendererDemoPage() {
                             <h3 className="font-semibold">Additional Features</h3>
                             <ul className="text-sm text-muted-foreground space-y-1">
                                 <li>• HTML content rendering</li>
-                                <li>• Block injection support</li>
-                                <li>• Shadcn design tokens</li>
+                                <li>• Injections: place anything between blocks</li>
+                                <li>• Design tokens end to end: colours, radii, motion, type scale</li>
                                 <li>• Dark mode compatible</li>
                                 <li>• TypeScript support</li>
-                                <li>• Lightweight (no Mantine dependency)</li>
+                                <li>• Zero third-party renderer or HTML parser</li>
                                 <li>• Customizable styles</li>
                             </ul>
                         </div>

@@ -1,4 +1,4 @@
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 import { useMemo } from 'react';
 
 // ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ const SponsoredIcon = () => (
 // Main renderer
 // ---------------------------------------------------------------------------
 
-const Disclosure: RenderFn<DisclosureData> = ({ data, className = '' }) => {
+const Disclosure: BlockRenderer<DisclosureData> = ({ data, className = '' }) => {
     const aiText = useMemo(() => getAIText(data || {}), [data]);
     const sponsoredText = useMemo(() => getSponsoredText(data || {}), [data]);
 
@@ -108,7 +108,7 @@ const Disclosure: RenderFn<DisclosureData> = ({ data, className = '' }) => {
     const hasSponsored = Boolean(sponsoredText);
     return (
         <aside
-            className={`${className} not-prose my-4 rounded-xl bg-muted/40 overflow-hidden cdc-content-disclosure`}
+            className={`${className} not-prose rounded-xl bg-muted/40 overflow-hidden otta-disclosure`}
             aria-label="Content disclosure"
         >
             {/* Header bar */}

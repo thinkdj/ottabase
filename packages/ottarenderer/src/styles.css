@@ -1,10 +1,19 @@
-/* ======================================= */
-/* Theme token defaults                    */
-/* ======================================= */
+/**
+ * @ottabase/ottarenderer — Stylesheet
+ *
+ * One typography contract for everything the renderer emits. Colours, radii, shadows, motion and
+ * the type scale come from the design tokens (@ottabase/ui styles/ui.css, or a Brand Engine
+ * theme); the `:where(:root)` block below only gives a themeless page sane defaults at zero
+ * specificity, so any loaded theme wins.
+ *
+ * Structure
+ *   .ottarenderer                 root: body text, measure-agnostic (the host owns width)
+ *   .otta-block / --<type>        one wrapper per block; owns vertical rhythm via --otta-flow
+ *   .otta-<block>…                the block's own elements (BEM-ish, double underscore for parts)
+ *   .otta-link / -mark / …        inline marks produced from the editor's inline tools
+ *   .ottarenderer--html           sanitized HTML (HtmlRenderer, raw block): bare tags get the same look
+ */
 
-/* Package-level defaults for consumers that don't load a theme; :where() keeps
-   specificity zero so any loaded theme (@ottabase/ui styles/ui.css :root/.dark or runtime
-   themes) always wins. */
 :where(:root) {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -29,370 +38,1114 @@
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ======================================= */
-/* Generic */
-/* ======================================= */
-.cdc-content-block {
-    display: block;
-    clear: both;
-    margin: 1.25rem auto;
-    width: 100%;
-}
+/* ======================================================================
+ * Root — the typography contract
+ * ==================================================================== */
 
-.cdc-content-cl-ul,
-.cdc-content-cl-li {
-    list-style: none;
-}
+.ottarenderer {
+    /* Body text: the brand type scale when a theme sets it, a readable long-form default otherwise */
+    --otta-text: var(--text-base, 1rem);
+    --otta-leading: 1.75;
+    --otta-font: var(--font-body, var(--font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif));
+    --otta-font-heading: var(--font-heading, var(--otta-font));
+    --otta-font-mono: var(--font-mono, ui-monospace, 'SF Mono', Menlo, Consolas, monospace);
 
-.cdc-content-table {
-    width: 100%;
-}
+    /* Vertical rhythm between blocks; headings open a section with more air above */
+    --otta-flow: 1.25rem;
+    --otta-flow-section: 2.5rem;
 
-.cdc-content-delimiter {
-    border: none;
-    appearance: none;
-    display: block;
-    width: 100%;
-    min-height: 2rem;
-    text-align: center;
-    position: relative;
-    background: transparent;
-}
+    /* Radii follow the --radius family: outer surfaces, inner parts, chips */
+    --otta-radius: calc(var(--radius) + 4px);
+    --otta-radius-inner: var(--radius);
+    --otta-radius-chip: calc(var(--radius) - 2px);
 
-.cdc-content-delimiter::before {
-    display: inline-block;
-    content: '***';
-    font-size: 2rem;
-    line-height: 2.5rem;
-    letter-spacing: 0.42rem;
-}
+    /* The soft tint every resting surface uses, and the hairline that separates things */
+    --otta-tint: hsl(var(--muted) / 0.4);
+    --otta-tint-hover: hsl(var(--muted) / 0.7);
+    --otta-hairline: hsl(var(--border) / 0.6);
 
-/* ======================================= */
-/* Inline tools */
-/* ======================================= */
-.cdx-marker,
-.cdc-content-block .inline-code {
-    line-height: 1.5;
-    display: inline-block;
-    border-radius: calc(var(--radius) - 2px);
-    padding: 0.05rem 0.35rem;
-    margin: 0 0.275rem 0 0;
-}
+    /* Captions and labels: one micro-label recipe everywhere */
+    --otta-label-size: 0.6875rem;
 
-.cdc-content-block .inline-code {
-    color: hsl(var(--destructive));
-    background: hsl(var(--muted));
-}
+    --otta-transition: var(--duration-normal, 200ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
 
-.cdx-marker {
-    background: hsl(var(--warning) / 0.35);
+    font-family: var(--otta-font);
+    font-size: var(--otta-text);
+    line-height: var(--otta-leading);
     color: hsl(var(--foreground));
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
 }
 
-.cdc-content-block.image-block,
-.cdc-content-block.advanced-image-block {
+/* Size modifiers: footnotes and asides read smaller, a long-form theme can read larger */
+.ottarenderer--sm {
+    --otta-text: var(--text-sm, 0.875rem);
+    --otta-leading: 1.65;
+    --otta-flow: 0.875rem;
+    --otta-flow-section: 1.75rem;
+}
+
+.ottarenderer--lg {
+    --otta-text: var(--text-lg, 1.125rem);
+    --otta-leading: 1.8;
+    --otta-flow: 1.5rem;
+    --otta-flow-section: 3rem;
+}
+
+.ottarenderer *,
+.ottarenderer *::before,
+.ottarenderer *::after {
     box-sizing: border-box;
 }
 
-/*
- * One measure for BOTH image families.
- *
- * `image-block` and `advanced-image-block` are the same component rendered through two renderer
- * configs, and they had drifted to different caps — 800px here, 34rem there. Since the component
- * appends its `advanced-image-block--*` modifiers whichever config supplied the base class, a
- * stretched figure frequently carries `image-block`, so the 800px cap was what actually applied
- * and it pinned the image at 800px inside a 1120px frame.
- *
- * A normal image sits INSIDE the text measure, narrower than the column, so "stretched" has
- * somewhere to go; without that the two modes look identical in a 48rem article.
- */
-.cdc-content-block.image-block img,
-.cdc-content-block.advanced-image-block img {
-    max-width: min(100%, 34rem);
+.otta-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
-/*
- * A stretched image breaks OUT of the reading column, symmetrically, and only by as much as the
- * page is known to have spare.
- *
- * The arithmetic that makes it symmetric: `width` explicitly accounts for both margins, so
- * `-B + (100% + 2B) + -B = 100%` balances. A box whose width does NOT account for them is
- * over-constrained, and CSS resolves that by discarding one side — which is why an earlier version
- * put the entire bleed on the right edge. The component must not add `w-full` for the same reason.
- *
- * The bleed is stepped by media query rather than computed from `vw`, because `100vw` includes the
- * scrollbar and overflows by exactly its width.
- *
- * The thresholds are sized for the WORST case, a layout with a sidebar, since a viewport media
- * query cannot see one. With a 14rem sidebar and 2rem of main padding, a 48rem column leaves
- * `(viewport - 64rem) / 2` free per side. Each tier's bleed stays inside that, with headroom:
- *
- *   viewport   free/side   bleed past the column edge   headroom
- *   1152px      64px        32px                         32px
- *   1280px     128px        80px                         48px
- *   1440px     208px       176px                         32px
- *
- * Every figure is measured, not estimated — see scratchpad/stretch-check.html, which loads this
- * stylesheet itself rather than a copy of these rules. Below 1152px nothing is spare, and
- * stretched means the full column.
- */
-.advanced-image-block--stretched,
-.cdc-content-block.advanced-image-block.advanced-image-block--stretched {
-    /* Base tier cancels the reading container's own 1rem inline padding, so even on a phone a
-       stretched image reaches the column's edge instead of sitting inside the text margin. This
-       one is safe at ANY width by construction: it spends the container's padding, nothing more. */
+/* ----------------------------------------------------------------------
+ * Vertical rhythm: the block wrapper owns it, blocks never set outer margins
+ * -------------------------------------------------------------------- */
+
+.otta-block {
+    display: block;
+    clear: both;
+    width: 100%;
+}
+
+.otta-block + .otta-block {
+    margin-top: var(--otta-flow);
+}
+
+/* A heading opens a section */
+.otta-block + .otta-block--header {
+    margin-top: var(--otta-flow-section);
+}
+
+.otta-block--header + .otta-block {
+    margin-top: 0.75rem;
+}
+
+/* Minor headings sit closer to what precedes them */
+.otta-block + .otta-block--header:has(.otta-heading--4),
+.otta-block + .otta-block--header:has(.otta-heading--5),
+.otta-block + .otta-block--header:has(.otta-heading--6) {
+    margin-top: calc(var(--otta-flow) * 1.5);
+}
+
+/* Paragraph → paragraph reads as prose, a touch tighter than block → block */
+.otta-block--paragraph + .otta-block--paragraph {
+    margin-top: 1rem;
+}
+
+/* Media and cards breathe a little more */
+.otta-block + .otta-block--image,
+.otta-block + .otta-block--advancedImage,
+.otta-block + .otta-block--mediaGallery,
+.otta-block + .otta-block--mediaEmbed,
+.otta-block + .otta-block--embed,
+.otta-block + .otta-block--beforeAfter,
+.otta-block + .otta-block--imageHotspots,
+.otta-block + .otta-block--map,
+.otta-block + .otta-block--quote,
+.otta-block + .otta-block--delimiter,
+.otta-block--image + .otta-block,
+.otta-block--advancedImage + .otta-block,
+.otta-block--mediaGallery + .otta-block,
+.otta-block--mediaEmbed + .otta-block,
+.otta-block--embed + .otta-block,
+.otta-block--beforeAfter + .otta-block,
+.otta-block--imageHotspots + .otta-block,
+.otta-block--map + .otta-block,
+.otta-block--quote + .otta-block,
+.otta-block--delimiter + .otta-block {
+    margin-top: calc(var(--otta-flow) * 1.5);
+}
+
+/* ======================================================================
+ * Inline marks — what the editor's inline tools become
+ * ==================================================================== */
+
+.otta-link {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+    text-decoration-color: hsl(var(--primary) / 0.4);
+    transition: text-decoration-color var(--otta-transition);
+}
+
+.otta-link:hover {
+    text-decoration-color: currentColor;
+}
+
+.otta-link:focus-visible,
+.otta-heading__anchor:focus-visible,
+.otta-link-card:focus-visible,
+.otta-annotation:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.otta-inline-code {
+    font-family: var(--otta-font-mono);
+    font-size: 0.875em;
+    padding: 0.1em 0.4em;
+    border-radius: var(--otta-radius-chip);
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    box-shadow: inset 0 0 0 1px var(--otta-hairline);
+    overflow-wrap: anywhere;
+}
+
+.otta-mark {
+    padding: 0.05em 0.25em;
+    margin: 0 -0.05em;
+    border-radius: var(--otta-radius-chip);
+    background: hsl(var(--warning) / 0.3);
+    color: inherit;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.otta-underline {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    text-decoration-thickness: 1px;
+}
+
+/* Annotation: a dotted underline, a note that opens above it */
+.otta-annotation {
+    position: relative;
+    cursor: help;
+    text-decoration: underline dotted hsl(var(--primary) / 0.7);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.2em;
+    outline: none;
+}
+
+.otta-annotation[data-state='open'] {
+    text-decoration-style: solid;
+}
+
+.otta-annotation__note {
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-popover, 40);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 12rem;
+    max-width: min(20rem, 80vw);
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--otta-radius-inner);
+    background: hsl(var(--popover, var(--background)));
+    color: hsl(var(--popover-foreground, var(--foreground)));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-md);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    font-weight: 400;
+    text-align: left;
+    text-decoration: none;
+    white-space: normal;
+    cursor: default;
+}
+
+.otta-annotation__note::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 0.375rem solid transparent;
+    border-top-color: hsl(var(--border));
+}
+
+.otta-annotation__title {
+    font-weight: 600;
+    color: hsl(var(--foreground));
+}
+
+.otta-annotation__text {
+    color: hsl(var(--muted-foreground));
+}
+
+/* ======================================================================
+ * Captions and labels — one recipe
+ * ==================================================================== */
+
+.otta-caption {
+    margin: 0.625rem 0 0;
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    line-height: 1.5;
+    color: hsl(var(--muted-foreground));
+    text-align: center;
+}
+
+/* ======================================================================
+ * Paragraph
+ * ==================================================================== */
+
+.otta-paragraph {
+    margin: 0;
+}
+
+.otta-paragraph--empty {
+    min-height: calc(var(--otta-text) * var(--otta-leading));
+}
+
+/* ======================================================================
+ * Heading — a type scale that reads as one family
+ * ==================================================================== */
+
+.otta-heading {
+    position: relative;
+    margin: 0;
+    font-family: var(--otta-font-heading);
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    text-wrap: balance;
+    scroll-margin-top: 5rem;
+    letter-spacing: var(--typography-heading-spacing, -0.02em);
+    text-transform: var(--typography-heading-transform, none);
+}
+
+.otta-heading--1 {
+    font-size: var(--text-4xl, 2.25rem);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: var(--typography-heading-spacing, -0.03em);
+}
+
+.otta-heading--2 {
+    font-size: var(--text-3xl, 1.75rem);
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.otta-heading--3 {
+    font-size: var(--text-2xl, 1.375rem);
+    line-height: 1.3;
+}
+
+.otta-heading--4 {
+    font-size: var(--text-xl, 1.125rem);
+    line-height: 1.4;
+    letter-spacing: var(--typography-heading-spacing, -0.01em);
+}
+
+.otta-heading--5,
+.otta-heading--6 {
+    font-size: var(--text-base, 1rem);
+    line-height: 1.5;
+    letter-spacing: var(--typography-heading-spacing, 0);
+}
+
+.otta-heading--6 {
+    color: hsl(var(--muted-foreground));
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* The "#" that appears on hover; keyboard users always reach it */
+.otta-heading__anchor {
+    margin-left: 0.35em;
+    text-decoration: none;
+    color: hsl(var(--muted-foreground));
+    font-weight: 400;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity var(--otta-transition);
+}
+
+.otta-heading__anchor::after {
+    content: '#';
+}
+
+.otta-heading:hover .otta-heading__anchor,
+.otta-heading__anchor:focus-visible {
+    opacity: 0.7;
+}
+
+.otta-heading__anchor:hover {
+    opacity: 1;
+    color: hsl(var(--primary));
+}
+
+@media (hover: none) {
+    .otta-heading__anchor {
+        display: none;
+    }
+}
+
+/* ======================================================================
+ * Lists
+ * ==================================================================== */
+
+.otta-list {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.otta-list--unordered {
+    list-style: disc;
+}
+
+.otta-list--ordered {
+    list-style: decimal;
+}
+
+.otta-list--checklist,
+.otta-checklist {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.otta-list__item {
+    margin: 0;
+    padding-left: 0.25rem;
+}
+
+.otta-list__item + .otta-list__item,
+.otta-checklist__item + .otta-checklist__item {
+    margin-top: 0.375rem;
+}
+
+.otta-list__item::marker {
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+}
+
+/* Nested levels: alternate bullet shapes, tighter spacing */
+.otta-list .otta-list {
+    margin-top: 0.375rem;
+}
+
+.otta-list--unordered .otta-list--unordered {
+    list-style: circle;
+}
+
+.otta-list--unordered .otta-list--unordered .otta-list--unordered {
+    list-style: square;
+}
+
+.otta-list--ordered .otta-list--ordered {
+    list-style: lower-alpha;
+}
+
+.otta-list--ordered .otta-list--ordered .otta-list--ordered {
+    list-style: lower-roman;
+}
+
+/* Checklist: a read-only box, done items recede */
+.otta-list--checklist > .otta-list__item,
+.otta-checklist__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding-left: 0;
+}
+
+.otta-list--checklist .otta-list {
+    flex-basis: 100%;
+    padding-left: 1.875rem;
+}
+
+.otta-list--checklist > .otta-list__item {
+    flex-wrap: wrap;
+}
+
+.otta-check {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: calc((var(--otta-text) * var(--otta-leading) - 1.125rem) / 2);
+    border-radius: var(--otta-radius-chip);
+    background: hsl(var(--background));
+    box-shadow: inset 0 0 0 1px hsl(var(--input, var(--border)));
+    color: hsl(var(--primary-foreground));
+}
+
+.otta-check[data-checked='true'] {
+    background: hsl(var(--primary));
+    box-shadow: none;
+}
+
+.otta-check svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+.otta-checklist__item[data-checked='true'] .otta-checklist__text,
+.otta-list__item[data-checked='true'] > .otta-list__text {
+    color: hsl(var(--muted-foreground));
+}
+
+/* ======================================================================
+ * Quote
+ * ==================================================================== */
+
+.otta-quote {
+    margin: 0;
+    padding: 0.25rem 0 0.25rem 1.5rem;
+    border-left: 3px solid hsl(var(--primary) / 0.5);
+}
+
+.otta-quote[data-align='center'] {
+    padding: 1rem 0;
+    border-left: 0;
+    text-align: center;
+}
+
+.otta-quote[data-align='right'] {
+    padding: 0.25rem 1.5rem 0.25rem 0;
+    border-left: 0;
+    border-right: 3px solid hsl(var(--primary) / 0.5);
+    text-align: right;
+}
+
+.otta-quote__text {
+    margin: 0;
+    font-size: var(--text-xl, 1.25rem);
+    line-height: 1.5;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: hsl(var(--foreground));
+    text-wrap: pretty;
+}
+
+.otta-quote__caption {
+    margin-top: 0.75rem;
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+.otta-quote__caption cite {
+    font-style: normal;
+}
+
+.otta-quote__caption cite::before {
+    content: '— ';
+}
+
+/* ======================================================================
+ * Delimiter
+ * ==================================================================== */
+
+.otta-delimiter {
+    margin: 0.5rem auto;
+    border: 0;
+    height: auto;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+    line-height: 1;
+}
+
+.otta-delimiter--star::before {
+    content: '\2022\00a0\00a0\00a0\2022\00a0\00a0\00a0\2022';
+    display: inline-block;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+}
+
+.otta-delimiter--dash::before {
+    content: '';
+    display: inline-block;
+    width: 3rem;
+    height: 2px;
+    border-radius: 999px;
+    background: hsl(var(--border));
+}
+
+.otta-delimiter--line {
+    width: 100%;
+    border-top: 1px solid hsl(var(--border));
+}
+
+/* ======================================================================
+ * Table — the same recipe as @ottabase/ui-datatable
+ * ==================================================================== */
+
+.otta-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: var(--otta-radius);
+    border: 1px solid var(--otta-hairline);
+    -webkit-overflow-scrolling: touch;
+}
+
+.otta-table {
+    width: 100%;
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.5;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+}
+
+.otta-table th,
+.otta-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: top;
+    border-bottom: 1px solid var(--otta-hairline);
+}
+
+.otta-table thead th {
+    background: var(--otta-tint);
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    white-space: nowrap;
+}
+
+.otta-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.otta-table tbody tr {
+    transition: background-color var(--otta-transition);
+}
+
+.otta-table tbody tr:hover {
+    background: var(--otta-tint);
+}
+
+/* A stretched table breaks out of the column like a stretched image, same tiers */
+.otta-table-wrap[data-stretched] {
     width: calc(100% + 2rem);
-    max-width: none;
-    margin-block: 2.5rem;
     margin-inline: -1rem;
-    padding: 0;
-    box-shadow: var(--shadow-lg);
-    border-radius: calc(var(--radius) + 4px);
-    overflow: hidden;
 }
 
 @media (min-width: 1152px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+    .otta-table-wrap[data-stretched] {
         width: calc(100% + 6rem);
         margin-inline: -3rem;
     }
 }
 
 @media (min-width: 1280px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+    .otta-table-wrap[data-stretched] {
+        width: calc(100% + 12rem);
+        margin-inline: -6rem;
+    }
+}
+
+/* ======================================================================
+ * Warning — a status callout
+ * ==================================================================== */
+
+.otta-warning {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 1rem;
+    border-radius: var(--otta-radius);
+    background: hsl(var(--warning-soft, var(--warning) / 0.1));
+    border: 1px solid hsl(var(--warning-line, var(--warning) / 0.3));
+}
+
+.otta-warning__icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--otta-radius-inner);
+    background: hsl(var(--background));
+    color: hsl(var(--warning));
+    box-shadow: 0 0 0 1px hsl(var(--warning) / 0.3);
+}
+
+.otta-warning__icon svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.otta-warning__body {
+    min-width: 0;
+    padding-top: 0.25rem;
+}
+
+.otta-warning__title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: hsl(var(--foreground));
+}
+
+.otta-warning__text {
+    margin: 0;
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.625;
+    color: hsl(var(--warning-text, var(--muted-foreground)));
+}
+
+.otta-warning__title + .otta-warning__text {
+    margin-top: 0.25rem;
+}
+
+/* ======================================================================
+ * Code
+ * ==================================================================== */
+
+.otta-code {
+    font-size: var(--text-sm, 0.875rem);
+}
+
+/* ======================================================================
+ * Embed — a lazy iframe in a frame that holds its ratio
+ * ==================================================================== */
+
+.otta-embed {
+    margin: 0;
+}
+
+.otta-embed__frame {
+    position: relative;
+    width: 100%;
+    max-height: 80vh;
+    overflow: hidden;
+    border-radius: var(--otta-radius);
+    background: var(--otta-tint);
+    box-shadow: inset 0 0 0 1px var(--otta-hairline);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.otta-embed__frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+/* ======================================================================
+ * Link preview card
+ * ==================================================================== */
+
+.otta-link-card {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow: hidden;
+    border-radius: var(--otta-radius);
+    background: var(--otta-tint);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--otta-transition);
+}
+
+.otta-link-card:hover {
+    background: var(--otta-tint-hover);
+}
+
+.otta-link-card__image {
+    flex: 0 0 10rem;
+    width: 10rem;
+    object-fit: cover;
+    margin: 0;
+}
+
+.otta-link-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 1rem 1.25rem;
+}
+
+.otta-link-card__title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: hsl(var(--foreground));
+}
+
+.otta-link-card__description {
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.5;
+    color: hsl(var(--muted-foreground));
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.otta-link-card__host {
+    margin-top: 0.25rem;
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+}
+
+@media (max-width: 32rem) {
+    .otta-link-card {
+        flex-direction: column;
+    }
+
+    .otta-link-card__image {
+        flex-basis: auto;
+        width: 100%;
+        aspect-ratio: 2 / 1;
+    }
+}
+
+/* ======================================================================
+ * Layout — columns that stack on narrow screens
+ * ==================================================================== */
+
+.otta-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+@media (min-width: 40rem) {
+    .otta-layout {
+        flex-direction: row;
+        gap: 1.5rem;
+    }
+}
+
+.otta-layout__column {
+    min-width: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+@media (max-width: 39.999rem) {
+    .otta-layout__column {
+        flex-basis: auto !important;
+    }
+}
+
+.otta-layout__empty {
+    height: 100%;
+    min-height: 3rem;
+    border-radius: var(--otta-radius-inner);
+    border: 1px dashed var(--otta-hairline);
+    background: hsl(var(--muted) / 0.3);
+}
+
+/* ======================================================================
+ * Image (image + advancedImage)
+ * ==================================================================== */
+
+.otta-image {
+    margin: 0;
+}
+
+.otta-image img {
+    display: block;
+    max-width: min(100%, 34rem);
+    height: auto;
+    border-radius: var(--otta-radius-inner);
+}
+
+.otta-image figcaption {
+    margin-top: 0.625rem;
+}
+
+/*
+ * A stretched image breaks out of the reading column symmetrically, by as much as the page is
+ * known to have spare. `width` accounts for both negative margins so the box is not over-
+ * constrained; the tiers are stepped by media query because 100vw includes the scrollbar.
+ * Thresholds are sized for the worst case, a 48rem column beside a 14rem sidebar.
+ */
+.otta-image--stretched {
+    width: calc(100% + 2rem);
+    max-width: none;
+    margin-inline: -1rem;
+    padding: 0;
+    overflow: hidden;
+    border-radius: var(--otta-radius);
+    box-shadow: var(--shadow-lg);
+}
+
+@media (min-width: 1152px) {
+    .otta-image--stretched {
+        width: calc(100% + 6rem);
+        margin-inline: -3rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .otta-image--stretched {
         width: calc(100% + 12rem);
         margin-inline: -6rem;
     }
 }
 
 @media (min-width: 1440px) {
-    .advanced-image-block--stretched,
-    .cdc-content-block.advanced-image-block.advanced-image-block--stretched {
+    .otta-image--stretched {
         width: calc(100% + 24rem);
         margin-inline: -12rem;
     }
 }
 
-/*
- * Addressed by the MODIFIER alone, and doubled for specificity.
- *
- * The base class cannot be relied on: the renderer config gives an image block
- * `cdc-content-block image-block cdc-content-image`, while the component appends
- * `advanced-image-block--stretched` itself — so a real stretched figure often carries the modifier
- * WITHOUT `advanced-image-block`. Selectors written as `.advanced-image-block.advanced-image-block
- * --stretched` silently matched nothing. Repeating the modifier class buys the specificity those
- * compound selectors were there for, without assuming a base class that may be absent.
- *
- * `max-height: none` matters as much as the width: a capped height on a replaced element with an
- * intrinsic ratio shrinks its width to match, which leaves the image narrow inside a correct frame.
- */
-.advanced-image-block--stretched.advanced-image-block--stretched.advanced-image-block--stretched > img,
-.advanced-image-block--stretched.advanced-image-block--stretched.advanced-image-block--stretched > a > img {
+.otta-image--stretched > img,
+.otta-image--stretched > a > img {
     width: 100%;
     max-width: none;
     max-height: none;
     height: auto;
     object-fit: cover;
-    border-radius: calc(var(--radius) + 4px) calc(var(--radius) + 4px) 0 0;
-    display: block;
+    border-radius: 0;
 }
 
-.advanced-image-block--stretched figcaption {
+.otta-image--stretched figcaption {
+    margin: 0;
     padding: 0.875rem 1.5rem;
-    font-size: 0.8125rem;
-    line-height: 1.625;
-    color: hsl(var(--muted-foreground));
-    background: hsl(var(--muted) / 0.4);
-    border-top: 1px solid hsl(var(--border) / 0.6);
-    border-radius: 0 0 calc(var(--radius) + 4px) calc(var(--radius) + 4px);
+    background: var(--otta-tint);
+    border-top: 1px solid var(--otta-hairline);
 }
 
-/* Radius matches the rounded-xl the component always puts on the figure */
-.advanced-image-block--with-border {
-    border: 1px solid hsl(var(--border) / 0.6);
-    border-radius: calc(var(--radius) + 4px);
+.otta-image--with-border {
+    border: 1px solid var(--otta-hairline);
+    border-radius: var(--otta-radius);
     overflow: hidden;
 }
 
-.advanced-image-block--with-background {
-    background: hsl(var(--muted) / 0.4);
+.otta-image--with-background {
+    background: var(--otta-tint);
     padding: 1rem;
-    border-radius: calc(var(--radius) + 4px);
+    border-radius: var(--otta-radius);
 }
 
-.advanced-image-block--featured-image {
+.otta-image--featured {
     box-shadow: var(--shadow-lg);
-    border-radius: calc(var(--radius) + 4px);
+    border-radius: var(--otta-radius);
 }
 
-/*
- * Dark mode is handled by the theme tokens themselves: --border, --muted,
- * --card, --foreground and the --shadow-* scale already resolve to their dark
- * values when the theme's `.dark` class is applied, so no per-mode overrides
- * (media query / .dark duplication) are needed here.
- */
+/* ======================================================================
+ * Sanitized HTML (HtmlRenderer, raw block) — bare tags get the same look
+ * ==================================================================== */
 
-/* Caption on a normal (non-stretched) advanced image */
-.cdc-content-block.advanced-image-block figcaption {
+.ottarenderer--html :where(p, ul, ol, blockquote, pre, table, figure, hr) {
+    margin: 0;
+}
+
+.ottarenderer--html > :where(* + *) {
+    margin-top: var(--otta-flow, 1.25rem);
+}
+
+.ottarenderer--html :where(li + li) {
+    margin-top: 0.375rem;
+}
+
+.ottarenderer--html :where(h1, h2, h3, h4, h5, h6) {
+    margin: var(--otta-flow-section, 2.5rem) 0 0.75rem;
+    font-family: var(--otta-font-heading);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    text-wrap: balance;
+}
+
+.ottarenderer--html :where(h1, h2, h3, h4, h5, h6):first-child {
+    margin-top: 0;
+}
+
+.ottarenderer--html :where(h1) {
+    font-size: var(--text-4xl, 2.25rem);
+    font-weight: 700;
+    line-height: 1.15;
+}
+.ottarenderer--html :where(h2) {
+    font-size: var(--text-3xl, 1.75rem);
+    font-weight: 700;
+    line-height: 1.2;
+}
+.ottarenderer--html :where(h3) {
+    font-size: var(--text-2xl, 1.375rem);
+}
+.ottarenderer--html :where(h4) {
+    font-size: var(--text-xl, 1.125rem);
+}
+.ottarenderer--html :where(h5, h6) {
+    font-size: var(--text-base, 1rem);
+}
+
+.ottarenderer--html :where(a) {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+    text-decoration-color: hsl(var(--primary) / 0.4);
+}
+
+.ottarenderer--html :where(a):hover {
+    text-decoration-color: currentColor;
+}
+
+.ottarenderer--html :where(ul, ol) {
+    padding-left: 1.5rem;
+}
+.ottarenderer--html :where(ul) {
+    list-style: disc;
+}
+.ottarenderer--html :where(ol) {
+    list-style: decimal;
+}
+.ottarenderer--html :where(li)::marker {
     color: hsl(var(--muted-foreground));
 }
 
-/*
- * Responsive trim for stretched images — TYPOGRAPHY ONLY.
- *
- * A second set of width overrides used to live here (`min(90vw, 1400px)`, `calc(100vw - 2rem)`,
- * a fixed `1400px`). Being later in the file they beat the sizing rules above while leaving those
- * rules' negative margins in place, so the box was over-constrained and the whole bleed landed on
- * the right edge. Width and margin for this block are decided in ONE place, above; nothing down
- * here may set either.
- */
-@media (max-width: 768px) {
-    .advanced-image-block--stretched figcaption {
-        padding: 0.75rem 1rem;
-        font-size: 0.875rem;
-    }
-
-    .advanced-image-block--stretched img {
-        border-radius: var(--radius) var(--radius) 0 0;
-    }
-}
-
-@media (min-width: 769px) and (max-width: 1024px) {
-    .advanced-image-block--stretched figcaption {
-        padding: 1rem 1.5rem;
-    }
-}
-
-.advanced-image-block--stretched {
-    /* The width above is `calc(100% + Nrem)`, which only lands correctly on a border box. */
-    box-sizing: border-box;
-}
-
-/* ======================================= */
-/* Header (Heading) Block                  */
-/* ======================================= */
-
-/* Per-level sizing and vertical rhythm. Specificity 0,1,1 (tag + class) beats
-   prose :where() (0,1,0) so these win consistently in both prose and bare contexts. */
-
-h1.cdc-content-header {
-    font-size: 2.25rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.025em;
-    margin-top: 0;
-    margin-bottom: 1rem;
-}
-
-h2.cdc-content-header {
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1.25;
-    letter-spacing: -0.025em;
-    margin-top: 2.25rem;
-    margin-bottom: 0.75rem;
-}
-
-h3.cdc-content-header {
-    font-size: 1.3125rem;
-    font-weight: 600;
-    line-height: 1.35;
-    letter-spacing: -0.01em;
-    margin-top: 1.875rem;
-    margin-bottom: 0.5rem;
-}
-
-h4.cdc-content-header {
-    font-size: 1.0625rem;
-    font-weight: 600;
-    line-height: 1.4;
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-}
-
-h5.cdc-content-header,
-h6.cdc-content-header {
-    font-size: 0.9375rem;
-    font-weight: 600;
+.ottarenderer--html :where(blockquote) {
+    padding: 0.25rem 0 0.25rem 1.5rem;
+    border-left: 3px solid hsl(var(--primary) / 0.5);
+    font-size: var(--text-xl, 1.25rem);
     line-height: 1.5;
-    margin-top: 1.25rem;
-    margin-bottom: 0.375rem;
 }
 
-/* First heading — no orphaned top gap when it opens a section */
-h1.cdc-content-header:first-child,
-h2.cdc-content-header:first-child,
-h3.cdc-content-header:first-child,
-h4.cdc-content-header:first-child {
-    margin-top: 0;
+.ottarenderer--html :where(hr) {
+    border: 0;
+    border-top: 1px solid hsl(var(--border));
 }
 
-/* ======================================= */
-/* CTA Button                              */
-/* ======================================= */
+.ottarenderer--html :where(code) {
+    font-family: var(--otta-font-mono);
+    font-size: 0.875em;
+    padding: 0.1em 0.4em;
+    border-radius: var(--otta-radius-chip);
+    background: hsl(var(--muted));
+    box-shadow: inset 0 0 0 1px var(--otta-hairline);
+}
 
-/*
- * The React <CTA> component styles itself with theme-token Tailwind
- * utilities. The rules below are a fallback for bare markup only, kept at
- * zero specificity via :where() so component utilities always win.
- */
-:where(.cdc-content-cta) {
+.ottarenderer--html :where(pre) {
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    border-radius: var(--otta-radius);
+    background: hsl(var(--muted));
+    font-family: var(--otta-font-mono);
+    font-size: var(--text-sm, 0.875rem);
+    line-height: 1.625;
+}
+
+.ottarenderer--html :where(pre code) {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    font-size: inherit;
+}
+
+.ottarenderer--html :where(mark) {
+    padding: 0.05em 0.25em;
+    border-radius: var(--otta-radius-chip);
+    background: hsl(var(--warning) / 0.3);
+    color: inherit;
+}
+
+.ottarenderer--html :where(img, video) {
     display: block;
-    margin: 1.5rem auto;
-    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--otta-radius-inner);
+}
+
+.ottarenderer--html :where(figcaption) {
+    margin-top: 0.625rem;
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
     text-align: center;
 }
 
-:where(.cdc-content-cta a:not([class*='bg-']):not([class*='text-'])) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.375rem;
-    padding: 0.625rem 1.25rem;
-    border: 2px solid transparent;
-    border-radius: var(--radius);
-    font-weight: 600;
-    font-size: 0.875rem;
-    line-height: 1.2;
-    text-decoration: none;
-    cursor: pointer;
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary));
-    transition: background-color var(--duration-normal) var(--ease);
+.ottarenderer--html :where(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm, 0.875rem);
 }
 
-:where(.cdc-content-cta a:not([class*='bg-']):not([class*='text-'])):hover {
-    background: hsl(var(--primary) / 0.9);
+.ottarenderer--html :where(th, td) {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--otta-hairline);
 }
 
-:where(.cdc-content-cta a):focus-visible {
-    outline: 2px solid hsl(var(--ring));
-    outline-offset: 2px;
+.ottarenderer--html :where(th) {
+    font-size: var(--otta-label-size);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    background: var(--otta-tint);
 }
+
+/* ======================================================================
+ * Reduced motion
+ * ==================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .ottarenderer,
+    .ottarenderer * {
+        transition: none !important;
+    }
+}
+
+/* ======================================================================
+ * Block-specific styling (Review, Steps, FAQ, Testimonial, References,
+ * Before/After, Image Hotspots). Each block owns its internals below;
+ * outer rhythm is the wrapper's job above.
+ * ==================================================================== */
 
 /* ======================================= */
 /* Review Block */
 /* ======================================= */
 
-.cdc-content-review {
+.otta-review {
     display: block;
     clear: both;
-    margin: 1.5rem 0;
     width: 100%;
 }
 
-.cdc-content-review img {
+.otta-review img {
     max-width: 100%;
     height: auto;
 }
 
-.cdc-content-review h3 {
+.otta-review h3 {
     margin-top: 0;
 }
 
-.cdc-content-review ul {
+.otta-review ul {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -402,40 +1155,39 @@ h4.cdc-content-header:first-child {
 /* Steps Block */
 /* ======================================= */
 
-.cdc-content-steps {
+.otta-steps {
     display: block;
     clear: both;
-    margin: 1.5rem 0;
     width: 100%;
 }
 
-.cdc-content-steps [role='list'] {
+.otta-steps [role='list'] {
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
 /* Step item — two-column grid: rail | content */
-.cdc-steps-item {
+.otta-steps-item {
     display: grid;
     grid-template-columns: 2rem 1fr;
     gap: 1rem;
     padding-bottom: 1.5rem;
 }
 
-.cdc-steps-item:last-child {
+.otta-steps-item:last-child {
     padding-bottom: 0;
 }
 
 /* Rail: badge + connecting line */
-.cdc-steps-rail {
+.otta-steps-rail {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 0.125rem;
 }
 
-.cdc-steps-badge {
+.otta-steps-badge {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -452,7 +1204,7 @@ h4.cdc-content-header:first-child {
     box-shadow: 0 0 0 1px hsl(var(--border));
 }
 
-.cdc-steps-line {
+.otta-steps-line {
     width: 1px;
     flex: 1;
     margin-top: 0.5rem;
@@ -460,12 +1212,12 @@ h4.cdc-content-header:first-child {
 }
 
 /* Content: title + description */
-.cdc-steps-content {
+.otta-steps-content {
     min-width: 0;
     padding-top: 0.125rem;
 }
 
-.cdc-steps-title {
+.otta-steps-title {
     margin: 0;
     font-size: 0.9375rem;
     font-weight: 600;
@@ -474,7 +1226,7 @@ h4.cdc-content-header:first-child {
     color: hsl(var(--foreground));
 }
 
-.cdc-steps-text {
+.otta-steps-text {
     margin: 0.125rem 0 0;
     white-space: pre-line;
     font-size: 0.875rem;
@@ -482,7 +1234,7 @@ h4.cdc-content-header:first-child {
     color: hsl(var(--muted-foreground));
 }
 
-.cdc-steps-text--no-title {
+.otta-steps-text--no-title {
     margin-top: 0.25rem;
 }
 
@@ -490,26 +1242,26 @@ h4.cdc-content-header:first-child {
 /* FAQ Block                               */
 /* ======================================= */
 
-.cdc-content-faq {
+.otta-faq {
     width: 100%;
 }
 
 /* Accordion wrapper */
-.cdc-faq-accordion,
-.cdc-faq-flat {
+.otta-faq-accordion,
+.otta-faq-flat {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
 /* Individual item — soft-tint row */
-.cdc-faq-item {
+.otta-faq-item {
     border-radius: var(--radius);
     overflow: hidden;
 }
 
 /* Question — <summary> for accordion, <h3> for flat */
-.cdc-faq-question {
+.otta-faq-question {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -526,23 +1278,23 @@ h4.cdc-content-header:first-child {
 }
 
 /* Hide default details marker in all browsers */
-.cdc-faq-question::-webkit-details-marker {
+.otta-faq-question::-webkit-details-marker {
     display: none;
 }
-.cdc-faq-question::marker {
+.otta-faq-question::marker {
     display: none;
 }
 
-.cdc-faq-question:hover {
+.otta-faq-question:hover {
     background: hsl(var(--muted) / 0.7);
 }
 
-.cdc-faq-question-text {
+.otta-faq-question-text {
     flex: 1;
 }
 
 /* Chevron in a small chip well — rotates when open */
-.cdc-faq-chevron {
+.otta-faq-chevron {
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -558,16 +1310,16 @@ h4.cdc-content-header:first-child {
         color var(--duration-normal) var(--ease);
 }
 
-.cdc-faq-question:hover .cdc-faq-chevron {
+.otta-faq-question:hover .otta-faq-chevron {
     color: hsl(var(--foreground));
 }
 
-details[open] > .cdc-faq-question .cdc-faq-chevron {
+details[open] > .otta-faq-question .otta-faq-chevron {
     transform: rotate(180deg);
 }
 
 /* Answer — plain panel under the tinted question row */
-.cdc-faq-answer {
+.otta-faq-answer {
     margin: 0;
     padding: 1rem 1.25rem;
     font-size: 0.875rem;
@@ -578,17 +1330,17 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Flat variant: question is an h3 — not interactive, so no hover deepen */
-.cdc-faq-question--flat {
+.otta-faq-question--flat {
     cursor: default;
     margin: 0;
     font-weight: 600;
 }
 
-.cdc-faq-question--flat:hover {
+.otta-faq-question--flat:hover {
     background: hsl(var(--muted) / 0.4);
 }
 
-.cdc-faq-item--flat {
+.otta-faq-item--flat {
     padding: 0;
 }
 
@@ -596,13 +1348,13 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 /* Testimonial Block                       */
 /* ======================================= */
 
-.cdc-content-testimonial {
+.otta-testimonial {
     width: 100%;
 }
 
 /* ── Card variant ─────────────────────────────────────────────────────────── */
 
-.cdc-testimonial-card {
+.otta-testimonial-card {
     background: hsl(var(--muted) / 0.4);
     border: 1px solid transparent;
     border-radius: calc(var(--radius) + 4px);
@@ -614,7 +1366,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 /* ── Minimal variant ──────────────────────────────────────────────────────── */
 
-.cdc-testimonial-minimal {
+.otta-testimonial-minimal {
     border-left: 4px solid hsl(var(--primary));
     padding: 0.75rem 0 0.75rem 1.25rem;
     display: flex;
@@ -624,7 +1376,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 /* ── Featured variant ─────────────────────────────────────────────────────── */
 
-.cdc-testimonial-featured {
+.otta-testimonial-featured {
     background: hsl(var(--muted) / 0.4);
     border-radius: calc(var(--radius) + 4px);
     padding: 1.5rem 2rem;
@@ -634,7 +1386,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     position: relative;
 }
 
-.cdc-testimonial-featured-footer {
+.otta-testimonial-featured-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -642,7 +1394,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     gap: 0.75rem;
 }
 
-.cdc-testimonial-featured-right {
+.otta-testimonial-featured-right {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -651,13 +1403,13 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 /* ── Quote ───────────────────────────────────────────────────────────────── */
 
-.cdc-testimonial-quote {
+.otta-testimonial-quote {
     margin: 0;
     padding: 0;
     border: none;
 }
 
-.cdc-testimonial-quote p {
+.otta-testimonial-quote p {
     margin: 0;
     font-size: 1rem;
     line-height: 1.625;
@@ -665,12 +1417,12 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     font-style: italic;
 }
 
-.cdc-testimonial-quote--large p {
+.otta-testimonial-quote--large p {
     font-size: 1.25rem;
 }
 
 /* Large open-quote decoration for featured */
-.cdc-testimonial-featured .cdc-testimonial-quote::before {
+.otta-testimonial-featured .otta-testimonial-quote::before {
     content: '\201C';
     display: block;
     font-size: 4rem;
@@ -682,17 +1434,17 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 /* ── Author attribution ───────────────────────────────────────────────────── */
 
-.cdc-testimonial-author {
+.otta-testimonial-author {
     display: flex;
     align-items: center;
     gap: 0.75rem;
 }
 
-.cdc-testimonial-author--compact {
+.otta-testimonial-author--compact {
     gap: 0.5rem;
 }
 
-.cdc-testimonial-avatar {
+.otta-testimonial-avatar {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
@@ -700,26 +1452,26 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     flex-shrink: 0;
 }
 
-.cdc-testimonial-meta {
+.otta-testimonial-meta {
     display: flex;
     flex-direction: column;
     gap: 1px;
 }
 
-.cdc-testimonial-name {
+.otta-testimonial-name {
     font-size: 0.875rem;
     font-weight: 600;
     color: hsl(var(--foreground));
 }
 
-.cdc-testimonial-sub {
+.otta-testimonial-sub {
     font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
 }
 
 /* ── Company logo ─────────────────────────────────────────────────────────── */
 
-.cdc-testimonial-company-logo {
+.otta-testimonial-company-logo {
     height: 1.5rem;
     width: auto;
     max-width: 7.5rem;
@@ -730,27 +1482,23 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 /* ── Stars ────────────────────────────────────────────────────────────────── */
 
-.cdc-testimonial-stars {
+.otta-testimonial-stars {
     display: flex;
     align-items: center;
     gap: 0.125rem;
 }
 
-.cdc-testimonial-star--filled {
+.otta-testimonial-star--filled {
     color: hsl(var(--warning));
 }
 
-.cdc-testimonial-star--empty {
+.otta-testimonial-star--empty {
     color: hsl(var(--muted-foreground) / 0.4);
 }
 
 /* ── References ───────────────────────────────────────────────────────────── */
 
-.cdc-references {
-    margin: 1.5rem 0;
-}
-
-.cdc-references-list {
+.otta-references-list {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -759,7 +1507,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     gap: 0.625rem;
 }
 
-.cdc-references-item {
+.otta-references-item {
     display: flex;
     gap: 0.625rem;
     font-size: 0.875rem;
@@ -767,7 +1515,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Index marker as a micro-chip */
-.cdc-references-label {
+.otta-references-label {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -783,45 +1531,45 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     color: hsl(var(--muted-foreground));
 }
 
-.cdc-references--footnote .cdc-references-label {
+.otta-references--footnote .otta-references-label {
     min-width: 1.25rem;
     height: 1.25rem;
     padding: 0 0.25rem;
     font-size: 0.625rem;
 }
 
-.cdc-references-body {
+.otta-references-body {
     flex: 1;
 }
 
-.cdc-references-authors {
+.otta-references-authors {
     font-style: italic;
 }
 
-.cdc-references-link {
+.otta-references-link {
     color: hsl(var(--primary));
     text-decoration: underline;
     text-underline-offset: 2px;
     word-break: break-all;
 }
 
-.cdc-references-link:hover {
+.otta-references-link:hover {
     opacity: 0.8;
 }
 
-.cdc-references-note {
+.otta-references-note {
     color: hsl(var(--muted-foreground));
     font-size: 0.75rem;
 }
 
-.cdc-references-accessed {
+.otta-references-accessed {
     color: hsl(var(--muted-foreground));
     font-size: 0.75rem;
 }
 
 /* ── Testimonial: quote-bubble variant ──────────────────────────────────── */
 
-.cdc-testimonial-bubble {
+.otta-testimonial-bubble {
     border: 1px solid transparent;
     border-radius: calc(var(--radius) + 4px);
     padding: 1.25rem 1.5rem;
@@ -831,7 +1579,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 
 /* Tail matches the tinted surface; flush with the bubble edge so the
    translucent fill never double-stacks */
-.cdc-testimonial-bubble::after {
+.otta-testimonial-bubble::after {
     content: '';
     position: absolute;
     bottom: -0.75rem;
@@ -840,13 +1588,13 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     border-top-color: hsl(var(--muted) / 0.4);
 }
 
-.cdc-testimonial-bubble .cdc-testimonial-author {
+.otta-testimonial-bubble .otta-testimonial-author {
     margin-top: 1rem;
 }
 
 /* ── Testimonial: side-by-side variant ──────────────────────────────────── */
 
-.cdc-testimonial-side {
+.otta-testimonial-side {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 1.5rem;
@@ -856,7 +1604,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
-.cdc-testimonial-side .cdc-testimonial-side-left {
+.otta-testimonial-side .otta-testimonial-side-left {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -865,19 +1613,19 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     text-align: center;
 }
 
-.cdc-testimonial-side .cdc-testimonial-side-right {
+.otta-testimonial-side .otta-testimonial-side-right {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.cdc-testimonial-side .cdc-testimonial-quote {
+.otta-testimonial-side .otta-testimonial-quote {
     margin: 0;
 }
 
 /* ── Testimonial: verified badge ─────────────────────────────────────────── */
 
-.cdc-testimonial-verified {
+.otta-testimonial-verified {
     display: inline-flex;
     align-items: center;
     gap: 0.1875rem;
@@ -891,66 +1639,11 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     vertical-align: middle;
 }
 
-/* ─── Annotation Tooltip ────────────────────────────────────────────────────── */
-.cdx-annotation,
-.cdc-annotation {
-    position: relative;
-    background-color: hsl(var(--warning) / 0.2);
-    border-bottom: 2px solid hsl(var(--warning));
-    padding: 0 0.125rem;
-    cursor: help;
-}
-
-.cdc-annotation__tooltip {
-    position: absolute;
-    bottom: calc(100% + 0.5rem);
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 12.5rem;
-    max-width: 18.75rem;
-    padding: 0.75rem;
-    background: hsl(var(--background));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-md);
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    text-align: left;
-}
-
-.cdc-annotation__tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 0.375rem solid transparent;
-    border-top-color: hsl(var(--border));
-}
-
-.cdc-annotation__title {
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: hsl(var(--foreground));
-}
-
-.cdc-annotation__text {
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    line-height: 1.5;
-}
-
 /* ======================================= */
 /* Before / After Slider                   */
 /* ======================================= */
 
-.cdc-before-after {
-    margin: 1.5rem auto;
-}
-
-.cdc-before-after__container {
+.otta-before-after__container {
     position: relative;
     min-height: 12.5rem;
     overflow: hidden;
@@ -962,18 +1655,18 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     background: hsl(var(--muted) / 0.4);
 }
 
-.cdc-before-after__container--vertical {
+.otta-before-after__container--vertical {
     cursor: ns-resize;
 }
 
 /* Cover mode: images fill container */
-.cdc-before-after__container--cover .cdc-before-after__after {
+.otta-before-after__container--cover .otta-before-after__after {
     height: 100%;
     object-fit: cover;
 }
 
 /* After image: base layer */
-.cdc-before-after__after {
+.otta-before-after__after {
     display: block;
     width: 100%;
     height: auto;
@@ -982,7 +1675,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Before image: clipped overlay */
-.cdc-before-after__before {
+.otta-before-after__before {
     position: absolute;
     top: 0;
     left: 0;
@@ -992,7 +1685,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     pointer-events: none;
 }
 
-.cdc-before-after__before img {
+.otta-before-after__before img {
     display: block;
     width: 100%;
     /* Contain mode (default): match the after image's natural rendering so both
@@ -1002,13 +1695,13 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Cover mode: before image must fill the fixed-height container like the after image */
-.cdc-before-after__container--cover .cdc-before-after__before img {
+.otta-before-after__container--cover .otta-before-after__before img {
     height: 100%;
     object-fit: cover;
 }
 
 /* Labels — micro-label chips on a soft scrim */
-.cdc-before-after__label {
+.otta-before-after__label {
     position: absolute;
     padding: 0.25rem 0.5rem;
     border-radius: calc(var(--radius) - 2px);
@@ -1024,22 +1717,22 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     backdrop-filter: blur(4px);
 }
 
-.cdc-before-after__label--before {
+.otta-before-after__label--before {
     top: 0.75rem;
     left: 0.75rem;
 }
 
-.cdc-before-after__label--after {
+.otta-before-after__label--after {
     top: 0.75rem;
     right: 0.75rem;
 }
 
-.cdc-before-after__container--vertical .cdc-before-after__label--before {
+.otta-before-after__container--vertical .otta-before-after__label--before {
     top: 0.75rem;
     left: 0.75rem;
 }
 
-.cdc-before-after__container--vertical .cdc-before-after__label--after {
+.otta-before-after__container--vertical .otta-before-after__label--after {
     top: auto;
     bottom: 0.75rem;
     left: 0.75rem;
@@ -1047,7 +1740,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Drag handle */
-.cdc-before-after__handle {
+.otta-before-after__handle {
     position: absolute;
     background: hsl(var(--primary));
     z-index: 10;
@@ -1055,7 +1748,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     transition: box-shadow var(--duration-normal) var(--ease);
 }
 
-.cdc-before-after__handle::before {
+.otta-before-after__handle::before {
     content: '';
     position: absolute;
     width: 1.75rem;
@@ -1069,15 +1762,15 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     transform: translate(-50%, -50%);
 }
 
-.cdc-before-after__handle:hover {
+.otta-before-after__handle:hover {
     box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
-.cdc-before-after__handle:active {
+.otta-before-after__handle:active {
     cursor: grabbing;
 }
 
-.cdc-before-after__caption {
+.otta-before-after__caption {
     margin-top: 0.5rem;
     font-size: 0.6875rem;
     font-weight: 500;
@@ -1091,11 +1784,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 /* Image Hotspots                          */
 /* ======================================= */
 
-.cdc-image-hotspots {
-    margin: 1.5rem auto;
-}
-
-.cdc-image-hotspots__container {
+.otta-image-hotspots__container {
     position: relative;
     display: inline-block;
     width: 100%;
@@ -1106,12 +1795,12 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Cover mode: image fills container height */
-.cdc-image-hotspots__container--cover .cdc-image-hotspots__image {
+.otta-image-hotspots__container--cover .otta-image-hotspots__image {
     height: 100%;
     object-fit: cover;
 }
 
-.cdc-image-hotspots__image {
+.otta-image-hotspots__image {
     display: block;
     width: 100%;
     height: auto;
@@ -1121,7 +1810,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Hotspot dot */
-.cdc-image-hotspots__dot {
+.otta-image-hotspots__dot {
     position: absolute;
     width: 1.75rem;
     height: 1.75rem;
@@ -1138,21 +1827,21 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     transition: box-shadow var(--duration-normal) var(--ease);
 }
 
-.cdc-image-hotspots__dot:hover {
+.otta-image-hotspots__dot:hover {
     box-shadow: 0 0 0 0.25rem hsl(var(--primary) / 0.3);
 }
 
-.cdc-image-hotspots__dot--active {
+.otta-image-hotspots__dot--active {
     box-shadow: 0 0 0 0.375rem hsl(var(--primary) / 0.35);
     z-index: 15;
 }
 
-.cdc-image-hotspots__dot:focus-visible {
+.otta-image-hotspots__dot:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
 }
 
-.cdc-image-hotspots__dot-number {
+.otta-image-hotspots__dot-number {
     font-size: 0.75rem;
     font-weight: 600;
     color: hsl(var(--primary-foreground));
@@ -1161,7 +1850,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Tooltip */
-.cdc-image-hotspots__tooltip {
+.otta-image-hotspots__tooltip {
     position: absolute;
     top: calc(100% + 0.625rem);
     left: 50%;
@@ -1178,7 +1867,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
 }
 
 /* Arrow */
-.cdc-image-hotspots__tooltip::before {
+.otta-image-hotspots__tooltip::before {
     content: '';
     position: absolute;
     bottom: 100%;
@@ -1188,7 +1877,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     border-bottom-color: hsl(var(--border));
 }
 
-.cdc-image-hotspots__tooltip::after {
+.otta-image-hotspots__tooltip::after {
     content: '';
     position: absolute;
     bottom: 100%;
@@ -1198,7 +1887,7 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     border-bottom-color: hsl(var(--background));
 }
 
-.cdc-image-hotspots__tooltip-title {
+.otta-image-hotspots__tooltip-title {
     display: block;
     font-weight: 600;
     font-size: 0.875rem;
@@ -1206,14 +1895,14 @@ details[open] > .cdc-faq-question .cdc-faq-chevron {
     margin-bottom: 0.25rem;
 }
 
-.cdc-image-hotspots__tooltip-content {
+.otta-image-hotspots__tooltip-content {
     font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     line-height: 1.5;
     margin: 0;
 }
 
-.cdc-image-hotspots__caption {
+.otta-image-hotspots__caption {
     margin-top: 0.5rem;
     font-size: 0.6875rem;
     font-weight: 500;

@@ -4,7 +4,7 @@
  * Clean, modern default theme with dark mode support
  */
 
-import { Blocks, customRenderers, defaultEJSRConfigs } from '@ottabase/ottarenderer';
+import { OttaRenderer } from '@ottabase/ottarenderer';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
@@ -31,7 +31,7 @@ export const defaultTheme: Theme = {
             metadata:
                 'flex flex-wrap items-center justify-center gap-x-3 gap-y-2 mt-5 mb-10 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground',
             excerpt: 'text-lg text-muted-foreground mb-8 leading-relaxed',
-            content: 'prose prose-slate dark:prose-invert max-w-none mb-12',
+            content: 'mb-12',
             footnotes: 'mt-12 rounded-xl bg-muted/40 p-5',
             series: 'rounded-xl bg-muted/40 px-4 py-3 mb-8',
             footer: 'mt-12 pt-8 border-t border-border/60',
@@ -156,13 +156,7 @@ export const defaultTheme: Theme = {
             if (!hasContent) return null;
             return (
                 <div className={`${props.contentClassName || ''} ${defaultTheme.config?.classes?.content || ''}`}>
-                    <Blocks
-                        // Ensure version and time are always present — editorjs-blocks-react-renderer
-                        // calls data.version.includes() unconditionally and will throw if absent.
-                        data={{ version: '2.30.0', time: Date.now(), ...(post.content as EditorJSData) }}
-                        renderers={customRenderers}
-                        config={defaultEJSRConfigs}
-                    />
+                    <OttaRenderer data={post.content as EditorJSData} />
                 </div>
             );
         },
@@ -174,13 +168,10 @@ export const defaultTheme: Theme = {
                     <h2 className="mb-3 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                         Footnotes
                     </h2>
-                    <div className="prose prose-sm prose-slate dark:prose-invert max-w-none text-muted-foreground">
-                        <Blocks
-                            data={{ version: '2.30.0', time: Date.now(), ...(post.footnotes as EditorJSData) }}
-                            renderers={customRenderers}
-                            config={defaultEJSRConfigs}
-                        />
-                    </div>
+                    <OttaRenderer
+                        className="ottarenderer--sm text-muted-foreground"
+                        data={post.footnotes as EditorJSData}
+                    />
                 </aside>
             );
         },

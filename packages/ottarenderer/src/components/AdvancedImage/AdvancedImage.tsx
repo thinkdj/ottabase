@@ -1,15 +1,13 @@
 import { useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { safeUrl } from '../../inline';
+import type { BlockRenderer } from '../../types';
 import React from 'react';
 import { AdvancedImageData } from './advancedimage.types';
 
-const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' }) => {
+const AdvancedImageBlock: BlockRenderer<AdvancedImageData> = ({ data, className = '' }) => {
     // Support both AdvancedImage (data.url) and legacy @editorjs/image (data.file.url)
-    const resolvedUrl = data?.url || (data as any)?.file?.url;
-    if (!resolvedUrl) {
-        return <></>; // Return an empty fragment if no valid image data
-    }
+    const resolvedUrl: string = safeUrl(data?.url || (data as { file?: { url?: string } })?.file?.url) ?? '';
 
     const {
         caption,
@@ -48,9 +46,10 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         linkUrl ? null : lightboxItem,
     );
 
-    // Base Tailwind classes for the figure (includes image-block container styles)
+    if (!resolvedUrl) return null;
+
+    // Base Tailwind classes for the figure (includes otta-image container styles)
     let figureTailwindClasses = [
-        'my-4',
         'rounded-xl',
         'flex',
         'items-center',
@@ -84,35 +83,28 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         figureTailwindClasses.push('relative', 'items-stretch');
     }
 
-    // Handle featured image styling
-    if (
-        featuredImage ||
-        className.includes('advanced-image-block--featured-image') ||
-        className.includes('image-block--featured-image')
-    ) {
+    if (featuredImage) {
         figureTailwindClasses.push('shadow-lg', 'relative');
     }
 
-    // Add feature classes to className for CSS targeting
-    let modifiedClassName = className;
+    // Modifier classes the stylesheet targets; the base class used to come from the renderer config.
+    let modifiedClassName = `${className} otta-image`.trim();
     if (stretched) {
-        modifiedClassName += ' advanced-image-block--stretched';
+        modifiedClassName += ' otta-image--stretched';
     }
     if (withBorder) {
-        modifiedClassName += ' advanced-image-block--with-border';
+        modifiedClassName += ' otta-image--with-border';
     }
     if (withBackground) {
-        modifiedClassName += ' advanced-image-block--with-background';
+        modifiedClassName += ' otta-image--with-background';
     }
     if (featuredImage) {
-        modifiedClassName += ' advanced-image-block--featured';
+        modifiedClassName += ' otta-image--featured';
     }
     if (aspectRatio && aspectRatio !== 'original') {
-        modifiedClassName += ` advanced-image-block--aspect-${aspectRatio.replace(':', '-')}`;
+        modifiedClassName += ` otta-image--aspect-${aspectRatio.replace(':', '-')}`;
     }
 
-    // The `className` prop from editorjs-blocks-react-renderer will contain non-Tailwind base classes
-    // (e.g., 'cdc-content-block advanced-image-block cdc-content-advanced-image') and non-Tailwind action-specific marker classes (e.g., 'advanced-image-block--featured-image').
     const combinedClassName = `block ${figureTailwindClasses.join(' ')} ${modifiedClassName}`.trim();
 
     let altText = alt || caption;
@@ -155,6 +147,10 @@ const AdvancedImageBlock: RenderFn<AdvancedImageData> = ({ data, className = '' 
         <img
             src={resolvedUrl}
             alt={altFinal}
+            width={width || undefined}
+            height={height || undefined}
+            loading="lazy"
+            decoding="async"
             className={imageClasses}
             onClick={() => {
                 if (!linkUrl && hasLightbox) {

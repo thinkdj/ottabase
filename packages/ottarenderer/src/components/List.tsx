@@ -1,44 +1,84 @@
-import { sanitizeInlineHtml } from '@ottabase/utils/sanitize';
-import { RenderFn } from 'editorjs-blocks-react-renderer';
-import './List.css';
+import { Inline } from '../inline';
+import type { BlockRenderer } from '../types';
+import { CheckMark } from './Checklist';
 
 /**
- * EditorJS ships two list payloads and both reach this renderer:
- * `@editorjs/list` stores plain strings (`items: ['a', 'b']`) while
- * `@editorjs/nested-list` stores objects (`items: [{ content, items }]`).
- * Normalizing here keeps one malformed item from throwing and taking the whole
- * article page down through the route error boundary.
+ * Editor.js has shipped three list payloads and all of them reach this renderer, so stored
+ * content never needs migrating:
+ *  - @editorjs/nested-list  `{ style, items: [{ content, items }] }`  (what ottaeditor writes)
+ *  - @editorjs/list v1      `{ style, items: ['a', 'b'] }`
+ *  - @editorjs/list v2      `{ style: 'ordered' | 'unordered' | 'checklist', meta, items: [{ content, meta, items }] }`
  */
-interface ListItem {
+export type ListStyle = 'ordered' | 'unordered' | 'checklist';
+
+export interface ListItem {
     content?: string;
     items?: unknown[];
+    meta?: { checked?: boolean };
 }
 
-const toListItem = (item: unknown): ListItem =>
-    typeof item === 'string' ? { content: item } : ((item ?? {}) as ListItem);
+export interface ListData {
+    style?: ListStyle | string;
+    items?: unknown[];
+    meta?: { start?: number; counterType?: string };
+}
 
-const List: RenderFn<{ items?: unknown[]; style?: string }> = ({ data, className = '', level = 1 }) => {
-    const ListTag: 'ol' | 'ul' = data?.style === 'ordered' ? 'ol' : 'ul';
+const COUNTERS: Record<string, string> = {
+    numeric: 'decimal',
+    'lower-roman': 'lower-roman',
+    'upper-roman': 'upper-roman',
+    'lower-alpha': 'lower-alpha',
+    'upper-alpha': 'upper-alpha',
+};
 
+const toItem = (raw: unknown): ListItem => (typeof raw === 'string' ? { content: raw } : ((raw ?? {}) as ListItem));
+
+function Level({
+    items,
+    style,
+    start,
+    counter,
+    depth,
+}: {
+    items: unknown[];
+    style: ListStyle;
+    start?: number;
+    counter?: string;
+    depth: number;
+}) {
+    const Tag = style === 'ordered' ? 'ol' : 'ul';
     return (
-        <ListTag className={`${className} cdc-content-list-${ListTag}`}>
-            {data?.items?.map((rawItem, i) => {
-                const item = toListItem(rawItem);
-                const children = item.items ?? [];
-
+        <Tag
+            className={`otta-list otta-list--${style}`}
+            data-depth={depth}
+            start={style === 'ordered' && start && start > 1 ? start : undefined}
+            style={counter && COUNTERS[counter] ? { listStyleType: COUNTERS[counter] } : undefined}
+        >
+            {items.map((raw, i) => {
+                const item = toItem(raw);
+                const children = Array.isArray(item.items) ? item.items : [];
+                const checked = style === 'checklist' ? Boolean(item.meta?.checked) : undefined;
                 return (
-                    <li key={i} className={`cdc-content-list cdc-content-list-l${level} text-foreground text-base/7`}>
-                        {/* EditorJS list items often include inline HTML (e.g. <strong>) */}
-                        <span dangerouslySetInnerHTML={{ __html: sanitizeInlineHtml(item.content ?? '') }} />
-                        {/* Nested levels inherit the parent style — EditorJS stores it once per block */}
+                    <li key={i} className="otta-list__item" data-checked={checked}>
+                        {style === 'checklist' && <CheckMark checked={!!checked} />}
+                        <span className="otta-list__text">
+                            <Inline html={item.content} />
+                        </span>
                         {children.length > 0 && (
-                            <List data={{ items: children, style: data?.style }} level={level + 1} />
+                            <Level items={children} style={style} counter={counter} depth={depth + 1} />
                         )}
                     </li>
                 );
             })}
-        </ListTag>
+        </Tag>
     );
+}
+
+const List: BlockRenderer<ListData> = ({ data }) => {
+    const items = Array.isArray(data?.items) ? data.items : [];
+    if (items.length === 0) return null;
+    const style: ListStyle = data?.style === 'ordered' || data?.style === 'checklist' ? data.style : 'unordered';
+    return <Level items={items} style={style} start={data?.meta?.start} counter={data?.meta?.counterType} depth={1} />;
 };
 
 export default List;

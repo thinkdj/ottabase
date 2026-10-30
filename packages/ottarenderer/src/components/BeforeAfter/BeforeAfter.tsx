@@ -1,4 +1,5 @@
-import type { RenderFn } from 'editorjs-blocks-react-renderer';
+import { safeUrl } from '../../inline';
+import type { BlockRenderer } from '../../types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /** Image position presets (maps to CSS object-position) */
@@ -59,9 +60,9 @@ export interface BeforeAfterData {
  * - Double-click: Smart toggle between 0 → 50 → 100 (cycles based on current position)
  * - Triple-click: Always resets to 0 (show full "after" image)
  */
-const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
-    const beforeUrl = data?.beforeUrl || '';
-    const afterUrl = data?.afterUrl || '';
+const BeforeAfter: BlockRenderer<BeforeAfterData> = ({ data, className = '' }) => {
+    const beforeUrl = safeUrl(data?.beforeUrl) ?? '';
+    const afterUrl = safeUrl(data?.afterUrl) ?? '';
     /* Labels: null or empty string means don't render */
     const beforeLabel = data?.beforeLabel || null;
     const afterLabel = data?.afterLabel || null;
@@ -78,8 +79,6 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
     const isDragging = useRef(false);
     const clickCount = useRef(0);
     const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    if (!beforeUrl && !afterUrl) return null;
 
     const isVertical = orientation === 'vertical';
 
@@ -178,18 +177,20 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
         return { objectPosition: positionToCSS(beforePosition) };
     }, [imageFit, beforePosition]);
 
+    if (!beforeUrl && !afterUrl) return null;
+
     const containerClasses = [
-        'cdc-before-after__container',
+        'otta-before-after__container',
         // Opt out of Tailwind prose styles so `prose img` margins/border-radius don't affect inner images
         'not-prose',
-        isVertical && 'cdc-before-after__container--vertical',
-        imageFit === 'cover' && 'cdc-before-after__container--cover',
+        isVertical && 'otta-before-after__container--vertical',
+        imageFit === 'cover' && 'otta-before-after__container--cover',
     ]
         .filter(Boolean)
         .join(' ');
 
     return (
-        <figure className={`${className} not-prose cdc-content-block cdc-before-after`}>
+        <figure className={` not-prose otta-before-after`}>
             <div
                 ref={containerRef}
                 className={containerClasses}
@@ -208,7 +209,7 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
                     <img
                         src={afterUrl}
                         alt={afterLabel || 'After'}
-                        className="cdc-before-after__after"
+                        className="otta-before-after__after"
                         style={afterImgStyle}
                         draggable={false}
                     />
@@ -216,29 +217,29 @@ const BeforeAfter: RenderFn<BeforeAfterData> = ({ data, className = '' }) => {
 
                 {/* Before layer (clipped) */}
                 {beforeUrl && (
-                    <div className="cdc-before-after__before" style={{ clipPath: clipBefore }}>
+                    <div className="otta-before-after__before" style={{ clipPath: clipBefore }}>
                         <img src={beforeUrl} alt={beforeLabel || 'Before'} style={beforeImgStyle} draggable={false} />
                     </div>
                 )}
 
                 {/* Labels: only render if the label has content */}
                 {beforeLabel && (
-                    <span className="cdc-before-after__label cdc-before-after__label--before">{beforeLabel}</span>
+                    <span className="otta-before-after__label otta-before-after__label--before">{beforeLabel}</span>
                 )}
                 {afterLabel && (
-                    <span className="cdc-before-after__label cdc-before-after__label--after">{afterLabel}</span>
+                    <span className="otta-before-after__label otta-before-after__label--after">{afterLabel}</span>
                 )}
 
                 {/* Drag handle */}
                 <div
-                    className="cdc-before-after__handle"
+                    className="otta-before-after__handle"
                     style={handleStyle}
                     onMouseDown={handlePointerDown}
                     onTouchStart={handlePointerDown}
                 />
             </div>
 
-            {caption && <figcaption className="cdc-before-after__caption">{caption}</figcaption>}
+            {caption && <figcaption className="otta-before-after__caption">{caption}</figcaption>}
         </figure>
     );
 };

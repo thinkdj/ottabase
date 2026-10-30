@@ -1,7 +1,7 @@
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import type { BlockRenderer } from '../types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const Spoiler: RenderFn<{ text?: string }> = ({ data, className = '' }) => {
+const Spoiler: BlockRenderer<{ text?: string }> = ({ data, className = '' }) => {
     const [isRevealed, setIsRevealed] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });

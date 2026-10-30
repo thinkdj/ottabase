@@ -1,35 +1,43 @@
-import { RenderFn } from 'editorjs-blocks-react-renderer';
+import { Inline } from '../inline';
+import type { BlockRenderer } from '../types';
 
-const WarningIcon = () => (
-    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-        <path
-            fillRule="evenodd"
-            d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
-            clipRule="evenodd"
-        />
-    </svg>
-);
+export interface WarningData {
+    title?: string;
+    message?: string;
+}
 
-const Warning: RenderFn<{ title?: string; message?: string }> = ({ data, className = '' }) => {
+/** A callout the reader should not skip: status tint, icon well, title and message. */
+const Warning: BlockRenderer<WarningData> = ({ data }) => {
+    if (!data?.title && !data?.message) return null;
     return (
-        <div
-            className={`${className} not-prose rounded-xl border border-warning/30 bg-warning/10 p-4 my-6`}
-            role="alert"
-        >
-            <div className="flex items-start gap-3">
-                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-background text-warning ring-1 ring-warning/30">
-                    <WarningIcon />
-                </span>
-                <div className="min-w-0 pt-1">
-                    {data?.title && (
-                        <h4 className="m-0 text-[0.9375rem] font-semibold leading-6 text-foreground">{data.title}</h4>
-                    )}
-                    {data?.message && (
-                        <p className="m-0 mt-1 text-sm leading-relaxed text-muted-foreground">{data.message}</p>
-                    )}
-                </div>
+        <aside className="otta-warning not-prose" role="note">
+            <span className="otta-warning__icon" aria-hidden="true">
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+                    <path d="M12 9v4" />
+                    <path d="M12 17h.01" />
+                </svg>
+            </span>
+            <div className="otta-warning__body">
+                {data.title && (
+                    <p className="otta-warning__title">
+                        <Inline html={data.title} />
+                    </p>
+                )}
+                {data.message && (
+                    <p className="otta-warning__text">
+                        <Inline html={data.message} />
+                    </p>
+                )}
             </div>
-        </div>
+        </aside>
     );
 };
 
