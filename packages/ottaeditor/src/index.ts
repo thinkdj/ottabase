@@ -32,7 +32,9 @@ export type { UndoRedoState, UndoRedoManagerOptions } from './undo-redo';
 
 // Export default plugins configuration
 export {
+    AnnotationTool,
     CTATool,
+    InlineSpoilerTool,
     CheckList,
     CodeTool,
     DEFAULT_PLUGIN_NAMES,
@@ -82,6 +84,7 @@ export type {
 } from './tools/MediaGalleryTool/MediaGalleryTool';
 export { default as MediaLibraryTool } from './tools/MediaLibraryTool/MediaLibraryTool';
 export { default as RawHtmlTool } from './tools/RawHtmlTool/RawHtmlTool';
+export { INLINE_SPOILER_CLASS } from './tools/InlineSpoilerTool/InlineSpoilerTool';
 export type { StepsData, StepsItem, StepsToolConfig } from './tools/StepsTool/StepsTool';
 export type { FaqData, FaqItem, FaqToolConfig } from './tools/FaqTool/FaqTool';
 export type { ReferenceItem, ReferencesData, ReferencesToolConfig } from './tools/ReferencesTool/ReferencesTool';

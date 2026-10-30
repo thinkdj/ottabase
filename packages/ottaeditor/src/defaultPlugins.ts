@@ -20,6 +20,7 @@ import CTATool from './tools/CTATool/CTATool';
 import DisclosureTool from './tools/DisclosureTool/DisclosureTool';
 import FaqTool from './tools/FaqTool/FaqTool';
 import ImageHotspotsTool from './tools/ImageHotspotsTool/ImageHotspotsTool';
+import InlineSpoilerTool from './tools/InlineSpoilerTool/InlineSpoilerTool';
 import LayoutTool from './tools/LayoutTool/LayoutTool';
 import MapTool from './tools/MapTool/MapTool';
 import MediaEmbedTool from './tools/MediaEmbedTool/MediaEmbedTool';
@@ -55,6 +56,7 @@ export const DEFAULT_PLUGIN_NAMES = {
     UNDERLINE: 'underline',
     INLINE_CODE: 'inlineCode',
     ANNOTATION: 'annotation',
+    INLINE_SPOILER: 'inlineSpoiler',
     BEFORE_AFTER: 'beforeAfter',
     SPOILER: 'spoiler',
     CTA: 'cta',
@@ -203,6 +205,11 @@ const registeredPlugins: OttaEditorPlugin[] = [
         config: {},
     },
     {
+        name: DEFAULT_PLUGIN_NAMES.INLINE_SPOILER,
+        tool: InlineSpoilerTool as any,
+        config: {},
+    },
+    {
         name: DEFAULT_PLUGIN_NAMES.BEFORE_AFTER,
         tool: BeforeAfterTool as any,
         config: {} as any,
@@ -328,6 +335,7 @@ export function getDefaultPlugins(names: DefaultPluginName[] | 'all'): OttaEdito
  */
 export {
     AnnotationTool,
+    InlineSpoilerTool,
     BeforeAfterTool,
     CheckList,
     CodeTool,

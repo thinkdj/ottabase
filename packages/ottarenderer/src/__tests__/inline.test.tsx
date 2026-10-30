@@ -85,6 +85,24 @@ describe('Inline', () => {
         expect(links[1]?.getAttribute('target')).toBe('_blank');
     });
 
+    it('renders an inline spoiler hidden until activated, and hides it again', () => {
+        render(
+            <p>
+                <Inline html='The killer is <span class="cdx-spoiler">the <b>butler</b></span>.' />
+            </p>,
+        );
+        const spoiler = screen.getByRole('button', { name: 'Spoiler, reveal' });
+        expect(spoiler.getAttribute('data-state')).toBe('hidden');
+        expect(spoiler.querySelector('.otta-spoiler__text')?.getAttribute('aria-hidden')).toBe('true');
+        expect(spoiler.querySelector('strong')?.textContent).toBe('butler');
+        fireEvent.click(spoiler);
+        expect(spoiler.getAttribute('data-state')).toBe('revealed');
+        expect(spoiler.getAttribute('aria-expanded')).toBe('true');
+        expect(spoiler.querySelector('.otta-spoiler__text')?.getAttribute('aria-hidden')).toBe('false');
+        fireEvent.keyDown(spoiler, { key: 'Enter' });
+        expect(spoiler.getAttribute('data-state')).toBe('hidden');
+    });
+
     it('turns an annotation span into a toggleable note', () => {
         render(
             <p>

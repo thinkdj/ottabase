@@ -1,150 +1,100 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { API } from '@editorjs/editorjs';
 import AnnotationTool from '../AnnotationTool';
 
-// Mock CSS import
-vi.mock('../AnnotationTool.css', () => ({}));
-
 const createMockAPI = () => ({
-    selection: {
-        findParentTag: vi.fn(() => null),
-    },
-    blocks: {
-        getCurrentBlockIndex: vi.fn(() => 0),
-        getBlockByIndex: vi.fn(() => ({ call: vi.fn() })),
-    },
+    selection: { findParentTag: vi.fn(() => null as HTMLElement | null) },
+    blocks: { getCurrentBlockIndex: vi.fn(() => 0), getBlockByIndex: vi.fn(() => ({ call: vi.fn() })) },
 });
 
 describe('AnnotationTool', () => {
-    let mockAPI: ReturnType<typeof createMockAPI>;
+    let api: ReturnType<typeof createMockAPI>;
 
     beforeEach(() => {
-        mockAPI = createMockAPI();
+        api = createMockAPI();
     });
 
-    // ── Static metadata ──────────────────────────────────────────────────────
-
-    describe('isInline', () => {
-        it('should return true indicating this is an inline tool', () => {
-            expect(AnnotationTool.isInline).toBe(true);
-        });
+    afterEach(() => {
+        document.body.innerHTML = '';
     });
 
-    describe('title', () => {
-        it('should have correct title', () => {
-            expect(AnnotationTool.title).toBe('Annotation');
-        });
+    const tool = () => new AnnotationTool({ api: api as unknown as API });
+
+    it('is an inline tool that keeps the span contract', () => {
+        expect(AnnotationTool.isInline).toBe(true);
+        expect(AnnotationTool.title).toBe('Annotation');
+        expect(AnnotationTool.sanitize.span).toEqual({ class: true, 'data-annotation': true, 'data-title': true });
     });
 
-    describe('sanitize', () => {
-        it('should return sanitize config allowing span with data attributes', () => {
-            const sanitize = AnnotationTool.sanitize;
-            expect(sanitize).toHaveProperty('span');
-            expect(sanitize.span).toHaveProperty('class', 'cdx-annotation');
-            expect(sanitize.span).toHaveProperty('data-annotation', true);
-            expect(sanitize.span).toHaveProperty('data-title', true);
-        });
+    it('renders an inline-toolbar button with an icon', () => {
+        const b = tool().render();
+        expect(b).toBeInstanceOf(HTMLButtonElement);
+        expect(b.type).toBe('button');
+        expect(b.classList.contains('ce-inline-tool')).toBe(true);
+        expect(b.innerHTML).toContain('<svg');
     });
 
-    // ── render() ─────────────────────────────────────────────────────────────
-
-    describe('render()', () => {
-        it('should return a button element', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const button = tool.render();
-            expect(button).toBeInstanceOf(HTMLButtonElement);
-        });
-
-        it('should have ce-inline-tool class', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const button = tool.render();
-            expect(button.classList.contains('ce-inline-tool')).toBe(true);
-        });
-
-        it('should contain an SVG icon', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const button = tool.render();
-            expect(button.innerHTML).toContain('svg');
-        });
-
-        it('should have type="button"', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const button = tool.render();
-            expect(button.type).toBe('button');
-        });
+    it('reflects the active state from the selection', () => {
+        const t = tool();
+        const b = t.render();
+        expect(t.checkState()).toBe(false);
+        const span = document.createElement('span');
+        span.classList.add('cdx-annotation');
+        api.selection.findParentTag.mockReturnValue(span);
+        expect(t.checkState()).toBe(true);
+        expect(b.classList.contains('ce-inline-tool--active')).toBe(true);
+        api.selection.findParentTag.mockReturnValue(null);
+        t.checkState();
+        expect(b.classList.contains('ce-inline-tool--active')).toBe(false);
     });
 
-    // ── checkState() ─────────────────────────────────────────────────────────
+    it('wraps a selection, edits it in the popup and writes the data attributes', () => {
+        const p = document.createElement('p');
+        p.textContent = 'hello world';
+        document.body.appendChild(p);
+        const range = document.createRange();
+        range.setStart(p.firstChild!, 0);
+        range.setEnd(p.firstChild!, 5);
 
-    describe('checkState()', () => {
-        it('should return false when no annotation tag is found', () => {
-            mockAPI.selection.findParentTag.mockReturnValue(null);
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            tool.render();
-            expect(tool.checkState()).toBe(false);
-        });
+        const t = tool();
+        t.surround(range);
+        const span = p.querySelector('span.cdx-annotation') as HTMLElement;
+        expect(span.textContent).toBe('hello');
+        expect(span.dataset.title).toBe('hello');
 
-        it('should return true when annotation tag is found', () => {
-            const mockSpan = document.createElement('span');
-            mockSpan.classList.add('cdx-annotation');
-            mockAPI.selection.findParentTag.mockReturnValue(mockSpan);
-
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            tool.render();
-            expect(tool.checkState()).toBe(true);
-        });
-
-        it('should add active class to button when annotation is selected', () => {
-            const mockSpan = document.createElement('span');
-            mockSpan.classList.add('cdx-annotation');
-            mockAPI.selection.findParentTag.mockReturnValue(mockSpan);
-
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const button = tool.render();
-            tool.checkState();
-            expect(button.classList.contains('ce-inline-tool--active')).toBe(true);
-        });
-
-        it('should remove active class from button when no annotation is selected', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const button = tool.render();
-
-            // First set it to active
-            const mockSpan = document.createElement('span');
-            mockAPI.selection.findParentTag.mockReturnValue(mockSpan);
-            tool.checkState();
-
-            // Then check with no annotation
-            mockAPI.selection.findParentTag.mockReturnValue(null);
-            tool.checkState();
-            expect(button.classList.contains('ce-inline-tool--active')).toBe(false);
-        });
+        const dialog = screen.getByRole('dialog', { name: 'Edit annotation' });
+        expect(dialog.classList.contains('oe-popup')).toBe(true);
+        fireEvent.input(screen.getByLabelText('Annotation title'), { target: { value: 'Greeting' } });
+        fireEvent.input(screen.getByLabelText('Annotation'), { target: { value: 'A friendly hello' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect(span.dataset.title).toBe('Greeting');
+        expect(span.dataset.annotation).toBe('A friendly hello');
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(api.blocks.getBlockByIndex).toHaveBeenCalled();
     });
 
-    // ── renderActions() ─────────────────────────────────────────────────────
+    it('removes an existing annotation back to plain text', () => {
+        const p = document.createElement('p');
+        const span = document.createElement('span');
+        span.className = 'cdx-annotation';
+        span.dataset.title = 'T';
+        span.dataset.annotation = 'N';
+        span.textContent = 'term';
+        p.append('a ', span, ' b');
+        document.body.appendChild(p);
+        api.selection.findParentTag.mockReturnValue(span);
 
-    describe('renderActions()', () => {
-        it('should return an element with edit button', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const actions = tool.renderActions();
-            expect(actions).toBeInstanceOf(HTMLElement);
-            expect(actions.classList.contains('cdx-annotation-actions')).toBe(true);
-        });
-
-        it('should have an edit button with correct text', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            const actions = tool.renderActions();
-            const editBtn = actions.querySelector('.cdx-annotation-actions__edit');
-            expect(editBtn).not.toBeNull();
-            expect(editBtn?.textContent).toContain('Edit annotation');
-        });
+        tool().surround(document.createRange());
+        fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+        expect(p.querySelector('span')).toBeNull();
+        expect(p.textContent).toBe('a term b');
     });
 
-    // ── clear() ──────────────────────────────────────────────────────────────
-
-    describe('clear()', () => {
-        it('should not throw when called', () => {
-            const tool = new AnnotationTool({ api: mockAPI as any });
-            expect(() => tool.clear()).not.toThrow();
-        });
+    it('offers an edit action in the inline toolbar and clears without throwing', () => {
+        const t = tool();
+        const actions = t.renderActions();
+        expect(actions.querySelector('button')?.textContent).toContain('Edit annotation');
+        expect(() => t.clear()).not.toThrow();
     });
 });

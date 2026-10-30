@@ -32,6 +32,9 @@ export function convertInlineHTML(html: string): string {
     // Convert inline code: <code>
     md = md.replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`');
 
+    // Inline spoiler: <span class="cdx-spoiler"> → ||text|| (the spoiler syntax most Markdown chat dialects read)
+    md = md.replace(/<span\b[^>]*class="[^"]*\bcdx-spoiler\b[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, '||$1||');
+
     // Convert mark/highlight: <mark>
     md = md.replace(/<mark[^>]*>([\s\S]*?)<\/mark>/gi, '==$1==');
 

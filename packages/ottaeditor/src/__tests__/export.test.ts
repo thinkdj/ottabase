@@ -23,6 +23,12 @@ describe('Export Utilities', () => {
     });
 
     describe('convertInlineHTML', () => {
+        it('should convert inline spoilers to ||text||', () => {
+            expect(convertInlineHTML('the <span class="cdx-spoiler">butler</span> did it')).toBe(
+                'the ||butler|| did it',
+            );
+        });
+
         it('should convert bold tags', () => {
             expect(convertInlineHTML('<b>bold</b>')).toBe('**bold**');
             expect(convertInlineHTML('<strong>bold</strong>')).toBe('**bold**');

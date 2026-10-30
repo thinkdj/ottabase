@@ -222,6 +222,53 @@
     text-decoration-thickness: 1px;
 }
 
+/* Inline spoiler: blurred chip until revealed, then a faint chip so the reveal stays legible */
+.otta-spoiler {
+    display: inline;
+    padding: 0.05em 0.3em;
+    margin: 0 -0.05em;
+    border-radius: var(--otta-radius-chip);
+    background: hsl(var(--muted));
+    cursor: pointer;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: background var(--otta-transition);
+    outline: none;
+}
+
+.otta-spoiler__text {
+    filter: blur(0.3em);
+    user-select: none;
+    -webkit-user-select: none;
+    transition: filter var(--duration-slow, 400ms) var(--ease, ease);
+}
+
+.otta-spoiler:hover {
+    background: hsl(var(--muted-foreground) / 0.2);
+}
+
+.otta-spoiler[data-state='revealed'] {
+    background: hsl(var(--muted) / 0.6);
+    cursor: default;
+}
+
+.otta-spoiler[data-state='revealed'] .otta-spoiler__text {
+    filter: none;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.otta-spoiler:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+print {
+    .otta-spoiler__text {
+        filter: none;
+    }
+}
+
 /* Annotation: a dotted underline, a note that opens above it */
 .otta-annotation {
     position: relative;

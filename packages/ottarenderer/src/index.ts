@@ -9,6 +9,7 @@ export { blockRenderers } from './renderers';
 export { BlockList, collectHeadingIds, slugify, useHeadingId } from './scope';
 export {
     Annotation,
+    InlineSpoiler,
     decodeEntities,
     Inline,
     inlineToText,

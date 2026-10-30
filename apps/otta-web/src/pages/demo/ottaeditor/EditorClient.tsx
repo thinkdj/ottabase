@@ -1,5 +1,6 @@
 import {
     AdvancedImageTool,
+    BlockPalette,
     DEFAULT_PLUGIN_NAMES,
     useOttaEditor,
     type BlockToolConstructable,
@@ -76,14 +77,16 @@ const sampleDataMinimal: OutputData = {
         {
             type: 'paragraph',
             data: {
-                text: 'This editor only has Header + Paragraph plus a custom Alert plugin!',
+                text: 'Header, paragraph and one custom block written with the editor kit. The ending of this sentence is an <span class="cdx-spoiler">inline spoiler</span>: select any words and press the eye-off button (or Ctrl+Shift+H) to make one.',
             },
         },
         {
             type: 'alert',
             data: {
                 type: 'info',
-                message: 'This is a custom Alert plugin!',
+                title: 'Custom blocks fit in',
+                message:
+                    'This alert is a third-party block built from the editor kit. Pick a tone, type the title and message straight into the card.',
             },
         },
     ],
@@ -97,10 +100,9 @@ interface DemoEditorProps {
     description: React.ReactNode;
     config: UseOttaEditorOptions;
     sampleData: OutputData;
-    id: string; // Used for key to force remount
 }
 
-function DemoEditor({ title, description, config, sampleData, id }: DemoEditorProps) {
+function DemoEditor({ title, description, config, sampleData }: DemoEditorProps) {
     const [savedData, setSavedData] = useState<OutputData | null>(null);
 
     const editor = useOttaEditor({
@@ -138,10 +140,16 @@ function DemoEditor({ title, description, config, sampleData, id }: DemoEditorPr
                         Reload Sample
                     </Button>
                 </div>
-                <div
-                    ref={editor.editorRef}
-                    className="min-h-[300px] prose prose-slate dark:prose-invert max-w-none rounded-lg border p-4"
-                />
+                <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+                    {/* The canvas styles itself: no prose wrapper, no padding */}
+                    <div
+                        ref={editor.editorRef}
+                        className="min-h-[300px] rounded-xl border border-border/60 bg-background py-3"
+                    />
+                    <aside className="hidden lg:block rounded-xl bg-muted/40 p-3 max-h-[32rem] overflow-y-auto">
+                        <BlockPalette editor={editor.editor} />
+                    </aside>
+                </div>
                 {savedData ? (
                     <details className="mt-4">
                         <summary className="cursor-pointer text-sm font-semibold">Show Saved JSON</summary>
@@ -195,7 +203,7 @@ export function EditorClient() {
             />
 
             <DemoEditor
-                id={`editor-1-${uploadProvider}`}
+                key={`editor-1-${uploadProvider}`}
                 title="Editor 1: Full-Featured"
                 description={
                     <span>
@@ -222,15 +230,20 @@ export function EditorClient() {
             />
 
             <DemoEditor
-                id="editor-2"
+                key="editor-2"
                 title="Editor 2: Minimal Configuration"
                 description={
                     <span>
-                        Using <code>defaultPlugins: ['header', 'paragraph']</code> + custom Alert plugin
+                        Using <code>defaultPlugins: ['header', 'paragraph', 'inlineSpoiler']</code> plus a custom Alert
+                        block built with the editor kit
                     </span>
                 }
                 config={{
-                    defaultPlugins: [DEFAULT_PLUGIN_NAMES.HEADER, DEFAULT_PLUGIN_NAMES.PARAGRAPH],
+                    defaultPlugins: [
+                        DEFAULT_PLUGIN_NAMES.HEADER,
+                        DEFAULT_PLUGIN_NAMES.PARAGRAPH,
+                        DEFAULT_PLUGIN_NAMES.INLINE_SPOILER,
+                    ],
                     additionalPlugins: [
                         {
                             name: 'alert',

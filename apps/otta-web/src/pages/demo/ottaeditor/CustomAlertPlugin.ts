@@ -1,38 +1,48 @@
-import type { API, BlockTool, BlockToolConstructorOptions } from '@ottabase/ottaeditor';
+/**
+ * A custom block written against the editor's kit: the shape a third-party block takes.
+ *
+ * The alert is edited where it lives: the block shows the alert card itself in the chosen tone,
+ * with the title and message typed straight into it, and a row of tone chips above. There is no
+ * renderer for this block, so the shell runs without the Preview switch; the card already is the
+ * preview.
+ */
+import {
+    BlockShell,
+    kit,
+    type API,
+    type BlockTool,
+    type BlockToolConstructorOptions,
+    type IconName,
+} from '@ottabase/ottaeditor';
+import './CustomAlertPlugin.css';
+
+type AlertType = 'info' | 'success' | 'warning' | 'error';
 
 interface AlertConfig {
-    defaultType?: 'info' | 'warning' | 'success' | 'error';
+    defaultType?: AlertType;
 }
 
 interface AlertData {
-    type: 'info' | 'warning' | 'success' | 'error';
+    type: AlertType;
+    title?: string;
     message: string;
 }
+
+const TONES: ReadonlyArray<{ value: AlertType; label: string; icon: IconName }> = [
+    { value: 'info', label: 'Info', icon: 'callout' },
+    { value: 'success', label: 'Success', icon: 'check' },
+    { value: 'warning', label: 'Warning', icon: 'warning' },
+    { value: 'error', label: 'Error', icon: 'x' },
+];
 
 export default class CustomAlertPlugin implements BlockTool {
     private api: API;
     private data: AlertData;
     private config: AlertConfig;
-    private wrapper: HTMLElement | null = null;
-
-    static get CSS() {
-        return {
-            baseClass: 'cdx-alert',
-            wrapper: 'cdx-alert__wrapper',
-            select: 'cdx-alert__select',
-            textarea: 'cdx-alert__message',
-            info: 'cdx-alert--info',
-            warning: 'cdx-alert--warning',
-            success: 'cdx-alert--success',
-            error: 'cdx-alert--error',
-        };
-    }
+    private shell: BlockShell | null = null;
 
     static get toolbox() {
-        return {
-            title: 'Alert',
-            icon: '<svg width="17" height="15" viewBox="0 0 336 276"><path d="M291 150l-123 124c-3 3-8 3-11 0L34 151c-3-3-3-8 0-11l11-11c3-3 8-3 11 0l106 107 106-107c3-3 8-3 11 0l11 11c3 3 3 8 0 11z"/></svg>',
-        };
+        return { title: 'Alert', icon: kit.iconEl('callout').innerHTML };
     }
 
     static get enableLineBreaks() {
@@ -44,90 +54,110 @@ export default class CustomAlertPlugin implements BlockTool {
         this.config = config || {};
         this.data = {
             type: data?.type || this.config.defaultType || 'info',
+            title: data?.title || '',
             message: data?.message || '',
         };
     }
 
     render(): HTMLElement {
-        const wrapper = document.createElement('div');
-        wrapper.classList.add(CustomAlertPlugin.CSS.baseClass, CustomAlertPlugin.CSS.wrapper, 'ob-plugin');
-        wrapper.classList.add(CustomAlertPlugin.CSS[this.data.type]);
+        const shell = new BlockShell({ type: 'alert', previewable: false, summary: this.tone().label });
+        this.shell = shell;
 
-        const select = document.createElement('select');
-        select.classList.add(CustomAlertPlugin.CSS.select, 'ob-select');
+        const card = kit.h('div', { className: 'demo-alert', dataset: { tone: this.data.type } });
+        const iconWell = kit.h(
+            'span',
+            { className: 'demo-alert__icon', 'aria-hidden': 'true' },
+            kit.iconEl(this.tone().icon, 18),
+        );
 
-        const types: Array<AlertData['type']> = ['info', 'warning', 'success', 'error'];
-        types.forEach((type) => {
-            const option = document.createElement('option');
-            option.value = type;
-            option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-            option.selected = type === this.data.type;
-            select.appendChild(option);
+        const title = kit.h('input', {
+            className: 'demo-alert__title',
+            type: 'text',
+            value: this.data.title ?? '',
+            placeholder: 'Title (optional)',
+            'aria-label': 'Alert title',
+        });
+        title.addEventListener('input', () => {
+            this.data.title = title.value;
         });
 
-        select.addEventListener('change', (event) => {
-            const target = event.target as HTMLSelectElement;
-            this.data.type = target.value as AlertData['type'];
+        const message = kit.h('textarea', {
+            className: 'demo-alert__message',
+            value: this.data.message,
+            placeholder: 'What should the reader know?',
+            rows: 2,
+            'aria-label': 'Alert message',
+        });
+        const grow = () => {
+            message.style.height = 'auto';
+            message.style.height = `${message.scrollHeight}px`;
+        };
+        message.addEventListener('input', () => {
+            this.data.message = message.value;
+            grow();
+        });
+        requestAnimationFrame(grow);
 
-            wrapper.classList.remove(
-                CustomAlertPlugin.CSS.info,
-                CustomAlertPlugin.CSS.warning,
-                CustomAlertPlugin.CSS.success,
-                CustomAlertPlugin.CSS.error,
+        card.append(iconWell, kit.h('div', { className: 'demo-alert__body' }, title, message));
+
+        // Tone chips: a coloured dot and a word each, radio semantics, arrow keys move
+        const tones = kit.h('div', { className: 'demo-alert__tones', role: 'radiogroup', 'aria-label': 'Alert tone' });
+        const chips = TONES.map((t) => {
+            const chip = kit.h(
+                'button',
+                {
+                    type: 'button',
+                    role: 'radio',
+                    className: 'demo-alert__tone',
+                    dataset: { tone: t.value },
+                    'aria-checked': String(t.value === this.data.type),
+                    tabIndex: t.value === this.data.type ? 0 : -1,
+                },
+                kit.h('span', { className: 'demo-alert__dot', 'aria-hidden': 'true' }),
+                t.label,
             );
-            wrapper.classList.add(CustomAlertPlugin.CSS[this.data.type]);
+            chip.addEventListener('click', () => select(t.value));
+            return chip;
         });
-
-        const textarea = document.createElement('textarea');
-        textarea.classList.add(CustomAlertPlugin.CSS.textarea, 'ob-textarea');
-        textarea.placeholder = 'Enter alert message...';
-        textarea.value = this.data.message;
-        textarea.rows = 3;
-
-        textarea.addEventListener('input', (event) => {
-            const target = event.target as HTMLTextAreaElement;
-            this.data.message = target.value;
+        const select = (type: AlertType) => {
+            this.data.type = type;
+            card.dataset.tone = type;
+            iconWell.replaceChildren(kit.iconEl(this.tone().icon, 18));
+            chips.forEach((c) => {
+                const on = c.dataset.tone === type;
+                c.setAttribute('aria-checked', String(on));
+                c.tabIndex = on ? 0 : -1;
+            });
+            shell.setSummary(this.tone().label);
+        };
+        tones.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            const i = TONES.findIndex((t) => t.value === this.data.type);
+            const next = (i + (e.key === 'ArrowRight' ? 1 : -1) + TONES.length) % TONES.length;
+            select(TONES[next]!.value);
+            chips[next]!.focus();
         });
+        tones.append(...chips);
 
-        wrapper.appendChild(select);
-        wrapper.appendChild(textarea);
+        shell.fields.append(kit.stack(tones, card));
+        return shell.element;
+    }
 
-        this.wrapper = wrapper;
-        this.addStyles();
-
-        return wrapper;
+    private tone() {
+        return TONES.find((t) => t.value === this.data.type) ?? TONES[0]!;
     }
 
     save(): AlertData {
-        return this.data;
+        const title = this.data.title?.trim();
+        return { type: this.data.type, ...(title ? { title } : {}), message: this.data.message };
     }
 
     validate(savedData: AlertData): boolean {
         return savedData.message.trim() !== '';
     }
 
-    private addStyles(): void {
-        const styleId = 'cdx-alert-styles';
-        if (document.getElementById(styleId)) return;
-
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
-      .cdx-alert__wrapper {
-        border-left: 4px solid hsl(var(--border));
-        background: hsl(var(--muted));
-        color: hsl(var(--foreground));
-      }
-
-      .cdx-alert__select { margin-bottom: 8px; }
-      .cdx-alert__message { resize: vertical; min-height: 60px; }
-
-      .cdx-alert--info { border-left-color: hsl(var(--primary)); }
-      .cdx-alert--success { border-left-color: hsl(var(--primary)); }
-      .cdx-alert--warning { border-left-color: hsl(var(--secondary-foreground)); }
-      .cdx-alert--error { border-left-color: hsl(var(--destructive)); }
-    `;
-
-        document.head.appendChild(style);
+    destroy(): void {
+        this.shell?.destroy();
     }
 }

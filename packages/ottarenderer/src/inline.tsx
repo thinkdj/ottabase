@@ -198,6 +198,9 @@ function renderNode(node: InlineNode, key: number): ReactNode {
                 </u>
             );
         case 'span':
+            if (/\bcdx-spoiler\b/.test(node.attrs.class ?? '')) {
+                return <InlineSpoiler key={key}>{children}</InlineSpoiler>;
+            }
             if (node.attrs['data-annotation'] || node.attrs['data-title']) {
                 return (
                     <Annotation
@@ -232,6 +235,38 @@ export function useInline(html: string | number | null | undefined): InlineNode[
 
 export function Inline({ html }: { html: string | number | null | undefined }) {
     return <>{renderNodes(useInline(html))}</>;
+}
+
+/**
+ * A few words hidden inside a sentence. Blurred and unselectable until the reader clicks, taps or
+ * presses Enter; then it settles into a faint chip so it is still clear what was hidden. Click again
+ * to hide. Screen readers hear "Spoiler, reveal" and only get the words once revealed.
+ */
+export function InlineSpoiler({ children }: { children: ReactNode }) {
+    const [revealed, setRevealed] = useState(false);
+    const toggle = () => setRevealed((v) => !v);
+    return (
+        <span
+            className="otta-spoiler"
+            data-state={revealed ? 'revealed' : 'hidden'}
+            role="button"
+            tabIndex={0}
+            aria-expanded={revealed}
+            aria-label={revealed ? undefined : 'Spoiler, reveal'}
+            title={revealed ? 'Hide again' : 'Click to reveal'}
+            onClick={toggle}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggle();
+                }
+            }}
+        >
+            <span className="otta-spoiler__text" aria-hidden={!revealed}>
+                {children}
+            </span>
+        </span>
+    );
 }
 
 /**
