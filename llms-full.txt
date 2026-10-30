@@ -20337,332 +20337,182 @@ function MyDatePicker({ value, onChange }) {
 
 # @ottabase/ottaeditor
 
-EditorJS wrapper with 30 plugins (13 EditorJS + 17 custom blocks), type-safe plugin selection, undo/redo, and
-JSON/Markdown export.
+Editor.js, wired for Ottabase: one plugin list, undo/redo, JSON and Markdown export, and twenty custom blocks that
+edit in a shared kit and preview through `@ottabase/ottarenderer`, so the editor shows exactly what the reader will
+get.
 
-## Installation
+## Why it looks the way it does
 
-```bash
-pnpm add @ottabase/ottaeditor
-```
+- **The canvas is the page.** The editor loads the renderer's stylesheet and maps Editor.js's native blocks (heading,
+  text, list, quote, callout, table, divider) onto the same typography, so a heading in the editor is the heading on the
+  published post. No `prose` wrapper, no card around the editor.
+- **Custom blocks edit in a kit and preview for real.** Every block sits in a `BlockShell`: a quiet header naming the
+  block with a one-line summary and an **Edit / Preview** switch. Edit mode is fields built from one kit (same inputs,
+  segments, switches, sortable rows and media pickers in all twenty blocks). Preview mounts the renderer on the block's
+  own data: the exact published block, in the brand's colours. An empty block opens in Edit, a filled one in Preview,
+  and clicking a preview enters Edit.
+- **Edit mode has three surface levels.** The block is a card (`--card`, a step lighter than the page), the header and
+  list rows are a muted tint, and inputs and chips sit on the card colour again with a firm edge. List numbers use the
+  accent colour, and a focused block takes a ring-tinted border.
+- **Blocks are organised, named and described once.** `BLOCKS` is the registry: title, description, group, icon. The
+  toolbox order, the `BlockPalette`, the shell headers and the renamed Editor.js tools ("Warning" reads "Callout") all
+  come from it.
 
-## Quick Start
+## Quick start
 
 ```tsx
-import { useOttaEditor } from '@ottabase/ottaeditor';
+import { BlockPalette, useOttaEditor } from '@ottabase/ottaeditor';
 
-const { editorRef, save, hasUnsavedChanges, undo, redo, canUndo, canRedo } = useOttaEditor({
-    defaultPlugins: 'all', // or ['header', 'paragraph', 'list']
-    placeholder: 'Start writing...',
-});
-```
-
-## Plugins
-
-### EditorJS (13)
-
-`header`, `paragraph`, `list`, `checklist`, `code`, `quote`, `table`, `warning`, `delimiter`, `linkTool`, `embed`,
-`raw`, `Marker`, `underline`, `inlineCode`
-
-Raw HTML blocks are sanitized on save to remove wrapper/executable tags (`html`, `head`, `body`, `script`, `iframe`) and
-unsafe inline attributes/protocols.
-
-### Custom Blocks (17)
-
-| Plugin          | Description                                                                            |
-| --------------- | -------------------------------------------------------------------------------------- |
-| `annotation`    | Callout/admonition block with type presets (info, warning, tip, etc.)                  |
-| `beforeAfter`   | Image comparison slider with horizontal/vertical orientation, height + imageFit config |
-| `cta`           | Call-to-action button with 4 styles (primary/secondary/outline/ghost) and alignment    |
-| `disclosure`    | AI usage disclosure (slight/mid/high/custom %) and sponsored-content disclaimer        |
-| `faq`           | Q&A accordion or flat list; emits `FAQPage` schema.org structured data                 |
-| `imageHotspots` | Annotated image with clickable hotspot markers, height + imageFit config               |
-| `layout`        | Multi-column layout (6 presets: 1-1, 1-2, 2-1, 1-3, 3-1, 1-1-1) with nested editors    |
-| `map`           | Embeddable map (OpenStreetMap, Google Maps)                                            |
-| `mediaEmbed`    | Video/audio/PDF/document player; auto-inserted for non-image media                     |
-| `mediaGallery`  | Gallery with 5 layouts (grid-balanced, grid-featured, masonry, filmstrip, mosaic)      |
-| `references`    | Citation/bibliography block with numbered references                                   |
-| `review`        | Product review with image, rating, pros/cons                                           |
-| `spoiler`       | Collapsible content                                                                    |
-| `steps`         | Step-by-step timeline with reorder/delete                                              |
-| `testimonial`   | Quote card with 5 variants; emits `Review` schema.org when rating is set               |
-
-## API
-
-### `useOttaEditor` Options
-
-| Option              | Type                   | Description           |
-| ------------------- | ---------------------- | --------------------- |
-| `defaultPlugins`    | `'all' \| string[]`    | Which plugins to load |
-| `additionalPlugins` | `OttaEditorPlugin[]`   | Custom plugins to add |
-| `placeholder`       | `string`               | Placeholder text      |
-| `data`              | `OutputData`           | Initial content       |
-| `readOnly`          | `boolean`              | Read-only mode        |
-| `onChange`          | `(api, event) => void` | Change callback       |
-
-Plugin `config` is the tool-specific options object passed to that tool's constructor (for example
-`{ provider: 'r2', uploadEndpoint: '/api/upload' }`). It is not EditorJS's outer `ToolSettings` wrapper.
-
-### Returns
-
-| Property              | Type                        | Description            |
-| --------------------- | --------------------------- | ---------------------- |
-| `editorRef`           | `RefObject<HTMLDivElement>` | Container ref          |
-| `save`                | `() => Promise<OutputData>` | Save content           |
-| `hasUnsavedChanges`   | `boolean`                   | Dirty state            |
-| `undo` / `redo`       | `() => Promise<void>`       | Undo/redo actions      |
-| `canUndo` / `canRedo` | `boolean`                   | Undo/redo availability |
-| `exportJSON`          | `() => Promise<string>`     | Export as JSON         |
-| `exportMarkdown`      | `() => Promise<string>`     | Export as Markdown     |
-
-### Keyboard Shortcuts
-
-- **Undo**: `Ctrl+Z` / `Cmd+Z`
-- **Redo**: `Ctrl+Shift+Z` / `Ctrl+Y`
-
-## Data Shapes
-
-<details>
-<summary>CTA</summary>
-
-```typescript
-interface CTAData {
-    text: string;
-    url: string;
-    style: 'primary' | 'secondary' | 'outline' | 'ghost';
-    alignment: 'left' | 'center' | 'right';
-    openInNewTab: boolean;
+function PostEditor() {
+    const editor = useOttaEditor({ defaultPlugins: 'all', placeholder: 'Start writing…' });
+    return (
+        <>
+            <div ref={editor.editorRef} className="min-h-[400px] rounded-xl border border-border/60 bg-background py-3" />
+            <BlockPalette editor={editor.editor} />
+        </>
+    );
 }
 ```
 
-</details>
+Mount the holder bare: the wrapper adds the `ottaeditor` class, which carries the typography and toolbar chrome. The
+styles ship inside the package entry (`import '@ottabase/ottaeditor'` loads them); an app that resolves the package to
+`dist` imports `@ottabase/ottaeditor/dist/index.css` once. Code blocks also want `@ottabase/ui-code-highlight/styles.css`.
 
-<details>
-<summary>Disclosure</summary>
+### `useOttaEditor(options)`
 
-```typescript
-interface DisclosureData {
-    aiEnabled: boolean;
-    aiLevel: 'none' | 'slight' | 'mid' | 'high' | 'custom';
-    aiPercent?: number; // 1–100 when custom
-    sponsoredEnabled: boolean;
-    sponsoredType: 'preset' | 'custom';
-    sponsoredText?: string;
-}
-// AI presets: slight="AI assisted in light editing", mid="significantly used", high="primarily generated"
-// Sponsored preset: "This content was created in partnership with a sponsor."
-```
+| Option              | Type                      | Description                                                   |
+| ------------------- | ------------------------- | ------------------------------------------------------------- |
+| `defaultPlugins`    | `'all' \| string[]`       | Which built-in plugins to load (names in `DEFAULT_PLUGIN_NAMES`) |
+| `additionalPlugins` | `OttaEditorPlugin[]`      | Your own tools, appended                                      |
+| `plugins`           | `OttaEditorPlugin[]`      | Replace the whole list                                        |
+| `data`              | `OutputData`              | Initial content                                               |
+| `placeholder`, `minHeight`, `readOnly`, `autofocus`, `i18n`, `onChange`, `onReady` | | Passed to Editor.js |
 
-</details>
+Returns `editorRef`, `editor`, `isReady`, `hasUnsavedChanges`, `save()`, `render(data)`, `clear()`, `undo()`, `redo()`,
+`canUndo`, `canRedo`, `exportJSON()`, `exportMarkdown()`, `toggleReadOnly()`. The `OttaEditor` instance also has
+`insertBlock(type, data?)`, which the palette uses.
 
-<details>
-<summary>FAQ</summary>
+### `BlockPalette`
 
-```typescript
-interface FaqData {
-    style: 'accordion' | 'flat';
-    items: Array<{ question: string; answer: string }>;
-}
-```
+Every block, grouped and searchable, with a one-line description. Render it in a popover, sheet or sidebar; clicking an
+entry inserts the block after the current one. Props: `editor`, `available` (restrict to these types), `hideGroups`,
+`onInsert`, `searchable`.
 
-</details>
+## Blocks
 
-<details>
-<summary>Image Hotspots</summary>
+Editor.js tools, renamed to the registry's names:
 
-```typescript
-interface ImageHotspotsData {
-    imageUrl: string;
-    alt: string;
-    caption: string;
-    height?: string; // e.g., '400px'
-    imageFit?: 'contain' | 'cover';
-    imagePosition?: ImagePosition; // Focus point when cover mode (default: 'center')
-    hotspots: Array<{ id: string; x: number; y: number; title: string; content: string }>;
-}
+| Type        | Shown as  | Notes                                           |
+| ----------- | --------- | ----------------------------------------------- |
+| `paragraph` | Text      |                                                 |
+| `header`    | Heading   | Levels 1 to 6                                   |
+| `list`      | List      | Bulleted or numbered, nests                     |
+| `checklist` | Checklist |                                                 |
+| `quote`     | Quote     | Text and attribution                            |
+| `warning`   | Callout   |                                                 |
+| `delimiter` | Divider   |                                                 |
+| `table`     | Table     | Optional header row                             |
+| `embed`     | Embed     | YouTube, Vimeo, X, CodePen and others           |
+| `linkTool`  | Link preview | Needs a `/api/link-preview` endpoint         |
 
-type ImagePosition =
-    | 'top-left'
-    | 'top'
-    | 'top-right'
-    | 'left'
-    | 'center'
-    | 'right'
-    | 'bottom-left'
-    | 'bottom'
-    | 'bottom-right';
-```
+Ottabase blocks, each with a renderer in `@ottabase/ottarenderer`:
 
-</details>
+| Group      | Type            | Shown as       | What you edit                                                             |
+| ---------- | --------------- | -------------- | ------------------------------------------------------------------------- |
+| Text       | `spoiler`       | Spoiler        | Text that stays blurred until clicked                                     |
+| Media      | `image`         | Image          | Upload, paste a URL or pick from the library; caption, alt, link, border, background, stretched, featured, aspect |
+| Media      | `mediaLibrary`  | From library   | Picks any upload and inserts the right block (image or video & files)     |
+| Media      | `mediaGallery`  | Gallery        | Items from the library, five layouts, per-item caption and alt            |
+| Media      | `mediaEmbed`    | Video & files  | Video, audio, PDF or document with a player                               |
+| Media      | `beforeAfter`   | Before / after | Two images, orientation, start position, fit and focal points             |
+| Media      | `imageHotspots` | Hotspots       | Click the image to drop markers, drag them, write each note               |
+| Layout     | `layout`        | Columns        | Six presets; each column is its own editor                                |
+| Embeds     | `map`           | Map            | Google Maps or OpenStreetMap URL, theme, height, zoom                     |
+| Embeds     | `code`          | Code           | Language, line numbers, wrapping, highlighted lines, collapsing           |
+| Embeds     | `raw`           | HTML           | Raw markup, sanitised on save                                             |
+| Engagement | `cta`           | Button         | Label, link, four styles, alignment, new tab                              |
+| Engagement | `steps`         | Steps          | Reorderable title + description rows                                      |
+| Engagement | `faq`           | FAQ            | Reorderable question + answer rows, accordion or flat                     |
+| Trust      | `testimonial`   | Testimonial    | Quote, author, avatar, logo, rating, five variants, verified, source      |
+| Trust      | `review`        | Review         | Image, rating, pros and cons, verdict, link, compact                      |
+| Trust      | `references`    | References     | Numbered or footnote sources                                              |
+| Trust      | `disclosure`    | Disclosure     | AI-use level and sponsorship notice                                       |
 
-<details>
-<summary>Before / After</summary>
+Inline tools: bold, italic, underline, marker, inline code, link, **annotation** (select text, add a title and a note;
+the renderer shows it on hover) and **inline spoiler** (`inlineSpoiler`: select words and press the eye-off button or
+Ctrl/Cmd+Shift+H; the editor keeps them readable on a hatched chip, readers see them blurred until they click). Both
+inline tools wrap text in `<span>` and share one sanitize rule (`SHARED_SPAN_SANITIZE`), because Editor.js merges span
+rules across inline tools and two different ones would overwrite each other. Markdown export writes spoilers as
+`||text||`.
 
-```typescript
-interface BeforeAfterData {
-    beforeUrl: string;
-    afterUrl: string;
-    beforeLabel: string;
-    afterLabel: string;
-    orientation: 'horizontal' | 'vertical';
-    sliderPosition: number; // 0–100
-    height?: string;
-    imageFit?: 'contain' | 'cover';
-    beforePosition?: ImagePosition; // Focus point when cover mode
-    afterPosition?: ImagePosition;
-    caption: string;
-}
+Saved data shapes are unchanged from earlier versions; the renderer reads them as they are.
 
-type ImagePosition =
-    | 'top-left'
-    | 'top'
-    | 'top-right'
-    | 'left'
-    | 'center'
-    | 'right'
-    | 'bottom-left'
-    | 'bottom'
-    | 'bottom-right';
-```
+## Writing your own block
 
-</details>
+```ts
+import { BlockShell, kit, type BlockTool, type BlockToolConstructorOptions } from '@ottabase/ottaeditor';
 
-<details>
-<summary>Layout</summary>
+export default class NoteTool implements BlockTool {
+    private data: { text: string };
+    private shell: BlockShell | null = null;
 
-```typescript
-interface LayoutData {
-    preset: '1-1' | '1-3' | '3-1' | '1-2' | '2-1' | '1-1-1';
-    columns: Array<{ content: OutputData }>;
-}
-```
-
-</details>
-
-<details>
-<summary>Media Gallery</summary>
-
-```typescript
-interface MediaGalleryData {
-    title?: string;
-    caption?: string;
-    layout: 'grid-balanced' | 'grid-featured' | 'masonry' | 'filmstrip' | 'mosaic';
-    items: Array<{ url: string; title?: string; caption?: string; altText?: string }>;
-}
-```
-
-</details>
-
-<details>
-<summary>Steps</summary>
-
-```typescript
-interface StepsData {
-    items: Array<{ title: string; content: string }>;
-}
-```
-
-</details>
-
-<details>
-<summary>Testimonial</summary>
-
-```typescript
-interface TestimonialData {
-    quote: string;
-    authorName: string;
-    authorRole?: string;
-    authorCompany?: string;
-    authorAvatar?: string;
-    companyLogo?: string;
-    rating?: number; // 0–5
-    variant: 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
-    sourceUrl?: string;
-    verified?: boolean;
-}
-```
-
-</details>
-
-<details>
-<summary>References</summary>
-
-```typescript
-interface ReferencesData {
-    items: Array<{ id: string; citation: string; url?: string }>;
-}
-```
-
-</details>
-
-## Media Library Integration
-
-Custom plugins can integrate with the app's media library via events:
-
-```typescript
-// Open picker
-window.dispatchEvent(
-    new CustomEvent('media-library-open', {
-        detail: { source: 'editor', field: 'myPlugin:imageUrl' },
-    }),
-);
-
-// Receive selection
-window.addEventListener('media-library-selected-item', (e: CustomEvent) => {
-    if (e.detail?.field === 'myPlugin:imageUrl') {
-        this.data.imageUrl = e.detail.media.url;
+    static get toolbox() {
+        return { title: 'Note', icon: kit.iconEl('callout').innerHTML };
     }
-});
+
+    constructor({ data }: BlockToolConstructorOptions<{ text: string }>) {
+        this.data = { text: data?.text ?? '' };
+    }
+
+    render() {
+        // previewable: false when there is no renderer for the block; otherwise call shell.preview(data)
+        const shell = new BlockShell({ type: 'note', previewable: false, summary: `${this.data.text.length} chars` });
+        this.shell = shell;
+        shell.fields.append(
+            kit.field({
+                label: 'Note',
+                control: kit.textarea({ value: this.data.text, onInput: (v) => (this.data.text = v) }),
+            }),
+        );
+        return shell.element;
+    }
+
+    save() {
+        return this.data;
+    }
+
+    destroy() {
+        this.shell?.destroy();
+    }
+}
 ```
 
-See `ImageHotspotsTool` and `BeforeAfterTool` for examples.
+The kit (`kit.*`): `field`, `row`, `stack`, `sectionLabel`, `textInput`, `textarea`, `select`, `segment`, `toggle`,
+`checkbox`, `range`, `stars`, `button`, `iconButton`, `addButton`, `positionGrid`, `confirmInline`, `mediaInput`
+(URL input with a library button; the host answers `media-library-open` events, see `MediaLibraryPickerBridge` in
+otta-web), `sortableList` (drag handle, arrows, remove with inline confirmation), plus `h` and `iconEl`. Register a
+block type in your own `BLOCKS`-style metadata if you want it in the palette; `blockMeta(type)` is what the shell reads.
+
+## Theming
+
+Everything reads the design tokens (`--background`, `--primary`, `--radius`, `--duration-*`, the type scale) through
+`hsl(var(--x))`; there are no fixed colours. Kit classes are `oe-*`, the canvas is `.ottaeditor`, the shell is
+`.oe-block` with `data-block` and `data-mode`, the palette is `[data-slot="block-palette"]`. Editor.js's own chrome
+(toolbars, popovers, selection, the table tool) is restyled in `src/styles/ottaeditor.css`.
 
 ## Export
 
-Standalone export functions:
+`exportToJSON(data)` pretty-prints Editor.js output; `exportToMarkdown(data)` converts every block type it knows,
+keeping inline bold, italic, links, code and marks.
 
-```typescript
-import { exportToJSON, exportToMarkdown } from '@ottabase/ottaeditor';
+## Testing
 
-const json = exportToJSON(outputData); // Pretty-print JSON
-const md = exportToMarkdown(outputData); // Convert to Markdown
+```bash
+pnpm --filter @ottabase/ottaeditor test
 ```
 
-`convertInlineHTML` converts `<b>` → `**`, `<i>` → `*`, `<a>` → `[text](url)`, `<code>` → `` ` ``, `<mark>` → `==`.
-
-## UndoRedoManager
-
-For advanced usage:
-
-```typescript
-import { UndoRedoManager } from '@ottabase/ottaeditor';
-
-const manager = new UndoRedoManager({
-    maxHistory: 50, // max states (default 50)
-    debounceMs: 500, // debounce delay (default 500)
-    onChange: ({ canUndo, canRedo }) => {},
-});
-
-manager.pushState(data); // debounced
-manager.pushStateImmediate(data); // immediate
-manager.undo(); // returns previous state or null
-manager.redo(); // returns next state or null
-manager.clear(); // reset
-manager.destroy(); // cleanup
-```
-
-## Types
-
-```typescript
-import type {
-    DefaultPluginName,
-    DisclosureData,
-    LayoutData,
-    MediaGalleryData,
-    OttaEditorPlugin,
-    OutputData,
-} from '@ottabase/ottaeditor';
-```
+Each block has a test that mounts it, drives the kit controls by role and label, and asserts `save()` and
+`validate()`; the core suite covers the wrapper, undo/redo and export.
 
 
 ---
@@ -23043,23 +22893,23 @@ MIT
 
 # @ottabase/ottarenderer
 
-Renders content written in `@ottabase/ottaeditor` (Editor.js) and sanitized HTML, in the Ottabase visual language.
-Every block and every inline tag is handled in this package against the design tokens: no third-party block renderer,
-no HTML parser dependency.
+Renders content written in `@ottabase/ottaeditor` (Editor.js) and sanitized HTML, in the Ottabase visual language. Every
+block and every inline tag is handled in this package against the design tokens: no third-party block renderer, no HTML
+parser dependency.
 
 ## Why in-house
 
 The renderer is the reading surface of the blog, the changelog and the landing page. Owning it end to end means:
 
 - **One typography contract.** The root (`.ottarenderer`) sets body text, heading scale, rhythm and inline marks from
-  the Brand Engine tokens (`--text-*`, `--font-body`, `--font-heading`, `--radius`, `--duration-*`). No `prose`
-  wrapper, no second system to keep in sync.
-- **Sanitised by construction.** Inline HTML from the editor is parsed by an allowlist tokenizer that knows exactly
-  the tags the inline tools emit. Unknown tags lose their markup and keep their text, scripts vanish, every URL goes
-  through `sanitizeUrl`. It touches no DOM API, so it runs in Workers too.
+  the Brand Engine tokens (`--text-*`, `--font-body`, `--font-heading`, `--radius`, `--duration-*`). No `prose` wrapper,
+  no second system to keep in sync.
+- **Sanitised by construction.** Inline HTML from the editor is parsed by an allowlist tokenizer that knows exactly the
+  tags the inline tools emit. Unknown tags lose their markup and keep their text, scripts vanish, every URL goes through
+  `sanitizeUrl`. It touches no DOM API, so it runs in Workers too.
 - **Every block addressable.** The root is `data-slot="renderer"`; each block sits in `.otta-block.otta-block--<type>`
-  with `data-slot="block" data-block="<type>"`; block parts are `.otta-<block>__<part>`. Theme CSS targets those,
-  never a Tailwind class.
+  with `data-slot="block" data-block="<type>"`; block parts are `.otta-<block>__<part>`. Theme CSS targets those, never
+  a Tailwind class.
 - **Nothing silently dropped.** Link previews (`linkTool`), annotations, list payloads from three Editor.js versions,
   embeds with their aspect ratio: all render.
 
@@ -23079,9 +22929,9 @@ galleries and media embeds open in a lightbox when the tree sits inside `MediaLi
 
 ### Props
 
-| Prop         | Type                                    | Description                                                                 |
-| ------------ | --------------------------------------- | --------------------------------------------------------------------------- |
-| `data`       | `{ blocks: Block[] }` (Editor.js output) | `time` and `version` are optional. `null` renders an empty root.           |
+| Prop         | Type                                     | Description                                                                 |
+| ------------ | ---------------------------------------- | --------------------------------------------------------------------------- |
+| `data`       | `{ blocks: Block[] }` (Editor.js output) | `time` and `version` are optional. `null` renders an empty root.            |
 | `renderers`  | `Record<type, BlockRenderer>`            | Defaults to `blockRenderers`. Spread it to add or replace a block.          |
 | `injections` | `{ index, component }[]`                 | Rendered before the block at `index`; an index past the end renders last.   |
 | `className`  | `string`                                 | Added to the root. `ottarenderer--sm` / `ottarenderer--lg` change the size. |
@@ -23099,11 +22949,11 @@ const Callout: BlockRenderer<{ text: string }> = ({ data }) => <aside className=
 <OttaRenderer data={content} renderers={{ ...blockRenderers, callout: Callout }} />;
 ```
 
-A renderer receives `{ data, block }`. Inside it, `Inline` renders the editor's rich text safely (`useInline` + `renderNodes`
-when you also need the plain text), `safeUrl` turns a stored URL into something fit for `src` or null, and
-`useHeadingId(block, text)` returns the document-unique id a heading was given. Heading ids are computed once from
-the block tree, including Layout columns, so they never depend on what React chooses to re-render. `BlockList` renders
-a block array with the built-in renderers when used outside an `OttaRenderer`.
+A renderer receives `{ data, block }`. Inside it, `Inline` renders the editor's rich text safely (`useInline` +
+`renderNodes` when you also need the plain text), `safeUrl` turns a stored URL into something fit for `src` or null, and
+`useHeadingId(block, text)` returns the document-unique id a heading was given. Heading ids are computed once from the
+block tree, including Layout columns, so they never depend on what React chooses to re-render. `BlockList` renders a
+block array with the built-in renderers when used outside an `OttaRenderer`.
 
 ### Injections
 
@@ -23125,41 +22975,41 @@ The string passes through `sanitizeBlockHtml` and the bare tags get the same typ
 
 ### Editor.js core and official tools
 
-| Type        | Renders                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------- |
-| `paragraph` | Rich text. An empty paragraph keeps its line so authored spacing survives.                              |
-| `header`    | `h1`–`h6` with a slug `id` (deep links, tables of contents) and a hover anchor.                          |
-| `list`      | All three payloads: nested-list, list v1 (strings), list v2 (`checklist` style, `start`, counter type). |
-| `checklist` | Read-only checklist; done items read as done, with a screen-reader prefix.                               |
-| `quote`     | Pull quote on a hairline rule with a micro-label attribution; left, centre or right.                    |
-| `delimiter` | Three quiet dots, or the 2.x tool's `dash` / `line` styles with their width.                            |
+| Type        | Renders                                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `paragraph` | Rich text. An empty paragraph keeps its line so authored spacing survives.                                                        |
+| `header`    | `h1`–`h6` with a slug `id` (deep links, tables of contents) and a hover anchor.                                                   |
+| `list`      | All three payloads: nested-list, list v1 (strings), list v2 (`checklist` style, `start`, counter type).                           |
+| `checklist` | Read-only checklist; done items read as done, with a screen-reader prefix.                                                        |
+| `quote`     | Pull quote on a hairline rule with a micro-label attribution; left, centre or right.                                              |
+| `delimiter` | Three quiet dots, or the 2.x tool's `dash` / `line` styles with their width.                                                      |
 | `table`     | Cells keep inline formatting, short rows are padded, the wrapper scrolls on narrow screens; `stretched` breaks out of the column. |
-| `code`      | Syntax highlighting via `@ottabase/ui-code-highlight`.                                                   |
-| `warning`   | Status callout: tint, icon well, title and message.                                                      |
-| `embed`     | Lazy iframe that reserves the stored aspect ratio, capped at 80vh.                                       |
-| `linkTool`  | Link preview card: image, title, description, host.                                                      |
-| `raw`       | Sanitised HTML with the HtmlRenderer typography.                                                         |
-| `image`     | Same renderer as `advancedImage`.                                                                        |
+| `code`      | Syntax highlighting via `@ottabase/ui-code-highlight`.                                                                            |
+| `warning`   | Status callout: tint, icon well, title and message.                                                                               |
+| `embed`     | Lazy iframe that reserves the stored aspect ratio, capped at 80vh.                                                                |
+| `linkTool`  | Link preview card: image, title, description, host.                                                                               |
+| `raw`       | Sanitised HTML with the HtmlRenderer typography.                                                                                  |
+| `image`     | Same renderer as `advancedImage`.                                                                                                 |
 
 ### `@ottabase/ottaeditor` tools
 
-| Type            | Renders                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------- |
+| Type            | Renders                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `advancedImage` | Caption, border, background, featured, aspect ratio, stretched (breaks out of the column symmetrically), link; intrinsic size reserved, lazy-loaded |
-| `beforeAfter`   | Drag-to-compare slider, horizontal or vertical, cover or contain                                 |
-| `cta`           | Button with four styles and alignment, plus `Action` structured data                            |
-| `disclosure`    | AI-use and sponsored-content notices                                                             |
-| `faq`           | Accordion or flat Q&A with `FAQPage` structured data                                            |
-| `imageHotspots` | Numbered markers with notes                                                                      |
-| `layout`        | Two or three columns in six presets; nested blocks share the document's renderers and ids       |
-| `map`           | OpenStreetMap or Google Maps embed                                                               |
-| `mediaEmbed`    | Video, audio, PDF, document via `MediaPreview`                                                   |
-| `mediaGallery`  | Five layouts: balanced, featured, masonry, filmstrip, mosaic                                     |
-| `references`    | Numbered or footnote bibliography                                                                |
-| `review`        | Rating, pros and cons, verdict, `Review` structured data                                         |
-| `spoiler`       | Blurred until clicked, still indexable                                                           |
-| `steps`         | Numbered vertical timeline                                                                       |
-| `testimonial`   | Five variants with avatar, stars and `Review` structured data                                    |
+| `beforeAfter`   | Drag-to-compare slider, horizontal or vertical, cover or contain                                                                                    |
+| `cta`           | Button with four styles and alignment, plus `Action` structured data                                                                                |
+| `disclosure`    | AI-use and sponsored-content notices                                                                                                                |
+| `faq`           | Accordion or flat Q&A with `FAQPage` structured data                                                                                                |
+| `imageHotspots` | Numbered markers with notes                                                                                                                         |
+| `layout`        | Two or three columns in six presets; nested blocks share the document's renderers and ids                                                           |
+| `map`           | OpenStreetMap or Google Maps embed                                                                                                                  |
+| `mediaEmbed`    | Video, audio, PDF, document via `MediaPreview`                                                                                                      |
+| `mediaGallery`  | Five layouts: balanced, featured, masonry, filmstrip, mosaic                                                                                        |
+| `references`    | Numbered or footnote bibliography                                                                                                                   |
+| `review`        | Rating, pros and cons, verdict, `Review` structured data                                                                                            |
+| `spoiler`       | Blurred until clicked, still indexable                                                                                                              |
+| `steps`         | Numbered vertical timeline                                                                                                                          |
+| `testimonial`   | Five variants with avatar, stars and `Review` structured data                                                                                       |
 
 Unknown block types render nothing.
 
@@ -23168,18 +23018,19 @@ Unknown block types render nothing.
 Paragraphs, headings, list items, table cells, captions and quotes carry the editor's inline HTML. `Inline` turns it
 into React:
 
-| Stored markup                                                  | Rendered as                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------------------ |
-| `<b>`, `<i>`                                                   | `<strong>`, `<em>`                                           |
-| `<u class="cdx-underline">`, `<s>`, `<sub>`, `<sup>`, `<kbd>`  | the same element, with the renderer's class where it styles |
-| `<a href target>`                                              | `.otta-link`; `_blank` gets `rel="noopener noreferrer"`      |
-| `<code class="inline-code">`                                   | `.otta-inline-code`                                          |
-| `<mark class="cdx-marker">`                                    | `.otta-mark`                                                 |
-| `<span class="cdx-annotation" data-title data-annotation>`     | `.otta-annotation`: dotted underline, note on hover, focus or tap |
-| `<br>`                                                         | line break                                                   |
+| Stored markup                                                 | Rendered as                                                       |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `<b>`, `<i>`                                                  | `<strong>`, `<em>`                                                |
+| `<u class="cdx-underline">`, `<s>`, `<sub>`, `<sup>`, `<kbd>` | the same element, with the renderer's class where it styles       |
+| `<a href target>`                                             | `.otta-link`; `_blank` gets `rel="noopener noreferrer"`           |
+| `<code class="inline-code">`                                  | `.otta-inline-code`                                               |
+| `<mark class="cdx-marker">`                                   | `.otta-mark`                                                      |
+| `<span class="cdx-annotation" data-title data-annotation>`    | `.otta-annotation`: dotted underline, note on hover, focus or tap |
+| `<span class="cdx-spoiler">`                                  | `.otta-spoiler`: blurred chip; click, tap or Enter reveals and hides |
+| `<br>`                                                        | line break                                                        |
 
-Anything else is dropped as markup and kept as text; `script`, `style`, `iframe`, `object`, `svg` and `math` are
-dropped with their contents. Entities (`&amp;`, `&nbsp;`, `&#x263A;`…) are decoded. `parseInline`, `renderInline`,
+Anything else is dropped as markup and kept as text; `script`, `style`, `iframe`, `object`, `svg` and `math` are dropped
+with their contents. Entities (`&amp;`, `&nbsp;`, `&#x263A;`…) are decoded. `parseInline`, `renderInline`,
 `inlineToText` and `decodeEntities` are exported for custom blocks.
 
 ## Theming
@@ -23201,8 +23052,8 @@ knobs live on `.ottarenderer` and can be overridden per surface:
 ```
 
 Vertical rhythm is the block wrapper's job (`.otta-block + .otta-block`): headings open a section with more air,
-paragraph after paragraph reads tighter, media breathes more. Blocks never set outer margins. Heading letter-spacing
-and transform honour the Brand Engine's `--typography-heading-*` tokens. Reduced-motion preferences disable every
+paragraph after paragraph reads tighter, media breathes more. Blocks never set outer margins. Heading letter-spacing and
+transform honour the Brand Engine's `--typography-heading-*` tokens. Reduced-motion preferences disable every
 transition.
 
 ## Testing

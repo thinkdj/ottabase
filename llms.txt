@@ -67,7 +67,7 @@
 - [@ottabase/ottaai](packages/ottaai/README.md): Tenant BYOK for AI: a user's key → an org's key → the platform default → no client. Encrypted at rest, resolved deterministically, gated server-side, and shipped with the settings UI.
 - [@ottabase/ottablog](packages/ottablog/README.md): A comprehensive blog and content management system for Ottabase apps. Built on the fat model pattern with OttaORM.
 - [@ottabase/ottadate](packages/ottadate/README.md): Framework-agnostic date picker library with range, datetime, and fuzzy date support. Works with any framework or vanilla JS — no React, Vue, or Angular required.
-- [@ottabase/ottaeditor](packages/ottaeditor/README.md): EditorJS wrapper with 30 plugins (13 EditorJS + 17 custom blocks), type-safe plugin selection, undo/redo, and JSON/Markdown export.
+- [@ottabase/ottaeditor](packages/ottaeditor/README.md): Editor.js, wired for Ottabase: one plugin list, undo/redo, JSON and Markdown export, and twenty custom blocks that edit in a shared kit and preview through @ottabase/ottarenderer, so the editor shows…
 - [@ottabase/ottalanding](packages/ottalanding/README.md): Database-backed landing sites for Ottabase apps. The whole marketing site is typed content in D1: site settings, navigation, footer and every page's sections. It is edited in otta-web's admin and…
 - [@ottabase/ottalayout](packages/ottalayout/README.md): Layout system for Ottabase — types, presets, path resolver, validators, utility classes, and React slots.
 - [@ottabase/ottamenu](packages/ottamenu/README.md): Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in render types, zero persistence.

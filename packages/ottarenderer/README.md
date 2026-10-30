@@ -125,15 +125,16 @@ Unknown block types render nothing.
 Paragraphs, headings, list items, table cells, captions and quotes carry the editor's inline HTML. `Inline` turns it
 into React:
 
-| Stored markup                                                 | Rendered as                                                       |
-| ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `<b>`, `<i>`                                                  | `<strong>`, `<em>`                                                |
-| `<u class="cdx-underline">`, `<s>`, `<sub>`, `<sup>`, `<kbd>` | the same element, with the renderer's class where it styles       |
-| `<a href target>`                                             | `.otta-link`; `_blank` gets `rel="noopener noreferrer"`           |
-| `<code class="inline-code">`                                  | `.otta-inline-code`                                               |
-| `<mark class="cdx-marker">`                                   | `.otta-mark`                                                      |
-| `<span class="cdx-annotation" data-title data-annotation>`    | `.otta-annotation`: dotted underline, note on hover, focus or tap |
-| `<br>`                                                        | line break                                                        |
+| Stored markup                                                 | Rendered as                                                          |
+| ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `<b>`, `<i>`                                                  | `<strong>`, `<em>`                                                   |
+| `<u class="cdx-underline">`, `<s>`, `<sub>`, `<sup>`, `<kbd>` | the same element, with the renderer's class where it styles          |
+| `<a href target>`                                             | `.otta-link`; `_blank` gets `rel="noopener noreferrer"`              |
+| `<code class="inline-code">`                                  | `.otta-inline-code`                                                  |
+| `<mark class="cdx-marker">`                                   | `.otta-mark`                                                         |
+| `<span class="cdx-annotation" data-title data-annotation>`    | `.otta-annotation`: dotted underline, note on hover, focus or tap    |
+| `<span class="cdx-spoiler">`                                  | `.otta-spoiler`: blurred chip; click, tap or Enter reveals and hides |
+| `<br>`                                                        | line break                                                           |
 
 Anything else is dropped as markup and kept as text; `script`, `style`, `iframe`, `object`, `svg` and `math` are dropped
 with their contents. Entities (`&amp;`, `&nbsp;`, `&#x263A;`…) are decoded. `parseInline`, `renderInline`,
