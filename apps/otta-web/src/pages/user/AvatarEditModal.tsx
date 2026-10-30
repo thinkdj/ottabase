@@ -1,6 +1,6 @@
 /**
  * Avatar Edit Modal
- * Shows cropper directly – drop or click the empty stage, or Replace on the photo.
+ * Shows cropper directly – drop or click the empty stage, or Replace from the toolbar.
  * Supports pre-loading the current avatar (URL, base64, or blob).
  */
 
@@ -66,10 +66,11 @@ export function AvatarEditModal({
             cropperRef.current = new Cropper(containerRef.current, {
                 aspectRatio: 1,
                 shape: 'circle',
-                maxHeight: 320,
-                transitions: true,
+                height: 320,
                 aspectPresets: false,
-                // Fires when any image is loaded (file picker or pre-load URL)
+                // Avatars never need more than this; the crop is downscaled on export
+                maxOutput: 512,
+                // Fires when any image is loaded (file picker, drop or pre-load URL)
                 onImageLoad: () => setHasLoadedImage(true),
             });
 

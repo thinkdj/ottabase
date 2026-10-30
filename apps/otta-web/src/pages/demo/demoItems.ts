@@ -104,7 +104,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'Image Cropper',
         title: 'Image Cropper',
         description:
-            'Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder. PNG/JPEG. Zero React. ~2–3 KB gzipped.',
+            'Fixed-viewfinder image cropper: pan, pinch, zoom, rotate, straighten and flip under a frame that fills the stage. Rect or circle, any aspect. Zero React.',
         buttonVariant: 'outline',
     },
     {

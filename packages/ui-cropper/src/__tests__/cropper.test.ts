@@ -1,224 +1,169 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Cropper } from '../cropper';
 
+/** An Image that "decodes" synchronously on src assignment with a fixed natural size. */
+function stubImage(width: number, height: number, fail = false) {
+    class FakeImage {
+        naturalWidth = width;
+        naturalHeight = height;
+        crossOrigin = '';
+        onload: null | (() => void) = null;
+        onerror: null | (() => void) = null;
+        set src(_v: string) {
+            queueMicrotask(() => (fail ? this.onerror?.() : this.onload?.()));
+        }
+    }
+    vi.stubGlobal('Image', FakeImage);
+}
+
+const tick = () => new Promise<void>((r) => queueMicrotask(r));
+
+let el: HTMLDivElement;
+beforeEach(() => {
+    el = document.createElement('div');
+    document.body.appendChild(el);
+    vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:fake', revokeObjectURL: () => undefined });
+});
+afterEach(() => {
+    el.remove();
+    vi.unstubAllGlobals();
+});
+
 describe('Cropper', () => {
-    it('exports Cropper class', () => {
-        expect(Cropper).toBeDefined();
-        expect(typeof Cropper).toBe('function');
-    });
-
-    it('creates instance and mounts to container', () => {
-        const el = document.createElement('div');
-        document.body.appendChild(el);
-        const c = new Cropper(el, { aspectRatio: 1 });
-        const input = el.querySelector('input[type="file"]') as HTMLInputElement;
-        expect(input).toBeTruthy();
-        const empty = el.querySelector('.ottacropper-empty-state') as HTMLButtonElement;
-        expect(empty).toBeTruthy();
-        expect(empty.textContent).toContain('Drop a photo');
-        expect(empty.title).toBe('Choose image');
-        expect(el.querySelector('.ottacropper-filename')).toBeTruthy();
-        expect(el.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Image crop adjustments');
-        expect(el.querySelector('canvas')).toBeTruthy();
-        expect(el.querySelector('.ottacropper-zoom-range')).toBeTruthy();
-        c.destroy();
-        document.body.removeChild(el);
-    });
-
-    it('accepts options', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { shape: 'circle', aspectRatio: 16 / 9 });
-        expect(c).toBeDefined();
-        c.destroy();
-    });
-
-    it('destroy clears container', () => {
-        const el = document.createElement('div');
+    it('mounts a stage, an empty state and a disabled toolbar', () => {
         const c = new Cropper(el);
+        expect(el.classList.contains('ottacropper')).toBe(true);
+        expect(el.classList.contains('ottacropper--empty')).toBe(true);
+        expect(el.querySelector('[data-slot="cropper-stage"]')).toBeTruthy();
+        expect(el.querySelector('[data-slot="cropper-empty"]')?.textContent).toContain('Drop a photo');
+        expect(el.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Crop tools');
+        expect(el.querySelectorAll('[role="radio"]').length).toBe(4);
+        expect((el.querySelector('button[aria-label="Rotate right"]') as HTMLButtonElement).disabled).toBe(true);
+        expect((el.querySelector('input[type="range"]') as HTMLInputElement).disabled).toBe(true);
+        expect(c.hasImage()).toBe(false);
+        c.destroy();
+    });
+
+    it('hides presets when asked and shows a straighten slider when asked', () => {
+        const c = new Cropper(el, { aspectPresets: false, straighten: true });
+        expect(el.querySelector('[role="radiogroup"]')).toBeNull();
+        expect(el.querySelector('input[aria-label="Straighten"]')).toBeTruthy();
+        c.destroy();
+    });
+
+    it('loads a photo, enables the toolbar and reports a covering home state', async () => {
+        stubImage(1200, 800);
+        const onImageLoad = vi.fn();
+        const onChange = vi.fn();
+        const c = new Cropper(el, { aspectRatio: 1, onImageLoad, onChange, transitions: false });
+        c.loadFromUrl('https://example.com/photo.jpg');
+        await tick();
+        expect(c.hasImage()).toBe(true);
+        expect(el.classList.contains('ottacropper--empty')).toBe(false);
+        expect((el.querySelector('button[aria-label="Rotate right"]') as HTMLButtonElement).disabled).toBe(false);
+        expect(onImageLoad).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenCalled();
+        const s = c.getState();
+        expect(s.zoom).toBe(1);
+        expect(s.rotation).toBe(0);
+        expect(s.dirty).toBe(false);
+        expect(s.aspectRatio).toBeCloseTo(1);
+        // 1:1 frame over a 1200x800 photo at cover: the output is the photo's height squared
+        expect(s.output).toEqual({ width: 800, height: 800 });
+        c.destroy();
+    });
+
+    it('zooms, rotates, flips and resets with correct state', async () => {
+        stubImage(1200, 800);
+        const c = new Cropper(el, { transitions: false });
+        c.loadFromUrl('https://example.com/photo.jpg');
+        await tick();
+        c.setZoom(2);
+        expect(c.getZoom()).toBeCloseTo(2);
+        expect(c.getState().output).toEqual({ width: 400, height: 400 });
+        c.setZoom(99);
+        expect(c.getZoom()).toBe(4);
+        c.rotate(90);
+        expect(c.getState().rotation).toBe(90);
+        c.rotate(-90);
+        c.rotate(-90);
+        expect(c.getState().rotation).toBe(270);
+        c.flipHorizontal();
+        expect(c.getState().flipX).toBe(true);
+        expect(el.querySelector('button[aria-label="Flip horizontal"]')?.getAttribute('aria-pressed')).toBe('true');
+        // a mirrored photo still rotates clockwise on screen
+        c.rotate(90);
+        expect(c.getState().rotation).toBe(0);
+        expect(c.getState().dirty).toBe(true);
+        expect((el.querySelector('button[aria-label="Reset"]') as HTMLButtonElement).hidden).toBe(false);
+        c.reset();
+        const s = c.getState();
+        expect(s.dirty).toBe(false);
+        expect(s.zoom).toBe(1);
+        expect(s.flipX).toBe(false);
+        expect((el.querySelector('button[aria-label="Reset"]') as HTMLButtonElement).hidden).toBe(true);
+        c.destroy();
+    });
+
+    it('switches aspect from the toolbar and marks the preset checked', async () => {
+        stubImage(1200, 800);
+        const c = new Cropper(el, { transitions: false });
+        c.loadFromUrl('https://example.com/photo.jpg');
+        await tick();
+        const wide = [...el.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find(
+            (b) => b.textContent === '16:9',
+        )!;
+        wide.click();
+        expect(wide.getAttribute('aria-checked')).toBe('true');
+        expect(c.getState().aspectRatio).toBeCloseTo(16 / 9);
+        const free = [...el.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find(
+            (b) => b.textContent === 'Free',
+        )!;
+        free.click();
+        expect(el.classList.contains('ottacropper--free')).toBe(true);
+        c.destroy();
+    });
+
+    it('straightens within -45..45 and keeps the frame covered', async () => {
+        stubImage(1200, 800);
+        const c = new Cropper(el, { straighten: true, transitions: false });
+        c.loadFromUrl('https://example.com/photo.jpg');
+        await tick();
+        c.setStraighten(20);
+        expect(c.getState().straighten).toBe(20);
+        expect(c.getState().zoom).toBe(1);
+        expect(c.getState().output.width).toBeLessThan(800);
+        c.setStraighten(90);
+        expect(c.getState().straighten).toBe(45);
+        c.destroy();
+    });
+
+    it('rejects a non-image file with a hint and onError', () => {
+        const onError = vi.fn();
+        const c = new Cropper(el, { onError });
+        c.loadFromFile(new File(['x'], 'notes.txt', { type: 'text/plain' }));
+        expect(onError).toHaveBeenCalledWith("That file isn't an image");
+        expect(el.querySelector('.ottacropper-empty--error')?.textContent).toContain("isn't an image");
+        c.destroy();
+    });
+
+    it('reports a decode failure without leaving the empty state', async () => {
+        stubImage(0, 0, true);
+        const onError = vi.fn();
+        const c = new Cropper(el, { onError });
+        c.loadFromFile(new File(['x'], 'broken.png', { type: 'image/png' }));
+        await tick();
+        expect(onError).toHaveBeenCalledWith("Couldn't open that image");
+        expect(c.hasImage()).toBe(false);
+        c.destroy();
+    });
+
+    it('getBlob refuses without a photo and destroy clears the container', async () => {
+        const c = new Cropper(el);
+        await expect(c.getBlob()).rejects.toThrow('No image loaded');
         c.destroy();
         expect(el.innerHTML).toBe('');
-    });
-
-    it('accepts zoom options', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, {
-            zoom: 1.5,
-            minZoom: 0.5,
-            maxZoom: 3,
-        });
-        expect(c.getZoom()).toBe(1.5);
-        c.destroy();
-    });
-
-    it('zoom methods work correctly', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { zoom: 1, transitions: false });
-        c.zoomIn();
-        expect(c.getZoom()).toBeCloseTo(1.2, 1);
-        c.zoomOut();
-        expect(c.getZoom()).toBeCloseTo(1, 1);
-        c.destroy();
-    });
-
-    it('setZoom respects min/max bounds', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { minZoom: 0.5, maxZoom: 3, transitions: false });
-        c.setZoom(5);
-        expect(c.getZoom()).toBe(3);
-        c.setZoom(0.1);
-        expect(c.getZoom()).toBe(0.5);
-        c.destroy();
-    });
-
-    it('accepts transition options', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, {
-            transitions: true,
-            transitionDuration: 500,
-        });
-        expect(c).toBeDefined();
-        c.destroy();
-    });
-
-    it('has all public methods', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el);
-        expect(typeof c.flipHorizontal).toBe('function');
-        expect(typeof c.flipVertical).toBe('function');
-        expect(typeof c.rotate).toBe('function');
-        expect(typeof c.zoomIn).toBe('function');
-        expect(typeof c.zoomOut).toBe('function');
-        expect(typeof c.setZoom).toBe('function');
-        expect(typeof c.getZoom).toBe('function');
-        expect(typeof c.setAspectRatio).toBe('function');
-        expect(typeof c.setShape).toBe('function');
-        expect(typeof c.setMaxHeight).toBe('function');
-        expect(typeof c.setPresetsVisible).toBe('function');
-        expect(typeof c.setTransitions).toBe('function');
-        expect(typeof c.setTransitionDuration).toBe('function');
-        expect(typeof c.getBlob).toBe('function');
-        expect(typeof c.destroy).toBe('function');
-        c.destroy();
-    });
-
-    it('setTransitions and setTransitionDuration update options without resetting image', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { transitions: true, transitionDuration: 300 });
-        // Should not throw and should not require image to be loaded
-        expect(() => c.setTransitions(false)).not.toThrow();
-        expect(() => c.setTransitionDuration(500)).not.toThrow();
-        c.destroy();
-    });
-
-    it('accepts freeform aspect ratio (null)', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { aspectRatio: null });
-        expect(c).toBeDefined();
-        c.destroy();
-    });
-
-    it('can switch to freeform aspect ratio', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { aspectRatio: 1 });
-        c.setAspectRatio(null);
-        expect(c).toBeDefined();
-        c.destroy();
-    });
-
-    it('has loadFromUrl method for URL/base64 images', () => {
-        const el = document.createElement('div');
-        document.body.appendChild(el);
-        const c = new Cropper(el);
-        expect(typeof c.loadFromUrl).toBe('function');
-        // Should not throw when called with a data URI
-        expect(() => c.loadFromUrl('data:image/png;base64,iVBOR')).not.toThrow();
-        // Should not throw when called with empty string
-        expect(() => c.loadFromUrl('')).not.toThrow();
-        c.destroy();
-        document.body.removeChild(el);
-    });
-
-    it('updates empty state to stage overlay after an image loads', () => {
-        const el = document.createElement('div');
-        document.body.appendChild(el);
-        const c = new Cropper(el);
-
-        const empty = el.querySelector('.ottacropper-empty-state') as HTMLButtonElement | null;
-        expect(empty).toBeTruthy();
-        expect(empty?.textContent).toContain('Drop a photo');
-
-        c.loadFromUrl('https://example.com/avatar.png');
-        (c as any).render = () => undefined;
-        const img = (c as any).img as HTMLImageElement;
-        Object.defineProperty(img, 'naturalWidth', { value: 200, configurable: true });
-        Object.defineProperty(img, 'naturalHeight', { value: 200, configurable: true });
-        img.onload?.(new Event('load'));
-
-        expect(el.querySelector('.ottacropper-empty-state--hidden')).toBeTruthy();
-        expect(el.querySelector('.ottacropper-viewport--visible')).toBeTruthy();
-        expect(el.querySelector('.ottacropper-toolbar--visible')).toBeTruthy();
-        const replaceBtn = el.querySelector('.ottacropper-replace-btn') as HTMLButtonElement | null;
-        expect(replaceBtn).toBeTruthy();
-        expect(replaceBtn?.textContent).toContain('Replace');
-        expect(el.querySelector('.ottacropper-filename')?.textContent).toBe('avatar.png');
-
-        c.destroy();
-        document.body.removeChild(el);
-    });
-
-    it('rejects non-image files with an error hint', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el);
-        const file = new File(['nope'], 'notes.txt', { type: 'text/plain' });
-        c.loadFromFile(file);
-        expect(el.querySelector('.ottacropper-empty-state--error')).toBeTruthy();
-        expect(el.querySelector('.ottacropper-empty-state')?.textContent).toContain('Use a PNG or JPEG');
-        c.destroy();
-    });
-
-    it('accepts onImageLoad callback option', () => {
-        const el = document.createElement('div');
-        let called = false;
-        const c = new Cropper(el, {
-            onImageLoad: () => {
-                called = true;
-            },
-        });
-        // Callback is not called until an image actually loads
-        expect(called).toBe(false);
-        expect(typeof c.loadFromUrl).toBe('function');
-        c.destroy();
-    });
-
-    it('exposes pressed state for aspect and flip controls', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, { transitions: false });
-
-        expect(el.querySelector('.ottacropper-preset--active')?.getAttribute('aria-pressed')).toBe('true');
-        const flipHorizontal = el.querySelector('button[aria-label="Flip horizontal"]') as HTMLButtonElement;
-        expect(flipHorizontal.getAttribute('aria-pressed')).toBe('false');
-
-        c.flipHorizontal();
-
-        expect(flipHorizontal.getAttribute('aria-pressed')).toBe('true');
-        expect(flipHorizontal.classList.contains('ottacropper-btn--active')).toBe(true);
-        c.destroy();
-    });
-
-    it('zoom respects maxHeight constraint', () => {
-        const el = document.createElement('div');
-        const c = new Cropper(el, {
-            zoom: 1,
-            minZoom: 0.5,
-            maxZoom: 5,
-            maxHeight: 400,
-            transitions: false,
-        });
-        // Even if we try to zoom to 5x, it should be clamped to what fits within maxHeight
-        c.setZoom(5);
-        // The actual zoom should be less than 5 if maxHeight constraint kicks in
-        // Without an image loaded, zoom should still respect maxZoom bounds
-        expect(c.getZoom()).toBeLessThanOrEqual(5);
-        c.destroy();
+        expect(el.className).toBe('');
+        expect(el.getAttribute('role')).toBeNull();
     });
 });

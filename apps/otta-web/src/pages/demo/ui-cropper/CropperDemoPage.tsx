@@ -1,10 +1,10 @@
 /**
  * Cropper Demo Page – @ottabase/ui-cropper
- * Vanilla image cropper: crop, flip, rotate. Square/rect/circle viewfinder.
- * All capabilities exposed via realtime config.
+ * Fixed-viewfinder cropper: the frame fills the stage, the photo moves underneath.
+ * Every option is exposed; runtime ones apply live, construction ones remount.
  */
-import type { CropShape } from '@ottabase/ui-cropper';
-import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/ui-cropper';
+import type { CropperState, CropShape } from '@ottabase/ui-cropper';
+import { Cropper } from '@ottabase/ui-cropper';
 import {
     Button,
     Card,
@@ -18,23 +18,20 @@ import {
     Slider,
     Switch,
 } from '@ottabase/ui';
-import { IconCircle, IconDownload, IconRectangle } from '@tabler/icons-react';
+import { Circle, Download, RectangleHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
-// Styles are imported once at the app level or here
 import '@ottabase/ui-cropper/styles.css';
 
 const ASPECT_OPTIONS: { label: string; value: number | null }[] = [
-    { label: 'Freeform', value: null },
+    { label: 'Free (resizable frame)', value: null },
     { label: '1:1 (square)', value: 1 },
     { label: '4:3', value: 4 / 3 },
     { label: '16:9', value: 16 / 9 },
+    { label: '3:4 (portrait)', value: 3 / 4 },
 ];
 
-const findAspectValue = (v: number | null) => {
-    if (v === null) return null;
-    return ASPECT_OPTIONS.find((o) => o.value !== null && Math.abs(o.value - v) < 1e-4)?.value ?? 1;
-};
+const aspectKey = (v: number | null) => (v === null ? 'null' : v.toFixed(4));
 
 export function CropperDemoPage() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -43,73 +40,58 @@ export function CropperDemoPage() {
 
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [previewFormat, setPreviewFormat] = useState<'image/jpeg' | 'image/png'>('image/jpeg');
+    const [state, setState] = useState<CropperState | null>(null);
+
+    // Live options
     const [shape, setShape] = useState<CropShape>('rect');
     const [aspectRatio, setAspectRatio] = useState<number | null>(1);
+    const [height, setHeight] = useState(360);
+    // Construction options (remount)
     const [presetsVisible, setPresetsVisible] = useState(true);
-    const [maxHeight, setMaxHeight] = useState(400);
-    const [zoom, setZoom] = useState(1);
+    const [straighten, setStraighten] = useState(true);
     const [transitions, setTransitions] = useState(true);
-    const [transitionDuration, setTransitionDuration] = useState(300);
+    const [maxOutput, setMaxOutput] = useState(2048);
+
+    // Live options are read through a ref at mount so changing them never remounts.
+    const liveRef = useRef({ shape, aspectRatio, height });
+    liveRef.current = { shape, aspectRatio, height };
 
     useEffect(() => {
         if (!containerRef.current) return;
         cropperRef.current = new Cropper(containerRef.current, {
-            aspectRatio,
-            shape,
-            maxHeight,
-            aspectPresets: presetsVisible ? DEFAULT_ASPECT_PRESETS : false,
-            zoom,
+            ...liveRef.current,
+            aspectPresets: presetsVisible ? undefined : false,
+            straighten,
             transitions,
-            transitionDuration,
+            maxOutput,
+            onChange: setState,
         });
         return () => {
             cropperRef.current?.destroy();
             cropperRef.current = null;
-            if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+            setState(null);
         };
-    }, []);
+    }, [presetsVisible, straighten, transitions, maxOutput]);
 
-    // Realtime config sync
     useEffect(() => {
-        const c = cropperRef.current;
-        if (!c) return;
-        c.setShape(shape);
+        cropperRef.current?.setShape(shape);
     }, [shape]);
-
     useEffect(() => {
-        const c = cropperRef.current;
-        if (!c) return;
-        c.setAspectRatio(aspectRatio);
+        cropperRef.current?.setAspectRatio(aspectRatio);
     }, [aspectRatio]);
-
     useEffect(() => {
-        const c = cropperRef.current;
-        if (!c) return;
-        c.setPresetsVisible(presetsVisible);
-    }, [presetsVisible]);
-
-    useEffect(() => {
-        const c = cropperRef.current;
-        if (!c) return;
-        c.setMaxHeight(maxHeight);
-    }, [maxHeight]);
-
-    // Sync zoom from cropper on user interaction (wheel zoom)
-    useEffect(() => {
-        const c = cropperRef.current;
-        if (!c) return;
-        const interval = setInterval(() => {
-            const currentZoom = c.getZoom();
-            if (Math.abs(currentZoom - zoom) > 0.01) {
-                setZoom(currentZoom);
-            }
-        }, 100);
-        return () => clearInterval(interval);
-    }, [zoom]);
+        cropperRef.current?.setHeight(height);
+    }, [height]);
+    useEffect(
+        () => () => {
+            if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+        },
+        [],
+    );
 
     const handleExport = async () => {
         const cropper = cropperRef.current;
-        if (!cropper) return;
+        if (!cropper?.hasImage()) return;
         const format = shape === 'circle' ? 'image/png' : 'image/jpeg';
         try {
             const blob = await cropper.getBlob(format, 0.92);
@@ -127,31 +109,44 @@ export function CropperDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="Image Cropper"
-                description="Advanced vanilla cropper: crop, flip, rotate, zoom with smooth transitions. Drop or click to load, drag to move, resize with handles. Zero React dependency."
+                description="The frame fills the stage and the photo moves underneath it: drag to pan, pinch or scroll to zoom, rotate, straighten and flip from the toolbar. Drop a photo anywhere to begin. Zero React dependency."
             />
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-[0.9375rem] font-semibold">Cropper</CardTitle>
                         <CardDescription>
-                            Drop or click to load a PNG/JPEG. Drag to move, resize with handles, zoom with the slider or
-                            wheel. Flip and rotate from the toolbar.
+                            Arrow keys nudge, Shift for 10px. <kbd>+</kbd>/<kbd>-</kbd> zoom, <kbd>R</kbd> rotates
+                            (Shift for the other way), <kbd>0</kbd> or double-click resets.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div ref={containerRef} />
-                        <Button onClick={handleExport} className="gap-2">
-                            <IconDownload className="h-4 w-4" />
-                            Export {shape === 'circle' ? 'PNG' : 'JPEG'}
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Button onClick={handleExport} className="gap-2" disabled={!state?.hasImage}>
+                                <Download className="h-4 w-4" />
+                                Export {shape === 'circle' ? 'PNG' : 'JPEG'}
+                            </Button>
+                            {state?.hasImage && (
+                                <span className="text-sm text-muted-foreground tabular-nums">
+                                    {state.output.width} × {state.output.height} px · zoom {state.zoom.toFixed(2)}×
+                                    {state.rotation ? ` · ${state.rotation}°` : ''}
+                                    {state.straighten ? ` ${state.straighten > 0 ? '+' : ''}${state.straighten}°` : ''}
+                                    {state.flipX ? ' · flipped ↔' : ''}
+                                    {state.flipY ? ' · flipped ↕' : ''}
+                                </span>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-[0.9375rem] font-semibold">Realtime Config</CardTitle>
-                        <CardDescription>All capabilities – change and see effect immediately</CardDescription>
+                        <CardTitle className="text-[0.9375rem] font-semibold">Options</CardTitle>
+                        <CardDescription>
+                            Shape, aspect and height apply live. The rest remount the cropper.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-2">
@@ -163,7 +158,7 @@ export function CropperDemoPage() {
                                     className="gap-2"
                                     onClick={() => setShape('rect')}
                                 >
-                                    <IconRectangle className="h-4 w-4" />
+                                    <RectangleHorizontal className="h-4 w-4" />
                                     Rect
                                 </Button>
                                 <Button
@@ -172,7 +167,7 @@ export function CropperDemoPage() {
                                     className="gap-2"
                                     onClick={() => setShape('circle')}
                                 >
-                                    <IconCircle className="h-4 w-4" />
+                                    <Circle className="h-4 w-4" />
                                     Circle
                                 </Button>
                             </div>
@@ -181,77 +176,58 @@ export function CropperDemoPage() {
                         <div className="space-y-2">
                             <Label>Aspect ratio</Label>
                             <NativeSelect
-                                value={aspectRatio === null ? 'null' : String(findAspectValue(aspectRatio))}
+                                value={aspectKey(aspectRatio)}
                                 onChange={(e) => {
-                                    const val = e.target.value === 'null' ? null : Number(e.target.value);
-                                    setAspectRatio(val);
+                                    const picked = ASPECT_OPTIONS.find((o) => aspectKey(o.value) === e.target.value);
+                                    setAspectRatio(picked ? picked.value : 1);
                                 }}
                             >
                                 {ASPECT_OPTIONS.map((o) => (
-                                    <NativeSelectOption
-                                        key={o.label}
-                                        value={o.value === null ? 'null' : String(o.value)}
-                                    >
+                                    <NativeSelectOption key={o.label} value={aspectKey(o.value)}>
                                         {o.label}
                                     </NativeSelectOption>
                                 ))}
                             </NativeSelect>
                         </div>
 
+                        <div className="space-y-2">
+                            <Label>Stage height: {height}px</Label>
+                            <Slider
+                                value={[height]}
+                                onValueChange={([v]) => setHeight(v ?? 360)}
+                                min={200}
+                                max={640}
+                                step={20}
+                            />
+                        </div>
+
                         <div className="flex items-center justify-between gap-4">
-                            <Label htmlFor="presets">Presets visible</Label>
+                            <Label htmlFor="presets">Aspect presets</Label>
                             <Switch id="presets" checked={presetsVisible} onCheckedChange={setPresetsVisible} />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Max height: {maxHeight}px</Label>
-                            <Slider
-                                value={[maxHeight]}
-                                onValueChange={([v]) => setMaxHeight(v ?? 400)}
-                                min={200}
-                                max={800}
-                                step={50}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Zoom: {zoom.toFixed(2)}x</Label>
-                            <Slider
-                                value={[zoom]}
-                                onValueChange={([v]) => {
-                                    setZoom(v ?? 1);
-                                    cropperRef.current?.setZoom(v ?? 1);
-                                }}
-                                min={0.5}
-                                max={3}
-                                step={0.1}
-                            />
+                        <div className="flex items-center justify-between gap-4">
+                            <Label htmlFor="straighten">Straighten slider</Label>
+                            <Switch id="straighten" checked={straighten} onCheckedChange={setStraighten} />
                         </div>
 
                         <div className="flex items-center justify-between gap-4">
                             <Label htmlFor="transitions">Smooth transitions</Label>
-                            <Switch
-                                id="transitions"
-                                checked={transitions}
-                                onCheckedChange={(checked) => {
-                                    setTransitions(checked);
-                                    cropperRef.current?.setTransitions(checked);
-                                }}
-                            />
+                            <Switch id="transitions" checked={transitions} onCheckedChange={setTransitions} />
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Transition duration: {transitionDuration}ms</Label>
-                            <Slider
-                                value={[transitionDuration]}
-                                onValueChange={([v]) => {
-                                    setTransitionDuration(v ?? 300);
-                                    cropperRef.current?.setTransitionDuration(v ?? 300);
-                                }}
-                                min={100}
-                                max={1000}
-                                step={50}
-                            />
+                            <Label>Max output (longest side)</Label>
+                            <NativeSelect
+                                value={String(maxOutput)}
+                                onChange={(e) => setMaxOutput(Number(e.target.value))}
+                            >
+                                {[512, 1024, 2048, 4096].map((n) => (
+                                    <NativeSelectOption key={n} value={String(n)}>
+                                        {n} px
+                                    </NativeSelectOption>
+                                ))}
+                            </NativeSelect>
                         </div>
                     </CardContent>
                 </Card>

@@ -161,7 +161,7 @@ ottabase/
 │   ├── ottaupload/       # File uploads (R2, CF Images)
 │   ├── ottarenderer/     # EditorJS block renderer
 │   ├── ottaselect/       # Headless select/combobox
-│   ├── ui-cropper/       # Vanilla JS image cropper (~3-4 KB)
+│   ├── ui-cropper/       # Vanilla JS image cropper, fixed viewfinder (~9 KB)
 │   ├── spotlight/        # Command palette
 │   ├── docs/             # Markdown doc viewer
 │   ├── forms/            # Auto-generated CRUD forms from OttaORM models
@@ -437,7 +437,7 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 | `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                |
 | `@ottabase/ottarenderer`      | EditorJS block renderer for React                                                                                                                            |
 | `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                           |
-| `@ottabase/ui-cropper`        | Vanilla JS image cropper (~3-4 KB, zero deps)                                                                                                                |
+| `@ottabase/ui-cropper`        | Vanilla JS image cropper, fixed-viewfinder model (~9 KB, zero deps)                                                                                          |
 | `@ottabase/spotlight`         | Spotlight/command palette component                                                                                                                          |
 | `@ottabase/docs`              | Markdown doc viewer with layout themes                                                                                                                       |
 | `@ottabase/forms`             | Auto-generated CRUD forms from OttaORM models                                                                                                                |
@@ -11237,8 +11237,8 @@ through their TTL, so there is no "expired" state to show. There is no "last act
 
 `describeUserAgent`, `maskIp` and `describeRequestDevice` are exported for other surfaces that show device facts.
 
-`purgeUserSessions(userId, env)` signs the user out everywhere and deletes every session record, device facts
-included: what an erasure needs, since a "revoked since" marker alone leaves the records until their TTL.
+`purgeUserSessions(userId, env)` signs the user out everywhere and deletes every session record, device facts included:
+what an erasure needs, since a "revoked since" marker alone leaves the records until their TTL.
 
 `wasSessionRevoked(request, env)` answers why a request with a validly signed cookie failed: true when its jti was
 tombstoned (revoked from another session) or it predates a "revoked since" marker (password change). Call it only on a
@@ -15749,10 +15749,10 @@ app `degraded`.
 
 ### Which build is running
 
-Pass `version: (env) => readDeploymentVersion(env.OBCF_VERSION)` (from `@ottabase/kernel`) and bind Cloudflare's
-version metadata in `wrangler.jsonc` (`"version_metadata": { "binding": "OBCF_VERSION" }`, in every env block: bindings
-are not inherited). The report then names the Worker version id and its deploy tag; Tower shows the tag on each app.
-CI deploys with `--tag <short sha>`, so the tag is the commit.
+Pass `version: (env) => readDeploymentVersion(env.OBCF_VERSION)` (from `@ottabase/kernel`) and bind Cloudflare's version
+metadata in `wrangler.jsonc` (`"version_metadata": { "binding": "OBCF_VERSION" }`, in every env block: bindings are not
+inherited). The report then names the Worker version id and its deploy tag; Tower shows the tag on each app. CI deploys
+with `--tag <short sha>`, so the tag is the commit.
 
 ## Why a token, and why a secret
 
@@ -16057,8 +16057,8 @@ const models = useCrudHubModels(); // { models: CrudHubModelDescriptor[] }
 
 What the pieces do:
 
-- **Directory**: search as you type, groups Core / one heading per package / App, a card per model with a lazy row
-  count and chips (package, scope, read-only).
+- **Directory**: search as you type, groups Core / one heading per package / App, a card per model with a lazy row count
+  and chips (package, scope, read-only).
 - **List**: server search on the model's search field (debounced, "Reset" while active, disabled with a hint when there
   is none), column menu (sort ascending / descending, choosing the active one clears it, hide), the stale rows stay
   under a blurred overlay while the next page loads, 5 / 10 / 20 / 50 / 100 rows per page, first / previous / next /
@@ -16066,24 +16066,24 @@ What the pieces do:
   `model:id` and flashes the row), Delete behind `ConfirmDialog`. Bulk actions for `bulk: true` actions with a summary
   toast. `page` and `search` live in the URL (the host passes them in `state`); page size, sort and visible columns are
   remembered per model in localStorage (`ottabase.crudhub.<entity>`), URL winning over storage.
-- **Cells** (`CrudHubCell`): a registered client renderer first (`registerCrudHubRenderer('posts.status', fn)`), then the
-  title field as a link to details plus a pencil to edit, then by type: ids shortened to `abcd…wxyz` (full in details,
-  click to copy), Yes / No, dates in the user's timezone and locale with the raw value in the tooltip, JSON as a preview
-  chip opening a viewer, URLs as middle-truncated external links, arrays and objects inline. Empties are typed and grey
-  italic: `null`, `—` (undefined), `''`, `[]`, `{}`.
+- **Cells** (`CrudHubCell`): a registered client renderer first (`registerCrudHubRenderer('posts.status', fn)`), then
+  the title field as a link to details plus a pencil to edit, then by type: ids shortened to `abcd…wxyz` (full in
+  details, click to copy), Yes / No, dates in the user's timezone and locale with the raw value in the tooltip, JSON as
+  a preview chip opening a viewer, URLs as middle-truncated external links, arrays and objects inline. Empties are typed
+  and grey italic: `null`, `—` (undefined), `''`, `[]`, `{}`.
 - **Details**: title, `Model · id` with copy, the model's actions, Edit and Delete; every field through the cell
-  renderer in details mode; then a "Related" section for the model's `admin.relations`, one chip per related row
-  (linked to its own details page when its model is in the hub; pass the directory's `models` to enable links).
+  renderer in details mode; then a "Related" section for the model's `admin.relations`, one chip per related row (linked
+  to its own details page when its model is in the hub; pass the directory's `models` to enable links).
 - **Form**: `ModelForm` from the descriptor, "Create <model>" / "Save changes" disabled until dirty, server
   `fieldErrors` inline. After a create the host is told to replace the URL with the edit page (the new row is primed in
-  the query cache, so there is no reload or refetch flash). Leaving dirty asks "Discard changes?": pass
-  `onDirtyChange` and guard navigation in the host (otta-web uses a router blocker, covering links, Back and reload);
-  without it the form asks on Cancel only.
+  the query cache, so there is no reload or refetch flash). Leaving dirty asks "Discard changes?": pass `onDirtyChange`
+  and guard navigation in the host (otta-web uses a router blocker, covering links, Back and reload); without it the
+  form asks on Cancel only.
 - **What a caller may do**: `crudHubAbilities(model, canWrite)`. `readOnly` hides generic New / Edit / Delete but keeps
   the model's actions and a custom `routes.edit` link. `resolveListPrefs` is the URL > storage > model-default rule.
 
-`ModelForm` gained `onDirtyChange`, `disableUntilDirty`, `submitLabel`, `hideHeader` and `cleanKey` for hosts that
-need the same behaviour.
+`ModelForm` gained `onDirtyChange`, `disableUntilDirty`, `submitLabel`, `hideHeader` and `cleanKey` for hosts that need
+the same behaviour.
 
 ## Exports
 
@@ -16457,10 +16457,10 @@ env: {
 ```
 
 `registry.env()` still gives the deduped key lists; `registry.envDeclarations()` keeps the package behind each key.
-`runReadiness(registry, env, { probeTimeoutMs })` is the admin "System readiness" report: every declared key with
-`set` (a binding must also look right: D1 has `prepare`, KV `get`, R2 `head`, a queue `send`), a masked `preview` only
-for `secret: false` vars (first and last two characters, cut in the middle past 48), every health probe under a
-timeout, and summary counts. No secret character ever reaches the report.
+`runReadiness(registry, env, { probeTimeoutMs })` is the admin "System readiness" report: every declared key with `set`
+(a binding must also look right: D1 has `prepare`, KV `get`, R2 `head`, a queue `send`), a masked `preview` only for
+`secret: false` vars (first and last two characters, cut in the middle past 48), every health probe under a timeout, and
+summary counts. No secret character ever reaches the report.
 
 ## Premium packages
 
@@ -16512,8 +16512,8 @@ page) calls `claimNotice((code) => code.startsWith('sso.'))`: the app's root han
 arrival and parks it (`parkNotice`), which on a cold load happens before a lazily loaded page renders, so reading
 `location.search` would miss it. A code only the package's own page shows needs no registration.
 
-`readDeploymentVersion(env.OBCF_VERSION)` reads Cloudflare's version metadata binding into
-`{ id, tag, createdAt }` (null when unbound, as in tests). Readiness and the Fleet report use it. The app lists client descriptors next to the
+`readDeploymentVersion(env.OBCF_VERSION)` reads Cloudflare's version metadata binding into `{ id, tag, createdAt }`
+(null when unbound, as in tests). Readiness and the Fleet report use it. The app lists client descriptors next to the
 server manifests and derives everything from them: `installedPackages(clients)` gives the browser the same
 `{ [key]: true }` map `registry.installed()` gives the Worker, `packageAdminPages` and `packageRoutes` give the router
 and the menus their pages (two packages routing one path throw), and a parity test keeps the two lists honest.
@@ -21898,8 +21898,8 @@ export class Post extends BaseModel {
 
 ### Query builder (`Model.query()`)
 
-A chainable builder that compiles to the where object and options the statics above already run, so the binding
-budget, bounded reads, soft deletes and RLS keep working unchanged.
+A chainable builder that compiles to the where object and options the statics above already run, so the binding budget,
+bounded reads, soft deletes and RLS keep working unchanged.
 
 ```typescript
 import { Post } from '@ottabase/ottablog';
@@ -21926,10 +21926,10 @@ const page = await Post.query()
   `paginate`, `count`, `exists`, `pluck(column)`, `pages(perPage)` (keyset iterator) and `chunk(size, fn)`.
 - `with('rel:key{a,b}')` runs the relation after the main read and keeps only the listed fields plus the key. Dotted
   paths load nested relations (`'tags.category'`, `'tags.category:id{name}'`): each level calls the model's own
-  relationship method on the related instances, and a projection applies to the last segment (child relations are
-  always kept). Specs sharing a prefix load it once. A `belongsToMany` loaded with `withPivot` arrives as the related
-  row plus a `pivot` object. One relationship query per instance per level; `loadRelations(instances, specs)` is the
-  same loader for instances you already hold.
+  relationship method on the related instances, and a projection applies to the last segment (child relations are always
+  kept). Specs sharing a prefix load it once. A `belongsToMany` loaded with `withPivot` arrives as the related row plus
+  a `pivot` object. One relationship query per instance per level; `loadRelations(instances, specs)` is the same loader
+  for instances you already hold.
 - `makeVisible(...)` reveals `hidden` fields on the result. Server-side only: the generic CRUD API never exposes it.
 - `toWhere()` returns the compiled where object, handy in tests.
 
@@ -21956,11 +21956,11 @@ export class Post extends BaseModel {
 }
 ```
 
-The names are deliberately specific, so they never collide with a model's own `sync()` or `attach()`.
-`syncPivot` diffs the current join rows against `ids`: rows that stay are untouched (their own pivot columns survive), the
-rest are deleted and inserted in one atomic D1 batch. Keys follow the `belongsToMany` inference (`postId` / `tagId`) and
-take the same `foreignKey` / `otherKey` overrides. `BaseModel.batch()` now accepts `{ sql, params }` statements (what
-Drizzle's `toSQL()` returns) next to raw strings.
+The names are deliberately specific, so they never collide with a model's own `sync()` or `attach()`. `syncPivot` diffs
+the current join rows against `ids`: rows that stay are untouched (their own pivot columns survive), the rest are
+deleted and inserted in one atomic D1 batch. Keys follow the `belongsToMany` inference (`postId` / `tagId`) and take the
+same `foreignKey` / `otherKey` overrides. `BaseModel.batch()` now accepts `{ sql, params }` statements (what Drizzle's
+`toSQL()` returns) next to raw strings.
 
 ### CrudHub opt-in (`static admin`)
 
@@ -21997,17 +21997,17 @@ descriptors the client receives (declare them `static hidden`; a per-instance hi
 descriptor), and the action functions never leave the server. `listCrudHubModels()`, `describeCrudHubModel()` and
 `getCrudHubModel()` build the descriptors the worker route serves.
 
-Hub writes go through secure CRUD with RLS, but **not** through the per-model guards of the public `/api/ottaorm`
-route (post content validation and publish rules, organization owner provisioning, comment org derivation and reaction
+Hub writes go through secure CRUD with RLS, but **not** through the per-model guards of the public `/api/ottaorm` route
+(post content validation and publish rules, organization owner provisioning, comment org derivation and reaction
 cleanup). A model whose writes need such a guard is `readOnly: true` in the hub and exposes its changes as
-`adminActions` or a `routes.edit` page; posts, comments, media and organizations ship that way. `routes.edit`
-also replaces the generic edit page: opening `/admin/crudhub/:model/:id/edit` redirects there. `routes.view` is the
-row menu's View target; the hub's own details page stays reachable from the title link.
+`adminActions` or a `routes.edit` page; posts, comments, media and organizations ship that way. `routes.edit` also
+replaces the generic edit page: opening `/admin/crudhub/:model/:id/edit` redirects there. `routes.view` is the row
+menu's View target; the hub's own details page stays reachable from the title link.
 
 `relations` lists what the details page shows under "Related", in `with()` spec syntax:
-`relations: ['author:id{name,image}', 'tags:id{name,slug}']`. They load through the model's relationship methods for
-a row the caller could read, but the related rows themselves are not filtered by RLS, so project to what an admin of
-this model may see. A relation into a denylisted table without a projection is cut to `id` and `name`. At most
+`relations: ['author:id{name,image}', 'tags:id{name,slug}']`. They load through the model's relationship methods for a
+row the caller could read, but the related rows themselves are not filtered by RLS, so project to what an admin of this
+model may see. A relation into a denylisted table without a projection is cut to `id` and `name`. At most
 `CRUDHUB_RELATION_LIMIT` (50) rows per relation are shown; related rows of another hub model link to its details page.
 
 ## Relationships
@@ -27359,277 +27359,145 @@ MIT
 
 # @ottabase/ui-cropper
 
-Advanced vanilla image cropper: crop, flip, rotate, zoom with smooth transitions. Square/rect/circle viewfinder.
-PNG/JPEG. Zero React. ~3–4 KB gzipped.
+Vanilla image cropper built on the fixed-viewfinder model used by every modern photo app: the frame fills the stage and
+the photo pans, pinches, zooms, rotates, straightens and flips underneath it. Zero dependencies, zero React, ~9 KB
+gzipped including icons.
 
-## Features
+## Why this model
 
-- **Drop to start** - Empty state is the control: drop a PNG/JPEG or click to browse
-- **Stage overlay** - Filename and Replace sit on the photo, not in a second toolbar row
-- **Zoom you can see** - Slider plus percent, still with +/- and mouse wheel
-- **Pointer capture** - Drag and resize keep going if the pointer leaves the canvas
-- **Keyboard** - Arrows nudge the crop (Shift for 10px), `+`/`-` zoom, `R` rotates
-- **Theme-aware editor surface** - Uses the host shadcn/tailwind tokens directly, so app-controlled light and dark modes
-  stay in sync
-- **Smooth interactions** - Slick transitions inspired by react-advanced-cropper
-- **Resize handles** - Drag corner and edge handles to resize crop area
-- **Visual feedback** - Rule of thirds grid, resize handles, smooth animations
-- **Smart rotation** - Rotate 90° with smooth animated transitions, crop adjusts automatically
-- **Flexible aspect ratios** - Freeform, square, landscape, portrait, or custom ratios
-- **Shape support** - Rectangular or circular crop viewfinder
+A crop box dragged over a static photo (the classic jQuery-era cropper) makes the output shape small, makes zoom
+meaningless and leaves the user guessing what they will get. Here the frame **is** the output: it fills the available
+width, the user composes the photo inside it, and zoom is "how much closer". That is how iOS Photos, Instagram and every
+avatar picker worth copying work.
+
+- **The photo is a CSS-transformed `<img>`, the overlay is DOM.** Crisp on any display, GPU-smooth while dragging, every
+  pixel themeable. Canvas is used only to export.
+- **The frame is never empty.** Zoom can't go below "cover" and panning stops at the photo's edge, in any rotation.
+- **Rotation about the frame.** 90° turns and fine straightening (−45°…45°) pivot on what you're looking at; the photo
+  grows just enough to keep the frame full.
+- **Free frames reshape then refill.** With `aspectRatio: null` the frame has handles; drag one and on release the frame
+  grows back to fill the stage with its new proportions, the photo following. Turning a free frame turns it with the
+  photo.
+- **Touch first.** One finger pans, two pinch and pan together, with pointer capture so a drag survives leaving the
+  stage.
+- **Export sized for purpose.** `maxOutput` caps the longest side, so a 6000px photo yields a 512px avatar, not a 4000px
+  PNG. Circles export as PNG with transparent corners.
 
 ## Usage
 
-```typescript
+```ts
 import { Cropper } from '@ottabase/ui-cropper';
-// Don't forget to import styles:
-// import '@ottabase/ui-cropper/styles.css';
+import '@ottabase/ui-cropper/styles.css';
 
-const container = document.getElementById('cropper-root');
-const cropper = new Cropper(container, {
-    aspectRatio: 1, // square (default); use 16/9 for rect, null for freeform
-    shape: 'rect', // 'rect' | 'circle'
-    accept: 'image/png,image/jpeg',
-    maxHeight: 400,
-    zoom: 1, // initial zoom level
-    minZoom: 0.5,
-    maxZoom: 3,
-    transitions: true, // smooth animations
-    transitionDuration: 300, // ms
+const cropper = new Cropper(document.getElementById('avatar')!, {
+    aspectRatio: 1,
+    shape: 'circle',
+    height: 320,
+    maxOutput: 512,
+    aspectPresets: false,
+    onImageLoad: () => (save.disabled = false),
 });
 
-// User interactions:
-// - Drop or click the empty stage to load a PNG/JPEG
-// - Drag crop area to move; double-click to reset
-// - Drag corner/edge handles to resize
-// - Wheel, slider, or +/- to zoom
-// - Flip/rotate from the toolbar; arrows nudge when focused
+cropper.loadFromUrl(currentAvatarUrl); // optional: start from the existing picture
 
-const blob = await cropper.getBlob('image/jpeg', 0.92);
-// upload blob...
+save.onclick = async () => {
+    const blob = await cropper.getBlob('image/png');
+    // upload…
+};
 
 cropper.destroy();
 ```
 
-## API
+Mount it in a plain container; the cropper owns its full surface (stage plus toolbar) and does not want a second card,
+border or padding around it.
 
-### Methods
+## Options
 
-| Method                       | Description                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| `flipHorizontal()`           | Flip image left-right with smooth transition                                   |
-| `flipVertical()`             | Flip image top-bottom with smooth transition                                   |
-| `rotate()`                   | Rotate 90° clockwise with smooth transition                                    |
-| `zoomIn()`                   | Zoom in by 0.2x                                                                |
-| `zoomOut()`                  | Zoom out by 0.2x                                                               |
-| `setZoom(level)`             | Set zoom level (respects min/max zoom)                                         |
-| `getZoom()`                  | Get current zoom level                                                         |
-| `setAspectRatio(ratio)`      | Set aspect ratio (e.g. 1, 4/3, 16/9, null for freeform) with smooth transition |
-| `setShape(shape)`            | Set viewfinder: 'rect' \| 'circle'                                             |
-| `setMaxHeight(px)`           | Set max display height                                                         |
-| `setPresetsVisible(visible)` | Show/hide aspect preset buttons                                                |
-| `setTransitions(enabled)`    | Enable/disable smooth transitions without resetting the loaded image           |
-| `setTransitionDuration(ms)`  | Set transition duration in ms without resetting the loaded image               |
-| `getBlob(mime?, quality?)`   | Export cropped image as Blob                                                   |
-| `loadFromFile(file)`         | Load image from a File object                                                  |
-| `loadFromUrl(url)`           | Load image from URL (http, blob:, or data: base64)                             |
-| `destroy()`                  | Remove DOM and cleanup                                                         |
+| Option               | Default                 | Description                                                                                     |
+| -------------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `aspectRatio`        | `1`                     | Locked frame aspect (w/h). `16/9` landscape, `3/4` portrait, `null` = free, resizable frame.    |
+| `shape`              | `'rect'`                | `'rect'` or `'circle'` (an ellipse when the aspect isn't 1:1).                                   |
+| `aspectPresets`      | Free · 1:1 · 4:3 · 16:9 | Toolbar aspect buttons (`{ label, value }[]`); `false` hides them. `DEFAULT_ASPECT_PRESETS` is exported. |
+| `accept`             | `'image/*'`             | File input accept list. Anything the browser can decode works (PNG, JPEG, WebP, AVIF, GIF, SVG). |
+| `height`             | `360`                   | Stage height in px. Width follows the container and the frame refits on resize.                |
+| `maxZoom`            | `4`                     | How far past "cover" the photo may be enlarged.                                                 |
+| `maxOutput`          | `4096`                  | Longest side of the export in px; larger crops are downscaled.                                  |
+| `straighten`         | `false`                 | Show the fine-rotation slider (−45°…45°).                                                       |
+| `transitions`        | `true`                  | Animate rotate, flip, zoom buttons, aspect changes and reset. Pointer gestures are never animated. |
+| `transitionDuration` | `240`                   | Animation length in ms.                                                                         |
+| `onImageLoad`        | —                       | `(state) => void` after a photo loads from the picker, a drop, `loadFromFile` or `loadFromUrl`. |
+| `onChange`           | —                       | `(state) => void` on every change to zoom, position, rotation, flips, frame or photo.           |
+| `onError`            | —                       | `(message) => void` for a rejected file or a photo that failed to decode. The message is user-facing. |
 
-### Options
+## Methods
 
-| Option               | Default                | Description                                                    |
-| -------------------- | ---------------------- | -------------------------------------------------------------- |
-| `aspectRatio`        | 1                      | 1 = square, 16/9 = landscape, null = freeform (no constraints) |
-| `aspectPresets`      | Free, 1:1, 4:3, 16:9   | Preset buttons. Set `false` to hide.                           |
-| `shape`              | 'rect'                 | 'rect' or 'circle' viewfinder                                  |
-| `accept`             | 'image/png,image/jpeg' | File input accept                                              |
-| `maxHeight`          | 400                    | Max display height (px) - honored even when zoomed             |
-| `zoom`               | 1                      | Initial zoom level                                             |
-| `minZoom`            | 0.5                    | Minimum zoom level                                             |
-| `maxZoom`            | 3                      | Maximum zoom level                                             |
-| `transitions`        | true                   | Enable smooth CSS transitions                                  |
-| `transitionDuration` | 300                    | Transition duration in ms                                      |
-| `onImageLoad`        | —                      | Callback fired whenever an image finishes loading              |
+| Method                          | Description                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------- |
+| `loadFromFile(file)`            | Load a `File`.                                                                              |
+| `loadFromUrl(url)`              | Load from http(s), `blob:` or `data:`. Remote hosts must send CORS headers for export to work. |
+| `hasImage()`                    | A photo is on the stage.                                                                    |
+| `getState()`                    | `{ hasImage, zoom, rotation, straighten, flipX, flipY, aspectRatio, output, dirty }`.       |
+| `getZoom()` / `setZoom(z)`      | Zoom relative to cover: `1` fills the frame, up to `maxZoom`. Zooms about the frame centre.  |
+| `zoomIn()` / `zoomOut()`        | ±25 %.                                                                                      |
+| `rotate(deg = 90)`              | Turn about the frame centre; positive is clockwise on screen, flips notwithstanding.        |
+| `setStraighten(deg)`            | Fine rotation, −45…45.                                                                      |
+| `flipHorizontal()` / `flipVertical()` | Mirror what's in the frame about its centre line.                                      |
+| `reset()`                       | Back to the freshly loaded photo: base aspect, cover zoom, centred, upright.                 |
+| `setAspectRatio(ratio \| null)` | Lock a new aspect (or free the frame). Also becomes the Reset baseline.                     |
+| `setShape(shape)`               | `'rect'` or `'circle'`.                                                                     |
+| `setHeight(px)`                 | Stage height; the content under the frame is preserved.                                     |
+| `getBlob(mime?, quality?)`      | The framed region at native resolution (capped by `maxOutput`) as a `Blob`. Default JPEG 0.92; circles force PNG. |
+| `destroy()`                     | Remove listeners, revoke object URLs, empty the container.                                  |
+
+`CropperState.output` tells you the export size before exporting, handy for a "too small for a cover image" hint.
 
 ## Interactions
 
-### Pointer / keyboard
+| Input                                  | Effect                                                       |
+| -------------------------------------- | ------------------------------------------------------------ |
+| Drop a file anywhere, or click the stage | Load a photo (the toolbar's **Replace** does the same later) |
+| Drag                                   | Pan the photo                                                |
+| Pinch · wheel · slider · `+` `-`       | Zoom (wheel and pinch zoom about the pointer)                |
+| Arrow keys, Shift for 10px             | Nudge the photo                                              |
+| `R` / `Shift+R`                        | Rotate right / left                                          |
+| `0` or double-click                    | Reset                                                        |
+| Handles (free aspect only)             | Reshape the frame; it refills the stage on release           |
 
-- **Drop or click the empty stage** - Load a PNG or JPEG. After load, **Replace** sits on the photo.
-- **Drag crop area** - Pointer-down inside the crop box to reposition (works for both rect and circle). Capture keeps
-  the drag alive if you leave the canvas.
-- **Resize crop** - Drag corner handles (nw, ne, sw, se) or edge handles (n, e, s, w)
-    - Rectangle crops: Resize with aspect ratio constraints (or freeform if `aspectRatio: null`)
-    - Circle crops: Always maintain 1:1 aspect ratio to keep circular shape
-- **Zoom** - Wheel, the toolbar slider, or +/-. The percent label tracks the current level.
-- **Reset crop** - Double-click the stage
-- **Keyboard** (cropper focused): arrows nudge, Shift+arrows by 10px, `+`/`-` zoom, `R` rotate
-- **Cursor feedback** - Cursor changes to indicate available actions
-
-### Toolbar
-
-- **Aspect presets** - Quick aspect ratio selection (Freeform, 1:1, 4:3, 16:9)
-- **Flip H/V** - Flip image horizontally or vertically
-- **Rotate** - Rotate 90° clockwise
-
-## Advanced Examples
-
-### Custom presets
-
-```typescript
-import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/ui-cropper';
-
-new Cropper(container, {
-    aspectPresets: [...DEFAULT_ASPECT_PRESETS, { label: '3:2', value: 3 / 2 }, { label: '21:9', value: 21 / 9 }],
-});
-
-// Or hide presets
-new Cropper(container, { aspectPresets: false });
-
-// Freeform (no aspect ratio constraints)
-new Cropper(container, { aspectRatio: null });
-```
-
-### Programmatic zoom control
-
-```typescript
-const cropper = new Cropper(container);
-
-// Zoom in
-cropper.zoomIn();
-
-// Set specific zoom level
-cropper.setZoom(1.5);
-
-// Get current zoom
-const currentZoom = cropper.getZoom();
-console.log(`Current zoom: ${currentZoom.toFixed(2)}x`);
-```
-
-### Custom transition timing
-
-```typescript
-new Cropper(container, {
-    transitions: true,
-    transitionDuration: 500, // slower, more dramatic
-});
-
-// Or disable transitions for instant updates
-new Cropper(container, {
-    transitions: false,
-});
-```
-
-### Image load callback
-
-```typescript
-const cropper = new Cropper(container, {
-    // Fires whenever an image loads — from the file picker, loadFromFile(), or loadFromUrl()
-    onImageLoad: () => {
-        console.log('Image ready');
-        saveButton.disabled = false;
-    },
-});
-
-// Also fires when loading from URL
-cropper.loadFromUrl('https://example.com/photo.jpg');
-```
-
-### Rotation and transforms
-
-```typescript
-const cropper = new Cropper(container);
-
-// Rotate 90° clockwise (with smooth animation)
-cropper.rotate(); // 0° → 90° → 180° → 270° → 0°
-
-// Flip transforms
-cropper.flipHorizontal(); // Mirror left-right
-cropper.flipVertical(); // Mirror top-bottom
-
-// Change aspect ratio dynamically
-cropper.setAspectRatio(16 / 9); // Landscape
-cropper.setAspectRatio(1); // Square
-cropper.setAspectRatio(null); // Freeform (no constraints)
-
-// Drag and resize work perfectly in all rotation states
-// The crop area automatically adjusts to new image dimensions
-```
-
-### Export cropped image
-
-```typescript
-const cropper = new Cropper(container);
-
-// Export as JPEG (default quality: 0.92)
-const jpegBlob = await cropper.getBlob('image/jpeg', 0.92);
-
-// Export as PNG
-const pngBlob = await cropper.getBlob('image/png');
-
-// Upload to server
-const formData = new FormData();
-formData.append('image', jpegBlob, 'cropped.jpg');
-await fetch('/api/upload', { method: 'POST', body: formData });
-
-// Or create download link
-const url = URL.createObjectURL(jpegBlob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'cropped.jpg';
-a.click();
-URL.revokeObjectURL(url);
-```
+The rule-of-thirds grid shows only while the photo is being adjusted, and never for a circle. Reset appears in the
+toolbar only once something has changed.
 
 ## Theming
 
-CSS custom properties integrate with shadcn/tailwind theme tokens (same convention as `@ottabase/ottadate`). Raw HSL
-channels (e.g. `0 0% 100%`) are wrapped in `hsl()` internally, with sensible fallbacks for standalone use:
+Tokens follow the same convention as `@ottabase/ottadate`: shadcn/tailwind variables hold raw HSL channels, so they are
+wrapped in `hsl()` with standalone fallbacks. Override any of them on `.ottacropper`:
 
 ```css
 .ottacropper {
-    --cr-bg: hsl(var(--background, 0 0% 100%));
-    --cr-fg: hsl(var(--foreground, 222.2 84% 4.9%));
-    --cr-border: hsl(var(--border, 214.3 31.8% 91.4%));
-    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    --cr-stage: hsl(var(--overlay, 150 17% 7%)); /* photo surface, dark in every theme */
+    --cr-dim: rgb(0 0 0 / 0.55); /* outside the frame */
+    --cr-frame: rgb(255 255 255 / 0.92);
+    --cr-grid: rgb(255 255 255 / 0.35);
+    --cr-handle: #fff;
     --cr-radius: var(--radius, 0.5rem);
-    --cr-transition: var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+    --cr-btn-size: 2rem;
 }
 ```
 
-Override any of these on `.ottacropper` (or the container element) to restyle without touching the JS. Dark mode is
-controlled by the host application's theme tokens. The cropper intentionally does not infer a color scheme from the OS,
-which prevents a light application surface from rendering as dark when the operating system prefers dark mode.
+Every element carries a `data-slot` (`cropper`, `cropper-stage`, `cropper-frame`, `cropper-empty`, `cropper-toolbar`)
+for Tier 1 theming. The stage is a muted dropzone while empty and becomes the dark photo surface once a picture lands,
+so it never sits as a black block in a light dialog. Reduced-motion preferences disable every animation.
 
-## Interface Design
+## Accessibility
 
-The cropper owns one complete editing surface: a drop-or-click empty stage before an image is selected, a checkerboard
-stage with an overlay Replace control while editing, and a compact toolbar for aspect ratio, zoom, and transforms.
-Consumers should mount it in a plain container; avoid adding a second card, dashed border, or padding around the root
-element.
+The container is focusable with the keyboard map above; aspect buttons are a `radiogroup`; flips expose `aria-pressed`;
+zoom and straighten are native range inputs. Toolbar controls are disabled, not hidden, until a photo loads so the
+layout never jumps.
 
-## Technical Details
+## Geometry
 
-### Rotation Handling
-
-- Crop coordinates are maintained in **rotated/visible space** (what the user sees)
-- Image is rotated using canvas transforms while crop overlay remains axis-aligned
-- Drag and resize operations work correctly in all rotation states (0°, 90°, 180°, 270°)
-- Export correctly maps crop coordinates back to original image space
-- Smooth CSS transitions animate the canvas wrapper during rotation
-
-### Performance
-
-- Zero dependencies - pure vanilla JavaScript
-- Efficient canvas rendering with requestAnimationFrame where appropriate
-- Transitions disabled during drag/resize for responsive feel
-- ~3-4 KB gzipped
-
-## Inspiration
-
-This cropper is inspired by [react-advanced-cropper](https://advanced-cropper.github.io/react-advanced-cropper/) with
-its smooth transitions, zoom support, and polished user experience, but implemented as a framework-agnostic vanilla
-JavaScript library with zero dependencies.
+The headless math is exported for tests and custom UIs: `fitRect`, `coverScale`, `clampView`, `toImage` and the
+`View` / `Rect` / `Point` types. A `View` is the photo's centre, scale, rotation and flips in stage pixels; flips are
+applied after rotation so "flip horizontal" is always left-right on screen.
 
 
 ---
@@ -27889,8 +27757,8 @@ custom editors and filter server-side via `useServerTable`.
 > shows as an arrow in the primary colour.
 
 > **Dates follow the person:** `format: 'date' | 'datetime'` renders through `formatDateForUser` from
-> `@ottabase/utils/timezone`, so cells use the signed-in user's locale and timezone (the raw value sits in the
-> tooltip). First and last page buttons hide on small screens; previous and next always stay.
+> `@ottabase/utils/timezone`, so cells use the signed-in user's locale and timezone (the raw value sits in the tooltip).
+> First and last page buttons hide on small screens; previous and next always stay.
 
 ### Row Action (`DataTableAction<T>`)
 
@@ -28457,7 +28325,8 @@ import {
   one way servers build redirect links that should show a message; codes travel, never text
 - **`readNotice(search: string): { code, search }`** - Read and strip the notice from a search string; malformed codes
   read as `null` and are still stripped
-- **`isNoticeCode(code: string): boolean`** - kebab-case with one optional package namespace (`payport.checkout-complete`)
+- **`isNoticeCode(code: string): boolean`** - kebab-case with one optional package namespace
+  (`payport.checkout-complete`)
 
 ### Sanitization Utilities (`@ottabase/utils/sanitize`)
 
@@ -28565,8 +28434,8 @@ carry `internalCause` for the server error boundary to redact and log once; it i
 **Production-ready timezone standardization for SaaS applications**
 
 Formatting for a person follows two module configs: `setTimezoneConfig({ userTimezone })` and
-`setLocaleConfig({ userLocale })`. The app pushes the signed-in user's `timezone` and `locale` into both, and every
-"for a person" formatter reads them (user preference, then the browser, then `UTC` / `en`):
+`setLocaleConfig({ userLocale })`. The app pushes the signed-in user's `timezone` and `locale` into both, and every "for
+a person" formatter reads them (user preference, then the browser, then `UTC` / `en`):
 
 - **`formatDateForUser(date, style?: 'date' | 'datetime' | 'time' | 'long', { locale?, timeZone? })`** - Intl formatting
   in the user's locale and timezone; empty string for an invalid date

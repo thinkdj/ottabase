@@ -1,56 +1,56 @@
 /**
  * @ottabase/ui-cropper — Stylesheet
  *
- * Mirrors the theme-integration convention used by @ottabase/ottadate:
- * CSS custom properties map to shadcn/tailwind design tokens (raw HSL channels,
- * so we wrap them in hsl()) and fall back to sensible defaults for standalone use.
+ * Theme tokens follow the @ottabase/ottadate convention: shadcn/tailwind variables hold raw HSL
+ * channels, so they are wrapped in hsl() here with standalone fallbacks. Override any --cr-* on
+ * `.ottacropper` to restyle without touching the JS.
  */
 
 .ottacropper {
-    /* Colors — inherit from theme or use defaults (same fallbacks as @ottabase/ottadate). */
     --cr-bg: hsl(var(--background, 0 0% 100%));
-    --cr-fg: hsl(var(--foreground, 222.2 84% 4.9%));
-    --cr-muted: hsl(var(--muted, 210 40% 96.1%));
-    --cr-muted-fg: hsl(var(--muted-foreground, 215.4 16.3% 46.9%));
-    --cr-border: hsl(var(--border, 214.3 31.8% 91.4%));
-    --cr-primary: hsl(var(--primary, 222.2 47.4% 11.2%));
-    --cr-primary-fg: hsl(var(--primary-foreground, 210 40% 98%));
-    --cr-accent: hsl(var(--accent, 210 40% 96.1%));
-    --cr-accent-fg: hsl(var(--accent-foreground, 222.2 47.4% 11.2%));
-    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    --cr-fg: hsl(var(--foreground, 222 47% 11%));
+    --cr-muted: hsl(var(--muted, 210 40% 96%));
+    --cr-muted-fg: hsl(var(--muted-foreground, 215 16% 47%));
+    --cr-border: hsl(var(--border, 214 32% 91%));
+    --cr-primary: hsl(var(--primary, 222 47% 11%));
+    --cr-accent: hsl(var(--accent, 210 40% 96%));
+    --cr-accent-fg: hsl(var(--accent-foreground, 222 47% 11%));
+    --cr-ring: hsl(var(--ring, 215 20% 65%));
     --cr-destructive: hsl(var(--destructive, 0 84% 60%));
 
-    /* Sizing & spacing */
-    --cr-radius: var(--radius, 0.5rem);
-    --cr-btn-size: 2rem;
+    /* The photo surface is dark in every theme, like any photo editor; the dialog scrim token is that dark. */
+    --cr-stage: hsl(var(--overlay, 150 17% 7%));
+    --cr-dim: rgb(0 0 0 / 0.55);
+    --cr-frame: rgb(255 255 255 / 0.92);
+    --cr-frame-edge: rgb(0 0 0 / 0.3);
+    --cr-grid: rgb(255 255 255 / 0.35);
+    --cr-handle: #fff;
+    --cr-on-stage: rgb(255 255 255 / 0.78);
 
-    /* Typography */
+    --cr-radius: var(--radius, 0.5rem);
+    --cr-radius-inner: calc(var(--cr-radius) - 0.125rem);
+    --cr-btn-size: 2rem;
+    --cr-handle-size: 1.125rem;
+    --cr-handle-width: 3px;
+
     --cr-font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, sans-serif);
     --cr-font-size: 0.875rem;
     --cr-font-size-sm: 0.8125rem;
 
-    /* Transitions — use brandkit motion variables when available */
-    --cr-transition: var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+    --cr-ease: var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
+    --cr-duration: 240ms; /* overwritten from the transitionDuration option */
+    --cr-transition: var(--duration-fast, 120ms) var(--cr-ease);
 
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    width: 100%;
     gap: 0.75rem;
-    padding: 0;
-    border: none;
-    background: transparent;
+    width: 100%;
     font-family: var(--cr-font);
     font-size: var(--cr-font-size);
     color: var(--cr-fg);
     box-sizing: border-box;
     outline: none;
-}
-
-.ottacropper:focus-visible {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
-    border-radius: calc(var(--cr-radius) + 0.15rem);
 }
 
 .ottacropper *,
@@ -59,17 +59,16 @@
     box-sizing: border-box;
 }
 
-.ottacropper--dragover .ottacropper-empty-state,
-.ottacropper--dragover .ottacropper-viewport {
-    border-color: var(--cr-primary);
-    background-color: color-mix(in srgb, var(--cr-primary) 8%, var(--cr-muted));
+/* The JS toggles visibility with the hidden attribute; it must beat the display rules below. */
+.ottacropper [hidden] {
+    display: none !important;
 }
 
-/* ---------------------------------------------------------------------------
- * Hidden file input
- * --------------------------------------------------------------------------- */
+.ottacropper:focus-visible .ottacropper-stage {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 35%, transparent);
+}
 
-.ottacropper-file-input {
+.ottacropper-file {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -79,334 +78,389 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Empty state — the drop zone is the control
+ * Stage — a dropzone while empty, a dark photo surface once a picture lands
  * --------------------------------------------------------------------------- */
 
-.ottacropper-empty-state {
+.ottacropper-stage {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--cr-radius);
+    background: color-mix(in srgb, var(--cr-muted) 60%, transparent);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition:
+        background-color var(--duration-normal, 200ms) var(--cr-ease),
+        box-shadow var(--cr-transition);
+}
+
+.ottacropper:not(.ottacropper--empty) .ottacropper-stage {
+    background: var(--cr-stage);
+    cursor: grab;
+}
+
+.ottacropper--panning .ottacropper-stage {
+    cursor: grabbing;
+}
+
+.ottacropper--dragover .ottacropper-stage {
+    box-shadow: 0 0 0 2px var(--cr-primary);
+}
+
+.ottacropper-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-width: none;
+    max-height: none;
+    transform-origin: 0 0;
+    will-change: transform;
+    pointer-events: none;
+    -webkit-user-drag: none;
+}
+
+.ottacropper--animate .ottacropper-image {
+    transition: transform var(--cr-duration) var(--cr-ease);
+}
+
+/* ---------------------------------------------------------------------------
+ * Frame — the viewfinder; its shadow dims everything outside
+ * --------------------------------------------------------------------------- */
+
+.ottacropper-frame {
+    position: absolute;
+    border: 1.5px solid var(--cr-frame);
+    box-shadow:
+        0 0 0 1px var(--cr-frame-edge),
+        0 0 0 200vmax var(--cr-dim);
+}
+
+.ottacropper--circle .ottacropper-frame {
+    border-radius: 50%;
+}
+
+.ottacropper--animate .ottacropper-frame {
+    transition:
+        left var(--cr-duration) var(--cr-ease),
+        top var(--cr-duration) var(--cr-ease),
+        width var(--cr-duration) var(--cr-ease),
+        height var(--cr-duration) var(--cr-ease),
+        border-radius var(--cr-duration) var(--cr-ease);
+}
+
+/* Rule-of-thirds grid, shown only while the picture is being adjusted */
+.ottacropper-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--cr-transition);
+}
+
+.ottacropper-grid::before,
+.ottacropper-grid::after {
+    content: '';
+    position: absolute;
+}
+
+.ottacropper-grid::before {
+    top: 0;
+    bottom: 0;
+    left: 33.333%;
+    right: 33.333%;
+    border-left: 1px solid var(--cr-grid);
+    border-right: 1px solid var(--cr-grid);
+}
+
+.ottacropper-grid::after {
+    left: 0;
+    right: 0;
+    top: 33.333%;
+    bottom: 33.333%;
+    border-top: 1px solid var(--cr-grid);
+    border-bottom: 1px solid var(--cr-grid);
+}
+
+.ottacropper--interacting .ottacropper-grid {
+    opacity: 1;
+}
+
+.ottacropper--circle .ottacropper-grid {
+    display: none;
+}
+
+/* Handles — only a free frame can be reshaped */
+.ottacropper-handle {
+    display: none;
+    position: absolute;
+    touch-action: none;
+}
+
+.ottacropper--free .ottacropper-handle {
+    display: block;
+}
+
+/* Generous invisible hit area around every handle */
+.ottacropper-handle::before {
+    content: '';
+    position: absolute;
+    inset: -0.5rem;
+}
+
+.ottacropper-handle[data-handle='nw'],
+.ottacropper-handle[data-handle='ne'],
+.ottacropper-handle[data-handle='sw'],
+.ottacropper-handle[data-handle='se'] {
+    width: var(--cr-handle-size);
+    height: var(--cr-handle-size);
+    border: 0 solid var(--cr-handle);
+    filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.5));
+}
+
+.ottacropper-handle[data-handle='nw'] {
+    top: calc(-1 * var(--cr-handle-width) + 1px);
+    left: calc(-1 * var(--cr-handle-width) + 1px);
+    border-top-width: var(--cr-handle-width);
+    border-left-width: var(--cr-handle-width);
+}
+
+.ottacropper-handle[data-handle='ne'] {
+    top: calc(-1 * var(--cr-handle-width) + 1px);
+    right: calc(-1 * var(--cr-handle-width) + 1px);
+    border-top-width: var(--cr-handle-width);
+    border-right-width: var(--cr-handle-width);
+}
+
+.ottacropper-handle[data-handle='sw'] {
+    bottom: calc(-1 * var(--cr-handle-width) + 1px);
+    left: calc(-1 * var(--cr-handle-width) + 1px);
+    border-bottom-width: var(--cr-handle-width);
+    border-left-width: var(--cr-handle-width);
+}
+
+.ottacropper-handle[data-handle='se'] {
+    bottom: calc(-1 * var(--cr-handle-width) + 1px);
+    right: calc(-1 * var(--cr-handle-width) + 1px);
+    border-bottom-width: var(--cr-handle-width);
+    border-right-width: var(--cr-handle-width);
+}
+
+.ottacropper-handle[data-handle='n'],
+.ottacropper-handle[data-handle='s'],
+.ottacropper-handle[data-handle='e'],
+.ottacropper-handle[data-handle='w'] {
+    background: var(--cr-handle);
+    border-radius: 999px;
+    box-shadow: 0 0 1px rgb(0 0 0 / 0.5);
+}
+
+.ottacropper-handle[data-handle='n'],
+.ottacropper-handle[data-handle='s'] {
+    left: 50%;
+    width: 1.5rem;
+    height: var(--cr-handle-width);
+    margin-left: -0.75rem;
+}
+
+.ottacropper-handle[data-handle='e'],
+.ottacropper-handle[data-handle='w'] {
+    top: 50%;
+    width: var(--cr-handle-width);
+    height: 1.5rem;
+    margin-top: -0.75rem;
+}
+
+.ottacropper-handle[data-handle='n'] {
+    top: calc(-1 * var(--cr-handle-width) / 2 - 0.75px);
+}
+.ottacropper-handle[data-handle='s'] {
+    bottom: calc(-1 * var(--cr-handle-width) / 2 - 0.75px);
+}
+.ottacropper-handle[data-handle='w'] {
+    left: calc(-1 * var(--cr-handle-width) / 2 - 0.75px);
+}
+.ottacropper-handle[data-handle='e'] {
+    right: calc(-1 * var(--cr-handle-width) / 2 - 0.75px);
+}
+
+/* ---------------------------------------------------------------------------
+ * Empty state — the stage itself is the control
+ * --------------------------------------------------------------------------- */
+
+.ottacropper-empty {
+    position: absolute;
+    inset: 0.625rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
-    width: 100%;
-    min-height: 14rem;
-    padding: 1.75rem 1.25rem;
-    border: 1px dashed color-mix(in srgb, var(--cr-border) 90%, var(--cr-fg));
-    border-radius: calc(var(--cr-radius) + 0.15rem);
-    background: color-mix(in srgb, var(--cr-muted) 70%, transparent);
+    gap: 0.375rem;
+    padding: 1rem;
+    border: 1.5px dashed color-mix(in srgb, var(--cr-border) 80%, var(--cr-fg));
+    border-radius: var(--cr-radius-inner);
+    background: transparent;
     color: var(--cr-muted-fg);
+    font-family: inherit;
+    font-size: var(--cr-font-size-sm);
     text-align: center;
     cursor: pointer;
-    font-family: inherit;
     transition:
         border-color var(--cr-transition),
         background var(--cr-transition),
         color var(--cr-transition);
 }
 
-.ottacropper-empty-state:hover {
-    border-color: var(--cr-fg);
-    background: color-mix(in srgb, var(--cr-muted) 90%, var(--cr-bg));
+.ottacropper-empty:hover,
+.ottacropper--dragover .ottacropper-empty {
+    border-color: var(--cr-primary);
+    background: color-mix(in srgb, var(--cr-primary) 6%, transparent);
     color: var(--cr-fg);
 }
 
-.ottacropper-empty-state:focus-visible {
+.ottacropper-empty:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 35%, transparent);
 }
 
-.ottacropper-empty-state--hidden {
-    display: none;
+.ottacropper-empty svg {
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 0.375rem;
+    opacity: 0.6;
+    stroke-width: 1.5;
 }
 
-.ottacropper-empty-state--error {
-    border-color: var(--cr-destructive);
-    color: var(--cr-destructive);
-}
-
-.ottacropper-empty-state svg {
-    width: 1.75rem;
-    height: 1.75rem;
-    flex: 0 0 auto;
-    opacity: 0.7;
-}
-
-.ottacropper-empty-state:hover svg {
-    opacity: 1;
-}
-
-.ottacropper-empty-state div {
-    display: grid;
-    gap: 0.2rem;
-}
-
-.ottacropper-empty-state strong {
+.ottacropper-empty strong {
     color: var(--cr-fg);
-    font-size: 0.9375rem;
+    font-size: var(--cr-font-size);
     font-weight: 550;
     letter-spacing: -0.01em;
 }
 
-.ottacropper-empty-state span {
-    font-size: var(--cr-font-size-sm);
-    line-height: 1.3;
+.ottacropper-empty--error {
+    border-color: var(--cr-destructive);
+}
+
+.ottacropper-empty--error .ottacropper-empty-hint {
+    color: var(--cr-destructive);
+    font-weight: 500;
 }
 
 /* ---------------------------------------------------------------------------
- * Viewport — canvas wrapper (crop stage)
- * --------------------------------------------------------------------------- */
-
-.ottacropper-viewport {
-    position: relative;
-    overflow: hidden;
-    align-self: center;
-    width: auto;
-    max-width: 100%;
-    border: 1px solid var(--cr-border);
-    border-radius: calc(var(--cr-radius) + 0.15rem);
-    background-color: color-mix(in srgb, var(--cr-fg) 6%, var(--cr-muted));
-    background-image:
-        linear-gradient(45deg, color-mix(in srgb, var(--cr-bg) 55%, transparent) 25%, transparent 25%),
-        linear-gradient(-45deg, color-mix(in srgb, var(--cr-bg) 55%, transparent) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 55%, transparent) 75%),
-        linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--cr-bg) 55%, transparent) 75%);
-    background-position:
-        0 0,
-        0 0.5rem,
-        0.5rem -0.5rem,
-        -0.5rem 0;
-    background-size: 1rem 1rem;
-    display: none;
-    touch-action: none;
-    user-select: none;
-}
-
-.ottacropper-viewport--visible {
-    display: block;
-}
-
-.ottacropper-canvas {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    cursor: grab;
-    border-radius: inherit;
-}
-
-.ottacropper-stage-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding: 0.5rem 0.6rem;
-    pointer-events: none;
-    background: linear-gradient(to bottom, color-mix(in srgb, var(--cr-fg) 45%, transparent), transparent);
-}
-
-.ottacropper-filename {
-    min-width: 0;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.ottacropper-replace-btn {
-    pointer-events: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    flex-shrink: 0;
-    min-height: 1.625rem;
-    padding: 0.2rem 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    border-radius: calc(var(--cr-radius) * 0.7);
-    background: color-mix(in srgb, #000 42%, transparent);
-    color: #fff;
-    font-family: var(--cr-font);
-    font-size: 0.75rem;
-    font-weight: 500;
-    line-height: 1;
-    cursor: pointer;
-    backdrop-filter: blur(8px);
-    transition:
-        background var(--cr-transition),
-        border-color var(--cr-transition);
-}
-
-.ottacropper-replace-btn:hover {
-    background: color-mix(in srgb, #000 58%, transparent);
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.ottacropper-replace-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 45%, transparent);
-}
-
-.ottacropper-replace-btn svg {
-    width: 0.875rem;
-    height: 0.875rem;
-}
-
-/* ---------------------------------------------------------------------------
- * Toolbar — presets, zoom, transforms
+ * Toolbar — aspect · zoom · (straighten) · rotate/flip · reset · replace
  * --------------------------------------------------------------------------- */
 
 .ottacropper-toolbar {
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: 0.5rem 0.75rem;
-    flex-wrap: wrap;
-}
-
-.ottacropper-toolbar--visible {
     display: flex;
-}
-
-.ottacropper-tools {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: auto;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.625rem;
+    width: 100%;
+    transition: opacity var(--cr-transition);
 }
 
+.ottacropper--empty .ottacropper-toolbar {
+    opacity: 0.6;
+}
+
+.ottacropper-presets,
 .ottacropper-zoom,
-.ottacropper-btn-group,
-.ottacropper-presets {
+.ottacropper-straighten,
+.ottacropper-group,
+.ottacropper-actions {
     display: inline-flex;
     align-items: center;
     gap: 0.125rem;
     padding: 0.1875rem;
     border-radius: var(--cr-radius);
-    background: color-mix(in srgb, var(--cr-muted) 80%, transparent);
+    background: color-mix(in srgb, var(--cr-muted) 70%, transparent);
 }
 
-.ottacropper-presets {
-    display: none;
+.ottacropper-zoom {
+    flex: 1 1 8rem;
+    min-width: 8rem;
+    max-width: 16rem;
 }
 
-.ottacropper-presets--visible {
-    display: inline-flex;
-}
-
-.ottacropper-zoom-range {
-    width: 5.5rem;
-    height: 1.25rem;
-    margin: 0 0.15rem;
-    padding: 0;
-    appearance: none;
+.ottacropper-actions {
+    margin-left: auto;
     background: transparent;
-    cursor: pointer;
-}
-
-.ottacropper-zoom-range:focus-visible {
-    outline: none;
-}
-
-.ottacropper-zoom-range::-webkit-slider-runnable-track {
-    height: 0.25rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--cr-fg) 18%, var(--cr-border));
-}
-
-.ottacropper-zoom-range::-webkit-slider-thumb {
-    appearance: none;
-    width: 0.875rem;
-    height: 0.875rem;
-    margin-top: -0.3125rem;
-    border-radius: 50%;
-    border: 2px solid var(--cr-bg);
-    background: var(--cr-fg);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cr-fg) 18%, transparent);
-    cursor: grab;
-}
-
-.ottacropper-zoom-range::-moz-range-track {
-    height: 0.25rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--cr-fg) 18%, var(--cr-border));
-}
-
-.ottacropper-zoom-range::-moz-range-thumb {
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 50%;
-    border: 2px solid var(--cr-bg);
-    background: var(--cr-fg);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cr-fg) 18%, transparent);
-    cursor: grab;
-}
-
-.ottacropper-zoom-value {
-    min-width: 2.4rem;
-    padding: 0 0.15rem;
-    font-size: 0.6875rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--cr-muted-fg);
-    text-align: right;
+    padding: 0;
+    gap: 0.25rem;
 }
 
 .ottacropper-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    gap: 0.375rem;
     width: var(--cr-btn-size);
     height: var(--cr-btn-size);
     padding: 0;
     border: none;
-    border-radius: calc(var(--cr-radius) * 0.6);
+    border-radius: var(--cr-radius-inner);
     background: transparent;
     color: var(--cr-fg);
+    font-family: inherit;
+    font-size: var(--cr-font-size-sm);
+    font-weight: 500;
+    line-height: 1;
     cursor: pointer;
     transition:
         background var(--cr-transition),
         color var(--cr-transition),
-        box-shadow var(--cr-transition);
-}
-
-.ottacropper-btn:hover {
-    background: var(--cr-bg);
-    color: var(--cr-fg);
-    box-shadow: 0 0 0 1px var(--cr-border);
-}
-
-.ottacropper-btn--active {
-    background: var(--cr-bg);
-    color: var(--cr-fg);
-    box-shadow: 0 0 0 1px var(--cr-ring);
-}
-
-.ottacropper-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
+        box-shadow var(--cr-transition),
+        opacity var(--cr-transition);
 }
 
 .ottacropper-btn svg {
     width: 1rem;
     height: 1rem;
+    flex-shrink: 0;
+}
+
+.ottacropper-btn--text {
+    width: auto;
+    padding: 0 0.625rem;
+    color: var(--cr-muted-fg);
+}
+
+.ottacropper-btn:hover:not(:disabled) {
+    background: var(--cr-bg);
+    color: var(--cr-fg);
+    box-shadow: inset 0 0 0 1px var(--cr-border);
+}
+
+.ottacropper-btn--on,
+.ottacropper-btn--on:hover:not(:disabled) {
+    background: var(--cr-accent);
+    color: var(--cr-accent-fg);
+    box-shadow: none;
+}
+
+.ottacropper-btn:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.ottacropper-btn:focus-visible,
+.ottacropper-preset:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 35%, transparent);
 }
 
 .ottacropper-preset {
-    padding: 0.3125rem 0.7rem;
+    padding: 0.3125rem 0.625rem;
     border: none;
-    border-radius: calc(var(--cr-radius) * 0.6);
+    border-radius: var(--cr-radius-inner);
     background: transparent;
     color: var(--cr-muted-fg);
-    font-family: var(--cr-font);
+    font-family: inherit;
     font-size: var(--cr-font-size-sm);
     font-weight: 500;
+    line-height: 1.2;
     cursor: pointer;
     transition:
         background var(--cr-transition),
@@ -414,19 +468,117 @@
         box-shadow var(--cr-transition);
 }
 
-.ottacropper-preset:hover {
+.ottacropper-preset:hover:not(:disabled) {
     color: var(--cr-fg);
 }
 
-.ottacropper-preset:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 30%, transparent);
-}
-
-.ottacropper-preset--active {
+.ottacropper-preset--on,
+.ottacropper-preset--on:hover:not(:disabled) {
     background: var(--cr-bg);
     color: var(--cr-fg);
     box-shadow: inset 0 0 0 1px var(--cr-border);
+}
+
+.ottacropper-preset:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+/* Sliders */
+.ottacropper-range {
+    flex: 1 1 auto;
+    min-width: 4rem;
+    height: var(--cr-btn-size);
+    margin: 0 0.25rem;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.ottacropper-straighten .ottacropper-range {
+    width: 7rem;
+}
+
+.ottacropper-range:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
+.ottacropper-range:focus-visible {
+    outline: none;
+}
+
+.ottacropper-range::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cr-fg) 16%, var(--cr-border));
+}
+
+.ottacropper-range::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-top: -0.3125rem;
+    border-radius: 50%;
+    border: 2px solid var(--cr-bg);
+    background: var(--cr-fg);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cr-fg) 20%, transparent);
+    transition: box-shadow var(--cr-transition);
+}
+
+.ottacropper-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 35%, transparent);
+}
+
+.ottacropper-range::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cr-fg) 16%, var(--cr-border));
+}
+
+.ottacropper-range::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 50%;
+    border: 2px solid var(--cr-bg);
+    background: var(--cr-fg);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cr-fg) 20%, transparent);
+}
+
+.ottacropper-range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-ring) 35%, transparent);
+}
+
+.ottacropper-degrees {
+    min-width: 2.75rem;
+    padding-right: 0.375rem;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--cr-muted-fg);
+    text-align: right;
+}
+
+/* ---------------------------------------------------------------------------
+ * Narrow layouts
+ * --------------------------------------------------------------------------- */
+
+@media (max-width: 32rem) {
+    .ottacropper-presets {
+        flex-basis: 100%;
+        justify-content: stretch;
+    }
+
+    .ottacropper-preset {
+        flex: 1;
+        text-align: center;
+    }
+
+    .ottacropper-zoom {
+        max-width: none;
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -437,33 +589,5 @@
     .ottacropper,
     .ottacropper * {
         transition: none !important;
-    }
-}
-
-/* ---------------------------------------------------------------------------
- * Responsive layout
- * --------------------------------------------------------------------------- */
-
-@media (max-width: 32rem) {
-    .ottacropper-toolbar,
-    .ottacropper-tools {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .ottacropper-zoom,
-    .ottacropper-btn-group,
-    .ottacropper-presets {
-        justify-content: center;
-        width: 100%;
-    }
-
-    .ottacropper-zoom-range {
-        flex: 1;
-        width: auto;
-    }
-
-    .ottacropper-tools {
-        margin-left: 0;
     }
 }

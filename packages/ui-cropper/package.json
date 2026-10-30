@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/ui-cropper",
     "version": "1.0.0",
-    "description": "Advanced vanilla image cropper with smooth transitions. Crop, flip, rotate, zoom. Square/rect/circle viewfinder. Zero React.",
+    "description": "Vanilla image cropper, fixed-viewfinder model: pan, pinch, zoom, rotate, straighten and flip the photo under a frame that fills the stage. Rect or circle, any aspect. Zero React.",
     "main": "dist/index.js",
     "module": "dist/index.mjs",
     "types": "dist/index.d.ts",

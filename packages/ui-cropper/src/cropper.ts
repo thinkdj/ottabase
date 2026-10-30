@@ -1,1160 +1,978 @@
 /**
- * Vanilla image cropper: crop, flip, rotate, zoom with smooth transitions.
- * Zero dependencies. ~3–4 KB gzipped.
+ * Vanilla image cropper, fixed-viewfinder model: the frame fills the stage, the photo pans,
+ * pinches, zooms, rotates and flips underneath it. The photo is a CSS-transformed <img>, the
+ * overlay is DOM, so every pixel is themeable and crisp on any display; canvas is used only to
+ * export. Zero dependencies.
  */
-import type { CropperOptions } from './types';
+import type { Handle, Point, Rect, View } from './geometry';
+import {
+    center,
+    clampView,
+    coverScale,
+    covers,
+    fitRect,
+    flip,
+    HANDLES,
+    refit,
+    resizeRect,
+    rotateAbout,
+    toImage,
+    zoomAbout,
+} from './geometry';
+import type { AspectPreset, CropperOptions, CropperState, CropShape } from './types';
 import { DEFAULT_ASPECT_PRESETS } from './types';
 
-const ACCEPT = 'image/png,image/jpeg';
-const MIN_SIZE = 16;
+const PADDING = 20;
+const MIN_FRAME = 48;
+const GRID_LINGER_MS = 450;
 
-// Inline SVG icons (24x24) – no deps
-const SVG_FLIP_H =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/></svg>';
-const SVG_FLIP_V =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12h16"/></svg>';
-const SVG_ROTATE =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>';
-const SVG_ZOOM_IN =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
-const SVG_ZOOM_OUT =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
-// Upload icon for the file picker button
-const SVG_UPLOAD =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+const svg = (body: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const ICON = {
+    image: svg(
+        '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+    ),
+    replace: svg(
+        '<path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5 3-3 3 3"/><path d="M17 22v-5.5"/><circle cx="9" cy="9" r="2"/>',
+    ),
+    zoomIn: svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/>'),
+    zoomOut: svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/>'),
+    rotateCcw: svg('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'),
+    rotateCw: svg('<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>'),
+    flipH: svg(
+        '<path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/>',
+    ),
+    flipV: svg(
+        '<path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/>',
+    ),
+    reset: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>'),
+};
+
+type Gesture =
+    | { kind: 'pan'; view0: View; p0: Point }
+    | { kind: 'pinch'; view0: View; mid0: Point; dist0: number }
+    | { kind: 'resize'; handle: Handle; frame0: Rect; p0: Point };
+
+const CURSORS: Record<Handle, string> = {
+    nw: 'nwse-resize',
+    se: 'nwse-resize',
+    ne: 'nesw-resize',
+    sw: 'nesw-resize',
+    n: 'ns-resize',
+    s: 'ns-resize',
+    e: 'ew-resize',
+    w: 'ew-resize',
+};
 
 export class Cropper {
-    private static nextId = 0;
-    private readonly instanceId = `ottacropper-${++Cropper.nextId}`;
-    private container: HTMLElement;
-    private options: {
-        aspectRatio: number | null;
-        shape: 'rect' | 'circle';
-        accept: string;
-        maxHeight: number;
-        transitions: boolean;
-        transitionDuration: number;
-        zoom: number;
-        minZoom: number;
-        maxZoom: number;
-        aspectPresets: CropperOptions['aspectPresets'];
-        onImageLoad?: () => void;
-    };
-    private presetBtns: Map<number | null, HTMLButtonElement> = new Map();
-    private img: HTMLImageElement | null = null;
-    private canvas: HTMLCanvasElement | null = null;
-    private wrap: HTMLDivElement | null = null;
-    private fileInput: HTMLInputElement | null = null;
-    private emptyState: HTMLButtonElement | null = null;
-    private emptyHint: HTMLSpanElement | null = null;
-    private filenameEl: HTMLSpanElement | null = null;
-    private replaceBtn: HTMLButtonElement | null = null;
-    private zoomRange: HTMLInputElement | null = null;
-    private zoomValue: HTMLSpanElement | null = null;
-    private flipHButton: HTMLButtonElement | null = null;
-    private flipVButton: HTMLButtonElement | null = null;
-    private hasLoadedImage = false;
-    private presetsVisible = true;
-    private dragDepth = 0;
-    // Crop in rotated/visible coordinates (what user sees on screen)
-    private crop = { x: 0, y: 0, w: 0, h: 0 };
-    private flipH = false;
-    private flipV = false;
-    private rotation = 0; // 0, 90, 180, 270
-    private zoom = 1;
-    private drag = { active: false, startX: 0, startY: 0, startCropX: 0, startCropY: 0 };
-    private displayScale = 1;
-    private animating = false;
-    private resizeHandle: {
-        active: boolean;
-        corner: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w' | null;
-        startX: number;
-        startY: number;
-        startCrop: { x: number; y: number; w: number; h: number };
-    } = { active: false, corner: null, startX: 0, startY: 0, startCrop: { x: 0, y: 0, w: 0, h: 0 } };
+    private readonly root: HTMLElement;
+    private readonly options: Required<
+        Omit<CropperOptions, 'aspectRatio' | 'aspectPresets' | 'onImageLoad' | 'onChange' | 'onError' | 'maxOutput'>
+    > &
+        Pick<CropperOptions, 'onImageLoad' | 'onChange' | 'onError' | 'maxOutput'> & {
+            aspectPresets: AspectPreset[] | false;
+        };
 
-    private boundPointerDown = (e: PointerEvent) => this.handlePointerDown(e);
-    private boundPointerMove = (e: PointerEvent) => this.handlePointerMove(e);
-    private boundPointerUp = (e: PointerEvent) => this.handlePointerUp(e);
-    private boundWheel = (e: WheelEvent) => this.handleWheel(e);
-    private boundDblClick = (e: MouseEvent) => this.handleDblClick(e);
-    private boundKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e);
-    private boundDragOver = (e: DragEvent) => this.handleDragOver(e);
-    private boundDragEnter = (e: DragEvent) => this.handleDragEnter(e);
-    private boundDragLeave = (e: DragEvent) => this.handleDragLeave(e);
-    private boundDrop = (e: DragEvent) => this.handleDrop(e);
+    // DOM
+    private fileInput!: HTMLInputElement;
+    private stage!: HTMLDivElement;
+    private imageEl!: HTMLImageElement;
+    private frameEl!: HTMLDivElement;
+    private emptyEl!: HTMLButtonElement;
+    private emptyHint!: HTMLSpanElement;
+    private zoomRange!: HTMLInputElement;
+    private straightenRange: HTMLInputElement | null = null;
+    private straightenLabel: HTMLSpanElement | null = null;
+    private flipHBtn!: HTMLButtonElement;
+    private flipVBtn!: HTMLButtonElement;
+    private resetBtn!: HTMLButtonElement;
+    private replaceBtn!: HTMLButtonElement;
+    private presetBtns = new Map<number | null, HTMLButtonElement>();
+    private needsImage: Array<HTMLButtonElement | HTMLInputElement> = [];
+
+    // Model
+    private img: HTMLImageElement | null = null;
+    private imageUrl: string | null = null;
+    private ownsUrl = false;
+    private loadToken = 0;
+    /** Aspect the consumer asked for; Reset returns to it */
+    private baseAspect: number | null;
+    /** Aspect currently locked by a preset, or null while the frame is free */
+    private aspect: number | null;
+    private shape: CropShape;
+    private frame: Rect = { x: 0, y: 0, w: 0, h: 0 };
+    private view: View = { cx: 0, cy: 0, scale: 1, rotation: 0, flipX: false, flipY: false };
+    /** Fine rotation in screen degrees, -45..45 */
+    private fine = 0;
+    /** Quarter turns the user asked for, unbounded; reported mod 4 whatever the flips did to the geometry */
+    private turns = 0;
+
+    // Interaction
+    private pointers = new Map<number, Point>();
+    private gesture: Gesture | null = null;
+    private dragDepth = 0;
+    private gridTimer: ReturnType<typeof setTimeout> | null = null;
+    private animTimer: ReturnType<typeof setTimeout> | null = null;
+    private resizeObserver: ResizeObserver | null = null;
+    private destroyed = false;
 
     constructor(container: HTMLElement, options: CropperOptions = {}) {
-        this.container = container;
+        this.root = container;
         this.options = {
-            aspectRatio: options.aspectRatio ?? 1,
             shape: options.shape ?? 'rect',
-            accept: options.accept ?? ACCEPT,
-            maxHeight: options.maxHeight ?? 400,
             aspectPresets: options.aspectPresets ?? DEFAULT_ASPECT_PRESETS,
+            accept: options.accept ?? 'image/*',
+            height: options.height ?? 360,
+            maxZoom: Math.max(1, options.maxZoom ?? 4),
+            maxOutput: options.maxOutput ?? 4096,
+            straighten: options.straighten ?? false,
             transitions: options.transitions ?? true,
-            transitionDuration: options.transitionDuration ?? 300,
-            zoom: options.zoom ?? 1,
-            minZoom: options.minZoom ?? 0.5,
-            maxZoom: options.maxZoom ?? 3,
+            transitionDuration: options.transitionDuration ?? 240,
             onImageLoad: options.onImageLoad,
+            onChange: options.onChange,
+            onError: options.onError,
         };
-        this.zoom = this.options.zoom;
-        this.presetsVisible = Array.isArray(this.options.aspectPresets) && this.options.aspectPresets.length > 0;
+        this.baseAspect = options.aspectRatio === undefined ? 1 : options.aspectRatio;
+        this.aspect = this.baseAspect;
+        this.shape = this.options.shape;
         this.mount();
-        this.updatePresetActive();
     }
 
+    // ─────────────────────────────────────────────────────────────── DOM
+
     private mount() {
-        this.container.innerHTML = '';
-        this.container.classList.add('ottacropper');
-        this.container.dataset.slot = 'cropper';
-        this.container.tabIndex = 0;
-        this.container.setAttribute('role', 'group');
-        this.container.setAttribute('aria-label', 'Image cropper');
+        const root = this.root;
+        root.innerHTML = '';
+        root.classList.add('ottacropper', 'ottacropper--empty');
+        root.dataset.slot = 'cropper';
+        root.tabIndex = 0;
+        root.setAttribute('role', 'group');
+        root.setAttribute('aria-label', 'Image cropper');
+        root.style.setProperty('--cr-duration', `${this.options.transitionDuration}ms`);
 
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = this.options.accept;
-        input.className = 'ottacropper-file-input';
-        input.id = `${this.instanceId}-file`;
-        input.setAttribute('aria-label', 'Select an image to crop');
-        input.onchange = () => this.loadFile(input.files?.[0]);
-        this.fileInput = input;
+        this.fileInput = el('input', 'ottacropper-file');
+        this.fileInput.type = 'file';
+        this.fileInput.accept = this.options.accept;
+        this.fileInput.tabIndex = -1;
+        this.fileInput.setAttribute('aria-hidden', 'true');
+        this.fileInput.onchange = () => this.loadFromFile(this.fileInput.files?.[0]);
 
-        const emptyState = document.createElement('button');
-        emptyState.type = 'button';
-        emptyState.className = 'ottacropper-empty-state';
-        emptyState.dataset.slot = 'cropper-empty';
-        emptyState.title = 'Choose image';
-        emptyState.setAttribute('aria-label', 'Drop a photo or click to choose');
-        const emptyHint = document.createElement('span');
-        emptyHint.textContent = 'PNG or JPEG · click to browse';
-        emptyState.innerHTML = `${SVG_UPLOAD}<div><strong>Drop a photo</strong></div>`;
-        emptyState.querySelector('div')?.appendChild(emptyHint);
-        this.emptyHint = emptyHint;
-        emptyState.onclick = () => this.openFilePicker();
-        this.emptyState = emptyState;
+        // Stage: photo, frame, empty state
+        this.stage = el('div', 'ottacropper-stage');
+        this.stage.dataset.slot = 'cropper-stage';
+        this.stage.style.height = `${this.options.height}px`;
 
-        this.wrap = document.createElement('div');
-        this.wrap.className = 'ottacropper-viewport';
-        this.wrap.id = `${this.instanceId}-stage`;
-        this.wrap.dataset.slot = 'cropper-stage';
-        this.wrap.title = 'Drag to reposition. Double-click to reset the crop.';
+        this.imageEl = el('img', 'ottacropper-image');
+        this.imageEl.alt = '';
+        this.imageEl.draggable = false;
+        this.imageEl.hidden = true;
 
-        this.canvas = document.createElement('canvas');
-        this.canvas.className = 'ottacropper-canvas';
-        this.wrap.appendChild(this.canvas);
-
-        const overlay = document.createElement('div');
-        overlay.className = 'ottacropper-stage-bar';
-        const filename = document.createElement('span');
-        filename.className = 'ottacropper-filename';
-        filename.setAttribute('aria-live', 'polite');
-        filename.textContent = '';
-        this.filenameEl = filename;
-        const replaceBtn = document.createElement('button');
-        replaceBtn.type = 'button';
-        replaceBtn.className = 'ottacropper-replace-btn';
-        replaceBtn.title = 'Replace image';
-        replaceBtn.setAttribute('aria-label', 'Replace image');
-        replaceBtn.innerHTML = `${SVG_UPLOAD}<span>Replace</span>`;
-        replaceBtn.onclick = (e) => {
-            e.stopPropagation();
-            this.openFilePicker();
-        };
-        this.replaceBtn = replaceBtn;
-        overlay.appendChild(filename);
-        overlay.appendChild(replaceBtn);
-        this.wrap.appendChild(overlay);
-
-        const ctrl = document.createElement('div');
-        ctrl.className = 'ottacropper-toolbar';
-        ctrl.id = `${this.instanceId}-toolbar`;
-        ctrl.dataset.slot = 'cropper-toolbar';
-        ctrl.setAttribute('role', 'toolbar');
-        ctrl.setAttribute('aria-label', 'Image crop adjustments');
-
-        const addBtn = (parent: HTMLElement, icon: string, title: string, fn: () => void, toggle = false) => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.title = title;
-            b.setAttribute('aria-label', title);
-            if (toggle) b.setAttribute('aria-pressed', 'false');
-            b.className = 'ottacropper-btn';
-            b.innerHTML = icon;
-            b.onclick = fn;
-            parent.appendChild(b);
-            return b;
-        };
-
-        if (this.options.aspectPresets && this.options.aspectPresets.length > 0) {
-            const presetsEl = document.createElement('div');
-            presetsEl.className = 'ottacropper-presets';
-            presetsEl.id = `${this.instanceId}-presets`;
-            presetsEl.setAttribute('role', 'group');
-            presetsEl.setAttribute('aria-label', 'Crop aspect ratio');
-            for (const { label, value } of this.options.aspectPresets) {
-                const b = document.createElement('button');
-                b.textContent = label;
-                b.type = 'button';
-                b.className = 'ottacropper-preset';
-                b.setAttribute('aria-pressed', 'false');
-                b.onclick = () => this.setAspectRatio(value);
-                presetsEl.appendChild(b);
-                this.presetBtns.set(value, b);
-            }
-            ctrl.appendChild(presetsEl);
+        this.frameEl = el('div', 'ottacropper-frame');
+        this.frameEl.dataset.slot = 'cropper-frame';
+        this.frameEl.hidden = true;
+        this.frameEl.appendChild(el('div', 'ottacropper-grid'));
+        for (const h of HANDLES) {
+            const handle = el('div', 'ottacropper-handle');
+            handle.dataset.handle = h;
+            handle.style.cursor = CURSORS[h];
+            this.frameEl.appendChild(handle);
         }
 
-        const tools = document.createElement('div');
-        tools.className = 'ottacropper-tools';
+        this.emptyEl = el('button', 'ottacropper-empty');
+        this.emptyEl.type = 'button';
+        this.emptyEl.dataset.slot = 'cropper-empty';
+        this.emptyHint = el('span', 'ottacropper-empty-hint');
+        this.emptyEl.innerHTML = `${ICON.image}<strong>Drop a photo here</strong>`;
+        this.emptyEl.appendChild(this.emptyHint);
+        this.emptyEl.onclick = () => this.openFilePicker();
+        this.setEmptyHint();
 
-        const zoom = document.createElement('div');
-        zoom.className = 'ottacropper-zoom';
+        this.stage.append(this.imageEl, this.frameEl, this.emptyEl);
+
+        // Toolbar
+        const toolbar = el('div', 'ottacropper-toolbar');
+        toolbar.dataset.slot = 'cropper-toolbar';
+        toolbar.setAttribute('role', 'toolbar');
+        toolbar.setAttribute('aria-label', 'Crop tools');
+
+        if (this.options.aspectPresets && this.options.aspectPresets.length > 0) {
+            const presets = el('div', 'ottacropper-presets');
+            presets.setAttribute('role', 'radiogroup');
+            presets.setAttribute('aria-label', 'Aspect ratio');
+            for (const { label, value } of this.options.aspectPresets) {
+                const b = el('button', 'ottacropper-preset');
+                b.type = 'button';
+                b.textContent = label;
+                b.setAttribute('role', 'radio');
+                b.setAttribute('aria-checked', 'false');
+                b.onclick = () => this.animate(() => this.applyAspect(value));
+                presets.appendChild(b);
+                this.presetBtns.set(value, b);
+                this.needsImage.push(b);
+            }
+            toolbar.appendChild(presets);
+        }
+
+        const zoom = el('div', 'ottacropper-zoom');
         zoom.setAttribute('role', 'group');
         zoom.setAttribute('aria-label', 'Zoom');
-        addBtn(zoom, SVG_ZOOM_OUT, 'Zoom out', () => this.zoomOut());
-        const range = document.createElement('input');
-        range.type = 'range';
-        range.className = 'ottacropper-zoom-range';
-        range.min = String(this.options.minZoom);
-        range.max = String(this.options.maxZoom);
-        range.step = '0.05';
-        range.value = String(this.zoom);
-        range.setAttribute('aria-label', 'Zoom level');
-        range.oninput = () => this.setZoom(Number(range.value));
-        this.zoomRange = range;
-        zoom.appendChild(range);
-        const zoomValue = document.createElement('span');
-        zoomValue.className = 'ottacropper-zoom-value';
-        zoomValue.setAttribute('aria-live', 'polite');
-        this.zoomValue = zoomValue;
-        zoom.appendChild(zoomValue);
-        addBtn(zoom, SVG_ZOOM_IN, 'Zoom in', () => this.zoomIn());
+        this.iconBtn(zoom, ICON.zoomOut, 'Zoom out', () => this.zoomOut());
+        this.zoomRange = el('input', 'ottacropper-range');
+        this.zoomRange.type = 'range';
+        this.zoomRange.min = '1';
+        this.zoomRange.max = String(this.options.maxZoom);
+        this.zoomRange.step = '0.01';
+        this.zoomRange.value = '1';
+        this.zoomRange.setAttribute('aria-label', 'Zoom');
+        this.zoomRange.oninput = () => {
+            this.touchGrid();
+            this.setZoom(Number(this.zoomRange.value), false);
+        };
+        zoom.appendChild(this.zoomRange);
+        this.needsImage.push(this.zoomRange);
+        this.iconBtn(zoom, ICON.zoomIn, 'Zoom in', () => this.zoomIn());
+        toolbar.appendChild(zoom);
 
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'ottacropper-btn-group';
-        btnGroup.setAttribute('role', 'group');
-        btnGroup.setAttribute('aria-label', 'Image transforms');
-        this.flipHButton = addBtn(btnGroup, SVG_FLIP_H, 'Flip horizontal', () => this.flipHorizontal(), true);
-        this.flipVButton = addBtn(btnGroup, SVG_FLIP_V, 'Flip vertical', () => this.flipVertical(), true);
-        addBtn(btnGroup, SVG_ROTATE, 'Rotate 90°', () => this.rotate());
+        if (this.options.straighten) {
+            const wrap = el('div', 'ottacropper-straighten');
+            wrap.setAttribute('role', 'group');
+            wrap.setAttribute('aria-label', 'Straighten');
+            this.straightenRange = el('input', 'ottacropper-range');
+            this.straightenRange.type = 'range';
+            this.straightenRange.min = '-45';
+            this.straightenRange.max = '45';
+            this.straightenRange.step = '0.5';
+            this.straightenRange.value = '0';
+            this.straightenRange.setAttribute('aria-label', 'Straighten');
+            this.straightenRange.oninput = () => {
+                this.touchGrid();
+                this.setStraighten(Number(this.straightenRange!.value), false);
+            };
+            this.straightenRange.ondblclick = () => this.setStraighten(0);
+            this.straightenLabel = el('span', 'ottacropper-degrees');
+            this.straightenLabel.textContent = '0°';
+            wrap.append(this.straightenRange, this.straightenLabel);
+            this.needsImage.push(this.straightenRange);
+            toolbar.appendChild(wrap);
+        }
 
-        tools.appendChild(zoom);
-        tools.appendChild(btnGroup);
-        ctrl.appendChild(tools);
+        const transforms = el('div', 'ottacropper-group');
+        transforms.setAttribute('role', 'group');
+        transforms.setAttribute('aria-label', 'Rotate and flip');
+        this.iconBtn(transforms, ICON.rotateCcw, 'Rotate left', () => this.rotate(-90));
+        this.iconBtn(transforms, ICON.rotateCw, 'Rotate right', () => this.rotate(90));
+        this.flipHBtn = this.iconBtn(transforms, ICON.flipH, 'Flip horizontal', () => this.flipHorizontal(), true);
+        this.flipVBtn = this.iconBtn(transforms, ICON.flipV, 'Flip vertical', () => this.flipVertical(), true);
+        toolbar.appendChild(transforms);
 
-        this.container.appendChild(input);
-        this.container.appendChild(emptyState);
-        this.container.appendChild(this.wrap);
-        this.container.appendChild(ctrl);
-        this.updateZoomUi();
+        const actions = el('div', 'ottacropper-actions');
+        this.resetBtn = this.iconBtn(actions, ICON.reset, 'Reset', () => this.reset());
+        this.resetBtn.hidden = true;
+        this.replaceBtn = el('button', 'ottacropper-btn ottacropper-btn--text');
+        this.replaceBtn.type = 'button';
+        this.replaceBtn.innerHTML = `${ICON.replace}<span>Replace</span>`;
+        this.replaceBtn.title = 'Replace photo';
+        this.replaceBtn.setAttribute('aria-label', 'Replace photo');
+        this.replaceBtn.onclick = () => this.openFilePicker();
+        this.replaceBtn.hidden = true;
+        actions.appendChild(this.replaceBtn);
+        toolbar.appendChild(actions);
 
-        this.wrap.addEventListener('pointerdown', this.boundPointerDown);
-        this.wrap.addEventListener('pointermove', this.boundPointerMove);
-        this.wrap.addEventListener('pointerup', this.boundPointerUp);
-        this.wrap.addEventListener('pointercancel', this.boundPointerUp);
-        this.wrap.addEventListener('wheel', this.boundWheel, { passive: false });
-        this.wrap.addEventListener('dblclick', this.boundDblClick);
-        this.container.addEventListener('keydown', this.boundKeyDown);
-        this.container.addEventListener('dragenter', this.boundDragEnter);
-        this.container.addEventListener('dragover', this.boundDragOver);
-        this.container.addEventListener('dragleave', this.boundDragLeave);
-        this.container.addEventListener('drop', this.boundDrop);
+        root.append(this.fileInput, this.stage, toolbar);
+        for (const c of this.needsImage) c.disabled = true;
+
+        this.stage.addEventListener('pointerdown', this.onPointerDown);
+        this.stage.addEventListener('pointermove', this.onPointerMove);
+        this.stage.addEventListener('pointerup', this.onPointerUp);
+        this.stage.addEventListener('pointercancel', this.onPointerUp);
+        this.stage.addEventListener('wheel', this.onWheel, { passive: false });
+        this.stage.addEventListener('dblclick', this.onDblClick);
+        root.addEventListener('keydown', this.onKeyDown);
+        root.addEventListener('dragenter', this.onDragEnter);
+        root.addEventListener('dragover', this.onDragOver);
+        root.addEventListener('dragleave', this.onDragLeave);
+        root.addEventListener('drop', this.onDrop);
+        if (typeof ResizeObserver !== 'undefined') {
+            this.resizeObserver = new ResizeObserver(() => this.onStageResize());
+            this.resizeObserver.observe(this.stage);
+        }
+        this.applyShape();
+        this.syncToolbar();
+    }
+
+    private iconBtn(parent: HTMLElement, icon: string, label: string, fn: () => void, toggle = false) {
+        const b = el('button', 'ottacropper-btn');
+        b.type = 'button';
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        if (toggle) b.setAttribute('aria-pressed', 'false');
+        b.innerHTML = icon;
+        b.onclick = fn;
+        parent.appendChild(b);
+        this.needsImage.push(b);
+        return b;
     }
 
     private openFilePicker() {
-        if (!this.fileInput) return;
-        // Reset value so selecting the same file again still triggers onChange.
         this.fileInput.value = '';
         this.fileInput.click();
     }
 
-    private setFilename(text: string) {
-        if (this.filenameEl) this.filenameEl.textContent = text;
-        if (this.filenameEl) this.filenameEl.title = text;
-    }
-
-    private setEmptyHint(text: string, isError = false) {
-        if (!this.emptyHint || !this.emptyState) return;
+    private setEmptyHint(text = 'or click to browse', error = false) {
         this.emptyHint.textContent = text;
-        this.emptyState.classList.toggle('ottacropper-empty-state--error', isError);
+        this.emptyEl.classList.toggle('ottacropper-empty--error', error);
     }
 
-    private updateZoomUi() {
-        if (this.zoomRange) this.zoomRange.value = String(this.zoom);
-        if (this.zoomValue) this.zoomValue.textContent = `${Math.round(this.zoom * 100)}%`;
+    private fail(message: string) {
+        if (!this.img) this.setEmptyHint(message, true);
+        this.options.onError?.(message);
     }
 
-    /** Public API: load image from File (e.g. after user selects from file input) */
-    loadFromFile(file: File | undefined) {
-        this.loadFile(file);
+    // ─────────────────────────────────────────────────────────────── Loading
+
+    /** Load a photo from a File (file picker, drop, or your own input). */
+    loadFromFile(file: File | undefined | null) {
+        if (!file) return;
+        const looksLikeImage = file.type
+            ? file.type.startsWith('image/')
+            : /\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i.test(file.name);
+        if (!looksLikeImage) {
+            this.fail("That file isn't an image");
+            return;
+        }
+        this.load(URL.createObjectURL(file), true);
     }
 
-    /** Public API: load image from a URL (http/https, blob:, or data: base64 URI) */
+    /** Load a photo from a URL (http(s), blob: or data:). Remote hosts must allow CORS for export to work. */
     loadFromUrl(url: string) {
         if (!url) return;
-        this.img = new Image();
-        // Allow cross-origin images to be exported via canvas
-        if (!url.startsWith('data:') && !url.startsWith('blob:')) {
-            this.img.crossOrigin = 'anonymous';
-        }
-        this.img.onload = () => {
-            this.hasLoadedImage = true;
-            this.rotation = 0;
-            this.zoom = this.options.zoom;
-            this.flipH = false;
-            this.flipV = false;
-            this.resetTransformControls();
-            this.initCrop();
-            this.revealLoadedUi();
-            this.updatePresetActive();
-            this.updateZoomUi();
-            this.render();
-            this.options.onImageLoad?.();
-            if (url.startsWith('data:')) {
-                this.setFilename('Image loaded');
-            } else {
-                try {
-                    const pathname = new URL(url).pathname;
-                    this.setFilename(pathname.split('/').pop() || 'Image loaded');
-                } catch {
-                    this.setFilename('Image loaded');
-                }
+        this.load(url, false);
+    }
+
+    private load(src: string, owned: boolean) {
+        const token = ++this.loadToken;
+        const img = new Image();
+        if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            if (token !== this.loadToken || this.destroyed) {
+                if (owned) URL.revokeObjectURL(src);
+                return;
             }
+            if (this.ownsUrl && this.imageUrl) URL.revokeObjectURL(this.imageUrl);
+            this.img = img;
+            this.imageUrl = src;
+            this.ownsUrl = owned;
+            this.imageEl.src = src;
+            this.imageEl.width = img.naturalWidth;
+            this.imageEl.height = img.naturalHeight;
+            this.imageEl.style.width = `${img.naturalWidth}px`;
+            this.imageEl.style.height = `${img.naturalHeight}px`;
+            this.imageEl.hidden = false;
+            this.frameEl.hidden = false;
+            this.emptyEl.hidden = true;
+            this.replaceBtn.hidden = false;
+            this.root.classList.remove('ottacropper--empty');
+            for (const c of this.needsImage) c.disabled = false;
+            this.setEmptyHint();
+            this.root.classList.remove('ottacropper--animate');
+            this.home();
+            this.apply();
+            this.options.onImageLoad?.(this.getState());
         };
-        this.img.onerror = () => {
-            console.error('Cropper: failed to load image from URL');
+        img.onerror = () => {
+            if (owned) URL.revokeObjectURL(src);
+            if (token !== this.loadToken || this.destroyed) return;
+            this.fail("Couldn't open that image");
         };
-        this.img.src = url;
+        img.src = src;
     }
 
-    private loadFile(file: File | undefined) {
-        if (!file) return;
-        if (!file.type.match(/^image\/(png|jpeg|jpg)$/)) {
-            this.setEmptyHint('Use a PNG or JPEG', true);
-            return;
-        }
-        this.setEmptyHint('PNG or JPEG · click to browse', false);
-        this.setFilename(file.name);
-        const url = URL.createObjectURL(file);
-        this.img = new Image();
-        this.img.onload = () => {
-            URL.revokeObjectURL(url);
-            this.hasLoadedImage = true;
-            this.rotation = 0; // Reset rotation on new image
-            this.zoom = this.options.zoom; // Reset zoom
-            this.flipH = false;
-            this.flipV = false;
-            this.resetTransformControls();
-            this.initCrop();
-            this.revealLoadedUi();
-            this.updatePresetActive();
-            this.updateZoomUi();
-            this.render();
-            this.options.onImageLoad?.();
-        };
-        this.img.src = url;
+    /** True once a photo is on the stage. */
+    hasImage(): boolean {
+        return this.img !== null;
     }
 
-    /** Reveal the viewport, toolbar, and aspect presets once the first image has loaded */
-    private revealLoadedUi() {
-        this.emptyState?.classList.add('ottacropper-empty-state--hidden');
-        this.wrap?.classList.add('ottacropper-viewport--visible');
-        this.container
-            .querySelector<HTMLElement>(`#${this.instanceId}-toolbar`)
-            ?.classList.add('ottacropper-toolbar--visible');
-        if (this.presetsVisible) {
-            this.container
-                .querySelector<HTMLElement>(`#${this.instanceId}-presets`)
-                ?.classList.add('ottacropper-presets--visible');
-        }
+    // ─────────────────────────────────────────────────────────────── Geometry
+
+    private stageRect(): Rect {
+        return { x: 0, y: 0, w: this.stage.clientWidth || 320, h: this.stage.clientHeight || this.options.height };
     }
 
-    private resetTransformControls() {
-        for (const button of [this.flipHButton, this.flipVButton]) {
-            button?.classList.remove('ottacropper-btn--active');
-            button?.setAttribute('aria-pressed', 'false');
-        }
-    }
-
-    /** Get image dimensions in CURRENT rotation (what user sees) */
-    private getRotatedImageDims() {
-        if (!this.img) return { w: 0, h: 0 };
-        const { naturalWidth: w, naturalHeight: h } = this.img;
-        // 90° and 270° swap dimensions
-        const is90or270 = this.rotation === 90 || this.rotation === 270;
-        return is90or270 ? { w: h, h: w } : { w, h };
-    }
-
-    private initCrop() {
-        const { w, h } = this.getRotatedImageDims();
-        const ar = this.options.aspectRatio;
-        let cw: number, ch: number;
-
-        if (ar === null) {
-            // Freeform - use 80% of image dimensions
-            cw = w * 0.8;
-            ch = h * 0.8;
-        } else if (w / h >= ar) {
-            ch = h;
-            cw = h * ar;
-        } else {
-            cw = w;
-            ch = w / ar;
-        }
-
-        cw = Math.max(MIN_SIZE, Math.min(cw, w));
-        ch = Math.max(MIN_SIZE, Math.min(ch, h));
-        this.crop = { x: (w - cw) / 2, y: (h - ch) / 2, w: cw, h: ch };
-        this.clampCrop();
-    }
-
-    /** Ensure crop rect stays within image bounds */
-    private clampCrop() {
-        if (!this.img) return;
-        const { w, h } = this.getRotatedImageDims();
-        this.crop.w = Math.max(MIN_SIZE, Math.min(this.crop.w, w));
-        this.crop.h = Math.max(MIN_SIZE, Math.min(this.crop.h, h));
-        this.crop.x = Math.max(0, Math.min(w - this.crop.w, this.crop.x));
-        this.crop.y = Math.max(0, Math.min(h - this.crop.h, this.crop.y));
-    }
-
-    private render() {
-        if (!this.img || !this.canvas || !this.wrap) return;
-        this.clampCrop();
-
-        const iw = this.img.naturalWidth;
-        const ih = this.img.naturalHeight;
-
-        // Calculate display scale
-        this.displayScale = Math.min(1, this.options.maxHeight / Math.max(iw, ih));
-        const scale = this.displayScale * this.zoom;
-
-        // Canvas size in rotated space
-        const { w: rotW, h: rotH } = this.getRotatedImageDims();
-        const cw = Math.round(rotW * scale);
-        const ch = Math.round(rotH * scale);
-
-        // Apply smooth transition to wrapper for rotation animation (uses theme vars when available)
-        if (this.options.transitions && !this.drag.active && !this.resizeHandle.active) {
-            this.wrap.style.transition = `all var(--duration-normal, ${this.options.transitionDuration}ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1))`;
-        } else {
-            this.wrap.style.transition = 'none';
-        }
-
-        // Set wrapper dimensions (animated during rotation)
-        this.wrap.style.width = `${cw}px`;
-        this.wrap.style.height = `${ch}px`;
-
-        this.canvas.width = cw;
-        this.canvas.height = ch;
-        const ctx = this.canvas.getContext('2d')!;
-
-        // Clear canvas
-        ctx.clearRect(0, 0, cw, ch);
-
-        // Draw image with transformations at center
-        ctx.save();
-        ctx.translate(cw / 2, ch / 2);
-        ctx.rotate((this.rotation * Math.PI) / 180);
-        if (this.flipH) ctx.scale(-1, 1);
-        if (this.flipV) ctx.scale(1, -1);
-
-        // Draw at natural orientation, scaled
-        const drawW = iw * scale;
-        const drawH = ih * scale;
-        ctx.drawImage(this.img, -drawW / 2, -drawH / 2, drawW, drawH);
-        ctx.restore();
-
-        // Draw overlay (crop area is in rotated coordinates)
-        const ox = this.crop.x * scale;
-        const oy = this.crop.y * scale;
-        const ow = this.crop.w * scale;
-        const oh = this.crop.h * scale;
-
-        // Dark overlay
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.globalCompositeOperation = 'destination-out';
-
-        // Cut out the crop area (circle or rect)
-        if (this.options.shape === 'circle') {
-            ctx.beginPath();
-            ctx.ellipse(ox + ow / 2, oy + oh / 2, ow / 2, oh / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
-        } else {
-            ctx.fillRect(ox, oy, ow, oh);
-        }
-
-        ctx.globalCompositeOperation = 'source-over';
-
-        // Crop border
-        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([]);
-        if (this.options.shape === 'circle') {
-            ctx.beginPath();
-            ctx.ellipse(ox + ow / 2, oy + oh / 2, ow / 2, oh / 2, 0, 0, Math.PI * 2);
-            ctx.stroke();
-        } else {
-            ctx.strokeRect(ox, oy, ow, oh);
-        }
-
-        // Draw resize handles (for both rect and circle)
-        this.drawResizeHandles(ctx, ox, oy, ow, oh);
-
-        // Grid lines (rule of thirds)
-        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([]);
-        if (this.options.shape === 'rect') {
-            ctx.beginPath();
-            // Vertical lines
-            ctx.moveTo(ox + ow / 3, oy);
-            ctx.lineTo(ox + ow / 3, oy + oh);
-            ctx.moveTo(ox + (2 * ow) / 3, oy);
-            ctx.lineTo(ox + (2 * ow) / 3, oy + oh);
-            // Horizontal lines
-            ctx.moveTo(ox, oy + oh / 3);
-            ctx.lineTo(ox + ow, oy + oh / 3);
-            ctx.moveTo(ox, oy + (2 * oh) / 3);
-            ctx.lineTo(ox + ow, oy + (2 * oh) / 3);
-            ctx.stroke();
-        }
-    }
-
-    /** Draw modern resize handles: small circular corner grips + short rounded edge bars (react-advanced-cropper style) */
-    private drawResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.35)';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetY = 1;
-        ctx.fillStyle = 'rgba(255,255,255,0.98)';
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-        ctx.lineWidth = 1;
-
-        // Corner handles — small circular grips
-        const cornerRadius = 4.5;
-        const corners = [
-            { x, y }, // nw
-            { x: x + w, y }, // ne
-            { x, y: y + h }, // sw
-            { x: x + w, y: y + h }, // se
-        ];
-        for (const c of corners) {
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, cornerRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        }
-
-        // Edge handles — short rounded bars, skipped when the crop box is too small to fit them cleanly
-        const barLength = 18;
-        const barThickness = 4;
-        const cornerRoundness = barThickness / 2;
-        const drawBar = (cx: number, cy: number, horizontal: boolean) => {
-            const bw = horizontal ? barLength : barThickness;
-            const bh = horizontal ? barThickness : barLength;
-            const bx = cx - bw / 2;
-            const by = cy - bh / 2;
-            ctx.beginPath();
-            if (typeof ctx.roundRect === 'function') {
-                ctx.roundRect(bx, by, bw, bh, cornerRoundness);
-            } else {
-                ctx.rect(bx, by, bw, bh);
-            }
-            ctx.fill();
-            ctx.stroke();
-        };
-        if (w > barLength * 1.5) {
-            drawBar(x + w / 2, y, true); // n
-            drawBar(x + w / 2, y + h, true); // s
-        }
-        if (h > barLength * 1.5) {
-            drawBar(x, y + h / 2, false); // w
-            drawBar(x + w, y + h / 2, false); // e
-        }
-        ctx.restore();
-    }
-
-    private getResizeHandleAtPoint(mx: number, my: number, ox: number, oy: number, ow: number, oh: number) {
-        const handleSize = 14;
-        const tolerance = 8;
-
-        const handles: Array<{ corner: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w'; x: number; y: number }> = [
-            { corner: 'nw', x: ox, y: oy },
-            { corner: 'ne', x: ox + ow, y: oy },
-            { corner: 'sw', x: ox, y: oy + oh },
-            { corner: 'se', x: ox + ow, y: oy + oh },
-            { corner: 'n', x: ox + ow / 2, y: oy },
-            { corner: 'e', x: ox + ow, y: oy + oh / 2 },
-            { corner: 's', x: ox + ow / 2, y: oy + oh },
-            { corner: 'w', x: ox, y: oy + oh / 2 },
-        ];
-
-        for (const handle of handles) {
-            const dist = Math.sqrt((mx - handle.x) ** 2 + (my - handle.y) ** 2);
-            if (dist < handleSize + tolerance) {
-                return handle.corner;
-            }
-        }
-        return null;
-    }
-
-    /** Get pointer position in canvas coordinates */
-    private getCanvasCoords(e: { clientX: number; clientY: number }): { x: number; y: number } | null {
-        if (!this.canvas) return null;
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
+    private contentRect(): Rect {
+        const s = this.stageRect();
         return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY,
+            x: PADDING,
+            y: PADDING,
+            w: Math.max(MIN_FRAME, s.w - 2 * PADDING),
+            h: Math.max(MIN_FRAME, s.h - 2 * PADDING),
         };
     }
 
-    private handlePointerDown(e: PointerEvent) {
-        if (!this.img || !this.canvas || !this.wrap) return;
-        if (e.button !== 0) return;
-        if ((e.target as HTMLElement).closest('button, input')) return;
-
-        const coords = this.getCanvasCoords(e);
-        if (!coords) return;
-
-        this.wrap.setPointerCapture?.(e.pointerId);
-        this.container.focus({ preventScroll: true });
-
-        const scale = this.displayScale * this.zoom;
-        const ox = this.crop.x * scale;
-        const oy = this.crop.y * scale;
-        const ow = this.crop.w * scale;
-        const oh = this.crop.h * scale;
-
-        const handle = this.getResizeHandleAtPoint(coords.x, coords.y, ox, oy, ow, oh);
-        if (handle) {
-            this.resizeHandle = {
-                active: true,
-                corner: handle,
-                startX: e.clientX,
-                startY: e.clientY,
-                startCrop: { ...this.crop },
-            };
-            this.canvas.style.cursor = this.getCursorForHandle(handle);
-            e.preventDefault();
-            return;
-        }
-
-        if (coords.x >= ox && coords.x <= ox + ow && coords.y >= oy && coords.y <= oy + oh) {
-            this.drag = {
-                active: true,
-                startX: e.clientX,
-                startY: e.clientY,
-                startCropX: this.crop.x,
-                startCropY: this.crop.y,
-            };
-            this.canvas.style.cursor = 'grabbing';
-            e.preventDefault();
-        }
+    private imageAspect(): number {
+        if (!this.img) return 1;
+        return Math.min(5, Math.max(0.2, this.img.naturalWidth / this.img.naturalHeight));
     }
 
-    private getCursorForHandle(handle: string): string {
-        const cursors: Record<string, string> = {
-            nw: 'nwse-resize',
-            ne: 'nesw-resize',
-            sw: 'nesw-resize',
-            se: 'nwse-resize',
-            n: 'ns-resize',
-            e: 'ew-resize',
-            s: 'ns-resize',
-            w: 'ew-resize',
+    /** Frame for an aspect; a free frame keeps its current proportions (or the photo's, on first load). */
+    private frameFor(aspect: number | null): Rect {
+        const ratio = aspect ?? (this.frame.w > 0 ? this.frame.w / this.frame.h : this.imageAspect());
+        return fitRect(this.contentRect(), ratio);
+    }
+
+    private homeView(frame: Rect): View {
+        const fc = center(frame);
+        const iw = this.img?.naturalWidth ?? 1;
+        const ih = this.img?.naturalHeight ?? 1;
+        return {
+            cx: fc.x,
+            cy: fc.y,
+            scale: coverScale(iw, ih, frame.w, frame.h, 0),
+            rotation: 0,
+            flipX: false,
+            flipY: false,
         };
-        return cursors[handle] || 'default';
     }
 
-    private handlePointerMove(e: PointerEvent) {
-        if (!this.img || !this.canvas) return;
+    private homeFrame(): Rect {
+        return fitRect(this.contentRect(), this.baseAspect ?? this.imageAspect());
+    }
 
-        const coords = this.getCanvasCoords(e);
-        if (!coords) return;
+    /** Back to the freshly loaded photo: base aspect, cover zoom, centred, no rotation or flips. */
+    private home() {
+        this.aspect = this.baseAspect;
+        this.fine = 0;
+        this.turns = 0;
+        this.frame = this.homeFrame();
+        this.view = this.homeView(this.frame);
+    }
 
-        const scale = this.displayScale * this.zoom;
+    private minScale(): number {
+        if (!this.img) return 1;
+        return coverScale(
+            this.img.naturalWidth,
+            this.img.naturalHeight,
+            this.frame.w,
+            this.frame.h,
+            this.view.rotation,
+        );
+    }
 
-        if (this.resizeHandle.active && this.resizeHandle.corner) {
-            this.handleResize(e);
-            return;
+    private clamp(view: View): View {
+        if (!this.img) return view;
+        const min = this.minScale();
+        const max = min * this.options.maxZoom;
+        return clampView(
+            { ...view, scale: Math.min(max, Math.max(min, view.scale)) },
+            this.frame,
+            this.img.naturalWidth,
+            this.img.naturalHeight,
+        );
+    }
+
+    /** Sign relating local rotation to what the viewer sees: a single flip mirrors the direction. */
+    private sign(): number {
+        return this.view.flipX !== this.view.flipY ? -1 : 1;
+    }
+
+    private screenAngle(): number {
+        return this.sign() * this.view.rotation;
+    }
+
+    private quarterTurns(): number {
+        return (((this.turns * 90) % 360) + 360) % 360;
+    }
+
+    // ─────────────────────────────────────────────────────────────── Rendering
+
+    private apply() {
+        if (this.destroyed) return;
+        const f = this.frame;
+        this.frameEl.style.left = `${f.x}px`;
+        this.frameEl.style.top = `${f.y}px`;
+        this.frameEl.style.width = `${f.w}px`;
+        this.frameEl.style.height = `${f.h}px`;
+        if (this.img) {
+            const v = this.view;
+            const sx = v.scale * (v.flipX ? -1 : 1);
+            const sy = v.scale * (v.flipY ? -1 : 1);
+            this.imageEl.style.transform = `translate(${v.cx}px, ${v.cy}px) scale(${sx}, ${sy}) rotate(${v.rotation}deg) translate(${-this.img.naturalWidth / 2}px, ${-this.img.naturalHeight / 2}px)`;
         }
+        this.root.classList.toggle('ottacropper--free', this.aspect === null);
+        this.syncToolbar();
+        this.options.onChange?.(this.getState());
+    }
 
-        if (this.drag.active) {
-            const dx = e.clientX - this.drag.startX;
-            const dy = e.clientY - this.drag.startY;
+    private applyShape() {
+        this.root.classList.toggle('ottacropper--circle', this.shape === 'circle');
+    }
 
-            const rect = this.canvas.getBoundingClientRect();
-            const screenScaleX = this.canvas.width / rect.width;
-            const screenScaleY = this.canvas.height / rect.height;
-
-            const cropDx = (dx * screenScaleX) / scale;
-            const cropDy = (dy * screenScaleY) / scale;
-
-            const { w, h } = this.getRotatedImageDims();
-            this.crop.x = Math.max(0, Math.min(w - this.crop.w, this.drag.startCropX + cropDx));
-            this.crop.y = Math.max(0, Math.min(h - this.crop.h, this.drag.startCropY + cropDy));
-            this.render();
-            return;
+    private syncToolbar() {
+        const state = this.getState();
+        this.zoomRange.value = String(state.zoom);
+        if (this.straightenRange) this.straightenRange.value = String(this.fine);
+        if (this.straightenLabel) this.straightenLabel.textContent = `${this.fine}°`;
+        this.flipHBtn.setAttribute('aria-pressed', String(this.view.flipX));
+        this.flipVBtn.setAttribute('aria-pressed', String(this.view.flipY));
+        this.flipHBtn.classList.toggle('ottacropper-btn--on', this.view.flipX);
+        this.flipVBtn.classList.toggle('ottacropper-btn--on', this.view.flipY);
+        this.resetBtn.hidden = !state.dirty;
+        for (const [value, btn] of this.presetBtns) {
+            const on =
+                value === null ? this.aspect === null : this.aspect !== null && Math.abs(value - this.aspect) < 1e-6;
+            btn.setAttribute('aria-checked', String(on));
+            btn.classList.toggle('ottacropper-preset--on', on);
         }
+    }
 
-        const ox = this.crop.x * scale;
-        const oy = this.crop.y * scale;
-        const ow = this.crop.w * scale;
-        const oh = this.crop.h * scale;
-
-        const handle = this.getResizeHandleAtPoint(coords.x, coords.y, ox, oy, ow, oh);
-        if (handle) {
-            this.canvas.style.cursor = this.getCursorForHandle(handle);
-            return;
+    /** Run a discrete change with CSS transitions on; pointer gestures never go through here. */
+    private animate(fn: () => void) {
+        const motion = this.options.transitions && !matchMediaReduced();
+        if (motion) this.root.classList.add('ottacropper--animate');
+        fn();
+        this.apply();
+        if (this.animTimer) clearTimeout(this.animTimer);
+        if (motion) {
+            this.animTimer = setTimeout(
+                () => this.root.classList.remove('ottacropper--animate'),
+                this.options.transitionDuration + 30,
+            );
         }
+    }
 
-        if (coords.x >= ox && coords.x <= ox + ow && coords.y >= oy && coords.y <= oy + oh) {
-            this.canvas.style.cursor = 'grab';
+    /** Show the composition grid for a moment after a slider or wheel change. */
+    private touchGrid() {
+        this.root.classList.add('ottacropper--interacting');
+        if (this.gridTimer) clearTimeout(this.gridTimer);
+        this.gridTimer = setTimeout(() => this.root.classList.remove('ottacropper--interacting'), GRID_LINGER_MS);
+    }
+
+    // ─────────────────────────────────────────────────────────────── Public transforms
+
+    getState(): CropperState {
+        const min = this.minScale();
+        const homeFrame = this.img ? this.homeFrame() : this.frame;
+        const home = this.img ? this.homeView(homeFrame) : this.view;
+        const v = this.view;
+        const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
+        const dirty =
+            !!this.img &&
+            (v.scale / min > 1.001 ||
+                v.flipX ||
+                v.flipY ||
+                this.quarterTurns() !== 0 ||
+                this.fine !== 0 ||
+                !near(v.cx, home.cx) ||
+                !near(v.cy, home.cy) ||
+                !near(this.frame.w, homeFrame.w) ||
+                !near(this.frame.h, homeFrame.h));
+        return {
+            hasImage: !!this.img,
+            zoom: this.img ? Math.round((v.scale / min) * 1000) / 1000 : 1,
+            rotation: this.quarterTurns(),
+            straighten: this.fine,
+            flipX: v.flipX,
+            flipY: v.flipY,
+            aspectRatio: this.frame.h > 0 ? this.frame.w / this.frame.h : (this.aspect ?? 1),
+            output: this.img
+                ? { width: Math.round(this.frame.w / v.scale), height: Math.round(this.frame.h / v.scale) }
+                : { width: 0, height: 0 },
+            dirty,
+        };
+    }
+
+    getZoom(): number {
+        return this.getState().zoom;
+    }
+
+    /** Zoom relative to cover (1 = photo exactly fills the frame), about the frame centre. */
+    setZoom(zoom: number, animated = true) {
+        if (!this.img) return;
+        const scale = this.minScale() * Math.min(this.options.maxZoom, Math.max(1, zoom));
+        const run = () => {
+            this.view = this.clamp(zoomAbout(this.view, scale, center(this.frame)));
+        };
+        if (animated) this.animate(run);
+        else {
+            run();
+            this.apply();
+        }
+    }
+
+    zoomIn() {
+        this.setZoom(this.getZoom() * 1.25);
+    }
+
+    zoomOut() {
+        this.setZoom(this.getZoom() / 1.25);
+    }
+
+    /** Rotate about the frame centre; positive is clockwise on screen. A free frame turns with the photo. */
+    rotate(deg = 90) {
+        if (!this.img) return;
+        this.animate(() => {
+            this.turns += Math.round(deg / 90);
+            this.view = rotateAbout(this.view, this.frame, deg);
+            if (this.aspect === null && Math.abs(deg) % 180 === 90) {
+                // The framed content is now h wide and w tall; grow that region back to fill the stage.
+                const fc = center(this.frame);
+                const turned = {
+                    x: fc.x - this.frame.h / 2,
+                    y: fc.y - this.frame.w / 2,
+                    w: this.frame.h,
+                    h: this.frame.w,
+                };
+                const next = fitRect(this.contentRect(), turned.w / turned.h);
+                this.view = refit(this.view, turned, next);
+                this.frame = next;
+            }
+            this.view = this.clamp(this.view);
+        });
+    }
+
+    /** Fine rotation in degrees, -45..45. */
+    setStraighten(deg: number, animated = true) {
+        if (!this.img) return;
+        const next = Math.max(-45, Math.min(45, deg));
+        const run = () => {
+            const quarter = this.screenAngle() - this.fine;
+            this.fine = next;
+            this.view = this.clamp({ ...this.view, rotation: this.sign() * (quarter + next) });
+        };
+        if (animated) this.animate(run);
+        else {
+            run();
+            this.apply();
+        }
+    }
+
+    flipHorizontal() {
+        if (!this.img) return;
+        this.animate(() => {
+            this.view = this.clamp(flip(this.view, this.frame, 'x'));
+        });
+    }
+
+    flipVertical() {
+        if (!this.img) return;
+        this.animate(() => {
+            this.view = this.clamp(flip(this.view, this.frame, 'y'));
+        });
+    }
+
+    /** Back to the freshly loaded photo. */
+    reset() {
+        if (!this.img) return;
+        this.animate(() => this.home());
+    }
+
+    /** Lock the frame to an aspect (w/h), or null for a free, resizable frame. Becomes the Reset baseline. */
+    setAspectRatio(ratio: number | null) {
+        this.baseAspect = ratio;
+        this.animate(() => this.applyAspect(ratio));
+    }
+
+    private applyAspect(ratio: number | null) {
+        this.aspect = ratio;
+        this.frame = this.frameFor(ratio);
+        this.view = this.clamp(this.view);
+    }
+
+    setShape(shape: CropShape) {
+        this.shape = shape;
+        this.applyShape();
+        this.apply();
+    }
+
+    /** Stage height in px. */
+    setHeight(px: number) {
+        this.options.height = px;
+        this.stage.style.height = `${px}px`;
+        this.onStageResize();
+    }
+
+    private onStageResize() {
+        if (this.destroyed) return;
+        const next = this.frameFor(this.aspect);
+        if (this.img && this.frame.w > 0) {
+            this.view = this.clamp(refit(this.view, this.frame, next));
+        }
+        this.frame = next;
+        this.apply();
+    }
+
+    // ─────────────────────────────────────────────────────────────── Export
+
+    /** The framed region at native resolution (capped by `maxOutput`). Circles export as PNG. */
+    async getBlob(mime = 'image/jpeg', quality = 0.92): Promise<Blob> {
+        if (!this.img) throw new Error('No image loaded');
+        const img = this.img;
+        const iw = img.naturalWidth;
+        const ih = img.naturalHeight;
+        const v = this.view;
+        const ow = this.frame.w / v.scale;
+        const oh = this.frame.h / v.scale;
+        const k = this.options.maxOutput ? Math.min(1, this.options.maxOutput / Math.max(ow, oh)) : 1;
+        const out = document.createElement('canvas');
+        out.width = Math.max(1, Math.round(ow * k));
+        out.height = Math.max(1, Math.round(oh * k));
+        const ctx = out.getContext('2d');
+        if (!ctx) throw new Error('Canvas unavailable');
+        ctx.imageSmoothingQuality = 'high';
+        if (this.shape === 'circle') {
+            ctx.beginPath();
+            ctx.ellipse(out.width / 2, out.height / 2, out.width / 2, out.height / 2, 0, 0, Math.PI * 2);
+            ctx.clip();
+        }
+        const p = toImage(center(this.frame), v, iw, ih);
+        ctx.translate(out.width / 2, out.height / 2);
+        ctx.scale(k * (v.flipX ? -1 : 1), k * (v.flipY ? -1 : 1));
+        ctx.rotate((v.rotation * Math.PI) / 180);
+        ctx.translate(-p.x, -p.y);
+        ctx.drawImage(img, 0, 0, iw, ih);
+        const type = this.shape === 'circle' && mime === 'image/jpeg' ? 'image/png' : mime;
+        return new Promise((resolve, reject) => {
+            out.toBlob((b) => (b ? resolve(b) : reject(new Error('Failed to encode image'))), type, quality);
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────── Pointer
+
+    private stagePoint(e: { clientX: number; clientY: number }): Point {
+        const r = this.stage.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    private startGesture(handle?: Handle) {
+        const pts = [...this.pointers.values()];
+        if (handle && pts.length === 1) {
+            this.gesture = { kind: 'resize', handle, frame0: { ...this.frame }, p0: pts[0]! };
+        } else if (pts.length >= 2) {
+            const [a, b] = pts as [Point, Point];
+            this.gesture = {
+                kind: 'pinch',
+                view0: { ...this.view },
+                mid0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+                dist0: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+            };
+        } else if (pts.length === 1) {
+            this.gesture = { kind: 'pan', view0: { ...this.view }, p0: pts[0]! };
         } else {
-            this.canvas.style.cursor = 'default';
+            this.gesture = null;
         }
     }
 
-    private handleResize(e: { clientX: number; clientY: number }) {
-        if (!this.resizeHandle.corner || !this.canvas) return;
+    private onPointerDown = (e: PointerEvent) => {
+        if (!this.img) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) return;
+        e.preventDefault();
+        this.stage.setPointerCapture?.(e.pointerId);
+        this.root.focus({ preventScroll: true });
+        this.pointers.set(e.pointerId, this.stagePoint(e));
+        const handle = (target.closest('.ottacropper-handle') as HTMLElement | null)?.dataset.handle as
+            | Handle
+            | undefined;
+        const keepResize = this.gesture?.kind === 'resize' && this.pointers.size > 1;
+        if (!keepResize) this.startGesture(this.aspect === null ? handle : undefined);
+        this.root.classList.add('ottacropper--interacting');
+        this.root.classList.toggle('ottacropper--panning', this.gesture?.kind === 'pan');
+    };
 
-        const dx = e.clientX - this.resizeHandle.startX;
-        const dy = e.clientY - this.resizeHandle.startY;
-
-        const rect = this.canvas.getBoundingClientRect();
-        const screenScaleX = this.canvas.width / rect.width;
-        const screenScaleY = this.canvas.height / rect.height;
-
-        const scale = this.displayScale * this.zoom;
-        const { w, h } = this.getRotatedImageDims();
-        const corner = this.resizeHandle.corner;
-        const startCrop = this.resizeHandle.startCrop;
-        const ar = this.options.aspectRatio;
-
-        let newX = startCrop.x;
-        let newY = startCrop.y;
-        let newW = startCrop.w;
-        let newH = startCrop.h;
-
-        const cropDx = (dx * screenScaleX) / scale;
-        const cropDy = (dy * screenScaleY) / scale;
-
-        // Handle corner and edge resizing
-        if (corner.includes('w')) {
-            newX = startCrop.x + cropDx;
-            newW = startCrop.w - cropDx;
-        }
-        if (corner.includes('e')) {
-            newW = startCrop.w + cropDx;
-        }
-        if (corner.includes('n')) {
-            newY = startCrop.y + cropDy;
-            newH = startCrop.h - cropDy;
-        }
-        if (corner.includes('s')) {
-            newH = startCrop.h + cropDy;
-        }
-
-        // Maintain aspect ratio (if not freeform)
-        // For circles, always maintain 1:1 aspect ratio (square)
-        const effectiveAr = this.options.shape === 'circle' ? 1 : ar;
-
-        if (effectiveAr !== null) {
-            if (corner === 'nw' || corner === 'ne' || corner === 'sw' || corner === 'se') {
-                // Corner resize - maintain aspect ratio
-                const aspectW = newH * effectiveAr;
-                const aspectH = newW / effectiveAr;
-
-                if (Math.abs(newW - aspectW) < Math.abs(newH - aspectH)) {
-                    newW = aspectW;
-                } else {
-                    newH = aspectH;
-                }
-
-                // Adjust position for corners
-                if (corner.includes('w')) {
-                    newX = startCrop.x + startCrop.w - newW;
-                }
-                if (corner.includes('n')) {
-                    newY = startCrop.y + startCrop.h - newH;
-                }
-            } else {
-                // Edge resize - adjust other dimension to maintain aspect ratio
-                if (corner === 'n' || corner === 's') {
-                    newW = newH * effectiveAr;
-                    newX = startCrop.x + (startCrop.w - newW) / 2;
-                } else {
-                    newH = newW / effectiveAr;
-                    newY = startCrop.y + (startCrop.h - newH) / 2;
+    private onPointerMove = (e: PointerEvent) => {
+        if (!this.pointers.has(e.pointerId) || !this.gesture || !this.img) return;
+        const p = this.stagePoint(e);
+        this.pointers.set(e.pointerId, p);
+        const g = this.gesture;
+        if (g.kind === 'pan') {
+            this.view = this.clamp({ ...g.view0, cx: g.view0.cx + p.x - g.p0.x, cy: g.view0.cy + p.y - g.p0.y });
+        } else if (g.kind === 'pinch') {
+            const [a, b] = [...this.pointers.values()] as [Point, Point];
+            if (!b) return;
+            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            const dist = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+            const min = this.minScale();
+            const scale = Math.min(min * this.options.maxZoom, Math.max(min, g.view0.scale * (dist / g.dist0)));
+            const z = zoomAbout(g.view0, scale, g.mid0);
+            this.view = this.clamp({ ...z, cx: z.cx + mid.x - g.mid0.x, cy: z.cy + mid.y - g.mid0.y });
+        } else {
+            const dx = p.x - g.p0.x;
+            const dy = p.y - g.p0.y;
+            const bounds = this.contentRect();
+            const iw = this.img.naturalWidth;
+            const ih = this.img.naturalHeight;
+            // Grow only over photo: try the full move, then each axis alone
+            for (const [mx, my] of [
+                [dx, dy],
+                [dx, 0],
+                [0, dy],
+            ] as const) {
+                const candidate = resizeRect(g.frame0, g.handle, mx, my, bounds, MIN_FRAME);
+                if (covers(this.view, candidate, iw, ih)) {
+                    this.frame = candidate;
+                    break;
                 }
             }
         }
-        // For freeform (ar === null) and shape !== 'circle', dimensions are already set above - no adjustment needed
+        this.apply();
+    };
 
-        // Apply constraints
-        newW = Math.max(MIN_SIZE, Math.min(newW, w));
-        newH = Math.max(MIN_SIZE, Math.min(newH, h));
-        newX = Math.max(0, Math.min(w - newW, newX));
-        newY = Math.max(0, Math.min(h - newH, newY));
-
-        this.crop = { x: newX, y: newY, w: newW, h: newH };
-        this.render();
-    }
-
-    private handlePointerUp(e: PointerEvent) {
-        if (this.wrap?.hasPointerCapture?.(e.pointerId)) {
-            this.wrap.releasePointerCapture(e.pointerId);
+    private onPointerUp = (e: PointerEvent) => {
+        if (!this.pointers.has(e.pointerId)) return;
+        this.pointers.delete(e.pointerId);
+        if (this.stage.hasPointerCapture?.(e.pointerId)) this.stage.releasePointerCapture(e.pointerId);
+        const g = this.gesture;
+        if (g?.kind === 'resize' && this.pointers.size === 0) {
+            // The frame keeps its new proportions and grows back to fill the stage.
+            this.gesture = null;
+            this.animate(() => {
+                const next = this.frameFor(null);
+                this.view = this.clamp(refit(this.view, this.frame, next));
+                this.frame = next;
+            });
+        } else {
+            this.startGesture();
         }
-        this.drag.active = false;
-        this.resizeHandle.active = false;
-        this.resizeHandle.corner = null;
-        if (this.canvas) {
-            this.canvas.style.cursor = 'grab';
+        if (this.pointers.size === 0) {
+            this.root.classList.remove('ottacropper--interacting', 'ottacropper--panning');
         }
-    }
+    };
 
-    private handleWheel(e: WheelEvent) {
-        e.preventDefault();
-        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        this.setZoom(this.zoom + delta);
-    }
-
-    private handleDblClick(e: MouseEvent) {
-        if ((e.target as HTMLElement).closest('button, input')) return;
+    private onWheel = (e: WheelEvent) => {
         if (!this.img) return;
-        this.initCrop();
-        this.render();
-    }
+        e.preventDefault();
+        const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+        const min = this.minScale();
+        const scale = Math.min(min * this.options.maxZoom, Math.max(min, this.view.scale * Math.exp(-delta * 0.0025)));
+        this.view = this.clamp(zoomAbout(this.view, scale, this.stagePoint(e)));
+        this.touchGrid();
+        this.apply();
+    };
 
-    private handleKeyDown(e: KeyboardEvent) {
-        if (!this.hasLoadedImage || !this.img) return;
-        const target = e.target as HTMLElement;
-        if (target.closest('input[type="range"]')) return;
+    private onDblClick = (e: MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        this.reset();
+    };
 
+    private onKeyDown = (e: KeyboardEvent) => {
+        if (!this.img) return;
+        if ((e.target as HTMLElement).matches('input')) return;
         const step = e.shiftKey ? 10 : 1;
-        if (e.key === 'ArrowLeft') {
-            e.preventDefault();
-            this.nudgeCrop(-step, 0);
-        } else if (e.key === 'ArrowRight') {
-            e.preventDefault();
-            this.nudgeCrop(step, 0);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            this.nudgeCrop(0, -step);
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            this.nudgeCrop(0, step);
-        } else if (e.key === '+' || e.key === '=') {
-            e.preventDefault();
-            this.zoomIn();
-        } else if (e.key === '-' || e.key === '_') {
-            e.preventDefault();
-            this.zoomOut();
-        } else if (e.key === 'r' || e.key === 'R') {
-            e.preventDefault();
-            this.rotate();
+        const pan = (dx: number, dy: number) => {
+            this.view = this.clamp({ ...this.view, cx: this.view.cx + dx, cy: this.view.cy + dy });
+            this.touchGrid();
+            this.apply();
+        };
+        switch (e.key) {
+            case 'ArrowLeft':
+                pan(-step, 0);
+                break;
+            case 'ArrowRight':
+                pan(step, 0);
+                break;
+            case 'ArrowUp':
+                pan(0, -step);
+                break;
+            case 'ArrowDown':
+                pan(0, step);
+                break;
+            case '+':
+            case '=':
+                this.setZoom(this.getZoom() * 1.1);
+                break;
+            case '-':
+            case '_':
+                this.setZoom(this.getZoom() / 1.1);
+                break;
+            case 'r':
+                this.rotate(90);
+                break;
+            case 'R':
+                this.rotate(-90);
+                break;
+            case '0':
+                this.reset();
+                break;
+            default:
+                return;
         }
-    }
-
-    private nudgeCrop(dx: number, dy: number) {
-        const { w, h } = this.getRotatedImageDims();
-        this.crop.x = Math.max(0, Math.min(w - this.crop.w, this.crop.x + dx));
-        this.crop.y = Math.max(0, Math.min(h - this.crop.h, this.crop.y + dy));
-        this.render();
-    }
-
-    private handleDragEnter(e: DragEvent) {
-        if (!this.hasFiles(e)) return;
         e.preventDefault();
-        this.dragDepth += 1;
-        this.container.classList.add('ottacropper--dragover');
-    }
+    };
 
-    private handleDragOver(e: DragEvent) {
-        if (!this.hasFiles(e)) return;
-        e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-    }
+    // ─────────────────────────────────────────────────────────────── Drag and drop
 
-    private handleDragLeave(e: DragEvent) {
-        if (!this.hasFiles(e) && this.dragDepth === 0) return;
-        e.preventDefault();
-        this.dragDepth = Math.max(0, this.dragDepth - 1);
-        if (this.dragDepth === 0) {
-            this.container.classList.remove('ottacropper--dragover');
-        }
-    }
-
-    private handleDrop(e: DragEvent) {
-        e.preventDefault();
-        this.dragDepth = 0;
-        this.container.classList.remove('ottacropper--dragover');
-        const file = e.dataTransfer?.files?.[0];
-        this.loadFile(file);
-    }
-
-    private hasFiles(e: DragEvent): boolean {
+    private hasFiles(e: DragEvent) {
         return Array.from(e.dataTransfer?.types ?? []).includes('Files');
     }
 
-    /** Flip horizontally */
-    flipHorizontal() {
-        this.flipH = !this.flipH;
-        this.flipHButton?.classList.toggle('ottacropper-btn--active', this.flipH);
-        this.flipHButton?.setAttribute('aria-pressed', String(this.flipH));
-        this.animateTransform(() => {
-            this.render();
-        });
-    }
+    private onDragEnter = (e: DragEvent) => {
+        if (!this.hasFiles(e)) return;
+        e.preventDefault();
+        this.dragDepth += 1;
+        this.root.classList.add('ottacropper--dragover');
+    };
 
-    /** Flip vertically */
-    flipVertical() {
-        this.flipV = !this.flipV;
-        this.flipVButton?.classList.toggle('ottacropper-btn--active', this.flipV);
-        this.flipVButton?.setAttribute('aria-pressed', String(this.flipV));
-        this.animateTransform(() => {
-            this.render();
-        });
-    }
+    private onDragOver = (e: DragEvent) => {
+        if (!this.hasFiles(e)) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    };
 
-    /** Rotate 90° clockwise with smooth transition */
-    rotate() {
-        this.animateTransform(() => {
-            this.rotation = (this.rotation + 90) % 360;
-            // Reinitialize crop for new dimensions
-            this.initCrop();
-            this.render();
-        });
-    }
+    private onDragLeave = (e: DragEvent) => {
+        if (this.dragDepth === 0) return;
+        e.preventDefault();
+        this.dragDepth -= 1;
+        if (this.dragDepth === 0) this.root.classList.remove('ottacropper--dragover');
+    };
 
-    /** Zoom in */
-    zoomIn() {
-        this.setZoom(this.zoom + 0.2);
-    }
+    private onDrop = (e: DragEvent) => {
+        e.preventDefault();
+        this.dragDepth = 0;
+        this.root.classList.remove('ottacropper--dragover');
+        this.loadFromFile(e.dataTransfer?.files?.[0]);
+    };
 
-    /** Zoom out */
-    zoomOut() {
-        this.setZoom(this.zoom - 0.2);
-    }
+    // ─────────────────────────────────────────────────────────────── Teardown
 
-    /** Set zoom level */
-    setZoom(level: number) {
-        let newZoom = Math.max(this.options.minZoom, Math.min(this.options.maxZoom, level));
-
-        // Calculate what the canvas size would be at this zoom
-        if (this.img) {
-            const { w: rotW, h: rotH } = this.getRotatedImageDims();
-            const iw = this.img.naturalWidth;
-            const ih = this.img.naturalHeight;
-            this.displayScale = Math.min(1, this.options.maxHeight / Math.max(iw, ih));
-            const testScale = this.displayScale * newZoom;
-            const testW = rotW * testScale;
-            const testH = rotH * testScale;
-            const maxDim = Math.max(testW, testH);
-
-            // If zooming would exceed maxHeight, clamp the zoom to the maximum that fits
-            if (maxDim > this.options.maxHeight) {
-                const maxAllowedZoom = this.options.maxHeight / (Math.max(rotW, rotH) * this.displayScale);
-                newZoom = Math.min(newZoom, maxAllowedZoom);
-            }
-        }
-
-        if (Math.abs(newZoom - this.zoom) < 0.01) {
-            this.updateZoomUi();
-            return;
-        }
-        this.animateTransform(() => {
-            this.zoom = newZoom;
-            this.updateZoomUi();
-            this.render();
-        });
-    }
-
-    /** Get current zoom level */
-    getZoom(): number {
-        return this.zoom;
-    }
-
-    private animateTransform(fn: () => void) {
-        if (this.options.transitions) {
-            if (this.animating) return;
-            this.animating = true;
-            fn();
-            setTimeout(() => {
-                this.animating = false;
-            }, this.options.transitionDuration);
-        } else {
-            fn();
-        }
-    }
-
-    /** Set aspect ratio and reinit crop (e.g. 1, 4/3, 16/9, null for freeform) */
-    setAspectRatio(ratio: number | null) {
-        this.options.aspectRatio = ratio;
-        if (this.img) {
-            this.animateTransform(() => {
-                this.initCrop();
-                this.updatePresetActive();
-                this.render();
-            });
-        }
-    }
-
-    /** Set viewfinder shape: rect or circle */
-    setShape(shape: 'rect' | 'circle') {
-        this.options.shape = shape;
-        this.render();
-    }
-
-    /** Set max display height in px */
-    setMaxHeight(h: number) {
-        this.options.maxHeight = h;
-        this.render();
-    }
-
-    /** Show or hide aspect preset buttons */
-    setPresetsVisible(visible: boolean) {
-        this.presetsVisible = visible;
-        const el = this.container.querySelector<HTMLElement>(`#${this.instanceId}-presets`);
-        el?.classList.toggle('ottacropper-presets--visible', visible && this.hasLoadedImage);
-    }
-
-    /** Enable or disable smooth transitions without resetting the loaded image */
-    setTransitions(enabled: boolean) {
-        this.options.transitions = enabled;
-    }
-
-    /** Set transition duration in ms without resetting the loaded image */
-    setTransitionDuration(ms: number) {
-        this.options.transitionDuration = ms;
-    }
-
-    private updatePresetActive() {
-        const ar = this.options.aspectRatio;
-        for (const [value, btn] of this.presetBtns) {
-            const isActive =
-                ar === null && value === null ? true : ar !== null && value !== null && Math.abs(value - ar) < 1e-6;
-            btn.classList.toggle('ottacropper-preset--active', isActive);
-            btn.setAttribute('aria-pressed', String(isActive));
-        }
-    }
-
-    /** Export cropped image as Blob. Use PNG for circle shape (transparent corners); JPEG for rect. */
-    async getBlob(mime: 'image/png' | 'image/jpeg' = 'image/jpeg', quality = 0.92): Promise<Blob> {
-        if (!this.img) throw new Error('No image loaded');
-
-        // Circle shape needs PNG for transparent corners; JPEG would render them black
-        const effectiveMime = this.options.shape === 'circle' ? 'image/png' : mime;
-
-        const out = document.createElement('canvas');
-        out.width = Math.round(this.crop.w);
-        out.height = Math.round(this.crop.h);
-        const ctx = out.getContext('2d')!;
-
-        if (this.options.shape === 'circle') {
-            ctx.beginPath();
-            ctx.arc(out.width / 2, out.height / 2, Math.min(out.width, out.height) / 2, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.clip();
-        }
-
-        const iw = this.img.naturalWidth;
-        const ih = this.img.naturalHeight;
-
-        // Draw the cropped region with all transformations applied
-        ctx.save();
-
-        // Move to center of output canvas
-        ctx.translate(out.width / 2, out.height / 2);
-
-        // Apply rotation
-        ctx.rotate((this.rotation * Math.PI) / 180);
-
-        // Apply flips
-        if (this.flipH) ctx.scale(-1, 1);
-        if (this.flipV) ctx.scale(1, -1);
-
-        // Now we need to figure out where to draw from in the original image
-        // The crop coordinates are in rotated space, we need to map back
-        const { w: rotW, h: rotH } = this.getRotatedImageDims();
-
-        // Calculate source region in original image after accounting for rotation
-        let sx: number, sy: number, sw: number, sh: number;
-
-        if (this.rotation === 0) {
-            sx = this.crop.x;
-            sy = this.crop.y;
-            sw = this.crop.w;
-            sh = this.crop.h;
-        } else if (this.rotation === 90) {
-            // 90° CW: top-left of crop in rotated space maps to top-right in original
-            sx = rotW - this.crop.y - this.crop.h;
-            sy = this.crop.x;
-            sw = this.crop.h;
-            sh = this.crop.w;
-        } else if (this.rotation === 180) {
-            sx = rotW - this.crop.x - this.crop.w;
-            sy = rotH - this.crop.y - this.crop.h;
-            sw = this.crop.w;
-            sh = this.crop.h;
-        } else {
-            // 270° CW
-            sx = this.crop.y;
-            sy = rotH - this.crop.x - this.crop.w;
-            sw = this.crop.h;
-            sh = this.crop.w;
-        }
-
-        // Draw centered
-        ctx.drawImage(this.img, sx, sy, sw, sh, -out.width / 2, -out.height / 2, out.width, out.height);
-        ctx.restore();
-
-        return new Promise((resolve, reject) => {
-            out.toBlob(
-                (b) => (b ? resolve(b) : reject(new Error('Failed to create blob'))),
-                effectiveMime,
-                effectiveMime === 'image/jpeg' ? quality : undefined,
-            );
-        });
-    }
-
-    /** Remove DOM and cleanup */
     destroy() {
-        this.container.removeEventListener('keydown', this.boundKeyDown);
-        this.container.removeEventListener('dragenter', this.boundDragEnter);
-        this.container.removeEventListener('dragover', this.boundDragOver);
-        this.container.removeEventListener('dragleave', this.boundDragLeave);
-        this.container.removeEventListener('drop', this.boundDrop);
-        this.wrap?.removeEventListener('pointerdown', this.boundPointerDown);
-        this.wrap?.removeEventListener('pointermove', this.boundPointerMove);
-        this.wrap?.removeEventListener('pointerup', this.boundPointerUp);
-        this.wrap?.removeEventListener('pointercancel', this.boundPointerUp);
-        this.wrap?.removeEventListener('wheel', this.boundWheel);
-        this.wrap?.removeEventListener('dblclick', this.boundDblClick);
+        this.destroyed = true;
+        this.loadToken += 1;
+        this.resizeObserver?.disconnect();
+        if (this.gridTimer) clearTimeout(this.gridTimer);
+        if (this.animTimer) clearTimeout(this.animTimer);
+        this.stage.removeEventListener('pointerdown', this.onPointerDown);
+        this.stage.removeEventListener('pointermove', this.onPointerMove);
+        this.stage.removeEventListener('pointerup', this.onPointerUp);
+        this.stage.removeEventListener('pointercancel', this.onPointerUp);
+        this.stage.removeEventListener('wheel', this.onWheel);
+        this.stage.removeEventListener('dblclick', this.onDblClick);
+        this.root.removeEventListener('keydown', this.onKeyDown);
+        this.root.removeEventListener('dragenter', this.onDragEnter);
+        this.root.removeEventListener('dragover', this.onDragOver);
+        this.root.removeEventListener('dragleave', this.onDragLeave);
+        this.root.removeEventListener('drop', this.onDrop);
+        if (this.ownsUrl && this.imageUrl) URL.revokeObjectURL(this.imageUrl);
         this.img = null;
-        this.canvas = null;
-        this.wrap = null;
-        this.fileInput = null;
-        this.emptyState = null;
-        this.emptyHint = null;
-        this.filenameEl = null;
-        this.replaceBtn = null;
-        this.zoomRange = null;
-        this.zoomValue = null;
-        this.flipHButton = null;
-        this.flipVButton = null;
-        this.hasLoadedImage = false;
-        this.container.classList.remove('ottacropper', 'ottacropper--dragover');
-        this.container.removeAttribute('role');
-        this.container.removeAttribute('aria-label');
-        this.container.removeAttribute('tabindex');
-        this.container.innerHTML = '';
+        this.imageUrl = null;
+        this.root.className = this.root.className
+            .split(/\s+/)
+            .filter((c) => c && !c.startsWith('ottacropper'))
+            .join(' ');
+        delete this.root.dataset.slot;
+        this.root.removeAttribute('role');
+        this.root.removeAttribute('aria-label');
+        this.root.removeAttribute('tabindex');
+        this.root.style.removeProperty('--cr-duration');
+        this.root.innerHTML = '';
     }
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    node.className = className;
+    return node;
+}
+
+function matchMediaReduced(): boolean {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

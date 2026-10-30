@@ -1,273 +1,141 @@
 # @ottabase/ui-cropper
 
-Advanced vanilla image cropper: crop, flip, rotate, zoom with smooth transitions. Square/rect/circle viewfinder.
-PNG/JPEG. Zero React. ~3–4 KB gzipped.
+Vanilla image cropper built on the fixed-viewfinder model used by every modern photo app: the frame fills the stage and
+the photo pans, pinches, zooms, rotates, straightens and flips underneath it. Zero dependencies, zero React, ~9 KB
+gzipped including icons.
 
-## Features
+## Why this model
 
-- **Drop to start** - Empty state is the control: drop a PNG/JPEG or click to browse
-- **Stage overlay** - Filename and Replace sit on the photo, not in a second toolbar row
-- **Zoom you can see** - Slider plus percent, still with +/- and mouse wheel
-- **Pointer capture** - Drag and resize keep going if the pointer leaves the canvas
-- **Keyboard** - Arrows nudge the crop (Shift for 10px), `+`/`-` zoom, `R` rotates
-- **Theme-aware editor surface** - Uses the host shadcn/tailwind tokens directly, so app-controlled light and dark modes
-  stay in sync
-- **Smooth interactions** - Slick transitions inspired by react-advanced-cropper
-- **Resize handles** - Drag corner and edge handles to resize crop area
-- **Visual feedback** - Rule of thirds grid, resize handles, smooth animations
-- **Smart rotation** - Rotate 90° with smooth animated transitions, crop adjusts automatically
-- **Flexible aspect ratios** - Freeform, square, landscape, portrait, or custom ratios
-- **Shape support** - Rectangular or circular crop viewfinder
+A crop box dragged over a static photo (the classic jQuery-era cropper) makes the output shape small, makes zoom
+meaningless and leaves the user guessing what they will get. Here the frame **is** the output: it fills the available
+width, the user composes the photo inside it, and zoom is "how much closer". That is how iOS Photos, Instagram and every
+avatar picker worth copying work.
+
+- **The photo is a CSS-transformed `<img>`, the overlay is DOM.** Crisp on any display, GPU-smooth while dragging, every
+  pixel themeable. Canvas is used only to export.
+- **The frame is never empty.** Zoom can't go below "cover" and panning stops at the photo's edge, in any rotation.
+- **Rotation about the frame.** 90° turns and fine straightening (−45°…45°) pivot on what you're looking at; the photo
+  grows just enough to keep the frame full.
+- **Free frames reshape then refill.** With `aspectRatio: null` the frame has handles; drag one and on release the frame
+  grows back to fill the stage with its new proportions, the photo following. Turning a free frame turns it with the
+  photo.
+- **Touch first.** One finger pans, two pinch and pan together, with pointer capture so a drag survives leaving the
+  stage.
+- **Export sized for purpose.** `maxOutput` caps the longest side, so a 6000px photo yields a 512px avatar, not a 4000px
+  PNG. Circles export as PNG with transparent corners.
 
 ## Usage
 
-```typescript
+```ts
 import { Cropper } from '@ottabase/ui-cropper';
-// Don't forget to import styles:
-// import '@ottabase/ui-cropper/styles.css';
+import '@ottabase/ui-cropper/styles.css';
 
-const container = document.getElementById('cropper-root');
-const cropper = new Cropper(container, {
-    aspectRatio: 1, // square (default); use 16/9 for rect, null for freeform
-    shape: 'rect', // 'rect' | 'circle'
-    accept: 'image/png,image/jpeg',
-    maxHeight: 400,
-    zoom: 1, // initial zoom level
-    minZoom: 0.5,
-    maxZoom: 3,
-    transitions: true, // smooth animations
-    transitionDuration: 300, // ms
+const cropper = new Cropper(document.getElementById('avatar')!, {
+    aspectRatio: 1,
+    shape: 'circle',
+    height: 320,
+    maxOutput: 512,
+    aspectPresets: false,
+    onImageLoad: () => (save.disabled = false),
 });
 
-// User interactions:
-// - Drop or click the empty stage to load a PNG/JPEG
-// - Drag crop area to move; double-click to reset
-// - Drag corner/edge handles to resize
-// - Wheel, slider, or +/- to zoom
-// - Flip/rotate from the toolbar; arrows nudge when focused
+cropper.loadFromUrl(currentAvatarUrl); // optional: start from the existing picture
 
-const blob = await cropper.getBlob('image/jpeg', 0.92);
-// upload blob...
+save.onclick = async () => {
+    const blob = await cropper.getBlob('image/png');
+    // upload…
+};
 
 cropper.destroy();
 ```
 
-## API
+Mount it in a plain container; the cropper owns its full surface (stage plus toolbar) and does not want a second card,
+border or padding around it.
 
-### Methods
+## Options
 
-| Method                       | Description                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| `flipHorizontal()`           | Flip image left-right with smooth transition                                   |
-| `flipVertical()`             | Flip image top-bottom with smooth transition                                   |
-| `rotate()`                   | Rotate 90° clockwise with smooth transition                                    |
-| `zoomIn()`                   | Zoom in by 0.2x                                                                |
-| `zoomOut()`                  | Zoom out by 0.2x                                                               |
-| `setZoom(level)`             | Set zoom level (respects min/max zoom)                                         |
-| `getZoom()`                  | Get current zoom level                                                         |
-| `setAspectRatio(ratio)`      | Set aspect ratio (e.g. 1, 4/3, 16/9, null for freeform) with smooth transition |
-| `setShape(shape)`            | Set viewfinder: 'rect' \| 'circle'                                             |
-| `setMaxHeight(px)`           | Set max display height                                                         |
-| `setPresetsVisible(visible)` | Show/hide aspect preset buttons                                                |
-| `setTransitions(enabled)`    | Enable/disable smooth transitions without resetting the loaded image           |
-| `setTransitionDuration(ms)`  | Set transition duration in ms without resetting the loaded image               |
-| `getBlob(mime?, quality?)`   | Export cropped image as Blob                                                   |
-| `loadFromFile(file)`         | Load image from a File object                                                  |
-| `loadFromUrl(url)`           | Load image from URL (http, blob:, or data: base64)                             |
-| `destroy()`                  | Remove DOM and cleanup                                                         |
+| Option               | Default                 | Description                                                                                              |
+| -------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `aspectRatio`        | `1`                     | Locked frame aspect (w/h). `16/9` landscape, `3/4` portrait, `null` = free, resizable frame.             |
+| `shape`              | `'rect'`                | `'rect'` or `'circle'` (an ellipse when the aspect isn't 1:1).                                           |
+| `aspectPresets`      | Free · 1:1 · 4:3 · 16:9 | Toolbar aspect buttons (`{ label, value }[]`); `false` hides them. `DEFAULT_ASPECT_PRESETS` is exported. |
+| `accept`             | `'image/*'`             | File input accept list. Anything the browser can decode works (PNG, JPEG, WebP, AVIF, GIF, SVG).         |
+| `height`             | `360`                   | Stage height in px. Width follows the container and the frame refits on resize.                          |
+| `maxZoom`            | `4`                     | How far past "cover" the photo may be enlarged.                                                          |
+| `maxOutput`          | `4096`                  | Longest side of the export in px; larger crops are downscaled.                                           |
+| `straighten`         | `false`                 | Show the fine-rotation slider (−45°…45°).                                                                |
+| `transitions`        | `true`                  | Animate rotate, flip, zoom buttons, aspect changes and reset. Pointer gestures are never animated.       |
+| `transitionDuration` | `240`                   | Animation length in ms.                                                                                  |
+| `onImageLoad`        | —                       | `(state) => void` after a photo loads from the picker, a drop, `loadFromFile` or `loadFromUrl`.          |
+| `onChange`           | —                       | `(state) => void` on every change to zoom, position, rotation, flips, frame or photo.                    |
+| `onError`            | —                       | `(message) => void` for a rejected file or a photo that failed to decode. The message is user-facing.    |
 
-### Options
+## Methods
 
-| Option               | Default                | Description                                                    |
-| -------------------- | ---------------------- | -------------------------------------------------------------- |
-| `aspectRatio`        | 1                      | 1 = square, 16/9 = landscape, null = freeform (no constraints) |
-| `aspectPresets`      | Free, 1:1, 4:3, 16:9   | Preset buttons. Set `false` to hide.                           |
-| `shape`              | 'rect'                 | 'rect' or 'circle' viewfinder                                  |
-| `accept`             | 'image/png,image/jpeg' | File input accept                                              |
-| `maxHeight`          | 400                    | Max display height (px) - honored even when zoomed             |
-| `zoom`               | 1                      | Initial zoom level                                             |
-| `minZoom`            | 0.5                    | Minimum zoom level                                             |
-| `maxZoom`            | 3                      | Maximum zoom level                                             |
-| `transitions`        | true                   | Enable smooth CSS transitions                                  |
-| `transitionDuration` | 300                    | Transition duration in ms                                      |
-| `onImageLoad`        | —                      | Callback fired whenever an image finishes loading              |
+| Method                                | Description                                                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `loadFromFile(file)`                  | Load a `File`.                                                                                                    |
+| `loadFromUrl(url)`                    | Load from http(s), `blob:` or `data:`. Remote hosts must send CORS headers for export to work.                    |
+| `hasImage()`                          | A photo is on the stage.                                                                                          |
+| `getState()`                          | `{ hasImage, zoom, rotation, straighten, flipX, flipY, aspectRatio, output, dirty }`.                             |
+| `getZoom()` / `setZoom(z)`            | Zoom relative to cover: `1` fills the frame, up to `maxZoom`. Zooms about the frame centre.                       |
+| `zoomIn()` / `zoomOut()`              | ±25 %.                                                                                                            |
+| `rotate(deg = 90)`                    | Turn about the frame centre; positive is clockwise on screen, flips notwithstanding.                              |
+| `setStraighten(deg)`                  | Fine rotation, −45…45.                                                                                            |
+| `flipHorizontal()` / `flipVertical()` | Mirror what's in the frame about its centre line.                                                                 |
+| `reset()`                             | Back to the freshly loaded photo: base aspect, cover zoom, centred, upright.                                      |
+| `setAspectRatio(ratio \| null)`       | Lock a new aspect (or free the frame). Also becomes the Reset baseline.                                           |
+| `setShape(shape)`                     | `'rect'` or `'circle'`.                                                                                           |
+| `setHeight(px)`                       | Stage height; the content under the frame is preserved.                                                           |
+| `getBlob(mime?, quality?)`            | The framed region at native resolution (capped by `maxOutput`) as a `Blob`. Default JPEG 0.92; circles force PNG. |
+| `destroy()`                           | Remove listeners, revoke object URLs, empty the container.                                                        |
+
+`CropperState.output` tells you the export size before exporting, handy for a "too small for a cover image" hint.
 
 ## Interactions
 
-### Pointer / keyboard
+| Input                                    | Effect                                                       |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| Drop a file anywhere, or click the stage | Load a photo (the toolbar's **Replace** does the same later) |
+| Drag                                     | Pan the photo                                                |
+| Pinch · wheel · slider · `+` `-`         | Zoom (wheel and pinch zoom about the pointer)                |
+| Arrow keys, Shift for 10px               | Nudge the photo                                              |
+| `R` / `Shift+R`                          | Rotate right / left                                          |
+| `0` or double-click                      | Reset                                                        |
+| Handles (free aspect only)               | Reshape the frame; it refills the stage on release           |
 
-- **Drop or click the empty stage** - Load a PNG or JPEG. After load, **Replace** sits on the photo.
-- **Drag crop area** - Pointer-down inside the crop box to reposition (works for both rect and circle). Capture keeps
-  the drag alive if you leave the canvas.
-- **Resize crop** - Drag corner handles (nw, ne, sw, se) or edge handles (n, e, s, w)
-    - Rectangle crops: Resize with aspect ratio constraints (or freeform if `aspectRatio: null`)
-    - Circle crops: Always maintain 1:1 aspect ratio to keep circular shape
-- **Zoom** - Wheel, the toolbar slider, or +/-. The percent label tracks the current level.
-- **Reset crop** - Double-click the stage
-- **Keyboard** (cropper focused): arrows nudge, Shift+arrows by 10px, `+`/`-` zoom, `R` rotate
-- **Cursor feedback** - Cursor changes to indicate available actions
-
-### Toolbar
-
-- **Aspect presets** - Quick aspect ratio selection (Freeform, 1:1, 4:3, 16:9)
-- **Flip H/V** - Flip image horizontally or vertically
-- **Rotate** - Rotate 90° clockwise
-
-## Advanced Examples
-
-### Custom presets
-
-```typescript
-import { Cropper, DEFAULT_ASPECT_PRESETS } from '@ottabase/ui-cropper';
-
-new Cropper(container, {
-    aspectPresets: [...DEFAULT_ASPECT_PRESETS, { label: '3:2', value: 3 / 2 }, { label: '21:9', value: 21 / 9 }],
-});
-
-// Or hide presets
-new Cropper(container, { aspectPresets: false });
-
-// Freeform (no aspect ratio constraints)
-new Cropper(container, { aspectRatio: null });
-```
-
-### Programmatic zoom control
-
-```typescript
-const cropper = new Cropper(container);
-
-// Zoom in
-cropper.zoomIn();
-
-// Set specific zoom level
-cropper.setZoom(1.5);
-
-// Get current zoom
-const currentZoom = cropper.getZoom();
-console.log(`Current zoom: ${currentZoom.toFixed(2)}x`);
-```
-
-### Custom transition timing
-
-```typescript
-new Cropper(container, {
-    transitions: true,
-    transitionDuration: 500, // slower, more dramatic
-});
-
-// Or disable transitions for instant updates
-new Cropper(container, {
-    transitions: false,
-});
-```
-
-### Image load callback
-
-```typescript
-const cropper = new Cropper(container, {
-    // Fires whenever an image loads — from the file picker, loadFromFile(), or loadFromUrl()
-    onImageLoad: () => {
-        console.log('Image ready');
-        saveButton.disabled = false;
-    },
-});
-
-// Also fires when loading from URL
-cropper.loadFromUrl('https://example.com/photo.jpg');
-```
-
-### Rotation and transforms
-
-```typescript
-const cropper = new Cropper(container);
-
-// Rotate 90° clockwise (with smooth animation)
-cropper.rotate(); // 0° → 90° → 180° → 270° → 0°
-
-// Flip transforms
-cropper.flipHorizontal(); // Mirror left-right
-cropper.flipVertical(); // Mirror top-bottom
-
-// Change aspect ratio dynamically
-cropper.setAspectRatio(16 / 9); // Landscape
-cropper.setAspectRatio(1); // Square
-cropper.setAspectRatio(null); // Freeform (no constraints)
-
-// Drag and resize work perfectly in all rotation states
-// The crop area automatically adjusts to new image dimensions
-```
-
-### Export cropped image
-
-```typescript
-const cropper = new Cropper(container);
-
-// Export as JPEG (default quality: 0.92)
-const jpegBlob = await cropper.getBlob('image/jpeg', 0.92);
-
-// Export as PNG
-const pngBlob = await cropper.getBlob('image/png');
-
-// Upload to server
-const formData = new FormData();
-formData.append('image', jpegBlob, 'cropped.jpg');
-await fetch('/api/upload', { method: 'POST', body: formData });
-
-// Or create download link
-const url = URL.createObjectURL(jpegBlob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'cropped.jpg';
-a.click();
-URL.revokeObjectURL(url);
-```
+The rule-of-thirds grid shows only while the photo is being adjusted, and never for a circle. Reset appears in the
+toolbar only once something has changed.
 
 ## Theming
 
-CSS custom properties integrate with shadcn/tailwind theme tokens (same convention as `@ottabase/ottadate`). Raw HSL
-channels (e.g. `0 0% 100%`) are wrapped in `hsl()` internally, with sensible fallbacks for standalone use:
+Tokens follow the same convention as `@ottabase/ottadate`: shadcn/tailwind variables hold raw HSL channels, so they are
+wrapped in `hsl()` with standalone fallbacks. Override any of them on `.ottacropper`:
 
 ```css
 .ottacropper {
-    --cr-bg: hsl(var(--background, 0 0% 100%));
-    --cr-fg: hsl(var(--foreground, 222.2 84% 4.9%));
-    --cr-border: hsl(var(--border, 214.3 31.8% 91.4%));
-    --cr-ring: hsl(var(--ring, 215 20.2% 65.1%));
+    --cr-stage: hsl(var(--overlay, 150 17% 7%)); /* photo surface, dark in every theme */
+    --cr-dim: rgb(0 0 0 / 0.55); /* outside the frame */
+    --cr-frame: rgb(255 255 255 / 0.92);
+    --cr-grid: rgb(255 255 255 / 0.35);
+    --cr-handle: #fff;
     --cr-radius: var(--radius, 0.5rem);
-    --cr-transition: var(--duration-fast, 100ms) var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+    --cr-btn-size: 2rem;
 }
 ```
 
-Override any of these on `.ottacropper` (or the container element) to restyle without touching the JS. Dark mode is
-controlled by the host application's theme tokens. The cropper intentionally does not infer a color scheme from the OS,
-which prevents a light application surface from rendering as dark when the operating system prefers dark mode.
+Every element carries a `data-slot` (`cropper`, `cropper-stage`, `cropper-frame`, `cropper-empty`, `cropper-toolbar`)
+for Tier 1 theming. The stage is a muted dropzone while empty and becomes the dark photo surface once a picture lands,
+so it never sits as a black block in a light dialog. Reduced-motion preferences disable every animation.
 
-## Interface Design
+## Accessibility
 
-The cropper owns one complete editing surface: a drop-or-click empty stage before an image is selected, a checkerboard
-stage with an overlay Replace control while editing, and a compact toolbar for aspect ratio, zoom, and transforms.
-Consumers should mount it in a plain container; avoid adding a second card, dashed border, or padding around the root
-element.
+The container is focusable with the keyboard map above; aspect buttons are a `radiogroup`; flips expose `aria-pressed`;
+zoom and straighten are native range inputs. Toolbar controls are disabled, not hidden, until a photo loads so the
+layout never jumps.
 
-## Technical Details
+## Geometry
 
-### Rotation Handling
-
-- Crop coordinates are maintained in **rotated/visible space** (what the user sees)
-- Image is rotated using canvas transforms while crop overlay remains axis-aligned
-- Drag and resize operations work correctly in all rotation states (0°, 90°, 180°, 270°)
-- Export correctly maps crop coordinates back to original image space
-- Smooth CSS transitions animate the canvas wrapper during rotation
-
-### Performance
-
-- Zero dependencies - pure vanilla JavaScript
-- Efficient canvas rendering with requestAnimationFrame where appropriate
-- Transitions disabled during drag/resize for responsive feel
-- ~3-4 KB gzipped
-
-## Inspiration
-
-This cropper is inspired by [react-advanced-cropper](https://advanced-cropper.github.io/react-advanced-cropper/) with
-its smooth transitions, zoom support, and polished user experience, but implemented as a framework-agnostic vanilla
-JavaScript library with zero dependencies.
+The headless math is exported for tests and custom UIs: `fitRect`, `coverScale`, `clampView`, `toImage` and the `View` /
+`Rect` / `Point` types. A `View` is the photo's centre, scale, rotation and flips in stage pixels; flips are applied
+after rotation so "flip horizontal" is always left-right on screen.

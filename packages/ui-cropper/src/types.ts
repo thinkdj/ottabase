@@ -1,42 +1,65 @@
-/** Viewfinder shape: rect (square or aspect ratio) or circle */
+/** Viewfinder shape: rect (any aspect) or circle (an ellipse when the aspect is not 1:1) */
 export type CropShape = 'rect' | 'circle';
 
-/** Aspect preset: label shown in UI, value is width/height ratio (null = freeform) */
+/** Aspect preset: label shown in the toolbar, value is width/height (null = free) */
 export interface AspectPreset {
     label: string;
     value: number | null;
 }
 
-/** Default aspect presets: Freeform, 1:1, 4:3, 16:9 */
+/** Default aspect presets: Free, 1:1, 4:3, 16:9 */
 export const DEFAULT_ASPECT_PRESETS: AspectPreset[] = [
-    { label: 'Free', value: null as any }, // null means freeform
+    { label: 'Free', value: null },
     { label: '1:1', value: 1 },
     { label: '4:3', value: 4 / 3 },
     { label: '16:9', value: 16 / 9 },
 ];
 
-/** Options for Cropper */
+/** Snapshot handed to `onChange` and returned by `getState()` */
+export interface CropperState {
+    /** True once a photo is on the stage */
+    hasImage: boolean;
+    /** 1 = photo exactly covers the frame; up to `maxZoom` */
+    zoom: number;
+    /** Quarter turns, 0..359, clockwise as seen on screen */
+    rotation: number;
+    /** Fine rotation in degrees, -45..45 (0 unless `straighten` is on) */
+    straighten: number;
+    flipX: boolean;
+    flipY: boolean;
+    /** Current frame aspect (w/h) — the locked ratio, or the free frame's own */
+    aspectRatio: number;
+    /** Size of the export at native resolution, in image pixels */
+    output: { width: number; height: number };
+    /** Anything differs from the freshly loaded photo */
+    dirty: boolean;
+}
+
 export interface CropperOptions {
-    /** Aspect ratio: 1 = square, 16/9 = landscape rect, null = freeform (no constraints) */
+    /** Locked frame aspect (w/h): 1 = square, 16/9 = landscape. null = free, resizable frame. Default 1. */
     aspectRatio?: number | null;
-    /** Viewfinder shape – rect or circle (circle uses square crop internally) */
+    /** Frame shape. Default 'rect'. */
     shape?: CropShape;
-    /** Accepted file types (default: png, jpeg) */
-    accept?: string;
-    /** Max display height in px */
-    maxHeight?: number;
-    /** Aspect ratio presets. Default: 1:1, 4:3, 16:9. Set false to hide. */
+    /** Aspect buttons in the toolbar. Default Free / 1:1 / 4:3 / 16:9; false hides them. */
     aspectPresets?: AspectPreset[] | false;
-    /** Enable smooth transitions for transforms (default: true) */
-    transitions?: boolean;
-    /** Transition duration in ms (default: 300) */
-    transitionDuration?: number;
-    /** Initial zoom level (default: 1) */
-    zoom?: number;
-    /** Min zoom level (default: 0.5) */
-    minZoom?: number;
-    /** Max zoom level (default: 3) */
+    /** File input accept list. Default 'image/*'. */
+    accept?: string;
+    /** Stage height in px. Width follows the container. Default 360. */
+    height?: number;
+    /** How far past "cover" the photo may be enlarged. Default 4. */
     maxZoom?: number;
-    /** Called whenever an image is loaded (from file picker, loadFromFile, or loadFromUrl) */
-    onImageLoad?: () => void;
+    /** Longest side of the exported image in px; larger crops are downscaled. Default: native. */
+    maxOutput?: number;
+    /** Show the fine-rotation slider (-45..45°). Default false. */
+    straighten?: boolean;
+    /** Animate rotate, flip, zoom buttons, aspect changes and reset. Default true. */
+    transitions?: boolean;
+    /** Transition length in ms. Default 240. */
+    transitionDuration?: number;
+    /** A photo finished loading (file picker, drop, loadFromFile or loadFromUrl). */
+    onImageLoad?: (state: CropperState) => void;
+    /** Any change to zoom, position, rotation, flips, frame or image. */
+    onChange?: (state: CropperState) => void;
+    /** A file was rejected or an image failed to decode. The message is user-facing. */
+    onError?: (message: string) => void;
 }
