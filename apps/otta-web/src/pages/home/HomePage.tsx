@@ -37,7 +37,7 @@ function createHomeLandingEditorData(appName: string) {
                 id: 'home-lead',
                 type: 'paragraph',
                 data: {
-                    text: 'Production-grade Apps/SaaS/Sites on <strong>Cloudflare Workers</strong>. Multi-tenant isolation, fat models, runtime theming, and 45+ batteries-included packages — all wired together and ready to ship. <strong>Fast. For the Solo Founder.</strong>',
+                    text: 'Production-grade Apps/SaaS/Sites on <strong>Cloudflare Workers</strong>. Multi-tenant isolation, fat models, runtime theming, and 60+ batteries-included packages, all wired together and ready to ship. <strong>Fast. For the Solo Founder.</strong>',
                 },
             },
             // Hero CTAs
@@ -98,7 +98,7 @@ function createHomeLandingEditorData(appName: string) {
                                         id: 'p1p',
                                         type: 'paragraph',
                                         data: {
-                                            text: 'Runs on Cloudflare Workers globally. No cold starts, no servers — your backend <em>is</em> the CDN.',
+                                            text: 'Runs on Cloudflare Workers globally. No cold starts, no servers. Your backend <em>is</em> the CDN.',
                                         },
                                     },
                                 ],
@@ -142,7 +142,7 @@ function createHomeLandingEditorData(appName: string) {
                 id: 'batteries-lead',
                 type: 'paragraph',
                 data: {
-                    text: 'Forty-five packages, <mark class="cdx-marker"><strong>one</strong> pnpm install</mark>. Everything below ships wired together — auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
+                    text: 'Sixty-plus packages, <mark class="cdx-marker"><strong>one</strong> pnpm install</mark>. Everything below ships wired together: auth talks to the ORM, the ORM enforces tenancy, and the theme engine skins all of it at runtime.',
                 },
             },
             {
@@ -265,7 +265,7 @@ export class Post extends BaseModel {
     }
 }
 
-// TanStack Query hooks — zero boilerplate
+// TanStack Query hooks, zero boilerplate
 export const { useList, useCreate, useUpdate, useDelete } =
     createModelHooks<PostType>({ entityName: 'posts' });`,
                 },
@@ -304,7 +304,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                 data: {
                     title: 'One account. No servers.',
                     message:
-                        'Everything here runs on a single Cloudflare account — Workers, D1, R2, KV, Queues, Durable Objects. Wrangler emulates the whole stack locally, so dev needs no Docker and prod needs no pager.',
+                        'Everything here runs on a single Cloudflare account: Workers, D1, R2, KV, Queues, Durable Objects. Wrangler emulates the whole stack locally, so dev needs no Docker and prod needs no pager.',
                 },
             },
 
@@ -313,7 +313,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                 id: 'meta-spoiler',
                 type: 'spoiler',
                 data: {
-                    text: 'Every section on this page — the steps, the table, the FAQ, even this spoiler — is an EditorJS block authored in OttaEditor and rendered by OttaRenderer. The landing page is the demo.',
+                    text: 'Every section on this page is an EditorJS block authored in OttaEditor and rendered by OttaRenderer: the steps, the table, the FAQ, even this spoiler. The landing page is the demo.',
                 },
             },
 
@@ -339,7 +339,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                         },
                         {
                             question: 'Can I white-label it for clients?',
-                            answer: 'That is what Brand Engine is for: logos, colors, typography, motion — even custom cursors — stored as Brand Kits and applied per app or per route at runtime.',
+                            answer: 'That is what Brand Engine is for: logos, colors, typography, motion and even custom cursors, stored as Brand Kits and applied per app or per route at runtime.',
                         },
                     ],
                 },
@@ -355,7 +355,7 @@ export const { useList, useCreate, useUpdate, useDelete } =
                     items: [
                         { url: '/docs', title: 'Documentation', note: 'Setup, architecture, and package guides' },
                         { url: '/demo', title: 'Demo gallery', note: 'Every package, running live in this app' },
-                        { url: '/blog', title: 'Blog', note: 'Published with Ottablog — the CMS in the box' },
+                        { url: '/blog', title: 'Blog', note: 'Published with Ottablog, the CMS in the box' },
                         { url: 'https://ottabase.com', title: 'ottabase.com', note: 'Project home' },
                     ],
                 },

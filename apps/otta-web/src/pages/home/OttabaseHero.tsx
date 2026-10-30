@@ -8,20 +8,11 @@ interface OttabaseHeroProps {
     appName: string;
 }
 
-interface OrbitalNode {
-    mesh: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-    radius: number;
-    speed: number;
-    offset: number;
-    tilt: number;
-}
-
 /** Both negations share one class so the pair keeps reading as a matched set. */
 const HERO_SUBLINE = 'font-normal text-black dark:text-white text-3xl sm:text-4xl lg:text-5xl';
 
 const FALLBACK_PRIMARY = '221 83% 53%';
-const FALLBACK_RING = '262 83% 58%';
-const FALLBACK_FOREGROUND = '222 47% 11%';
+const FALLBACK_MUTED = '210 40% 96%';
 const FALLBACK_CARD = '0 0% 100%';
 
 /** Resolve a Brand Engine HSL token for a WebGL material. */
@@ -38,9 +29,10 @@ function getThemeColor(three: typeof import('three'), element: HTMLElement, toke
 }
 
 /**
- * A deliberately small, framework-free Three.js scene. Keeping it imperative
- * avoids a second React renderer and lets the landing route freeze motion for
- * people who prefer reduced motion.
+ * A deliberately small, framework-free Three.js scene: a field of instanced
+ * slabs (the wired foundation) with a few tiles lit in the brand primary and
+ * one raised tile near the headline, "your thing". One draw call, no pointer
+ * handling, a single static frame under reduced motion.
  */
 function HeroScene() {
     const hostRef = useRef<HTMLDivElement>(null);
@@ -56,21 +48,17 @@ function HeroScene() {
 
                 let renderer: THREE.WebGLRenderer;
                 try {
-                    // Opaque buffer: Firefox composites translucent WebGL (alpha: true +
-                    // premultipliedAlpha) as a dark gray smear instead of the tinted globe.
-                    renderer = new THREE.WebGLRenderer({
-                        alpha: true,
-                        antialias: true,
-                        powerPreference: 'high-performance',
-                    });
+                    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
                 } catch {
                     // The HTML hero remains fully useful when WebGL is unavailable.
                     return;
                 }
 
                 const scene = new THREE.Scene();
-                const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
-                camera.position.set(0, 0.1, 10);
+                // A long lens from far back flattens the perspective so the near slabs stay small.
+                const camera = new THREE.PerspectiveCamera(22, 1, 0.1, 80);
+                camera.position.set(0, 9, 20);
+                camera.lookAt(0, -0.4, 0);
 
                 const canvas = renderer.domElement;
                 canvas.style.display = 'block';
@@ -80,99 +68,97 @@ function HeroScene() {
                 renderer.outputColorSpace = THREE.SRGBColorSpace;
                 host.replaceChildren(canvas);
 
-                const network = new THREE.Group();
-                network.position.set(1.9, 0.1, 0);
-                scene.add(network);
+                scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.6));
+                const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+                sun.position.set(-4, 8, 6);
+                scene.add(sun);
 
-                const primaryMaterial = new THREE.MeshBasicMaterial({
-                    transparent: true,
-                    opacity: 0.33,
-                    wireframe: true,
-                });
-                const coreMaterial = new THREE.PointsMaterial({
-                    size: 0.035,
-                    transparent: true,
-                    opacity: 0.9,
-                    sizeAttenuation: true,
-                });
-                const ringMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
-                const satelliteMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.94 });
+                const COLS = 30;
+                const ROWS = 24;
+                const PITCH = 1;
+                const count = COLS * ROWS;
+                // The last instance is "your thing": a slab hovering above its base tile.
+                const heroIndex = count;
+                const geometry = new THREE.BoxGeometry(0.86, 0.16, 0.86);
+                const material = new THREE.MeshLambertMaterial();
+                const field = new THREE.InstancedMesh(geometry, material, count + 1);
+                field.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                field.position.set(3, -0.8, 0);
+                field.rotation.y = Math.PI / 4;
+                scene.add(field);
 
-                const coreGeometry = new THREE.IcosahedronGeometry(1.86, 3);
-                const core = new THREE.Mesh(coreGeometry, primaryMaterial);
-                network.add(core);
+                const tileX = (col: number) => (col - COLS / 2 + 0.5) * PITCH;
+                const tileZ = (row: number) => (row - ROWS / 2 + 0.5) * PITCH;
+                // Cells chosen by projecting the grid through this camera: the hero lands just right of
+                // the headline, the lit cells scatter across the open right half of the card.
+                const heroCol = 15;
+                const heroRow = 11;
+                const litCells: Array<[number, number]> = [
+                    [19, 10],
+                    [14, 14],
+                    [21, 7],
+                    [11, 13],
+                    [17, 13],
+                    [13, 9],
+                    [22, 11],
+                    [18, 6],
+                    [12, 16],
+                    [20, 13],
+                ];
+                const lit = litCells.map(([col, row], i) => ({
+                    index: row * COLS + col,
+                    phase: i * 1.7,
+                    speed: 0.5 + (i % 3) * 0.2,
+                }));
+                const litByIndex = new Map(lit.map((tile) => [tile.index, tile]));
 
-                const pointGeometry = new THREE.IcosahedronGeometry(1.9, 3);
-                const corePoints = new THREE.Points(pointGeometry, coreMaterial);
-                network.add(corePoints);
+                const base = new THREE.Color();
+                const primary = new THREE.Color();
+                const card = new THREE.Color();
+                const tint = new THREE.Color();
+                const dummy = new THREE.Object3D();
+                const fog = new THREE.Fog(card, 17, 34);
+                scene.fog = fog;
 
-                // A transparent sphere makes the visual globe easy to hit-test without changing how it looks.
-                const interactionGeometry = new THREE.SphereGeometry(2.15, 32, 20);
-                const interactionMaterial = new THREE.MeshBasicMaterial({
-                    transparent: true,
-                    opacity: 0,
-                    depthWrite: false,
-                });
-                const interactionSphere = new THREE.Mesh(interactionGeometry, interactionMaterial);
-                network.add(interactionSphere);
+                const wave = (x: number, z: number, seconds: number) =>
+                    Math.sin(x * 0.55 + seconds * 0.6) * 0.11 + Math.cos(z * 0.5 - seconds * 0.45) * 0.09;
 
-                const rings = [
-                    { radius: 2.6, tilt: 0.25, yaw: 0.5 },
-                    { radius: 3.12, tilt: 1.12, yaw: -0.25 },
-                    { radius: 3.58, tilt: 2.05, yaw: 0.6 },
-                ].map(({ radius, tilt, yaw }) => {
-                    const curve = new THREE.EllipseCurve(0, 0, radius, radius * 0.45, 0, Math.PI * 2, false, 0);
-                    const points = curve.getPoints(120).map((point) => new THREE.Vector3(point.x, point.y, 0));
-                    const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), ringMaterial);
-                    ring.rotation.set(tilt, yaw, 0);
-                    network.add(ring);
-                    return ring;
-                });
+                const paint = (seconds: number) => {
+                    for (let index = 0; index < count; index += 1) {
+                        const x = tileX(index % COLS);
+                        const z = tileZ(Math.floor(index / COLS));
+                        dummy.position.set(x, wave(x, z, seconds), z);
+                        dummy.updateMatrix();
+                        field.setMatrixAt(index, dummy.matrix);
 
-                const satelliteGeometry = new THREE.IcosahedronGeometry(0.13, 1);
-                const orbitalNodes: OrbitalNode[] = [
-                    { radius: 2.6, speed: 0.72, offset: 0.3, tilt: 0.25 },
-                    { radius: 3.12, speed: -0.45, offset: 2.2, tilt: 1.12 },
-                    { radius: 3.58, speed: 0.32, offset: 4.5, tilt: 2.05 },
-                    { radius: 3.58, speed: 0.32, offset: 1.35, tilt: 2.05 },
-                ].map(({ radius, speed, offset, tilt }) => {
-                    const mesh = new THREE.Mesh(satelliteGeometry, satelliteMaterial);
-                    network.add(mesh);
-                    return { mesh, radius, speed, offset, tilt };
-                });
+                        const litTile = litByIndex.get(index);
+                        const glow = litTile
+                            ? 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(seconds * litTile.speed + litTile.phase))
+                            : 0;
+                        field.setColorAt(index, tint.copy(base).lerp(primary, glow));
+                    }
 
-                const dustGeometry = new THREE.BufferGeometry();
-                const dustPositions = new Float32Array(240 * 3);
-                for (let index = 0; index < 240; index += 1) {
-                    const offset = index * 3;
-                    dustPositions[offset] = (Math.random() - 0.5) * 13;
-                    dustPositions[offset + 1] = (Math.random() - 0.5) * 9;
-                    dustPositions[offset + 2] = (Math.random() - 0.5) * 5 - 2;
-                }
-                dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
-                const dustMaterial = new THREE.PointsMaterial({
-                    size: 0.026,
-                    transparent: true,
-                    opacity: 0.28,
-                    sizeAttenuation: true,
-                });
-                const dust = new THREE.Points(dustGeometry, dustMaterial);
-                scene.add(dust);
+                    const heroX = tileX(heroCol);
+                    const heroZ = tileZ(heroRow);
+                    dummy.position.set(
+                        heroX,
+                        wave(heroX, heroZ, seconds) + 0.7 + Math.sin(seconds * 0.9) * 0.06,
+                        heroZ,
+                    );
+                    dummy.updateMatrix();
+                    field.setMatrixAt(heroIndex, dummy.matrix);
+                    field.setColorAt(heroIndex, primary);
+                    field.instanceMatrix.needsUpdate = true;
+                    if (field.instanceColor) field.instanceColor.needsUpdate = true;
+                };
 
                 const updateColors = () => {
-                    const primary = getThemeColor(THREE, host, '--primary', FALLBACK_PRIMARY);
-                    const ring = getThemeColor(THREE, host, '--ring', FALLBACK_RING);
-                    const foreground = getThemeColor(THREE, host, '--foreground', FALLBACK_FOREGROUND);
-                    const card = getThemeColor(THREE, host, '--card', FALLBACK_CARD);
-                    primaryMaterial.color.copy(primary);
-                    coreMaterial.color.copy(primary);
-                    ringMaterial.color.copy(ring);
-                    satelliteMaterial.color.copy(ring);
-                    dustMaterial.color.copy(foreground);
-                    interactionMaterial.color.copy(primary);
+                    base.copy(getThemeColor(THREE, host, '--muted', FALLBACK_MUTED));
+                    primary.copy(getThemeColor(THREE, host, '--primary', FALLBACK_PRIMARY));
+                    card.copy(getThemeColor(THREE, host, '--card', FALLBACK_CARD));
+                    fog.color.copy(card);
                     renderer.setClearColor(card, 1);
                 };
-                updateColors();
 
                 const resize = () => {
                     const { width, height } = host.getBoundingClientRect();
@@ -183,106 +169,28 @@ function HeroScene() {
                     // CSS already fills the host; false keeps the drawing buffer on device pixels.
                     renderer.setSize(width, height, false);
                 };
-                resize();
 
                 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                const pointer = new THREE.Vector2();
-                const raycaster = new THREE.Raycaster();
-                const dragPosition = new THREE.Vector2();
-                const userRotation = new THREE.Vector2(-0.04, 0.1);
-                const rotationVelocity = new THREE.Vector2();
-                let activePointerId: number | null = null;
-
-                const intersectGlobe = (event: PointerEvent) => {
-                    const bounds = host.getBoundingClientRect();
-                    const isInsideHero =
-                        event.clientX >= bounds.left &&
-                        event.clientX <= bounds.right &&
-                        event.clientY >= bounds.top &&
-                        event.clientY <= bounds.bottom;
-
-                    if (!isInsideHero) return false;
-
-                    pointer.set(
-                        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
-                        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
-                    );
-                    network.updateMatrixWorld(true);
-                    raycaster.setFromCamera(pointer, camera);
-                    return raycaster.intersectObject(interactionSphere, false).length > 0;
-                };
-
-                let renderStatic = () => {};
-                const onPointerDown = (event: PointerEvent) => {
-                    if (!intersectGlobe(event)) return;
-
-                    activePointerId = event.pointerId;
-                    dragPosition.set(event.clientX, event.clientY);
-                    rotationVelocity.set(0, 0);
-                    event.preventDefault();
-                };
-                const onPointerMove = (event: PointerEvent) => {
-                    if (event.pointerId !== activePointerId) return;
-
-                    const bounds = host.getBoundingClientRect();
-                    const deltaX = (event.clientX - dragPosition.x) / bounds.width;
-                    const deltaY = (event.clientY - dragPosition.y) / bounds.height;
-
-                    userRotation.y += deltaX * 3;
-                    userRotation.x = THREE.MathUtils.clamp(userRotation.x + deltaY * 2.25, -0.75, 0.75);
-                    rotationVelocity.set(deltaY * 0.12, deltaX * 0.12);
-                    dragPosition.set(event.clientX, event.clientY);
-                    event.preventDefault();
-
-                    if (reducedMotion) renderStatic();
-                };
-                const onPointerEnd = (event: PointerEvent) => {
-                    if (event.pointerId === activePointerId) activePointerId = null;
-                };
-                window.addEventListener('pointerdown', onPointerDown);
-                window.addEventListener('pointermove', onPointerMove);
-                window.addEventListener('pointerup', onPointerEnd);
-                window.addEventListener('pointercancel', onPointerEnd);
-
                 let frameId = 0;
                 const render = (milliseconds = 0) => {
-                    const seconds = milliseconds / 1000;
-
-                    if (!reducedMotion) {
-                        if (activePointerId === null) {
-                            userRotation.x = THREE.MathUtils.clamp(userRotation.x + rotationVelocity.x, -0.75, 0.75);
-                            userRotation.y += rotationVelocity.y;
-                            rotationVelocity.multiplyScalar(0.94);
-                        }
-                        core.rotation.set(seconds * 0.09, seconds * 0.13, seconds * 0.05);
-                        corePoints.rotation.copy(core.rotation);
-                        dust.rotation.y = seconds * 0.012;
-
-                        rings.forEach((ring, index) => {
-                            ring.rotation.z = seconds * (index % 2 === 0 ? 0.05 : -0.04);
-                        });
-                        orbitalNodes.forEach((node) => {
-                            const angle = seconds * node.speed + node.offset;
-                            node.mesh.position.set(
-                                Math.cos(angle) * node.radius,
-                                Math.sin(angle) * node.radius * 0.45,
-                                0,
-                            );
-                            node.mesh.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), node.tilt);
-                        });
-                    }
-
-                    network.rotation.set(userRotation.x, userRotation.y, 0);
-
+                    paint(reducedMotion ? 0 : milliseconds / 1000);
                     renderer.render(scene, camera);
                     if (!reducedMotion) frameId = window.requestAnimationFrame(render);
                 };
-                renderStatic = () => render(performance.now());
+
+                updateColors();
+                resize();
                 render();
 
-                const resizeObserver = new ResizeObserver(resize);
+                const resizeObserver = new ResizeObserver(() => {
+                    resize();
+                    if (reducedMotion) render();
+                });
                 resizeObserver.observe(host);
-                const themeObserver = new MutationObserver(updateColors);
+                const themeObserver = new MutationObserver(() => {
+                    updateColors();
+                    if (reducedMotion) render();
+                });
                 themeObserver.observe(document.documentElement, {
                     attributes: true,
                     attributeFilter: ['class', 'style'],
@@ -290,24 +198,11 @@ function HeroScene() {
 
                 cleanup = () => {
                     window.cancelAnimationFrame(frameId);
-                    window.removeEventListener('pointerdown', onPointerDown);
-                    window.removeEventListener('pointermove', onPointerMove);
-                    window.removeEventListener('pointerup', onPointerEnd);
-                    window.removeEventListener('pointercancel', onPointerEnd);
                     resizeObserver.disconnect();
                     themeObserver.disconnect();
-                    coreGeometry.dispose();
-                    pointGeometry.dispose();
-                    interactionGeometry.dispose();
-                    satelliteGeometry.dispose();
-                    dustGeometry.dispose();
-                    primaryMaterial.dispose();
-                    coreMaterial.dispose();
-                    ringMaterial.dispose();
-                    satelliteMaterial.dispose();
-                    dustMaterial.dispose();
-                    interactionMaterial.dispose();
-                    rings.forEach((ring) => ring.geometry.dispose());
+                    geometry.dispose();
+                    material.dispose();
+                    field.dispose();
                     renderer.dispose();
                     renderer.domElement.remove();
                 };
@@ -358,7 +253,7 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                         </span>
                     </h1>
                     <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                        Tenancy, auth, RLS, theming, media, and 50+ packages, wired together on a Cloudflare-native
+                        Tenancy, auth, RLS, theming, media, and 60+ packages, wired together on a Cloudflare-native
                         foundation. You bring the part only you can build.
                     </p>
                     <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -392,7 +287,7 @@ export function OttabaseHero({ appName }: OttabaseHeroProps) {
                     <HeroStat
                         icon={<Boxes className="h-4 w-4" />}
                         label="Already wired"
-                        detail="50+ packages, one install"
+                        detail="60+ packages, one install"
                     />
                 </ul>
             </div>
