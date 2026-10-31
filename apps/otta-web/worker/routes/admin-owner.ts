@@ -23,10 +23,8 @@ export async function handleAdminPromotePlatformOwner(context: ApiRouteContext):
 
     // Rate-limit by IP before the secret compare, so this grant-of-ultimate-privilege endpoint can't
     // be brute-forced — matching the throttling on register/reset. Throttled BEFORE reading the body.
-    // enforceBruteForceThrottle fails OPEN with a logged warning if the limiter binding is missing (a
-    // real 429 still blocks) — the secret compare below is the authoritative gate, and this shares the
-    // exact policy the bootstrap secret check uses so break-glass recovery isn't bricked by a missing
-    // limiter binding.
+    // Without a limiter binding it refuses in production and lets the request through, logged,
+    // elsewhere (enforceBruteForceThrottle): the same rule as the bootstrap secret check.
     const ip = getClientIpAddress(request);
     const rateLimited = await enforceBruteForceThrottle(
         request,

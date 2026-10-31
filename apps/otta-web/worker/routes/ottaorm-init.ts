@@ -10,6 +10,8 @@ import { buildAppMigrations } from '../../ottabase/migrations';
 import { packages } from '../../ottabase/packages';
 import { checkMigrationAuth, initDbConnection } from '../lib/db-utils';
 import { ensurePackageSchedules } from '../lib/package-schedules';
+import { enforceBruteForceThrottle } from '../lib/rate-limiting';
+import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults } from '../lib/user-provisioning';
 
 export interface OttaormInitContext {
@@ -48,6 +50,14 @@ export async function handleOttaormInit(context: OttaormInitContext): Promise<Re
 
     const isAuthorized = await checkMigrationAuth(requestForAuth, env);
     if (!isAuthorized) {
+        // Failed attempts only: guessing MIGRATION_SECRET is throttled, the right secret never is.
+        const limited = await enforceBruteForceThrottle(
+            request,
+            env,
+            `ottaorm:init:${getClientIpAddress(request)}`,
+            'migration secret check',
+        );
+        if (limited) return limited;
         return errorResponse('Unauthorized - MIGRATION_SECRET required in production', 401, {
             code: 'UNAUTHORIZED',
         });

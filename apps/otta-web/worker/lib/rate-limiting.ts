@@ -185,21 +185,15 @@ function buildRateLimitResponse(rateLimitData: {
 }
 
 /**
- * Best-effort brute-force throttle for SECRET-GATED endpoints (bootstrap secret check,
- * platform-owner promote). The secret compare — not the limiter — is the authoritative gate
- * here; this rate limit is defense-in-depth against guessing that secret.
+ * Brute-force throttle for SECRET-GATED endpoints (the bootstrap secret check, platform-owner
+ * promote, the migration secret). The secret compare is the authoritative gate; this limit keeps
+ * that secret from being guessed.
  *
- * Returns:
- *  - a 429 Response ONLY when the caller is actually over the limit → block;
- *  - `null` when under the limit → proceed;
- *  - `null` (after logging a warning) when the limiter itself is UNAVAILABLE (no OBCF_KV /
- *    OBCF_RATE_LIMITER binding, i.e. `enforceRateLimit` would 500). We deliberately FAIL OPEN
- *    behind the secret gate so a missing limiter binding can't brick first-run bootstrap or
- *    break-glass ownership recovery — but we log so the degraded state is diagnosable.
- *
- * Use this (not raw `enforceRateLimit`) wherever a secret already gates the endpoint, so
- * bootstrap and promote share one consistent fail-open-with-log policy instead of one silently
- * ignoring the 500 and the other 500-ing the whole request.
+ * Returns a 429 when the caller is over the limit, null when under it. When the limiter itself is
+ * missing (no OBCF_RATE_LIMITER and no OBCF_KV), it follows the one rule every limiter here follows:
+ * closed in production (the 500 CONFIG_ERROR, which Admin, System readiness also flags), open
+ * elsewhere with a logged warning, so a local first-run bootstrap is never bricked by a missing
+ * binding.
  */
 export async function enforceBruteForceThrottle(
     request: Request,
@@ -208,13 +202,14 @@ export async function enforceBruteForceThrottle(
     label: string,
 ): Promise<Response | null> {
     const limited = await enforceRateLimit(request, env, key);
-    if (!limited) return null; // under the limit → proceed
-    if (limited.status === 429) return limited; // over the limit → block
+    if (!limited) return null; // under the limit: proceed
+    if (limited.status === 429) return limited; // over the limit: block
 
-    // status 500: limiter unavailable. Fail OPEN behind the secret gate, but make it visible.
+    // 500: no limiter.
+    if (env.ENVIRONMENT === 'production') return limited;
     console.warn(
-        `[rate-limit] limiter unavailable for "${label}" — proceeding WITHOUT brute-force throttle. ` +
-            `Configure OBCF_RATE_LIMITER or OBCF_KV to restore it.`,
+        `[rate-limit] limiter unavailable for "${label}", proceeding without the brute-force throttle ` +
+            `(${env.ENVIRONMENT ?? 'unset'} environment). Configure OBCF_RATE_LIMITER or OBCF_KV.`,
     );
     return null;
 }

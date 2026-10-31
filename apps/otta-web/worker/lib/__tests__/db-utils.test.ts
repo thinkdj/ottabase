@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureDbConnection, initAdminCron, resetDbConnectionForTests } from '../db-utils';
+import { checkMigrationAuth, ensureDbConnection, initAdminCron, resetDbConnectionForTests } from '../db-utils';
 import { mediaBase } from '@ottabase/utils/media';
+import { readJson } from '../utils';
 
 const {
     mockRegisterConnection,
@@ -157,5 +158,44 @@ describe('initAdminCron', () => {
         expect(response?.headers.get('cache-control')).toBe('no-store');
         await expect(response?.json()).resolves.toMatchObject({ code: 'CONFIG_ERROR' });
         expect(mockConfigureOttaORM).not.toHaveBeenCalled();
+    });
+});
+
+describe('checkMigrationAuth', () => {
+    // readJson is mocked for the file; here it reads the body for real.
+    beforeEach(() => {
+        vi.mocked(readJson).mockImplementation(
+            async (request: { json(): Promise<unknown> }) => request.json() as never,
+        );
+    });
+    const env = { ENVIRONMENT: 'production', MIGRATION_SECRET: 'the-migration-secret' } as unknown as CloudflareEnv;
+    const post = (init: { url?: string; headers?: Record<string, string>; body?: unknown } = {}) =>
+        new Request(init.url ?? 'https://app.example.com/api/ottaorm/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...init.headers },
+            body: JSON.stringify(init.body ?? {}),
+        });
+
+    it('takes the secret from a Bearer header or the JSON body', async () => {
+        expect(await checkMigrationAuth(post({ headers: { Authorization: 'Bearer the-migration-secret' } }), env)).toBe(
+            true,
+        );
+        expect(await checkMigrationAuth(post({ body: { secret: 'the-migration-secret' } }), env)).toBe(true);
+    });
+
+    it('never from the query string, which lands in logs and history', async () => {
+        expect(
+            await checkMigrationAuth(
+                post({ url: 'https://app.example.com/api/ottaorm/init?secret=the-migration-secret' }),
+                env,
+            ),
+        ).toBe(false);
+    });
+
+    it('refuses a wrong or missing secret, and everything when none is configured', async () => {
+        expect(await checkMigrationAuth(post({ headers: { Authorization: 'Bearer nope' } }), env)).toBe(false);
+        expect(await checkMigrationAuth(post({ body: { secret: 42 } }), env)).toBe(false);
+        const unset = { ENVIRONMENT: 'production' } as unknown as CloudflareEnv;
+        expect(await checkMigrationAuth(post({ body: { secret: 'the-migration-secret' } }), unset)).toBe(false);
     });
 });

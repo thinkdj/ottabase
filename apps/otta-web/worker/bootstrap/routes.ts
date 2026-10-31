@@ -31,6 +31,7 @@ import { buildAppMigrations } from '../../ottabase/migrations';
 import { packages } from '../../ottabase/packages';
 import { ensurePackageSchedules } from '../lib/package-schedules';
 import { emitAccountEvent, reconcileSystemRoleSessions } from '../lib/auth-utils';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
@@ -105,11 +106,11 @@ function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
     }
 
     const headerSecret = request.headers.get('X-Bootstrap-Secret');
-    if (headerSecret === expectedSecret) return true;
+    if (headerSecret && timingSafeEqual(headerSecret, expectedSecret)) return true;
 
     if (allowQuery) {
         const querySecret = url.searchParams.get('secret');
-        if (querySecret === expectedSecret) return true;
+        if (querySecret && timingSafeEqual(querySecret, expectedSecret)) return true;
     }
 
     return false;
@@ -147,9 +148,8 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
         // 401-vs-200 oracle for the secret (esp. the read-only GET /api/status), so without this an
         // attacker could guess it unthrottled here and then make a single valid promote/create-owner
         // call — making the promote endpoint's own rate limit moot. Only FAILED attempts are counted,
-        // so legit use with the correct secret is never limited. enforceBruteForceThrottle fails OPEN
-        // WITH A LOGGED WARNING if the limiter binding is missing (a real 429 still blocks) — the
-        // same policy the promote endpoint uses, so the two behave consistently.
+        // so legit use with the correct secret is never limited. Without a limiter binding it refuses in
+        // production and lets the attempt through, logged, elsewhere: the promote endpoint's rule too.
         const ip = getClientIpAddress(context.request);
         const limited = await enforceBruteForceThrottle(
             context.request,

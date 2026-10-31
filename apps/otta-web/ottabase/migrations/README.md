@@ -96,11 +96,8 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
   -H "Authorization: Bearer YOUR_MIGRATION_SECRET"
 ```
 
-Or with query parameter:
-
-```bash
-curl -X POST https://your-app.workers.dev/api/ottaorm/init?secret=YOUR_MIGRATION_SECRET
-```
+Or in the JSON body: `{"secret": "YOUR_MIGRATION_SECRET"}`. Never in the query string: the endpoint refuses it there,
+since a URL lands in logs and browser history. Failed attempts are rate limited per IP.
 
 ### Adding a New Table (App-Specific)
 
@@ -255,7 +252,7 @@ pnpm deploy
 2. **Run migrations** (after deployment):
 
 ```bash
-curl -X POST https://your-app.workers.dev/api/ottaorm/init?secret=$MIGRATION_SECRET
+curl -X POST https://your-app.workers.dev/api/ottaorm/init -H "Authorization: Bearer $MIGRATION_SECRET"
 ```
 
 3. **Verify** by checking `/migration-status`

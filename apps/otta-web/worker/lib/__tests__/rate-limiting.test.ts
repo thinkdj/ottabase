@@ -5,10 +5,9 @@
  *  - simulateRateLimit increments per request, allows the first LIMIT, then blocks;
  *  - the sliding window resets after PERIOD elapses;
  *  - a missing KV binding yields no counter (null);
- * and the fail-open POLICY that keeps bootstrap/promote consistent:
+ * and the rule the secret-gated endpoints (bootstrap, promote, migrations) share:
  *  - enforceBruteForceThrottle blocks (429) only when genuinely over the limit,
- *  - and FAILS OPEN (null) with a logged warning when the limiter binding is unavailable,
- *    so a missing binding can't brick first-run bootstrap or break-glass ownership recovery.
+ *  - and without a limiter binding refuses in production, lets the request through (logged) elsewhere.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -86,7 +85,7 @@ describe('simulateRateLimit (KV counting)', () => {
     });
 });
 
-describe('enforceBruteForceThrottle (secret-gated, fail-open policy)', () => {
+describe('enforceBruteForceThrottle (secret-gated: closed in production)', () => {
     beforeEach(() => kvStore.clear());
 
     it('returns null while under the limit (request proceeds to the secret gate)', async () => {
@@ -108,13 +107,24 @@ describe('enforceBruteForceThrottle (secret-gated, fail-open policy)', () => {
         });
     });
 
-    it('FAILS OPEN (null) with a logged warning when the limiter binding is unavailable', async () => {
+    it('lets the request through, logged, when no limiter is bound outside production', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        // No OBCF_KV and no OBCF_RATE_LIMITER → enforceRateLimit would 500; the helper must not block.
+        // No OBCF_KV and no OBCF_RATE_LIMITER: enforceRateLimit answers 500.
         const res = await enforceBruteForceThrottle(makeRequest(), makeEnv({ OBCF_KV: undefined }), 'k', 'promote');
         expect(res).toBeNull();
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
+    });
+
+    it('refuses (500 CONFIG_ERROR) when no limiter is bound in production', async () => {
+        const res = await enforceBruteForceThrottle(
+            makeRequest(),
+            makeEnv({ OBCF_KV: undefined, ENVIRONMENT: 'production' }),
+            'k',
+            'promote',
+        );
+        expect(res?.status).toBe(500);
+        await expect(res?.json()).resolves.toMatchObject({ code: 'CONFIG_ERROR' });
     });
 });
 

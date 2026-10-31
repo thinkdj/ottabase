@@ -21,6 +21,7 @@ import {
     UserRole,
     VerificationToken,
 } from '@ottabase/ottaorm/models';
+import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { configureMedia } from '@ottabase/utils/media';
 import { files } from '../../ottabase/files';
@@ -59,23 +60,16 @@ export async function checkMigrationAuth(
 
     if (!env.MIGRATION_SECRET) return false;
 
+    // A header or the JSON body, never the query string: a URL lands in logs, proxies and history.
     let providedSecret: string | null = null;
-    const url = new URL(request.url);
-    providedSecret = url.searchParams.get('secret');
-
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) providedSecret = authHeader.substring(7);
     if (!providedSecret && request.method === 'POST') {
-        const body = await readJson<{ secret?: string }>(request);
-        providedSecret = body.secret ?? null;
+        const body = await readJson<{ secret?: unknown }>(request);
+        providedSecret = typeof body.secret === 'string' ? body.secret : null;
     }
 
-    if (!providedSecret) {
-        const authHeader = request.headers.get('authorization');
-        if (authHeader?.startsWith('Bearer ')) {
-            providedSecret = authHeader.substring(7);
-        }
-    }
-
-    return providedSecret === env.MIGRATION_SECRET;
+    return !!providedSecret && timingSafeEqual(providedSecret, env.MIGRATION_SECRET);
 }
 
 /**
