@@ -21,7 +21,7 @@ function buildRateLimitKey(key: string, scope?: { type: 'user' | 'global'; id?: 
     return globalKey('ratelimit', key);
 }
 
-export async function simulateRateLimit(env: CloudflareEnv, key: string) {
+export async function simulateRateLimit(env: CloudflareEnv, key: string, limit = 10) {
     if (!env.OBCF_KV) {
         return null;
     }
@@ -29,7 +29,7 @@ export async function simulateRateLimit(env: CloudflareEnv, key: string) {
     const kv = createKVClient({ namespace: env.OBCF_KV as any });
     const rateLimitKey = buildRateLimitKey(key);
 
-    const LIMIT = 10;
+    const LIMIT = limit;
     const PERIOD = 60; // seconds
 
     const result = await kv.getText(rateLimitKey);
@@ -72,7 +72,13 @@ export async function simulateRateLimit(env: CloudflareEnv, key: string) {
     };
 }
 
-export async function getRateLimitData(env: CloudflareEnv, key: string) {
+export async function getRateLimitData(
+    env: CloudflareEnv,
+    key: string,
+    // The binding to count with and, without it, the per-minute limit the KV fallback applies.
+    limiter: RateLimit | undefined = env.OBCF_RATE_LIMITER,
+    fallbackLimit = 10,
+) {
     let rateLimitData: {
         success: boolean;
         limit: number;
@@ -80,17 +86,22 @@ export async function getRateLimitData(env: CloudflareEnv, key: string) {
         resetAfter: number;
     } | null = null;
 
-    if (env.OBCF_RATE_LIMITER) {
+    if (limiter) {
         try {
-            const limiter = createRateLimitingClient({
-                rateLimiter: env.OBCF_RATE_LIMITER,
+            const client = createRateLimitingClient({
+                rateLimiter: limiter,
             });
-            const result = await limiter.limit({ key });
-            if (result.success) {
+            const result = await client.limit({ key });
+            // A Workers rate-limit binding answers only `{ success }`: its verdict decides. The
+            // numbers it leaves out only shape the 429's informational headers.
+            if (result.success && typeof result.data.success === 'boolean') {
                 const { success, limit, remaining, resetAfter } = result.data;
-                if (limit !== undefined && remaining !== undefined && resetAfter !== undefined) {
-                    rateLimitData = { success, limit, remaining, resetAfter };
-                }
+                rateLimitData = {
+                    success,
+                    limit: limit ?? fallbackLimit,
+                    remaining: remaining ?? (success ? 1 : 0),
+                    resetAfter: resetAfter ?? 60,
+                };
             }
         } catch {
             // ignore - fall back
@@ -98,7 +109,7 @@ export async function getRateLimitData(env: CloudflareEnv, key: string) {
     }
 
     if (!rateLimitData) {
-        rateLimitData = await simulateRateLimit(env, key);
+        rateLimitData = await simulateRateLimit(env, key, fallbackLimit);
     }
 
     return rateLimitData;
@@ -113,6 +124,39 @@ export async function enforceRateLimit(request: Request, env: CloudflareEnv, key
         });
     }
 
+    return buildRateLimitResponse(rateLimitData);
+}
+
+/** Uploads per user per minute, matching the OBCF_RATE_LIMITER_UPLOADS binding in wrangler.jsonc. */
+export const UPLOAD_RATE_LIMIT_PER_MINUTE = 60;
+
+/**
+ * The limiter for file uploads (POST /api/files, the avatar route): its own binding,
+ * OBCF_RATE_LIMITER_UPLOADS, at 60 per minute per user, so a bulk media-library upload is not
+ * cut off at the shared limiter's 10. Fails closed: a production deploy without the binding
+ * refuses uploads (500 CONFIG_ERROR) rather than letting them through uncounted; elsewhere the
+ * KV counter stands in at the same rate, and without KV either this 500s like enforceRateLimit.
+ */
+export async function enforceUploadRateLimit(
+    request: Request,
+    env: CloudflareEnv,
+    userId: string,
+): Promise<Response | null> {
+    const limiter = env.OBCF_RATE_LIMITER_UPLOADS;
+    if (!limiter && env.ENVIRONMENT === 'production') {
+        return errorResponse('Upload rate limiter not configured', 500, {
+            hint: 'Bind OBCF_RATE_LIMITER_UPLOADS in wrangler.jsonc',
+            code: 'CONFIG_ERROR',
+        });
+    }
+    const key = `files:upload:${userId}`;
+    const rateLimitData = await getRateLimitData(env, key, limiter, UPLOAD_RATE_LIMIT_PER_MINUTE);
+    if (!rateLimitData) {
+        return errorResponse('Rate limiter not available', 500, {
+            hint: 'Enable OBCF_RATE_LIMITER_UPLOADS or OBCF_KV for rate limiting',
+            code: 'CONFIG_ERROR',
+        });
+    }
     return buildRateLimitResponse(rateLimitData);
 }
 

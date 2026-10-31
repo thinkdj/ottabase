@@ -162,11 +162,23 @@ vi.mock('../cloudflare-realtime', () => ({
 // otta:end demo
 
 vi.mock('../cloudflare-storage', () => ({
-    handleCloudflareImages: handlerMock('handleCloudflareImages'), // otta:only demo
     handleCloudflareKV: handlerMock('handleCloudflareKV'), // otta:only demo
     handleCloudflareR2: handlerMock('handleCloudflareR2'), // otta:only demo
-    handleUpload: handlerMock('handleUpload'),
-    handleUploadFile: handlerMock('handleUploadFile'),
+}));
+
+vi.mock('../files', () => ({
+    handleFilesDelete: handlerMock('handleFilesDelete'),
+    handleFilesPublic: handlerMock('handleFilesPublic'),
+    handleFilesQuarantine: handlerMock('handleFilesQuarantine'),
+    handleFilesRead: handlerMock('handleFilesRead'),
+    handleFilesRestore: handlerMock('handleFilesRestore'),
+    handleFilesUpdate: handlerMock('handleFilesUpdate'),
+    handleFilesUpload: handlerMock('handleFilesUpload'),
+}));
+
+vi.mock('../me-avatar', () => ({
+    handleAvatarRemove: handlerMock('handleAvatarRemove'),
+    handleAvatarUpload: handlerMock('handleAvatarUpload'),
 }));
 
 vi.mock('../core-analytics', () => ({
@@ -217,10 +229,6 @@ vi.mock('../shortlinks', () => ({
 }));
 // otta:end shortlinks
 
-vi.mock('../media-library', () => ({
-    handleMediaLibraryPurge: handlerMock('handleMediaLibraryPurge'),
-}));
-
 vi.mock('../../../ottabase/config.loader', () => ({
     getOttabaseConfig: vi.fn(() => ({
         appId: 'otta-web',
@@ -239,7 +247,6 @@ vi.mock('@ottabase/analytics/server', () => ({
 
 import { handleAnalyticsTrack } from '@ottabase/analytics/server';
 import { getOttabaseConfig } from '../../../ottabase/config.loader';
-import { handleMediaLibraryPurge } from '../media-library';
 import { handleAdminAiConfig } from '../admin-ai'; // otta:only ottaai
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from '../admin-cron';
 import {
@@ -327,13 +334,17 @@ import { handleCloudflareQueue } from '../cloudflare-queue';
 import { handleRateLimiting } from '../cloudflare-rate';
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from '../cloudflare-realtime';
 // otta:end demo
+import { handleCloudflareKV, handleCloudflareR2 } from '../cloudflare-storage'; // otta:only demo
 import {
-    handleCloudflareImages, // otta:only demo
-    handleCloudflareKV, // otta:only demo
-    handleCloudflareR2, // otta:only demo
-    handleUpload,
-    handleUploadFile,
-} from '../cloudflare-storage';
+    handleFilesDelete,
+    handleFilesPublic,
+    handleFilesQuarantine,
+    handleFilesRead,
+    handleFilesRestore,
+    handleFilesUpdate,
+    handleFilesUpload,
+} from '../files';
+import { handleAvatarRemove, handleAvatarUpload } from '../me-avatar';
 import { handleCoreAnalytics } from '../core-analytics';
 import { handleDemo, handleDemoError, handleDemoMode } from '../demo'; // otta:only demo
 import { handleEmailProviders, handleEmailTest } from '../email';
@@ -463,12 +474,18 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleRealtimeBroadcast,
     handleRealtimeStats,
     handleRealtimeWebsocket,
-    handleCloudflareImages,
     handleCloudflareKV,
     handleCloudflareR2,
     // otta:end demo
-    handleUpload,
-    handleUploadFile,
+    handleFilesDelete,
+    handleFilesPublic,
+    handleFilesQuarantine,
+    handleFilesRead,
+    handleFilesRestore,
+    handleFilesUpdate,
+    handleFilesUpload,
+    handleAvatarRemove,
+    handleAvatarUpload,
     handleCoreAnalytics,
     // otta:begin demo
     handleDemo,
@@ -496,7 +513,6 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleShortlinksList,
     // otta:end shortlinks
     handleAnalyticsTrack,
-    handleMediaLibraryPurge,
 } as any;
 
 function expectNoHandlersCalled(except: string[] = []) {
@@ -977,13 +993,65 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleDemoMode');
         });
         // otta:end demo
+    });
 
-        it('POST /api/upload/file/x/y dispatches to the upload-file prefix handler', async () => {
-            const { response } = await dispatch('POST', '/api/upload/file/x/y');
-            expect(handleUploadFile).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }));
-            expect(handleUpload).not.toHaveBeenCalled();
-            expect(await response!.text()).toBe('handleUploadFile');
+    describe('files', () => {
+        const id = 'a'.repeat(32);
+
+        it('POST /api/files uploads', async () => {
+            const { response } = await dispatch('POST', '/api/files');
+            expect(await response!.text()).toBe('handleFilesUpload');
         });
+
+        it.each(['GET', 'HEAD'])(
+            '%s /api/files/public/<key> serves the public bucket by key, the static segment winning over :id',
+            async (method) => {
+                await dispatch(method, `/api/files/public/app/media/${id}.png`);
+                expect(handleFilesPublic).toHaveBeenCalledWith(
+                    expect.objectContaining({ method }),
+                    `app/media/${id}.png`,
+                );
+                expect(handleFilesRead).not.toHaveBeenCalled();
+            },
+        );
+
+        it('GET /api/files/:id and /:id/:variant read by id', async () => {
+            await dispatch('GET', `/api/files/${id}`);
+            expect(handleFilesRead).toHaveBeenLastCalledWith(expect.objectContaining({ method: 'GET' }), id);
+            await dispatch('HEAD', `/api/files/${id}/thumb`);
+            expect(handleFilesRead).toHaveBeenLastCalledWith(expect.objectContaining({ method: 'HEAD' }), id, 'thumb');
+        });
+
+        it('PATCH and DELETE /api/files/:id edit and remove', async () => {
+            await dispatch('PATCH', `/api/files/${id}`);
+            expect(handleFilesUpdate).toHaveBeenCalledWith(expect.anything(), id);
+            await dispatch('DELETE', `/api/files/${id}`);
+            expect(handleFilesDelete).toHaveBeenCalledWith(expect.anything(), id);
+        });
+
+        it('POST and DELETE /api/files/:id/quarantine quarantine and restore', async () => {
+            await dispatch('POST', `/api/files/${id}/quarantine`);
+            expect(handleFilesQuarantine).toHaveBeenCalledWith(expect.anything(), id);
+            await dispatch('DELETE', `/api/files/${id}/quarantine`);
+            expect(handleFilesRestore).toHaveBeenCalledWith(expect.anything(), id);
+            expect(handleFilesDelete).not.toHaveBeenCalled();
+        });
+
+        it('PUT and DELETE /api/users/me/avatar set and drop the avatar', async () => {
+            expect(await (await dispatch('PUT', '/api/users/me/avatar')).response!.text()).toBe('handleAvatarUpload');
+            expect(await (await dispatch('DELETE', '/api/users/me/avatar')).response!.text()).toBe(
+                'handleAvatarRemove',
+            );
+        });
+
+        it.each(['/api/upload', '/api/upload/file/vault/app/x/users.ndjson', '/api/medialibrary/m1/purge'])(
+            'the old upload routes are gone: %s',
+            async (path) => {
+                const { response } = await dispatch(path.includes('purge') ? 'DELETE' : 'GET', path);
+                expect(response).toBeNull();
+                expectNoHandlersCalled();
+            },
+        );
     });
 
     describe('user profile', () => {
@@ -1005,12 +1073,6 @@ describe('router dispatch parity', () => {
             const { response } = await dispatch('GET', '/api/nope');
             expect(response).toBeNull();
             expectNoHandlersCalled();
-        });
-
-        it('DELETE /api/medialibrary/m1/purge dispatches to the app package route with the id', async () => {
-            const { response } = await dispatch('DELETE', '/api/medialibrary/m1/purge');
-            expect(handleMediaLibraryPurge).toHaveBeenCalledWith(expect.objectContaining({ method: 'DELETE' }), 'm1');
-            expect(await response!.text()).toBe('handleMediaLibraryPurge');
         });
 
         it('GET / returns null', async () => {

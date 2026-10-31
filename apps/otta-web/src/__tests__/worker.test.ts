@@ -89,17 +89,22 @@ describe('Cloudflare Worker API', () => {
             accountForUserSpy.mockRestore();
         });
 
-        it('should return current user', async () => {
+        it('should return current user, with image resolved from the uploaded avatar', async () => {
             const userJson = { id: 'user-1', name: 'Ada', email: 'ada@example.com' };
             (getSession as any).mockResolvedValue({ user: { id: 'user-1' } });
             const findSpy = vi.spyOn(User, 'find').mockResolvedValue({
-                toJson: () => userJson,
+                toJson: () => ({
+                    ...userJson,
+                    avatarKey: 'otta-web/avatar/abc/thumb.webp',
+                    image: 'https://lh3.test/a',
+                }),
             } as any);
 
             const resp = await worker.fetch(createRequest('/api/users/me'), env);
             expect(resp.status).toBe(200);
             const data = (await resp.json()) as any;
             expect(data).toMatchObject(userJson);
+            expect(data.image).toMatch(/\/otta-web\/avatar\/abc\/thumb\.webp$/);
             expect(Array.isArray(data.linkedAccounts)).toBe(true);
 
             findSpy.mockRestore();
@@ -131,18 +136,17 @@ describe('Cloudflare Worker API', () => {
             updateSpy.mockRestore();
         });
 
-        it('should allow removing profile image with image: null', async () => {
-            const userJson = { id: 'user-1', name: 'Ada', email: 'ada@example.com', image: null };
+        it('ignores image: the provider picture is not editable, the avatar has its own route', async () => {
             (getSession as any).mockResolvedValue({ user: { id: 'user-1' } });
-            const updateSpy = vi.spyOn(User, 'update').mockResolvedValue({
-                toJson: () => userJson,
-            } as any);
+            const updateSpy = vi.spyOn(User, 'update');
 
-            const resp = await worker.fetch(createRequest('/api/users/me', 'PATCH', { image: null }), env);
-            expect(resp.status).toBe(200);
-            const data = (await resp.json()) as any;
-            expect(data.image).toBeNull();
-            expect(updateSpy).toHaveBeenCalledWith('user-1', expect.objectContaining({ image: null }));
+            const resp = await worker.fetch(
+                createRequest('/api/users/me', 'PATCH', { image: 'https://evil.test/x.png' }),
+                env,
+            );
+            expect(resp.status).toBe(400);
+            expect(((await resp.json()) as any).code).toBe('NO_CHANGES');
+            expect(updateSpy).not.toHaveBeenCalled();
 
             updateSpy.mockRestore();
         });

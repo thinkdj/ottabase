@@ -248,7 +248,8 @@ async function loadUserContext(userId: string, env: AuthEnv): Promise<UserContex
     try {
         if (user) {
             name = (user.get('name') as string | null) ?? null;
-            image = (user.get('image') as string | null) ?? null;
+            // The uploaded avatar's public URL, else the OAuth provider's picture.
+            image = user.imageUrl();
             timezone = (user.get('timezone') as string | null) || null;
             locale = (user.get('locale') as string | null) || null;
             const emailVerifiedRaw = user.get('emailVerified');

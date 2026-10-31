@@ -63,4 +63,12 @@ export {
 export { AuditLog, auditLogsTable, type AuditLogType, type NewAuditLogType } from './AuditLog';
 
 // Media (core — tracks all uploaded files)
-export { Media, mediaTable, type MediaType, type NewMediaType } from './Media';
+export {
+    Media,
+    mediaFileStore,
+    mediaTable,
+    type MediaRecord,
+    type MediaType,
+    type MediaVariantInfo,
+    type NewMediaType,
+} from './Media';

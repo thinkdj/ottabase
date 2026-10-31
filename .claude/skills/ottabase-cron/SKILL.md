@@ -17,9 +17,12 @@ Cloudflare wakes the worker once a minute; per-task cadence is evaluated against
 
 1. `wrangler.jsonc` → `"triggers": { "crons": ["* * * * *"] }` — one tick/minute.
 2. Worker `scheduled:` export → `handleAppScheduled` (guards platform-ready + the tick expression), then
-   `runAppCronTick(env)` → `appCronScheduler.tick(env, appTaskRepository(env))` (repository is app-scoped). `tick`
+   `runAppCronTick(env)` → `appCronScheduler.tick(env, appTaskRepository(env))` (repository is app-scoped). With
+   `OBCF_QUEUE` bound the tick only enqueues one `cron:run` job per due task (`{ queued: n }`); the core package's
+   consumer (`ottabase/packages/core.ts`) runs each through `runQueuedAppCronTask` in an invocation of its own, so a
+   handler has the D1 (1000 queries), CPU and wall-time budget to itself. Without a queue the tick runs them inline and
    returns `{ executed, failed, skipped }`; a task whose run or bookkeeping throws counts as `failed` and the tick
-   carries on with the remaining due tasks.
+   carries on. The admin "run now" follows the same path (202 `queued` with a queue).
 3. Register a handler on the app scheduler (`apps/*/ottabase/cron/index.ts`): add an entry to `appCronHandlerRegistry`
    (and its payload type to `AppCronPayloads`); it is passed to `registerHandlers`:
     ```ts
@@ -51,6 +54,9 @@ if you want jobs defined purely in code with their own Cron Triggers, rather tha
   Admin auth gates the `/api/admin/cron` routes; `checkCronAuth` / `CRON_SECRET` gate separately HTTP-triggered cron
   endpoints (e.g. blog publish-scheduled) and are open when `ENVIRONMENT` is a dev value.
 - Cron math is **UTC**. Convert for user-facing schedules.
+- Size a handler for one invocation, not more: the queue consumer runs with `max_batch_size: 1` so each `cron:run` job
+  is alone in its invocation. A duplicate delivery is a no-op (the lock re-checks due state), but a run reclaimed after
+  its lock lapsed (5 min) can repeat side effects, so handlers stay idempotent.
 - Adding a cron trigger changes `wrangler.jsonc` — keep binding/trigger config in sync per the cloudflare rules.
 - A task that throws is reported to the kernel and becomes an operator alert through `@ottabase/alerts` (one per error
   shape per hour). Do not mail on failure by hand. A condition worth telling the operator about that is not a throw (a

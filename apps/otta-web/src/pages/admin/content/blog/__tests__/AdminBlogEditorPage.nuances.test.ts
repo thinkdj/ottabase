@@ -41,7 +41,6 @@ describe('AdminBlogEditorPage nuances', () => {
                 height?: number;
             },
             currentAlt?: string,
-            currentCfImageId?: string,
         ) {
             return {
                 url: payload.url,
@@ -50,22 +49,22 @@ describe('AdminBlogEditorPage nuances', () => {
                 mediaId: payload.mediaId,
                 width: payload.width,
                 height: payload.height,
-                cfImageId: currentCfImageId,
             };
         }
 
+        /** POST /api/files answers `{ file }`, the stored file's view. */
         function mapUploadResponseToHeroImage(
-            response: { url?: string; cfImageId?: string },
+            response: { file?: { id: string; url: string } },
             fileName: string,
             currentAlt?: string,
             currentCaption?: string,
         ) {
-            if (!response.url) return null;
+            if (!response.file?.url) return null;
             return {
-                url: response.url,
+                url: response.file.url,
                 alt: currentAlt || fileName,
                 caption: currentCaption,
-                cfImageId: response.cfImageId,
+                mediaId: response.file.id,
             };
         }
 
@@ -88,7 +87,7 @@ describe('AdminBlogEditorPage nuances', () => {
 
         it('should map upload response to hero image and preserve caption', () => {
             const mapped = mapUploadResponseToHeroImage(
-                { url: 'https://img.test/uploaded.jpg', cfImageId: 'cf-123' },
+                { file: { id: 'media-123', url: 'https://img.test/uploaded.jpg' } },
                 'photo.png',
                 '',
                 'Existing caption',
@@ -98,7 +97,7 @@ describe('AdminBlogEditorPage nuances', () => {
                 url: 'https://img.test/uploaded.jpg',
                 alt: 'photo.png',
                 caption: 'Existing caption',
-                cfImageId: 'cf-123',
+                mediaId: 'media-123',
             });
         });
 

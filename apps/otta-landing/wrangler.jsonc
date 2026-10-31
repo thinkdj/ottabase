@@ -36,9 +36,10 @@
             "preview_database_id": "preview",
         },
     ],
-    // The SAME R2 bucket as apps/otta-web: images uploaded in its admin are stored as
-    // /api/upload/file/<key> URLs, which app/api/upload/file serves from here too. Local R2 is
-    // keyed by preview_bucket_name, so keep both names identical to otta-web/wrangler.jsonc.
+    // The SAME public files bucket as apps/otta-web (its OBCF_R2): images picked in its admin are
+    // /api/files/public/<key> URLs, which app/api/files/public serves from here too. Only the public
+    // bucket is bound: otta-web's private files and backups live in buckets this app never sees.
+    // Local R2 is keyed by preview_bucket_name, so keep both names identical to otta-web/wrangler.jsonc.
     "r2_buckets": [
         {
             "binding": "OBCF_R2",

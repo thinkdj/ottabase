@@ -6,42 +6,45 @@ export function CloudflareImagesDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="Images"
-                description="Image upload, transformation, and optimization"
+                description="WebP variants of every uploaded image, through the Images binding"
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare Features"
             />
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-[0.9375rem] font-semibold">Cloud-only Service</CardTitle>
+                    <CardTitle className="text-[0.9375rem] font-semibold">The OBCF_IMAGES binding</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>
-                        Cloudflare Images is a cloud-only service. It requires API authentication and uploads go
-                        directly to Cloudflare&apos;s CDN.
+                        When a purpose asks for variants (the media library and avatars do), the files service renders
+                        fixed-width WebP copies at upload time: thumb 160 px, card 640 px, full 1600 px, never upscaled.
+                        They live next to the original in R2 and are served like any other file, so nobody can mint new
+                        sizes on your bill.
                     </p>
-                    <p className="font-medium text-foreground">Setup steps:</p>
-                    <ol className="list-decimal space-y-1 pl-5">
-                        <li>Enable Cloudflare Images in your dashboard (Images &gt; Overview)</li>
-                        <li>Copy your Account ID from the dashboard URL or sidebar</li>
-                        <li>Create an API token with &quot;Cloudflare Images&quot; permissions</li>
-                        <li>Add these environment variables to your worker:</li>
-                    </ol>
+                    <p>
+                        The binding is already in <code className="font-mono text-xs">wrangler.jsonc</code>; local dev
+                        runs it through sharp. Without it, uploads keep only their original and every thumbnail URL is
+                        the original&apos;s.
+                    </p>
                     <div className="mt-2 rounded-lg bg-background p-3 font-mono text-xs ring-1 ring-border">
-                        <div>CF_IMAGES_ACCOUNT_ID=&lt;your-account-id&gt;</div>
-                        <div>CF_IMAGES_API_TOKEN=&lt;your-api-token&gt;</div>
+                        <div>&quot;images&quot;: &#123; &quot;binding&quot;: &quot;OBCF_IMAGES&quot; &#125;</div>
                     </div>
                     <p className="mt-2 text-xs">
-                        See the{' '}
+                        Try it on the{' '}
+                        <a href="/demo/cloudflare/file-upload" className="text-primary underline underline-offset-2">
+                            file upload demo
+                        </a>
+                        , or see the{' '}
                         <a
-                            href="https://developers.cloudflare.com/images/"
+                            href="https://developers.cloudflare.com/images/transform-images/bindings/"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary underline underline-offset-2"
                         >
-                            Cloudflare Images documentation
-                        </a>{' '}
-                        for more details.
+                            Images binding documentation
+                        </a>
+                        .
                     </p>
                 </CardContent>
             </Card>

@@ -206,6 +206,31 @@ export class BrandKit extends BaseModel {
         };
     }
 
+    /** The columns holding public storage keys of logo files. */
+    static readonly assetKeyFields = ['logoKey', 'logoDarkKey', 'iconKey', 'ogImageKey', 'emailLogoKey'] as const;
+
+    /** The logo keys this kit points at. */
+    assetKeys(): string[] {
+        return BrandKit.assetKeyFields
+            .map((field) => this.get(field) as string | null)
+            .filter((key): key is string => !!key);
+    }
+
+    /** True while any kit still points at `key` (a clone shares its source's logos). */
+    static async referencesAsset(key: string): Promise<boolean> {
+        for (const field of BrandKit.assetKeyFields) {
+            if ((await BrandKit.count({ [field]: key })) > 0) return true;
+        }
+        return false;
+    }
+
+    /** Remove the logo files no kit points at any more. */
+    static async releaseAssets(keys: string[], remove: (key: string) => Promise<void>): Promise<void> {
+        for (const key of new Set(keys)) {
+            if (!(await BrandKit.referencesAsset(key))) await remove(key);
+        }
+    }
+
     /** Get logo URLs (R2 public URLs) */
     getLogoUrls(r2PublicUrl: string): {
         logo?: string;

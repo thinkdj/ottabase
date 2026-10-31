@@ -72,7 +72,7 @@ function requestWithCookie(token: string, env: AuthEnv): Request {
 }
 
 beforeEach(() => {
-    userFind.mockResolvedValue({ get: () => null, getUserRoles: async () => [] });
+    userFind.mockResolvedValue({ get: () => null, imageUrl: () => null, getUserRoles: async () => [] });
     memberWhere.mockResolvedValue([]);
 });
 

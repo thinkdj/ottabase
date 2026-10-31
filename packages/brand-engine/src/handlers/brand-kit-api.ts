@@ -7,7 +7,7 @@
 
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { createBrandAssets, type LogoType } from '../persistence/assets';
+import { LOGO_KEY_FIELDS, type BrandAssetClient, type LogoType } from '../persistence/assets';
 import { BrandKit } from '../persistence/BrandKit.model';
 import type { BrandKitItem } from '../persistence/types';
 import { PRESET_MAP, type PresetTheme } from '../presets';
@@ -288,12 +288,13 @@ export async function handleUpdateBrandKit(
     return jsonResponse(serializeKit(kit), 200);
 }
 
-/** DELETE /api/brand/kits/:id */
+/** DELETE /api/brand/kits/:id — the kit, and the logo files no other kit shares. */
 export async function handleDeleteBrandKit(
     _request: Request,
     env: BrandApiEnv,
     id: string,
     appId: string | null,
+    assets?: Pick<BrandAssetClient, 'remove'>,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
     if (!kit) return errorResponse('Brand Kit not found', 404);
@@ -318,7 +319,9 @@ export async function handleDeleteBrandKit(
         );
     }
 
+    const keys = kit.assetKeys();
     await kit.destroy();
+    if (assets) await BrandKit.releaseAssets(keys, assets.remove);
     await warmBrandCache(env, { appId });
     return jsonResponse({ success: true }, 200);
 }
@@ -366,13 +369,17 @@ export async function handleCloneBrandKit(
     return jsonResponse(serializeKit(copy), 201);
 }
 
-/** POST /api/brand/kits/:id/logo - Upload logo for Brand Kit */
+/**
+ * POST /api/brand/kits/:id/logo - Upload logo for Brand Kit. `assets` stores the file (the host's
+ * files service); the previous logo is deleted unless another kit still uses it.
+ */
 export async function handleUploadBrandKitLogo(
     request: Request,
     env: BrandApiEnv,
     id: string,
     appId: string | null,
     logoType: LogoType,
+    assets: BrandAssetClient,
     auditUser?: BrandAuditUser,
 ): Promise<Response> {
     const kit = (await BrandKit.find(id)) as BrandKit | null;
@@ -380,26 +387,21 @@ export async function handleUploadBrandKitLogo(
     const kApp = kit.get('appId') as string | null;
     if (kApp !== null && appId !== kApp) return errorResponse('Brand Kit not found', 404);
 
-    const assets = createBrandAssets(env.OBCF_R2, env.R2_PUBLIC_URL || '');
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    if (!file) return errorResponse('No file provided', 400);
+    const formData = await request.formData().catch(() => null);
+    const file = formData?.get('file');
+    if (!(file instanceof File)) return errorResponse('No file provided', 400);
 
-    const buffer = await file.arrayBuffer();
-    const key = await assets.uploadLogo(buffer, file.name, logoType);
+    const key = await assets.upload(file, logoType);
+    if (key instanceof Response) return key;
 
-    const fieldMap: Record<LogoType, string> = {
-        logo: 'logoKey',
-        'logo-dark': 'logoDarkKey',
-        icon: 'iconKey',
-        'og-image': 'ogImageKey',
-        'email-logo': 'emailLogoKey',
-    };
-    kit.set(fieldMap[logoType], key);
+    const field = LOGO_KEY_FIELDS[logoType];
+    const previous = kit.get(field) as string | null;
+    kit.set(field, key);
     kit.set('updatedBy', auditUser?.userId ?? auditUser?.userEmail ?? null);
     await kit.save();
+    if (previous && previous !== key) await BrandKit.releaseAssets([previous], assets.remove);
     await warmBrandCache(env, { kitId: id, appId: kApp, requestAppId: appId });
 
     await logBrandAudit('brand.kit.logo.upload', request, { appId, kitId: id, logoType }, auditUser);
-    return jsonResponse({ key, url: assets.getPublicUrl(key) }, 200);
+    return jsonResponse({ key, url: assets.url(key) }, 200);
 }

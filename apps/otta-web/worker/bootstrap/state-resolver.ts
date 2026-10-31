@@ -28,6 +28,8 @@ export function probeBindings(env: CloudflareEnv): BindingProbe {
         d1: !!env.OBCF_D1,
         kv: !!env.OBCF_KV,
         r2: !!env.OBCF_R2,
+        r2Private: !!env.OBCF_R2_PRIVATE,
+        r2Vault: !!env.OBCF_R2_VAULT,
         queue: !!env.OBCF_QUEUE,
         assets: !!env.OBCF_ASSETS,
     };

@@ -81,7 +81,11 @@ async function selectResources(force: boolean, res: CfResourceNames): Promise<Re
             value: 'kv' as ResourceId,
             checked: true,
         },
-        { name: `R2 Buckets (${res.r2.name} + ${res.r2.previewName})`, value: 'r2' as ResourceId, checked: true },
+        {
+            name: `R2 Buckets (${res.r2.map((bucket) => `${bucket.name} + ${bucket.previewName}`).join(', ')})`,
+            value: 'r2' as ResourceId,
+            checked: true,
+        },
         { name: `Queue (${res.queue.name} + ${res.queue.previewName})`, value: 'queue' as ResourceId, checked: true },
     ];
 
@@ -259,37 +263,39 @@ async function main() {
         }
     }
 
-    // 3. R2 Buckets (check list first to avoid redundant create)
+    // 3. R2 Buckets (check list first to avoid redundant create): every bucket the app binds.
     if (resources.includes('r2')) {
-        // `(?!-)` so the prod bucket check doesn't match the "<name>-preview" entry.
-        const r2Exists = new RegExp(`name:\\s*${escapeRegExp(res.r2.name)}(?!-)`);
-        const r2PreviewExists = new RegExp(`name:\\s*${escapeRegExp(res.r2.previewName)}`);
+        for (const bucket of res.r2) {
+            // `(?!-)` so a bucket check doesn't match the "<name>-preview" (or "<name>-demo") entry.
+            const r2Exists = new RegExp(`name:\\s*${escapeRegExp(bucket.name)}(?!-)`);
+            const r2PreviewExists = new RegExp(`name:\\s*${escapeRegExp(bucket.previewName)}`);
 
-        log(`Setting up R2 Bucket '${res.r2.name}'...`, YELLOW);
-        try {
-            const r2List = runCommand(`${wranglerCmd} r2 bucket list`, true);
-            if (r2List && r2Exists.test(r2List)) {
-                log('R2 Bucket already exists.', GREEN);
-            } else {
-                runCommand(`${wranglerCmd} r2 bucket create ${res.r2.name}`);
-                log('R2 Bucket created.', GREEN);
-            }
-        } catch (e) {
-            log(`Error setting up R2 Bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
-        }
-
-        if (withPreview) {
-            log(`Setting up R2 preview bucket '${res.r2.previewName}' (for \`wrangler dev --remote\`)...`, YELLOW);
+            log(`Setting up R2 Bucket '${bucket.name}' (${bucket.binding})...`, YELLOW);
             try {
                 const r2List = runCommand(`${wranglerCmd} r2 bucket list`, true);
-                if (r2List && r2PreviewExists.test(r2List)) {
-                    log('R2 preview bucket already exists.', GREEN);
+                if (r2List && r2Exists.test(r2List)) {
+                    log('R2 Bucket already exists.', GREEN);
                 } else {
-                    runCommand(`${wranglerCmd} r2 bucket create ${res.r2.previewName}`);
-                    log('R2 preview bucket created.', GREEN);
+                    runCommand(`${wranglerCmd} r2 bucket create ${bucket.name}`);
+                    log('R2 Bucket created.', GREEN);
                 }
             } catch (e) {
-                log(`Error setting up R2 preview bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
+                log(`Error setting up R2 Bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
+            }
+
+            if (withPreview) {
+                log(`Setting up R2 preview bucket '${bucket.previewName}' (for \`wrangler dev --remote\`)...`, YELLOW);
+                try {
+                    const r2List = runCommand(`${wranglerCmd} r2 bucket list`, true);
+                    if (r2List && r2PreviewExists.test(r2List)) {
+                        log('R2 preview bucket already exists.', GREEN);
+                    } else {
+                        runCommand(`${wranglerCmd} r2 bucket create ${bucket.previewName}`);
+                        log('R2 preview bucket created.', GREEN);
+                    }
+                } catch (e) {
+                    log(`Error setting up R2 preview bucket: ${e instanceof Error ? e.message : String(e)}`, RED);
+                }
             }
         }
     }

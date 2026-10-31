@@ -6,9 +6,17 @@
 // them next to every other package.
 // ============================================================
 
+import { CRON_JOB_TYPE, type CronJobPayload } from '@ottabase/cron';
 import { EVENT_JOB_TYPE } from '@ottabase/events';
 import { definePackage } from '@ottabase/kernel';
+import type { JobHandler } from '@ottabase/queue';
 import { events } from '../events';
+
+/** Runs one queued scheduler run. Loaded on use: the cron module reads the package list, which imports this file. */
+const runQueuedCronTask: JobHandler<CronJobPayload, CloudflareEnv> = async (job, ctx) => {
+    const { runQueuedTask } = await import('../../worker/cron');
+    await runQueuedTask(ctx.env, job.payload);
+};
 
 export const corePackage = definePackage<CloudflareEnv>({
     key: 'core',
@@ -22,6 +30,8 @@ export const corePackage = definePackage<CloudflareEnv>({
     queue: {
         // The consumer half of the event bus: runs every `via: 'queue'` subscriber.
         [EVENT_JOB_TYPE]: events.jobHandler(),
+        // The consumer half of the scheduler: one task run per job, in its own invocation.
+        [CRON_JOB_TYPE]: runQueuedCronTask,
     },
     health: (env) => [
         { name: 'd1', ok: Boolean(env.OBCF_D1) },
@@ -33,7 +43,7 @@ export const corePackage = definePackage<CloudflareEnv>({
         {
             name: 'queue',
             ok: Boolean(env.OBCF_QUEUE),
-            detail: env.OBCF_QUEUE ? undefined : 'no queue: queued events run inline',
+            detail: env.OBCF_QUEUE ? undefined : 'no queue: queued events and cron runs run inline',
         },
     ],
 });

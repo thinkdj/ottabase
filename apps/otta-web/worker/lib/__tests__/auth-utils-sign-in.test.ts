@@ -142,3 +142,35 @@ describe('onSignIn: every account gets a workspace', () => {
         ).resolves.toBeUndefined();
     });
 });
+
+describe('options.emit: the accounts @ottabase/auth creates reach the bus', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it('forwards to the bus with this request’s env and the account as the actor', async () => {
+        mocks.emit.mockResolvedValue({ delivered: 1 });
+        const appEnv = env();
+        const payload = {
+            userId: 'user-1',
+            email: 'new@example.com',
+            name: 'New',
+            organizationId: null,
+            method: 'oauth' as const,
+            at: 1,
+        };
+
+        await getAuthOptions(appEnv).emit!({} as any, 'user.created', payload);
+
+        expect(mocks.emit).toHaveBeenCalledWith(appEnv, 'user.created', payload, {
+            actor: { userId: 'user-1', organizationId: null, appId: 'test-app' },
+        });
+    });
+
+    it('swallows a bus failure', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        mocks.emit.mockRejectedValue(new Error('queue down'));
+
+        await expect(
+            getAuthOptions(env()).emit!({} as any, 'user.verified', { userId: 'user-1', email: 'a@x.dev', at: 1 }),
+        ).resolves.toBeUndefined();
+    });
+});

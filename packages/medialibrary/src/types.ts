@@ -1,14 +1,19 @@
-export type MediaLibraryProvider = 'r2' | 'cloudflare-images';
-
 export type MediaKind = 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other';
 
-export type MediaStatus = 'active' | 'archived';
+/** Who may read a file (see the files service in `@ottabase/ottaupload`). */
+export type MediaAudience = 'public' | 'members' | 'owner';
 
+/** `ready` is served; `quarantined` is refused by every read path. */
+export type MediaStatus = 'ready' | 'quarantined';
+
+export type MediaVariantName = 'thumb' | 'card' | 'full';
+
+/** One WebP rendition made at upload. Its URL is a view field (`thumbnailUrl` is thumb, `previewUrl` card). */
 export interface MediaVariant {
-    label?: string;
-    url: string;
-    width?: number | null;
-    height?: number | null;
+    key: string;
+    width: number;
+    height: number;
+    size: number;
 }
 
 export interface MediaMetadataJson {
@@ -17,9 +22,14 @@ export interface MediaMetadataJson {
     [key: string]: unknown;
 }
 
+/**
+ * A media row as the API returns it: the stored columns plus the URLs the server computed
+ * (`url`, `thumbnailUrl`, `previewUrl`). URLs are never stored, so read them from here.
+ */
 export interface MediaLibraryItemLike {
     id: string;
-    provider: MediaLibraryProvider;
+    purpose: string;
+    audience: MediaAudience;
     storageKey: string;
     url: string;
     thumbnailUrl?: string | null;
@@ -35,15 +45,13 @@ export interface MediaLibraryItemLike {
     fileSize: number;
     width?: number | null;
     height?: number | null;
-    isPublic?: boolean;
-    variants?: MediaVariant[] | null;
+    variants?: Partial<Record<MediaVariantName, MediaVariant>> | null;
     metadata?: MediaMetadataJson | null;
     appId?: string | null;
     organizationId?: string | null;
     userId?: string | null;
     createdAt?: number | string | Date | null;
     updatedAt?: number | string | Date | null;
-    deletedAt?: number | string | Date | null;
 }
 
 export interface MediaViewerItem {
@@ -88,27 +96,4 @@ export interface MediaLightboxOptions {
     variant?: MediaLightboxVariant;
     /** Override the z-index of the lightbox overlay (default: 100). */
     zIndex?: number;
-}
-
-export interface CreateMediaLibraryRecordInput {
-    provider: MediaLibraryProvider;
-    storageKey: string;
-    url: string;
-    fileName: string;
-    mimeType: string;
-    fileSize: number;
-    thumbnailUrl?: string | null;
-    previewUrl?: string | null;
-    width?: number | null;
-    height?: number | null;
-    isPublic?: boolean;
-    variants?: MediaVariant[] | null;
-    metadata?: MediaMetadataJson | null;
-    appId?: string | null;
-    organizationId?: string | null;
-    userId?: string | null;
-    title?: string | null;
-    altText?: string | null;
-    caption?: string | null;
-    status?: MediaStatus;
 }

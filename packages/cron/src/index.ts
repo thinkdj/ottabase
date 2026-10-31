@@ -9,7 +9,7 @@
 export { CronHandler, createCronHandler } from './handler';
 
 // DB-driven Scheduler (like Laravel's scheduler)
-export { Scheduler, createScheduler, createTaskRepository } from './scheduler';
+export { Scheduler, createScheduler, createTaskRepository, CRON_JOB_TYPE } from './scheduler';
 
 // Cron Parser utilities
 export { parseCron, matchesCron, getNextRun, CronPresets } from './cron-parser';
@@ -37,6 +37,7 @@ export type {
     TaskExecutionStatus,
     TaskExecutionResult,
     SchedulerTickResult,
+    CronJobPayload,
 } from './scheduler';
 
 // Types - Parser

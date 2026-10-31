@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { uploadFile, uploadFiles } from '../utils/vanillaUpload';
 
+const FILE = { id: 'f1', url: '/api/files/public/app/media/f1.txt' };
+
 // Mock XMLHttpRequest
 class MockXMLHttpRequest {
     public status = 200;
@@ -23,8 +25,7 @@ class MockXMLHttpRequest {
         setTimeout(() => {
             this.responseText = JSON.stringify({
                 success: true,
-                url: '/uploads/test-file.txt',
-                key: 'test-file-123.txt',
+                file: FILE,
             });
             this.trigger('load');
         }, 10);
@@ -47,12 +48,11 @@ describe('Vanilla Upload Utilities', () => {
         it('should upload file successfully', async () => {
             const file = new File(['content'], 'test.txt', { type: 'text/plain' });
             const result = await uploadFile(file, {
-                endpoint: '/api/upload',
+                endpoint: '/api/files',
             });
 
             expect(result.success).toBe(true);
-            expect(result.url).toBe('/uploads/test-file.txt');
-            expect(result.key).toBe('test-file-123.txt');
+            expect(result.file).toEqual(FILE);
         });
 
         it('should call onProgress callback', async () => {
@@ -60,7 +60,7 @@ describe('Vanilla Upload Utilities', () => {
             const onProgress = vi.fn();
 
             await uploadFile(file, {
-                endpoint: '/api/upload',
+                endpoint: '/api/files',
                 onProgress,
             });
 
@@ -73,15 +73,11 @@ describe('Vanilla Upload Utilities', () => {
             const onSuccess = vi.fn();
 
             await uploadFile(file, {
-                endpoint: '/api/upload',
+                endpoint: '/api/files',
                 onSuccess,
             });
 
-            expect(onSuccess).toHaveBeenCalledWith({
-                success: true,
-                url: '/uploads/test-file.txt',
-                key: 'test-file-123.txt',
-            });
+            expect(onSuccess).toHaveBeenCalledWith({ success: true, file: FILE });
         });
 
         it('should validate file size', async () => {
@@ -113,7 +109,7 @@ describe('Vanilla Upload Utilities', () => {
             expect(onError).toHaveBeenCalled();
         });
 
-        it('should use correct provider', async () => {
+        it('sends the purpose with the file', async () => {
             const file = new File(['content'], 'test.jpg', { type: 'image/jpeg' });
             const xhr = new MockXMLHttpRequest();
             const sendSpy = vi.spyOn(xhr, 'send');
@@ -124,12 +120,12 @@ describe('Vanilla Upload Utilities', () => {
             });
 
             await uploadFile(file, {
-                provider: 'cloudflare-images',
+                purpose: 'attachment',
             });
 
             expect(sendSpy).toHaveBeenCalled();
             const formData = sendSpy.mock.calls[0][0] as FormData;
-            expect(formData.get('provider')).toBe('cloudflare-images');
+            expect(formData.get('purpose')).toBe('attachment');
         });
 
         it('should handle network errors', async () => {
@@ -163,7 +159,7 @@ describe('Vanilla Upload Utilities', () => {
             ];
 
             const results = await uploadFiles(files, {
-                endpoint: '/api/upload',
+                endpoint: '/api/files',
             });
 
             expect(results).toHaveLength(2);

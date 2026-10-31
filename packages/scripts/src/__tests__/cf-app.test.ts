@@ -44,8 +44,16 @@ describe('resolveCfApp', () => {
         // D1 / R2 / Queue names come straight from wrangler.jsonc.
         expect(ctx.resources.d1.name).toBe('ottabase-db');
         expect(ctx.resources.d1.previewName).toBe('ottabase-db-preview');
-        expect(ctx.resources.r2.name).toBe('ottabase-bucket');
-        expect(ctx.resources.r2.previewName).toBe('ottabase-bucket-preview');
+        // Every bucket the app binds: public files, private files, backups.
+        expect(ctx.resources.r2).toEqual([
+            { binding: 'OBCF_R2', name: 'ottabase-bucket', previewName: 'ottabase-bucket-preview' },
+            {
+                binding: 'OBCF_R2_PRIVATE',
+                name: 'ottabase-files-private',
+                previewName: 'ottabase-files-private-preview',
+            },
+            { binding: 'OBCF_R2_VAULT', name: 'ottabase-vault', previewName: 'ottabase-vault-preview' },
+        ]);
         expect(ctx.resources.queue.name).toBe('ottabase-queue');
         expect(ctx.resources.queue.previewName).toBe('ottabase-queue-preview');
 
@@ -100,7 +108,11 @@ describe('resolveCfApp', () => {
     it('names the resources of a named env from its own block, and its KV title after the env', () => {
         const demo = resolveCfApp({ app: 'otta-web', env: 'demo' });
         expect(demo.resources.d1.name).toBe('ottabase-db-demo');
-        expect(demo.resources.r2.name).toBe('ottabase-bucket-demo');
+        expect(demo.resources.r2.map((bucket) => bucket.name)).toEqual([
+            'ottabase-bucket-demo',
+            'ottabase-files-private-demo',
+            'ottabase-vault-demo',
+        ]);
         expect(demo.resources.queue.name).toBe('ottabase-queue-demo');
         expect(demo.resources.kv.title).toBe('otta-web-demo-kv');
         expect(demo.resources.secrets.d1Id).toBe('DEMO_D1_DATABASE_ID');

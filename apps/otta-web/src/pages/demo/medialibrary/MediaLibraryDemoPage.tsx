@@ -22,14 +22,15 @@ function unsplashPhoto(
     const { publishedAt, ...rest } = item;
     return {
         ...rest,
-        provider: 'cloudflare-images',
+        purpose: 'media',
+        audience: 'public',
         storageKey: `demo/quiet-forms/${item.originalName}`,
         url: src(1600),
         previewUrl: src(1200),
         thumbnailUrl: src(400),
         mimeType: 'image/jpeg',
         mediaKind: 'image',
-        status: 'active',
+        status: 'ready',
         width: 1600,
         createdAt: publishedAt,
     };
@@ -88,7 +89,8 @@ const DEMO_MEDIA_ITEMS: MediaLibraryItemLike[] = [
     }),
     {
         id: 'light-across-a-wall',
-        provider: 'r2',
+        purpose: 'media',
+        audience: 'public',
         storageKey: 'demo/quiet-forms/light-across-a-wall.mp4',
         url: 'https://videos.pexels.com/video-files/6963729/6963729-hd_1280_720_50fps.mp4',
         previewUrl: 'https://videos.pexels.com/video-files/6963729/6963729-hd_1280_720_50fps.mp4',
@@ -96,7 +98,7 @@ const DEMO_MEDIA_ITEMS: MediaLibraryItemLike[] = [
             'https://images.pexels.com/videos/6963729/ceramic-cup-ceramic-vase-interior-decor-interior-decoration-6963729.jpeg?auto=compress&cs=tinysrgb&w=600',
         mimeType: 'video/mp4',
         mediaKind: 'video',
-        status: 'active',
+        status: 'ready',
         originalName: 'light-across-a-wall.mp4',
         title: 'Light across a wall',
         altText: 'Window light sliding across a white wall above a vase and a stack of books',

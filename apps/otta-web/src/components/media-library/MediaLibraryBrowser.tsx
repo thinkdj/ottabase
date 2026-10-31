@@ -1,5 +1,7 @@
 import { mediaLibraryHooks } from '@/hooks/mediaLibraryHooks';
 import { api, isApiError } from '@/lib/api';
+import { isOrgAdmin, useSession } from '@/lib/auth';
+import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { MediaKind, MediaLibraryItemLike } from '@ottabase/medialibrary';
 import { formatMediaFileSize, getMediaDisplayTitle, toMediaSelectionPayload } from '@ottabase/medialibrary';
 import { MediaPreview } from '@ottabase/medialibrary/react';
@@ -19,26 +21,19 @@ import {
     IconCopy,
     IconDeviceFloppy,
     IconExternalLink,
+    IconLockOpen,
     IconLoader2,
     IconPhotoPlus,
     IconSearch,
+    IconShieldOff,
     IconTrash,
     IconX,
 } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-type MediaListItem = MediaLibraryItemLike & {
-    id: string;
-    url: string;
-    storageKey: string;
-    originalName: string;
-    mimeType: string;
-    mediaKind: MediaKind;
-    status: 'active' | 'archived';
-    fileSize: number;
-    provider: 'r2' | 'cloudflare-images';
-};
+/** A media row as `/api/ottaorm/media` returns it: with the URLs the server computed. */
+type MediaListItem = MediaLibraryItemLike;
 
 interface MediaLibraryBrowserProps {
     title: string;
@@ -61,7 +56,7 @@ interface MediaLibraryBrowserProps {
 interface UploadApiResponse {
     success?: boolean;
     error?: string;
-    media?: {
+    file?: {
         id?: string;
     };
 }
@@ -109,6 +104,12 @@ export function MediaLibraryBrowser({
     // Tracks per-file progress for serial uploads so the overlay can show "X of Y"
     const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<MediaListItem | null>(null);
+    // Moderation is for admins (org admins, `media:manage`, platform admins); the server enforces it.
+    const { user } = useSession();
+    const canModerate = isOrgAdmin(user) || hasGrantedPermission(user?.permissions, 'media:manage');
+    const [showQuarantined, setShowQuarantined] = useState(false);
+    const [quarantineTarget, setQuarantineTarget] = useState<MediaListItem | null>(null);
+    const [isModerating, setIsModerating] = useState(false);
     const [formValues, setFormValues] = useState({
         title: '',
         altText: '',
@@ -171,8 +172,10 @@ export function MediaLibraryBrowser({
     }, [isUploading]);
 
     const whereClause = useMemo(() => {
+        // The library is the `media` purpose: avatars, brand assets and attachments live elsewhere.
         const clause: Record<string, unknown> = {
-            status: 'active',
+            purpose: 'media',
+            status: showQuarantined ? 'quarantined' : 'ready',
             ...(defaultWhere || {}),
         };
         // Push kind filter to the server when a specific tab is active
@@ -180,7 +183,7 @@ export function MediaLibraryBrowser({
             clause.mediaKind = activeKind;
         }
         return clause;
-    }, [activeKind, defaultWhere]);
+    }, [activeKind, defaultWhere, showQuarantined]);
 
     const mediaListQuery = mediaLibraryHooks.useInfiniteList(
         {
@@ -191,7 +194,7 @@ export function MediaLibraryBrowser({
         },
         36,
     );
-    const updateMedia = mediaLibraryHooks.useUpdate();
+    const [isSavingMetadata, setIsSavingMetadata] = useState(false);
 
     const items = useMemo(
         () => (mediaListQuery.data?.pages?.flatMap((page) => page.data) ?? []) as MediaListItem[],
@@ -271,13 +274,14 @@ export function MediaLibraryBrowser({
                     setUploadProgress((prev) => (prev ? { ...prev, current: prev.current + 1 } : null));
                     const formData = new FormData();
                     formData.append('file', file);
+                    formData.append('purpose', 'media');
 
-                    const payload = await api<UploadApiResponse>('/api/upload', {
+                    const payload = await api<UploadApiResponse>('/api/files', {
                         method: 'POST',
                         body: formData,
                     });
 
-                    lastUploadedId = payload?.media?.id ?? lastUploadedId;
+                    lastUploadedId = payload?.file?.id ?? lastUploadedId;
                 }
 
                 await refetchItems();
@@ -300,10 +304,12 @@ export function MediaLibraryBrowser({
             return;
         }
 
+        setIsSavingMetadata(true);
         try {
-            await updateMedia.mutateAsync({
-                id: selectedItem.id,
-                data: {
+            // Media rows change only through the files service; generic CRUD reads them.
+            await api(`/api/files/${encodeURIComponent(selectedItem.id)}`, {
+                method: 'PATCH',
+                body: {
                     title: formValues.title || null,
                     altText: formValues.altText || null,
                     caption: formValues.caption || null,
@@ -313,8 +319,42 @@ export function MediaLibraryBrowser({
             toast.success('Metadata updated');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to update media');
+        } finally {
+            setIsSavingMetadata(false);
         }
-    }, [formValues.altText, formValues.caption, formValues.title, refetchItems, selectedItem, updateMedia]);
+    }, [formValues.altText, formValues.caption, formValues.title, refetchItems, selectedItem]);
+
+    /** Quarantine (stop serving) or restore the selected file. Admins only. */
+    const handleModeration = useCallback(
+        async (item: MediaListItem, action: 'quarantine' | 'restore') => {
+            setIsModerating(true);
+            try {
+                const result = await api<{ purge?: 'purged' | 'manual' | 'none'; urls?: string[] }>(
+                    `/api/files/${encodeURIComponent(item.id)}/quarantine`,
+                    { method: action === 'quarantine' ? 'POST' : 'DELETE' },
+                );
+                await refetchItems();
+                setSelectedId(null);
+                if (action === 'restore') {
+                    toast.success('File restored: it is served again');
+                } else if (result?.purge === 'manual') {
+                    // Public files are cached as immutable: until purged, the edge keeps serving them.
+                    toast.warning('File quarantined. Its URLs are still cached: purge them in Cloudflare', {
+                        description: (result.urls ?? []).join('\n'),
+                        duration: 20000,
+                    });
+                } else {
+                    toast.success('File quarantined: it is no longer served');
+                }
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Moderation failed');
+            } finally {
+                setIsModerating(false);
+                setQuarantineTarget(null);
+            }
+        },
+        [refetchItems],
+    );
 
     const handleCopyUrl = useCallback(async (url: string) => {
         await navigator.clipboard.writeText(url);
@@ -327,7 +367,7 @@ export function MediaLibraryBrowser({
         }
 
         try {
-            await api(`/api/medialibrary/${encodeURIComponent(deleteTarget.id)}/purge`, {
+            await api(`/api/files/${encodeURIComponent(deleteTarget.id)}`, {
                 method: 'DELETE',
             });
             await refetchItems();
@@ -416,6 +456,22 @@ export function MediaLibraryBrowser({
                         {kind}
                     </Button>
                 ))}
+                {canModerate && mode === 'page' && (
+                    <Button
+                        type="button"
+                        variant={showQuarantined ? 'default' : 'ghost'}
+                        size="sm"
+                        aria-pressed={showQuarantined}
+                        onClick={() => {
+                            setShowQuarantined((value) => !value);
+                            setSelectedId(null);
+                        }}
+                        className="ml-auto rounded-full"
+                    >
+                        <IconShieldOff className="mr-1.5 h-4 w-4" />
+                        Quarantined
+                    </Button>
+                )}
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
@@ -735,9 +791,9 @@ export function MediaLibraryBrowser({
                                         </div>
                                         <div>
                                             <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                                Provider
+                                                Audience
                                             </p>
-                                            <p className="mt-1 text-foreground">{selectedItem.provider}</p>
+                                            <p className="mt-1 capitalize text-foreground">{selectedItem.audience}</p>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
@@ -807,10 +863,10 @@ export function MediaLibraryBrowser({
                                             type="button"
                                             className="w-full"
                                             onClick={handleMetadataSave}
-                                            disabled={updateMedia.isPending}
+                                            disabled={isSavingMetadata}
                                         >
                                             <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                                            {updateMedia.isPending ? 'Saving...' : 'Save metadata'}
+                                            {isSavingMetadata ? 'Saving...' : 'Save metadata'}
                                         </Button>
                                     </div>
                                 )}
@@ -854,6 +910,31 @@ export function MediaLibraryBrowser({
                                                 Copy URL
                                             </Button>
 
+                                            {canModerate &&
+                                                (selectedItem.status === 'quarantined' ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="w-full"
+                                                        disabled={isModerating}
+                                                        onClick={() => handleModeration(selectedItem, 'restore')}
+                                                    >
+                                                        <IconLockOpen className="mr-2 h-4 w-4" />
+                                                        Restore
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="w-full"
+                                                        disabled={isModerating}
+                                                        onClick={() => setQuarantineTarget(selectedItem)}
+                                                    >
+                                                        <IconShieldOff className="mr-2 h-4 w-4" />
+                                                        Quarantine
+                                                    </Button>
+                                                ))}
+
                                             {allowDelete && (
                                                 <Button
                                                     type="button"
@@ -888,6 +969,18 @@ export function MediaLibraryBrowser({
                 secondaryActionText="Cancel"
                 primaryActionText="Delete"
                 onConfirm={handleDelete}
+            />
+
+            <ConfirmDialog
+                open={Boolean(quarantineTarget)}
+                onOpenChange={(open) => !open && setQuarantineTarget(null)}
+                a11yTitle="Quarantine this file"
+                hideTitle
+                description="The file stops being served everywhere (a public file leaves the public bucket and its URLs are purged from the cache when purging is configured). It stays in storage, and you can restore it."
+                tone="destructive"
+                secondaryActionText="Cancel"
+                primaryActionText="Quarantine"
+                onConfirm={() => quarantineTarget && handleModeration(quarantineTarget, 'quarantine')}
             />
         </div>
     );

@@ -1,6 +1,6 @@
 import { useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { safeUrl } from '../../inline';
+import { safeUrl, useLinkRel } from '../../inline';
 import type { BlockRenderer } from '../../types';
 import React from 'react';
 import { AdvancedImageData } from './advancedimage.types';
@@ -12,6 +12,7 @@ import { AdvancedImageData } from './advancedimage.types';
  * and "featured" is a presentation (lead image, full column, shadow, caption bar), not a badge.
  */
 const AdvancedImageBlock: BlockRenderer<AdvancedImageData> = ({ data, className = '' }) => {
+    const linkRel = useLinkRel();
     const resolvedUrl = safeUrl(data?.url || data?.file?.url) ?? '';
     const {
         caption,
@@ -91,7 +92,7 @@ const AdvancedImageBlock: BlockRenderer<AdvancedImageData> = ({ data, className 
                 <a
                     href={sanitizeUrl(linkUrl)}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel={linkRel(true)}
                     className="otta-image__link"
                     aria-label={caption || altFinal}
                 >

@@ -602,7 +602,7 @@ function ItemForm({
         if (parentId !== undefined) setSelectedParentId(parentId ?? null);
     }, [parentId]);
 
-    /** Upload image to R2 via /api/upload, then store the URL */
+    /** Upload the image through the files service, then store its URL */
     const handleImageUpload = useCallback(async (file: File) => {
         if (!file.type.startsWith('image/')) {
             toast.error('Please select an image file');
@@ -615,7 +615,7 @@ function ItemForm({
         setUploading(true);
         try {
             const res = await menuApi.uploadImage(file);
-            setImage(res.url);
+            setImage(res.file.url);
             toast.success('Image uploaded');
         } catch {
             toast.error('Upload failed');

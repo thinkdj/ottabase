@@ -1,10 +1,4 @@
-import type {
-    CreateMediaLibraryRecordInput,
-    MediaKind,
-    MediaLibraryItemLike,
-    MediaSelectionPayload,
-    MediaViewerItem,
-} from './types';
+import type { MediaKind, MediaLibraryItemLike, MediaSelectionPayload, MediaViewerItem } from './types';
 
 const IMAGE_PREFIX = 'image/';
 const VIDEO_PREFIX = 'video/';
@@ -111,37 +105,6 @@ export function formatMediaFileSize(bytes?: number | null): string {
     }
 
     return `${size >= 10 || index === 0 ? Math.round(size) : size.toFixed(1)} ${sizes[index]}`;
-}
-
-export function createMediaLibraryRecordInput(input: CreateMediaLibraryRecordInput) {
-    const extension = getFileExtension(input.fileName);
-    const mediaKind = getMediaKindFromMimeType(input.mimeType, input.fileName);
-    const title = input.title?.trim() || input.fileName;
-
-    return {
-        provider: input.provider,
-        storageKey: input.storageKey,
-        url: input.url,
-        thumbnailUrl: input.thumbnailUrl ?? input.url,
-        previewUrl: input.previewUrl ?? input.url,
-        mimeType: input.mimeType || 'application/octet-stream',
-        mediaKind,
-        status: input.status ?? 'active',
-        originalName: input.fileName,
-        title,
-        altText: input.altText ?? null,
-        caption: input.caption ?? null,
-        extension,
-        fileSize: input.fileSize,
-        width: input.width ?? null,
-        height: input.height ?? null,
-        isPublic: input.isPublic ?? false,
-        variants: input.variants ?? null,
-        metadata: input.metadata ?? null,
-        appId: input.appId ?? null,
-        organizationId: input.organizationId ?? null,
-        userId: input.userId ?? null,
-    };
 }
 
 export function toMediaViewerItem(media: Partial<MediaLibraryItemLike>): MediaViewerItem {

@@ -14,6 +14,8 @@ const bindings = (over: Partial<BindingProbe> = {}): BindingProbe => ({
     d1: true,
     kv: true,
     r2: true,
+    r2Private: true,
+    r2Vault: true,
     queue: true,
     assets: true,
     ...over,
@@ -173,7 +175,9 @@ describe('renderWizardPage — /__bootstrap__', () => {
         const expected: Array<[string, string, string]> = [
             ['Database', 'OBCF_D1', 'D1'],
             ['Cache and sessions', 'OBCF_KV', 'KV'],
-            ['File storage', 'OBCF_R2', 'R2'],
+            ['Public files', 'OBCF_R2', 'R2'],
+            ['Private files', 'OBCF_R2_PRIVATE', 'R2'],
+            ['Backups', 'OBCF_R2_VAULT', 'R2'],
             ['Background jobs', 'OBCF_QUEUE', 'Queue'],
             ['Static files', 'OBCF_ASSETS', 'Assets'],
         ];

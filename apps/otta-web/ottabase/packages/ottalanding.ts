@@ -1,10 +1,10 @@
 // The landing-site package: tables, models and policies from the package; this app adds the
-// platform-admin editing routes and the cron handler that emails new leads. The public site
-// (apps/otta-landing) reads the shared D1 directly.
+// platform-admin editing routes and the cron handler that announces new leads on the bus
+// (`lead.created`) and emails them. The public site (apps/otta-landing) reads the shared D1 directly.
 import { createOttalandingPackage } from '@ottabase/ottalanding';
 import { Router } from '@ottabase/ottarouter';
 import { ctxOf, h } from '../../worker/lib/api-context';
-import { LEAD_NOTIFY_HANDLER, notifyNewLeads } from '../../worker/lib/landing-notify';
+import { LEAD_NOTIFY_DESCRIPTION, LEAD_NOTIFY_HANDLER, notifyNewLeads } from '../../worker/lib/landing-notify';
 import {
     handleLandingGet,
     handleLandingLeadDelete,
@@ -43,10 +43,11 @@ export const ottalandingPackage = createOttalandingPackage<CloudflareEnv>({
                 .post('/pages/:id/preview', (c) => handleLandingPagePreview(ctxOf(c), c.params.id)),
     },
     cron: {
-        // Not seeded here: the task's payload carries the admin inbox URL, which only the
-        // landing admin route knows (see ensureLeadNotifyTask).
+        // Seeded on install, so `lead.created` goes out whether or not an address is set. The
+        // landing admin route adds the admin inbox URL to its payload (see ensureLeadNotifyTask).
         [LEAD_NOTIFY_HANDLER]: {
-            description: 'Email new landing-site messages and signups to the address in the site settings.',
+            description: LEAD_NOTIFY_DESCRIPTION,
+            schedule: '* * * * *',
             handler: async ({ env, payload }) => {
                 await notifyNewLeads(env, optionalString(payload, 'inboxUrl'));
             },

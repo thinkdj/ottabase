@@ -22,9 +22,6 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
-    Label,
-    RadioGroup,
-    RadioGroupItem,
 } from '@ottabase/ui';
 import { useState } from 'react';
 import { DemoPageHeader } from '../DemoPageHeader';
@@ -92,8 +89,6 @@ const sampleDataMinimal: OutputData = {
     ],
     version: '2.30.7',
 };
-
-type UploadProvider = 'r2' | 'cloudflare-images';
 
 interface DemoEditorProps {
     title: string;
@@ -164,7 +159,6 @@ function DemoEditor({ title, description, config, sampleData }: DemoEditorProps)
 }
 
 export function EditorClient() {
-    const [uploadProvider, setUploadProvider] = useState<UploadProvider>('r2');
     const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
         title: '',
@@ -175,40 +169,16 @@ export function EditorClient() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="OttaEditor"
-                description="Demonstrates plugin configuration and Cloudflare integration."
-                actions={
-                    <Card className="w-full md:w-auto">
-                        <CardContent className="pt-6">
-                            <Label className="mb-2 block text-sm font-medium">Upload Provider</Label>
-                            <RadioGroup
-                                value={uploadProvider}
-                                onValueChange={(v) => setUploadProvider(v as UploadProvider)}
-                                className="flex gap-4"
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="r2" id="r2" />
-                                    <Label htmlFor="r2">Cloudflare R2</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="cloudflare-images" id="cf-images" />
-                                    <Label htmlFor="cf-images">Cloudflare Images</Label>
-                                </div>
-                            </RadioGroup>
-                            <p className="mt-2 text-xs text-muted-foreground">
-                                Switches the backend service used by AdvancedImageTool.
-                            </p>
-                        </CardContent>
-                    </Card>
-                }
+                description="Demonstrates plugin configuration and uploads through the files service."
             />
 
             <DemoEditor
-                key={`editor-1-${uploadProvider}`}
+                key="editor-1"
                 title="Editor 1: Full-Featured"
                 description={
                     <span>
-                        Using <code>AdvancedImageTool</code> with{' '}
-                        <strong>{uploadProvider === 'r2' ? 'R2' : 'CF Images'}</strong> provider.
+                        Using <code>AdvancedImageTool</code>: uploads go to <code>POST /api/files</code> as media
+                        library files.
                     </span>
                 }
                 config={{
@@ -220,8 +190,8 @@ export function EditorClient() {
                             name: 'image', // Override default 'image' tool
                             tool: AdvancedImageTool as unknown as BlockToolConstructable,
                             config: {
-                                provider: uploadProvider,
-                                uploadEndpoint: '/api/upload',
+                                uploadEndpoint: '/api/files',
+                                purpose: 'media',
                             },
                         },
                     ],

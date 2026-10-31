@@ -3,7 +3,7 @@
 // Resolution: route mappings → match path → Brand Kit + layout
 // ---------------------------------------------------------------------------
 
-import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { resolveRouteForPath } from '@ottabase/ottalayout';
 import type { ResolvedBrandTheme } from '../resolver';
 import { deepMerge } from '../resolver';
@@ -17,7 +17,7 @@ import type { BrandResolutionCache, ResolvedBrandConfig } from './types';
 export interface ResolveBrandConfigEnv {
     OBCF_D1: D1Database;
     OBCF_KV: KVNamespace;
-    OBCF_R2: R2Bucket;
+    /** Base URL logo keys are served from (the public files bucket). */
     R2_PUBLIC_URL?: string;
 }
 

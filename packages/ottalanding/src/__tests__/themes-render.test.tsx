@@ -109,10 +109,10 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
             renderToStaticMarkup(
                 <LandingView site={{ ...DEFAULT_SITE, theme: theme as never, ...site }} sections={[]} />,
             );
-        const withName = brand({ logoUrl: '/api/upload/file/logo.png' });
-        expect(withName).toMatch(/<img src="\/api\/upload\/file\/logo\.png" alt=""[^>]*><span>Ottabase<\/span>/);
-        const logoOnly = brand({ logoUrl: '/api/upload/file/logo.png', logoIncludesName: true });
-        expect(logoOnly).toContain('<img src="/api/upload/file/logo.png" alt="Ottabase"');
+        const withName = brand({ logoUrl: '/api/files/public/logo.png' });
+        expect(withName).toMatch(/<img src="\/api\/files\/public\/logo\.png" alt=""[^>]*><span>Ottabase<\/span>/);
+        const logoOnly = brand({ logoUrl: '/api/files/public/logo.png', logoIncludesName: true });
+        expect(logoOnly).toContain('<img src="/api/files/public/logo.png" alt="Ottabase"');
         expect(logoOnly).not.toContain('<span>Ottabase</span>');
     });
 

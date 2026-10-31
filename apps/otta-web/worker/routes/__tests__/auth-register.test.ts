@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleAuthRegister } from '../auth';
+import { handleAuthRegister, handleVerifyEmail } from '../auth';
 
 const mocks = vi.hoisted(() => ({
     userFirst: vi.fn(),
@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
     provisionOrganization: vi.fn(),
     enforceRateLimit: vi.fn(),
     sendDemoWelcomeEmail: vi.fn(),
+    emitAccountEvent: vi.fn(),
+    consumeToken: vi.fn(),
 }));
 
 vi.mock('@ottabase/auth/backend', () => ({
@@ -44,7 +46,7 @@ vi.mock('@ottabase/ottaorm/models', () => ({
         create: mocks.userCreate,
         delete: mocks.userDelete,
     },
-    VerificationToken: {},
+    VerificationToken: { consumeByIdentifierAndToken: mocks.consumeToken },
 }));
 
 vi.mock('../../../ottabase/config.loader', () => ({
@@ -64,6 +66,7 @@ vi.mock('../../../src/email/templates', () => ({
 vi.mock('../../lib/auth-utils', () => ({
     bumpProfileVersion: vi.fn(),
     createVerificationToken: vi.fn(),
+    emitAccountEvent: mocks.emitAccountEvent,
     getAuthOptions: vi.fn(() => ({})),
     getUserLinkedAccounts: vi.fn(),
     resolveMailer: vi.fn(),
@@ -152,5 +155,84 @@ describe('handleAuthRegister provisioning boundary', () => {
 
         expect(response.status).toBe(200);
         expect(mocks.sendDemoWelcomeEmail).toHaveBeenCalledWith(expect.anything(), 'founder@example.com');
+    });
+});
+
+describe('account events from the app’s own auth routes', () => {
+    const registerRequest = () =>
+        new Request('https://app.example.com/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'founder@example.com', password: 'Str0ng!Password', name: 'Founder' }),
+        });
+    const route = (request: Request) => ({
+        request,
+        env: { OBCF_D1: {}, APP_ID: 'otta-web' } as any,
+        url: new URL(request.url),
+        withAuthCors: (value: Response) => value,
+    });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.enforceRateLimit.mockResolvedValue(null);
+        mocks.userFirst.mockResolvedValue(null);
+        mocks.userCreate.mockResolvedValue(createUserModel());
+    });
+
+    it('a credentials sign-up announces user.created once, with its workspace', async () => {
+        mocks.provisionOrganization.mockResolvedValue({
+            organizationId: 'org-1',
+            organizationRole: 'owner',
+            assignedRole: 'owner',
+        });
+
+        expect((await handleAuthRegister(route(registerRequest()))).status).toBe(200);
+
+        expect(mocks.emitAccountEvent).toHaveBeenCalledTimes(1);
+        expect(mocks.emitAccountEvent).toHaveBeenCalledWith(expect.anything(), 'user.created', {
+            userId: 'user-1',
+            email: 'founder@example.com',
+            name: 'Founder',
+            organizationId: 'org-1',
+            method: 'credentials',
+            at: expect.any(Number),
+        });
+    });
+
+    it('a sign-up rolled back for its workspace announces nothing', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        mocks.provisionOrganization.mockRejectedValue(new Error('simulated organization failure'));
+
+        expect((await handleAuthRegister(route(registerRequest()))).status).toBe(500);
+        expect(mocks.emitAccountEvent).not.toHaveBeenCalled();
+    });
+
+    it('the verify link announces user.verified on the first verification only', async () => {
+        const verify = () =>
+            handleVerifyEmail(
+                route(new Request('https://app.example.com/api/auth/verify-email?token=t&email=founder@example.com')),
+            );
+        mocks.consumeToken.mockResolvedValue({ get: () => Date.now() + 60_000 });
+        const values: Record<string, unknown> = { id: 'user-1', emailVerified: null };
+        const user = {
+            get: (key: string) => values[key],
+            set: (key: string, value: unknown) => (values[key] = value),
+            save: vi.fn(async () => undefined),
+        };
+        mocks.userFirst.mockResolvedValue(user);
+
+        expect((await verify()).status).toBe(200);
+        expect(mocks.emitAccountEvent).toHaveBeenCalledWith(expect.anything(), 'user.verified', {
+            userId: 'user-1',
+            email: 'founder@example.com',
+            at: values.emailVerified,
+        });
+
+        // A second link (sign-up's, after a resent one was used) keeps the first time and says nothing.
+        const first = values.emailVerified;
+        expect((await verify()).status).toBe(200);
+        expect(mocks.emitAccountEvent).toHaveBeenCalledTimes(1);
+        expect(user.save).toHaveBeenCalledTimes(1);
+        expect(values.emailVerified).toBe(first);
     });
 });

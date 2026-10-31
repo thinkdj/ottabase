@@ -98,7 +98,7 @@ describe('content contracts', () => {
 
     it('accepts uploaded and linked images, nothing script-like or protocol-relative', () => {
         const withLogo = (logoUrl: string) => SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, logoUrl }).success;
-        for (const ok of ['', '/api/upload/file/logo-1.png', 'https://cdn.acme.dev/logo.svg']) {
+        for (const ok of ['', '/api/files/public/logo-1.png', 'https://cdn.acme.dev/logo.svg']) {
             expect(withLogo(ok), ok).toBe(true);
         }
         for (const bad of ['javascript:alert(1)', '//evil.dev/x.png', 'data:image/png;base64,AAA', 'logo.png']) {

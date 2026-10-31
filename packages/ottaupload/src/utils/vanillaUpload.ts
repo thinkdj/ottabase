@@ -3,14 +3,16 @@
  * Provides the same functionality as React hooks but without React dependencies
  */
 
-import type { UploadResponse, UploadProvider } from '../types';
+import type { UploadResponse } from '../types';
 import { validateFileSize, validateFileType, formatFileSize } from '../validation';
 
 export interface VanillaUploadOptions {
+    /** @default '/api/files' */
     endpoint?: string;
+    /** The purpose the file is stored under. @default 'media' */
+    purpose?: string;
     maxFileSize?: number;
     acceptedFileTypes?: string[];
-    provider?: UploadProvider;
     onProgress?: (progress: number) => void;
     onSuccess?: (response: UploadResponse) => void;
     onError?: (error: Error) => void;
@@ -22,10 +24,10 @@ export interface VanillaUploadOptions {
  */
 export async function uploadFile(file: File, options: VanillaUploadOptions = {}): Promise<UploadResponse> {
     const {
-        endpoint = '/api/upload',
+        endpoint = '/api/files',
+        purpose = 'media',
         maxFileSize,
         acceptedFileTypes,
-        provider = 'r2',
         onProgress,
         onSuccess,
         onError,
@@ -55,7 +57,7 @@ export async function uploadFile(file: File, options: VanillaUploadOptions = {})
         // Create form data
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('provider', provider);
+        formData.append('purpose', purpose);
 
         // Upload with progress tracking
         return new Promise<UploadResponse>((resolve, reject) => {
@@ -77,7 +79,7 @@ export async function uploadFile(file: File, options: VanillaUploadOptions = {})
                     try {
                         const response = JSON.parse(xhr.responseText) as UploadResponse;
 
-                        if (response.success) {
+                        if (response.success && response.file) {
                             onSuccess?.(response);
                             resolve(response);
                         } else {
@@ -91,7 +93,14 @@ export async function uploadFile(file: File, options: VanillaUploadOptions = {})
                         reject(error);
                     }
                 } else {
-                    const error = new Error(`Upload failed with status ${xhr.status}`);
+                    // The server says why (an unsupported type, over the size or the quota).
+                    let message = `Upload failed with status ${xhr.status}`;
+                    try {
+                        message = (JSON.parse(xhr.responseText) as { error?: string }).error || message;
+                    } catch {
+                        // not JSON: keep the status message
+                    }
+                    const error = new Error(message);
                     onError?.(error);
                     reject(error);
                 }

@@ -25,7 +25,7 @@ export function CloudflareFileUploadDemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="File Upload Package"
-                description="Demonstration of the @ottabase/ottaupload package with drag-and-drop, progress tracking, and Cloudflare R2 integration."
+                description="Demonstration of the @ottabase/ottaupload package: drag-and-drop and progress in the browser, the files service on the server."
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare Demos"
             />
@@ -43,7 +43,7 @@ export function CloudflareFileUploadDemoPage() {
                         <li>File type and size validation using Zod</li>
                         <li>Upload progress tracking with real-time updates</li>
                         <li>Clean, minimal shadcn/Notion-like design</li>
-                        <li>Cloudflare R2 integration via @ottabase/cf</li>
+                        <li>Sniffed types, stripped metadata and public/private buckets on the server</li>
                         <li>TypeScript support with full type safety</li>
                         <li>Configurable UI variants (dropzone or button)</li>
                     </ul>
@@ -96,7 +96,7 @@ export function CloudflareFileUploadDemoPage() {
                         maxFiles={1}
                         maxFileSize={10 * 1024 * 1024} // 10MB
                         autoUpload={true}
-                        uploadEndpoint="/api/upload"
+                        uploadEndpoint="/api/files"
                         onUploadError={handleUploadError}
                     />
                 </CardContent>
@@ -114,7 +114,7 @@ export function CloudflareFileUploadDemoPage() {
                         maxFiles={5}
                         maxFileSize={10 * 1024 * 1024} // 10MB
                         autoUpload={false}
-                        uploadEndpoint="/api/upload"
+                        uploadEndpoint="/api/files"
                         onUploadError={handleUploadError}
                     />
                 </CardContent>
@@ -133,7 +133,7 @@ export function CloudflareFileUploadDemoPage() {
                         maxFileSize={5 * 1024 * 1024} // 5MB
                         acceptedFileTypes={['image/*']}
                         autoUpload={true}
-                        uploadEndpoint="/api/upload"
+                        uploadEndpoint="/api/files"
                         onUploadError={handleUploadError}
                     />
                 </CardContent>
@@ -171,7 +171,7 @@ function MyComponent() {
       maxFileSize={10 * 1024 * 1024}
       acceptedFileTypes={['image/*', 'application/pdf']}
       autoUpload={true}
-      uploadEndpoint="/api/upload"
+      uploadEndpoint="/api/files"
     />
   );
 }`}</code>

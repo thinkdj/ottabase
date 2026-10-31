@@ -1,4 +1,4 @@
-import { safeUrl } from '../inline';
+import { safeUrl, useLinkRel } from '../inline';
 import type { BlockRenderer } from '../types';
 
 /** @editorjs/link output: the URL plus whatever the preview endpoint returned */
@@ -22,13 +22,14 @@ const hostOf = (url: string) => {
 
 /** A link preview card: image, title, description and the site it points at. */
 const LinkPreview: BlockRenderer<LinkPreviewData> = ({ data }) => {
+    const linkRel = useLinkRel();
     const href = safeUrl(data?.link);
     if (!href) return null;
     const meta = data?.meta ?? {};
     const image = safeUrl(typeof meta.image === 'string' ? meta.image : meta.image?.url);
     const host = meta.site_name?.trim() || hostOf(href);
     return (
-        <a className="otta-link-card" href={href} target="_blank" rel="noopener noreferrer" data-has-image={!!image}>
+        <a className="otta-link-card" href={href} target="_blank" rel={linkRel(true)} data-has-image={!!image}>
             {image && <img className="otta-link-card__image" src={image} alt="" loading="lazy" />}
             <span className="otta-link-card__body">
                 <span className="otta-link-card__title">{meta.title?.trim() || host}</span>

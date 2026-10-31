@@ -39,9 +39,17 @@ import {
     resolveSessionMaxAge,
     revokeSession,
 } from './session-store';
-import type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, SessionTokenPayload } from './types';
+import type { AuthEnv, AuthEvents, AuthorizedUser, CreateAuthConfigOptions, SessionTokenPayload } from './types';
 
-export type { AuthEnv, AuthorizedUser, CreateAuthConfigOptions, CredentialsAuthorizeOptions } from './types';
+export type {
+    AuthEnv,
+    AuthEvents,
+    AuthorizedUser,
+    CreateAuthConfigOptions,
+    CredentialsAuthorizeOptions,
+    UserCreatedEvent,
+    UserVerifiedEvent,
+} from './types';
 export type { FirstUserBootstrapResult } from './bootstrap';
 export { hashPassword, verifyPassword, hashToken } from './crypto';
 export { bootstrapFirstUser, provisionPlatformOwnerOrganization } from './bootstrap';
@@ -176,6 +184,36 @@ async function runSignInHook(
     }
 }
 
+/** Hands an account event to the app's `emit`. Best-effort: a listener never fails a sign-in. */
+async function announce<K extends keyof AuthEvents>(
+    env: AuthEnv,
+    options: CreateAuthConfigOptions,
+    name: K,
+    payload: AuthEvents[K],
+): Promise<void> {
+    try {
+        await options.emit?.(env, name, payload);
+    } catch (error) {
+        console.warn(JSON.stringify({ event: 'auth_event_failed', name, error: redactErrorForLog(error) }));
+    }
+}
+
+/**
+ * `user.created` for an account this handler just made (it has no workspace yet: the app's
+ * sign-in hook provisions one), and `user.verified` too when it was created verified.
+ */
+async function announceNewUser(
+    env: AuthEnv,
+    options: CreateAuthConfigOptions,
+    user: { id: string; email: string; name: string | null; emailVerified: number | null },
+    method: 'oauth' | 'magic-link',
+): Promise<void> {
+    const at = Date.now();
+    const { id: userId, email, name } = user;
+    await announce(env, options, 'user.created', { userId, email, name, organizationId: null, method, at });
+    if (user.emailVerified) await announce(env, options, 'user.verified', { userId, email, at: user.emailVerified });
+}
+
 async function defaultCredentialsAuthorize(
     credentials: { email: string; password: string },
     env: AuthEnv,
@@ -215,7 +253,8 @@ async function defaultCredentialsAuthorize(
         id: String(user.get('id')),
         email: String(user.get('email')),
         name: (user.get('name') as string | null) ?? undefined,
-        image: (user.get('image') as string | null) ?? undefined,
+        // The uploaded avatar, else the OAuth provider's picture (see User.imageUrl).
+        image: user.imageUrl() ?? undefined,
         emailVerified,
     };
 }
@@ -465,7 +504,7 @@ async function handleOAuthCallback(
             userId = String(user.get('id'));
             userEmail = String(user.get('email'));
             userName = (user.get('name') as string | null) ?? null;
-            userImage = (user.get('image') as string | null) ?? null;
+            userImage = user.imageUrl();
             emailVerifiedAt = user.get('emailVerified') ? new Date(user.get('emailVerified') as any).getTime() : null;
         } else {
             const existingUser = await User.first({ email: normalizedEmail });
@@ -478,11 +517,12 @@ async function handleOAuthCallback(
                 return oauthErrorRedirect(env, options, 'OAuthAccountNotLinked', request);
             }
 
+            emailVerifiedAt = profile.emailVerified ? Date.now() : null;
             const newUser = await User.create({
                 email: normalizedEmail,
                 name: profile.name,
                 image: profile.image,
-                emailVerified: profile.emailVerified ? Date.now() : null,
+                emailVerified: emailVerifiedAt,
                 ...requestLocaleDefaults(request, options?.supportedLanguages),
             });
 
@@ -490,7 +530,6 @@ async function handleOAuthCallback(
             userEmail = normalizedEmail;
             userName = profile.name;
             userImage = profile.image;
-            emailVerifiedAt = profile.emailVerified ? Date.now() : null;
 
             try {
                 // Identity link only. The provider tokens were used above to fetch the profile and
@@ -513,6 +552,13 @@ async function handleOAuthCallback(
                 }
                 throw accountError;
             }
+            // Announced once the identity link holds: a rolled-back user never existed.
+            await announceNewUser(
+                env,
+                options,
+                { id: userId, email: userEmail, name: userName, emailVerified: emailVerifiedAt },
+                'oauth',
+            );
         }
 
         // OAuth identity providers are trusted to have verified the user's email themselves --
@@ -520,8 +566,9 @@ async function handleOAuthCallback(
         // unverified provider email (e.g. GitHub falling back to an unverified primary/first
         // address) must not silently mark a pre-existing account as verified.
         if (!emailVerifiedAt && profile.emailVerified) {
-            await User.update(userId, { emailVerified: Date.now() });
             emailVerifiedAt = Date.now();
+            await User.update(userId, { emailVerified: emailVerifiedAt });
+            await announce(env, options, 'user.verified', { userId, email: userEmail, at: emailVerifiedAt });
         }
     } catch (error) {
         console.error(`OAuth callback failed for provider "${providerId}":`, error);
@@ -652,21 +699,31 @@ async function handleMagicLinkCallback(
         return errorRedirect(env, options, 'Verification');
     }
 
+    // Redeeming the link proves the address: a new account is created verified, an unverified
+    // one becomes verified now, and a verified one keeps its original time.
+    const now = Date.now();
     let user = await User.first({ email });
     if (!user) {
         user = await User.create({
             email,
             name: null,
-            emailVerified: Date.now(),
+            emailVerified: now,
             ...requestLocaleDefaults(request, options?.supportedLanguages),
         });
+        await announceNewUser(
+            env,
+            options,
+            { id: String(user.get('id')), email, name: null, emailVerified: now },
+            'magic-link',
+        );
     } else if (!user.get('emailVerified')) {
-        await User.update(String(user.get('id')), { emailVerified: Date.now() });
+        await User.update(String(user.get('id')), { emailVerified: now });
+        await announce(env, options, 'user.verified', { userId: String(user.get('id')), email, at: now });
     }
 
     const userId = String(user.get('id'));
     const userName = (user.get('name') as string | null) ?? null;
-    const userImage = (user.get('image') as string | null) ?? null;
+    const userImage = user.imageUrl();
 
     try {
         await bootstrapFirstUser(env, { id: userId, email, name: userName });

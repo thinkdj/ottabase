@@ -95,7 +95,7 @@ describe('MediaPreview immersive mode', () => {
         expect(markup).not.toContain('cursor-zoom-in');
     });
 
-    it('shows a placeholder, not an embedded PDF, for an inactive neighbour', () => {
+    it('shows the document card, never an embedded PDF (files serve PDFs as downloads)', () => {
         const pdf = {
             id: 'doc-1',
             url: 'https://example.com/doc.pdf',
@@ -103,10 +103,11 @@ describe('MediaPreview immersive mode', () => {
             mediaKind: 'document' as const,
             originalName: 'doc.pdf',
         };
-        expect(renderToStaticMarkup(<MediaPreview item={pdf} mode="immersive" />)).toContain('<iframe');
-        expect(renderToStaticMarkup(<MediaPreview item={pdf} mode="immersive" interactive={false} />)).not.toContain(
-            '<iframe',
-        );
+        for (const interactive of [true, false]) {
+            const markup = renderToStaticMarkup(<MediaPreview item={pdf} mode="immersive" interactive={interactive} />);
+            expect(markup).not.toContain('<iframe');
+            expect(markup).toContain('doc.pdf');
+        }
     });
 
     it('renders plain img in tile mode (no zoom wrapper)', () => {

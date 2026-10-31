@@ -421,7 +421,9 @@ describe('createBlogHandlers', () => {
             const { User } = await import('@ottabase/ottaorm');
             const author = {
                 get: (field: string) =>
-                    ({ id: 'u1', name: 'Deepak', image: 'https://images.test/a.jpg' })[field as string],
+                    ({ id: 'u1', name: 'Deepak', image: 'https://images.test/a.jpg', avatarKey: 'app/avatar/a.webp' })[
+                        field as string
+                    ],
             };
             const whereIn = vi.spyOn(User, 'whereIn').mockResolvedValue([author] as any);
             vi.mocked(Post.paginate).mockResolvedValue({
@@ -437,8 +439,10 @@ describe('createBlogHandlers', () => {
             const body = (await response.json()) as { data: { author: Record<string, unknown> }[] };
 
             // The email never leaves D1: the allowlist is applied in the SELECT, not after it.
-            expect(whereIn).toHaveBeenCalledWith('id', ['u1'], { select: ['id', 'name', 'image'] });
+            expect(whereIn).toHaveBeenCalledWith('id', ['u1'], { select: ['id', 'name', 'image', 'avatarKey'] });
             expect(Object.keys(body.data[0].author).sort()).toEqual(['id', 'image', 'name']);
+            // The uploaded avatar wins over the provider's picture; the key itself never leaves.
+            expect(body.data[0].author.image).toBe('/api/files/public/app/avatar/a.webp');
             whereIn.mockRestore();
         });
     });
@@ -1386,7 +1390,7 @@ describe('createBlogHandlers', () => {
         };
 
         expect(response.status).toBe(200);
-        expect(record.author).toHaveBeenCalledWith(['id', 'name', 'image']);
+        expect(record.author).toHaveBeenCalledWith(['id', 'name', 'image', 'avatarKey']);
         expect(body.author).toEqual({
             id: 'author-1',
             name: 'Ada',
@@ -2014,7 +2018,7 @@ describe('author archive, export, and import', () => {
         const response = await handlers.handleBlogAuthorById(ctxFor('/authors/a1'), 'a1');
 
         expect(await response.json()).toEqual({ id: 'a1', name: 'Ada', image: '/ada.png' });
-        expect(post.author).toHaveBeenCalledWith(['id', 'name', 'image']);
+        expect(post.author).toHaveBeenCalledWith(['id', 'name', 'image', 'avatarKey']);
         expect(Post.first).toHaveBeenLastCalledWith({
             authorId: 'a1',
             status: 'published',

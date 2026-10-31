@@ -51,11 +51,6 @@
             "import": "./dist/r2.mjs",
             "require": "./dist/r2.js"
         },
-        "./images": {
-            "types": "./dist/images.d.ts",
-            "import": "./dist/images.mjs",
-            "require": "./dist/images.js"
-        },
         "./hyperdrive": {
             "types": "./dist/hyperdrive.d.ts",
             "import": "./dist/hyperdrive.mjs",
@@ -114,8 +109,8 @@
     },
     "sideEffects": false,
     "scripts": {
-        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/images.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --watch",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest run",

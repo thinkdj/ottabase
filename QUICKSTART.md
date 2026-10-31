@@ -303,7 +303,8 @@ Avoid Node.js APIs like `fs`, `child_process`, `os`. Use Cloudflare bindings ins
 
 - `env.OBCF_D1` for database
 - `env.OBCF_KV` for caching
-- `env.OBCF_R2` for file storage
+- `env.OBCF_R2` (public files), `env.OBCF_R2_PRIVATE` (private files) and `env.OBCF_R2_VAULT` (backups); user files go
+  through the files service (`ottabase/files.ts`), never a bucket directly
 - `env.OBCF_QUEUE` for jobs
 
 ### 3. **`wrangler.jsonc` Two-Tier Placeholder System**

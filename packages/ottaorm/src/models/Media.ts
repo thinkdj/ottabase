@@ -3,31 +3,25 @@
 // ============================================================
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
-import { mediaTable } from './Media.schema';
+import { mediaTable, type MediaType } from './Media.schema';
 
-export { mediaTable, type MediaType, type NewMediaType } from './Media.schema';
+export { mediaTable, type MediaType, type MediaVariantInfo, type NewMediaType } from './Media.schema';
 
 /**
  * Media model — Fat Model Pattern
  *
- * Core model for tracking all uploaded files (images, videos, audio, documents).
+ * One row per stored file. Rows are written only by the files service (`createFiles` in
+ * `@ottabase/ottaupload`, through `mediaFileStore` below): generic CRUD may read them and
+ * nothing else, because a row created or deleted anywhere else would point at the wrong
+ * object or orphan one. Views (with `url`, `thumbnailUrl`, `previewUrl`) come from the
+ * service's `view()`, which knows the public domain.
  *
  * @example
  * ```typescript
  * import { Media } from "@ottabase/ottaorm";
  *
- * // List images for current user
- * const images = await Media.where({ mediaKind: "image", userId: currentUser.id });
- *
- * // Create record after upload
- * const media = await Media.create({
- *   provider: "r2",
- *   storageKey: "abc123/photo.jpg",
- *   url: "https://cdn.example.com/abc123/photo.jpg",
- *   originalName: "photo.jpg",
- *   mimeType: "image/jpeg",
- *   fileSize: 204800,
- * });
+ * // The current user's media-library images
+ * const images = await Media.where({ purpose: "media", mediaKind: "image", userId: currentUser.id });
  * ```
  */
 export class Media extends BaseModel {
@@ -35,7 +29,7 @@ export class Media extends BaseModel {
     static table = mediaTable;
     static primaryKey = 'id';
     static packageType: PackageType = 'core';
-    /** Read-only in CrudHub: a row deleted here would orphan its R2 object; the media library owns writes. */
+    /** Read-only in CrudHub: a row deleted here would orphan its R2 object; the files service owns writes. */
     static admin = {
         enabled: true,
         scope: 'org' as const,
@@ -52,46 +46,20 @@ export class Media extends BaseModel {
         fileSize: 'number' as const,
         width: 'number' as const,
         height: 'number' as const,
-        isPublic: 'boolean' as const,
         variants: 'json' as const,
         metadata: 'json' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
-        deletedAt: 'date' as const,
     };
 
+    // Rows come from the files service; a person may change only the text that describes a file.
     static writable = {
-        create: [
-            'provider',
-            'storageKey',
-            'url',
-            'thumbnailUrl',
-            'previewUrl',
-            'mimeType',
-            'mediaKind',
-            'status',
-            'originalName',
-            'title',
-            'altText',
-            'caption',
-            'extension',
-            'fileSize',
-            'width',
-            'height',
-            'isPublic',
-            'variants',
-            'metadata',
-            'appId',
-            'organizationId',
-            'userId',
-            'deletedAt',
-        ],
-        update: ['title', 'altText', 'caption', 'status', 'isPublic', 'variants', 'metadata', 'deletedAt'],
+        create: [] as string[],
+        update: ['title', 'altText', 'caption'],
     };
 
     protected static defaults = {
-        status: 'active',
-        isPublic: false,
+        status: 'ready',
     };
 
     protected static fields: ModelFields = {
@@ -122,6 +90,21 @@ export class Media extends BaseModel {
             uiConfig: { label: 'Original Name' },
             tableConfig: { visible: true, colWidth: 'auto' },
         },
+        purpose: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            sortable: true,
+            uiConfig: { label: 'Purpose' },
+            tableConfig: { visible: true, colWidth: 120 },
+        },
+        audience: {
+            type: 'string',
+            editable: false,
+            filterable: true,
+            uiConfig: { label: 'Audience', description: 'public, members or owner' },
+            tableConfig: { visible: true, colWidth: 110 },
+        },
         mediaKind: {
             type: 'string',
             editable: false,
@@ -129,13 +112,6 @@ export class Media extends BaseModel {
             sortable: true,
             uiConfig: { label: 'Kind' },
             tableConfig: { visible: true, colWidth: 110 },
-        },
-        provider: {
-            type: 'string',
-            editable: false,
-            filterable: true,
-            uiConfig: { label: 'Provider' },
-            tableConfig: { visible: false },
         },
         mimeType: {
             type: 'string',
@@ -163,24 +139,6 @@ export class Media extends BaseModel {
             editable: false,
             sortable: true,
             uiConfig: { label: 'Height' },
-            tableConfig: { visible: false },
-        },
-        url: {
-            type: 'string',
-            editable: false,
-            uiConfig: { label: 'URL' },
-            tableConfig: { visible: false },
-        },
-        thumbnailUrl: {
-            type: 'string',
-            editable: false,
-            uiConfig: { label: 'Thumbnail URL' },
-            tableConfig: { visible: false },
-        },
-        previewUrl: {
-            type: 'string',
-            editable: false,
-            uiConfig: { label: 'Preview URL' },
             tableConfig: { visible: false },
         },
         storageKey: {
@@ -212,38 +170,22 @@ export class Media extends BaseModel {
         },
         status: {
             type: 'string',
-            editable: true,
+            editable: false,
             filterable: true,
             sortable: true,
-            uiConfig: { label: 'Status' },
-            formConfig: {
-                visible: true,
-                fieldType: 'select',
-                options: [
-                    { id: 'active', name: 'Active' },
-                    { id: 'archived', name: 'Archived' },
-                ],
-            },
+            uiConfig: { label: 'Status', description: 'ready, or quarantined (never served)' },
             tableConfig: { visible: true, colWidth: 120 },
-        },
-        isPublic: {
-            type: 'boolean',
-            editable: true,
-            filterable: true,
-            uiConfig: { label: 'Public' },
-            formConfig: { visible: true, fieldType: 'boolean' },
-            tableConfig: { visible: false },
         },
         variants: {
             type: 'json',
-            editable: true,
+            editable: false,
             uiConfig: { label: 'Variants' },
             formConfig: { visible: false, fieldType: 'json' },
             tableConfig: { visible: false },
         },
         metadata: {
             type: 'json',
-            editable: true,
+            editable: false,
             uiConfig: { label: 'Metadata' },
             formConfig: { visible: false, fieldType: 'json' },
             tableConfig: { visible: false },
@@ -283,12 +225,6 @@ export class Media extends BaseModel {
             uiConfig: { label: 'Updated' },
             tableConfig: { visible: false },
         },
-        deletedAt: {
-            type: 'date',
-            editable: false,
-            uiConfig: { label: 'Deleted' },
-            tableConfig: { visible: false },
-        },
     };
 
     async owner(select?: string[]) {
@@ -309,14 +245,46 @@ export class Media extends BaseModel {
     isPreviewable(): boolean {
         return ['image', 'video', 'audio', 'document'].includes((this.get('mediaKind') as string) || '');
     }
-
-    async archive() {
-        this.set('status', 'archived');
-        return this.save();
-    }
-
-    async restore() {
-        this.set('status', 'active');
-        return this.save();
-    }
 }
+
+/** A row as the files service reads it: the shape `FileRecord` in `@ottabase/ottaupload` describes. */
+export type MediaRecord = Omit<MediaType, 'audience' | 'status'> & {
+    audience: 'public' | 'members' | 'owner';
+    status: 'ready' | 'quarantined';
+};
+
+const toRecord = (media: Media | null): MediaRecord | null => (media ? (media.toJson() as MediaRecord) : null);
+
+/**
+ * The files service's store (`FileStore` in `@ottabase/ottaupload`), backed by this model.
+ * `createFiles({ store: mediaFileStore, ... })` is the only writer of media rows.
+ */
+export const mediaFileStore = {
+    async insert(record: MediaRecord): Promise<void> {
+        await Media.create(record as unknown as Record<string, unknown>);
+    },
+    async get(id: string): Promise<MediaRecord | null> {
+        return toRecord(await Media.find(id));
+    },
+    async update(
+        id: string,
+        fields: Partial<Pick<MediaRecord, 'title' | 'altText' | 'caption' | 'status'>>,
+    ): Promise<MediaRecord | null> {
+        if (!(await Media.find(id))) return null;
+        return toRecord(await Media.update(id, fields));
+    },
+    async delete(id: string): Promise<void> {
+        await Media.delete(id);
+    },
+    /** One SUM: the organization's files, or the user's own when there is no organization. */
+    async usedBytes(owner: { appId: string; userId: string | null; organizationId: string | null }): Promise<number> {
+        const where = owner.organizationId
+            ? { appId: owner.appId, organizationId: owner.organizationId }
+            : { appId: owner.appId, organizationId: null, userId: owner.userId };
+        return (await Media.sums(['fileSize'], where)).fileSize ?? 0;
+    },
+    async uploadedBy(appId: string, userId: string, limit: number): Promise<MediaRecord[]> {
+        const rows = await Media.where({ appId, userId }, { limit, orderBy: 'createdAt', orderDirection: 'asc' });
+        return rows.map((row) => row.toJson() as MediaRecord);
+    },
+};

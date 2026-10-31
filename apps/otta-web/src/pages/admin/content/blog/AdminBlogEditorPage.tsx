@@ -242,8 +242,8 @@ const getEditorConfig = (placeholder: string) => ({
             name: 'image',
             tool: AdvancedImageTool as unknown as BlockToolConstructable,
             config: {
-                provider: 'r2',
-                uploadEndpoint: '/api/upload',
+                uploadEndpoint: '/api/files',
+                purpose: 'media',
             } as ToolSettings,
         },
         {
@@ -925,17 +925,22 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         try {
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('purpose', 'media');
 
-            const data = await api<{ url?: string; cfImageId?: string }>('/api/upload', {
+            const data = await api<{
+                file?: { id: string; url: string; width?: number | null; height?: number | null };
+            }>('/api/files', {
                 method: 'POST',
                 body: formData,
             });
-            if (data.url) {
+            if (data.file?.url) {
                 setHeroImage({
-                    url: data.url,
+                    url: data.file.url,
                     alt: heroImage?.alt || file.name,
                     caption: heroImage?.caption,
-                    cfImageId: data.cfImageId,
+                    mediaId: data.file.id,
+                    width: data.file.width ?? undefined,
+                    height: data.file.height ?? undefined,
                 });
             }
         } catch (error) {
@@ -979,7 +984,6 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             mediaId: item.mediaId,
             width: item.width ?? undefined,
             height: item.height ?? undefined,
-            cfImageId: heroImage?.cfImageId,
         });
         setIsHeroMediaPickerOpen(false);
     };

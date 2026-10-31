@@ -12,6 +12,11 @@ function parseSearchLimit(rawValue: string | null): number {
     return Math.min(25, Math.max(1, parsed));
 }
 
+/** A user row as admin views show it: `image` is the uploaded avatar, else the provider's picture. */
+function withImage(record: Record<string, unknown>): Record<string, unknown> {
+    return { ...record, image: User.imageUrl(record) };
+}
+
 /**
  * GET /api/admin/users?page=1&per_page=25&search=... - List users with server-side pagination (admin only)
  */
@@ -41,7 +46,7 @@ export async function handleAdminUsers(context: ApiRouteContext): Promise<Respon
     }
 
     return paginatedJsonResponse({
-        data: paginationResult.data.map((u) => u.toJson()),
+        data: paginationResult.data.map((u) => withImage(u.toJson())),
         total: paginationResult.total,
         page: paginationResult.page,
         perPage: paginationResult.perPage,
@@ -101,6 +106,7 @@ export async function handleAdminUserSearch(context: ApiRouteContext): Promise<R
                 id: string;
                 name?: string | null;
                 email?: string | null;
+                avatarKey?: string | null;
                 image?: string | null;
             };
 
@@ -108,7 +114,7 @@ export async function handleAdminUserSearch(context: ApiRouteContext): Promise<R
                 id: record.id,
                 name: record.name ?? null,
                 email: record.email ?? null,
-                image: record.image ?? null,
+                image: User.imageUrl(record),
             };
         }),
     });
@@ -144,7 +150,7 @@ export async function handleAdminUserById(context: ApiRouteContext, userId: stri
 
     return jsonResponse({
         data: {
-            ...user.toJson(),
+            ...withImage(user.toJson()),
             memberships,
         },
     });

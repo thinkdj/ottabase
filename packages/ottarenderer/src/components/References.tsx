@@ -1,3 +1,4 @@
+import { useLinkRel } from '../inline';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import type { BlockRenderer } from '../types';
 
@@ -30,6 +31,7 @@ function ReferenceEntry({
     index: number;
     style: 'numbered' | 'footnote';
 }) {
+    const linkRel = useLinkRel();
     const label = style === 'footnote' ? `${index + 1}` : `[${index + 1}]`;
 
     const urlDisplay = item.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -47,7 +49,7 @@ function ReferenceEntry({
                     <a
                         href={sanitizeUrl(item.url)}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel={linkRel(true)}
                         className="otta-references-link"
                     >
                         {item.title}
@@ -56,7 +58,7 @@ function ReferenceEntry({
                     <a
                         href={sanitizeUrl(item.url)}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel={linkRel(true)}
                         className="otta-references-link"
                     >
                         {urlDisplay}

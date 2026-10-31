@@ -133,7 +133,7 @@ describe('the package list', () => {
     it('contributes the handlers the scheduler and queue run', () => {
         expect(Object.keys(packages.cron())).toContain('vault:backup');
         expect(packages.cron()['vault:backup'].schedule).toBe('23 2 * * *');
-        expect(Object.keys(packages.queue())).toContain('events:deliver');
+        expect(Object.keys(packages.queue())).toEqual(expect.arrayContaining(['events:deliver', 'cron:run']));
         expect(packages.keys()).toEqual(['core', 'vault', 'fleet']);
     });
 });

@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    FILE_TYPES,
-    formatFileSize,
-    generateFileKey,
-    validateFileSize,
-    validateFileType,
-    validateFiles,
-} from '../validation';
+import { FILE_TYPES, formatFileSize, validateFileSize, validateFileType, validateFiles } from '../validation';
 
 describe('Validation Utilities', () => {
     describe('validateFileSize', () => {
@@ -120,44 +113,6 @@ describe('Validation Utilities', () => {
         it('should handle decimal values', () => {
             expect(formatFileSize(1536)).toBe('1.5 KB');
             expect(formatFileSize(5242880)).toBe('5 MB');
-        });
-    });
-
-    describe('generateFileKey', () => {
-        it('should generate unique file key', () => {
-            const file = new File(['content'], 'test-file.txt', { type: 'text/plain' });
-            const key = generateFileKey(file);
-
-            expect(key).toContain('test-file');
-            expect(key).toContain('.txt');
-            expect(key.length).toBeGreaterThan(20);
-        });
-
-        it('should generate key with prefix', () => {
-            const file = new File(['content'], 'image.jpg', { type: 'image/jpeg' });
-            const key = generateFileKey(file, 'uploads');
-
-            expect(key).toContain('uploads/');
-            expect(key).toContain('image');
-            expect(key).toContain('.jpg');
-        });
-
-        it('should sanitize filename', () => {
-            const file = new File(['content'], 'Test File!@#$.txt', { type: 'text/plain' });
-            const key = generateFileKey(file);
-
-            expect(key).toContain('test-file');
-            expect(key).not.toContain('!');
-            expect(key).not.toContain('@');
-            expect(key).not.toContain('#');
-        });
-
-        it('should generate different keys for same file', () => {
-            const file = new File(['content'], 'test.txt', { type: 'text/plain' });
-            const key1 = generateFileKey(file);
-            const key2 = generateFileKey(file);
-
-            expect(key1).not.toBe(key2);
         });
     });
 

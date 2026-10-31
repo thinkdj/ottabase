@@ -78,6 +78,17 @@ import { HtmlRenderer } from '@ottabase/ottarenderer';
 
 The string passes through `sanitizeBlockHtml` and the bare tags get the same typography as the blocks.
 
+### User-generated content
+
+```tsx
+<OttaRenderer data={post.content} ugc={Boolean(post.organizationId)} />
+<HtmlRenderer content={comment.html} ugc />
+```
+
+`ugc` marks content written by people the site does not vouch for (a tenant's posts, community content): every link it
+renders, inline or in a block, gets `rel="ugc nofollow noopener"` (plus `noreferrer` when it opens a new tab).
+`useLinkRel()` gives a custom block the same rule. The ottablog themes turn it on for organization posts.
+
 ## Blocks
 
 ### Editor.js core and official tools

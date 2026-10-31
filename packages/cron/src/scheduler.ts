@@ -4,6 +4,11 @@
  * Register task handlers and let the scheduler run them based on DB entries.
  * Run `scheduler.tick()` from a "* * * * *" cron trigger to process due tasks.
  *
+ * Every run can get an invocation of its own: with `enqueue`, the tick only selects the due
+ * tasks and sends one `CRON_JOB_TYPE` queue message per task, whose consumer runs it with
+ * `runQueued()`. Without a queue the tick runs the due tasks inline, one after another, so they
+ * share the scheduled invocation's D1, CPU and wall-time budget.
+ *
  * @example
  * ```typescript
  * import { createScheduler, createTaskRepository } from "@ottabase/cron";
@@ -35,6 +40,19 @@ import { getNextRun } from './cron-parser';
 // Types
 // ============================================================
 
+/** Job type of one task run on a queue. Register a consumer under it that calls `runQueued()`. */
+export const CRON_JOB_TYPE = 'cron:run';
+
+/**
+ * One task run, as a queue message body. A scheduled run carries only the id and runs if the task
+ * is still due; a manual run also carries when it was requested and runs if no run started since.
+ */
+export interface CronJobPayload {
+    taskId: string;
+    /** Epoch ms. Set for a manual run (`runTask`), absent for a scheduled one (`tick`). */
+    requestedAt?: number;
+}
+
 export interface SchedulerContext<E = unknown, P = unknown> {
     env: E;
     taskId: string;
@@ -56,6 +74,12 @@ export interface SchedulerOptions<E = unknown> {
     onBeforeTask?: (context: SchedulerContext<E>) => Promise<void> | void;
     onAfterTask?: (context: SchedulerContext<E>) => Promise<void> | void;
     onError?: (error: Error, context: SchedulerContext<E>) => Promise<void> | void;
+    /**
+     * Give each run an invocation of its own. `tick()` and `runTask()` hand their runs here: send
+     * one `CRON_JOB_TYPE` message per run and resolve `true`, or resolve `false` (no queue bound)
+     * to run them inline. A rejection rejects the call; due rows stay due for the next tick.
+     */
+    enqueue?: (env: E, runs: CronJobPayload[]) => Promise<boolean>;
     logger?: {
         info: (msg: string) => void;
         error: (msg: string) => void;
@@ -94,17 +118,18 @@ export interface TaskRepository {
     getDueTasks(): Promise<ScheduledTaskRecord[]>;
     getTask(id: string): Promise<ScheduledTaskRecord | null>;
     /**
-     * Atomically acquire lock on a task.
-     * Returns true if lock acquired, false if another worker got there first.
+     * Atomically acquire lock on a task. A scheduled run (`requestedAt` null) needs the task active
+     * and due; a manual run needs no run to have started since `requestedAt`, so a redelivered
+     * request is a no-op. Returns false when the task is not eligible or another worker holds it.
      */
-    acquireLock(id: string, startedAt: Date, scheduledOnly: boolean): Promise<boolean>;
+    acquireLock(id: string, startedAt: Date, requestedAt: Date | null): Promise<boolean>;
     /** Complete only the execution that owns the exact `startedAt` fence. */
     markCompleted(id: string, startedAt: Date, nextRunAt: Date): Promise<boolean>;
     /** Fail only the execution that owns the exact `startedAt` fence. */
     markFailed(id: string, startedAt: Date, error: string, nextRunAt: Date | null): Promise<boolean>;
 }
 
-export type TaskExecutionStatus = 'completed' | 'failed' | 'locked' | 'superseded' | 'not_found';
+export type TaskExecutionStatus = 'completed' | 'failed' | 'locked' | 'superseded' | 'not_found' | 'queued';
 
 export interface TaskExecutionResult {
     taskId: string;
@@ -116,6 +141,8 @@ export interface SchedulerTickResult {
     executed: number;
     failed: number;
     skipped: number;
+    /** Due tasks handed to the queue, each to run in its own invocation. */
+    queued: number;
 }
 
 // ============================================================
@@ -163,7 +190,7 @@ export class Scheduler<E = unknown> {
     }
 
     async tick(env: E, repository: TaskRepository): Promise<SchedulerTickResult> {
-        const result = { executed: 0, failed: 0, skipped: 0 };
+        const result = { executed: 0, failed: 0, skipped: 0, queued: 0 };
 
         try {
             const dueTasks = await repository.getDueTasks();
@@ -175,9 +202,18 @@ export class Scheduler<E = unknown> {
 
             this.logger.info(`Found ${dueTasks.length} task(s) due to run`);
 
+            // With a queue the tick only hands the due tasks over: each runs in its own
+            // invocation through `runQueued()`, behind the same lock.
+            const runs = dueTasks.map((task) => ({ taskId: task.id }));
+            if (this.options.enqueue && (await this.options.enqueue(env, runs))) {
+                result.queued = dueTasks.length;
+                this.logger.info(`Queued ${dueTasks.length} task(s), one run per message`);
+                return result;
+            }
+
             for (const task of dueTasks) {
                 try {
-                    const execution = await this.executeTask(task, env, repository, true);
+                    const execution = await this.executeTask(task, env, repository, null);
                     if (execution.status === 'completed') result.executed++;
                     else if (execution.status === 'failed') result.failed++;
                     else result.skipped++;
@@ -199,14 +235,14 @@ export class Scheduler<E = unknown> {
     }
 
     private async executeTask(
-        candidate: ScheduledTaskRecord,
+        candidate: Pick<ScheduledTaskRecord, 'id' | 'name'>,
         env: E,
         repository: TaskRepository,
-        scheduledOnly: boolean,
+        requestedAt: Date | null,
     ): Promise<TaskExecutionResult> {
         const startedAt = new Date();
         // Try to acquire lock atomically
-        const acquired = await repository.acquireLock(candidate.id, startedAt, scheduledOnly);
+        const acquired = await repository.acquireLock(candidate.id, startedAt, requestedAt);
         if (!acquired) {
             this.logger.info(`Task "${candidate.name}" is no longer eligible or is already running, skipping`);
             return { taskId: candidate.id, status: 'locked' };
@@ -294,14 +330,35 @@ export class Scheduler<E = unknown> {
         }
     }
 
-    /** Run a stored task immediately through the same lock/status boundary as a scheduled tick. */
+    /**
+     * Run a stored task now, whatever its schedule or active flag, through the same lock/status
+     * boundary as a scheduled tick. With a queue (`enqueue`) the run is handed over to execute in
+     * its own invocation, and the result is `queued`.
+     */
     async runTask(taskId: string, env: E, repository: TaskRepository): Promise<TaskExecutionResult> {
+        const requestedAt = new Date();
         const task = await repository.getTask(taskId);
         if (!task) {
             return { taskId, status: 'not_found' };
         }
 
-        return this.executeTask(task, env, repository, false);
+        const run = { taskId: task.id, requestedAt: requestedAt.getTime() };
+        if (this.options.enqueue && (await this.options.enqueue(env, [run]))) {
+            this.logger.info(`Queued a manual run of task "${task.name}"`);
+            return { taskId: task.id, status: 'queued' };
+        }
+
+        return this.executeTask(task, env, repository, requestedAt);
+    }
+
+    /**
+     * The consumer half of `enqueue`: execute one queued run in this invocation. A run that is no
+     * longer eligible (done already, no longer due, or running elsewhere) comes back `locked`, so a
+     * duplicate delivery is a no-op. A bookkeeping error rejects, so the queue retries the message.
+     */
+    async runQueued(run: CronJobPayload, env: E, repository: TaskRepository): Promise<TaskExecutionResult> {
+        const requestedAt = run.requestedAt === undefined ? null : new Date(run.requestedAt);
+        return this.executeTask({ id: run.taskId, name: run.taskId }, env, repository, requestedAt);
     }
 }
 
@@ -344,7 +401,7 @@ interface ScheduledTaskModelClass {
         id: string,
         startedAt: Date,
         staleBefore: Date,
-        scheduledOnly: boolean,
+        requestedAt: Date | null,
         driver: DbDriver,
     ): Promise<boolean>;
     completeExecution(id: string, startedAt: Date, nextRunAt: Date, driver: DbDriver): Promise<boolean>;
@@ -392,12 +449,12 @@ export function createTaskRepository(
             return task ? toRecord(task) : null;
         },
 
-        async acquireLock(id: string, startedAt: Date, scheduledOnly: boolean): Promise<boolean> {
+        async acquireLock(id: string, startedAt: Date, requestedAt: Date | null): Promise<boolean> {
             return Model.acquireExecutionLock(
                 id,
                 startedAt,
                 new Date(startedAt.getTime() - lockTimeoutMs),
-                scheduledOnly,
+                requestedAt,
                 driver,
             );
         },

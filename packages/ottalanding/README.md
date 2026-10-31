@@ -61,9 +61,9 @@ Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor
 also goes through `sanitizeUrl`.
 
 **Images** (`kind: 'image'`) are picked from, or uploaded to, the media library in the admin. Uploads are stored as
-`/api/upload/file/<key>` URLs. The landing app binds the same R2 bucket and serves that path too, so one URL works in
-both apps. An image field may name an `altKey`: picking a library image fills that description field from the image's
-alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
+`/api/files/public/<key>` URLs. The landing app binds the same public R2 bucket and serves that path too, so one URL
+works in both apps. An image field may name an `altKey`: picking a library image fills that description field from the
+image's alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
 
 **Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
 setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
@@ -114,6 +114,7 @@ await LandingLead.setRead(appId, id, read);
 await LandingLead.deleteFor(appId, id);
 await LandingLead.pendingNotification(appId); // not yet emailed, oldest first
 await LandingLead.markNotified(appId, ids);
+await LandingLead.announceNew(appId, emit); // each entry not yet announced, once, as a LeadCreatedEvent
 leadsToCsv(leads); // spreadsheet export; formula-like cells are defused
 leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the notification email, all escaped
 ```
@@ -124,11 +125,18 @@ the thank-you, so a bot learns nothing. On top of that, each network (a salted S
 is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
 for the same email is accepted but stored once.
 
-**Notifications** live in otta-web, where the mail provider is configured. Setting **Email new form entries to**
-(`leadEmail`) in the site settings creates an every-minute DB-scheduler task (`landing:notify-leads`, visible and
-pausable in Admin › Cron). Each run emails one digest of everything new through `resolveAppMailer`, then marks those
-entries notified. With no address set, pending entries are retired without a send, so a later address isn't flooded.
-With no working mail provider, the task fails visibly and the entries stay pending until mail works.
+**Notifications** live in otta-web, where the bus and the mail provider are. An every-minute DB-scheduler task
+(`landing:notify-leads`, seeded on install, visible and pausable in Admin › Cron) does two jobs, each on its own marker
+column, so neither holds the other back:
+
+- **The bus** (`announcedAt`): every new entry goes out once as `lead.created`
+  (`{ leadId, kind, email, name, message, pagePath, at }`, `LeadCreatedEvent`; `at` is when it was stored), oldest
+  first, marked once the emit resolves. Delivery is at-least-once: an entry whose emit throws stays pending for the next
+  run, so subscribers must be idempotent (key on `leadId`).
+- **The digest** (`notifiedAt`): one email of everything new to **Email new form entries to** (`leadEmail`) through
+  `resolveAppMailer`, then those entries are marked notified. With no address set, pending entries are retired without a
+  send, so a later address isn't flooded. With no working mail provider, the task fails visibly and the entries stay
+  pending until mail works; their `lead.created` has gone out regardless.
 
 The admin inbox is at `/admin/content/landing/leads`: filter by messages or signups, read (opening an entry marks it
 read), reply by email, mark unread, delete, and export CSV.
@@ -226,7 +234,8 @@ Listed in `ottabase/packages.ts` as `createOttalandingPackage({ routes, cron })`
 - tables, models and a defensive app-scoped, platform-admin RLS policy from the manifest (generic CRUD default-denies
   the models)
 - tables re-exported from `db/schema.ts` for drizzle-kit
-- the `landing:notify-leads` cron handler, seeded with the admin inbox URL by the landing admin route
+- the `landing:notify-leads` cron handler (`lead.created` on the app's bus, and the digest), seeded every minute on
+  install; saving a notification address adds the admin inbox URL to its payload
 - `/api/landing` routes, platform admin only (including `POST /share-image` for rendered social images)
 - admin pages at `/admin/content/landing`
 - starter content seeded by `/api/ottaorm/init`

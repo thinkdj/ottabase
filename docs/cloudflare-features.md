@@ -66,22 +66,29 @@ Update `wrangler.jsonc` with the returned IDs:
 }]
 ```
 
-#### Create R2 Bucket
+#### Create the R2 Buckets
+
+Three buckets, one per kind of data: public files, private files, backups.
 
 ```bash
 pnpm wrangler r2 bucket create ottabase-bucket
-pnpm wrangler r2 bucket create ottabase-bucket-preview
+pnpm wrangler r2 bucket create ottabase-files-private
+pnpm wrangler r2 bucket create ottabase-vault
+# + the same names with -preview
 ```
 
 Update `wrangler.jsonc`:
 
 ```jsonc
-"r2_buckets": [{
-  "binding": "OBCF_R2",
-  "bucket_name": "ottabase-bucket",
-  "preview_bucket_name": "ottabase-bucket-preview"
-}]
+"r2_buckets": [
+  { "binding": "OBCF_R2", "bucket_name": "ottabase-bucket", "preview_bucket_name": "ottabase-bucket-preview" },
+  { "binding": "OBCF_R2_PRIVATE", "bucket_name": "ottabase-files-private", "preview_bucket_name": "ottabase-files-private-preview" },
+  { "binding": "OBCF_R2_VAULT", "bucket_name": "ottabase-vault", "preview_bucket_name": "ottabase-vault-preview" }
+]
 ```
+
+Production setup of the public bucket (custom domain, safe headers, CSAM scanning) is in
+[CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md#files-the-buckets-a-domain-for-user-content-the-safe-headers).
 
 #### Create Queue
 
@@ -128,11 +135,10 @@ and others.
 
 ### 3. Set Secrets (Optional)
 
-For features requiring API access (like Images):
+Signed links to private files (`?t=` tokens) need a secret; without it none are made or accepted:
 
 ```bash
-pnpm wrangler secret put CF_IMAGES_ACCOUNT_ID
-pnpm wrangler secret put CF_IMAGES_API_TOKEN   # a token scoped to Cloudflare Images only
+pnpm wrangler secret put FILES_SIGNING_SECRET   # 32+ random characters
 ```
 
 ## Development Workflow
@@ -226,56 +232,27 @@ export async function GET() {
 }
 ```
 
-### R2 Storage
+### R2 Storage: files
+
+User files never go to an R2 binding directly: the app's files service (`ottabase/files.ts`) owns them, so every file is
+sniffed, allow-listed, stripped of metadata and put in the bucket its audience says. A route that stores a file:
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { createR2Client } from '@ottabase/cf/r2';
+import { files } from '../../ottabase/files';
 
-export const runtime = 'edge';
-
-export async function POST(request: Request) {
-    const { env } = await getCloudflareContext();
-    const r2 = createR2Client({ bucket: env.OBCF_R2 });
-
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-
-    // Upload
-    await r2.put(`uploads/${file.name}`, await file.arrayBuffer(), {
-        httpMetadata: {
-            contentType: file.type,
-        },
-    });
-
-    // Download
-    const result = await r2.get(`uploads/${file.name}`);
-    if (result.success && result.data) {
-        const content = await result.data.arrayBuffer();
-    }
-
-    return Response.json({ success: true });
-}
+// owner comes from the verified session, never from the request
+const view = await files.put(env, { purpose: 'attachment', owner, file });
+return jsonResponse({ file: view }, 201); // view.url: /api/files/<id> for private files
 ```
+
+Raw R2 (`createR2Client` from `@ottabase/cf/r2`) is for system data only, in `OBCF_R2_PRIVATE`. See
+`packages/ottaupload/README.md`.
 
 ### Images
 
-```typescript
-import { createImagesClient } from '@ottabase/cf/images';
-
-const images = createImagesClient({
-    accountId: env.CF_IMAGES_ACCOUNT_ID,
-    apiToken: env.CF_IMAGES_API_TOKEN,
-});
-
-// Upload
-const result = await images.upload(imageFile, {
-    metadata: { alt: 'Product photo' },
-});
-
-// Get delivery URL
-const url = images.getDeliveryUrl(result.data.id, 'public');
-```
+The Images binding (`OBCF_IMAGES`) renders the fixed-width WebP variants (thumb 160, card 640, full 1600) of uploaded
+images when a purpose asks for them, and optimizes `@ottabase/screenshot` captures. It is bound in every env block of
+`wrangler.jsonc`; without it, uploads keep only their original.
 
 ### Hyperdrive
 

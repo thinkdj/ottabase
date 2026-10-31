@@ -1,5 +1,5 @@
 import { sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { safeUrl } from '../inline';
+import { safeUrl, useLinkRel } from '../inline';
 import type { BlockRenderer } from '../types';
 
 export type TestimonialVariant = 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
@@ -64,8 +64,9 @@ function AuthorAttribution({
     verified?: boolean;
     compact?: boolean;
 }) {
+    const linkRel = useLinkRel();
     const nameEl = sourceUrl ? (
-        <a href={sanitizeUrl(sourceUrl)} target="_blank" rel="noopener noreferrer" className="otta-testimonial-name">
+        <a href={sanitizeUrl(sourceUrl)} target="_blank" rel={linkRel(true)} className="otta-testimonial-name">
             {authorName}
         </a>
     ) : (
@@ -116,6 +117,7 @@ function AuthorAttribution({
  * Emits `application/ld+json` Review structured data when rating is provided.
  */
 const Testimonial: BlockRenderer<TestimonialData> = ({ data, className = '' }) => {
+    const linkRel = useLinkRel();
     const quote = data?.quote?.trim() ?? '';
     const authorName = data?.authorName?.trim() ?? '';
     const authorRole = data?.authorRole?.trim() || undefined;
@@ -294,7 +296,7 @@ const Testimonial: BlockRenderer<TestimonialData> = ({ data, className = '' }) =
                                 <a
                                     href={sanitizeUrl(sourceUrl)}
                                     target="_blank"
-                                    rel="noopener noreferrer"
+                                    rel={linkRel(true)}
                                     className="otta-testimonial-name"
                                 >
                                     {authorName}

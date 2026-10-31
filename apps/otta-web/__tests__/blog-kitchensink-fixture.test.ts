@@ -58,7 +58,7 @@ describe('kitchensink fixture', () => {
 
     it('points every image at a public URL that survives a fresh install', () => {
         // A demo deployment has no uploaded media library, so relative
-        // /api/upload/file/... paths (fine on the authoring host) would 404 here.
+        // /api/files/public/... paths (fine on the authoring host) would 404 here.
         const urls = [
             blockOfType('beforeAfter').data.beforeUrl,
             blockOfType('beforeAfter').data.afterUrl,

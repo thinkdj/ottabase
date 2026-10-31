@@ -40,6 +40,7 @@ function stubDbUser({
     const toRecord = (grant: FakeGrant) => ({ get: () => grant.name, getPermissions: () => grant.permissions });
     userFind.mockResolvedValue({
         get: () => null,
+        imageUrl: () => null,
         roles: async ({ organizationId }: { organizationId: string }) =>
             (organizationId === SYSTEM_ORGANIZATION_ID ? systemRoles : orgRoles).map(toRecord),
     });

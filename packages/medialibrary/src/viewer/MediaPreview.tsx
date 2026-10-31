@@ -8,7 +8,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import type { MediaViewerItem } from '../types';
-import { getMediaDisplayTitle, getMediaKindFromMimeType, isDocumentMedia } from '../utils';
+import { getMediaDisplayTitle, getMediaKindFromMimeType } from '../utils';
 import { ZoomableImage, type ZoomStartGesture } from './ZoomableImage';
 
 export interface MediaPreviewProps {
@@ -236,31 +236,9 @@ export function MediaPreview({
         );
     }
 
-    if (
-        isDocumentMedia({
-            mediaKind,
-            mimeType: item.mimeType || '',
-            originalName: item.originalName || '',
-        })
-    ) {
-        const isPdf = (item.mimeType || '').toLowerCase() === 'application/pdf';
-        // An inactive carousel neighbour shows the placeholder below: an embedded PDF is a full
-        // document fetch, and an iframe would sit in the tab order of a slide the user cannot see.
-        if (isPdf && previewUrl && mode !== 'thumb' && interactive) {
-            return (
-                <div className={shellClassName} style={shellStyle}>
-                    <iframe
-                        src={previewUrl}
-                        title={title}
-                        className="h-full min-h-[28rem] w-full border-0"
-                        loading="lazy"
-                        sandbox="allow-same-origin"
-                    />
-                </div>
-            );
-        }
-    }
-
+    // Documents (PDF included) show the placeholder card: files serve them as downloads
+    // (`Content-Disposition: attachment`), because a browser PDF viewer cannot run under the
+    // sandbox CSP every file is served with. An embedded frame would only start a download.
     const PlaceholderIcon = getPlaceholderIcon(mediaKind);
 
     return (

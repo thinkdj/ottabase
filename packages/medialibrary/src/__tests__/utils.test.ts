@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    createMediaLibraryRecordInput,
-    formatMediaFileSize,
-    getMediaKindFromMimeType,
-    toMediaSelectionPayload,
-} from '../utils';
+import { formatMediaFileSize, getMediaKindFromMimeType, toMediaSelectionPayload } from '../utils';
 
 describe('@ottabase/medialibrary utils', () => {
     it('classifies common media types', () => {
@@ -13,26 +8,6 @@ describe('@ottabase/medialibrary utils', () => {
         expect(getMediaKindFromMimeType('audio/mpeg', 'track.mp3')).toBe('audio');
         expect(getMediaKindFromMimeType('application/pdf', 'guide.pdf')).toBe('document');
         expect(getMediaKindFromMimeType('application/zip', 'bundle.zip')).toBe('archive');
-    });
-
-    it('builds a media-library record from upload metadata', () => {
-        const record = createMediaLibraryRecordInput({
-            provider: 'r2',
-            storageKey: 'uploads/hero.png',
-            url: '/api/upload/file/uploads/hero.png',
-            fileName: 'hero.png',
-            mimeType: 'image/png',
-            fileSize: 2048,
-            appId: 'app-1',
-            userId: 'user-1',
-        });
-
-        expect(record.mediaKind).toBe('image');
-        expect(record.title).toBe('hero.png');
-        expect(record.thumbnailUrl).toBe(record.url);
-        expect(record.previewUrl).toBe(record.url);
-        expect(record.appId).toBe('app-1');
-        expect(record.userId).toBe('user-1');
     });
 
     it('creates a rich selection payload for editor integrations', () => {

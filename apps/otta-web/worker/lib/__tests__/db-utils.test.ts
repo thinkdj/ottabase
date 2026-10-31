@@ -37,6 +37,8 @@ vi.mock('@ottabase/ottaorm', () => ({
     registerConnection: mockRegisterConnection,
     registerModels: mockRegisterModels,
     registerPolicy: mockRegisterPolicy,
+    // The files service (whose public base configures the ORM) is built over the media store.
+    mediaFileStore: {},
 }));
 
 vi.mock('@ottabase/ottaorm/models', () => ({
@@ -91,8 +93,14 @@ describe('ensureDbConnection', () => {
         // Runtime safety configuration is intentionally refreshed on every entry,
         // even when the isolate can reuse the existing database connection.
         expect(mockConfigureOttaORM).toHaveBeenCalledTimes(2);
-        expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(1, { maxAllRows: '5000' });
-        expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(2, { maxAllRows: '5000' });
+        expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(1, {
+            maxAllRows: '5000',
+            filesPublicUrl: '/api/files/public',
+        });
+        expect(mockConfigureOttaORM).toHaveBeenNthCalledWith(2, {
+            maxAllRows: '5000',
+            filesPublicUrl: '/api/files/public',
+        });
         expect(mockRegisterPolicy.mock.calls.length).toBe(policyCallsAfterFirst);
         expect(policyCallsAfterFirst).toBeGreaterThan(0);
     });
@@ -139,7 +147,7 @@ describe('initAdminCron', () => {
         const response = initAdminCron({ OBCF_D1: binding, OTTAORM_MAX_ALL_ROWS: '2500' } as any);
 
         expect(response).toBeNull();
-        expect(mockConfigureOttaORM).toHaveBeenCalledWith({ maxAllRows: '2500' });
+        expect(mockConfigureOttaORM).toHaveBeenCalledWith({ maxAllRows: '2500', filesPublicUrl: '/api/files/public' });
         expect(mockCreateD1Driver).toHaveBeenCalledWith(binding);
         expect(mockConfigureOttaORM.mock.invocationCallOrder[0]).toBeLessThan(
             mockRegisterConnection.mock.invocationCallOrder[0],

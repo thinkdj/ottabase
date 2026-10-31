@@ -1,3 +1,4 @@
+import { useLinkRel } from '../inline';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import type { BlockRenderer } from '../types';
 import { useMemo } from 'react';
@@ -120,6 +121,7 @@ function toEmbedUrl(url: string, provider: MapProvider, theme: MapTheme, zoom: n
 }
 
 const Map: BlockRenderer<MapData> = ({ data, className = '' }) => {
+    const linkRel = useLinkRel();
     const url = data?.url || '';
     const provider = data?.provider || 'openstreetmap';
     const theme = data?.theme || 'default';
@@ -153,7 +155,7 @@ const Map: BlockRenderer<MapData> = ({ data, className = '' }) => {
                     <a
                         href={sanitizeUrl(url)}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel={linkRel(true)}
                         className="inline-flex items-center gap-2 text-primary hover:underline"
                         itemProp="url"
                     >
@@ -205,7 +207,7 @@ const Map: BlockRenderer<MapData> = ({ data, className = '' }) => {
             {/* Noscript fallback */}
             <noscript>
                 <p className="text-sm text-muted-foreground">
-                    <a href={sanitizeUrl(url)} target="_blank" rel="noopener noreferrer">
+                    <a href={sanitizeUrl(url)} target="_blank" rel={linkRel(true)}>
                         {caption || 'View map'}
                     </a>
                 </p>

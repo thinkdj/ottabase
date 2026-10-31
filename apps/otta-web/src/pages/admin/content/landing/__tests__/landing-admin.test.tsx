@@ -52,7 +52,7 @@ vi.mock('../shareImage', async (importOriginal) => ({
 // The media library is its own feature; here it hands back one image, as a pick would.
 vi.mock('@/components/media-library/MediaLibraryBrowser', () => ({
     MediaLibraryBrowser: ({ onSelectItem }: { onSelectItem: (item: { url: string; alt: string }) => void }) => (
-        <button type="button" onClick={() => onSelectItem({ url: '/api/upload/file/shot.png', alt: 'Dashboard' })}>
+        <button type="button" onClick={() => onSelectItem({ url: '/api/files/public/shot.png', alt: 'Dashboard' })}>
             Pick sample
         </button>
     ),
@@ -385,7 +385,7 @@ describe('images and colors', () => {
         await waitFor(() =>
             expect(api).toHaveBeenCalledWith('/api/landing/site', {
                 method: 'PUT',
-                body: expect.objectContaining({ logoUrl: '/api/upload/file/shot.png', brandColor: '#2563eb' }),
+                body: expect.objectContaining({ logoUrl: '/api/files/public/shot.png', brandColor: '#2563eb' }),
             }),
         );
     });
@@ -419,7 +419,10 @@ describe('images and colors', () => {
 describe('social image', () => {
     it('renders the site image on save and keeps the card the editor shows', async () => {
         share.withSiteShareImage.mockImplementationOnce(async (site: object) => ({
-            site: { ...site, share: { ...(site as { share?: object }).share, imageUrl: '/api/upload/file/s.png?v=1' } },
+            site: {
+                ...site,
+                share: { ...(site as { share?: object }).share, imageUrl: '/api/files/public/s.png?v=1' },
+            },
         }));
         renderWithQuery(<AdminLandingSitePage />);
         await openTab('Settings');
@@ -431,7 +434,7 @@ describe('social image', () => {
             expect(api).toHaveBeenCalledWith('/api/landing/site', {
                 method: 'PUT',
                 body: expect.objectContaining({
-                    share: { heading: 'Ship faster', imageUrl: '/api/upload/file/s.png?v=1' },
+                    share: { heading: 'Ship faster', imageUrl: '/api/files/public/s.png?v=1' },
                 }),
             }),
         );

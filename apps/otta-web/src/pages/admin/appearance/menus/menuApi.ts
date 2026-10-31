@@ -62,11 +62,12 @@ export const menuApi = {
     deleteItem: (menuId: string, itemId: string) =>
         api<{ success: boolean }>(`${BRAND_MENUS}/${menuId}/items/${itemId}`, { method: 'DELETE' }),
 
-    /** Upload an image to R2 via the generic /api/upload endpoint */
+    /** Store an image in the media library (POST /api/files); the item keeps its public URL. */
     uploadImage: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        return api<{ success: boolean; url: string; key: string; provider: string }>('/api/upload', {
+        formData.append('purpose', 'media');
+        return api<{ success: boolean; file: { url: string } }>('/api/files', {
             method: 'POST',
             body: formData,
         });

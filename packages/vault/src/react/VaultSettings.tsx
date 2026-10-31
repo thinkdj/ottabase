@@ -40,6 +40,13 @@ export function formatBytes(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** "12 files · 3.4 MB" across every snapshotted bucket. */
+function filesSummary(objects: NonNullable<BackupManifest['objects']>): string {
+    const all = Object.values(objects);
+    const count = all.reduce((sum, snapshot) => sum + snapshot.count, 0);
+    return `${count} files · ${formatBytes(all.reduce((sum, snapshot) => sum + snapshot.bytes, 0))}`;
+}
+
 function totals(manifest: BackupManifest): { rows: number; bytes: number } {
     return manifest.tables.reduce((sum, table) => ({ rows: sum.rows + table.rows, bytes: sum.bytes + table.bytes }), {
         rows: 0,
@@ -78,10 +85,7 @@ function BackupRow({
                     <div className="text-xs text-muted-foreground">
                         {new Date(manifest.createdAt).toLocaleString()} · {manifest.tables.length} tables · {rows} rows
                         · {formatBytes(bytes)}
-                        {manifest.objects
-                            ? ` · ${manifest.objects.count} files · ${formatBytes(manifest.objects.bytes)}`
-                            : ''}{' '}
-                        · {manifest.durationMs} ms
+                        {manifest.objects ? ` · ${filesSummary(manifest.objects)}` : ''} · {manifest.durationMs} ms
                     </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

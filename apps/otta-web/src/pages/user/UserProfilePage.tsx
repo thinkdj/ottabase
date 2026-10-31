@@ -459,8 +459,8 @@ export function UserProfilePage() {
                             if (refreshSession) refreshSession();
                             toast.success('Profile picture updated', 'Your avatar has been updated.');
                         }}
-                        onRemove={() => {
-                            updateUser({ image: null });
+                        onRemove={(imageUrl) => {
+                            updateUser({ image: imageUrl });
                             if (refreshSession) refreshSession();
                             toast.success('Profile picture removed', 'Your avatar has been removed.');
                         }}

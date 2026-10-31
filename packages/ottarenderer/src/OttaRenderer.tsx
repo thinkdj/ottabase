@@ -3,6 +3,7 @@
  * and heading ids consistent across the whole document, including blocks nested inside a Layout.
  */
 import { useMemo } from 'react';
+import { UgcProvider } from './inline';
 import { blockRenderers } from './renderers';
 import { BlockList, collectHeadingIds, ScopeProvider, type RenderScope } from './scope';
 import type { Block, BlockRenderers, Injection, RendererData } from './types';
@@ -17,6 +18,11 @@ export interface OttaRendererProps {
     className?: string;
     /** Root element. Default `div`. */
     as?: 'div' | 'article' | 'section';
+    /**
+     * The content was written by people the site does not vouch for (a tenant's posts, community
+     * content): every link gets `rel="ugc nofollow noopener"`.
+     */
+    ugc?: boolean;
 }
 
 /**
@@ -33,6 +39,7 @@ export function OttaRenderer({
     injections,
     className,
     as: Tag = 'div',
+    ugc = false,
 }: OttaRendererProps) {
     const blocks = data?.blocks;
     // Heading ids are derived from the block tree once, not claimed during render, so memoised or
@@ -41,9 +48,11 @@ export function OttaRenderer({
     const scope = useMemo<RenderScope>(() => ({ renderers, headingIds }), [renderers, headingIds]);
     return (
         <ScopeProvider value={scope}>
-            <Tag className={['ottarenderer', className].filter(Boolean).join(' ')} data-slot="renderer">
-                <BlockList blocks={blocks} injections={injections} />
-            </Tag>
+            <UgcProvider value={ugc}>
+                <Tag className={['ottarenderer', className].filter(Boolean).join(' ')} data-slot="renderer">
+                    <BlockList blocks={blocks} injections={injections} />
+                </Tag>
+            </UgcProvider>
         </ScopeProvider>
     );
 }

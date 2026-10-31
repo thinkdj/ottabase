@@ -1,3 +1,4 @@
+import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScheduler, type TaskRepository } from '@ottabase/cron';
 import { ValidationError } from '../../validation';
@@ -134,7 +135,7 @@ describe('ScheduledTask write invariants', () => {
         const staleBefore = new Date('2026-08-27T09:56:00Z');
 
         await expect(
-            ScheduledTask.acquireExecutionLock('task-1', 'test-app', startedAt, staleBefore, true, { executeRaw }),
+            ScheduledTask.acquireExecutionLock('task-1', 'test-app', startedAt, staleBefore, null, { executeRaw }),
         ).resolves.toBe(true);
 
         expect(executeRaw).toHaveBeenCalledWith(expect.stringContaining('next_run_at <= ?'), [
@@ -143,10 +144,70 @@ describe('ScheduledTask write invariants', () => {
             'task-1',
             'test-app',
             staleBefore.getTime(),
-            1,
+            null,
             startedAt.getTime(),
+            null,
         ]);
         expect(executeRaw.mock.calls[0][0]).toContain('last_run_at < ?');
+    });
+
+    it('claims on real SQLite: due for a scheduled run, nothing since the request for a manual one', async () => {
+        // The lock statement against a real SQLite table, so the CASE and the fences are what D1 runs.
+        const db = new DatabaseSync(':memory:');
+        db.exec(`CREATE TABLE scheduled_tasks (id TEXT PRIMARY KEY, app_id TEXT, is_active INTEGER,
+            next_run_at INTEGER, last_status TEXT, last_run_at INTEGER, updated_at INTEGER)`);
+        const driver = {
+            executeRaw: async (sql: string, params: unknown[] = []) => ({
+                meta: { changes: Number(db.prepare(sql).run(...(params as Array<string | number | null>)).changes) },
+            }),
+        };
+        const at = (iso: string) => new Date(iso);
+        const staleBefore = at('2026-08-27T09:55:00Z');
+        const row = (values: { active: number; next: string | null; status?: string; last?: string }) => {
+            db.exec('DELETE FROM scheduled_tasks');
+            db.prepare(
+                'INSERT INTO scheduled_tasks (id, app_id, is_active, next_run_at, last_status, last_run_at) VALUES (?, ?, ?, ?, ?, ?)',
+            ).run(
+                't',
+                'app',
+                values.active,
+                values.next ? Date.parse(values.next) : null,
+                values.status ?? null,
+                values.last ? Date.parse(values.last) : null,
+            );
+        };
+        const claim = (startedAt: string, requestedAt: string | null) =>
+            ScheduledTask.acquireExecutionLock(
+                't',
+                'app',
+                at(startedAt),
+                staleBefore,
+                requestedAt ? at(requestedAt) : null,
+                driver,
+            );
+
+        // Scheduled: only while active and due, never while another run holds the row.
+        row({ active: 1, next: '2026-08-27T10:01:00Z' });
+        await expect(claim('2026-08-27T10:00:00Z', null)).resolves.toBe(false);
+        await expect(claim('2026-08-27T10:01:00Z', null)).resolves.toBe(true);
+        await expect(claim('2026-08-27T10:01:30Z', null)).resolves.toBe(false);
+        row({ active: 0, next: '2026-08-27T09:00:00Z' });
+        await expect(claim('2026-08-27T10:00:00Z', null)).resolves.toBe(false);
+
+        // Manual: a paused, not-due row runs once per request; a redelivery after that run is a no-op.
+        row({ active: 0, next: null, last: '2026-08-27T09:00:00Z' });
+        await expect(claim('2026-08-27T10:00:01Z', '2026-08-27T10:00:00Z')).resolves.toBe(true);
+        db.exec(
+            `UPDATE scheduled_tasks SET last_status = 'success', last_run_at = ${Date.parse('2026-08-27T10:00:02Z')}`,
+        );
+        await expect(claim('2026-08-27T10:00:05Z', '2026-08-27T10:00:00Z')).resolves.toBe(false);
+        await expect(claim('2026-08-27T10:00:06Z', '2026-08-27T10:00:04Z')).resolves.toBe(true);
+
+        // A crashed run's lock lapses: a stale `running` row is reclaimed, a fresh one is not.
+        row({ active: 1, next: '2026-08-27T09:00:00Z', status: 'running', last: '2026-08-27T09:58:00Z' });
+        await expect(claim('2026-08-27T10:00:00Z', null)).resolves.toBe(false);
+        row({ active: 1, next: '2026-08-27T09:00:00Z', status: 'running', last: '2026-08-27T09:50:00Z' });
+        await expect(claim('2026-08-27T10:00:00Z', null)).resolves.toBe(true);
     });
 
     it('uses the start timestamp as a fence for completion and failure', async () => {
@@ -233,6 +294,6 @@ describe('ScheduledTask write invariants', () => {
 
         expect(handler).toHaveBeenCalledOnce();
         expect(repository.markCompleted).toHaveBeenCalledWith('task-1', expect.any(Date), expect.any(Date));
-        expect(result).toEqual({ executed: 1, failed: 0, skipped: 0 });
+        expect(result).toEqual({ executed: 1, failed: 0, skipped: 0, queued: 0 });
     });
 });

@@ -1,3 +1,4 @@
+import { useLinkRel } from '../inline';
 import { sanitizeJsonForScript, sanitizeSvgHtml, sanitizeUrl } from '@ottabase/utils/sanitize';
 import type { BlockRenderer } from '../types';
 import { useMemo } from 'react';
@@ -25,6 +26,7 @@ const buttonStyleClass: Record<NonNullable<CTAData['style']>, string> = {
 };
 
 const CTA: BlockRenderer<CTAData> = ({ data, className = '' }) => {
+    const linkRel = useLinkRel();
     const buttonText = data?.text || 'Get Started';
     const url = sanitizeUrl(data?.url);
     const style = data?.style || 'primary';
@@ -65,7 +67,7 @@ const CTA: BlockRenderer<CTAData> = ({ data, className = '' }) => {
                 <a
                     href={url}
                     target={openInNewTab ? '_blank' : '_self'}
-                    rel={openInNewTab ? 'noopener noreferrer' : undefined}
+                    rel={linkRel(Boolean(openInNewTab))}
                     className={buttonClass}
                     itemScope
                     itemType="https://schema.org/Action"

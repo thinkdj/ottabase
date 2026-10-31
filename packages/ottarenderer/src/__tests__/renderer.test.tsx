@@ -9,6 +9,23 @@ vi.mock('@ottabase/medialibrary/react', () => ({
 }));
 
 describe('OttaRenderer', () => {
+    it('marks every link of user content rel="ugc nofollow noopener", and leaves trusted content alone', () => {
+        const data = {
+            blocks: [
+                { id: 'p', type: 'paragraph', data: { text: 'See <a href="https://a.test" target="_blank">this</a>' } },
+                { id: 'c', type: 'cta', data: { text: 'Go', url: 'https://b.test', openInNewTab: false } },
+            ],
+        };
+        const { container, rerender } = render(<OttaRenderer data={data} ugc />);
+        const rels = () => [...container.querySelectorAll('a')].map((a) => a.getAttribute('rel'));
+        expect(rels()).toEqual(['ugc nofollow noopener noreferrer', 'ugc nofollow noopener']);
+        rerender(<OttaRenderer data={data} />);
+        expect(rels()).toEqual(['noopener noreferrer', null]);
+
+        const html = render(<HtmlRenderer ugc content={'<a href="/x" rel="me">x</a>'} />);
+        expect(html.container.querySelector('a')!.getAttribute('rel')).toBe('ugc nofollow noopener');
+    });
+
     it('wraps every block, keyed by id, with slot and type hooks', () => {
         const { container } = render(
             <OttaRenderer

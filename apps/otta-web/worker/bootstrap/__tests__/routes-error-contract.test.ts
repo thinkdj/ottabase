@@ -8,7 +8,7 @@ function platformState(overrides: Partial<PlatformStateResult> = {}): PlatformSt
         source: 'probe',
         panic: false,
         reason: 'test fixture',
-        bindings: { d1: false, kv: false, r2: false, queue: false, assets: false },
+        bindings: { d1: false, kv: false, r2: false, r2Private: false, r2Vault: false, queue: false, assets: false },
         ...overrides,
     };
 }
@@ -99,7 +99,17 @@ describe('bootstrap API response contract', () => {
         const notReady = interceptIfNotReady(
             new Request('https://app.test/api/private'),
             new URL('https://app.test/api/private'),
-            platformState({ bindings: { d1: true, kv: false, r2: false, queue: false, assets: false } }),
+            platformState({
+                bindings: {
+                    d1: true,
+                    kv: false,
+                    r2: false,
+                    r2Private: false,
+                    r2Vault: false,
+                    queue: false,
+                    assets: false,
+                },
+            }),
         );
         await expect(notReady?.json()).resolves.toMatchObject({ code: 'PLATFORM_NOT_READY' });
     });

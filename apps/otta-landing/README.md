@@ -45,11 +45,13 @@ Both apps bind `OBCF_D1` to the same database. Keep the `d1_databases` blocks in
 - **`APP_ID`** (a wrangler var, default `otta-web`) selects whose landing content to show. It must match otta-web's
   `config.appId`.
 
-**Uploads.** Both apps also bind `OBCF_R2` to the same bucket. Local R2 is keyed by `preview_bucket_name`, so keep that
-identical too. Images uploaded in otta-web's admin are stored as `/api/upload/file/<key>` URLs, and
-`app/api/upload/file/[...key]` serves that path here from the same bucket. It uses `serveR2Object` from
-`@ottabase/ottaupload/server`: no MIME sniffing, a sandboxing CSP, and only safe image types inline. Keys are unique per
-upload, or cache-busted with `?v=`, so responses are cached for a year.
+**Files.** Both apps bind `OBCF_R2`, otta-web's PUBLIC files bucket (and only that one: private files and Vault backups
+live in buckets this app never binds). Local R2 is keyed by `preview_bucket_name`, so keep that identical too. Images
+picked in otta-web's admin are public files, `<R2_PUBLIC_URL>/<key>`, by default `/api/files/public/<key>`, and
+`app/api/files/public/[...key]` serves that path here from the same bucket with `servePublicFile` from
+`@ottabase/ottaupload/server`: ETag/304, Range, no MIME sniffing, a sandboxing CSP, and only safe types inline. A key is
+never written twice, so responses are cached for a year. With a custom domain on the bucket (`R2_PUBLIC_URL`), the URLs
+point there and this route is only a fallback.
 
 Schema changes go through otta-web's migrations (`/api/ottaorm/init`). This app never migrates.
 

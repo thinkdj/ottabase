@@ -25,7 +25,7 @@ interface AvatarEditModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (imageUrl: string) => void;
-    onRemove?: () => void;
+    onRemove?: (image: string | null) => void;
     onError?: (message: string) => void;
     /** When true, shows "Remove current photo" option */
     hasImage?: boolean;
@@ -91,14 +91,11 @@ export function AvatarEditModal({
         if (!hasImage || !onRemove) return;
         setIsRemoving(true);
         try {
-            // Send null image to clear profile picture server-side
-            await api('/api/users/me', {
-                method: 'PATCH',
-                body: { image: null },
-            });
+            // The uploaded file is deleted; `image` falls back to the OAuth provider's picture, if any.
+            const res = await api<{ image?: string | null }>('/api/users/me/avatar', { method: 'DELETE' });
             // Close dialogs first, then notify parent
             setRemoveConfirmOpen(false);
-            onRemove();
+            onRemove(res?.image ?? null);
             onOpenChange(false);
         } catch (err) {
             console.error('Avatar remove failed:', err);
@@ -121,37 +118,17 @@ export function AvatarEditModal({
 
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('provider', 'r2');
-            formData.append('key', 'avatar'); // Fixed key {userId}/avatar.png - overwrites on each upload
 
-            const uploadRes = await api<{ success: boolean; url?: string; key?: string }>('/api/upload', {
-                method: 'POST',
+            // One request: the server stores the file (a new key every time), points the account
+            // at it, deletes the previous avatar and answers the URL every view now shows.
+            const res = await api<{ success: boolean; image?: string | null }>('/api/users/me/avatar', {
+                method: 'PUT',
                 body: formData,
             });
-
-            if (!uploadRes?.success || !uploadRes.url) {
+            if (!res?.success || !res.image) {
                 throw new Error('Upload failed');
             }
-
-            // Make URL absolute if relative (e.g. /api/upload/file/xyz)
-            const imageUrl = uploadRes.url.startsWith('http')
-                ? uploadRes.url
-                : `${window.location.origin}${uploadRes.url}`;
-
-            const patchRes = await api<Record<string, any>>('/api/users/me', {
-                method: 'PATCH',
-                body: { image: imageUrl },
-            });
-
-            const updatedUser =
-                patchRes && typeof patchRes === 'object' && 'data' in patchRes
-                    ? (patchRes as { data?: Record<string, any> }).data
-                    : patchRes;
-            if (updatedUser?.image) {
-                onSuccess(updatedUser.image);
-            } else {
-                onSuccess(imageUrl);
-            }
+            onSuccess(res.image);
 
             onOpenChange(false);
         } catch (err) {

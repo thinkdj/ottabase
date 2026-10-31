@@ -121,21 +121,23 @@ async function main() {
         hasErrors = true;
     }
 
-    // Verify R2
+    // Verify every R2 bucket the app binds (public files, private files, backups)
     const r2List = runCommand(`${wranglerCmd} r2 bucket list --json`);
-    if (r2List.includes(r2.name)) {
-        log(`✓ R2 Bucket: ${r2.name}`, GREEN);
-    } else {
-        log(`✗ R2 Bucket: ${r2.name} not found`, RED);
-        hasErrors = true;
-    }
+    for (const bucket of r2) {
+        if (r2List.includes(bucket.name)) {
+            log(`✓ R2 Bucket: ${bucket.name} (${bucket.binding})`, GREEN);
+        } else {
+            log(`✗ R2 Bucket: ${bucket.name} (${bucket.binding}) not found`, RED);
+            hasErrors = true;
+        }
 
-    // Verify R2 preview bucket (optional; for `wrangler dev --remote`)
-    if (r2List.includes(r2.previewName)) {
-        log(`✓ R2 preview bucket: ${r2.previewName}`, GREEN);
-    } else {
-        log(`⚠ R2 preview bucket: ${r2.previewName} not found (optional)`, YELLOW);
-        hasWarnings = true;
+        // Preview bucket (optional; for `wrangler dev --remote`)
+        if (r2List.includes(bucket.previewName)) {
+            log(`✓ R2 preview bucket: ${bucket.previewName}`, GREEN);
+        } else {
+            log(`⚠ R2 preview bucket: ${bucket.previewName} not found (optional)`, YELLOW);
+            hasWarnings = true;
+        }
     }
 
     // Verify Queue

@@ -64,7 +64,7 @@ export const postsTable = sqliteTable(
             url: string;
             alt?: string;
             caption?: string;
-            cfImageId?: string;
+            mediaId?: string;
             width?: number;
             height?: number;
             maxHeight?: number;

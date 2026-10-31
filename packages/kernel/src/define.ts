@@ -39,6 +39,19 @@ export function definePackage<Env = unknown>(pkg: OttaPackage<Env>): OttaPackage
             );
         }
     }
+    for (const purpose of pkg.files ?? []) {
+        // The purpose is part of every storage key, so it must be a plain path segment.
+        if (!PACKAGE_KEY_RE.test(purpose.purpose)) {
+            throw new Error(
+                `[kernel] Package "${pkg.key}" declares file purpose "${purpose.purpose}"; use lowercase letters, digits and hyphens.`,
+            );
+        }
+        if (!purpose.types.length || !(purpose.maxBytes > 0)) {
+            throw new Error(
+                `[kernel] Package "${pkg.key}" file purpose "${purpose.purpose}" needs a non-empty types list and a positive maxBytes.`,
+            );
+        }
+    }
     for (const [name, job] of Object.entries(pkg.cron ?? {})) {
         if (typeof job.handler !== 'function') {
             throw new Error(`[kernel] Package "${pkg.key}" cron handler "${name}" is not a function.`);

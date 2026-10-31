@@ -282,6 +282,28 @@ export function sanitizeBlockHtml(html: string): string {
     return sanitizeWithFallback(html, BLOCK_SANITIZE_CONFIG);
 }
 
+/** The `rel` every link in user-generated content carries: no endorsement, no ranking credit, no opener. */
+export const UGC_LINK_REL = 'ugc nofollow noopener';
+
+// One `<a ...>` start tag with its attributes; quoted values may hold `>`.
+const ANCHOR_START_TAG = /<a\b((?:\s+[^\s=>/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/gi;
+const REL_ATTRIBUTE = /\s+rel\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)/gi;
+
+/**
+ * Mark every link of ALREADY SANITIZED HTML as user-generated: any `rel` it had is replaced by
+ * `rel="ugc nofollow noopener"`. Use it wherever people the site does not vouch for wrote the
+ * HTML (comments, community or tenant posts), after `sanitizeInlineHtml` / `sanitizeBlockHtml`.
+ *
+ * @example
+ * <div dangerouslySetInnerHTML={{ __html: markUgcLinks(sanitizeBlockHtml(comment.html)) }} />
+ */
+export function markUgcLinks(html: string): string {
+    return html.replace(
+        ANCHOR_START_TAG,
+        (_tag, attrs: string) => `<a${attrs.replace(REL_ATTRIBUTE, '')} rel="${UGC_LINK_REL}">`,
+    );
+}
+
 /**
  * Sanitize an SVG string (e.g. an inline icon from editor config).
  * Allows SVG and SVG filter elements, strips scripts and foreign objects.

@@ -51,6 +51,17 @@ export type LeadData = {
     createdAt: string;
 };
 
+/** The `lead.created` bus payload, one per stored entry (`LandingLead.announceNew`). `at` is when it was stored. */
+export type LeadCreatedEvent = {
+    leadId: string;
+    kind: LeadKind;
+    email: string;
+    name: string;
+    message: string;
+    pagePath: string;
+    at: number;
+};
+
 /**
  * Leads as CSV for a spreadsheet. Cells are quoted, and a cell that a spreadsheet would run as
  * a formula (starting with = + - @, tab or CR) is prefixed with `'` so it stays plain text.

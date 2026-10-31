@@ -18,7 +18,7 @@ import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { isEmail } from '@ottabase/utils/string';
 import { canonicalLocale, canonicalTimezone } from '@ottabase/utils/timezone';
-import { isValidUrl, withNotice } from '@ottabase/utils/url';
+import { withNotice } from '@ottabase/utils/url';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { SUPPORTED_LANGUAGES } from '../../ottabase/locale';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution'; // otta:only referrals
@@ -26,6 +26,7 @@ import { registerAppEmailTemplates } from '../../src/email/templates';
 import {
     bumpProfileVersion,
     createVerificationToken,
+    emitAccountEvent,
     getAuthOptions,
     getUserLinkedAccounts,
     resolveMailer,
@@ -182,11 +183,16 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
     }
 
     const user = await User.first({ email });
-    if (user) {
-        user.set('emailVerified', Date.now());
+    // Only the first verification counts: a second link (sign-up's and a resent one, or a magic
+    // link in between) keeps the original time and tells the bus nothing new.
+    if (user && !user.get('emailVerified')) {
+        const at = Date.now();
+        const userId = user.get('id') as string;
+        user.set('emailVerified', at);
         await user.save();
         // Reflect verification in any session that was already open before verifying.
-        await bumpProfileVersion(env, user.get('id') as string);
+        await bumpProfileVersion(env, userId);
+        await emitAccountEvent(env, 'user.verified', { userId, email, at });
     }
 
     const accept = request.headers.get('Accept') || '';
@@ -478,7 +484,7 @@ export async function handlePasswordChange(context: AuthRouteContext): Promise<R
             id: userId,
             email: String(user.get('email')),
             name: (user.get('name') as string | null) ?? null,
-            image: (user.get('image') as string | null) ?? null,
+            image: User.imageUrl(user.toJson()),
             emailVerified: emailVerifiedRaw ? new Date(emailVerifiedRaw as any).getTime() : null,
         },
         env as any,
@@ -512,7 +518,9 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         if (!user) {
             return errorResponse('User not found', 404, { code: 'NOT_FOUND' });
         }
-        const userJson = user.toJson();
+        // `image` is the picture to show: the uploaded avatar, else the provider's.
+        const json = user.toJson();
+        const userJson = { ...json, image: User.imageUrl(json) };
         const linkedAccounts = await getUserLinkedAccounts(userId);
         return jsonResponse({ ...userJson, linkedAccounts }, 200);
     }
@@ -520,7 +528,6 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
     if (request.method === 'PATCH') {
         const body = await readJson<{
             name?: string;
-            image?: string | null;
             timezone?: string | null;
             locale?: string | null;
             activeOrganizationId?: string | null;
@@ -540,16 +547,7 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
             }
         }
 
-        if (body.image !== undefined) {
-            const image = typeof body.image === 'string' ? body.image.trim() : '';
-            if (!image) {
-                updates.image = null;
-            } else if (!isValidUrl(image)) {
-                fieldErrors.image = ['Image must be a valid URL'];
-            } else {
-                updates.image = image;
-            }
-        }
+        // The avatar is not a field here: PUT /api/users/me/avatar stores the file and sets it.
 
         // Timezone and locale are validated with Intl and stored in their canonical spelling.
         // `null` or '' clears the preference (the app falls back to the request/device defaults).
@@ -614,7 +612,8 @@ export async function handleUserProfile(context: AuthRouteContext): Promise<Resp
         // Refresh live sessions so the edit is reflected immediately (see bumpProfileVersion).
         await bumpProfileVersion(env, userId);
 
-        const userJson = updated.toJson();
+        const json = updated.toJson();
+        const userJson = { ...json, image: User.imageUrl(json) };
         const linkedAccounts = await getUserLinkedAccounts(userId);
         return jsonResponse({ ...userJson, linkedAccounts }, 200);
     }
@@ -752,6 +751,16 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 }),
             );
         }
+
+        // Announced once the account is whole: a rolled-back one never existed.
+        await emitAccountEvent(env, 'user.created', {
+            userId: newUserId,
+            email,
+            name: name || null,
+            organizationId,
+            method: 'credentials',
+            at: Date.now(),
+        });
 
         // otta:begin referrals
         let attributionResult;

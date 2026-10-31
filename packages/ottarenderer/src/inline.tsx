@@ -10,7 +10,18 @@
  * including Workers, since it touches no DOM API.
  */
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
-import { createElement, Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+    createContext,
+    createElement,
+    Fragment,
+    useContext,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState,
+    type ReactNode,
+} from 'react';
 
 export type InlineNode = string | { tag: string; attrs: Record<string, string>; children: InlineNode[] };
 
@@ -157,6 +168,41 @@ export function safeUrl(url: unknown): string | null {
 
 const SEMANTIC: Record<string, string> = { b: 'strong', i: 'em' };
 
+/** True inside content the site does not vouch for (`<OttaRenderer ugc>`). */
+const UgcContext = createContext(false);
+export const UgcProvider = UgcContext.Provider;
+
+/** `rel` for a link: `ugc nofollow noopener` in user content, `noreferrer` too when it opens a new tab. */
+export function linkRel(ugc: boolean, newTab: boolean): string | undefined {
+    if (ugc) return newTab ? 'ugc nofollow noopener noreferrer' : 'ugc nofollow noopener';
+    return newTab ? 'noopener noreferrer' : undefined;
+}
+
+/** The `rel` builder for the links a block renders, following the document's ugc mode. */
+export function useLinkRel(): (newTab: boolean) => string | undefined {
+    const ugc = useContext(UgcContext);
+    return (newTab) => linkRel(ugc, newTab);
+}
+
+function InlineLink({
+    href,
+    title,
+    blank,
+    children,
+}: {
+    href: string;
+    title?: string;
+    blank: boolean;
+    children: ReactNode;
+}) {
+    const rel = useLinkRel();
+    return (
+        <a href={href} title={title} target={blank ? '_blank' : undefined} rel={rel(blank)} className="otta-link">
+            {children}
+        </a>
+    );
+}
+
 function renderNode(node: InlineNode, key: number): ReactNode {
     if (typeof node === 'string') return node;
     const children = node.children.map(renderNode);
@@ -164,19 +210,15 @@ function renderNode(node: InlineNode, key: number): ReactNode {
         case 'br':
             return <br key={key} />;
         case 'a': {
-            const href = sanitizeUrl(node.attrs.href);
-            const blank = node.attrs.target === '_blank';
             return (
-                <a
+                <InlineLink
                     key={key}
-                    href={href}
+                    href={sanitizeUrl(node.attrs.href)}
                     title={node.attrs.title}
-                    target={blank ? '_blank' : undefined}
-                    rel={blank ? 'noopener noreferrer' : undefined}
-                    className="otta-link"
+                    blank={node.attrs.target === '_blank'}
                 >
                     {children}
-                </a>
+                </InlineLink>
             );
         }
         case 'code':

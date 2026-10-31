@@ -85,6 +85,31 @@ export interface AuthorizedUser {
     emailVerified?: number | null;
 }
 
+/** `user.created`: an account exists now. `organizationId` is null when its workspace comes at first sign-in. */
+export interface UserCreatedEvent {
+    userId: string;
+    email: string;
+    name: string | null;
+    organizationId: string | null;
+    method: 'credentials' | 'oauth' | 'magic-link' | 'sso';
+    /** Epoch milliseconds. */
+    at: number;
+}
+
+/** `user.verified`: an account's email went from unverified to verified (once per account). */
+export interface UserVerifiedEvent {
+    userId: string;
+    email: string;
+    /** Epoch milliseconds: the stored `emailVerified`. */
+    at: number;
+}
+
+/** The bus events `@ottabase/auth` announces through `CreateAuthConfigOptions.emit`. */
+export interface AuthEvents {
+    'user.created': UserCreatedEvent;
+    'user.verified': UserVerifiedEvent;
+}
+
 export interface CredentialsAuthorizeOptions {
     authorize?: (credentials: { email: string; password: string }) => Promise<AuthorizedUser | null>;
     /** Minimum password length accepted at the credentials endpoint (default: 6). */
@@ -111,4 +136,10 @@ export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
      * so use it to finish an account (its workspace) and catch anything that is merely best-effort.
      */
     onSignIn?: (params: { userId: string; email?: string | null }) => Promise<void> | void;
+    /**
+     * Announces `user.created` (an OAuth or magic-link account) and `user.verified` (an email
+     * verified by OAuth or a magic link). Wire it to the app's event bus (README, "Account
+     * events"). Best-effort: a throw is logged and never fails the sign-in.
+     */
+    emit?: <K extends keyof AuthEvents>(env: AuthEnv, name: K, payload: AuthEvents[K]) => Promise<void>;
 }

@@ -68,7 +68,7 @@ already edits (`lib/product.ts`), so nothing is typed twice.
 import { discoverRobots } from '@ottabase/discover/next';
 export default async () => discoverRobots({ sitemap: 'https://alpha.test/sitemap.xml', disallow: ['/api/'] });
 // off production: discoverRobots({ closed: true })
-// images served under a disallowed prefix: add allow: ['/api/upload/file/'], the longer path wins
+// images served under a disallowed prefix: add allow: ['/api/files/public/'], the longer path wins
 
 // app/.well-known/otta.json/route.ts
 import { ottaJsonHandler } from '@ottabase/discover/next';

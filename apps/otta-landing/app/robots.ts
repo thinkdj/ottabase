@@ -13,10 +13,10 @@ export const dynamic = 'force-dynamic';
 export default async function robots(): Promise<MetadataRoute.Robots> {
     if (!(await isProduction())) return discoverRobots({ closed: true });
     const site = await getSite();
-    // Uploaded logos and social images are served from /api/upload/file/; crawlers must still fetch those.
+    // Uploaded logos and social images are served from /api/files/public/; crawlers must still fetch those.
     return discoverRobots({
         sitemap: `${await siteOrigin(site)}/sitemap.xml`,
         disallow: ['/api/'],
-        allow: ['/api/upload/file/'],
+        allow: ['/api/files/public/'],
     });
 }

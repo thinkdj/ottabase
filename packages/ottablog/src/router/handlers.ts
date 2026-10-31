@@ -13,6 +13,7 @@ import {
     globalRLS,
     MAX_SEARCH_TERM_BYTES,
     RLSError,
+    User,
     type SecurityContext,
 } from '@ottabase/ottaorm';
 import {
@@ -104,7 +105,16 @@ async function findPublishedPostBySlug(
 const D1_IN_CHUNK = 90;
 // Public responses use an explicit allowlist. A user's account/login email is
 // private even when that user is the author of public content.
-const PUBLIC_AUTHOR_FIELDS = ['id', 'name', 'image'] as const;
+const PUBLIC_AUTHOR_FIELDS = ['id', 'name', 'image', 'avatarKey'] as const;
+
+/** An author as public responses show them: `image` is the uploaded avatar, else the provider's picture. */
+function publicAuthor(author: { get(key: string): unknown }) {
+    return {
+        id: author.get('id'),
+        name: author.get('name'),
+        image: User.imageUrl({ avatarKey: author.get('avatarKey'), image: author.get('image') }),
+    };
+}
 
 /**
  * Chunk size for id-list queries that also carry the list handler's other bound
@@ -382,13 +392,7 @@ async function enrichPostsJsonBatch(
             const authors = await chunkedFetch(uniqueAuthorIds, (ids) =>
                 User.whereIn('id', ids, { select: [...PUBLIC_AUTHOR_FIELDS] }),
             );
-            for (const author of authors) {
-                authorById.set(author.get('id') as string, {
-                    id: author.get('id'),
-                    name: author.get('name'),
-                    image: author.get('image'),
-                });
-            }
+            for (const author of authors) authorById.set(author.get('id') as string, publicAuthor(author));
         } catch {
             // Author enrichment is best-effort, same as publicPostJson.
         }
@@ -577,11 +581,7 @@ async function publicPostJson(
         try {
             const author = await record.author([...PUBLIC_AUTHOR_FIELDS]);
             if (author) {
-                rest.author = {
-                    id: author.get('id'),
-                    name: author.get('name'),
-                    image: author.get('image'),
-                };
+                rest.author = publicAuthor(author);
             } else {
                 rest.author = null;
             }
@@ -2081,7 +2081,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
         if (!author) {
             return errorResponse('Author not found', 404, { code: 'NOT_FOUND' });
         }
-        return jsonResponse({ id: author.get('id'), name: author.get('name'), image: author.get('image') });
+        return jsonResponse(publicAuthor(author));
     }
 
     // ============================================================

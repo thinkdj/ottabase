@@ -1,29 +1,15 @@
-import { getSession } from '@ottabase/auth/backend';
-import { createImagesClient } from '@ottabase/cf/images';
+// /api/cloudflare/kv and /api/cloudflare/r2: system-admin demos of the raw KV and R2 bindings.
+// User files never come through here: they go through the files service (routes/files.ts).
+
 import { createKVClient } from '@ottabase/cf/kv';
-import { createR2Client } from '@ottabase/cf/r2';
-import { serveR2Object, uploadFileToCloudflareImages, uploadFileToR2 } from '@ottabase/ottaupload/server';
-import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
+import { applySafeObjectHeaders } from '@ottabase/ottaupload/server';
+import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { requireAdminAccess } from '../lib/admin-guard';
-import { getAuthOptions } from '../lib/auth-utils';
-import { enforceRateLimit } from '../lib/rate-limiting';
-import { isDemoMode } from '../lib/utils';
-import { persistUploadedMediaRecord } from './media-library';
 import type { ApiRouteContext } from './router';
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-
-/** Deterministic hash of userId for avatar path obfuscation (SHA-256, 32 hex chars) */
-async function hashUserId(userId: string): Promise<string> {
-    const data = new TextEncoder().encode(userId);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('')
-        .substring(0, 32);
-}
+/** The R2 demo reads and writes only under this prefix of the private bucket. */
+const DEMO_PREFIX = 'demo/';
 
 export async function handleCloudflareKV(context: ApiRouteContext): Promise<Response> {
     const auth = await requireAdminAccess(context, { scope: 'system' });
@@ -94,7 +80,10 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
     if (auth instanceof Response) return auth;
 
     const { request, env, url } = context;
-    if (!env.OBCF_R2) {
+    // The PRIVATE bucket: raw keys written here are never served by key to anyone but this
+    // system-admin route, so the public bucket keeps holding only files the files service wrote.
+    const bucket = env.OBCF_R2_PRIVATE;
+    if (!bucket) {
         return errorResponse('R2 bucket binding not configured', 500, {
             code: 'CONFIG_ERROR',
         });
@@ -102,14 +91,19 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
 
     if (request.method === 'GET') {
         if (url.searchParams.get('list') === 'true') {
-            const listing = await env.OBCF_R2.list({ limit: 100 });
+            const listing = await bucket.list({ prefix: DEMO_PREFIX, limit: 100 });
             return jsonResponse({ objects: listing.objects });
         }
 
         const key = url.searchParams.get('key');
         if (!key) return errorResponse('key is required', 400);
 
-        return (await serveR2Object(env.OBCF_R2, key)) ?? errorResponse('Object not found', 404);
+        const object = key.startsWith(DEMO_PREFIX) ? await bucket.get(key) : null;
+        if (!object) return errorResponse('Object not found', 404);
+        const headers = new Headers();
+        object.writeHttpMetadata(headers as never);
+        applySafeObjectHeaders(headers, key);
+        return new Response(object.body as BodyInit, { headers });
     }
 
     if (request.method === 'POST') {
@@ -117,14 +111,14 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
         const file = formData.get('file');
         const key = formData.get('key');
 
-        if (!key || typeof key !== 'string') {
-            return errorResponse('key is required', 400);
+        if (!key || typeof key !== 'string' || !key.startsWith(DEMO_PREFIX)) {
+            return errorResponse(`key is required and must start with ${DEMO_PREFIX}`, 400);
         }
         if (!(file instanceof File)) {
             return errorResponse('file is required', 400);
         }
 
-        await env.OBCF_R2.put(key, await file.arrayBuffer(), {
+        await bucket.put(key, await file.arrayBuffer(), {
             httpMetadata: {
                 contentType: file.type || 'application/octet-stream',
             },
@@ -136,226 +130,12 @@ export async function handleCloudflareR2(context: ApiRouteContext): Promise<Resp
 
     if (request.method === 'DELETE') {
         const key = url.searchParams.get('key');
-        if (!key) return errorResponse('key is required', 400);
-        await env.OBCF_R2.delete(key);
+        if (!key || !key.startsWith(DEMO_PREFIX)) return errorResponse('key is required', 400);
+        await bucket.delete(key);
         return jsonResponse({ success: true });
     }
 
     return errorResponse('Method not allowed', 405, {
         code: 'METHOD_NOT_ALLOWED',
-    });
-}
-
-export async function handleUpload(context: ApiRouteContext): Promise<Response> {
-    const { request, env } = context;
-    if (request.method !== 'POST') {
-        return errorResponse('Method not allowed', 405, {
-            code: 'METHOD_NOT_ALLOWED',
-        });
-    }
-
-    try {
-        // Authenticate before parsing multipart data so anonymous callers cannot force the Worker
-        // to buffer a large request. Content-Length is an early rejection only; File.size below is
-        // authoritative because transfer encodings may omit it.
-        const session = await getSession(request, env as any, getAuthOptions(env));
-        if (!session?.user?.id) {
-            return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-        }
-
-        // A public demo caps uploads per account; a normal deploy leaves bulk uploads alone.
-        if (isDemoMode(env)) {
-            const limited = await enforceRateLimit(request, env, `upload:${session.user.id}`);
-            if (limited) return limited;
-        }
-
-        const contentLength = Number(request.headers.get('Content-Length'));
-        if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_BYTES) {
-            return errorResponse('Upload exceeds the 10 MB limit', 413, { code: 'PAYLOAD_TOO_LARGE' });
-        }
-
-        const formData = await request.formData();
-        const file = formData.get('file');
-        const provider = (formData.get('provider') as string) || 'r2';
-        const customKey = formData.get('key') as string | null;
-
-        if (!(file instanceof File)) {
-            return errorResponse('file is required', 400);
-        }
-        if (file.size > MAX_UPLOAD_BYTES) {
-            return errorResponse('Upload exceeds the 10 MB limit', 413, { code: 'PAYLOAD_TOO_LARGE' });
-        }
-
-        if (provider === 'cloudflare-images') {
-            const accountId = env.CF_IMAGES_ACCOUNT_ID;
-            const apiToken = env.CF_IMAGES_API_TOKEN;
-
-            if (!accountId || !apiToken) {
-                return errorResponse(
-                    'Cloudflare Images not configured. Set CF_IMAGES_ACCOUNT_ID and CF_IMAGES_API_TOKEN',
-                    500,
-                    { code: 'CONFIG_ERROR' },
-                );
-            }
-
-            const result = await uploadFileToCloudflareImages(
-                file,
-                {
-                    accountId,
-                    apiToken,
-                },
-                {
-                    maxFileSize: 10 * 1024 * 1024,
-                },
-            );
-
-            if (result.success) {
-                const media = await persistUploadedMediaRecord(request, env, {
-                    provider: 'cloudflare-images',
-                    storageKey: result.key || '',
-                    url: result.url || '',
-                    fileName: file.name,
-                    mimeType: file.type || 'application/octet-stream',
-                    fileSize: file.size,
-                });
-
-                return jsonResponse({
-                    success: true,
-                    url: result.url,
-                    key: result.key,
-                    provider: 'cloudflare-images',
-                    media,
-                });
-            }
-
-            const errorCode = (result as any).code;
-            const status = errorCode === 'CONFIG_ERROR' ? 500 : 400;
-            return errorResponse(result.error || 'Upload failed', status, errorCode ? { code: errorCode } : undefined);
-        }
-
-        if (!env.OBCF_R2) {
-            return errorResponse('R2 bucket binding not configured', 500, {
-                code: 'CONFIG_ERROR',
-            });
-        }
-
-        // Avatar upload: use fixed key {userId}/avatar.png so each upload overwrites
-        let uploadOptions: { maxFileSize: number; generateKey?: (file: File) => string } = {
-            maxFileSize: MAX_UPLOAD_BYTES,
-        };
-
-        if (customKey === 'avatar') {
-            const userId = session?.user?.id;
-            if (!userId) {
-                return errorResponse('Unauthorized', 401, { code: 'UNAUTHORIZED' });
-            }
-            const hash = await hashUserId(userId);
-            uploadOptions.generateKey = () => `${hash}/avatar.png`;
-        }
-
-        const r2Client = createR2Client({ bucket: env.OBCF_R2 as any });
-        const result = await uploadFileToR2(file, r2Client, uploadOptions);
-
-        if (result.success) {
-            // Avatar: append ?v=timestamp for cache busting when user uploads new image
-            const url = customKey === 'avatar' ? `${result.url || ''}?v=${Date.now()}` : result.url || '';
-            const media = await persistUploadedMediaRecord(
-                request,
-                env,
-                {
-                    provider: 'r2',
-                    storageKey: result.key || '',
-                    url,
-                    fileName: file.name,
-                    mimeType: file.type || 'application/octet-stream',
-                    fileSize: file.size,
-                },
-                {
-                    upsertByStorageKey: customKey === 'avatar',
-                },
-            );
-
-            return jsonResponse({
-                success: true,
-                url,
-                key: result.key,
-                provider: 'r2',
-                media,
-            });
-        }
-
-        return errorResponse(result.error || 'Upload failed', 400);
-    } catch (error) {
-        console.error(
-            JSON.stringify({
-                event: 'file_upload_failed',
-                error: redactErrorForLog(error),
-            }),
-        );
-        return errorResponse('Upload failed', 500, { code: 'UPLOAD_FAILED' });
-    }
-}
-
-export async function handleUploadFile(context: ApiRouteContext): Promise<Response> {
-    const { env, url } = context;
-    if (!env.OBCF_R2) {
-        return errorResponse('R2 bucket binding not configured', 500, {
-            code: 'CONFIG_ERROR',
-        });
-    }
-
-    const key = url.pathname.replace('/api/upload/file/', '');
-    if (!key) {
-        return errorResponse('key is required', 400);
-    }
-
-    return (await serveR2Object(env.OBCF_R2, key)) ?? errorResponse('File not found', 404);
-}
-
-export async function handleCloudflareImages(context: ApiRouteContext): Promise<Response> {
-    const auth = await requireAdminAccess(context, { scope: 'system' });
-    if (auth instanceof Response) return auth;
-
-    const { env, request } = context;
-    const accountId = env.CF_IMAGES_ACCOUNT_ID;
-    const apiToken = env.CF_IMAGES_API_TOKEN;
-
-    if (!accountId || !apiToken) {
-        return errorResponse('Cloudflare Images credentials not configured', 500, {
-            code: 'CONFIG_ERROR',
-        });
-    }
-
-    const imagesClient = createImagesClient({ accountId, apiToken });
-
-    if (request.method !== 'POST') {
-        return errorResponse('Method not allowed', 405, {
-            code: 'METHOD_NOT_ALLOWED',
-        });
-    }
-
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!(file instanceof File)) {
-        return errorResponse('file is required', 400);
-    }
-
-    const result = await imagesClient.upload(file);
-
-    if (!result.success) {
-        return errorResponse(result.error.message, 500);
-    }
-
-    const variants = result.data.variants;
-    const publicUrl = variants && variants.length > 0 ? variants[0] : null;
-
-    return jsonResponse({
-        success: true,
-        data: {
-            url: publicUrl,
-            variants,
-            id: result.data.id,
-        },
     });
 }

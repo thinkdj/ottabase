@@ -193,13 +193,16 @@ Wire in your Cloudflare Worker via handlers from `@ottabase/brand-engine/handler
 | DELETE | `/api/brand/kits/:id`       | Delete brand kit                              |
 | POST   | `/api/brand/kits/:id/clone` | Clone brand kit                               |
 | POST   | `/api/brand/kits/:id/logo`  | Upload logo (logo, logo-dark, icon, og-image) |
-| GET    | `/api/brand/layouts`        | List layout templates                         |
-| PUT    | `/api/brand/layouts`        | Create/update layout template (own app only)  |
-| GET    | `/api/brand/mappings`       | List route mappings                           |
-| PUT    | `/api/brand/mappings`       | Replace route mappings (all-or-nothing)       |
-| GET    | `/api/brand/menu-slots`     | Resolved menu slot assignments (with menus)   |
-| GET    | `/api/brand/menu-slots/raw` | Raw slot assignments (admin editing)          |
-| PUT    | `/api/brand/menu-slots`     | Replace all slot assignments                  |
+
+Logos are stored through the host's files service (purpose `brand-asset`: public, raster or SVG, served under the
+sandbox CSP): the host passes a `BrandAssetClient` (`{ upload, remove, url }`) to `handleUploadBrandKitLogo` and
+`handleDeleteBrandKit`. A kit keeps only the public storage key; a replaced or deleted kit's logo file is removed once
+no other kit (a clone) still points at it. `R2_PUBLIC_URL` in the handler env is the base those keys are served from. |
+GET | `/api/brand/layouts` | List layout templates | | PUT | `/api/brand/layouts` | Create/update layout template (own
+app only) | | GET | `/api/brand/mappings` | List route mappings | | PUT | `/api/brand/mappings` | Replace route mappings
+(all-or-nothing) | | GET | `/api/brand/menu-slots` | Resolved menu slot assignments (with menus) | | GET |
+`/api/brand/menu-slots/raw` | Raw slot assignments (admin editing) | | PUT | `/api/brand/menu-slots` | Replace all slot
+assignments |
 
 Updating a layout template that belongs to another app returns 404. `PUT /api/brand/mappings` validates every entry
 (`mappings` array; `pathPattern`, `layoutTemplateId`, `brandKitId` strings; `tokenOverridesJson` valid JSON) before it

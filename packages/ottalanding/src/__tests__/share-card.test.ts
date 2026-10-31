@@ -123,7 +123,7 @@ describe('social image settings', () => {
     it('validates the card like any other content', () => {
         const ok = {
             ...DEFAULT_SITE,
-            share: { heading: 'Hi', color: '#112233', imageUrl: '/api/upload/file/x.png?v=1' },
+            share: { heading: 'Hi', color: '#112233', imageUrl: '/api/files/public/x.png?v=1' },
         };
         expect(SiteSettingsSchema.safeParse(ok).success).toBe(true);
         expect(SiteSettingsSchema.safeParse({ ...ok, share: { color: 'red' } }).success).toBe(false);

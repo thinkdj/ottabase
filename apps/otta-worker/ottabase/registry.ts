@@ -47,6 +47,7 @@ export const packages: PackageRegistry<CloudflareEnv> = {
     suppressIndexes: () => resolved().suppressIndexes(),
     models: () => resolved().models(),
     policies: () => resolved().policies(),
+    files: () => resolved().files(),
     routes: () => resolved().routes(),
     cron: () => resolved().cron(),
     queue: () => resolved().queue(),

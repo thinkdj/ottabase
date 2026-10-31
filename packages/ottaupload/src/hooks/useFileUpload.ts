@@ -16,9 +16,9 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         maxFiles = 1,
         maxFileSize,
         acceptedFileTypes,
-        uploadEndpoint = '/api/upload',
+        uploadEndpoint = '/api/files',
+        purpose = 'media',
         autoUpload = false,
-        provider = 'r2',
         onUploadComplete,
         onUploadError,
         onUploadProgress,
@@ -73,7 +73,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
             // Create form data
             const formData = new FormData();
             formData.append('file', uploadFile.file);
-            formData.append('provider', provider);
+            formData.append('purpose', purpose);
 
             // Upload with progress tracking
             const xhr = new XMLHttpRequest();
@@ -96,13 +96,13 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
                         if (xhr.status >= 200 && xhr.status < 300) {
                             const response = JSON.parse(xhr.responseText) as UploadResponse;
 
-                            if (response.success) {
+                            if (response.success && response.file) {
                                 const uploaded: UploadFile = {
                                     ...uploadFile,
                                     status: 'success',
                                     progress: 100,
-                                    url: response.url,
-                                    key: response.key,
+                                    url: response.file.url,
+                                    uploaded: response.file,
                                 };
                                 setFiles((prev) => prev.map((f) => (f.id === uploadFile.id ? uploaded : f)));
                                 resolve(uploaded);

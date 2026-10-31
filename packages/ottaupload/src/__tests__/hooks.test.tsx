@@ -124,7 +124,7 @@ describe('React Hooks', () => {
             const { result } = renderHook(() =>
                 useFileUpload({
                     autoUpload: true,
-                    uploadEndpoint: '/api/upload',
+                    uploadEndpoint: '/api/files',
                 }),
             );
 
@@ -143,7 +143,7 @@ describe('React Hooks', () => {
             const onUploadComplete = vi.fn();
             const { result } = renderHook(() =>
                 useFileUpload({
-                    uploadEndpoint: '/api/upload',
+                    uploadEndpoint: '/api/files',
                     onUploadComplete,
                 }),
             );
@@ -163,7 +163,11 @@ describe('React Hooks', () => {
             });
             // Built from the upload results, not the stale pre-upload files snapshot (which was empty).
             expect(onUploadComplete.mock.calls[0][0]).toEqual([
-                expect.objectContaining({ status: 'success', url: '/uploads/test-file.txt', key: 'test-file-123.txt' }),
+                expect.objectContaining({
+                    status: 'success',
+                    url: '/api/files/public/app/media/f1.txt',
+                    uploaded: expect.objectContaining({ id: 'f1' }),
+                }),
             ]);
         });
 

@@ -101,6 +101,20 @@ describe('admin Cron routes', () => {
         expect(body.task.lastStatus).toBe('success');
     });
 
+    it('manual run answers 202 when the run was queued to its own invocation', async () => {
+        vi.mocked(runAppCronTask).mockResolvedValue({ taskId: 'task-1', status: 'queued' });
+        vi.mocked(ScheduledTask.findForApp).mockResolvedValue({
+            toJson: () => ({ id: 'task-1', lastStatus: 'success' }),
+        } as never);
+
+        const response = await requiredResponse(handleCronTask(context(), 'task-1/run', 'run'));
+        const body = (await response.json()) as { queued: boolean; task: { id: string } };
+
+        expect(response.status).toBe(202);
+        expect(body.queued).toBe(true);
+        expect(body.task.id).toBe('task-1');
+    });
+
     it('manual run reports lock contention without mutating status in the route', async () => {
         vi.mocked(runAppCronTask).mockResolvedValue({ taskId: 'task-1', status: 'locked' });
 

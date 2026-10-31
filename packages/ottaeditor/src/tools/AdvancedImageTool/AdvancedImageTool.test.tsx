@@ -1,6 +1,20 @@
 import { fireEvent, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { API } from '@editorjs/editorjs';
+
+// POST /api/files answers `{ success, file }`, the stored file's view.
+const uploadFile = vi.hoisted(() =>
+    vi.fn(async (_file: File, options: { onSuccess?: (response: unknown) => void; purpose?: string }) => {
+        const response = {
+            success: true,
+            file: { id: 'f1', url: '/api/files/public/app/media/f1.png', mimeType: 'image/png', width: 64, height: 48 },
+        };
+        options.onSuccess?.(response);
+        return response;
+    }),
+);
+vi.mock('@ottabase/ottaupload/utils', () => ({ uploadFile }));
+
 import AdvancedImageTool from './AdvancedImageTool';
 import type { AdvancedImageData } from './types';
 
@@ -24,6 +38,16 @@ describe('AdvancedImageTool', () => {
         expect(AdvancedImageTool.toolbox.title).toBe('Image');
         expect(AdvancedImageTool.pasteConfig.tags).toEqual(['img']);
         expect(AdvancedImageTool.isReadOnlySupported).toBe(true);
+    });
+
+    it('uploads through the files service and keeps the stored file’s view URL and id', async () => {
+        const { tool } = mount();
+        await tool.uploadFile(new File(['x'], 'photo.png', { type: 'image/png' }));
+        expect(uploadFile).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ endpoint: '/api/files', purpose: 'media' }),
+        );
+        expect(tool.save()).toMatchObject({ url: '/api/files/public/app/media/f1.png', mediaId: 'f1', width: 64 });
     });
 
     it('empty: renders the dropzone and the URL field in edit mode', () => {

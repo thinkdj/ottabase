@@ -7,6 +7,7 @@ import type {
     CronContribution,
     EnvKey,
     ErrorIncident,
+    FilePurposeContribution,
     ModelEntry,
     NavContribution,
     OttaPackage,
@@ -50,6 +51,8 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
     const cronOwners = new Map<string, string>();
     const queue: Record<string, JobHandler<never, Env>> = {};
     const queueOwners = new Map<string, string>();
+    const files: FilePurposeContribution[] = [];
+    const fileOwners = new Map<string, string>();
     for (const pkg of packages) {
         for (const [name, table] of Object.entries(pkg.tables ?? {})) {
             assertUnique('Table', tableOwners, name, pkg.key);
@@ -62,6 +65,10 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
         for (const [type, handler] of Object.entries(pkg.queue ?? {})) {
             assertUnique('Queue job type', queueOwners, type, pkg.key);
             queue[type] = handler;
+        }
+        for (const purpose of pkg.files ?? []) {
+            assertUnique('File purpose', fileOwners, purpose.purpose, pkg.key);
+            files.push(purpose);
         }
     }
 
@@ -96,6 +103,7 @@ export function createPackageRegistry<Env = unknown>(options: PackageRegistryOpt
         suppressIndexes: () => [...new Set(flat<string>((pkg) => pkg.suppressIndexes))],
         models: () => flat<ModelEntry>((pkg) => pkg.models),
         policies: () => flat<ModelRLSConfig>((pkg) => pkg.policies),
+        files: () => [...files],
         routes: () =>
             packages.flatMap((pkg) =>
                 routesOf(pkg).map((route): RouteContribution<Env> & { packageKey: string } => ({

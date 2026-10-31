@@ -82,6 +82,7 @@ export type { AutoInitConfig, RuntimeMigrationConfig } from './migrations';
 // Runtime read-safety policy
 export {
     configureOttaORM,
+    publicFileUrl,
     getOttaORMMaxAllRows,
     OTTAORM_ALL_HARD_LIMIT,
     OttaORMAllRowsLimitError,
@@ -142,6 +143,7 @@ export {
     AuditLog,
     // Media (core — tracks all uploaded files)
     Media,
+    mediaFileStore,
     // Multi-tenant/RBAC models and tables
     Organization,
     OrganizationMember,
@@ -172,7 +174,9 @@ export {
 export type {
     AccountType,
     AuditLogType,
+    MediaRecord,
     MediaType,
+    MediaVariantInfo,
     NewAccountType,
     NewAuditLogType,
     NewMediaType,

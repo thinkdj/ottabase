@@ -62,12 +62,14 @@ export default {
 
 The Worker also has to be registered as the queue's **consumer** in its wrangler config, next to the producer binding.
 Without the `consumers` entry nothing runs the handler: jobs are accepted, never processed, and nothing reports an
-error. A queue has one consumer, and `env.*` sections repeat both lists (they are not inherited).
+error. A queue has one consumer, and `env.*` sections repeat both lists (they are not inherited). A batch is one
+invocation, so its jobs share one D1 query, CPU and wall-time budget; `max_batch_size: 1` gives every job its own, which
+is what the Ottabase apps run (a `cron:run` task or an `events:deliver` fan-out is sized to have the invocation alone).
 
 ```jsonc
 "queues": {
     "producers": [{ "binding": "MY_QUEUE", "queue": "my-queue" }],
-    "consumers": [{ "queue": "my-queue", "max_batch_size": 10, "max_batch_timeout": 2 }],
+    "consumers": [{ "queue": "my-queue", "max_batch_size": 1, "max_batch_timeout": 2 }],
 }
 ```
 

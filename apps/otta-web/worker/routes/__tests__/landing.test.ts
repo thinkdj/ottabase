@@ -13,6 +13,7 @@ vi.mock('../../lib/admin-guard', () => ({ requireAdminAccess }));
 
 const models = vi.hoisted(() => ({
     ensureForApp: vi.fn(),
+    findSite: vi.fn(),
     saveSettings: vi.fn(),
     forApp: vi.fn(),
     createFor: vi.fn(),
@@ -29,7 +30,11 @@ vi.mock('@ottabase/ottalanding', async (importOriginal) => {
     return {
         LEAD_KINDS,
         leadsToCsv,
-        LandingSite: { ensureForApp: models.ensureForApp, saveSettings: models.saveSettings },
+        LandingSite: {
+            ensureForApp: models.ensureForApp,
+            findForApp: models.findSite,
+            saveSettings: models.saveSettings,
+        },
         LandingPage: {
             forApp: models.forApp,
             createFor: models.createFor,
@@ -43,6 +48,10 @@ vi.mock('@ottabase/ottalanding', async (importOriginal) => {
 });
 const ensureLeadNotifyTask = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/landing-notify', () => ({ ensureLeadNotifyTask }));
+
+// The files service: share images are stored and released through it, never written to R2 here.
+const files = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), remove: vi.fn(), keyOf: vi.fn() }));
+vi.mock('../../../ottabase/files', () => ({ files }));
 
 import {
     handleLandingGet,
@@ -66,20 +75,11 @@ function ctx(method: string, path: string, body?: unknown) {
     return { request, env: {} as CloudflareEnv, url: new URL(request.url) } as never;
 }
 
-/** A multipart POST, with an in-memory R2 bucket in env. */
-function formCtx(fields: Record<string, string | Blob>, bucket = fakeBucket()) {
+/** A multipart POST. */
+function formCtx(fields: Record<string, string | Blob>) {
     // The handler only reads formData().get(); jsdom can't round-trip a real multipart body.
     const request = { formData: async () => ({ get: (key: string) => fields[key] ?? null }) };
-    return { request, env: { OBCF_R2: bucket } as unknown as CloudflareEnv } as never;
-}
-function fakeBucket() {
-    return {
-        put: vi.fn(async (key: string, _body: unknown, opts: { httpMetadata?: { contentType?: string } }) => ({
-            key,
-            opts,
-        })),
-        delete: vi.fn(async () => undefined),
-    };
+    return { request, env: {} as CloudflareEnv } as never;
 }
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 
@@ -173,60 +173,72 @@ describe('/api/landing', () => {
         });
         afterEach(() => vi.unstubAllGlobals());
 
-        it('stores the site’s PNG at one fixed key per app, as image/png, and returns a cache-busted URL', async () => {
-            const bucket = fakeBucket();
-            const file = new File([PNG], 'card.bin', { type: 'application/octet-stream' });
-            const res = await handleLandingShareImage(formCtx({ target: 'site', file }, bucket));
-            expect(res.status).toBe(201);
-            const { url } = (await res.json()) as { url: string };
-            expect(url).toMatch(/^\/api\/upload\/file\/landing\/otta-web\/share\/site\.png\?v=\d+$/);
-            expect(bucket.put).toHaveBeenCalledWith(
-                'landing/otta-web/share/site.png',
-                expect.anything(),
-                expect.objectContaining({ httpMetadata: expect.objectContaining({ contentType: 'image/png' }) }),
+        const OLD = '/api/files/public/otta-web/share-image/' + 'a'.repeat(32) + '.png';
+        const NEW = '/api/files/public/otta-web/share-image/' + 'b'.repeat(32) + '.png';
+        beforeEach(() => {
+            files.put.mockResolvedValue({ url: NEW });
+            files.keyOf.mockImplementation((_env: unknown, url: string) =>
+                url.startsWith('/api/files/public/') ? url.slice('/api/files/public/'.length) : null,
             );
+            files.get.mockResolvedValue({ purpose: 'share-image' });
+            files.remove.mockResolvedValue(true);
         });
 
-        it('only accepts a real PNG under 2 MB', async () => {
-            const bucket = fakeBucket();
-            const notPng = new File(['<svg onload=alert(1)>'], 'x.png', { type: 'image/png' });
-            const res = await handleLandingShareImage(formCtx({ target: 'site', file: notPng }, bucket));
-            expect(res.status).toBe(400);
-            expect(await res.json()).toMatchObject({ code: 'INVALID_IMAGE' });
-            const huge = new File([PNG, new Uint8Array(2 * 1024 * 1024)], 'x.png', { type: 'image/png' });
-            expect((await handleLandingShareImage(formCtx({ target: 'site', file: huge }, bucket))).status).toBe(400);
-            expect(bucket.put).not.toHaveBeenCalled();
+        it('stores the image through the files service as an app-owned share image, at a new key each time', async () => {
+            const file = new File([PNG], 'card.bin', { type: 'application/octet-stream' });
+            const res = await handleLandingShareImage(formCtx({ target: 'site', file }));
+            expect(res.status).toBe(201);
+            expect(await res.json()).toEqual({ url: NEW });
+            expect(files.put).toHaveBeenCalledWith(expect.anything(), {
+                purpose: 'share-image',
+                owner: { appId: 'otta-web', userId: null, organizationId: null },
+                file,
+                name: 'share-site.png',
+            });
+        });
+
+        it('turns a refusal from the files service (type, size) into a 4xx', async () => {
+            const { FilesError } = await import('@ottabase/ottaupload/server');
+            files.put.mockRejectedValue(new FilesError(415, 'UNSUPPORTED_TYPE', 'no'));
+            const svg = new File(['<svg onload=alert(1)>'], 'x.png', { type: 'image/png' });
+            const res = await handleLandingShareImage(formCtx({ target: 'site', file: svg }));
+            expect(res.status).toBe(415);
+            expect(await res.json()).toMatchObject({ code: 'UNSUPPORTED_TYPE' });
         });
 
         it('stores a page’s image only for a page of this app', async () => {
-            const bucket = fakeBucket();
             models.findForApp.mockResolvedValue(null);
             const res = await handleLandingShareImage(
-                formCtx({ target: 'p-other', file: new File([PNG], 'card.png') }, bucket),
+                formCtx({ target: 'p-other', file: new File([PNG], 'card.png') }),
             );
             expect(res.status).toBe(404);
             expect(models.findForApp).toHaveBeenCalledWith('otta-web', 'p-other');
-            expect(bucket.put).not.toHaveBeenCalled();
+            expect(files.put).not.toHaveBeenCalled();
+        });
 
-            models.findForApp.mockResolvedValue(page('p1'));
-            expect(
-                (await handleLandingShareImage(formCtx({ target: 'p1', file: new File([PNG], 'card.png') }, bucket)))
-                    .status,
-            ).toBe(201);
-            expect(bucket.put).toHaveBeenCalledWith(
-                'landing/otta-web/share/p1.png',
-                expect.anything(),
-                expect.anything(),
-            );
+        it('deletes the previous image once a save points elsewhere, and only its own share images', async () => {
+            const withImage = (url: string | null) => ({
+                toPage: () => ({ id: 'p1', share: url ? { imageUrl: url } : null }),
+            });
+            models.findForApp.mockResolvedValue(withImage(OLD));
+            models.updateFor.mockResolvedValue(withImage(NEW));
+            await handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1');
+            expect(files.remove).toHaveBeenCalledWith(expect.anything(), 'a'.repeat(32));
+
+            files.remove.mockClear();
+            models.findForApp.mockResolvedValue(withImage('https://elsewhere.example/og.png'));
+            await handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1');
+            files.get.mockResolvedValue({ purpose: 'media' });
+            models.findForApp.mockResolvedValue(withImage(OLD));
+            await handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1');
+            expect(files.remove).not.toHaveBeenCalled();
         });
 
         it('removes a deleted page’s image too', async () => {
-            const bucket = fakeBucket();
+            models.findForApp.mockResolvedValue({ toPage: () => ({ id: 'p1', share: { imageUrl: OLD } }) });
             models.deleteFor.mockResolvedValue(true);
-            const request = new Request('http://localhost/api/landing/pages/p1', { method: 'DELETE' });
-            const context = { request, env: { OBCF_R2: bucket }, url: new URL(request.url) } as never;
-            expect((await handleLandingPageDelete(context, 'p1')).status).toBe(200);
-            expect(bucket.delete).toHaveBeenCalledWith('landing/otta-web/share/p1.png');
+            expect((await handleLandingPageDelete(ctx('DELETE', '/api/landing/pages/p1'), 'p1')).status).toBe(200);
+            expect(files.remove).toHaveBeenCalledWith(expect.anything(), 'a'.repeat(32));
         });
     });
 

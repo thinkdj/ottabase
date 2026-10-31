@@ -21,9 +21,11 @@ import './AdvancedImageTool.css';
 import type { AdvancedImageData } from './types';
 
 export interface AdvancedImageToolConfig {
+    /** @default '/api/files' */
     uploadEndpoint?: string;
     maxFileSize?: number;
-    provider?: string;
+    /** The files purpose uploads are stored under. @default 'media' */
+    purpose?: string;
 }
 
 type Aspect = 'original' | '16:9' | '4:3' | '1:1';
@@ -84,9 +86,9 @@ export default class AdvancedImageTool implements BlockTool {
     }: BlockToolConstructorOptions<Partial<AdvancedImageData>, AdvancedImageToolConfig>) {
         this.api = api;
         this.config = {
-            uploadEndpoint: config?.uploadEndpoint || '/api/upload',
+            uploadEndpoint: config?.uploadEndpoint || '/api/files',
             maxFileSize: config?.maxFileSize || 10 * 1024 * 1024,
-            provider: config?.provider || 'r2',
+            purpose: config?.purpose || 'media',
         };
         this.data = {
             url: data?.url || '',
@@ -344,21 +346,22 @@ export default class AdvancedImageTool implements BlockTool {
         try {
             const result = await uploadFile(file, {
                 endpoint: this.config.uploadEndpoint,
-                provider: this.config.provider as 'r2',
+                purpose: this.config.purpose,
                 maxFileSize: this.config.maxFileSize,
                 acceptedFileTypes: ['image/*'],
                 onProgress: (progress) => this.setStatus(`Uploading… ${progress}%`),
                 onSuccess: (response) => {
-                    const media = (response as { media?: Partial<MediaSelection> & { caption?: string } }).media;
-                    if (response.url) {
-                        this.setImage(response.url, {
-                            url: response.url,
-                            mediaId: media?.id,
-                            mimeType: media?.mimeType || file.type,
-                            caption: media?.caption || file.name,
-                            altText: media?.altText,
-                            width: media?.width,
-                            height: media?.height,
+                    // The stored file's view: its URL and the sniffed type and size.
+                    const stored = response.file;
+                    if (stored?.url) {
+                        this.setImage(stored.url, {
+                            url: stored.url,
+                            mediaId: stored.id,
+                            mimeType: stored.mimeType || file.type,
+                            caption: stored.caption || file.name,
+                            altText: stored.altText ?? undefined,
+                            width: stored.width ?? undefined,
+                            height: stored.height ?? undefined,
                         });
                     }
                 },

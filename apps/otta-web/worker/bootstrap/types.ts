@@ -43,6 +43,8 @@ export interface BindingProbe {
     d1: boolean;
     kv: boolean;
     r2: boolean;
+    r2Private: boolean;
+    r2Vault: boolean;
     queue: boolean;
     assets: boolean;
 }

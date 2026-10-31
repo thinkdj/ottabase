@@ -108,15 +108,13 @@ export interface SeoMeta {
  * Hero image configuration
  */
 export interface HeroImage {
-    /** Image URL (from R2/Cloudflare Images) */
+    /** Image URL (a files view URL, or any external image) */
     url: string;
     /** Alt text for accessibility */
     alt?: string;
     /** Image caption */
     caption?: string;
-    /** Cloudflare Image ID (if using CF Images) */
-    cfImageId?: string;
-    /** Media library item ID (if from media library) */
+    /** Media library item ID (when the image is a stored file) */
     mediaId?: string;
     /** Width in pixels */
     width?: number;

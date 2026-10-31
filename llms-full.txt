@@ -434,7 +434,7 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 | `@ottabase/ui-mantine`        | Mantine provider, pre-built themes (optional adapter)                                                                                                        |
 | `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                      |
 | `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                     |
-| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                |
+| `@ottabase/ottaupload`        | The files service (purposes, sniffing, metadata stripping, public/private buckets, variants, quota) and the upload UI                                        |
 | `@ottabase/ottarenderer`      | Editor.js block + sanitized HTML renderer, styled by the design tokens                                                                                       |
 | `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                           |
 | `@ottabase/ui-cropper`        | Vanilla JS image cropper, fixed-viewfinder model (~9 KB, zero deps)                                                                                          |
@@ -931,7 +931,8 @@ Avoid Node.js APIs like `fs`, `child_process`, `os`. Use Cloudflare bindings ins
 
 - `env.OBCF_D1` for database
 - `env.OBCF_KV` for caching
-- `env.OBCF_R2` for file storage
+- `env.OBCF_R2` (public files), `env.OBCF_R2_PRIVATE` (private files) and `env.OBCF_R2_VAULT` (backups); user files go
+  through the files service (`ottabase/files.ts`), never a bucket directly
 - `env.OBCF_QUEUE` for jobs
 
 ### 3. **`wrangler.jsonc` Two-Tier Placeholder System**
@@ -1677,7 +1678,25 @@ request; `via: 'queue'` subscribers travel through OBCF_QUEUE as one `events:del
 the consumer) and run inline when there is no queue. A subscriber that throws is reported and counted, never propagated.
 
 **Consequences:** Packages compose without a dependency edge. Queued subscribers must be idempotent, which is the
-ordinary queue contract. The envelope is plain JSON on purpose: it is the queue job body.
+ordinary queue contract. The envelope is plain JSON on purpose: it is the queue job body. A package never imports the
+app's bus: one that announces something takes an `emit` option the composition wires to it (`@ottabase/auth` does, for
+`user.created` and `user.verified`). The app's own events and their payloads (`user.*`, `lead.created`) are listed at
+the top of `ottabase/events.ts`.
+
+### ADR-7: One invocation per scheduled run
+
+**Context:** Cloudflare fires one scheduled event a minute and the DB scheduler used to run every due task inside it.
+Packages size their cron batches (sends, prunes, backups) for an invocation of their own, but at the top of an hour
+several fall due together and share one budget: 1000 D1 queries, the CPU limit and the wall time.
+
+**Decision:** With OBCF_QUEUE bound, the tick only selects the due tasks and enqueues one `cron:run` job per task (the
+core package registers the consumer); the admin "run now" is queued the same way. The consumer acquires the task's lock
+and runs it, so the lock, reload, failure accounting and next-run rules are unchanged. The queue consumer runs with
+`max_batch_size: 1`, since a batch is one invocation. Without a queue the tick runs the tasks inline.
+
+**Consequences:** A duplicate delivery is a no-op: a scheduled run re-checks due state in the lock, a manual run only
+claims while no run has started since its request. A queue job, a `cron:run` included, has the invocation to itself, at
+the cost of one invocation per job. An enqueue failure rejects the tick; the rows stay due for the next minute.
 
 ## Limits and Future Evolution
 
@@ -5222,7 +5241,8 @@ multi-app: same placeholder name = shared resource; different names = isolated (
         },
     ],
     // The producer fills the queue; the consumer is what runs the Worker's queue() handler on it.
-    // Without `consumers`, jobs (queued events, Beacon incident mail) are never processed.
+    // Without `consumers`, jobs (queued events, Beacon incident mail) are never processed. A batch is one
+    // invocation, so `max_batch_size: 1` gives every job (each `cron:run` task) its own D1/CPU budget.
     "queues": {
         "producers": [
             {
@@ -5233,7 +5253,7 @@ multi-app: same placeholder name = shared resource; different names = isolated (
         "consumers": [
             {
                 "queue": "ottabase-queue",
-                "max_batch_size": 10,
+                "max_batch_size": 1,
                 "max_batch_timeout": 2,
             },
         ],
@@ -5574,6 +5594,8 @@ pnpm --filter @ottabase/otta-web cf-typegen
 | `OBCF_D1`           | D1 Database    | `env.OBCF_D1`           |
 | `OBCF_KV`           | KV Namespace   | `env.OBCF_KV`           |
 | `OBCF_R2`           | R2 Bucket      | `env.OBCF_R2`           |
+| `OBCF_R2_PRIVATE`   | R2 Bucket      | `env.OBCF_R2_PRIVATE`   |
+| `OBCF_R2_VAULT`     | R2 Bucket      | `env.OBCF_R2_VAULT`     |
 | `OBCF_QUEUE`        | Queue          | `env.OBCF_QUEUE`        |
 | `OBCF_REALTIME`     | Durable Object | `env.OBCF_REALTIME`     |
 | `OBCF_RATE_LIMITER` | Rate Limiter   | `env.OBCF_RATE_LIMITER` |
@@ -5657,19 +5679,21 @@ pnpm cf:validate
 
 - D1 Database: `ottabase-db`
 - KV Namespace: `OBCF_KV` (+ preview)
-- R2 Buckets: `ottabase-bucket` (+ preview)
+- R2 Buckets, one per kind of data (+ preview): `ottabase-bucket` (public files), `ottabase-files-private` (members and
+  owner files, system artifacts), `ottabase-vault` (Vault backups). `otta deploy --env demo|staging` creates the `-demo`
+  / `-staging` ones.
 - Queue: `ottabase-queue` (+ preview)
 - D1 preview database: `ottabase-db-preview`
 - **Does NOT modify wrangler.jsonc** (it's a template). Copy the output IDs for GitHub Secrets below.
 
 **Resource overview (prod vs preview):**
 
-| Resource | cf:setup creates (prod) | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)      | GitHub Secrets                           |
-| -------- | ----------------------- | -------------------------- | --------------------------- | ----------------------------------- | ---------------------------------------- |
-| D1       | ottabase-db             | ottabase-db-preview        | `D1_DATABASE_ID`            | `D1_PREVIEW_DATABASE_ID`            | D1_DATABASE_ID, D1_PREVIEW_DATABASE_ID   |
-| KV       | OBCF_KV                 | OBCF_KV_preview            | `KV_NAMESPACE_ID`           | `KV_PREVIEW_NAMESPACE_ID`           | KV_NAMESPACE_ID, KV_PREVIEW_NAMESPACE_ID |
-| R2       | ottabase-bucket         | ottabase-bucket-preview    | `ottabase-bucket` (literal) | `ottabase-bucket-preview` (literal) | none                                     |
-| Queue    | ottabase-queue          | ottabase-queue-preview     | `ottabase-queue` (literal)  | `ottabase-queue-preview` (literal)  | none                                     |
+| Resource | cf:setup creates (prod)                                 | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)     | GitHub Secrets                           |
+| -------- | ------------------------------------------------------- | -------------------------- | --------------------------- | ---------------------------------- | ---------------------------------------- |
+| D1       | ottabase-db                                             | ottabase-db-preview        | `D1_DATABASE_ID`            | `D1_PREVIEW_DATABASE_ID`           | D1_DATABASE_ID, D1_PREVIEW_DATABASE_ID   |
+| KV       | OBCF_KV                                                 | OBCF_KV_preview            | `KV_NAMESPACE_ID`           | `KV_PREVIEW_NAMESPACE_ID`          | KV_NAMESPACE_ID, KV_PREVIEW_NAMESPACE_ID |
+| R2       | ottabase-bucket, ottabase-files-private, ottabase-vault | the same with `-preview`   | the names (literal)         | the `-preview` names (literal)     | none                                     |
+| Queue    | ottabase-queue                                          | ottabase-queue-preview     | `ottabase-queue` (literal)  | `ottabase-queue-preview` (literal) | none                                     |
 
 D1 and KV placeholder values = GitHub Secret names (auto-detected and substituted by CI). R2 and Queue use literal names
 (no substitution needed).
@@ -5800,6 +5824,55 @@ https://otta-web.your-subdomain.workers.dev
 wrangler tail otta-web
 ```
 
+### Files: the buckets, a domain for user content, the safe headers
+
+Uploads live in three buckets, because a bucket is the unit of exposure (see `packages/ottaupload/README.md`):
+
+| Binding           | Bucket (production)      | Holds                                            | Served                              |
+| ----------------- | ------------------------ | ------------------------------------------------ | ----------------------------------- |
+| `OBCF_R2`         | `ottabase-bucket`        | public files only (avatars, media, brand assets) | by key, ideally from its own domain |
+| `OBCF_R2_PRIVATE` | `ottabase-files-private` | members/owner files, system artifacts            | never by key: `/api/files/:id` only |
+| `OBCF_R2_VAULT`   | `ottabase-vault`         | Vault backups (every tenant's rows)              | never: no route reads it            |
+
+`pnpm cf:setup` (and `otta deploy`) creates all three for the env. By hand:
+`wrangler r2 bucket create ottabase-files-private` and `wrangler r2 bucket create ottabase-vault` (plus `-preview`,
+`-demo`, `-staging` for those envs). Never give either private bucket a public domain or `r2.dev` access.
+
+**Serve the public bucket from its own domain.** Out of the box, public files come through the Worker at
+`/api/files/public/<key>`. In production give the public bucket an R2 custom domain and point `R2_PUBLIC_URL` at it:
+
+1. **Use a separate registrable domain for user content**, e.g. `files.example-usercontent.com`, not a subdomain of the
+   app's domain. A file a user uploaded then shares no cookies, no `document.domain` and no same-site trust with the
+   app, which is what keeps an uploaded HTML or SVG from ever acting as the app.
+2. R2 → `ottabase-bucket` → Settings → Custom Domains → connect `files.example-usercontent.com` (the zone must be on
+   Cloudflare). Leave the `r2.dev` URL disabled. Without a custom domain, public URLs are
+   `<AUTH_URL>/api/files/public/<key>`: the files service makes them absolute against `AUTH_URL`, so set it to the app's
+   public origin (mail and social cards need full URLs).
+3. Set the var in each env block of `wrangler.jsonc` (named envs do not inherit `vars`):
+   `"R2_PUBLIC_URL": "https://files.example-usercontent.com"`. New uploads get URLs on that domain; avatars and brand
+   logos are stored as keys, so they move with the setting. URLs pasted into content (blog posts, landing pages) keep
+   the address they were picked with, and `/api/files/public/*` keeps serving them.
+4. **Add the safe headers with a Transform Rule** on the files zone, since R2 serves the bucket directly there: Rules →
+   Transform Rules → Modify Response Header, matching `http.host eq "files.example-usercontent.com"`, set
+   `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox; default-src 'none'`. (Content-Type,
+   Content-Disposition and Cache-Control come from each object's metadata, written at upload.)
+5. **Turn on the CSAM Scanning Tool** for that zone (Caching → Configuration → CSAM Scanning Tool). It scans images
+   served from the zone and blocks matches; it only sees traffic through Cloudflare, which a custom domain guarantees.
+
+Also set, as secrets: `FILES_SIGNING_SECRET` (32+ random chars; signs `?t=` links to private files, which are refused
+while it is unset) and, if 1024 MB per organization does not fit, the var `FILES_QUOTA_MB`. The Images binding
+(`OBCF_IMAGES`, in every env block) makes the thumb/card/full WebP variants (each image upload costs up to three
+transformations) and re-encodes AVIF uploads, whose metadata cannot be stripped in code; without it AVIF is refused.
+
+**Quarantine purges the edge cache when it can.** Public files are cached as immutable for a year, so quarantining one
+(media library → Quarantine) moves it out of the public bucket and then purges its URLs: set the var
+`CLOUDFLARE_FILES_ZONE_ID` (the files domain's zone) and the secret `CLOUDFLARE_PURGE_API_TOKEN` (a token with Zone →
+Cache Purge on that zone). Without them the admin is shown the URLs to purge by hand (Caching → Configuration → Purge
+Cache → Custom Purge).
+
+**Uploads have their own rate limiter**, `OBCF_RATE_LIMITER_UPLOADS` (60 a minute per user, in every env block); a
+production deploy without it refuses uploads.
+
 ---
 
 ## Troubleshooting
@@ -5896,6 +5969,9 @@ silently runs local-only. One-time setup, token format, rotation, and local use 
 | `OBCF_D1`           | D1 Database    |
 | `OBCF_KV`           | KV Namespace   |
 | `OBCF_R2`           | R2 Bucket      |
+| `OBCF_R2_PRIVATE`   | R2 Bucket      |
+| `OBCF_R2_VAULT`     | R2 Bucket      |
+| `OBCF_IMAGES`       | Images         |
 | `OBCF_QUEUE`        | Queue          |
 | `OBCF_REALTIME`     | Durable Object |
 | `OBCF_RATE_LIMITER` | Rate Limiter   |
@@ -5908,7 +5984,9 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 
 - [ ] Install wrangler: `npm install -g wrangler`
 - [ ] Login: `wrangler login` or `pnpm cf:login`
-- [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets)
+- [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets); it creates all three R2 buckets
+- [ ] Files: a custom domain on the public bucket (a separate registrable domain), `R2_PUBLIC_URL`, the Transform Rule,
+      the CSAM Scanning Tool, `FILES_SIGNING_SECRET` (see "Files" above)
 - [ ] Validate: `pnpm cf:validate`
 - [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
 - [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)
@@ -7691,7 +7769,7 @@ Read the columns as:
 | **State**                  | Jotai (`@ottabase/state`)                                                                       | Local component state                                                               | (No competing global-state lib — don't add one)                         |
 | **Auth**                   | In-house `@ottabase/auth` (`getSession` / `useSession`)                                         | Generic OAuth2/OIDC + magic links via the same package                              | (No Auth.js/NextAuth — deliberately removed)                            |
 | **RBAC / authz**           | Server guard (`hasPermission` / `withRBAC`) as the boundary; browser gate as a UX hint          | App `ProtectedRoute` for route gating                                               | (Never gate on a role _name_ — permission + scope only)                 |
-| **Uploads**                | `useFileUpload` / `uploadFile` → `/api/upload`                                                  | `uploadFileToR2` / `uploadFileToCloudflareImages` on the server                     | Raw R2 via `@ottabase/cf` when genuinely off-path                       |
+| **Uploads**                | `useFileUpload` / `uploadFile` → `POST /api/files` with a `purpose`                             | the files service (`createFiles`, `ottabase/files.ts`) for every server-side write  | Raw R2 via `@ottabase/cf` only for system data (never user files)       |
 | **Background work**        | `dispatch(queue, type, payload)` (`@ottabase/queue`)                                            | `createDispatcher` with priority queues / chaining                                  | Raw `QueueAdapter` / binding via `dispatcher.getAdapter()`              |
 | **Database access**        | `@ottabase/db/drizzle-d1` + OttaORM                                                             | Drizzle query builder for a specific hot path                                       | Raw D1 client (`@ottabase/cf/d1`) for non-OttaORM code                  |
 | **KV cache keys**          | `@ottabase/cf/cache-keys` builders (`orgKey`, `userKey`, …)                                     | `withCache` read-through wrapper                                                    | Hand-formatted key strings — collision risk, avoid                      |
@@ -9311,22 +9389,29 @@ Update `wrangler.jsonc` with the returned IDs:
 }]
 ```
 
-#### Create R2 Bucket
+#### Create the R2 Buckets
+
+Three buckets, one per kind of data: public files, private files, backups.
 
 ```bash
 pnpm wrangler r2 bucket create ottabase-bucket
-pnpm wrangler r2 bucket create ottabase-bucket-preview
+pnpm wrangler r2 bucket create ottabase-files-private
+pnpm wrangler r2 bucket create ottabase-vault
+# + the same names with -preview
 ```
 
 Update `wrangler.jsonc`:
 
 ```jsonc
-"r2_buckets": [{
-  "binding": "OBCF_R2",
-  "bucket_name": "ottabase-bucket",
-  "preview_bucket_name": "ottabase-bucket-preview"
-}]
+"r2_buckets": [
+  { "binding": "OBCF_R2", "bucket_name": "ottabase-bucket", "preview_bucket_name": "ottabase-bucket-preview" },
+  { "binding": "OBCF_R2_PRIVATE", "bucket_name": "ottabase-files-private", "preview_bucket_name": "ottabase-files-private-preview" },
+  { "binding": "OBCF_R2_VAULT", "bucket_name": "ottabase-vault", "preview_bucket_name": "ottabase-vault-preview" }
+]
 ```
+
+Production setup of the public bucket (custom domain, safe headers, CSAM scanning) is in
+[CLOUDFLARE_DEPLOY.md](CLOUDFLARE_DEPLOY.md#files-the-buckets-a-domain-for-user-content-the-safe-headers).
 
 #### Create Queue
 
@@ -9373,11 +9458,10 @@ and others.
 
 ### 3. Set Secrets (Optional)
 
-For features requiring API access (like Images):
+Signed links to private files (`?t=` tokens) need a secret; without it none are made or accepted:
 
 ```bash
-pnpm wrangler secret put CF_IMAGES_ACCOUNT_ID
-pnpm wrangler secret put CF_IMAGES_API_TOKEN   # a token scoped to Cloudflare Images only
+pnpm wrangler secret put FILES_SIGNING_SECRET   # 32+ random characters
 ```
 
 ## Development Workflow
@@ -9471,56 +9555,27 @@ export async function GET() {
 }
 ```
 
-### R2 Storage
+### R2 Storage: files
+
+User files never go to an R2 binding directly: the app's files service (`ottabase/files.ts`) owns them, so every file is
+sniffed, allow-listed, stripped of metadata and put in the bucket its audience says. A route that stores a file:
 
 ```typescript
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { createR2Client } from '@ottabase/cf/r2';
+import { files } from '../../ottabase/files';
 
-export const runtime = 'edge';
-
-export async function POST(request: Request) {
-    const { env } = await getCloudflareContext();
-    const r2 = createR2Client({ bucket: env.OBCF_R2 });
-
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-
-    // Upload
-    await r2.put(`uploads/${file.name}`, await file.arrayBuffer(), {
-        httpMetadata: {
-            contentType: file.type,
-        },
-    });
-
-    // Download
-    const result = await r2.get(`uploads/${file.name}`);
-    if (result.success && result.data) {
-        const content = await result.data.arrayBuffer();
-    }
-
-    return Response.json({ success: true });
-}
+// owner comes from the verified session, never from the request
+const view = await files.put(env, { purpose: 'attachment', owner, file });
+return jsonResponse({ file: view }, 201); // view.url: /api/files/<id> for private files
 ```
+
+Raw R2 (`createR2Client` from `@ottabase/cf/r2`) is for system data only, in `OBCF_R2_PRIVATE`. See
+`packages/ottaupload/README.md`.
 
 ### Images
 
-```typescript
-import { createImagesClient } from '@ottabase/cf/images';
-
-const images = createImagesClient({
-    accountId: env.CF_IMAGES_ACCOUNT_ID,
-    apiToken: env.CF_IMAGES_API_TOKEN,
-});
-
-// Upload
-const result = await images.upload(imageFile, {
-    metadata: { alt: 'Product photo' },
-});
-
-// Get delivery URL
-const url = images.getDeliveryUrl(result.data.id, 'public');
-```
+The Images binding (`OBCF_IMAGES`) renders the fixed-width WebP variants (thumb 160, card 640, full 1600) of uploaded
+images when a purpose asks for them, and optimizes `@ottabase/screenshot` captures. It is bound in every env block of
+`wrangler.jsonc`; without it, uploads keep only their original.
 
 ### Hyperdrive
 
@@ -11142,6 +11197,37 @@ const options: CreateAuthConfigOptions = {
 };
 ```
 
+## Account events
+
+The handler announces the accounts it creates and verifies through `emit`, which the app wires to its event bus (the
+package never imports one). A throw from `emit` is logged and never fails the sign-in.
+
+| Event           | Payload (`UserCreatedEvent`, `UserVerifiedEvent`)            | When                                                                                                                              |
+| --------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `user.created`  | `{ userId, email, name, organizationId: null, method, at }`  | An OAuth first sign-in (`method: 'oauth'`, after the identity link) or a magic link that creates the account (`'magic-link'`)     |
+| `user.verified` | `{ userId, email, at }` (`at` is the stored `emailVerified`) | `emailVerified` goes from null to a time: an account created verified, a magic link, an OAuth provider that vouches for the email |
+
+`organizationId` is null because the workspace comes later, from `onSignIn`. Accounts the host app creates itself
+(credentials sign-up, a bootstrap owner, Pro SSO) and its own verify-email route emit the same events from the app, with
+`method` `credentials` or `sso`.
+
+```typescript
+import type { CreateAuthConfigOptions } from '@ottabase/auth/backend';
+import { events } from '../ottabase/events'; // the app's bus
+
+export function authOptions(env: CloudflareEnv): CreateAuthConfigOptions {
+    return {
+        // name: 'user.created' | 'user.verified' (AuthEvents)
+        emit: async (_env, name, payload) => {
+            await events.emit(env, name, payload);
+        },
+    };
+}
+```
+
+otta-web wires it in `getAuthOptions` (`worker/lib/auth-utils.ts`) through `emitAccountEvent`, which also sets the
+event's actor and swallows a bus failure.
+
 ## Session Model
 
 The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained
@@ -11826,13 +11912,16 @@ Wire in your Cloudflare Worker via handlers from `@ottabase/brand-engine/handler
 | DELETE | `/api/brand/kits/:id`       | Delete brand kit                              |
 | POST   | `/api/brand/kits/:id/clone` | Clone brand kit                               |
 | POST   | `/api/brand/kits/:id/logo`  | Upload logo (logo, logo-dark, icon, og-image) |
-| GET    | `/api/brand/layouts`        | List layout templates                         |
-| PUT    | `/api/brand/layouts`        | Create/update layout template (own app only)  |
-| GET    | `/api/brand/mappings`       | List route mappings                           |
-| PUT    | `/api/brand/mappings`       | Replace route mappings (all-or-nothing)       |
-| GET    | `/api/brand/menu-slots`     | Resolved menu slot assignments (with menus)   |
-| GET    | `/api/brand/menu-slots/raw` | Raw slot assignments (admin editing)          |
-| PUT    | `/api/brand/menu-slots`     | Replace all slot assignments                  |
+
+Logos are stored through the host's files service (purpose `brand-asset`: public, raster or SVG, served under the
+sandbox CSP): the host passes a `BrandAssetClient` (`{ upload, remove, url }`) to `handleUploadBrandKitLogo` and
+`handleDeleteBrandKit`. A kit keeps only the public storage key; a replaced or deleted kit's logo file is removed once
+no other kit (a clone) still points at it. `R2_PUBLIC_URL` in the handler env is the base those keys are served from. |
+GET | `/api/brand/layouts` | List layout templates | | PUT | `/api/brand/layouts` | Create/update layout template (own
+app only) | | GET | `/api/brand/mappings` | List route mappings | | PUT | `/api/brand/mappings` | Replace route mappings
+(all-or-nothing) | | GET | `/api/brand/menu-slots` | Resolved menu slot assignments (with menus) | | GET |
+`/api/brand/menu-slots/raw` | Raw slot assignments (admin editing) | | PUT | `/api/brand/menu-slots` | Replace all slot
+assignments |
 
 Updating a layout template that belongs to another app returns 404. `PUT /api/brand/mappings` validates every entry
 (`mappings` array; `pathPattern`, `layoutTemplateId`, `brandKitId` strings; `tokenOverridesJson` valid JSON) before it
@@ -12127,7 +12216,6 @@ Type-safe wrappers for all major Cloudflare Worker bindings:
 - **D1**: Raw SQLite database with query builder
 - **KV**: Key-value storage
 - **R2**: Object storage
-- **Images**: Image transformation and optimization
 - **Hyperdrive**: Database connection pooling
 - **Queues**: Message queue processing
 - **Secrets**: Environment variables and secrets management
@@ -12213,25 +12301,6 @@ if (result.success && result.data) {
 
 // List objects
 const { data } = await r2.list({ prefix: 'files/' });
-```
-
-### Images
-
-```typescript
-import { createImagesClient } from '@ottabase/cf/images';
-
-const images = createImagesClient({
-    accountId: env.CF_ACCOUNT_ID,
-    apiToken: env.CF_API_TOKEN,
-});
-
-// Upload image
-const result = await images.upload(imageFile, {
-    metadata: { alt: 'Product photo' },
-});
-
-// Get delivery URL
-const url = images.getDeliveryUrl(result.data.id, 'public');
 ```
 
 ### Rate Limiting
@@ -14624,10 +14693,58 @@ export default {
 The `createTaskRepository` requires a database driver for atomic locking - this ensures only one worker executes a task
 even when multiple workers are triggered simultaneously.
 
-`tick()` runs due tasks one after another and resolves with final counts once they have all settled:
-`{ executed, failed, skipped }`. `failed` includes a task whose bookkeeping (lock, reload, status write) threw; the
-remaining due tasks still run. `skipped` covers lost locks and superseded executions. Only a failure to list due tasks
-rejects the tick.
+Without a queue (below), `tick()` runs due tasks one after another and resolves with final counts once they have all
+settled: `{ executed, failed, skipped, queued }`. `failed` includes a task whose bookkeeping (lock, reload, status
+write) threw; the remaining due tasks still run. `skipped` covers lost locks and superseded executions. Only a failure
+to list due tasks (or to enqueue them) rejects the tick.
+
+#### Each run in its own invocation (queue)
+
+Inline, every due task shares the one scheduled invocation: its 1000 D1 queries, its CPU time and its wall time. A
+package that sizes its batches for a whole invocation cannot count on that when several tasks fall due at the top of the
+hour. Give the scheduler an `enqueue` option and `tick()` only selects the due tasks and sends one `CRON_JOB_TYPE`
+(`cron:run`) message per task (`{ queued: n }`); the queue consumer runs each with `runQueued()` in an invocation of its
+own. `enqueue` resolves `false` when there is no queue (local tests, an app without the binding) and the tick runs
+inline as above.
+
+```typescript
+import { CRON_JOB_TYPE, createScheduler, createTaskRepository, type CronJobPayload } from '@ottabase/cron';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { createRegistry, dispatchBatch, type JobHandler } from '@ottabase/queue';
+
+const scheduler = createScheduler<Env>({
+    enqueue: async (env, runs) => {
+        if (!env.QUEUE) return false; // no queue bound: run inline
+        const sent = await dispatchBatch(
+            env.QUEUE,
+            runs.map((payload) => ({ type: CRON_JOB_TYPE, payload })),
+        );
+        if (!sent.success) throw sent.error; // rejects the tick; the rows stay due for the next one
+        return true;
+    },
+}).registerHandlers<CronPayloads>(handlers);
+
+// The consumer half, registered on the app's queue registry
+const runQueued: JobHandler<CronJobPayload, Env> = async (job, ctx) => {
+    const driver = createD1Driver(ctx.env.OBCF_D1);
+    await scheduler.runQueued(job.payload, ctx.env, createTaskRepository(ScheduledTask, driver));
+};
+const registry = createRegistry<Env>().register(CRON_JOB_TYPE, runQueued);
+```
+
+The lock is the same in both modes, so nothing about a run changes: it is never run twice for the same due time, a
+crashed run's lock lapses after `lockTimeoutMs` (5 minutes), and a failure is recorded on its row and reaches `onError`.
+`runQueued()` acquires the lock first; a delivery that finds the task done, no longer due or running elsewhere comes
+back `locked`, so a duplicate delivery is a no-op. A task failure resolves (it is recorded, the queue must not retry
+it); only a bookkeeping error rejects, so the queue retries the message.
+
+A queue consumer invocation processes a whole batch, so set the consumer's `max_batch_size` to `1` or the runs of one
+batch share an invocation again.
+
+`runTask(taskId)` (a manual "run now") takes the same path: with a queue it returns `queued` and the run executes in its
+own invocation. A manual run ignores the schedule and the active flag; the message carries when it was requested, and
+the lock admits it only while no run has started since, so a redelivered request is a no-op as well.
 
 ### 2. Add Tasks to Database
 
@@ -14752,9 +14869,10 @@ await task.toggle(); // Toggle active status
 ```
 
 Execution status is owned by the scheduler repository. It uses the model's atomic lock/complete/fail transitions with
-the exact start timestamp as a fencing token; application code should not write `lastStatus`, counters, or run
-timestamps directly. Handlers must still be idempotent because reclaiming a Worker that exceeded the lock timeout cannot
-undo side effects that Worker already performed.
+the exact start timestamp as a fencing token (`acquireExecutionLock` takes `requestedAt`: `null` for a scheduled run,
+which must be active and due, or a manual run's request time, which must have no run since); application code should not
+write `lastStatus`, counters, or run timestamps directly. Handlers must still be idempotent because reclaiming a Worker
+that exceeded the lock timeout cannot undo side effects that Worker already performed.
 
 ### Schema
 
@@ -14784,7 +14902,14 @@ Create a static cron handler.
 
 ### createScheduler<Env>(options?)
 
-Create a DB-driven scheduler.
+Create a DB-driven scheduler. Options: `onBeforeTask`, `onAfterTask`, `onError`, `logger`, and `enqueue(env, runs)` to
+give every run its own invocation.
+
+| Method                       | What it does                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `tick(env, repository)`      | Run (or, with `enqueue`, queue) every due task. `{ executed, failed, skipped, queued }`         |
+| `runTask(taskId, env, repo)` | Manual run now, whatever the schedule: `completed`, `failed`, `locked`, `not_found` or `queued` |
+| `runQueued(run, env, repo)`  | The `CRON_JOB_TYPE` consumer: execute one queued `CronJobPayload` here                          |
 
 ### CronContext
 
@@ -14947,7 +15072,7 @@ already edits (`lib/product.ts`), so nothing is typed twice.
 import { discoverRobots } from '@ottabase/discover/next';
 export default async () => discoverRobots({ sitemap: 'https://alpha.test/sitemap.xml', disallow: ['/api/'] });
 // off production: discoverRobots({ closed: true })
-// images served under a disallowed prefix: add allow: ['/api/upload/file/'], the longer path wins
+// images served under a disallowed prefix: add allow: ['/api/files/public/'], the longer path wins
 
 // app/.well-known/otta.json/route.ts
 import { ottaJsonHandler } from '@ottabase/discover/next';
@@ -16408,6 +16533,7 @@ export const notesPackage = definePackage<CloudflareEnv>({
 | `suppressIndexes` | Index names auto-init must not create                                              |
 | `models`          | Registered with OttaORM at boot                                                    |
 | `policies`        | RLS policies registered after `initRLS()`                                          |
+| `files`           | File purposes the app's files service stores (see below)                           |
 | `routes`          | Mounted on the API router, with an optional `when` gate and `before` middleware    |
 | `cron`            | Registered with the scheduler; `schedule` seeds a `scheduled_tasks` row on install |
 | `queue`           | Registered with the queue handler registry                                         |
@@ -16424,6 +16550,33 @@ die with the handler.
 
 Cron handler names and queue job types are app-wide. Namespace them (`notes:purge`); the registry throws on a clash.
 
+### File purposes
+
+A package that stores files declares each kind once, and writes through the app's files service (`@ottabase/ottaupload`,
+which it takes as an option, like the event bus):
+
+```typescript
+definePackage({
+    key: 'helpdesk',
+    name: 'Helpdesk',
+    version: '1.0.0',
+    files: [
+        {
+            purpose: 'ticket-attachment', // part of every key: <appId>/ticket-attachment/<id>.<ext>
+            label: 'Ticket attachments',
+            audience: 'members', // public | members | owner
+            types: ['image/*', 'application/pdf', 'text/plain'], // sniffed types, never the browser's label
+            maxBytes: 10 * 1024 * 1024,
+            variants: ['thumb'], // optional WebP renditions: thumb 160, card 640, full 1600 px
+        },
+    ],
+});
+```
+
+`svg: true` accepts SVG and belongs only on purposes trusted admins write; `server: true` keeps a purpose out of the
+generic `POST /api/files` (the package's own guarded route writes it). Purpose names are app-wide; the registry throws
+on a clash, and `registry.files()` hands the list to the files service.
+
 ## The registry
 
 ```typescript
@@ -16439,7 +16592,7 @@ await runHealth(packages, env); // → { ok, checks: [{ package, name, ok }] }
 ```
 
 `createPackageRegistry` collects eagerly and throws at boot on a duplicate package key, table export name, cron handler
-name or queue job type. Everything else is a plain getter that returns a copy.
+name, queue job type or file purpose. Everything else is a plain getter that returns a copy.
 
 ### Env declarations and readiness
 
@@ -17230,8 +17383,7 @@ callers that only use the pure helpers or the state machine do not need them ins
 ```typescript
 import {
     getMediaKindFromMimeType, // mime → 'image' | 'video' | 'audio' | 'document'
-    createMediaLibraryRecordInput, // upload result → DB record input
-    toMediaSelectionPayload, // media → editor picker payload
+    toMediaSelectionPayload, // media view → editor picker payload
     createMediaLightboxState, // pure lightbox state machine
     getAdjacentMediaIndex,
     clampMediaIndex,
@@ -17253,24 +17405,21 @@ import {
 } from '@ottabase/medialibrary/react';
 ```
 
-The app still owns the OttaORM `BaseModel` class and route wiring, which keeps the package reusable across multiple
-Ottabase apps.
+Storing files is not this package's job: the files service (`@ottabase/ottaupload`, `POST /api/files`) writes every
+media row and computes its URLs. This package types and presents what the API returns.
 
 ## Basic Usage
 
-```typescript
-import { createMediaLibraryRecordInput } from '@ottabase/medialibrary';
+A media item (`MediaLibraryItemLike`) is a row plus the view fields the server computed: `url`, `thumbnailUrl` (the
+thumb variant, else the original) and `previewUrl` (the card variant, else the original). URLs are never stored, so
+always read them from the view:
 
-const record = createMediaLibraryRecordInput({
-    provider: 'r2',
-    storageKey: 'uploads/cover.webp',
-    url: '/api/upload/file/uploads/cover.webp',
-    fileName: 'cover.webp',
-    mimeType: 'image/webp',
-    fileSize: 248102,
-    appId: 'otta-web',
-    userId: 'user-123',
-});
+```typescript
+import { toMediaSelectionPayload, type MediaLibraryItemLike } from '@ottabase/medialibrary';
+
+// GET /api/ottaorm/media lists `media`-purpose rows with their view URLs
+const payload = toMediaSelectionPayload(item as MediaLibraryItemLike);
+// → { mediaId, url, thumbnailUrl, previewUrl, alt, caption, width, height, ... } for an editor block
 ```
 
 ## Wrap Renderer Output
@@ -17460,15 +17609,16 @@ For non-lightbox image rendering (`tile`, `thumb`, `detail`), `MediaPreview` now
 - uses `decoding="async"`
 - forwards intrinsic `width`/`height` when available to reserve layout space and reduce CLS
 
-## PDF Preview Sandbox
+## Documents
 
-PDF previews are rendered in an iframe with `sandbox="allow-same-origin"`. This keeps previews safer by disabling script
-execution and top-level navigation while still allowing same-origin PDF rendering.
+PDFs and other documents preview as a document card, not an embedded viewer. The files service serves them as downloads
+(`Content-Disposition: attachment`): browsers' PDF viewers do not run under the sandbox CSP every file carries, and
+rendering a document inline with the sandbox relaxed is the combination to avoid. The lightbox's download link opens
+them.
 
-- **appId consistency:** The media RLS policy filters by `appId`. All upload paths must store the same `appId` that the
-  listing/browser UI sends. Use the app's configured `api` client (which injects `X-App-Id` automatically) for uploads
-  rather than raw `fetch`/XHR. The server-side `getResolvedMediaSecurityContext` also resolves `appId` from
-  `ottabase.config.ts` when the header is absent, so vanilla upload tools (e.g. EditorJS) work without extra wiring.
+- **appId consistency:** The media RLS policy filters by `appId`. The files service writes the `appId` from server
+  configuration (`ottabase.config.ts`), never from a header, so every upload path, vanilla editor tools included, lands
+  in the partition the listing reads.
 
 
 ---
@@ -20337,9 +20487,8 @@ function MyDatePicker({ value, onChange }) {
 
 # @ottabase/ottaeditor
 
-Editor.js, wired for Ottabase: one plugin list, undo/redo, JSON and Markdown export, and twenty custom blocks that
-edit in a shared kit and preview through `@ottabase/ottarenderer`, so the editor shows exactly what the reader will
-get.
+Editor.js, wired for Ottabase: one plugin list, undo/redo, JSON and Markdown export, and twenty custom blocks that edit
+in a shared kit and preview through `@ottabase/ottarenderer`, so the editor shows exactly what the reader will get.
 
 ## Why it looks the way it does
 
@@ -20367,7 +20516,10 @@ function PostEditor() {
     const editor = useOttaEditor({ defaultPlugins: 'all', placeholder: 'Start writing…' });
     return (
         <>
-            <div ref={editor.editorRef} className="min-h-[400px] rounded-xl border border-border/60 bg-background py-3" />
+            <div
+                ref={editor.editorRef}
+                className="min-h-[400px] rounded-xl border border-border/60 bg-background py-3"
+            />
             <BlockPalette editor={editor.editor} />
         </>
     );
@@ -20376,17 +20528,18 @@ function PostEditor() {
 
 Mount the holder bare: the wrapper adds the `ottaeditor` class, which carries the typography and toolbar chrome. The
 styles ship inside the package entry (`import '@ottabase/ottaeditor'` loads them); an app that resolves the package to
-`dist` imports `@ottabase/ottaeditor/dist/index.css` once. Code blocks also want `@ottabase/ui-code-highlight/styles.css`.
+`dist` imports `@ottabase/ottaeditor/dist/index.css` once. Code blocks also want
+`@ottabase/ui-code-highlight/styles.css`.
 
 ### `useOttaEditor(options)`
 
-| Option              | Type                      | Description                                                   |
-| ------------------- | ------------------------- | ------------------------------------------------------------- |
-| `defaultPlugins`    | `'all' \| string[]`       | Which built-in plugins to load (names in `DEFAULT_PLUGIN_NAMES`) |
-| `additionalPlugins` | `OttaEditorPlugin[]`      | Your own tools, appended                                      |
-| `plugins`           | `OttaEditorPlugin[]`      | Replace the whole list                                        |
-| `data`              | `OutputData`              | Initial content                                               |
-| `placeholder`, `minHeight`, `readOnly`, `autofocus`, `i18n`, `onChange`, `onReady` | | Passed to Editor.js |
+| Option                                                                             | Type                 | Description                                                      |
+| ---------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------- |
+| `defaultPlugins`                                                                   | `'all' \| string[]`  | Which built-in plugins to load (names in `DEFAULT_PLUGIN_NAMES`) |
+| `additionalPlugins`                                                                | `OttaEditorPlugin[]` | Your own tools, appended                                         |
+| `plugins`                                                                          | `OttaEditorPlugin[]` | Replace the whole list                                           |
+| `data`                                                                             | `OutputData`         | Initial content                                                  |
+| `placeholder`, `minHeight`, `readOnly`, `autofocus`, `i18n`, `onChange`, `onReady` |                      | Passed to Editor.js                                              |
 
 Returns `editorRef`, `editor`, `isReady`, `hasUnsavedChanges`, `save()`, `render(data)`, `clear()`, `undo()`, `redo()`,
 `canUndo`, `canRedo`, `exportJSON()`, `exportMarkdown()`, `toggleReadOnly()`. The `OttaEditor` instance also has
@@ -20402,41 +20555,41 @@ entry inserts the block after the current one. Props: `editor`, `available` (res
 
 Editor.js tools, renamed to the registry's names:
 
-| Type        | Shown as  | Notes                                           |
-| ----------- | --------- | ----------------------------------------------- |
-| `paragraph` | Text      |                                                 |
-| `header`    | Heading   | Levels 1 to 6                                   |
-| `list`      | List      | Bulleted or numbered, nests                     |
-| `checklist` | Checklist |                                                 |
-| `quote`     | Quote     | Text and attribution                            |
-| `warning`   | Callout   |                                                 |
-| `delimiter` | Divider   |                                                 |
-| `table`     | Table     | Optional header row                             |
-| `embed`     | Embed     | YouTube, Vimeo, X, CodePen and others           |
-| `linkTool`  | Link preview | Needs a `/api/link-preview` endpoint         |
+| Type        | Shown as     | Notes                                 |
+| ----------- | ------------ | ------------------------------------- |
+| `paragraph` | Text         |                                       |
+| `header`    | Heading      | Levels 1 to 6                         |
+| `list`      | List         | Bulleted or numbered, nests           |
+| `checklist` | Checklist    |                                       |
+| `quote`     | Quote        | Text and attribution                  |
+| `warning`   | Callout      |                                       |
+| `delimiter` | Divider      |                                       |
+| `table`     | Table        | Optional header row                   |
+| `embed`     | Embed        | YouTube, Vimeo, X, CodePen and others |
+| `linkTool`  | Link preview | Needs a `/api/link-preview` endpoint  |
 
 Ottabase blocks, each with a renderer in `@ottabase/ottarenderer`:
 
-| Group      | Type            | Shown as       | What you edit                                                             |
-| ---------- | --------------- | -------------- | ------------------------------------------------------------------------- |
-| Text       | `spoiler`       | Spoiler        | Text that stays blurred until clicked                                     |
+| Group      | Type            | Shown as       | What you edit                                                                                                     |
+| ---------- | --------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Text       | `spoiler`       | Spoiler        | Text that stays blurred until clicked                                                                             |
 | Media      | `image`         | Image          | Upload, paste a URL or pick from the library; caption, alt, link, border, background, stretched, featured, aspect |
-| Media      | `mediaLibrary`  | From library   | Picks any upload and inserts the right block (image or video & files)     |
-| Media      | `mediaGallery`  | Gallery        | Items from the library, five layouts, per-item caption and alt            |
-| Media      | `mediaEmbed`    | Video & files  | Video, audio, PDF or document with a player                               |
-| Media      | `beforeAfter`   | Before / after | Two images, orientation, start position, fit and focal points             |
-| Media      | `imageHotspots` | Hotspots       | Click the image to drop markers, drag them, write each note               |
-| Layout     | `layout`        | Columns        | Six presets; each column is its own editor                                |
-| Embeds     | `map`           | Map            | Google Maps or OpenStreetMap URL, theme, height, zoom                     |
-| Embeds     | `code`          | Code           | Language, line numbers, wrapping, highlighted lines, collapsing           |
-| Embeds     | `raw`           | HTML           | Raw markup, sanitised on save                                             |
-| Engagement | `cta`           | Button         | Label, link, four styles, alignment, new tab                              |
-| Engagement | `steps`         | Steps          | Reorderable title + description rows                                      |
-| Engagement | `faq`           | FAQ            | Reorderable question + answer rows, accordion or flat                     |
-| Trust      | `testimonial`   | Testimonial    | Quote, author, avatar, logo, rating, five variants, verified, source      |
-| Trust      | `review`        | Review         | Image, rating, pros and cons, verdict, link, compact                      |
-| Trust      | `references`    | References     | Numbered or footnote sources                                              |
-| Trust      | `disclosure`    | Disclosure     | AI-use level and sponsorship notice                                       |
+| Media      | `mediaLibrary`  | From library   | Picks any upload and inserts the right block (image or video & files)                                             |
+| Media      | `mediaGallery`  | Gallery        | Items from the library, five layouts, per-item caption and alt                                                    |
+| Media      | `mediaEmbed`    | Video & files  | Video, audio, PDF or document with a player                                                                       |
+| Media      | `beforeAfter`   | Before / after | Two images, orientation, start position, fit and focal points                                                     |
+| Media      | `imageHotspots` | Hotspots       | Click the image to drop markers, drag them, write each note                                                       |
+| Layout     | `layout`        | Columns        | Six presets; each column is its own editor                                                                        |
+| Embeds     | `map`           | Map            | Google Maps or OpenStreetMap URL, theme, height, zoom                                                             |
+| Embeds     | `code`          | Code           | Language, line numbers, wrapping, highlighted lines, collapsing                                                   |
+| Embeds     | `raw`           | HTML           | Raw markup, sanitised on save                                                                                     |
+| Engagement | `cta`           | Button         | Label, link, four styles, alignment, new tab                                                                      |
+| Engagement | `steps`         | Steps          | Reorderable title + description rows                                                                              |
+| Engagement | `faq`           | FAQ            | Reorderable question + answer rows, accordion or flat                                                             |
+| Trust      | `testimonial`   | Testimonial    | Quote, author, avatar, logo, rating, five variants, verified, source                                              |
+| Trust      | `review`        | Review         | Image, rating, pros and cons, verdict, link, compact                                                              |
+| Trust      | `references`    | References     | Numbered or footnote sources                                                                                      |
+| Trust      | `disclosure`    | Disclosure     | AI-use level and sponsorship notice                                                                               |
 
 Inline tools: bold, italic, underline, marker, inline code, link, **annotation** (select text, add a title and a note;
 the renderer shows it on hover) and **inline spoiler** (`inlineSpoiler`: select words and press the eye-off button or
@@ -20488,10 +20641,10 @@ export default class NoteTool implements BlockTool {
 ```
 
 The kit (`kit.*`): `field`, `row`, `stack`, `sectionLabel`, `textInput`, `textarea`, `select`, `segment`, `toggle`,
-`checkbox`, `range`, `stars`, `button`, `iconButton`, `addButton`, `positionGrid`, `confirmInline`, `mediaInput`
-(URL input with a library button; the host answers `media-library-open` events, see `MediaLibraryPickerBridge` in
-otta-web), `sortableList` (drag handle, arrows, remove with inline confirmation), plus `h` and `iconEl`. Register a
-block type in your own `BLOCKS`-style metadata if you want it in the palette; `blockMeta(type)` is what the shell reads.
+`checkbox`, `range`, `stars`, `button`, `iconButton`, `addButton`, `positionGrid`, `confirmInline`, `mediaInput` (URL
+input with a library button; the host answers `media-library-open` events, see `MediaLibraryPickerBridge` in otta-web),
+`sortableList` (drag handle, arrows, remove with inline confirmation), plus `h` and `iconEl`. Register a block type in
+your own `BLOCKS`-style metadata if you want it in the palette; `blockMeta(type)` is what the shell reads.
 
 ## Theming
 
@@ -20511,8 +20664,8 @@ keeping inline bold, italic, links, code and marks.
 pnpm --filter @ottabase/ottaeditor test
 ```
 
-Each block has a test that mounts it, drives the kit controls by role and label, and asserts `save()` and
-`validate()`; the core suite covers the wrapper, undo/redo and export.
+Each block has a test that mounts it, drives the kit controls by role and label, and asserts `save()` and `validate()`;
+the core suite covers the wrapper, undo/redo and export.
 
 
 ---
@@ -20582,9 +20735,9 @@ Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor
 also goes through `sanitizeUrl`.
 
 **Images** (`kind: 'image'`) are picked from, or uploaded to, the media library in the admin. Uploads are stored as
-`/api/upload/file/<key>` URLs. The landing app binds the same R2 bucket and serves that path too, so one URL works in
-both apps. An image field may name an `altKey`: picking a library image fills that description field from the image's
-alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
+`/api/files/public/<key>` URLs. The landing app binds the same public R2 bucket and serves that path too, so one URL
+works in both apps. An image field may name an `altKey`: picking a library image fills that description field from the
+image's alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
 
 **Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
 setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
@@ -20635,6 +20788,7 @@ await LandingLead.setRead(appId, id, read);
 await LandingLead.deleteFor(appId, id);
 await LandingLead.pendingNotification(appId); // not yet emailed, oldest first
 await LandingLead.markNotified(appId, ids);
+await LandingLead.announceNew(appId, emit); // each entry not yet announced, once, as a LeadCreatedEvent
 leadsToCsv(leads); // spreadsheet export; formula-like cells are defused
 leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the notification email, all escaped
 ```
@@ -20645,11 +20799,18 @@ the thank-you, so a bot learns nothing. On top of that, each network (a salted S
 is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
 for the same email is accepted but stored once.
 
-**Notifications** live in otta-web, where the mail provider is configured. Setting **Email new form entries to**
-(`leadEmail`) in the site settings creates an every-minute DB-scheduler task (`landing:notify-leads`, visible and
-pausable in Admin › Cron). Each run emails one digest of everything new through `resolveAppMailer`, then marks those
-entries notified. With no address set, pending entries are retired without a send, so a later address isn't flooded.
-With no working mail provider, the task fails visibly and the entries stay pending until mail works.
+**Notifications** live in otta-web, where the bus and the mail provider are. An every-minute DB-scheduler task
+(`landing:notify-leads`, seeded on install, visible and pausable in Admin › Cron) does two jobs, each on its own marker
+column, so neither holds the other back:
+
+- **The bus** (`announcedAt`): every new entry goes out once as `lead.created`
+  (`{ leadId, kind, email, name, message, pagePath, at }`, `LeadCreatedEvent`; `at` is when it was stored), oldest
+  first, marked once the emit resolves. Delivery is at-least-once: an entry whose emit throws stays pending for the next
+  run, so subscribers must be idempotent (key on `leadId`).
+- **The digest** (`notifiedAt`): one email of everything new to **Email new form entries to** (`leadEmail`) through
+  `resolveAppMailer`, then those entries are marked notified. With no address set, pending entries are retired without a
+  send, so a later address isn't flooded. With no working mail provider, the task fails visibly and the entries stay
+  pending until mail works; their `lead.created` has gone out regardless.
 
 The admin inbox is at `/admin/content/landing/leads`: filter by messages or signups, read (opening an entry marks it
 read), reply by email, mark unread, delete, and export CSV.
@@ -20747,7 +20908,8 @@ Listed in `ottabase/packages.ts` as `createOttalandingPackage({ routes, cron })`
 - tables, models and a defensive app-scoped, platform-admin RLS policy from the manifest (generic CRUD default-denies
   the models)
 - tables re-exported from `db/schema.ts` for drizzle-kit
-- the `landing:notify-leads` cron handler, seeded with the admin inbox URL by the landing admin route
+- the `landing:notify-leads` cron handler (`lead.created` on the app's bus, and the digest), seeded every minute on
+  install; saving a notification address adds the admin inbox URL to its payload
 - `/api/landing` routes, platform admin only (including `POST /share-image` for rendered social images)
 - admin pages at `/admin/content/landing`
 - starter content seeded by `/api/ottaorm/init`
@@ -22092,12 +22254,28 @@ console.log(fields.title.uiConfig.label); // "Title"
 
 The package includes these core models (in `@ottabase/ottaorm`):
 
-- **User** - Users with name, email, image
+- **User** - Users with name, email, the OAuth provider's picture (`image`) and an uploaded avatar (`avatarKey`)
 - **Account** - OAuth provider accounts
 - **Tag** - Tags with name and slug
 - **VerificationToken** - Email verification, password-reset and magic-link tokens (hash-stored)
+- **Media** - One row per stored file, written only by the files service (`@ottabase/ottaupload`)
 
 The blog/content `Post` model lives in `@ottabase/ottablog`.
+
+### Files: `Media`, `mediaFileStore` and user pictures
+
+`media` rows are `id` (32 hex chars, the same id as in the storage key), `appId`, `organizationId`, `userId`, `purpose`,
+`audience` (`public` | `members` | `owner`), `storageKey` (unique), the sniffed `mimeType`, `mediaKind`, `status`
+(`ready` | `quarantined`), `originalName`, `title`, `altText`, `caption`, `extension`, `fileSize`, `width`, `height`,
+`variants` (`{ thumb?, card?, full? }`, each `{ key, width, height, size }`) and `metadata`. URLs are never stored: the
+files service computes `url`, `thumbnailUrl` and `previewUrl` in its views. Deletes are real; the objects go with the
+row. `mediaFileStore` is the service's store over this model (`createFiles({ store: mediaFileStore })`), and the only
+writer: `Media.writable` lets a person change nothing but `title`, `altText` and `caption`.
+
+`User.imageUrl(row)` (and `user.imageUrl()`) is the picture every user view shows: the uploaded avatar at
+`<filesPublicUrl>/<avatarKey>`, else the provider's `image`, else null. Set the base once per isolate with
+`configureOttaORM({ maxAllRows, filesPublicUrl: env.R2_PUBLIC_URL })` (default `/api/files/public`);
+`publicFileUrl(key)` builds the same URL for any public key.
 
 ### Role grants (`User` RBAC methods, `UserRole`)
 
@@ -22971,6 +23149,17 @@ import { HtmlRenderer } from '@ottabase/ottarenderer';
 
 The string passes through `sanitizeBlockHtml` and the bare tags get the same typography as the blocks.
 
+### User-generated content
+
+```tsx
+<OttaRenderer data={post.content} ugc={Boolean(post.organizationId)} />
+<HtmlRenderer content={comment.html} ugc />
+```
+
+`ugc` marks content written by people the site does not vouch for (a tenant's posts, community content): every link it
+renders, inline or in a block, gets `rel="ugc nofollow noopener"` (plus `noreferrer` when it opens a new tab).
+`useLinkRel()` gives a custom block the same rule. The ottablog themes turn it on for organization posts.
+
 ## Blocks
 
 ### Editor.js core and official tools
@@ -23018,16 +23207,16 @@ Unknown block types render nothing.
 Paragraphs, headings, list items, table cells, captions and quotes carry the editor's inline HTML. `Inline` turns it
 into React:
 
-| Stored markup                                                 | Rendered as                                                       |
-| ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `<b>`, `<i>`                                                  | `<strong>`, `<em>`                                                |
-| `<u class="cdx-underline">`, `<s>`, `<sub>`, `<sup>`, `<kbd>` | the same element, with the renderer's class where it styles       |
-| `<a href target>`                                             | `.otta-link`; `_blank` gets `rel="noopener noreferrer"`           |
-| `<code class="inline-code">`                                  | `.otta-inline-code`                                               |
-| `<mark class="cdx-marker">`                                   | `.otta-mark`                                                      |
-| `<span class="cdx-annotation" data-title data-annotation>`    | `.otta-annotation`: dotted underline, note on hover, focus or tap |
+| Stored markup                                                 | Rendered as                                                          |
+| ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `<b>`, `<i>`                                                  | `<strong>`, `<em>`                                                   |
+| `<u class="cdx-underline">`, `<s>`, `<sub>`, `<sup>`, `<kbd>` | the same element, with the renderer's class where it styles          |
+| `<a href target>`                                             | `.otta-link`; `_blank` gets `rel="noopener noreferrer"`              |
+| `<code class="inline-code">`                                  | `.otta-inline-code`                                                  |
+| `<mark class="cdx-marker">`                                   | `.otta-mark`                                                         |
+| `<span class="cdx-annotation" data-title data-annotation>`    | `.otta-annotation`: dotted underline, note on hover, focus or tap    |
 | `<span class="cdx-spoiler">`                                  | `.otta-spoiler`: blurred chip; click, tap or Enter reveals and hides |
-| `<br>`                                                        | line break                                                        |
+| `<br>`                                                        | line break                                                           |
 
 Anything else is dropped as markup and kept as text; `script`, `style`, `iframe`, `object`, `svg` and `math` are dropped
 with their contents. Entities (`&amp;`, `&nbsp;`, `&#x263A;`…) are decoded. `parseInline`, `renderInline`,
@@ -23968,30 +24157,180 @@ MIT
 
 # @ottabase/ottaupload
 
-A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and
-Cloudflare Images.
+Files for an Ottabase app: the browser side (drag-and-drop uploader, progress, hooks, a vanilla helper) and the server
+side, **the files service**: one object every writer of user files goes through, which decides what a file really is,
+strips what it should not carry, puts it in the right bucket, makes its variants, records it and serves it back to the
+right people.
 
-## Features
+## The system in one page
 
-- **Clean UI** - Minimal shadcn/Notion-like design with dropzone and button variants
-- **Drag & Drop** - Native drag-and-drop with visual feedback
-- **Progress Tracking** - Real-time upload progress
-- **Multiple Files** - Batch upload with configurable limits
-- **Validation** - File type and size validation with Zod schemas
-- **Multi-Provider** - Cloudflare R2 (all files) and Cloudflare Images (optimized images)
-- **React Hooks** - `useFileUpload` and `useDragAndDrop`
-- **Vanilla JS** - Non-React support for EditorJS and plain HTML
-- **TypeScript** - Full type safety
+| Audience  | Who may read                                              | Bucket            | Served by                                         |
+| --------- | --------------------------------------------------------- | ----------------- | ------------------------------------------------- |
+| `public`  | anyone (a CDN may cache it)                               | `OBCF_R2`         | key: `/api/files/public/<key>` or a custom domain |
+| `members` | signed-in members of the owning organization, admins      | `OBCF_R2_PRIVATE` | id: `/api/files/:id`, after the check             |
+| `owner`   | the uploader, admins of the file's organization, platform | `OBCF_R2_PRIVATE` | id: `/api/files/:id`, after the check             |
 
-## Installation
+- **Every object in the public bucket is public by definition.** Nothing private is ever written there, so serving it by
+  key (or from a custom domain with no Worker in front) leaks nothing.
+- **The private bucket is never served by key.** Only `read()` opens it, after checking the viewer, or a signed `?t=`
+  token minted for that one file.
+- **System data is not a file.** Backups (Vault, in its own `OBCF_R2_VAULT`) and error artifacts never get a media row;
+  artifacts go to the private bucket.
 
-```bash
-pnpm add @ottabase/ottaupload
+**Keys** are `<appId>/<purpose>/<id>.<ext>`: `id` is 32 hex chars from `crypto.randomUUID()` (the media row has the same
+id) and `ext` comes from the sniffed type. Variants are `<appId>/<purpose>/<id>/<variant>.webp`. A key is never written
+twice: replacing a file is a new key and a delete of the old one, so a year of immutable caching is always right. The
+original filename lives only in the row.
+
+**Purposes** are declared in kernel manifests (`files: [...]`, see `@ottabase/kernel`) and collected by the registry
+like tables. A purpose names its audience, an allow-list of sniffed MIME types (`image/*` covers the raster family), a
+byte cap, optional variants, `svg: true` for trusted admin purposes and `server: true` when only its own guarded route
+writes it. otta-web declares `avatar`, `media`, `attachment`, `brand-asset` and `share-image`; packages declare their
+own.
+
+### The pipeline (`put`)
+
+1. **Purpose**: unknown purposes are refused (400 `UNKNOWN_PURPOSE`).
+2. **Quota**: one `SUM(fileSize)` over the owner's rows (the organization's, or the user's outside one). An owner at the
+   limit is refused before a byte is read; one the file would push over is refused after (413 `QUOTA_EXCEEDED`).
+3. **Byte cap while reading**: a stream is read with a counter and cancelled the moment it passes `maxBytes` (413
+   `PAYLOAD_TOO_LARGE`).
+4. **Sniff the real type** from magic bytes: JPEG, PNG, GIF, WebP, AVIF, MP4, WebM, PDF, ICO; text must be valid UTF-8
+   without NULs and is told apart from SVG, HTML and XML. Never `file.type`, never the extension (CSV is the one label
+   the name may pick, and only after the bytes proved plain text).
+5. **Allow-list**: the sniffed type against the purpose's `types` (415 `UNSUPPORTED_TYPE`). SVG only where `svg: true`.
+6. **Strip metadata** from raster images, in code, without re-encoding: JPEG APP1 (Exif, XMP) and APP13 (IPTC) go, and
+   Orientation survives as a minimal EXIF holding only that tag; PNG `eXIf`, `tEXt`, `zTXt`, `iTXt` go; WebP `EXIF` and
+   `XMP ` chunks go and the VP8X flags follow. Width and height are read from the headers (turned for orientations 5-8).
+   **AVIF**, whose metadata sits in ISO-BMFF item boxes the code cannot rewrite, is re-encoded to WebP through the
+   `OBCF_IMAGES` binding (WebP output never carries metadata) and that WebP is the stored original; without the binding
+   it is refused (415). No unstripped original is ever stored.
+7. **Write** to the audience's bucket with `httpMetadata`: the content type; `inline` disposition for raster images and
+   video, `attachment` for everything else, PDF included (browsers' PDF viewers do not run under the sandbox CSP, and
+   inline with the sandbox relaxed is the combination to avoid); `public, max-age=31536000, immutable` for public files,
+   `private, no-store` otherwise.
+8. **Variants** through the `OBCF_IMAGES` binding when it is bound: fixed widths thumb 160, card 640, full 1600, WebP,
+   `fit: scale-down` (never upscaled). Without the binding there are no variants and every variant URL is the
+   original's. There are no on-the-fly `/cdn-cgi/image` URLs: nobody can mint new sizes on your bill.
+9. **Row**: the media record. A failed put deletes what it wrote, so nothing counts against the quota.
+
+### Views
+
+URLs are never stored. `view(record)` computes them: a public file's `url` is `<R2_PUBLIC_URL>/<key>` (default
+`/api/files/public/<key>`), a private one's is `/api/files/<id>`; `thumbnailUrl` is the thumb variant and `previewUrl`
+the card variant, else the original. Rows that reference a public file store its key; rows that reference a private file
+store its media id.
+
+**Public URLs are absolute.** A relative `R2_PUBLIC_URL` (the default `/api/files/public`) is resolved against the app's
+public origin (the `origin` option; otta-web passes `AUTH_URL`), so a logo or an image works where the page is not: in
+mail, social cards, exports. `publicBase(env)` is that base; `url()`, views, signed URLs and the quarantine purge list
+all start with it, and `keyOf()` recognises a URL in either spelling. Without an origin they stay relative.
+
+## Server
+
+```typescript
+// apps/otta-web/ottabase/files.ts: the app's one instance
+import { mediaFileStore } from '@ottabase/ottaorm';
+import { createFiles, quotaBytes, type FilesBucket } from '@ottabase/ottaupload/server';
+import { getOttabaseConfig } from './config.loader';
+import { packages } from './registry';
+
+export const files = createFiles<CloudflareEnv>({
+    appId: (env) => getOttabaseConfig(env).appId,
+    purposes: () => packages.files(), // every manifest's `files`
+    store: mediaFileStore, // the Media model
+    buckets: (env) => ({
+        public: (env.OBCF_R2 ?? null) as FilesBucket | null,
+        private: (env.OBCF_R2_PRIVATE ?? null) as FilesBucket | null,
+    }),
+    images: (env) => env.OBCF_IMAGES, // optional: variants
+    publicUrl: (env) => env.R2_PUBLIC_URL, // default /api/files/public
+    origin: (env) => env.AUTH_URL, // relative public URLs are made absolute against it
+    signingSecret: (env) => env.FILES_SIGNING_SECRET, // unset: no signed URLs
+    quota: (env) => quotaBytes(env.FILES_QUOTA_MB), // default 1024 MB; a plan lookup goes here later
+});
 ```
 
-## Quick Start
+| Method                                          | Does                                                                                   |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `put(env, { purpose, owner, file, name?, ...})` | the pipeline above; resolves to the `FileView`, throws `FilesError` when refused       |
+| `get(env, id)` / `view(env, record)`            | the record (this app's only) / the record with its URLs                                |
+| `url(env, key)` / `keyOf(env, url)`             | public URL of a public key / the key behind one of this app's public URLs              |
+| `signedUrl(env, id, { variant?, ttlSeconds? })` | `/api/files/<id>[/<variant>]?t=…`, readable without a session until it expires (1 h)   |
+| `read(env, request, { id, variant, viewer })`   | public: 302 to its URL; private: the bytes if the viewer (or the token) may; Range/304 |
+| `servePublic(env, request, key)`                | one key of the public bucket                                                           |
+| `update(env, id, { title, altText, caption })`  | the describing text (trimmed, capped)                                                  |
+| `remove(env, id)`                               | the file, its variants and its row                                                     |
+| `removeOwned(env, { appId, userId })`           | everything one user uploaded (an account erase)                                        |
+| `quarantine(env, id, { origin? })`              | stop serving it (see below); `{ file, purge, urls }`                                   |
+| `restore(env, id)`                              | serve a quarantined file again                                                         |
+| `purposes(env)` / `purpose(env, name)`          | the declared purposes                                                                  |
 
-### React Component (Dropzone)
+`owner` is `{ appId, userId, organizationId }` and **always comes from the verified session**, never from the request. A
+file that belongs to the app rather than a person (brand logos, landing share images) has `userId: null` (and the owning
+organization, if any): an account erasure (`removeOwned`) of whoever uploaded it must never take a live logo. Put the
+uploader in `metadata` (`{ uploadedBy }`) and the audit log instead.
+
+**Quarantine** takes a file out of circulation without deleting it. A public file's objects (original and variants) move
+from the public bucket to the private one under the same keys, so neither `/api/files/public/*` nor the bucket's custom
+domain has them; every read path refuses a `quarantined` row. Public files are cached as immutable, so their URLs also
+have to leave the CDN: the `purge(env, urls)` option does that (otta-web calls Cloudflare's purge API with
+`CLOUDFLARE_FILES_ZONE_ID` and `CLOUDFLARE_PURGE_API_TOKEN`). Without it, or when it fails, the result says
+`purge: 'manual'` with the absolute `urls` to purge by hand. `restore` moves the objects back.
+`canModerateFile(record, viewer)`: admins of the file's organization and platform admins. `FilesError` carries `status`
+and `code` for `errorResponse`. Authorization helpers `canReadFile(record, viewer)` and `canChangeFile(record, viewer)`
+(the uploader and admins) are exported for routes.
+
+**Signed tokens** are `<exp>.<HMAC-SHA256>` over `['files.read', id, exp]` with `FILES_SIGNING_SECRET`: purpose-bound (a
+signature minted for anything else never opens a file), bound to one file, expiring, verified in constant time, and
+refused outright while the secret is unset.
+
+A package that stores files takes the service as an option and the composition passes `files`:
+
+```typescript
+import type { Files } from '@ottabase/ottaupload/server';
+
+export interface MyPackageOptions<Env> {
+    files?: Files<Env>;
+}
+
+// in a route, after the package's own guard:
+const view = await options.files!.put(env, { purpose: 'my-purpose', owner, file });
+```
+
+### Serving
+
+`servePublicFile(bucket, request, key)` is the public route on its own (otta-landing uses it): the key must be plain
+segments, the object is read with `onlyIf`/`range` from the request headers (ETag and If-Modified-Since → 304, Range →
+206 with `Content-Range`, a range past the end → 416), and every response carries `X-Content-Type-Options: nosniff`,
+`Content-Security-Policy: sandbox; default-src 'none'` and a `Content-Disposition` that is `inline` only for raster
+images and video. `applySafeObjectHeaders(headers, filename)` sets those three on any response.
+
+The pure pieces are exported too: `sniff`, `imageSize`, `stripMetadata`, `fileKey`, `variantKey`, `fileIdFromKey`,
+`signFileToken`, `verifyFileToken`, `dispositionFor`.
+
+## The routes (otta-web)
+
+| Route                                 | Who                                       | Does                                                                  |
+| ------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
+| `POST /api/files`                     | a session; `OBCF_RATE_LIMITER_UPLOADS`    | multipart `file`, `purpose`, optional `title`, `altText` → `{ file }` |
+| `GET\|HEAD /api/files/public/*`       | anyone                                    | the public bucket by key; no D1                                       |
+| `GET\|HEAD /api/files/:id[/:variant]` | per audience, or a `?t=` token            | 302 for public files, the bytes (`private, no-cache`) otherwise       |
+| `PATCH /api/files/:id`                | the uploader, org admins, platform admins | `{ title, altText, caption }`                                         |
+| `DELETE /api/files/:id`               | the uploader, org admins, platform admins | the file; `server` purposes answer 409 (their row owns them)          |
+| `POST /api/files/:id/quarantine`      | org admins of the file, platform admins   | quarantine (audited) → `{ file, purge, urls }`                        |
+| `DELETE /api/files/:id/quarantine`    | org admins of the file, platform admins   | restore (audited)                                                     |
+| `PUT\|DELETE /api/users/me/avatar`    | the session                               | sets or drops the avatar; deletes the previous file                   |
+
+Uploads (here and the avatar route) have a limiter of their own, `OBCF_RATE_LIMITER_UPLOADS`: 60 a minute per user, so a
+bulk media-library upload goes through; byte caps and the storage quota bound the volume. A production deploy without
+the binding refuses uploads (500) rather than let them through uncounted.
+
+Media rows are read through generic CRUD (`/api/ottaorm/media`, with the view URLs added); writes there are refused.
+
+## Client
+
+### React component
 
 ```tsx
 import { FileUploader } from '@ottabase/ottaupload/client';
@@ -23999,360 +24338,93 @@ import { FileUploader } from '@ottabase/ottaupload/client';
 function App() {
     return (
         <FileUploader
-            uploadEndpoint="/api/upload"
+            purpose="media" // default; sent with every file
             maxFiles={5}
-            maxFileSize={10 * 1024 * 1024} // 10MB
+            maxFileSize={10 * 1024 * 1024} // a hint: the purpose's cap is enforced on the server
             acceptedFileTypes={['image/*', 'application/pdf']}
-            autoUpload={true}
-            onUploadComplete={(files) => console.log('Done!', files)}
+            autoUpload
+            onUploadComplete={(files) => console.log(files.map((f) => f.uploaded?.url))}
         />
     );
 }
 ```
 
-### Button Variant
+| Prop                | Type                                           | Default        | Description                                                                          |
+| ------------------- | ---------------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`   | UI style                                                                             |
+| `purpose`           | `string`                                       | `'media'`      | The file purpose                                                                     |
+| `uploadEndpoint`    | `string`                                       | `'/api/files'` | API endpoint                                                                         |
+| `maxFiles`          | `number`                                       | `1`            | Max file count                                                                       |
+| `maxFileSize`       | `number`                                       | `undefined`    | Max size in bytes (UX hint)                                                          |
+| `acceptedFileTypes` | `string[]`                                     | `undefined`    | MIME types (UX hint; the server sniffs)                                              |
+| `autoUpload`        | `boolean`                                      | `false`        | Upload on select                                                                     |
+| `disabled`          | `boolean`                                      | `false`        | Disable uploader                                                                     |
+| `onUpload`          | `(files: File[]) => void`                      | -              | Custom upload handler                                                                |
+| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -              | Once per batch with the files that uploaded (`url`, `uploaded` set); skipped if none |
+| `onUploadError`     | `(error: Error) => void`                       | -              | Error callback (the server's message: unsupported type, too large, over the quota)   |
+| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -              | Progress callback                                                                    |
+
+### Hooks
 
 ```tsx
-<FileUploader variant="button" maxFiles={1} acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
-```
-
-### Vanilla JavaScript
-
-```typescript
-import { uploadFile } from '@ottabase/ottaupload/utils';
-
-const result = await uploadFile(file, {
-    endpoint: '/api/upload',
-    maxFileSize: 10 * 1024 * 1024,
-    onProgress: (progress) => console.log(`${progress}%`),
-    onSuccess: (response) => console.log(response.url),
-});
-```
-
-## Component API
-
-### FileUploader Props
-
-| Prop                | Type                                           | Default         | Description                                                                                           |
-| ------------------- | ---------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------- |
-| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`    | UI style                                                                                              |
-| `maxFiles`          | `number`                                       | `1`             | Max file count                                                                                        |
-| `maxFileSize`       | `number`                                       | `undefined`     | Max size in bytes                                                                                     |
-| `acceptedFileTypes` | `string[]`                                     | `undefined`     | MIME types (e.g., `['image/*']`)                                                                      |
-| `provider`          | `'r2' \| 'cloudflare-images'`                  | `'r2'`          | Upload provider                                                                                       |
-| `uploadEndpoint`    | `string`                                       | `'/api/upload'` | API endpoint                                                                                          |
-| `autoUpload`        | `boolean`                                      | `false`         | Auto-upload on select                                                                                 |
-| `disabled`          | `boolean`                                      | `false`         | Disable uploader                                                                                      |
-| `onUpload`          | `(files: File[]) => void`                      | -               | Custom upload handler                                                                                 |
-| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -               | Once per batch (also autoUpload) with the files that uploaded (`url`, `key` set); skipped if none did |
-| `onUploadError`     | `(error: Error) => void`                       | -               | Error callback                                                                                        |
-| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -               | Progress callback                                                                                     |
-
-## Providers
-
-### Cloudflare R2 (Default)
-
-For all file types. Requires `OBCF_R2` binding.
-
-**Client:**
-
-```tsx
-<FileUploader uploadEndpoint="/api/upload" maxFiles={5} />
-```
-
-**Server:**
-
-```typescript
-import { uploadFileToR2 } from '@ottabase/ottaupload/server';
-import { createR2Client } from '@ottabase/cf/r2';
-
-const r2Client = createR2Client({ bucket: env.OBCF_R2 });
-const result = await uploadFileToR2(file, r2Client, {
-    maxFileSize: 50 * 1024 * 1024, // 50MB
-    // Optional: returned URL (default `/api/upload/file/<key>`), e.g. a public R2 domain
-    getUrl: (key) => `https://files.example.com/${key}`,
-});
-```
-
-### Cloudflare Images
-
-For optimized image delivery with automatic variants.
-
-**Environment:**
-
-- `CF_IMAGES_ACCOUNT_ID`
-- `CF_IMAGES_API_TOKEN` (scoped to Cloudflare Images)
-
-**Client:**
-
-```tsx
-<FileUploader provider="cloudflare-images" acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
-```
-
-**Server:**
-
-```typescript
-import { uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
-
-const result = await uploadFileToCloudflareImages(
-    file,
-    {
-        accountId: env.CF_IMAGES_ACCOUNT_ID,
-        apiToken: env.CF_IMAGES_API_TOKEN,
-        requireSignedURLs: false,
-        metadata: { userId: 'user-123' },
-    },
-    {
-        maxFileSize: 10 * 1024 * 1024,
-    },
-);
-```
-
-## Server Setup
-
-### API Endpoint
-
-```typescript
-// cloudflare-worker.ts
-import { uploadFileToR2, uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
-import { createR2Client } from '@ottabase/cf/r2';
-
-if (url.pathname === '/api/upload' && request.method === 'POST') {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const provider = formData.get('provider') || 'r2';
-
-    if (provider === 'cloudflare-images') {
-        const result = await uploadFileToCloudflareImages(file, {
-            accountId: env.CF_IMAGES_ACCOUNT_ID,
-            apiToken: env.CF_IMAGES_API_TOKEN,
-        });
-        return Response.json(result);
-    }
-
-    // R2 (default)
-    const r2Client = createR2Client({ bucket: env.OBCF_R2 });
-    const result = await uploadFileToR2(file, r2Client);
-    return Response.json(result);
-}
-```
-
-### File Operations
-
-```typescript
-// Upload
-const result = await uploadFileToR2(file, r2Client);
-
-// Download
-import { getFileFromR2 } from '@ottabase/ottaupload/server';
-const file = await getFileFromR2(key, r2Client);
-
-// Delete
-import { deleteFileFromR2 } from '@ottabase/ottaupload/server';
-await deleteFileFromR2(key, r2Client);
-
-// List
-import { listFilesFromR2 } from '@ottabase/ottaupload/server';
-const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
-```
-
-### Serving uploads
-
-`serveR2Object(bucket, key, { cacheControl? })` streams an object from an R2 binding with the headers that make serving
-user uploads safe: `X-Content-Type-Options: nosniff`, a sandboxing `Content-Security-Policy`, and
-`Content-Disposition: inline` only for known-safe images (everything else, SVG and HTML included, downloads). It returns
-`null` for a missing key. Every app that serves `/api/upload/file/*` should use it, so the rules can't drift.
-
-```typescript
-import { serveR2Object } from '@ottabase/ottaupload/server';
-
-const response = await serveR2Object(env.OBCF_R2, key, { cacheControl: 'public, max-age=31536000, immutable' });
-return response ?? errorResponse('File not found', 404);
-```
-
-## React Hooks
-
-### useFileUpload
-
-```tsx
-import { useFileUpload } from '@ottabase/ottaupload';
+import { useDragAndDrop, useFileUpload } from '@ottabase/ottaupload';
 
 const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload } = useFileUpload({
+    purpose: 'attachment',
     maxFiles: 5,
-    maxFileSize: 10 * 1024 * 1024,
-    uploadEndpoint: '/api/upload',
     autoUpload: true,
-    onUploadComplete: (files) => console.log('Done!'),
 });
-```
-
-### useDragAndDrop
-
-```tsx
-import { useDragAndDrop } from '@ottabase/ottaupload';
 
 const { isDragging, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } = useDragAndDrop({
-    onDrop: (files) => console.log(files),
+    onDrop: (dropped) => addFiles(dropped),
     accept: ['image/*'],
     multiple: true,
 });
 ```
 
-## Vanilla JavaScript
+### Vanilla JavaScript
 
 For EditorJS tools, plain HTML, or any non-React context:
 
 ```typescript
-import { uploadFile, uploadFiles } from '@ottabase/ottaupload/utils';
+import { uploadFile } from '@ottabase/ottaupload/utils';
 
-// Single file
 const result = await uploadFile(file, {
-    endpoint: '/api/upload',
-    provider: 'r2',
+    purpose: 'media', // default; endpoint defaults to /api/files
     maxFileSize: 10 * 1024 * 1024,
     acceptedFileTypes: ['image/*'],
     onProgress: (progress) => console.log(`${progress}%`),
-    onSuccess: (response) => console.log(response.url),
-    onError: (error) => console.error(error),
-});
-
-// Multiple files
-const results = await uploadFiles([file1, file2], {
-    endpoint: '/api/upload',
+    onSuccess: (response) => console.log(response.file?.url),
+    onError: (error) => console.error(error.message),
 });
 ```
 
-## Validation
-
-### Validators
+## Validation helpers
 
 ```typescript
 import {
+    FILE_TYPES,
+    formatFileSize,
+    validateFiles,
     validateFileSize,
     validateFileType,
-    validateFiles,
-    formatFileSize,
-    generateFileKey,
-    FILE_TYPES,
 } from '@ottabase/ottaupload/validation';
 
-// File size
-validateFileSize(file, 10 * 1024 * 1024); // true/false
-
-// File type
-validateFileType(file, ['image/*', FILE_TYPES.PDF]); // true/false
-
-// Multiple files
-const { valid, errors } = validateFiles(files, {
-    maxFiles: 5,
-    maxFileSize: 10 * 1024 * 1024,
-    acceptedFileTypes: ['image/*'],
-});
-
-// Utilities
+validateFileType(file, ['image/*', FILE_TYPES.PDF]); // the browser's label: a UX check only
+const { valid, errors } = validateFiles(files, { maxFiles: 5, maxFileSize: 10 * 1024 * 1024 });
 formatFileSize(1048576); // "1 MB"
-generateFileKey(file); // "my-file-1234567890-abc123.jpg"
-generateFileKey(file, 'uploads'); // "uploads/my-file-1234567890-abc123.jpg"
 ```
 
-### File Type Constants
-
-```typescript
-import { FILE_TYPES } from '@ottabase/ottaupload/validation';
-
-FILE_TYPES.IMAGE_ALL; // 'image/*'
-FILE_TYPES.IMAGE_JPEG; // 'image/jpeg'
-FILE_TYPES.PDF; // 'application/pdf'
-FILE_TYPES.VIDEO_ALL; // 'video/*'
-FILE_TYPES.ZIP; // 'application/zip'
-```
-
-### Zod Schemas
-
-```typescript
-import { uploadConfigSchema, fileMetadataSchema, uploadResponseSchema } from '@ottabase/ottaupload/validation';
-
-const config = uploadConfigSchema.parse({
-    maxFiles: 5,
-    maxFileSize: 10485760,
-    autoUpload: true,
-});
-```
-
-## Types
-
-```typescript
-import type {
-    UploadFile,
-    UploadConfig,
-    UploadResponse,
-    UploadProvider,
-    UploadStatus,
-    FileMetadata,
-    CloudflareImagesConfig,
-    CloudflareImagesResponse,
-} from '@ottabase/ottaupload/types';
-```
-
-## Advanced Usage
-
-### Custom Upload Handler
-
-```tsx
-<FileUploader
-    onUpload={async (files) => {
-        for (const file of files) {
-            const result = await customUpload(file);
-            console.log(result);
-        }
-    }}
-/>
-```
-
-### Manual Control
-
-```tsx
-const { files, addFiles, uploadAll } = useFileUpload({ autoUpload: false });
-
-<input type="file" onChange={(e) => addFiles(Array.from(e.target.files))} />
-<button onClick={uploadAll}>Upload All</button>
-```
-
-### Retry Failed Uploads
-
-```tsx
-const { files, retryUpload } = useFileUpload();
-
-{
-    files.map((file) => (
-        <div key={file.id}>
-            {file.file.name} - {file.progress}%
-            {file.status === 'error' && <button onClick={() => retryUpload(file.id)}>Retry</button>}
-        </div>
-    ));
-}
-```
-
-## Package Structure
+## Package structure
 
 ```
 @ottabase/ottaupload  # Headless root: hooks + server, validation, types, utils (no rendered UI)
 ├── /client        # React components (FileUploader, FileUploadList, FileUploadItem)
-├── /server        # Server-side utilities (R2, Cloudflare Images)
-├── /validation    # Validation functions and Zod schemas
-├── /types         # TypeScript type definitions
-└── /utils         # Vanilla JS utilities (non-React)
+├── /server        # The files service, sniffing, metadata stripping, serving, tokens
+├── /validation    # Client-side validation and the upload config schema
+├── /types         # Types (FilePurpose, FileRecord, FileView, FileStore, ...)
+└── /utils         # Vanilla JS upload (non-React)
 ```
-
-## Provider Comparison
-
-| Feature          | Cloudflare R2        | Cloudflare Images            |
-| ---------------- | -------------------- | ---------------------------- |
-| **File Types**   | All types            | Images only                  |
-| **Optimization** | None                 | Automatic image optimization |
-| **Variants**     | No                   | Multiple size variants       |
-| **CDN**          | Manual setup         | Built-in global CDN          |
-| **Use Case**     | General file storage | Optimized image delivery     |
 
 ## License
 
@@ -24437,6 +24509,10 @@ const mailer = suppressions.guard(resendMailer, appId, 'newsletter'); // drops s
 ```
 
 Hard bounces and complaints from the webhooks are recorded as `*` suppressions automatically.
+
+`email_suppressions` is indexed for both lookups a sender makes: `(app_id, list, address)` (unique) for the send-time
+check of an address against `*` and one list, and `(app_id, address)` for one address across every list (a person's
+timeline).
 
 ## Unsubscribe
 
@@ -24794,12 +24870,14 @@ export default {
 
 The Worker also has to be registered as the queue's **consumer** in its wrangler config, next to the producer binding.
 Without the `consumers` entry nothing runs the handler: jobs are accepted, never processed, and nothing reports an
-error. A queue has one consumer, and `env.*` sections repeat both lists (they are not inherited).
+error. A queue has one consumer, and `env.*` sections repeat both lists (they are not inherited). A batch is one
+invocation, so its jobs share one D1 query, CPU and wall-time budget; `max_batch_size: 1` gives every job its own, which
+is what the Ottabase apps run (a `cron:run` task or an `events:deliver` fan-out is sized to have the invocation alone).
 
 ```jsonc
 "queues": {
     "producers": [{ "binding": "MY_QUEUE", "queue": "my-queue" }],
-    "consumers": [{ "queue": "my-queue", "max_batch_size": 10, "max_batch_timeout": 2 }],
+    "consumers": [{ "queue": "my-queue", "max_batch_size": 1, "max_batch_timeout": 2 }],
 }
 ```
 
@@ -28130,6 +28208,8 @@ import {
 - **`sanitizeInlineHtml(html: string): string`** - Sanitize inline EditorJS markup (safe for `dangerouslySetInnerHTML`)
 - **`sanitizeBlockHtml(html: string): string`** - Sanitize broader block-level HTML content
 - **`sanitizeSvgHtml(svg: string): string`** - Sanitize inline SVG content
+- **`markUgcLinks(html: string): string`** - On already sanitized user-generated HTML (comments, tenant posts), give
+  every link `rel="ugc nofollow noopener"` (`UGC_LINK_REL`), replacing any `rel` it had
 - **`sanitizeJsonForScript(data: unknown): string`** - Serialize and escape JSON for safe `<script>` embedding
 - **`sanitizeCssForStyleTag(css: string): string`** - Neutralize unsafe CSS when injecting into `<style>` tags
 
@@ -28520,16 +28600,23 @@ import { createVault, createVaultPackage, d1Driver } from '@ottabase/vault';
 
 export const vault = createVault<CloudflareEnv>({
     driver: (env) => d1Driver(env.OBCF_D1),
-    bucket: (env) => env.OBCF_R2 ?? null,
+    // A bucket of its own that no route serves: a backup is every row of every tenant.
+    bucket: (env) => env.OBCF_R2_VAULT ?? null,
     appId: (env) => getOttabaseConfig(env).appId,
+    // The file buckets, snapshotted with every backup (see "The buckets' own objects").
+    objects: { buckets: { public: (env) => env.OBCF_R2, private: (env) => env.OBCF_R2_PRIVATE } },
 });
 
 export const vaultPackage = createVaultPackage<CloudflareEnv>({
     vault,
     resolveCaller: resolvePackageCaller,
-    env: { required: ['OBCF_D1', 'OBCF_R2'] },
+    env: { required: ['OBCF_D1', 'OBCF_R2_VAULT'] },
 });
 ```
+
+**Never point `bucket` at a bucket a route serves by key.** Backup keys are predictable
+(`vault/<appId>/<backupId>/<table>.ndjson`) and hold every user's row; otta-web keeps them in `OBCF_R2_VAULT`, which no
+route reads.
 
 List `vaultPackage` in `ottabase/packages.ts`; the kernel mounts its routes like any other package's. The package has no
 tables of its own. It seeds a `vault:backup` task at `23 2 * * *` and renders at **Admin → Infrastructure → Vault**
@@ -28559,7 +28646,7 @@ prunes both kinds by age.
 ```
 vault/<appId>/<backupId>/manifest.json      # tables, row counts, columns, CREATE statements
 vault/<appId>/<backupId>/<table>.ndjson     # one JSON object per row; BLOBs as { "$blob": "<base64>" }
-vault/<appId>/<backupId>/objects.ndjson     # with `objects`: one line per bucket object (key, etag, size, uploaded, type)
+vault/<appId>/<backupId>/objects.<name>.ndjson  # with `objects`: one line per object of source bucket <name>
 vault/<appId>/_objects/<etag>               # the bytes of every snapshotted object, once per etag, shared by every backup
 ```
 
@@ -28582,16 +28669,18 @@ backup's columns with the live table's, so a column dropped since the backup is 
 no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does), the whole restore is one
 transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
 
-### The bucket's own objects
+### The buckets' own objects
 
-Uploads, media and files live in R2 beside the database, and they are state too. With `objects` in `createVault`
-(otta-web passes `{ exclude: ['og/'] }`), every backup also snapshots the bucket: `objects.ndjson` lists each object
-under the chosen `prefixes` (default: everything but the vault's own prefix and `exclude`), and each object's bytes are
-copied into the content store `_objects/<etag>` once. A second snapshot of an unchanged bucket copies nothing; only
-changed or new objects cost a copy. Restore puts every listed object back under its key with its metadata, skipping the
-ones whose live etag already matches, and reports keys whose bytes are gone (`objects.missing`). Pruning deletes the
-bytes no remaining backup names. `backup(env, { objects: false })` and `restore(env, id, { objects: false })` leave the
-bucket out of one run. The source can be another bucket (`objects.bucket`).
+Uploads, media and files live in R2 beside the database, and they are state too. With `objects` in `createVault`, every
+backup also snapshots each bucket named in `objects.buckets` (default `{ files: <the vault's own bucket> }`; otta-web
+passes its public and private file buckets, and `exclude: ['og/']`): `objects.<name>.ndjson` lists each object under the
+chosen `prefixes` (default: everything but the vault's own prefix and `exclude`), and each object's bytes are copied
+into the vault bucket's content store `_objects/<etag>` once. The manifest's `objects` and a restore's `objects` are
+keyed by the same names; a bucket that is unbound is skipped, so keep the names stable. A second snapshot of an
+unchanged bucket copies nothing; only changed or new objects cost a copy. Restore puts every listed object back under
+its key with its metadata, skipping the ones whose live etag already matches, and reports keys whose bytes are gone
+(`objects.missing`). Pruning deletes the bytes no remaining backup names. `backup(env, { objects: false })` and
+`restore(env, id, { objects: false })` leave the buckets out of one run.
 
 Copies are a `get` streamed into a `put`, as R2 copies. A bucket whose first snapshot outgrows one cron tick is the
 ceiling here (marked `ponytail:`); steady state copies only what changed.

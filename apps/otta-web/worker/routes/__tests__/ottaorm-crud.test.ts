@@ -14,6 +14,7 @@ vi.mock('@ottabase/ottaorm', () => ({
     parseCrudRequest: vi.fn(),
     executeSecureCrudRequest: vi.fn(),
     registerConnection: vi.fn(),
+    mediaFileStore: {},
 }));
 
 /**
@@ -1103,3 +1104,43 @@ describe('handleOttaormCrud (comments)', () => {
     });
 });
 // otta:end comments
+
+describe('handleOttaormCrud (media)', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+        'refuses %s: media rows change only through the files service',
+        async (method) => {
+            const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+            (parseCrudRequest as any).mockResolvedValue({
+                model: 'media',
+                method,
+                id: 'm1',
+                body: { storageKey: 'x' },
+            });
+            const response = await handleOttaormCrud(createContext());
+            expect(response.status).toBe(403);
+            expect(await response.json()).toMatchObject({ code: 'CRUD_DISABLED' });
+            expect(executeSecureCrudRequest).not.toHaveBeenCalled();
+        },
+    );
+
+    it('lists rows with the URLs the files service computes (none are stored)', async () => {
+        const { parseCrudRequest, executeSecureCrudRequest } = await import('@ottabase/ottaorm');
+        const id = 'c'.repeat(32);
+        const row = {
+            id,
+            appId: 'otta-web',
+            audience: 'public',
+            storageKey: `otta-web/media/${id}.png`,
+            variants: null,
+        };
+        (parseCrudRequest as any).mockResolvedValue({ model: 'media', method: 'GET' });
+        (executeSecureCrudRequest as any).mockResolvedValue({ success: true, status: 200, data: { data: [row] } });
+        const body = (await (await handleOttaormCrud(createContext())).json()) as { data: Record<string, string>[] };
+        expect(body.data[0]).toMatchObject({
+            url: `/api/files/public/otta-web/media/${id}.png`,
+            thumbnailUrl: `/api/files/public/otta-web/media/${id}.png`,
+        });
+    });
+});

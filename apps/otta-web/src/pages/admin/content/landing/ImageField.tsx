@@ -1,5 +1,6 @@
 // An image value for landing content: pick from (or upload to) the media library, or use an
-// address. Uploads are stored as /api/upload/file/<key>, which the landing site serves too.
+// address. A picked image is its public files URL (`<R2_PUBLIC_URL>/<key>`): the landing site
+// serves /api/files/public/* from the same bucket, or both point at the bucket's custom domain.
 
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle, Input } from '@ottabase/ui';
@@ -14,7 +15,10 @@ type ImageFieldProps = {
     label: string;
 } & Pick<ComponentProps<typeof Input>, 'aria-invalid' | 'aria-describedby' | 'aria-required'>;
 
-/** "logo-1760…-x1y2.png" from "/api/upload/file/logo-1760…-x1y2.png?v=2" — what the person recognises. */
+/** A stored file's public URL: it ends in the file's 32-hex id (the original or a variant). */
+const STORED_FILE = /\/[0-9a-f]{32}(?:\.[a-z0-9]+|\/(?:thumb|card|full)\.webp)(?:\?.*)?$/;
+
+/** The last path segment, e.g. "3f9a….png" — what the person recognises. */
 function fileName(url: string): string {
     const last = url.split('?')[0].split('/').pop() || url;
     try {
@@ -28,7 +32,7 @@ export function ImageField({ id, value, onChange, label, ...aria }: ImageFieldPr
     const [picking, setPicking] = useState(false);
     const noun = label.toLowerCase();
     // An address someone typed stays editable; uploads only need the picker.
-    const [byUrl, setByUrl] = useState(() => Boolean(value) && !value.startsWith('/api/upload/file/'));
+    const [byUrl, setByUrl] = useState(() => Boolean(value) && !STORED_FILE.test(value));
 
     return (
         <div className="space-y-2">

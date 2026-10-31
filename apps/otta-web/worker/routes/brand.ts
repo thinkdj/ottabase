@@ -33,7 +33,7 @@ import {
     type BrandAuditUser,
 } from '@ottabase/brand-engine/handlers';
 import { requireBrandEditAccess, type AdminContext } from '../lib/admin-guard';
-import { brandEnv, getAppId } from '../lib/brand-utils';
+import { brandAssets, brandEnv, getAppId } from '../lib/brand-utils';
 import type { ApiRouteContext } from './router';
 
 function toAuditUser(guard: AdminContext): BrandAuditUser | undefined {
@@ -85,7 +85,13 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
         if (method === 'DELETE') {
             const guard = await requireBrandEditAccess(context, null, appId);
             if (guard instanceof Response) return guard;
-            return handleDeleteBrandKit(request, envBrand, id, appId);
+            return handleDeleteBrandKit(
+                request,
+                envBrand,
+                id,
+                appId,
+                brandAssets(env, toAuditUser(guard)?.userId ?? null),
+            );
         }
     }
 
@@ -106,6 +112,7 @@ export async function handleBrandApi(context: ApiRouteContext): Promise<Response
             kitLogoMatch[1],
             appId,
             kitLogoMatch[2] as 'logo' | 'logo-dark' | 'icon' | 'og-image' | 'email-logo',
+            brandAssets(env, toAuditUser(guard)?.userId ?? null),
             toAuditUser(guard),
         );
     }

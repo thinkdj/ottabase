@@ -14,15 +14,3 @@ export interface AdvancedImageData {
     featuredImage?: boolean;
     aspectRatio?: string;
 }
-
-export interface UploadResponse {
-    success: boolean;
-    data?: {
-        url: string;
-        name?: string;
-        width?: number;
-        height?: number;
-    };
-    error?: string;
-    message?: string;
-}

@@ -113,6 +113,37 @@ const options: CreateAuthConfigOptions = {
 };
 ```
 
+## Account events
+
+The handler announces the accounts it creates and verifies through `emit`, which the app wires to its event bus (the
+package never imports one). A throw from `emit` is logged and never fails the sign-in.
+
+| Event           | Payload (`UserCreatedEvent`, `UserVerifiedEvent`)            | When                                                                                                                              |
+| --------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `user.created`  | `{ userId, email, name, organizationId: null, method, at }`  | An OAuth first sign-in (`method: 'oauth'`, after the identity link) or a magic link that creates the account (`'magic-link'`)     |
+| `user.verified` | `{ userId, email, at }` (`at` is the stored `emailVerified`) | `emailVerified` goes from null to a time: an account created verified, a magic link, an OAuth provider that vouches for the email |
+
+`organizationId` is null because the workspace comes later, from `onSignIn`. Accounts the host app creates itself
+(credentials sign-up, a bootstrap owner, Pro SSO) and its own verify-email route emit the same events from the app, with
+`method` `credentials` or `sso`.
+
+```typescript
+import type { CreateAuthConfigOptions } from '@ottabase/auth/backend';
+import { events } from '../ottabase/events'; // the app's bus
+
+export function authOptions(env: CloudflareEnv): CreateAuthConfigOptions {
+    return {
+        // name: 'user.created' | 'user.verified' (AuthEvents)
+        emit: async (_env, name, payload) => {
+            await events.emit(env, name, payload);
+        },
+    };
+}
+```
+
+otta-web wires it in `getAuthOptions` (`worker/lib/auth-utils.ts`) through `emitAccountEvent`, which also sets the
+event's actor and swallows a bus failure.
+
 ## Session Model
 
 The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained

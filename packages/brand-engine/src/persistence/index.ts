@@ -2,7 +2,7 @@
 // Brand Engine – Persistence layer exports
 // ---------------------------------------------------------------------------
 
-export { createBrandAssets } from './assets';
+export { LOGO_KEY_FIELDS } from './assets';
 export type { BrandAssetClient, LogoType } from './assets';
 export { BrandKit } from './BrandKit.model';
 export { brandKitLogos, brandKitToTheme, resolveInheritanceChain } from './brandKitToConfig';

@@ -2,10 +2,10 @@
 // @ottabase/vault — snapshots of the bucket's own objects
 // ============================================================
 // The uploads, media and files an app keeps in R2 are part of its state as much as its
-// rows. A snapshot lists every object under the chosen prefixes (key, etag, size, when it
-// was uploaded, its content type) into `objects.ndjson` beside the tables, and copies each
-// object's bytes into a content store keyed by etag, once: a second snapshot of an unchanged
-// bucket copies nothing. Restore puts every listed object back under its key, skipping the
+// rows. A snapshot lists every object of one source bucket under the chosen prefixes (key,
+// etag, size, when it was uploaded, its content type) into `objects.<source>.ndjson` beside
+// the tables, and copies each object's bytes into the vault bucket's content store keyed by
+// etag, once: a second snapshot of an unchanged bucket copies nothing. Restore puts every listed object back under its key, skipping the
 // ones whose live etag already matches. Pruning deletes content no remaining snapshot names.
 // ============================================================
 
@@ -53,8 +53,10 @@ export interface SnapshotInput {
     prefixes: string[];
     /** Prefixes left out, the vault's own among them. */
     exclude: string[];
-    /** Where `objects.ndjson` goes: the backup's directory. */
+    /** Where the listing goes: the backup's directory. */
     dir: string;
+    /** The source's name: the listing is `objects.<name>.ndjson`. */
+    name: string;
 }
 
 export async function snapshotObjects(input: SnapshotInput): Promise<BackupObjects> {
@@ -90,7 +92,7 @@ export async function snapshotObjects(input: SnapshotInput): Promise<BackupObjec
             bytes += object.size;
         }
     }
-    const key = `${input.dir}objects.ndjson`;
+    const key = `${input.dir}objects.${input.name}.ndjson`;
     await input.vault.put(key, lines.length ? `${lines.join('\n')}\n` : '', {
         httpMetadata: { contentType: 'application/x-ndjson' },
     });

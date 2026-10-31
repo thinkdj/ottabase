@@ -373,26 +373,31 @@ export class ScheduledTask extends BaseModel {
     }
 
     /**
-     * Atomically claim one execution. Scheduled ticks also re-check active/due
-     * state in this statement so a stale due-list read cannot run a paused or
-     * rescheduled task. `lastRunAt` is the fencing token for the claimed run.
+     * Atomically claim one execution. A scheduled run (`requestedAt` null) re-checks
+     * active/due state in this statement so a stale due-list read cannot run a paused or
+     * rescheduled task; a manual run claims only while no run has started since it was
+     * requested, so a redelivered request is a no-op. `lastRunAt` is the fencing token
+     * for the claimed run.
      */
     static async acquireExecutionLock(
         id: string,
         appId: string,
         startedAt: Date,
         staleBefore: Date,
-        scheduledOnly: boolean,
+        requestedAt: Date | null,
         driver: Pick<DbDriver, 'executeRaw'>,
     ): Promise<boolean> {
         const startedAtMs = startedAt.getTime();
+        const requestedAtMs = requestedAt?.getTime() ?? null;
         const result = await driver.executeRaw(
             `UPDATE scheduled_tasks
              SET last_status = 'running', last_run_at = ?, updated_at = ?
              WHERE id = ? AND app_id = ?
                AND (last_status IS NULL OR last_status != 'running' OR last_run_at IS NULL OR last_run_at < ?)
-               AND (? = 0 OR (is_active = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?))`,
-            [startedAtMs, startedAtMs, id, appId, staleBefore.getTime(), scheduledOnly ? 1 : 0, startedAtMs],
+               AND (CASE WHEN ? IS NULL
+                         THEN is_active = 1 AND next_run_at IS NOT NULL AND next_run_at <= ?
+                         ELSE last_run_at IS NULL OR last_run_at < ? END)`,
+            [startedAtMs, startedAtMs, id, appId, staleBefore.getTime(), requestedAtMs, startedAtMs, requestedAtMs],
         );
         return (result.meta?.changes ?? 0) > 0;
     }

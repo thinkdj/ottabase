@@ -30,7 +30,7 @@ import { getAllSchemas } from '../../ottabase/db/schemas-helper';
 import { buildAppMigrations } from '../../ottabase/migrations';
 import { packages } from '../../ottabase/packages';
 import { ensurePackageSchedules } from '../lib/package-schedules';
-import { reconcileSystemRoleSessions } from '../lib/auth-utils';
+import { emitAccountEvent, reconcileSystemRoleSessions } from '../lib/auth-utils';
 import { enforceBruteForceThrottle } from '../lib/rate-limiting';
 import { getClientIpAddress } from '../lib/utils';
 import { ensureAppBrandDefaults, provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
@@ -603,10 +603,11 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
 
         // Create user with hashed password
         const passwordHash = await hashPassword(password);
+        const verifiedAt = Date.now();
         const newUser = await User.create({
             email,
             name: name || null,
-            emailVerified: Date.now(), // Auto-verify platform owner
+            emailVerified: verifiedAt, // Auto-verify platform owner
             passwordHash,
         });
 
@@ -662,11 +663,22 @@ async function handleCreateOwner(context: BootstrapContext): Promise<Response> {
                 id: userId,
                 email,
                 name: name || null,
-                emailVerified: Date.now(),
+                emailVerified: verifiedAt,
             },
             env as any,
             request,
         );
+
+        // Past every rollback: the owner exists, created verified.
+        await emitAccountEvent(env, 'user.created', {
+            userId,
+            email,
+            name: name || null,
+            organizationId,
+            method: 'credentials',
+            at: verifiedAt,
+        });
+        await emitAccountEvent(env, 'user.verified', { userId, email, at: verifiedAt });
 
         const responseData = {
             success: true,

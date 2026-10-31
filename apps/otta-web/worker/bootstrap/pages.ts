@@ -2087,10 +2087,24 @@ const BINDING_META: Record<string, BindingMeta> = {
         icon: 'zap',
     },
     r2: {
-        name: 'File storage',
+        name: 'Public files',
         id: 'OBCF_R2',
         product: 'R2',
-        desc: 'Stores uploads such as images and documents.',
+        desc: 'Stores public uploads: avatars, the media library, brand assets.',
+        icon: 'hard-drive',
+    },
+    r2Private: {
+        name: 'Private files',
+        id: 'OBCF_R2_PRIVATE',
+        product: 'R2',
+        desc: 'Stores files only their organization or uploader may open.',
+        icon: 'hard-drive',
+    },
+    r2Vault: {
+        name: 'Backups',
+        id: 'OBCF_R2_VAULT',
+        product: 'R2',
+        desc: 'Holds Vault backups of the database and both file buckets.',
         icon: 'hard-drive',
     },
     queue: {

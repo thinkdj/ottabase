@@ -64,7 +64,9 @@ open http://127.0.0.1:3005/                           # what is installed, where
 ```
 
 `POST /api/admin/init` is idempotent: run it after every deploy that added a package. The scheduler also seeds missing
-schedules on its first tick, so a deploy with the cron trigger needs no click for housekeeping to start.
+schedules on its first tick, so a deploy with the cron trigger needs no click for housekeeping to start. Bind
+`OBCF_QUEUE` (with a consumer at `max_batch_size: 1`) and each due task becomes one `cron:run` job that runs in its own
+invocation; without a queue the tick runs them inline.
 
 ## Adding a package
 

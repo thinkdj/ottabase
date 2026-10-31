@@ -1,5 +1,5 @@
 import { sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { safeUrl } from '../inline';
+import { safeUrl, useLinkRel } from '../inline';
 import type { BlockRenderer } from '../types';
 import { useId, useMemo } from 'react';
 
@@ -140,6 +140,7 @@ const RatingBadge = ({ rating, maxStars, size = 'lg' }: { rating: number; maxSta
 };
 
 const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
+    const linkRel = useLinkRel();
     const title = data?.title || '';
     const content = data?.content || '';
     const image = safeUrl(data?.image) ?? undefined;
@@ -221,7 +222,7 @@ const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
                                             <a
                                                 href={sanitizeUrl(linkUrl)}
                                                 target="_blank"
-                                                rel="noopener noreferrer"
+                                                rel={linkRel(true)}
                                                 className="hover:underline text-inherit"
                                             >
                                                 {title}
@@ -379,7 +380,7 @@ const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
                                 <a
                                     href={sanitizeUrl(linkUrl)}
                                     target="_blank"
-                                    rel="noopener noreferrer"
+                                    rel={linkRel(true)}
                                     className="group inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-4 decoration-muted-foreground/40 hover:decoration-foreground transition-colors"
                                 >
                                     {linkLabel}

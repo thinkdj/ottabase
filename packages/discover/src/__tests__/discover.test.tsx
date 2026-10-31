@@ -107,7 +107,7 @@ describe('robots', () => {
     const txt = robotsTxt({
         sitemap: 'https://alpha.test/sitemap.xml',
         disallow: ['/api/', 'not-a-path'],
-        allow: ['/api/upload/file/'],
+        allow: ['/api/files/public/'],
     });
 
     it('allows every AI search crawler by name and keeps the private paths from all of them', () => {
@@ -115,7 +115,7 @@ describe('robots', () => {
             expect(allowed(txt, bot, '/pricing'), bot).toBe(true);
             expect(allowed(txt, bot, '/api/leads'), bot).toBe(false);
             // The images live under the disallowed prefix; the longer allow wins.
-            expect(allowed(txt, bot, '/api/upload/file/logo.png'), bot).toBe(true);
+            expect(allowed(txt, bot, '/api/files/public/logo.png'), bot).toBe(true);
         }
         expect(txt.match(/^Sitemap: https:\/\/alpha\.test\/sitemap\.xml$/gm)).toHaveLength(1);
         expect(txt).not.toContain('not-a-path');

@@ -15,6 +15,8 @@ import { User } from '@ottabase/ottaorm/models'; // otta:only comments
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import type { FileRecord } from '@ottabase/ottaupload/server';
+import { files } from '../../ottabase/files';
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
 
 export interface OttaormCrudContext {
@@ -413,6 +415,16 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         // the model here. The deeper fix is a userId/appId-scoped RLS policy; tracked separately.
         return errorResponse('Referral tracking is not accessible via OttaORM', 403, {
             code: 'CRUD_DISABLED',
+        });
+    }
+
+    // Media rows are written only by the files service (an upload, an edit, a delete through
+    // /api/files): a row created or deleted here would point at the wrong object or orphan one.
+    // Generic CRUD lists and reads them, nothing more.
+    if (crudRequest.model === 'media' && crudRequest.method !== 'GET') {
+        return errorResponse('Media is read-only through OttaORM', 403, {
+            code: 'CRUD_DISABLED',
+            hint: 'Use POST/PATCH/DELETE /api/files',
         });
     }
 
@@ -830,7 +842,10 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                                       {
                                           id: u.get('id'),
                                           name: u.get('name'),
-                                          image: u.get('image'),
+                                          image: User.imageUrl({
+                                              avatarKey: u.get('avatarKey'),
+                                              image: u.get('image'),
+                                          }),
                                           createdAt: u.get('createdAt'),
                                       },
                                   ]),
@@ -849,6 +864,18 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
     }
     // otta:end comments
+
+    // URLs are never stored: every media row read here gets the view fields (url, thumbnailUrl,
+    // previewUrl) the files service computes from its key, audience and variants.
+    if (crudRequest.model === 'media' && result.data) {
+        const payload = result.data as { data?: unknown } | Record<string, unknown>;
+        const rows = Array.isArray((payload as { data?: unknown }).data)
+            ? ((payload as { data: Record<string, unknown>[] }).data as Record<string, unknown>[])
+            : crudRequest.id
+              ? [payload as Record<string, unknown>]
+              : [];
+        for (const row of rows) Object.assign(row, files.view(env, row as unknown as FileRecord));
+    }
 
     return jsonResponse(result.data, result.status);
 }

@@ -154,7 +154,7 @@ export function CloudflareR2DemoPage() {
         <div className="space-y-8">
             <DemoPageHeader
                 title="R2 Storage"
-                description="Object storage for file uploads and downloads"
+                description="Raw R2 access to the private bucket (keys under demo/). User files go through /api/files."
                 backTo="/demo/cloudflare"
                 backLabel="Back to Cloudflare"
             />
@@ -186,7 +186,7 @@ export function CloudflareR2DemoPage() {
                                     const selectedFile = e.target.files?.[0];
                                     if (selectedFile) {
                                         setFile(selectedFile);
-                                        if (!key) setKey(selectedFile.name);
+                                        if (!key) setKey(`demo/${selectedFile.name}`);
                                     }
                                 }}
                                 disabled={loading}
@@ -194,11 +194,11 @@ export function CloudflareR2DemoPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Object Key (filename in bucket)</label>
+                            <label className="text-sm font-medium">Object key (under demo/)</label>
                             <Input
                                 value={key}
                                 onChange={(e) => setKey(e.target.value)}
-                                placeholder="my-file.pdf"
+                                placeholder="demo/my-file.pdf"
                                 disabled={loading}
                             />
                         </div>

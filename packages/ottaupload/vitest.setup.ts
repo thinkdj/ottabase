@@ -35,8 +35,7 @@ class MockXMLHttpRequest {
         setTimeout(() => {
             this.responseText = JSON.stringify({
                 success: true,
-                url: '/uploads/test-file.txt',
-                key: 'test-file-123.txt',
+                file: { id: 'f1', url: '/api/files/public/app/media/f1.txt', storageKey: 'app/media/f1.txt' },
             });
             this.trigger('load');
         }, 10);

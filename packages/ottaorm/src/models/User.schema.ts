@@ -14,7 +14,10 @@ export const usersTable = sqliteTable('users', {
     name: text('name'),
     email: text('email').notNull().unique(),
     emailVerified: integer('email_verified'),
+    // An external picture from an OAuth provider only. An uploaded avatar is `avatarKey`.
     image: text('image'),
+    // Public storage key of the uploaded avatar (its thumb variant when one was made); see User#imageUrl.
+    avatarKey: text('avatar_key'),
     // IANA zone and BCP 47 tag the person formats dates and numbers with (null = not set yet)
     timezone: text('timezone'),
     locale: text('locale'),

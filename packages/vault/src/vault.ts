@@ -3,6 +3,7 @@ import { collectGarbage, contentKey, parseEntries, restoreObjects, snapshotObjec
 import {
     VaultError,
     type BackupManifest,
+    type BackupObjects,
     type BackupTable,
     type BucketLike,
     type RawDriver,
@@ -44,8 +45,15 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
     };
     /** The content store: one object per etag, shared by every snapshot of the app. */
     const objectStore = (env: Env) => `${appDir(env)}_objects/`;
-    const objectSource = (env: Env): BucketLike | null =>
-        options.objects ? ((options.objects.bucket ?? options.bucket)(env) ?? null) : null;
+    /** The bound source buckets, by name. */
+    const objectSources = (env: Env): Array<[string, BucketLike]> => {
+        if (!options.objects) return [];
+        const buckets = options.objects.buckets ?? { files: options.bucket };
+        return Object.entries(buckets).flatMap(([name, bucket]) => {
+            const bound = bucket(env);
+            return bound ? [[name, bound] as [string, BucketLike]] : [];
+        });
+    };
 
     async function tables(env: Env): Promise<Array<{ name: string; sql: string }>> {
         const rows =
@@ -156,17 +164,20 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 await bucket.put(key, body, { httpMetadata: { contentType: 'application/x-ndjson' } });
                 out.push({ name: table.name, key, rows: lines.length, bytes: byteLength(body), columns: cols });
             }
-            const source = withObjects ? objectSource(env) : null;
-            const snapshot = source
-                ? await snapshotObjects({
-                      source,
-                      vault: bucket,
-                      store: objectStore(env),
-                      prefixes: options.objects?.prefixes ?? [''],
-                      exclude: [`${prefix}/`, ...(options.objects?.exclude ?? [])],
-                      dir,
-                  })
-                : undefined;
+            const sources = withObjects ? objectSources(env) : [];
+            let snapshot: Record<string, BackupObjects> | undefined;
+            for (const [name, source] of sources) {
+                snapshot ??= {};
+                snapshot[name] = await snapshotObjects({
+                    source,
+                    vault: bucket,
+                    store: objectStore(env),
+                    prefixes: options.objects?.prefixes ?? [''],
+                    exclude: [`${prefix}/`, ...(options.objects?.exclude ?? [])],
+                    dir,
+                    name,
+                });
+            }
             const manifest: BackupManifest = {
                 version: 1,
                 id,
@@ -258,15 +269,21 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 // statement; give the driver a `batch` (D1 has one) for a real restore.
                 for (const statement of statements) await driver.executeRaw(statement.sql, statement.params);
             }
-            const source = withObjects && manifest.objects ? objectSource(env) : null;
-            if (source && manifest.objects) {
-                const listing = await bucket.get(manifest.objects.key);
-                result.objects = await restoreObjects({
-                    source,
-                    vault: bucket,
-                    store: objectStore(env),
-                    entries: listing ? parseEntries(await listing.text()) : [],
-                });
+            if (withObjects && manifest.objects) {
+                const sources = new Map(objectSources(env));
+                for (const [name, snapshot] of Object.entries(manifest.objects)) {
+                    // A bucket no longer bound (or renamed) cannot take its objects back: left alone.
+                    const source = sources.get(name);
+                    if (!source) continue;
+                    const listing = await bucket.get(snapshot.key);
+                    result.objects ??= {};
+                    result.objects[name] = await restoreObjects({
+                        source,
+                        vault: bucket,
+                        store: objectStore(env),
+                        entries: listing ? parseEntries(await listing.text()) : [],
+                    });
+                }
             }
             return result;
         },
@@ -296,10 +313,12 @@ export function createVault<Env = unknown>(options: VaultOptions<Env>): Vault<En
                 const referenced = new Set<string>();
                 for (const manifest of manifests) {
                     if (removed.includes(manifest.id) || !manifest.objects) continue;
-                    const listing = await bucket.get(manifest.objects.key);
-                    if (!listing) continue;
-                    for (const entry of parseEntries(await listing.text()))
-                        referenced.add(contentKey(store, entry.etag));
+                    for (const snapshot of Object.values(manifest.objects)) {
+                        const listing = await bucket.get(snapshot.key);
+                        if (!listing) continue;
+                        for (const entry of parseEntries(await listing.text()))
+                            referenced.add(contentKey(store, entry.etag));
+                    }
                 }
                 await collectGarbage(bucket, store, referenced);
             }

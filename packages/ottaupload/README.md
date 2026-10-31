@@ -1,29 +1,179 @@
 # @ottabase/ottaupload
 
-A file upload package with drag-and-drop UI, progress tracking, and multi-provider support for Cloudflare R2 and
-Cloudflare Images.
+Files for an Ottabase app: the browser side (drag-and-drop uploader, progress, hooks, a vanilla helper) and the server
+side, **the files service**: one object every writer of user files goes through, which decides what a file really is,
+strips what it should not carry, puts it in the right bucket, makes its variants, records it and serves it back to the
+right people.
 
-## Features
+## The system in one page
 
-- **Clean UI** - Minimal shadcn/Notion-like design with dropzone and button variants
-- **Drag & Drop** - Native drag-and-drop with visual feedback
-- **Progress Tracking** - Real-time upload progress
-- **Multiple Files** - Batch upload with configurable limits
-- **Validation** - File type and size validation with Zod schemas
-- **Multi-Provider** - Cloudflare R2 (all files) and Cloudflare Images (optimized images)
-- **React Hooks** - `useFileUpload` and `useDragAndDrop`
-- **Vanilla JS** - Non-React support for EditorJS and plain HTML
-- **TypeScript** - Full type safety
+| Audience  | Who may read                                              | Bucket            | Served by                                         |
+| --------- | --------------------------------------------------------- | ----------------- | ------------------------------------------------- |
+| `public`  | anyone (a CDN may cache it)                               | `OBCF_R2`         | key: `/api/files/public/<key>` or a custom domain |
+| `members` | signed-in members of the owning organization, admins      | `OBCF_R2_PRIVATE` | id: `/api/files/:id`, after the check             |
+| `owner`   | the uploader, admins of the file's organization, platform | `OBCF_R2_PRIVATE` | id: `/api/files/:id`, after the check             |
 
-## Installation
+- **Every object in the public bucket is public by definition.** Nothing private is ever written there, so serving it by
+  key (or from a custom domain with no Worker in front) leaks nothing.
+- **The private bucket is never served by key.** Only `read()` opens it, after checking the viewer, or a signed `?t=`
+  token minted for that one file.
+- **System data is not a file.** Backups (Vault, in its own `OBCF_R2_VAULT`) and error artifacts never get a media row;
+  artifacts go to the private bucket.
 
-```bash
-pnpm add @ottabase/ottaupload
+**Keys** are `<appId>/<purpose>/<id>.<ext>`: `id` is 32 hex chars from `crypto.randomUUID()` (the media row has the same
+id) and `ext` comes from the sniffed type. Variants are `<appId>/<purpose>/<id>/<variant>.webp`. A key is never written
+twice: replacing a file is a new key and a delete of the old one, so a year of immutable caching is always right. The
+original filename lives only in the row.
+
+**Purposes** are declared in kernel manifests (`files: [...]`, see `@ottabase/kernel`) and collected by the registry
+like tables. A purpose names its audience, an allow-list of sniffed MIME types (`image/*` covers the raster family), a
+byte cap, optional variants, `svg: true` for trusted admin purposes and `server: true` when only its own guarded route
+writes it. otta-web declares `avatar`, `media`, `attachment`, `brand-asset` and `share-image`; packages declare their
+own.
+
+### The pipeline (`put`)
+
+1. **Purpose**: unknown purposes are refused (400 `UNKNOWN_PURPOSE`).
+2. **Quota**: one `SUM(fileSize)` over the owner's rows (the organization's, or the user's outside one). An owner at the
+   limit is refused before a byte is read; one the file would push over is refused after (413 `QUOTA_EXCEEDED`).
+3. **Byte cap while reading**: a stream is read with a counter and cancelled the moment it passes `maxBytes` (413
+   `PAYLOAD_TOO_LARGE`).
+4. **Sniff the real type** from magic bytes: JPEG, PNG, GIF, WebP, AVIF, MP4, WebM, PDF, ICO; text must be valid UTF-8
+   without NULs and is told apart from SVG, HTML and XML. Never `file.type`, never the extension (CSV is the one label
+   the name may pick, and only after the bytes proved plain text).
+5. **Allow-list**: the sniffed type against the purpose's `types` (415 `UNSUPPORTED_TYPE`). SVG only where `svg: true`.
+6. **Strip metadata** from raster images, in code, without re-encoding: JPEG APP1 (Exif, XMP) and APP13 (IPTC) go, and
+   Orientation survives as a minimal EXIF holding only that tag; PNG `eXIf`, `tEXt`, `zTXt`, `iTXt` go; WebP `EXIF` and
+   `XMP ` chunks go and the VP8X flags follow. Width and height are read from the headers (turned for orientations 5-8).
+   **AVIF**, whose metadata sits in ISO-BMFF item boxes the code cannot rewrite, is re-encoded to WebP through the
+   `OBCF_IMAGES` binding (WebP output never carries metadata) and that WebP is the stored original; without the binding
+   it is refused (415). No unstripped original is ever stored.
+7. **Write** to the audience's bucket with `httpMetadata`: the content type; `inline` disposition for raster images and
+   video, `attachment` for everything else, PDF included (browsers' PDF viewers do not run under the sandbox CSP, and
+   inline with the sandbox relaxed is the combination to avoid); `public, max-age=31536000, immutable` for public files,
+   `private, no-store` otherwise.
+8. **Variants** through the `OBCF_IMAGES` binding when it is bound: fixed widths thumb 160, card 640, full 1600, WebP,
+   `fit: scale-down` (never upscaled). Without the binding there are no variants and every variant URL is the
+   original's. There are no on-the-fly `/cdn-cgi/image` URLs: nobody can mint new sizes on your bill.
+9. **Row**: the media record. A failed put deletes what it wrote, so nothing counts against the quota.
+
+### Views
+
+URLs are never stored. `view(record)` computes them: a public file's `url` is `<R2_PUBLIC_URL>/<key>` (default
+`/api/files/public/<key>`), a private one's is `/api/files/<id>`; `thumbnailUrl` is the thumb variant and `previewUrl`
+the card variant, else the original. Rows that reference a public file store its key; rows that reference a private file
+store its media id.
+
+**Public URLs are absolute.** A relative `R2_PUBLIC_URL` (the default `/api/files/public`) is resolved against the app's
+public origin (the `origin` option; otta-web passes `AUTH_URL`), so a logo or an image works where the page is not: in
+mail, social cards, exports. `publicBase(env)` is that base; `url()`, views, signed URLs and the quarantine purge list
+all start with it, and `keyOf()` recognises a URL in either spelling. Without an origin they stay relative.
+
+## Server
+
+```typescript
+// apps/otta-web/ottabase/files.ts: the app's one instance
+import { mediaFileStore } from '@ottabase/ottaorm';
+import { createFiles, quotaBytes, type FilesBucket } from '@ottabase/ottaupload/server';
+import { getOttabaseConfig } from './config.loader';
+import { packages } from './registry';
+
+export const files = createFiles<CloudflareEnv>({
+    appId: (env) => getOttabaseConfig(env).appId,
+    purposes: () => packages.files(), // every manifest's `files`
+    store: mediaFileStore, // the Media model
+    buckets: (env) => ({
+        public: (env.OBCF_R2 ?? null) as FilesBucket | null,
+        private: (env.OBCF_R2_PRIVATE ?? null) as FilesBucket | null,
+    }),
+    images: (env) => env.OBCF_IMAGES, // optional: variants
+    publicUrl: (env) => env.R2_PUBLIC_URL, // default /api/files/public
+    origin: (env) => env.AUTH_URL, // relative public URLs are made absolute against it
+    signingSecret: (env) => env.FILES_SIGNING_SECRET, // unset: no signed URLs
+    quota: (env) => quotaBytes(env.FILES_QUOTA_MB), // default 1024 MB; a plan lookup goes here later
+});
 ```
 
-## Quick Start
+| Method                                          | Does                                                                                   |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `put(env, { purpose, owner, file, name?, ...})` | the pipeline above; resolves to the `FileView`, throws `FilesError` when refused       |
+| `get(env, id)` / `view(env, record)`            | the record (this app's only) / the record with its URLs                                |
+| `url(env, key)` / `keyOf(env, url)`             | public URL of a public key / the key behind one of this app's public URLs              |
+| `signedUrl(env, id, { variant?, ttlSeconds? })` | `/api/files/<id>[/<variant>]?t=…`, readable without a session until it expires (1 h)   |
+| `read(env, request, { id, variant, viewer })`   | public: 302 to its URL; private: the bytes if the viewer (or the token) may; Range/304 |
+| `servePublic(env, request, key)`                | one key of the public bucket                                                           |
+| `update(env, id, { title, altText, caption })`  | the describing text (trimmed, capped)                                                  |
+| `remove(env, id)`                               | the file, its variants and its row                                                     |
+| `removeOwned(env, { appId, userId })`           | everything one user uploaded (an account erase)                                        |
+| `quarantine(env, id, { origin? })`              | stop serving it (see below); `{ file, purge, urls }`                                   |
+| `restore(env, id)`                              | serve a quarantined file again                                                         |
+| `purposes(env)` / `purpose(env, name)`          | the declared purposes                                                                  |
 
-### React Component (Dropzone)
+`owner` is `{ appId, userId, organizationId }` and **always comes from the verified session**, never from the request. A
+file that belongs to the app rather than a person (brand logos, landing share images) has `userId: null` (and the owning
+organization, if any): an account erasure (`removeOwned`) of whoever uploaded it must never take a live logo. Put the
+uploader in `metadata` (`{ uploadedBy }`) and the audit log instead.
+
+**Quarantine** takes a file out of circulation without deleting it. A public file's objects (original and variants) move
+from the public bucket to the private one under the same keys, so neither `/api/files/public/*` nor the bucket's custom
+domain has them; every read path refuses a `quarantined` row. Public files are cached as immutable, so their URLs also
+have to leave the CDN: the `purge(env, urls)` option does that (otta-web calls Cloudflare's purge API with
+`CLOUDFLARE_FILES_ZONE_ID` and `CLOUDFLARE_PURGE_API_TOKEN`). Without it, or when it fails, the result says
+`purge: 'manual'` with the absolute `urls` to purge by hand. `restore` moves the objects back.
+`canModerateFile(record, viewer)`: admins of the file's organization and platform admins. `FilesError` carries `status`
+and `code` for `errorResponse`. Authorization helpers `canReadFile(record, viewer)` and `canChangeFile(record, viewer)`
+(the uploader and admins) are exported for routes.
+
+**Signed tokens** are `<exp>.<HMAC-SHA256>` over `['files.read', id, exp]` with `FILES_SIGNING_SECRET`: purpose-bound (a
+signature minted for anything else never opens a file), bound to one file, expiring, verified in constant time, and
+refused outright while the secret is unset.
+
+A package that stores files takes the service as an option and the composition passes `files`:
+
+```typescript
+import type { Files } from '@ottabase/ottaupload/server';
+
+export interface MyPackageOptions<Env> {
+    files?: Files<Env>;
+}
+
+// in a route, after the package's own guard:
+const view = await options.files!.put(env, { purpose: 'my-purpose', owner, file });
+```
+
+### Serving
+
+`servePublicFile(bucket, request, key)` is the public route on its own (otta-landing uses it): the key must be plain
+segments, the object is read with `onlyIf`/`range` from the request headers (ETag and If-Modified-Since → 304, Range →
+206 with `Content-Range`, a range past the end → 416), and every response carries `X-Content-Type-Options: nosniff`,
+`Content-Security-Policy: sandbox; default-src 'none'` and a `Content-Disposition` that is `inline` only for raster
+images and video. `applySafeObjectHeaders(headers, filename)` sets those three on any response.
+
+The pure pieces are exported too: `sniff`, `imageSize`, `stripMetadata`, `fileKey`, `variantKey`, `fileIdFromKey`,
+`signFileToken`, `verifyFileToken`, `dispositionFor`.
+
+## The routes (otta-web)
+
+| Route                                 | Who                                       | Does                                                                  |
+| ------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
+| `POST /api/files`                     | a session; `OBCF_RATE_LIMITER_UPLOADS`    | multipart `file`, `purpose`, optional `title`, `altText` → `{ file }` |
+| `GET\|HEAD /api/files/public/*`       | anyone                                    | the public bucket by key; no D1                                       |
+| `GET\|HEAD /api/files/:id[/:variant]` | per audience, or a `?t=` token            | 302 for public files, the bytes (`private, no-cache`) otherwise       |
+| `PATCH /api/files/:id`                | the uploader, org admins, platform admins | `{ title, altText, caption }`                                         |
+| `DELETE /api/files/:id`               | the uploader, org admins, platform admins | the file; `server` purposes answer 409 (their row owns them)          |
+| `POST /api/files/:id/quarantine`      | org admins of the file, platform admins   | quarantine (audited) → `{ file, purge, urls }`                        |
+| `DELETE /api/files/:id/quarantine`    | org admins of the file, platform admins   | restore (audited)                                                     |
+| `PUT\|DELETE /api/users/me/avatar`    | the session                               | sets or drops the avatar; deletes the previous file                   |
+
+Uploads (here and the avatar route) have a limiter of their own, `OBCF_RATE_LIMITER_UPLOADS`: 60 a minute per user, so a
+bulk media-library upload goes through; byte caps and the storage quota bound the volume. A production deploy without
+the binding refuses uploads (500) rather than let them through uncounted.
+
+Media rows are read through generic CRUD (`/api/ottaorm/media`, with the view URLs added); writes there are refused.
+
+## Client
+
+### React component
 
 ```tsx
 import { FileUploader } from '@ottabase/ottaupload/client';
@@ -31,360 +181,93 @@ import { FileUploader } from '@ottabase/ottaupload/client';
 function App() {
     return (
         <FileUploader
-            uploadEndpoint="/api/upload"
+            purpose="media" // default; sent with every file
             maxFiles={5}
-            maxFileSize={10 * 1024 * 1024} // 10MB
+            maxFileSize={10 * 1024 * 1024} // a hint: the purpose's cap is enforced on the server
             acceptedFileTypes={['image/*', 'application/pdf']}
-            autoUpload={true}
-            onUploadComplete={(files) => console.log('Done!', files)}
+            autoUpload
+            onUploadComplete={(files) => console.log(files.map((f) => f.uploaded?.url))}
         />
     );
 }
 ```
 
-### Button Variant
+| Prop                | Type                                           | Default        | Description                                                                          |
+| ------------------- | ---------------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`   | UI style                                                                             |
+| `purpose`           | `string`                                       | `'media'`      | The file purpose                                                                     |
+| `uploadEndpoint`    | `string`                                       | `'/api/files'` | API endpoint                                                                         |
+| `maxFiles`          | `number`                                       | `1`            | Max file count                                                                       |
+| `maxFileSize`       | `number`                                       | `undefined`    | Max size in bytes (UX hint)                                                          |
+| `acceptedFileTypes` | `string[]`                                     | `undefined`    | MIME types (UX hint; the server sniffs)                                              |
+| `autoUpload`        | `boolean`                                      | `false`        | Upload on select                                                                     |
+| `disabled`          | `boolean`                                      | `false`        | Disable uploader                                                                     |
+| `onUpload`          | `(files: File[]) => void`                      | -              | Custom upload handler                                                                |
+| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -              | Once per batch with the files that uploaded (`url`, `uploaded` set); skipped if none |
+| `onUploadError`     | `(error: Error) => void`                       | -              | Error callback (the server's message: unsupported type, too large, over the quota)   |
+| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -              | Progress callback                                                                    |
+
+### Hooks
 
 ```tsx
-<FileUploader variant="button" maxFiles={1} acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
-```
-
-### Vanilla JavaScript
-
-```typescript
-import { uploadFile } from '@ottabase/ottaupload/utils';
-
-const result = await uploadFile(file, {
-    endpoint: '/api/upload',
-    maxFileSize: 10 * 1024 * 1024,
-    onProgress: (progress) => console.log(`${progress}%`),
-    onSuccess: (response) => console.log(response.url),
-});
-```
-
-## Component API
-
-### FileUploader Props
-
-| Prop                | Type                                           | Default         | Description                                                                                           |
-| ------------------- | ---------------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------- |
-| `variant`           | `'dropzone' \| 'button'`                       | `'dropzone'`    | UI style                                                                                              |
-| `maxFiles`          | `number`                                       | `1`             | Max file count                                                                                        |
-| `maxFileSize`       | `number`                                       | `undefined`     | Max size in bytes                                                                                     |
-| `acceptedFileTypes` | `string[]`                                     | `undefined`     | MIME types (e.g., `['image/*']`)                                                                      |
-| `provider`          | `'r2' \| 'cloudflare-images'`                  | `'r2'`          | Upload provider                                                                                       |
-| `uploadEndpoint`    | `string`                                       | `'/api/upload'` | API endpoint                                                                                          |
-| `autoUpload`        | `boolean`                                      | `false`         | Auto-upload on select                                                                                 |
-| `disabled`          | `boolean`                                      | `false`         | Disable uploader                                                                                      |
-| `onUpload`          | `(files: File[]) => void`                      | -               | Custom upload handler                                                                                 |
-| `onUploadComplete`  | `(files: UploadFile[]) => void`                | -               | Once per batch (also autoUpload) with the files that uploaded (`url`, `key` set); skipped if none did |
-| `onUploadError`     | `(error: Error) => void`                       | -               | Error callback                                                                                        |
-| `onUploadProgress`  | `(progress: number, file: UploadFile) => void` | -               | Progress callback                                                                                     |
-
-## Providers
-
-### Cloudflare R2 (Default)
-
-For all file types. Requires `OBCF_R2` binding.
-
-**Client:**
-
-```tsx
-<FileUploader uploadEndpoint="/api/upload" maxFiles={5} />
-```
-
-**Server:**
-
-```typescript
-import { uploadFileToR2 } from '@ottabase/ottaupload/server';
-import { createR2Client } from '@ottabase/cf/r2';
-
-const r2Client = createR2Client({ bucket: env.OBCF_R2 });
-const result = await uploadFileToR2(file, r2Client, {
-    maxFileSize: 50 * 1024 * 1024, // 50MB
-    // Optional: returned URL (default `/api/upload/file/<key>`), e.g. a public R2 domain
-    getUrl: (key) => `https://files.example.com/${key}`,
-});
-```
-
-### Cloudflare Images
-
-For optimized image delivery with automatic variants.
-
-**Environment:**
-
-- `CF_IMAGES_ACCOUNT_ID`
-- `CF_IMAGES_API_TOKEN` (scoped to Cloudflare Images)
-
-**Client:**
-
-```tsx
-<FileUploader provider="cloudflare-images" acceptedFileTypes={['image/*']} uploadEndpoint="/api/upload" />
-```
-
-**Server:**
-
-```typescript
-import { uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
-
-const result = await uploadFileToCloudflareImages(
-    file,
-    {
-        accountId: env.CF_IMAGES_ACCOUNT_ID,
-        apiToken: env.CF_IMAGES_API_TOKEN,
-        requireSignedURLs: false,
-        metadata: { userId: 'user-123' },
-    },
-    {
-        maxFileSize: 10 * 1024 * 1024,
-    },
-);
-```
-
-## Server Setup
-
-### API Endpoint
-
-```typescript
-// cloudflare-worker.ts
-import { uploadFileToR2, uploadFileToCloudflareImages } from '@ottabase/ottaupload/server';
-import { createR2Client } from '@ottabase/cf/r2';
-
-if (url.pathname === '/api/upload' && request.method === 'POST') {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const provider = formData.get('provider') || 'r2';
-
-    if (provider === 'cloudflare-images') {
-        const result = await uploadFileToCloudflareImages(file, {
-            accountId: env.CF_IMAGES_ACCOUNT_ID,
-            apiToken: env.CF_IMAGES_API_TOKEN,
-        });
-        return Response.json(result);
-    }
-
-    // R2 (default)
-    const r2Client = createR2Client({ bucket: env.OBCF_R2 });
-    const result = await uploadFileToR2(file, r2Client);
-    return Response.json(result);
-}
-```
-
-### File Operations
-
-```typescript
-// Upload
-const result = await uploadFileToR2(file, r2Client);
-
-// Download
-import { getFileFromR2 } from '@ottabase/ottaupload/server';
-const file = await getFileFromR2(key, r2Client);
-
-// Delete
-import { deleteFileFromR2 } from '@ottabase/ottaupload/server';
-await deleteFileFromR2(key, r2Client);
-
-// List
-import { listFilesFromR2 } from '@ottabase/ottaupload/server';
-const { files } = await listFilesFromR2(r2Client, { prefix: 'uploads/' });
-```
-
-### Serving uploads
-
-`serveR2Object(bucket, key, { cacheControl? })` streams an object from an R2 binding with the headers that make serving
-user uploads safe: `X-Content-Type-Options: nosniff`, a sandboxing `Content-Security-Policy`, and
-`Content-Disposition: inline` only for known-safe images (everything else, SVG and HTML included, downloads). It returns
-`null` for a missing key. Every app that serves `/api/upload/file/*` should use it, so the rules can't drift.
-
-```typescript
-import { serveR2Object } from '@ottabase/ottaupload/server';
-
-const response = await serveR2Object(env.OBCF_R2, key, { cacheControl: 'public, max-age=31536000, immutable' });
-return response ?? errorResponse('File not found', 404);
-```
-
-## React Hooks
-
-### useFileUpload
-
-```tsx
-import { useFileUpload } from '@ottabase/ottaupload';
+import { useDragAndDrop, useFileUpload } from '@ottabase/ottaupload';
 
 const { files, isUploading, addFiles, uploadAll, removeFile, clearFiles, retryUpload } = useFileUpload({
+    purpose: 'attachment',
     maxFiles: 5,
-    maxFileSize: 10 * 1024 * 1024,
-    uploadEndpoint: '/api/upload',
     autoUpload: true,
-    onUploadComplete: (files) => console.log('Done!'),
 });
-```
-
-### useDragAndDrop
-
-```tsx
-import { useDragAndDrop } from '@ottabase/ottaupload';
 
 const { isDragging, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } = useDragAndDrop({
-    onDrop: (files) => console.log(files),
+    onDrop: (dropped) => addFiles(dropped),
     accept: ['image/*'],
     multiple: true,
 });
 ```
 
-## Vanilla JavaScript
+### Vanilla JavaScript
 
 For EditorJS tools, plain HTML, or any non-React context:
 
 ```typescript
-import { uploadFile, uploadFiles } from '@ottabase/ottaupload/utils';
+import { uploadFile } from '@ottabase/ottaupload/utils';
 
-// Single file
 const result = await uploadFile(file, {
-    endpoint: '/api/upload',
-    provider: 'r2',
+    purpose: 'media', // default; endpoint defaults to /api/files
     maxFileSize: 10 * 1024 * 1024,
     acceptedFileTypes: ['image/*'],
     onProgress: (progress) => console.log(`${progress}%`),
-    onSuccess: (response) => console.log(response.url),
-    onError: (error) => console.error(error),
-});
-
-// Multiple files
-const results = await uploadFiles([file1, file2], {
-    endpoint: '/api/upload',
+    onSuccess: (response) => console.log(response.file?.url),
+    onError: (error) => console.error(error.message),
 });
 ```
 
-## Validation
-
-### Validators
+## Validation helpers
 
 ```typescript
 import {
+    FILE_TYPES,
+    formatFileSize,
+    validateFiles,
     validateFileSize,
     validateFileType,
-    validateFiles,
-    formatFileSize,
-    generateFileKey,
-    FILE_TYPES,
 } from '@ottabase/ottaupload/validation';
 
-// File size
-validateFileSize(file, 10 * 1024 * 1024); // true/false
-
-// File type
-validateFileType(file, ['image/*', FILE_TYPES.PDF]); // true/false
-
-// Multiple files
-const { valid, errors } = validateFiles(files, {
-    maxFiles: 5,
-    maxFileSize: 10 * 1024 * 1024,
-    acceptedFileTypes: ['image/*'],
-});
-
-// Utilities
+validateFileType(file, ['image/*', FILE_TYPES.PDF]); // the browser's label: a UX check only
+const { valid, errors } = validateFiles(files, { maxFiles: 5, maxFileSize: 10 * 1024 * 1024 });
 formatFileSize(1048576); // "1 MB"
-generateFileKey(file); // "my-file-1234567890-abc123.jpg"
-generateFileKey(file, 'uploads'); // "uploads/my-file-1234567890-abc123.jpg"
 ```
 
-### File Type Constants
-
-```typescript
-import { FILE_TYPES } from '@ottabase/ottaupload/validation';
-
-FILE_TYPES.IMAGE_ALL; // 'image/*'
-FILE_TYPES.IMAGE_JPEG; // 'image/jpeg'
-FILE_TYPES.PDF; // 'application/pdf'
-FILE_TYPES.VIDEO_ALL; // 'video/*'
-FILE_TYPES.ZIP; // 'application/zip'
-```
-
-### Zod Schemas
-
-```typescript
-import { uploadConfigSchema, fileMetadataSchema, uploadResponseSchema } from '@ottabase/ottaupload/validation';
-
-const config = uploadConfigSchema.parse({
-    maxFiles: 5,
-    maxFileSize: 10485760,
-    autoUpload: true,
-});
-```
-
-## Types
-
-```typescript
-import type {
-    UploadFile,
-    UploadConfig,
-    UploadResponse,
-    UploadProvider,
-    UploadStatus,
-    FileMetadata,
-    CloudflareImagesConfig,
-    CloudflareImagesResponse,
-} from '@ottabase/ottaupload/types';
-```
-
-## Advanced Usage
-
-### Custom Upload Handler
-
-```tsx
-<FileUploader
-    onUpload={async (files) => {
-        for (const file of files) {
-            const result = await customUpload(file);
-            console.log(result);
-        }
-    }}
-/>
-```
-
-### Manual Control
-
-```tsx
-const { files, addFiles, uploadAll } = useFileUpload({ autoUpload: false });
-
-<input type="file" onChange={(e) => addFiles(Array.from(e.target.files))} />
-<button onClick={uploadAll}>Upload All</button>
-```
-
-### Retry Failed Uploads
-
-```tsx
-const { files, retryUpload } = useFileUpload();
-
-{
-    files.map((file) => (
-        <div key={file.id}>
-            {file.file.name} - {file.progress}%
-            {file.status === 'error' && <button onClick={() => retryUpload(file.id)}>Retry</button>}
-        </div>
-    ));
-}
-```
-
-## Package Structure
+## Package structure
 
 ```
 @ottabase/ottaupload  # Headless root: hooks + server, validation, types, utils (no rendered UI)
 ├── /client        # React components (FileUploader, FileUploadList, FileUploadItem)
-├── /server        # Server-side utilities (R2, Cloudflare Images)
-├── /validation    # Validation functions and Zod schemas
-├── /types         # TypeScript type definitions
-└── /utils         # Vanilla JS utilities (non-React)
+├── /server        # The files service, sniffing, metadata stripping, serving, tokens
+├── /validation    # Client-side validation and the upload config schema
+├── /types         # Types (FilePurpose, FileRecord, FileView, FileStore, ...)
+└── /utils         # Vanilla JS upload (non-React)
 ```
-
-## Provider Comparison
-
-| Feature          | Cloudflare R2        | Cloudflare Images            |
-| ---------------- | -------------------- | ---------------------------- |
-| **File Types**   | All types            | Images only                  |
-| **Optimization** | None                 | Automatic image optimization |
-| **Variants**     | No                   | Multiple size variants       |
-| **CDN**          | Manual setup         | Built-in global CDN          |
-| **Use Case**     | General file storage | Optimized image delivery     |
 
 ## License
 

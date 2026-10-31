@@ -2,7 +2,7 @@
 // app — this application's own tables, routes and jobs, as a package
 // ============================================================
 // Everything that is otta-web's rather than a framework package's lives here: the demo
-// Todo model, the PDF export and media purge routes, and the demo queue jobs with the cron
+// Todo model, the PDF export route, and the demo queue jobs with the cron
 // handlers that dispatch them. A new app feature with a table and a route is one more entry
 // in this manifest, not four edits across the app.
 // ============================================================
@@ -14,8 +14,6 @@ import { definePackage, type CronContribution } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
 import { dispatch } from '@ottabase/queue';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
-import { ctxOf } from '../../worker/lib/api-context';
-import { handleMediaLibraryPurge } from '../../worker/routes/media-library';
 import { Todo, todosTable } from '../models/Todo'; // otta:only demo
 import { incrementDispatchStats } from '../queue';
 import {
@@ -215,11 +213,6 @@ export const appPackage = definePackage<CloudflareEnv>({
         {
             basePath: CF_PDF_BASE_PATH,
             build: () => new Router<CloudflareEnv>().post('/', (c) => handleCfPdfRequest(c.req, c.env)),
-        },
-        {
-            basePath: '/api/medialibrary',
-            build: () =>
-                new Router<CloudflareEnv>().delete('/:id/purge', (c) => handleMediaLibraryPurge(ctxOf(c), c.params.id)),
         },
     ],
 

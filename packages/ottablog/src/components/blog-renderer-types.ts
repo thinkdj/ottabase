@@ -45,6 +45,11 @@ export interface BlogPostData {
     seoMeta?: SeoMeta | null;
     footnotes?: EditorJSData | null;
     authorId?: string | null;
+    /**
+     * The organization the post belongs to; null for the platform's own posts. In org mode a
+     * tenant's post is user content, so its links are rendered `rel="ugc nofollow noopener"`.
+     */
+    organizationId?: string | null;
     /** Author from User relationship */
     author?: PostAuthor | null;
     readingTimeMinutes?: number | null;

@@ -35,6 +35,7 @@ import {
     handleMeSessionsList,
     handleMeSessionsRevokeOthers,
 } from './me-sessions';
+import { handleAvatarRemove, handleAvatarUpload } from './me-avatar';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import { handleCrudHubAction, handleCrudHubCrud, handleCrudHubModel, handleCrudHubModels } from './admin-crudhub';
@@ -95,16 +96,19 @@ import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1';
 import { handleCloudflareQueue } from './cloudflare-queue'; // otta:only demo
 import { handleRateLimiting } from './cloudflare-rate'; // otta:only demo
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from './cloudflare-realtime'; // otta:only demo
-import {
-    handleCloudflareImages, // otta:only demo
-    handleCloudflareKV, // otta:only demo
-    handleCloudflareR2, // otta:only demo
-    handleUpload,
-    handleUploadFile,
-} from './cloudflare-storage';
+import { handleCloudflareKV, handleCloudflareR2 } from './cloudflare-storage'; // otta:only demo
 import { handleCoreAnalytics } from './core-analytics';
 import { handleDemo, handleDemoError, handleDemoMode } from './demo'; // otta:only demo
 import { handleEmailProviders, handleEmailTest } from './email';
+import {
+    handleFilesDelete,
+    handleFilesPublic,
+    handleFilesQuarantine,
+    handleFilesRead,
+    handleFilesRestore,
+    handleFilesUpdate,
+    handleFilesUpload,
+} from './files';
 import { handleOttaormCrud } from './ottaorm-crud';
 import { handleModelsMetadata, handleOttaormInit } from './ottaorm-init';
 
@@ -180,6 +184,8 @@ apiRouter.post('/api/auth/password/reset/confirm', h(handlePasswordResetConfirm)
 apiRouter.post('/api/auth/password/change', h(handlePasswordChange));
 apiRouter.all('/api/auth/*', h(handleAuthApiRequest));
 apiRouter.on(['GET', 'PATCH'], '/api/users/me', h(handleUserProfile));
+apiRouter.put('/api/users/me/avatar', h(handleAvatarUpload));
+apiRouter.delete('/api/users/me/avatar', h(handleAvatarRemove));
 // The signed-in user's own sessions (see me-sessions.ts). Static before :id so revoke-others wins.
 apiRouter.get('/api/users/me/sessions', h(handleMeSessionsList));
 apiRouter.post('/api/users/me/sessions/revoke-others', h(handleMeSessionsRevokeOthers));
@@ -339,7 +345,6 @@ apiRouter.on(['PATCH', 'DELETE'], '/api/cloudflare/d1/todos/*', (c) =>
 );
 apiRouter.all('/api/cloudflare/kv', h(handleCloudflareKV));
 apiRouter.all('/api/cloudflare/r2', h(handleCloudflareR2));
-apiRouter.post('/api/cloudflare/images', h(handleCloudflareImages));
 apiRouter.post('/api/cloudflare/rate-limiting', h(handleRateLimiting));
 apiRouter.get('/api/cloudflare/realtime/stats', h(handleRealtimeStats));
 apiRouter.post('/api/cloudflare/realtime/broadcast', h(handleRealtimeBroadcast));
@@ -348,8 +353,20 @@ apiRouter.all('/api/cloudflare/realtime/ws', h(handleRealtimeWebsocket));
 // NOTE: there are deliberately no `/api/cloudflare/ai/*` routes. The AI demo posts to
 // `/api/ai/complete` — the SAME endpoint product features use — so the demo exercises the real
 // resolution chain instead of a parallel client whose provider table can drift from it.
-apiRouter.post('/api/upload', h(handleUpload));
-apiRouter.all('/api/upload/file/*', h(handleUploadFile));
+
+// -------------------------------------------------------
+// Files (ottabase/files.ts): upload, the public bucket by key, files by id
+// -------------------------------------------------------
+apiRouter.post('/api/files', h(handleFilesUpload));
+apiRouter.on(['GET', 'HEAD'], '/api/files/public/*', (c) => handleFilesPublic(ctxOf(c), c.params['*']));
+apiRouter.on(['GET', 'HEAD'], '/api/files/:id', (c) => handleFilesRead(ctxOf(c), c.params.id));
+apiRouter.on(['GET', 'HEAD'], '/api/files/:id/:variant', (c) =>
+    handleFilesRead(ctxOf(c), c.params.id, c.params.variant),
+);
+apiRouter.patch('/api/files/:id', (c) => handleFilesUpdate(ctxOf(c), c.params.id));
+apiRouter.delete('/api/files/:id', (c) => handleFilesDelete(ctxOf(c), c.params.id));
+apiRouter.post('/api/files/:id/quarantine', (c) => handleFilesQuarantine(ctxOf(c), c.params.id));
+apiRouter.delete('/api/files/:id/quarantine', (c) => handleFilesRestore(ctxOf(c), c.params.id));
 
 // -------------------------------------------------------
 // OttaORM — generic CRUD catch-all with two excluded exacts;

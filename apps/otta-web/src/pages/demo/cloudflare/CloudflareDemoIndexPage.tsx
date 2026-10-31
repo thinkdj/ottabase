@@ -28,7 +28,7 @@ export function CloudflareDemoIndexPage() {
         },
         {
             name: 'Images',
-            description: 'Image upload and transformation (docs)',
+            description: 'WebP variants of uploads, through the Images binding',
             href: '/demo/cloudflare/images',
         },
         {

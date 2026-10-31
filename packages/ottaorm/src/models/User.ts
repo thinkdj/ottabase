@@ -4,6 +4,7 @@
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
+import { publicFileUrl } from '../runtime-config';
 import { usersTable } from './User.schema';
 
 export { usersTable, type NewUserType, type UserType } from './User.schema';
@@ -71,7 +72,9 @@ export class User extends BaseModel {
 
     static writable = {
         create: ['name', 'email', 'image', 'referralUsername', 'timezone', 'locale'],
-        update: ['name', 'image', 'timezone', 'locale'],
+        // `image` is the OAuth provider's picture and `avatarKey` belongs to the avatar route:
+        // neither is a field a person edits by hand.
+        update: ['name', 'timezone', 'locale'],
     };
 
     protected static fields: ModelFields = {
@@ -160,13 +163,21 @@ export class User extends BaseModel {
         },
         image: {
             type: 'string',
-            editable: true,
+            editable: false,
             uiConfig: {
-                label: 'Profile Image',
+                label: 'Provider picture',
+                description: 'The picture an OAuth provider supplied',
             },
-            formConfig: {
-                visible: true,
-                fieldType: 'input',
+            tableConfig: {
+                visible: false,
+            },
+        },
+        avatarKey: {
+            type: 'string',
+            editable: false,
+            uiConfig: {
+                label: 'Avatar key',
+                description: 'Public storage key of the uploaded avatar',
             },
             tableConfig: {
                 visible: false,
@@ -225,6 +236,21 @@ export class User extends BaseModel {
     /**
      * Get authentication accounts for this user (HasMany Account)
      */
+    /**
+     * The picture to show for a user row: the uploaded avatar (`avatarKey`, a public files key),
+     * else the OAuth provider's picture. Every user view (session, profile, lists) resolves
+     * `image` through this, so no view ever shows a stale or private URL.
+     */
+    static imageUrl(row: { avatarKey?: unknown; image?: unknown }): string | null {
+        if (typeof row.avatarKey === 'string' && row.avatarKey) return publicFileUrl(row.avatarKey);
+        return typeof row.image === 'string' && row.image ? row.image : null;
+    }
+
+    /** This user's picture (see `User.imageUrl`). */
+    imageUrl(): string | null {
+        return User.imageUrl({ avatarKey: this.get('avatarKey'), image: this.get('image') });
+    }
+
     async accounts(options?: { select?: string[]; orderBy?: string; orderDirection?: 'asc' | 'desc' }) {
         // Dynamic import
         const { Account } = await import('./Account');

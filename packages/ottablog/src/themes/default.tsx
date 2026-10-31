@@ -156,7 +156,7 @@ export const defaultTheme: Theme = {
             if (!hasContent) return null;
             return (
                 <div className={`${props.contentClassName || ''} ${defaultTheme.config?.classes?.content || ''}`}>
-                    <OttaRenderer data={post.content as EditorJSData} />
+                    <OttaRenderer data={post.content as EditorJSData} ugc={Boolean(post.organizationId)} />
                 </div>
             );
         },
@@ -171,6 +171,7 @@ export const defaultTheme: Theme = {
                     <OttaRenderer
                         className="ottarenderer--sm text-muted-foreground"
                         data={post.footnotes as EditorJSData}
+                        ugc={Boolean(post.organizationId)}
                     />
                 </aside>
             );

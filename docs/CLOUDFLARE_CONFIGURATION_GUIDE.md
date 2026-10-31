@@ -173,7 +173,8 @@ multi-app: same placeholder name = shared resource; different names = isolated (
         },
     ],
     // The producer fills the queue; the consumer is what runs the Worker's queue() handler on it.
-    // Without `consumers`, jobs (queued events, Beacon incident mail) are never processed.
+    // Without `consumers`, jobs (queued events, Beacon incident mail) are never processed. A batch is one
+    // invocation, so `max_batch_size: 1` gives every job (each `cron:run` task) its own D1/CPU budget.
     "queues": {
         "producers": [
             {
@@ -184,7 +185,7 @@ multi-app: same placeholder name = shared resource; different names = isolated (
         "consumers": [
             {
                 "queue": "ottabase-queue",
-                "max_batch_size": 10,
+                "max_batch_size": 1,
                 "max_batch_timeout": 2,
             },
         ],
@@ -525,6 +526,8 @@ pnpm --filter @ottabase/otta-web cf-typegen
 | `OBCF_D1`           | D1 Database    | `env.OBCF_D1`           |
 | `OBCF_KV`           | KV Namespace   | `env.OBCF_KV`           |
 | `OBCF_R2`           | R2 Bucket      | `env.OBCF_R2`           |
+| `OBCF_R2_PRIVATE`   | R2 Bucket      | `env.OBCF_R2_PRIVATE`   |
+| `OBCF_R2_VAULT`     | R2 Bucket      | `env.OBCF_R2_VAULT`     |
 | `OBCF_QUEUE`        | Queue          | `env.OBCF_QUEUE`        |
 | `OBCF_REALTIME`     | Durable Object | `env.OBCF_REALTIME`     |
 | `OBCF_RATE_LIMITER` | Rate Limiter   | `env.OBCF_RATE_LIMITER` |

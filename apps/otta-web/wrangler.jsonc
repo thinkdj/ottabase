@@ -108,14 +108,28 @@
         },
     ],
 
-    // R2 Bucket bindings
+    // R2 Bucket bindings: one bucket per kind of data, because a bucket is the unit of exposure.
     // Local dev: Uses local R2 storage (.wrangler/state/v3/r2)
-    // Preview/Prod: Uses real Cloudflare R2 bucket
+    // Preview/Prod: Uses real Cloudflare R2 buckets (`pnpm cf:setup` / `otta deploy` create all three)
+    //   OBCF_R2          public files only: every object in it is public by definition, served by key
+    //                    (/api/files/public/* or the bucket's custom domain, see R2_PUBLIC_URL)
+    //   OBCF_R2_PRIVATE  members/owner files and system artifacts; never served by key
+    //   OBCF_R2_VAULT    Vault backups only; no route reads it
     "r2_buckets": [
         {
             "binding": "OBCF_R2",
             "bucket_name": "ottabase-bucket", // Create with: wrangler r2 bucket create ottabase-bucket
             "preview_bucket_name": "ottabase-bucket-preview", // Create with: wrangler r2 bucket create ottabase-bucket-preview
+        },
+        {
+            "binding": "OBCF_R2_PRIVATE",
+            "bucket_name": "ottabase-files-private",
+            "preview_bucket_name": "ottabase-files-private-preview",
+        },
+        {
+            "binding": "OBCF_R2_VAULT",
+            "bucket_name": "ottabase-vault",
+            "preview_bucket_name": "ottabase-vault-preview",
         },
     ],
 
@@ -145,6 +159,9 @@
     // Beacon incident mail, ...) sits unprocessed and nothing reports an error. A queue has at most
     // ONE consumer, and `queues` is not inherited by `env.*`, so every environment below repeats
     // both lists (packages/scripts/src/__tests__/cf-app.test.ts keeps them paired).
+    //
+    // `max_batch_size: 1`: a batch is ONE invocation, sharing its 1000 D1 queries, CPU and wall
+    // time. Every job (a `cron:run` task, an `events:deliver` fan-out) is sized to have one alone.
     "queues": {
         "producers": [
             {
@@ -155,7 +172,7 @@
         "consumers": [
             {
                 "queue": "ottabase-queue",
-                "max_batch_size": 10,
+                "max_batch_size": 1,
                 "max_batch_timeout": 2,
             },
         ],
@@ -174,6 +191,18 @@
                 "simple": {
                     "limit": 10, // 10 requests
                     "period": 60, // per 60 seconds
+                },
+            },
+            // Uploads have a limiter of their own (POST /api/files, the avatar route): 60 per minute
+            // per user, so a bulk media-library upload goes through. Size caps and the storage quota
+            // are what bound the volume.
+            {
+                "name": "OBCF_RATE_LIMITER_UPLOADS",
+                "type": "ratelimit",
+                "namespace_id": "2001",
+                "simple": {
+                    "limit": 60,
+                    "period": 60,
                 },
             },
         ],
@@ -206,9 +235,11 @@
         "binding": "OBCF_VERSION",
     },
 
-    // Images binding — the edge optimization pass for @ottabase/screenshot (local dev runs it
-    // through sharp). Counts against Cloudflare Images transformations (free tier: 5,000/month).
-    // Remove it and screenshots are served as Chrome encodes them.
+    // Images binding: the WebP variants (thumb/card/full) the files service makes at upload, and
+    // the edge optimization pass for @ottabase/screenshot (local dev runs it through sharp).
+    // Counts against Cloudflare Images transformations (free tier: 5,000/month; up to three per
+    // uploaded image). Remove it and uploads keep only their original, screenshots are served as
+    // Chrome encodes them. Not inherited by named envs, so each env block repeats it.
     // @see https://developers.cloudflare.com/images/transform-images/bindings/
     "images": {
         "binding": "OBCF_IMAGES",
@@ -262,9 +293,11 @@
         // secret when AUTH_SECRET is unset. Intentionally NOT set in env.production, so a
         // production deploy without AUTH_SECRET fails closed instead of using a public secret.
         "AUTH_ALLOW_INSECURE_DEV_SECRET": "true",
-        // R2 proxy path - works in dev and production (same origin)
-        // For custom R2 domain, set to: https://cdn.yourdomain.com
-        "R2_PUBLIC_URL": "/api/upload/file",
+        // Base URL of the PUBLIC files bucket. The Worker's fallback route works everywhere (same
+        // origin); in production point it at the bucket's custom domain, ideally on a separate
+        // registrable domain for user content: https://files.example-usercontent.com
+        // Unset (as in the named envs below) means the same fallback.
+        "R2_PUBLIC_URL": "/api/files/public",
         // CLOUDFLARE_ACCOUNT_ID: // Set in env.production/env.preview vars (substituted from GitHub Secret)
     },
 
@@ -296,6 +329,15 @@
                             "period": 60,
                         },
                     },
+                    {
+                        "name": "OBCF_RATE_LIMITER_UPLOADS",
+                        "type": "ratelimit",
+                        "namespace_id": "2001",
+                        "simple": {
+                            "limit": 60,
+                            "period": 60,
+                        },
+                    },
                 ],
             },
             "durable_objects": {
@@ -323,6 +365,7 @@
             ],
             // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
             "version_metadata": { "binding": "OBCF_VERSION" },
+            "images": { "binding": "OBCF_IMAGES" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -334,6 +377,14 @@
                 {
                     "binding": "OBCF_R2",
                     "bucket_name": "ottabase-bucket", // Update if using a different bucket or app-prefixed bucket for isolation (e.g. app1-ottabase-bucket)
+                },
+                {
+                    "binding": "OBCF_R2_PRIVATE",
+                    "bucket_name": "ottabase-files-private",
+                },
+                {
+                    "binding": "OBCF_R2_VAULT",
+                    "bucket_name": "ottabase-vault",
                 },
             ],
             // Production Queue: producer AND consumer (see the top-level queues comment). Keep the
@@ -348,7 +399,7 @@
                 "consumers": [
                     {
                         "queue": "ottabase-queue",
-                        "max_batch_size": 10,
+                        "max_batch_size": 1,
                         "max_batch_timeout": 2,
                     },
                 ],
@@ -400,6 +451,15 @@
                             "period": 60,
                         },
                     },
+                    {
+                        "name": "OBCF_RATE_LIMITER_UPLOADS",
+                        "type": "ratelimit",
+                        "namespace_id": "2004",
+                        "simple": {
+                            "limit": 60,
+                            "period": 60,
+                        },
+                    },
                 ],
             },
             "durable_objects": {
@@ -422,6 +482,7 @@
                 },
             ],
             "version_metadata": { "binding": "OBCF_VERSION" },
+            "images": { "binding": "OBCF_IMAGES" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -432,6 +493,14 @@
                 {
                     "binding": "OBCF_R2",
                     "bucket_name": "ottabase-bucket-demo",
+                },
+                {
+                    "binding": "OBCF_R2_PRIVATE",
+                    "bucket_name": "ottabase-files-private-demo",
+                },
+                {
+                    "binding": "OBCF_R2_VAULT",
+                    "bucket_name": "ottabase-vault-demo",
                 },
             ],
             "queues": {
@@ -444,7 +513,7 @@
                 "consumers": [
                     {
                         "queue": "ottabase-queue-demo",
-                        "max_batch_size": 10,
+                        "max_batch_size": 1,
                         "max_batch_timeout": 2,
                     },
                 ],
@@ -484,6 +553,15 @@
                             "period": 60,
                         },
                     },
+                    {
+                        "name": "OBCF_RATE_LIMITER_UPLOADS",
+                        "type": "ratelimit",
+                        "namespace_id": "2003",
+                        "simple": {
+                            "limit": 60,
+                            "period": 60,
+                        },
+                    },
                 ],
             },
             "durable_objects": {
@@ -506,6 +584,7 @@
                 },
             ],
             "version_metadata": { "binding": "OBCF_VERSION" },
+            "images": { "binding": "OBCF_IMAGES" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -516,6 +595,14 @@
                 {
                     "binding": "OBCF_R2",
                     "bucket_name": "ottabase-bucket-staging",
+                },
+                {
+                    "binding": "OBCF_R2_PRIVATE",
+                    "bucket_name": "ottabase-files-private-staging",
+                },
+                {
+                    "binding": "OBCF_R2_VAULT",
+                    "bucket_name": "ottabase-vault-staging",
                 },
             ],
             "queues": {
@@ -528,7 +615,7 @@
                 "consumers": [
                     {
                         "queue": "ottabase-queue-staging",
-                        "max_batch_size": 10,
+                        "max_batch_size": 1,
                         "max_batch_timeout": 2,
                     },
                 ],
@@ -568,6 +655,15 @@
                             "period": 60,
                         },
                     },
+                    {
+                        "name": "OBCF_RATE_LIMITER_UPLOADS",
+                        "type": "ratelimit",
+                        "namespace_id": "2002",
+                        "simple": {
+                            "limit": 60,
+                            "period": 60,
+                        },
+                    },
                 ],
             },
             "durable_objects": {
@@ -592,6 +688,7 @@
             ],
             // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
             "version_metadata": { "binding": "OBCF_VERSION" },
+            "images": { "binding": "OBCF_IMAGES" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -602,6 +699,14 @@
                 {
                     "binding": "OBCF_R2",
                     "bucket_name": "ottabase-bucket-preview",
+                },
+                {
+                    "binding": "OBCF_R2_PRIVATE",
+                    "bucket_name": "ottabase-files-private-preview",
+                },
+                {
+                    "binding": "OBCF_R2_VAULT",
+                    "bucket_name": "ottabase-vault-preview",
                 },
             ],
             // Preview queue - create with: wrangler queues create ottabase-queue-preview
@@ -615,7 +720,7 @@
                 "consumers": [
                     {
                         "queue": "ottabase-queue-preview",
-                        "max_batch_size": 10,
+                        "max_batch_size": 1,
                         "max_batch_timeout": 2,
                     },
                 ],

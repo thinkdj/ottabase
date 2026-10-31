@@ -54,19 +54,21 @@ pnpm cf:validate
 
 - D1 Database: `ottabase-db`
 - KV Namespace: `OBCF_KV` (+ preview)
-- R2 Buckets: `ottabase-bucket` (+ preview)
+- R2 Buckets, one per kind of data (+ preview): `ottabase-bucket` (public files), `ottabase-files-private` (members and
+  owner files, system artifacts), `ottabase-vault` (Vault backups). `otta deploy --env demo|staging` creates the `-demo`
+  / `-staging` ones.
 - Queue: `ottabase-queue` (+ preview)
 - D1 preview database: `ottabase-db-preview`
 - **Does NOT modify wrangler.jsonc** (it's a template). Copy the output IDs for GitHub Secrets below.
 
 **Resource overview (prod vs preview):**
 
-| Resource | cf:setup creates (prod) | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)      | GitHub Secrets                           |
-| -------- | ----------------------- | -------------------------- | --------------------------- | ----------------------------------- | ---------------------------------------- |
-| D1       | ottabase-db             | ottabase-db-preview        | `D1_DATABASE_ID`            | `D1_PREVIEW_DATABASE_ID`            | D1_DATABASE_ID, D1_PREVIEW_DATABASE_ID   |
-| KV       | OBCF_KV                 | OBCF_KV_preview            | `KV_NAMESPACE_ID`           | `KV_PREVIEW_NAMESPACE_ID`           | KV_NAMESPACE_ID, KV_PREVIEW_NAMESPACE_ID |
-| R2       | ottabase-bucket         | ottabase-bucket-preview    | `ottabase-bucket` (literal) | `ottabase-bucket-preview` (literal) | none                                     |
-| Queue    | ottabase-queue          | ottabase-queue-preview     | `ottabase-queue` (literal)  | `ottabase-queue-preview` (literal)  | none                                     |
+| Resource | cf:setup creates (prod)                                 | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)     | GitHub Secrets                           |
+| -------- | ------------------------------------------------------- | -------------------------- | --------------------------- | ---------------------------------- | ---------------------------------------- |
+| D1       | ottabase-db                                             | ottabase-db-preview        | `D1_DATABASE_ID`            | `D1_PREVIEW_DATABASE_ID`           | D1_DATABASE_ID, D1_PREVIEW_DATABASE_ID   |
+| KV       | OBCF_KV                                                 | OBCF_KV_preview            | `KV_NAMESPACE_ID`           | `KV_PREVIEW_NAMESPACE_ID`          | KV_NAMESPACE_ID, KV_PREVIEW_NAMESPACE_ID |
+| R2       | ottabase-bucket, ottabase-files-private, ottabase-vault | the same with `-preview`   | the names (literal)         | the `-preview` names (literal)     | none                                     |
+| Queue    | ottabase-queue                                          | ottabase-queue-preview     | `ottabase-queue` (literal)  | `ottabase-queue-preview` (literal) | none                                     |
 
 D1 and KV placeholder values = GitHub Secret names (auto-detected and substituted by CI). R2 and Queue use literal names
 (no substitution needed).
@@ -197,6 +199,55 @@ https://otta-web.your-subdomain.workers.dev
 wrangler tail otta-web
 ```
 
+### Files: the buckets, a domain for user content, the safe headers
+
+Uploads live in three buckets, because a bucket is the unit of exposure (see `packages/ottaupload/README.md`):
+
+| Binding           | Bucket (production)      | Holds                                            | Served                              |
+| ----------------- | ------------------------ | ------------------------------------------------ | ----------------------------------- |
+| `OBCF_R2`         | `ottabase-bucket`        | public files only (avatars, media, brand assets) | by key, ideally from its own domain |
+| `OBCF_R2_PRIVATE` | `ottabase-files-private` | members/owner files, system artifacts            | never by key: `/api/files/:id` only |
+| `OBCF_R2_VAULT`   | `ottabase-vault`         | Vault backups (every tenant's rows)              | never: no route reads it            |
+
+`pnpm cf:setup` (and `otta deploy`) creates all three for the env. By hand:
+`wrangler r2 bucket create ottabase-files-private` and `wrangler r2 bucket create ottabase-vault` (plus `-preview`,
+`-demo`, `-staging` for those envs). Never give either private bucket a public domain or `r2.dev` access.
+
+**Serve the public bucket from its own domain.** Out of the box, public files come through the Worker at
+`/api/files/public/<key>`. In production give the public bucket an R2 custom domain and point `R2_PUBLIC_URL` at it:
+
+1. **Use a separate registrable domain for user content**, e.g. `files.example-usercontent.com`, not a subdomain of the
+   app's domain. A file a user uploaded then shares no cookies, no `document.domain` and no same-site trust with the
+   app, which is what keeps an uploaded HTML or SVG from ever acting as the app.
+2. R2 → `ottabase-bucket` → Settings → Custom Domains → connect `files.example-usercontent.com` (the zone must be on
+   Cloudflare). Leave the `r2.dev` URL disabled. Without a custom domain, public URLs are
+   `<AUTH_URL>/api/files/public/<key>`: the files service makes them absolute against `AUTH_URL`, so set it to the app's
+   public origin (mail and social cards need full URLs).
+3. Set the var in each env block of `wrangler.jsonc` (named envs do not inherit `vars`):
+   `"R2_PUBLIC_URL": "https://files.example-usercontent.com"`. New uploads get URLs on that domain; avatars and brand
+   logos are stored as keys, so they move with the setting. URLs pasted into content (blog posts, landing pages) keep
+   the address they were picked with, and `/api/files/public/*` keeps serving them.
+4. **Add the safe headers with a Transform Rule** on the files zone, since R2 serves the bucket directly there: Rules →
+   Transform Rules → Modify Response Header, matching `http.host eq "files.example-usercontent.com"`, set
+   `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox; default-src 'none'`. (Content-Type,
+   Content-Disposition and Cache-Control come from each object's metadata, written at upload.)
+5. **Turn on the CSAM Scanning Tool** for that zone (Caching → Configuration → CSAM Scanning Tool). It scans images
+   served from the zone and blocks matches; it only sees traffic through Cloudflare, which a custom domain guarantees.
+
+Also set, as secrets: `FILES_SIGNING_SECRET` (32+ random chars; signs `?t=` links to private files, which are refused
+while it is unset) and, if 1024 MB per organization does not fit, the var `FILES_QUOTA_MB`. The Images binding
+(`OBCF_IMAGES`, in every env block) makes the thumb/card/full WebP variants (each image upload costs up to three
+transformations) and re-encodes AVIF uploads, whose metadata cannot be stripped in code; without it AVIF is refused.
+
+**Quarantine purges the edge cache when it can.** Public files are cached as immutable for a year, so quarantining one
+(media library → Quarantine) moves it out of the public bucket and then purges its URLs: set the var
+`CLOUDFLARE_FILES_ZONE_ID` (the files domain's zone) and the secret `CLOUDFLARE_PURGE_API_TOKEN` (a token with Zone →
+Cache Purge on that zone). Without them the admin is shown the URLs to purge by hand (Caching → Configuration → Purge
+Cache → Custom Purge).
+
+**Uploads have their own rate limiter**, `OBCF_RATE_LIMITER_UPLOADS` (60 a minute per user, in every env block); a
+production deploy without it refuses uploads.
+
 ---
 
 ## Troubleshooting
@@ -293,6 +344,9 @@ silently runs local-only. One-time setup, token format, rotation, and local use 
 | `OBCF_D1`           | D1 Database    |
 | `OBCF_KV`           | KV Namespace   |
 | `OBCF_R2`           | R2 Bucket      |
+| `OBCF_R2_PRIVATE`   | R2 Bucket      |
+| `OBCF_R2_VAULT`     | R2 Bucket      |
+| `OBCF_IMAGES`       | Images         |
 | `OBCF_QUEUE`        | Queue          |
 | `OBCF_REALTIME`     | Durable Object |
 | `OBCF_RATE_LIMITER` | Rate Limiter   |
@@ -305,7 +359,9 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 
 - [ ] Install wrangler: `npm install -g wrangler`
 - [ ] Login: `wrangler login` or `pnpm cf:login`
-- [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets)
+- [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets); it creates all three R2 buckets
+- [ ] Files: a custom domain on the public bucket (a separate registrable domain), `R2_PUBLIC_URL`, the Transform Rule,
+      the CSAM Scanning Tool, `FILES_SIGNING_SECRET` (see "Files" above)
 - [ ] Validate: `pnpm cf:validate`
 - [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
 - [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)

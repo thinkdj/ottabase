@@ -92,7 +92,11 @@ describe('injectBrandCriticalCSS', () => {
         await injectBrandCriticalCSS(htmlResponse(), request, env);
 
         expect(mockResolveFullBrandConfig).toHaveBeenCalledTimes(1);
-        expect(mockResolveFullBrandConfig).toHaveBeenCalledWith(env, { appId: 'otta-web' });
+        // The bucket is not the brand engine's business; logo keys resolve on the public files URL.
+        expect(mockResolveFullBrandConfig).toHaveBeenCalledWith(
+            { OBCF_D1: env.OBCF_D1, OBCF_KV: env.OBCF_KV, R2_PUBLIC_URL: '/api/files/public' },
+            { appId: 'otta-web' },
+        );
         expect(mockResolveConfigFromFull).toHaveBeenCalledWith(FULL_CONFIG, '/blog/demo-content', 'light');
         expect(mockResolveConfigFromFull).toHaveBeenCalledWith(FULL_CONFIG, '/blog/demo-content', 'dark');
     });

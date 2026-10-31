@@ -1,4 +1,4 @@
-import { CreateAuthConfigOptions, hashToken } from '@ottabase/auth/backend';
+import { type AuthEvents, CreateAuthConfigOptions, hashToken } from '@ottabase/auth/backend';
 import { userKey } from '@ottabase/cf';
 import { PLATFORM_ORG_SENTINEL } from '@ottabase/config';
 import { invalidateCache, invalidateCacheByPrefix } from '@ottabase/cf/kv-cache';
@@ -150,22 +150,40 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
             await sendDemoWelcomeEmail(env, email);
         }
 
-        // Tell the bus. Packages that keep a timeline or run sequences subscribe to
-        // `user.signed-in` without the auth flow knowing them. Best-effort: a listener's
-        // failure never refuses a sign-in.
-        try {
-            await events.emit(
-                env,
-                'user.signed-in',
-                { userId, email, organizationId: organizationId ?? null },
-                { actor: { userId, organizationId: organizationId ?? null, appId: getOttabaseConfig(env).appId } },
-            );
-        } catch (error) {
-            console.warn(JSON.stringify({ event: 'signed_in_event_failed', error: redactErrorForLog(error) }));
-        }
+        // Tell the bus, after provisioning. Never refuses the sign-in (see emitAccountEvent).
+        await emitAccountEvent(env, 'user.signed-in', { userId, email, organizationId: organizationId ?? null });
     };
 
+    // OAuth and magic-link accounts are created (and verified) inside @ottabase/auth, which tells
+    // the bus through this. The env is this request's: the one the bus and its subscribers expect.
+    options.emit = (_env, name, payload) => emitAccountEvent<keyof AuthEvents>(env, name, payload);
+
     return options;
+}
+
+/** The account events on the app's bus. `@ottabase/auth` emits the first two through `options.emit`. */
+type AccountEvents = AuthEvents & {
+    'user.signed-in': { userId: string; email: string; organizationId: string | null };
+};
+
+/**
+ * Tell the bus about an account: `user.created`, `user.verified`, `user.signed-in`. Packages
+ * that keep a timeline or run sequences subscribe without the auth flow knowing them.
+ * Best-effort: a listener's failure never fails the sign-up, the verification or the sign-in.
+ */
+export async function emitAccountEvent<K extends keyof AccountEvents>(
+    env: CloudflareEnv,
+    name: K,
+    payload: AccountEvents[K],
+): Promise<void> {
+    const organizationId = (payload as { organizationId?: string | null }).organizationId ?? null;
+    try {
+        await events.emit(env, name, payload, {
+            actor: { userId: payload.userId, organizationId, appId: getOttabaseConfig(env).appId },
+        });
+    } catch (error) {
+        console.warn(JSON.stringify({ event: 'account_event_failed', name, error: redactErrorForLog(error) }));
+    }
 }
 
 /**

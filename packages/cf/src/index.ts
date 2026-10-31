@@ -6,7 +6,6 @@
  * - D1: SQLite database
  * - KV: Key-value storage
  * - R2: Object storage
- * - Images: Image transformation and optimization
  * - Hyperdrive: Database connection pooling
  * - Queues: Message queue processing
  * - Secrets: Environment variables and secrets management
@@ -38,16 +37,6 @@ export {
     type R2ListOptions,
     type R2PutOptions,
 } from './r2';
-
-// Images
-export {
-    ImagesClient,
-    createImagesClient,
-    type ImageDetails,
-    type ImageUploadOptions,
-    type ImageVariant,
-    type ImagesConfig,
-} from './images';
 
 // Hyperdrive
 export { HyperdriveClient, createHyperdriveClient, type HyperdriveConfig } from './hyperdrive';

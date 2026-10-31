@@ -9,7 +9,6 @@ Type-safe wrappers for all major Cloudflare Worker bindings:
 - **D1**: Raw SQLite database with query builder
 - **KV**: Key-value storage
 - **R2**: Object storage
-- **Images**: Image transformation and optimization
 - **Hyperdrive**: Database connection pooling
 - **Queues**: Message queue processing
 - **Secrets**: Environment variables and secrets management
@@ -95,25 +94,6 @@ if (result.success && result.data) {
 
 // List objects
 const { data } = await r2.list({ prefix: 'files/' });
-```
-
-### Images
-
-```typescript
-import { createImagesClient } from '@ottabase/cf/images';
-
-const images = createImagesClient({
-    accountId: env.CF_ACCOUNT_ID,
-    apiToken: env.CF_API_TOKEN,
-});
-
-// Upload image
-const result = await images.upload(imageFile, {
-    metadata: { alt: 'Product photo' },
-});
-
-// Get delivery URL
-const url = images.getDeliveryUrl(result.data.id, 'public');
 ```
 
 ### Rate Limiting

@@ -163,6 +163,27 @@ export interface LifecycleHooks<Env = unknown> {
     onUninstall?(ctx: LifecycleContext<Env>): Awaitable<void>;
 }
 
+/**
+ * One kind of file a package stores, served by the app's files service (`@ottabase/ottaupload`).
+ * `types` lists SNIFFED MIME types (`image/*` covers the raster family); the browser's label and
+ * the extension never count. Keys become `<appId>/<purpose>/<id>.<ext>`.
+ */
+export interface FilePurposeContribution {
+    /** Unique across the app. `^[a-z][a-z0-9-]{1,48}$`. */
+    purpose: string;
+    label: string;
+    /** `public`: anyone, from the public bucket. `members`: the owning org. `owner`: the uploader and admins. */
+    audience: 'public' | 'members' | 'owner';
+    types: string[];
+    maxBytes: number;
+    /** WebP renditions made at upload when the Images binding is bound: thumb 160, card 640, full 1600 px wide. */
+    variants?: Array<'thumb' | 'card' | 'full'>;
+    /** Accept SVG (served under the sandbox CSP). Only for purposes that trusted admins write. */
+    svg?: true;
+    /** Written only by the package's own guarded route; the generic `POST /api/files` refuses it. */
+    server?: true;
+}
+
 export interface OttaPackage<Env = unknown> {
     /** Stable identifier: config keys, env var names, API paths. `^[a-z][a-z0-9-]{1,48}$`. */
     key: string;
@@ -183,6 +204,8 @@ export interface OttaPackage<Env = unknown> {
     models?: ModelEntry[];
     /** RLS policies registered after the host's `initRLS()`. */
     policies?: ModelRLSConfig[];
+    /** File purposes, collected like tables: the app's files service stores only declared ones. */
+    files?: FilePurposeContribution[];
 
     /** API routes. */
     routes?: RouteContribution<Env> | RouteContribution<Env>[];
@@ -233,6 +256,8 @@ export interface PackageRegistry<Env = unknown> {
     suppressIndexes(): string[];
     models(): ModelEntry[];
     policies(): ModelRLSConfig[];
+    /** Every declared file purpose. Names are unique across the app. */
+    files(): FilePurposeContribution[];
     routes(): Array<RouteContribution<Env> & { packageKey: string }>;
     cron(): Record<string, CronContribution<Env> & { packageKey: string }>;
     queue(): Record<string, JobHandler<never, Env>>;

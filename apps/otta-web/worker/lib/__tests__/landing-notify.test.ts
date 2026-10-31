@@ -1,11 +1,14 @@
 /**
- * The landing digest: who gets told about new form entries, when, and what happens when mail
- * can't go out (entries stay pending and the cron task fails visibly).
+ * The landing cron: every new form entry on the bus (`lead.created`), and the digest: who gets told,
+ * when, and what happens when mail can't go out (entries stay pending, the events still go out,
+ * and the cron task fails visibly).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const m = vi.hoisted(() => ({
     pending: vi.fn(),
+    announceNew: vi.fn(),
+    emit: vi.fn(),
     markNotified: vi.fn(),
     findSite: vi.fn(),
     resolveAppMailer: vi.fn(),
@@ -16,7 +19,7 @@ const m = vi.hoisted(() => ({
 }));
 vi.mock('@ottabase/ottalanding', async (importOriginal) => ({
     leadDigest: (await importOriginal<typeof import('@ottabase/ottalanding')>()).leadDigest,
-    LandingLead: { pendingNotification: m.pending, markNotified: m.markNotified },
+    LandingLead: { pendingNotification: m.pending, markNotified: m.markNotified, announceNew: m.announceNew },
     LandingSite: { findForApp: m.findSite },
 }));
 vi.mock('@ottabase/email/mailer', () => ({ sendTemplatedEmail: m.send }));
@@ -25,6 +28,7 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     ScheduledTask: { findByName: m.findByName, createRegistered: m.createRegistered, update: m.updateTask },
 }));
 vi.mock('../../../ottabase/config.loader', () => ({ getOttabaseConfig: () => ({ appId: 'otta-web' }) }));
+vi.mock('../../../ottabase/events', () => ({ events: { emit: m.emit } }));
 
 import { ensureLeadNotifyTask, LEAD_NOTIFY_HANDLER, notifyNewLeads } from '../landing-notify';
 
@@ -49,6 +53,7 @@ describe('notifyNewLeads', () => {
         vi.clearAllMocks();
         m.resolveAppMailer.mockResolvedValue({ mailer: {}, from: 'noreply@acme.dev' });
         m.send.mockResolvedValue({ success: true });
+        m.announceNew.mockResolvedValue(0);
     });
 
     it('does nothing when nothing is new', async () => {
@@ -86,16 +91,50 @@ describe('notifyNewLeads', () => {
         await expect(notifyNewLeads(env)).rejects.toThrow('Resend said no');
         expect(m.markNotified).not.toHaveBeenCalled();
     });
+
+    it('announces new entries on the bus as lead.created', async () => {
+        m.pending.mockResolvedValue([]);
+        m.emit.mockResolvedValue({ delivered: 1 });
+        await notifyNewLeads(env);
+
+        expect(m.announceNew).toHaveBeenCalledWith('otta-web', expect.any(Function));
+        const lead = { leadId: 'a', kind: 'signup', email: 'a@x.dev', name: '', message: '', pagePath: '/', at: 1 };
+        await m.announceNew.mock.calls[0][1](lead);
+        expect(m.emit).toHaveBeenCalledWith(env, 'lead.created', lead);
+    });
+
+    it('a digest that can’t go out never holds back the events, and the task still fails', async () => {
+        m.pending.mockResolvedValue([entry('a', 'Ada')]);
+        m.findSite.mockResolvedValue(site({ leadEmail: 'me@acme.dev' }));
+        m.announceNew.mockResolvedValue(1);
+        m.send.mockResolvedValue({ success: false, error: 'Resend said no' });
+
+        await expect(notifyNewLeads(env)).rejects.toThrow('Resend said no');
+        await expect(m.announceNew.mock.results[0].value).resolves.toBe(1);
+        expect(m.markNotified).not.toHaveBeenCalled();
+    });
+
+    it('a bus that is down never holds back the digest, and the task still fails', async () => {
+        m.pending.mockResolvedValue([entry('a', 'Ada')]);
+        m.findSite.mockResolvedValue(site({ leadEmail: 'me@acme.dev' }));
+        m.announceNew.mockRejectedValue(new Error('queue down'));
+
+        await expect(notifyNewLeads(env)).rejects.toThrow('queue down');
+        expect(m.send).toHaveBeenCalledTimes(1);
+        expect(m.markNotified).toHaveBeenCalledWith('otta-web', ['a']);
+    });
 });
 
 describe('ensureLeadNotifyTask', () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it('creates the every-minute task once, registered to the landing handler', async () => {
+    it('creates the every-minute task under the name the install seed uses, if the seed never ran', async () => {
         m.findByName.mockResolvedValue(null);
         await ensureLeadNotifyTask('otta-web', 'https://admin.acme.dev/admin/content/landing/leads');
+        expect(m.findByName).toHaveBeenCalledWith('otta-web', LEAD_NOTIFY_HANDLER);
         expect(m.createRegistered).toHaveBeenCalledWith(
             expect.objectContaining({
+                name: LEAD_NOTIFY_HANDLER,
                 schedule: '* * * * *',
                 task: LEAD_NOTIFY_HANDLER,
                 isActive: true,

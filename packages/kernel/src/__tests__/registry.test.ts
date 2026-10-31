@@ -52,6 +52,13 @@ describe('definePackage', () => {
                 nav: [{ title: 't', description: 'd', href: 'admin/x' }],
             }),
         ).toThrow(/nav href/);
+        const purpose = { label: 'Notes', audience: 'owner' as const, types: ['text/plain'], maxBytes: 1024 };
+        expect(() =>
+            definePackage({ key: 'ok', name: 'x', version: '1', files: [{ ...purpose, purpose: 'Bad/Name' }] }),
+        ).toThrow(/file purpose "Bad\/Name"/);
+        expect(() =>
+            definePackage({ key: 'ok', name: 'x', version: '1', files: [{ ...purpose, purpose: 'notes', types: [] }] }),
+        ).toThrow(/non-empty types/);
     });
 
     it('returns the manifest unchanged when it is well-formed', () => {
@@ -81,6 +88,15 @@ describe('createPackageRegistry', () => {
                     events: [{ event: 'user.created', handler }],
                     nav: [{ title: 'Notes', description: 'd', href: '/admin/content/notes', group: 'content' }],
                     env: { required: ['OBCF_D1'], optional: ['SECRET'] },
+                    files: [
+                        {
+                            purpose: 'note-file',
+                            label: 'Note files',
+                            audience: 'members',
+                            types: ['text/plain'],
+                            maxBytes: 1024,
+                        },
+                    ],
                 }),
                 pkg({ key: 'users', tables: { usersTable }, env: { required: ['OBCF_D1'] } }),
             ],
@@ -103,6 +119,7 @@ describe('createPackageRegistry', () => {
             expect.objectContaining({ packageKey: 'notes', href: '/admin/content/notes' }),
         ]);
         expect(registry.env()).toEqual({ required: ['OBCF_D1'], optional: ['SECRET'] });
+        expect(registry.files()).toEqual([expect.objectContaining({ purpose: 'note-file', audience: 'members' })]);
     });
 
     it('hands an incident to every error reporter, under waitUntil, and survives a reporter that throws', async () => {
@@ -188,6 +205,18 @@ describe('createPackageRegistry', () => {
                 ],
             }),
         ).toThrow(/Queue job type "mail"/);
+        const file = {
+            purpose: 'doc',
+            label: 'Docs',
+            audience: 'public' as const,
+            types: ['application/pdf'],
+            maxBytes: 1,
+        };
+        expect(() =>
+            createPackageRegistry({
+                packages: [pkg({ key: 'alpha', files: [file] }), pkg({ key: 'beta', files: [file] })],
+            }),
+        ).toThrow(/File purpose "doc"/);
     });
 
     it('returns copies, so a caller cannot mutate the registry through them', () => {

@@ -21,16 +21,23 @@ import { createVault, createVaultPackage, d1Driver } from '@ottabase/vault';
 
 export const vault = createVault<CloudflareEnv>({
     driver: (env) => d1Driver(env.OBCF_D1),
-    bucket: (env) => env.OBCF_R2 ?? null,
+    // A bucket of its own that no route serves: a backup is every row of every tenant.
+    bucket: (env) => env.OBCF_R2_VAULT ?? null,
     appId: (env) => getOttabaseConfig(env).appId,
+    // The file buckets, snapshotted with every backup (see "The buckets' own objects").
+    objects: { buckets: { public: (env) => env.OBCF_R2, private: (env) => env.OBCF_R2_PRIVATE } },
 });
 
 export const vaultPackage = createVaultPackage<CloudflareEnv>({
     vault,
     resolveCaller: resolvePackageCaller,
-    env: { required: ['OBCF_D1', 'OBCF_R2'] },
+    env: { required: ['OBCF_D1', 'OBCF_R2_VAULT'] },
 });
 ```
+
+**Never point `bucket` at a bucket a route serves by key.** Backup keys are predictable
+(`vault/<appId>/<backupId>/<table>.ndjson`) and hold every user's row; otta-web keeps them in `OBCF_R2_VAULT`, which no
+route reads.
 
 List `vaultPackage` in `ottabase/packages.ts`; the kernel mounts its routes like any other package's. The package has no
 tables of its own. It seeds a `vault:backup` task at `23 2 * * *` and renders at **Admin → Infrastructure → Vault**
@@ -60,7 +67,7 @@ prunes both kinds by age.
 ```
 vault/<appId>/<backupId>/manifest.json      # tables, row counts, columns, CREATE statements
 vault/<appId>/<backupId>/<table>.ndjson     # one JSON object per row; BLOBs as { "$blob": "<base64>" }
-vault/<appId>/<backupId>/objects.ndjson     # with `objects`: one line per bucket object (key, etag, size, uploaded, type)
+vault/<appId>/<backupId>/objects.<name>.ndjson  # with `objects`: one line per object of source bucket <name>
 vault/<appId>/_objects/<etag>               # the bytes of every snapshotted object, once per etag, shared by every backup
 ```
 
@@ -83,16 +90,18 @@ backup's columns with the live table's, so a column dropped since the backup is 
 no longer exists is left alone. With a driver that can `batch` (the `d1Driver` adapter does), the whole restore is one
 transaction with `PRAGMA defer_foreign_keys`, so parents and children land together.
 
-### The bucket's own objects
+### The buckets' own objects
 
-Uploads, media and files live in R2 beside the database, and they are state too. With `objects` in `createVault`
-(otta-web passes `{ exclude: ['og/'] }`), every backup also snapshots the bucket: `objects.ndjson` lists each object
-under the chosen `prefixes` (default: everything but the vault's own prefix and `exclude`), and each object's bytes are
-copied into the content store `_objects/<etag>` once. A second snapshot of an unchanged bucket copies nothing; only
-changed or new objects cost a copy. Restore puts every listed object back under its key with its metadata, skipping the
-ones whose live etag already matches, and reports keys whose bytes are gone (`objects.missing`). Pruning deletes the
-bytes no remaining backup names. `backup(env, { objects: false })` and `restore(env, id, { objects: false })` leave the
-bucket out of one run. The source can be another bucket (`objects.bucket`).
+Uploads, media and files live in R2 beside the database, and they are state too. With `objects` in `createVault`, every
+backup also snapshots each bucket named in `objects.buckets` (default `{ files: <the vault's own bucket> }`; otta-web
+passes its public and private file buckets, and `exclude: ['og/']`): `objects.<name>.ndjson` lists each object under the
+chosen `prefixes` (default: everything but the vault's own prefix and `exclude`), and each object's bytes are copied
+into the vault bucket's content store `_objects/<etag>` once. The manifest's `objects` and a restore's `objects` are
+keyed by the same names; a bucket that is unbound is skipped, so keep the names stable. A second snapshot of an
+unchanged bucket copies nothing; only changed or new objects cost a copy. Restore puts every listed object back under
+its key with its metadata, skipping the ones whose live etag already matches, and reports keys whose bytes are gone
+(`objects.missing`). Pruning deletes the bytes no remaining backup names. `backup(env, { objects: false })` and
+`restore(env, id, { objects: false })` leave the buckets out of one run.
 
 Copies are a `get` streamed into a `put`, as R2 copies. A bucket whose first snapshot outgrows one cron tick is the
 ceiling here (marked `ponytail:`); steady state copies only what changed.

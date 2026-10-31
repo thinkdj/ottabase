@@ -26,6 +26,7 @@ export type {
     ReadinessSetting,
     ErrorContribution,
     ErrorIncident,
+    FilePurposeContribution,
     HealthCheck,
     HealthProbe,
     HealthReport,

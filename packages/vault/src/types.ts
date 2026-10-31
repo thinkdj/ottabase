@@ -103,8 +103,8 @@ export interface BackupManifest {
     tables: BackupTable[];
     /** `CREATE TABLE` statements as SQLite reported them, for reference and for rebuilding elsewhere. */
     schema: Array<{ name: string; sql: string }>;
-    /** The bucket snapshot, when `objects` is configured and was not turned off for this backup. */
-    objects?: BackupObjects;
+    /** One snapshot per source bucket (by its `objects.buckets` name), when `objects` is configured and on. */
+    objects?: Record<string, BackupObjects>;
 }
 
 export interface RestoreResult {
@@ -112,16 +112,21 @@ export interface RestoreResult {
     tables: Array<{ name: string; rows: number; skippedColumns: string[] }>;
     /** Tables in the backup that no longer exist (or are excluded) and were left alone. */
     skippedTables: string[];
-    objects?: RestoredObjects;
+    /** Per source bucket, by name. */
+    objects?: Record<string, RestoredObjects>;
 }
 
-/** Which of the bucket's objects a backup snapshots. */
+/** Which buckets' objects a backup snapshots. */
 export interface ObjectsOptions<Env> {
-    /** The bucket whose objects are snapshotted. Default: the vault's own bucket. */
-    bucket?: (env: Env) => BucketLike | null | undefined;
-    /** Key prefixes to snapshot. Default `['']`: everything. */
+    /**
+     * The buckets whose objects are snapshotted, by a stable name (it keys the manifest and the
+     * listing file, so renaming one orphans its old snapshots). An unbound bucket is skipped.
+     * Default: `{ files: <the vault's own bucket> }`.
+     */
+    buckets?: Record<string, (env: Env) => BucketLike | null | undefined>;
+    /** Key prefixes to snapshot, in every source. Default `['']`: everything. */
     prefixes?: string[];
-    /** Key prefixes left out. The vault's own prefix always is. */
+    /** Key prefixes left out, in every source. The vault's own prefix always is. */
     exclude?: string[];
 }
 
@@ -133,7 +138,10 @@ export interface ExportScope {
 
 export interface VaultOptions<Env> {
     driver: (env: Env) => RawDriver;
-    /** The bucket backups live in. Null means backups are not configured (routes answer 503). */
+    /**
+     * The bucket backups live in. Null means backups are not configured (routes answer 503).
+     * Give it a bucket of its own that no route serves: backups hold every row of every tenant.
+     */
     bucket: (env: Env) => BucketLike | null | undefined;
     appId: (env: Env) => string;
     /** Key prefix inside the bucket. Default `vault`. Keys are `<prefix>/<appId>/<backupId>/<table>.ndjson`. */
@@ -146,8 +154,8 @@ export interface VaultOptions<Env> {
     /** Backup id for a timestamp. Must sort chronologically. */
     id?: (at: Date) => string;
     /**
-     * Snapshot the bucket's objects (uploads, media) with every backup: their listing beside the
-     * tables, their bytes in a content store keyed by etag, copied once. Off when absent.
+     * Snapshot buckets' objects (uploads, media) with every backup: their listing beside the
+     * tables, their bytes in the vault bucket's content store keyed by etag, copied once. Off when absent.
      */
     objects?: ObjectsOptions<Env>;
 }

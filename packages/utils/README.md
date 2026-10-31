@@ -153,6 +153,8 @@ import {
 - **`sanitizeInlineHtml(html: string): string`** - Sanitize inline EditorJS markup (safe for `dangerouslySetInnerHTML`)
 - **`sanitizeBlockHtml(html: string): string`** - Sanitize broader block-level HTML content
 - **`sanitizeSvgHtml(svg: string): string`** - Sanitize inline SVG content
+- **`markUgcLinks(html: string): string`** - On already sanitized user-generated HTML (comments, tenant posts), give
+  every link `rel="ugc nofollow noopener"` (`UGC_LINK_REL`), replacing any `rel` it had
 - **`sanitizeJsonForScript(data: unknown): string`** - Serialize and escape JSON for safe `<script>` embedding
 - **`sanitizeCssForStyleTag(css: string): string`** - Neutralize unsafe CSS when injecting into `<style>` tags
 

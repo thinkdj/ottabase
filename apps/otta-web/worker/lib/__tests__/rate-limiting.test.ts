@@ -24,7 +24,7 @@ vi.mock('@ottabase/cf/kv', () => ({
     }),
 }));
 
-import { enforceBruteForceThrottle, simulateRateLimit } from '../rate-limiting';
+import { enforceBruteForceThrottle, enforceUploadRateLimit, simulateRateLimit } from '../rate-limiting';
 
 function makeEnv(overrides: Record<string, unknown> = {}) {
     // OBCF_RATE_LIMITER intentionally left unset so getRateLimitData falls through to simulateRateLimit.
@@ -115,5 +115,34 @@ describe('enforceBruteForceThrottle (secret-gated, fail-open policy)', () => {
         expect(res).toBeNull();
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
+    });
+});
+
+describe('enforceUploadRateLimit', () => {
+    beforeEach(() => kvStore.clear());
+
+    it('uses its own binding, keyed per user, and the binding’s `{ success }` verdict decides', async () => {
+        const limit = vi.fn(async () => ({ success: true }));
+        const env = makeEnv({ OBCF_RATE_LIMITER_UPLOADS: { limit }, OBCF_RATE_LIMITER: { limit: vi.fn() } });
+        expect(await enforceUploadRateLimit(makeRequest(), env, 'u1')).toBeNull();
+        expect(limit).toHaveBeenCalledWith({ key: 'files:upload:u1' });
+        expect(env.OBCF_RATE_LIMITER.limit).not.toHaveBeenCalled();
+        expect(kvStore.size).toBe(0); // the KV counter never ran
+
+        limit.mockResolvedValueOnce({ success: false });
+        expect((await enforceUploadRateLimit(makeRequest(), env, 'u1'))?.status).toBe(429);
+    });
+
+    it('fails closed in production when the binding is missing', async () => {
+        const res = await enforceUploadRateLimit(makeRequest(), makeEnv({ ENVIRONMENT: 'production' }), 'u1');
+        expect(res?.status).toBe(500);
+    });
+
+    it('falls back to the KV counter at 60 per minute elsewhere, so a bulk upload passes', async () => {
+        const env = makeEnv();
+        for (let i = 1; i <= 60; i++) {
+            expect(await enforceUploadRateLimit(makeRequest(), env, 'u1'), `upload ${i}`).toBeNull();
+        }
+        expect((await enforceUploadRateLimit(makeRequest(), env, 'u1'))?.status).toBe(429);
     });
 });

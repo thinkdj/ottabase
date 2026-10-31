@@ -566,7 +566,25 @@ request; `via: 'queue'` subscribers travel through OBCF_QUEUE as one `events:del
 the consumer) and run inline when there is no queue. A subscriber that throws is reported and counted, never propagated.
 
 **Consequences:** Packages compose without a dependency edge. Queued subscribers must be idempotent, which is the
-ordinary queue contract. The envelope is plain JSON on purpose: it is the queue job body.
+ordinary queue contract. The envelope is plain JSON on purpose: it is the queue job body. A package never imports the
+app's bus: one that announces something takes an `emit` option the composition wires to it (`@ottabase/auth` does, for
+`user.created` and `user.verified`). The app's own events and their payloads (`user.*`, `lead.created`) are listed at
+the top of `ottabase/events.ts`.
+
+### ADR-7: One invocation per scheduled run
+
+**Context:** Cloudflare fires one scheduled event a minute and the DB scheduler used to run every due task inside it.
+Packages size their cron batches (sends, prunes, backups) for an invocation of their own, but at the top of an hour
+several fall due together and share one budget: 1000 D1 queries, the CPU limit and the wall time.
+
+**Decision:** With OBCF_QUEUE bound, the tick only selects the due tasks and enqueues one `cron:run` job per task (the
+core package registers the consumer); the admin "run now" is queued the same way. The consumer acquires the task's lock
+and runs it, so the lock, reload, failure accounting and next-run rules are unchanged. The queue consumer runs with
+`max_batch_size: 1`, since a batch is one invocation. Without a queue the tick runs the tasks inline.
+
+**Consequences:** A duplicate delivery is a no-op: a scheduled run re-checks due state in the lock, a manual run only
+claims while no run has started since its request. A queue job, a `cron:run` included, has the invocation to itself, at
+the cost of one invocation per job. An enqueue failure rejects the tick; the rows stay due for the next minute.
 
 ## Limits and Future Evolution
 

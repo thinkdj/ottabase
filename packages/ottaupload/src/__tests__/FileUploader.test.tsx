@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FileUploader } from '../client/FileUploader';
 
 describe('FileUploader', () => {
-    it('forwards provider to the upload request', async () => {
+    it('forwards the purpose to the upload request', async () => {
         const sent: FormData[] = [];
         const OriginalXhr = XMLHttpRequest;
         // The setup mock defines `send` per instance; wrap it to capture the request body.
@@ -19,13 +19,13 @@ describe('FileUploader', () => {
         } as typeof XMLHttpRequest;
 
         try {
-            const { getByLabelText } = render(<FileUploader provider="cloudflare-images" autoUpload />);
+            const { getByLabelText } = render(<FileUploader purpose="attachment" autoUpload />);
             fireEvent.change(getByLabelText('File input'), {
                 target: { files: [new File(['x'], 'a.txt', { type: 'text/plain' })] },
             });
 
             await waitFor(() => expect(sent).toHaveLength(1));
-            expect(sent[0].get('provider')).toBe('cloudflare-images');
+            expect(sent[0].get('purpose')).toBe('attachment');
         } finally {
             globalThis.XMLHttpRequest = OriginalXhr;
         }

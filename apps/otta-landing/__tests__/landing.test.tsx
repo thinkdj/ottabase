@@ -174,7 +174,7 @@ describe('metadata', () => {
     });
 
     it('shares the page’s own social image, else the site’s, as a large card', async () => {
-        const siteImage = '/api/upload/file/landing/acme/share/site.png?v=1';
+        const siteImage = '/api/files/public/acme/share-image/0123456789abcdef0123456789abcdef.png';
         store.findSite.mockResolvedValue({
             getSettings: () => ({ ...DEFAULT_SITE, share: { imageUrl: siteImage } }),
         });
@@ -185,7 +185,10 @@ describe('metadata', () => {
         });
         expect(meta.twitter).toMatchObject({ card: 'summary_large_image', images: [{ url: siteImage }] });
 
-        const own = { imageUrl: '/api/upload/file/landing/acme/share/home.png?v=2', heading: 'Ship it' };
+        const own = {
+            imageUrl: '/api/files/public/acme/share-image/fedcba9876543210fedcba9876543210.png',
+            heading: 'Ship it',
+        };
         store.findPage.mockResolvedValue({ toPage: () => ({ ...home.toPage(), share: own }) });
         meta = await generateMetadata(params());
         expect(meta.openGraph).toMatchObject({ images: [{ url: own.imageUrl, alt: 'Ship it' }] });
@@ -262,10 +265,10 @@ describe('sitemap and robots', () => {
         expect(agents).toEqual(
             expect.arrayContaining(['OAI-SearchBot', 'PerplexityBot', 'Claude-SearchBot', 'Googlebot', 'Bingbot', '*']),
         );
-        // The uploads route sits under /api/; the longer allow keeps logos and social images fetchable.
+        // The public files route sits under /api/; the longer allow keeps logos and social images fetchable.
         expect(rules.find((r) => r.userAgent === 'OAI-SearchBot')).toEqual({
             userAgent: 'OAI-SearchBot',
-            allow: ['/', '/api/upload/file/'],
+            allow: ['/', '/api/files/public/'],
             disallow: ['/api/'],
         });
     });

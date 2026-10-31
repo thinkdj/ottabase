@@ -63,6 +63,7 @@ export const notesPackage = definePackage<CloudflareEnv>({
 | `suppressIndexes` | Index names auto-init must not create                                              |
 | `models`          | Registered with OttaORM at boot                                                    |
 | `policies`        | RLS policies registered after `initRLS()`                                          |
+| `files`           | File purposes the app's files service stores (see below)                           |
 | `routes`          | Mounted on the API router, with an optional `when` gate and `before` middleware    |
 | `cron`            | Registered with the scheduler; `schedule` seeds a `scheduled_tasks` row on install |
 | `queue`           | Registered with the queue handler registry                                         |
@@ -79,6 +80,33 @@ die with the handler.
 
 Cron handler names and queue job types are app-wide. Namespace them (`notes:purge`); the registry throws on a clash.
 
+### File purposes
+
+A package that stores files declares each kind once, and writes through the app's files service (`@ottabase/ottaupload`,
+which it takes as an option, like the event bus):
+
+```typescript
+definePackage({
+    key: 'helpdesk',
+    name: 'Helpdesk',
+    version: '1.0.0',
+    files: [
+        {
+            purpose: 'ticket-attachment', // part of every key: <appId>/ticket-attachment/<id>.<ext>
+            label: 'Ticket attachments',
+            audience: 'members', // public | members | owner
+            types: ['image/*', 'application/pdf', 'text/plain'], // sniffed types, never the browser's label
+            maxBytes: 10 * 1024 * 1024,
+            variants: ['thumb'], // optional WebP renditions: thumb 160, card 640, full 1600 px
+        },
+    ],
+});
+```
+
+`svg: true` accepts SVG and belongs only on purposes trusted admins write; `server: true` keeps a purpose out of the
+generic `POST /api/files` (the package's own guarded route writes it). Purpose names are app-wide; the registry throws
+on a clash, and `registry.files()` hands the list to the files service.
+
 ## The registry
 
 ```typescript
@@ -94,7 +122,7 @@ await runHealth(packages, env); // → { ok, checks: [{ package, name, ok }] }
 ```
 
 `createPackageRegistry` collects eagerly and throws at boot on a duplicate package key, table export name, cron handler
-name or queue job type. Everything else is a plain getter that returns a copy.
+name, queue job type or file purpose. Everything else is a plain getter that returns a copy.
 
 ### Env declarations and readiness
 

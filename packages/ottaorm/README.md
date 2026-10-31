@@ -976,12 +976,28 @@ console.log(fields.title.uiConfig.label); // "Title"
 
 The package includes these core models (in `@ottabase/ottaorm`):
 
-- **User** - Users with name, email, image
+- **User** - Users with name, email, the OAuth provider's picture (`image`) and an uploaded avatar (`avatarKey`)
 - **Account** - OAuth provider accounts
 - **Tag** - Tags with name and slug
 - **VerificationToken** - Email verification, password-reset and magic-link tokens (hash-stored)
+- **Media** - One row per stored file, written only by the files service (`@ottabase/ottaupload`)
 
 The blog/content `Post` model lives in `@ottabase/ottablog`.
+
+### Files: `Media`, `mediaFileStore` and user pictures
+
+`media` rows are `id` (32 hex chars, the same id as in the storage key), `appId`, `organizationId`, `userId`, `purpose`,
+`audience` (`public` | `members` | `owner`), `storageKey` (unique), the sniffed `mimeType`, `mediaKind`, `status`
+(`ready` | `quarantined`), `originalName`, `title`, `altText`, `caption`, `extension`, `fileSize`, `width`, `height`,
+`variants` (`{ thumb?, card?, full? }`, each `{ key, width, height, size }`) and `metadata`. URLs are never stored: the
+files service computes `url`, `thumbnailUrl` and `previewUrl` in its views. Deletes are real; the objects go with the
+row. `mediaFileStore` is the service's store over this model (`createFiles({ store: mediaFileStore })`), and the only
+writer: `Media.writable` lets a person change nothing but `title`, `altText` and `caption`.
+
+`User.imageUrl(row)` (and `user.imageUrl()`) is the picture every user view shows: the uploaded avatar at
+`<filesPublicUrl>/<avatarKey>`, else the provider's `image`, else null. Set the base once per isolate with
+`configureOttaORM({ maxAllRows, filesPublicUrl: env.R2_PUBLIC_URL })` (default `/api/files/public`);
+`publicFileUrl(key)` builds the same URL for any public key.
 
 ### Role grants (`User` RBAC methods, `UserRole`)
 

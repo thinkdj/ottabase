@@ -1,11 +1,14 @@
-import type { MediaType } from '@ottabase/ottaorm';
+import type { MediaLibraryItemLike } from '@ottabase/medialibrary';
 import { createModelHooks } from '@ottabase/ottaorm/client';
 
-export const mediaLibraryHooks = createModelHooks<MediaType>({
+/** Media rows as `/api/ottaorm/media` lists them: with the URLs the files service computed. Read-only. */
+export const mediaLibraryHooks = createModelHooks<MediaLibraryItemLike>({
     entityName: 'media',
 });
 
-export function normalizeMediaLibraryListResponse(data: MediaType[] | { data?: MediaType[] } | undefined): MediaType[] {
+export function normalizeMediaLibraryListResponse(
+    data: MediaLibraryItemLike[] | { data?: MediaLibraryItemLike[] } | undefined,
+): MediaLibraryItemLike[] {
     if (Array.isArray(data)) {
         return data;
     }

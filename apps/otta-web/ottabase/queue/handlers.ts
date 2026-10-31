@@ -122,9 +122,10 @@ export const generateReportHandler: JobHandler<GenerateReportPayload, Cloudflare
         2,
     );
 
-    if (ctx.env.OBCF_R2) {
+    // A system artifact: the private bucket, never served by key (the public one is for user files).
+    if (ctx.env.OBCF_R2_PRIVATE) {
         const key = `reports/${reportType}-${Date.now()}.json`;
-        await ctx.env.OBCF_R2.put(key, report);
+        await ctx.env.OBCF_R2_PRIVATE.put(key, report);
         console.log(`[Queue:generate-report] Stored at ${key}`);
     }
 

@@ -648,7 +648,7 @@ function FileField({
     accept?: string;
     maxSize?: number;
     isImage: boolean;
-    /** Custom upload endpoint (e.g., /api/upload or /api/cloudflare/r2) */
+    /** Custom upload endpoint (e.g. /api/files) */
     uploadEndpoint?: string;
 }) {
     const inputRef = React.useRef<HTMLInputElement>(null);

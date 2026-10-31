@@ -64,7 +64,10 @@ export const landingLeadsTable = sqliteTable(
         /** SHA-256 of app + IP, for rate limiting without keeping the address. */
         ipHash: text('ip_hash'),
         readAt: integer('read_at'),
+        /** When the admin digest email covered it (or retired it, with no address set). */
         notifiedAt: integer('notified_at'),
+        /** When `lead.created` went out on the bus; apart from `notifiedAt`, so a failing mail never holds it back. */
+        announcedAt: integer('announced_at'),
         createdAt: integer('created_at')
             .notNull()
             .$defaultFn(() => Date.now()),
@@ -73,6 +76,7 @@ export const landingLeadsTable = sqliteTable(
         index('landing_leads_app_created_idx').on(table.appId, table.createdAt),
         index('landing_leads_app_ip_idx').on(table.appId, table.ipHash, table.createdAt),
         index('landing_leads_app_notified_idx').on(table.appId, table.notifiedAt),
+        index('landing_leads_app_announced_idx').on(table.appId, table.announcedAt),
     ],
 );
 

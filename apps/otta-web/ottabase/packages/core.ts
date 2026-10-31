@@ -7,17 +7,79 @@
 // package: its cron housekeeping, its queue handlers, its env contract and its health.
 // ============================================================
 
+import { CRON_JOB_TYPE, type CronJobPayload } from '@ottabase/cron';
 import { EVENT_JOB_TYPE } from '@ottabase/events';
-import { definePackage } from '@ottabase/kernel';
+import { definePackage, type FilePurposeContribution } from '@ottabase/kernel';
+import type { JobHandler } from '@ottabase/queue';
 import { AUDIT_PRUNE_HANDLER, DEFAULT_AUDIT_RETENTION_DAYS, pruneAuditLogs } from '../../worker/lib/audit-retention';
 import { getOttabaseConfig } from '../config.loader';
 import { events } from '../events';
+
+const MB = 1024 * 1024;
+/** What the files service sniffs as a raster image: the types it strips and renders variants of. */
+const RASTER = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+
+/**
+ * The core file purposes. `server: true` ones are written by their own guarded route (the
+ * avatar, brand and landing routes), never by the generic `POST /api/files`.
+ */
+const corePurposes: FilePurposeContribution[] = [
+    {
+        purpose: 'avatar',
+        label: 'Avatars',
+        audience: 'public',
+        types: RASTER,
+        maxBytes: 5 * MB,
+        variants: ['thumb'],
+        server: true,
+    },
+    {
+        purpose: 'media',
+        label: 'The media library',
+        audience: 'public',
+        types: [...RASTER, 'video/mp4', 'video/webm', 'application/pdf'],
+        maxBytes: 10 * MB,
+        variants: ['thumb', 'card', 'full'],
+    },
+    {
+        purpose: 'attachment',
+        label: 'Attachments',
+        audience: 'members',
+        types: [...RASTER, 'application/pdf', 'text/plain', 'text/csv'],
+        maxBytes: 10 * MB,
+    },
+    {
+        purpose: 'brand-asset',
+        label: 'Brand assets',
+        audience: 'public',
+        types: [...RASTER, 'image/svg+xml', 'image/x-icon'],
+        maxBytes: 5 * MB,
+        svg: true,
+        server: true,
+    },
+    {
+        purpose: 'share-image',
+        label: 'Social share images',
+        audience: 'public',
+        types: ['image/png', 'image/jpeg', 'image/webp'],
+        maxBytes: 2 * MB,
+        server: true,
+    },
+];
+
+/** Runs one queued scheduler run. Loaded on use: `../cron` reads the package list, which imports this file. */
+const runQueuedCronTask: JobHandler<CronJobPayload, CloudflareEnv> = async (job, ctx) => {
+    const { runQueuedAppCronTask } = await import('../cron');
+    await runQueuedAppCronTask(ctx.env, job.payload);
+};
 
 export const corePackage = definePackage<CloudflareEnv>({
     key: 'core',
     name: 'Ottabase core',
     version: '1.0.0',
     description: 'Auth, organizations, RBAC, audit log, media and the scheduler.',
+
+    files: corePurposes,
 
     // Descriptions feed the admin "System readiness" view; a value is shown only for `secret: false`.
     env: {
@@ -32,7 +94,47 @@ export const corePackage = definePackage<CloudflareEnv>({
                 description: 'Sessions, caches and install records. Required in production.',
             },
             { key: 'OBCF_QUEUE', kind: 'binding', description: 'Background jobs; without it jobs run inline.' },
-            { key: 'OBCF_R2', kind: 'binding', description: 'Uploads and backups.' },
+            {
+                key: 'OBCF_R2',
+                kind: 'binding',
+                description: 'Public files (avatars, the media library, brand assets): served by key.',
+            },
+            {
+                key: 'OBCF_R2_PRIVATE',
+                kind: 'binding',
+                description: 'Members and owner files, and system artifacts: never served by key.',
+            },
+            { key: 'OBCF_IMAGES', kind: 'binding', description: 'Images binding: thumb/card/full WebP variants.' },
+            {
+                key: 'R2_PUBLIC_URL',
+                secret: false,
+                description: 'Base URL of the public files bucket. Default /api/files/public.',
+            },
+            {
+                key: 'FILES_SIGNING_SECRET',
+                kind: 'secret',
+                description: 'Signs ?t= links to private files. Unset: no signed links.',
+            },
+            {
+                key: 'FILES_QUOTA_MB',
+                secret: false,
+                description: 'Storage per organization (or user), MB. Default 1024.',
+            },
+            {
+                key: 'OBCF_RATE_LIMITER_UPLOADS',
+                kind: 'binding',
+                description: 'Upload rate limit, 60 a minute per user. Required in production.',
+            },
+            {
+                key: 'CLOUDFLARE_FILES_ZONE_ID',
+                secret: false,
+                description: 'Zone of the public files domain: quarantine purges its URLs there.',
+            },
+            {
+                key: 'CLOUDFLARE_PURGE_API_TOKEN',
+                kind: 'secret',
+                description: 'Token with Cache Purge on that zone. Unset: purge quarantined URLs by hand.',
+            },
             { key: 'OBCF_ASSETS', kind: 'binding', description: 'The built SPA served by the Worker.' },
             { key: 'OBCF_VERSION', kind: 'binding', description: 'Version metadata: which build is running.' },
             { key: 'ENVIRONMENT', secret: false, description: 'development, staging, preview, demo or production.' },
@@ -57,6 +159,8 @@ export const corePackage = definePackage<CloudflareEnv>({
     queue: {
         // The consumer half of the event bus: runs every `via: 'queue'` subscriber.
         [EVENT_JOB_TYPE]: events.jobHandler(),
+        // The consumer half of the scheduler: one task run per job, in its own invocation.
+        [CRON_JOB_TYPE]: runQueuedCronTask,
     },
 
     health: (env) => [

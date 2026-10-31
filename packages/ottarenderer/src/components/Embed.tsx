@@ -1,4 +1,4 @@
-import { Inline, inlineToText, safeUrl } from '../inline';
+import { Inline, inlineToText, safeUrl, useLinkRel } from '../inline';
 import type { BlockRenderer } from '../types';
 
 /** @editorjs/embed output */
@@ -17,6 +17,7 @@ export interface EmbedData {
  * URL that fails the URL allowlist falls back to a plain link to the source, never to a frame.
  */
 const Embed: BlockRenderer<EmbedData> = ({ data }) => {
+    const linkRel = useLinkRel();
     const embed = safeUrl(data?.embed);
     const source = safeUrl(data?.source);
     if (!embed && !source) return null;
@@ -36,7 +37,7 @@ const Embed: BlockRenderer<EmbedData> = ({ data }) => {
                         referrerPolicy="strict-origin-when-cross-origin"
                     />
                 ) : (
-                    <a className="otta-link" href={source!} target="_blank" rel="noopener noreferrer">
+                    <a className="otta-link" href={source!} target="_blank" rel={linkRel(true)}>
                         {source}
                     </a>
                 )}

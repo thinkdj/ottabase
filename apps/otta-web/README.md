@@ -485,6 +485,7 @@ apps/otta-web/
   referral clicks for the analytics tabs. System-admin only: Analytics Engine rows carry no organization, so the totals
   are platform-wide
 - `/api/admin/cron` - Platform-admin task list/create API; manual runs use the same locked executor as scheduled ticks
+  and, with a queue bound, are queued like them (202)
 
 ### Scheduled Tasks
 
@@ -492,7 +493,9 @@ Cloudflare wakes the Worker every minute through the `* * * * *` trigger in `wra
 registry in `ottabase/cron/index.ts` is the single source for both executable handlers and the admin handler list.
 Stored task expressions are evaluated in UTC. Creation validates the registered handler, cron expression, task type, and
 JSON payload in `ScheduledTask`, and initializes `nextRunAt`; manual runs and scheduled ticks share atomic locking and
-persisted success/failure accounting. Long or retriable work is dispatched to the existing Queue binding.
+persisted success/failure accounting. With `OBCF_QUEUE` bound the tick only enqueues one `cron:run` job per due task and
+each runs in its own queue invocation (the consumer is registered by `ottabase/packages/core.ts`; the consumer's
+`max_batch_size` is 1 so a batch never puts two runs in one invocation). Without a queue the tick runs them inline.
 
 ## Using Cloudflare Bindings
 

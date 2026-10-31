@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import {
+    markUgcLinks,
     sanitizeBlockHtml,
     sanitizeCssForStyleTag,
     sanitizeInlineHtml,
@@ -73,6 +74,19 @@ describe('sanitizeBlockHtml', () => {
         const input = '<a href="javascript:alert(1)">click</a>';
         const result = sanitizeBlockHtml(input);
         expect(result).not.toContain('javascript:');
+    });
+});
+
+describe('markUgcLinks', () => {
+    it('gives every link of sanitized HTML rel="ugc nofollow noopener", replacing any rel it had', () => {
+        const html = sanitizeBlockHtml(
+            '<p><a href="https://a.test" rel="author">a</a> and <a title="x > y" href="/b">b</a></p>',
+        );
+        const marked = markUgcLinks(html);
+        expect(marked.match(/rel="ugc nofollow noopener"/g)).toHaveLength(2);
+        expect(marked).not.toContain('rel="author"');
+        expect(marked).toContain('href="/b"');
+        expect(markUgcLinks('<abbr title="x">y</abbr>')).toBe('<abbr title="x">y</abbr>');
     });
 });
 

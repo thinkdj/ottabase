@@ -31,8 +31,7 @@ callers that only use the pure helpers or the state machine do not need them ins
 ```typescript
 import {
     getMediaKindFromMimeType, // mime → 'image' | 'video' | 'audio' | 'document'
-    createMediaLibraryRecordInput, // upload result → DB record input
-    toMediaSelectionPayload, // media → editor picker payload
+    toMediaSelectionPayload, // media view → editor picker payload
     createMediaLightboxState, // pure lightbox state machine
     getAdjacentMediaIndex,
     clampMediaIndex,
@@ -54,24 +53,21 @@ import {
 } from '@ottabase/medialibrary/react';
 ```
 
-The app still owns the OttaORM `BaseModel` class and route wiring, which keeps the package reusable across multiple
-Ottabase apps.
+Storing files is not this package's job: the files service (`@ottabase/ottaupload`, `POST /api/files`) writes every
+media row and computes its URLs. This package types and presents what the API returns.
 
 ## Basic Usage
 
-```typescript
-import { createMediaLibraryRecordInput } from '@ottabase/medialibrary';
+A media item (`MediaLibraryItemLike`) is a row plus the view fields the server computed: `url`, `thumbnailUrl` (the
+thumb variant, else the original) and `previewUrl` (the card variant, else the original). URLs are never stored, so
+always read them from the view:
 
-const record = createMediaLibraryRecordInput({
-    provider: 'r2',
-    storageKey: 'uploads/cover.webp',
-    url: '/api/upload/file/uploads/cover.webp',
-    fileName: 'cover.webp',
-    mimeType: 'image/webp',
-    fileSize: 248102,
-    appId: 'otta-web',
-    userId: 'user-123',
-});
+```typescript
+import { toMediaSelectionPayload, type MediaLibraryItemLike } from '@ottabase/medialibrary';
+
+// GET /api/ottaorm/media lists `media`-purpose rows with their view URLs
+const payload = toMediaSelectionPayload(item as MediaLibraryItemLike);
+// → { mediaId, url, thumbnailUrl, previewUrl, alt, caption, width, height, ... } for an editor block
 ```
 
 ## Wrap Renderer Output
@@ -261,12 +257,13 @@ For non-lightbox image rendering (`tile`, `thumb`, `detail`), `MediaPreview` now
 - uses `decoding="async"`
 - forwards intrinsic `width`/`height` when available to reserve layout space and reduce CLS
 
-## PDF Preview Sandbox
+## Documents
 
-PDF previews are rendered in an iframe with `sandbox="allow-same-origin"`. This keeps previews safer by disabling script
-execution and top-level navigation while still allowing same-origin PDF rendering.
+PDFs and other documents preview as a document card, not an embedded viewer. The files service serves them as downloads
+(`Content-Disposition: attachment`): browsers' PDF viewers do not run under the sandbox CSP every file carries, and
+rendering a document inline with the sandbox relaxed is the combination to avoid. The lightbox's download link opens
+them.
 
-- **appId consistency:** The media RLS policy filters by `appId`. All upload paths must store the same `appId` that the
-  listing/browser UI sends. Use the app's configured `api` client (which injects `X-App-Id` automatically) for uploads
-  rather than raw `fetch`/XHR. The server-side `getResolvedMediaSecurityContext` also resolves `appId` from
-  `ottabase.config.ts` when the header is absent, so vanilla upload tools (e.g. EditorJS) work without extra wiring.
+- **appId consistency:** The media RLS policy filters by `appId`. The files service writes the `appId` from server
+  configuration (`ottabase.config.ts`), never from a header, so every upload path, vanilla editor tools included, lands
+  in the partition the listing reads.

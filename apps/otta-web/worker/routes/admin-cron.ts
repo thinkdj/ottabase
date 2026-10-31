@@ -149,12 +149,18 @@ export async function handleCronTask(
             });
         }
 
+        // With a queue the run executes in its own invocation; the list shows its outcome.
+        const queued = execution.status === 'queued';
         const updatedTask = await ScheduledTask.findForApp(cleanId, appId);
-        return jsonResponse({
-            success: true,
-            message: 'Task executed successfully',
-            task: updatedTask?.toJson() ?? null,
-        });
+        return jsonResponse(
+            {
+                success: true,
+                queued,
+                message: queued ? 'Task queued to run' : 'Task executed successfully',
+                task: updatedTask?.toJson() ?? null,
+            },
+            queued ? 202 : 200,
+        );
     }
 
     const task = await ScheduledTask.findForApp(cleanId, appId);

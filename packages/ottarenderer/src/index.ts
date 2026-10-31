@@ -11,6 +11,7 @@ export {
     Annotation,
     InlineSpoiler,
     decodeEntities,
+    linkRel,
     Inline,
     inlineToText,
     nodesToText,
@@ -19,6 +20,7 @@ export {
     renderNodes,
     safeUrl,
     useInline,
+    useLinkRel,
 } from './inline';
 export type { InlineNode } from './inline';
 export { HtmlRenderer } from './HtmlRenderer';
@@ -55,7 +57,7 @@ export { default as Testimonial } from './components/Testimonial';
 export { default as Warning } from './components/Warning';
 
 // Block data types
-export type { AdvancedImageData, UploadResponse } from './components/AdvancedImage/advancedimage.types';
+export type { AdvancedImageData } from './components/AdvancedImage/advancedimage.types';
 export type { BeforeAfterData } from './components/BeforeAfter';
 export type { ChecklistItem } from './components/Checklist';
 export type { CodeBlockData } from './components/Code';

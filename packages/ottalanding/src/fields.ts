@@ -60,7 +60,7 @@ export function defineFields<const S extends Fields>(fields: S): S {
 const HREF_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\])|#|mailto:|tel:)/i;
 /** A full site address: http(s) scheme plus a host. */
 const ABSOLUTE_OR_EMPTY = /^$|^https?:\/\/[^/\s]+/i;
-/** Image sources: absolute http(s) or site-relative (uploads are served at /api/upload/file/…). */
+/** Image sources: absolute http(s) or site-relative (public files are served at /api/files/public/…). */
 const IMAGE_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\]))/i;
 const COLOR_OR_EMPTY = /^$|^#[0-9a-f]{6}$/i;
 /** Deliberately simple (something@something.tld): delivery is the real test of an address. */

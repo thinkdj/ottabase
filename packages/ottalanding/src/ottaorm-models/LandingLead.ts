@@ -1,5 +1,12 @@
 import { BaseModel, type ModelFields } from '@ottabase/ottaorm';
-import { LEAD_MIN_FILL_MS, LEAD_RATE_LIMIT, LeadInputSchema, type LeadData, type LeadKind } from '../leads';
+import {
+    LEAD_MIN_FILL_MS,
+    LEAD_RATE_LIMIT,
+    LeadInputSchema,
+    type LeadCreatedEvent,
+    type LeadData,
+    type LeadKind,
+} from '../leads';
 import { validated } from './LandingPage';
 import { landingLeadsTable } from './landing.schema';
 
@@ -21,12 +28,13 @@ export class LandingLead extends BaseModel {
     static casts = {
         readAt: 'date' as const,
         notifiedAt: 'date' as const,
+        announcedAt: 'date' as const,
         createdAt: 'date' as const,
     };
 
     static writable = {
         create: ['appId', 'kind', 'email', 'name', 'message', 'pagePath', 'ipHash'],
-        update: ['readAt', 'notifiedAt'],
+        update: ['readAt', 'notifiedAt', 'announcedAt'],
     };
 
     protected static fields: ModelFields = {
@@ -105,6 +113,28 @@ export class LandingLead extends BaseModel {
         for (const id of ids) {
             if (await this.first({ appId, id })) await this.update(id, { notifiedAt: now });
         }
+    }
+
+    /**
+     * Hand every entry not yet announced to `emit` (the app's bus, as `lead.created`), oldest
+     * first, marking each once `emit` resolves. At-least-once: a run that dies between the two
+     * announces that entry again next time. A throw ends the run and leaves the rest pending.
+     */
+    static async announceNew(
+        appId: string,
+        emit: (event: LeadCreatedEvent) => Promise<unknown>,
+        limit = 50,
+    ): Promise<number> {
+        const pending = (await this.where(
+            { appId, announcedAt: null },
+            { orderBy: 'createdAt', orderDirection: 'asc', limit },
+        )) as LandingLead[];
+        for (const lead of pending) {
+            const { id, kind, email, name, message, pagePath, createdAt } = lead.toLead();
+            await emit({ leadId: id, kind, email, name, message, pagePath, at: Date.parse(createdAt) });
+            await this.update(id, { announcedAt: Date.now() });
+        }
+        return pending.length;
     }
 
     toLead(): LeadData {

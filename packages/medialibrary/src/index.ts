@@ -1,8 +1,7 @@
 export type {
-    CreateMediaLibraryRecordInput,
+    MediaAudience,
     MediaKind,
     MediaLibraryItemLike,
-    MediaLibraryProvider,
     MediaLightboxNavigationDirection,
     MediaLightboxOptions,
     MediaLightboxVariant,
@@ -10,11 +9,11 @@ export type {
     MediaSelectionPayload,
     MediaStatus,
     MediaVariant,
+    MediaVariantName,
     MediaViewerItem,
 } from './types';
 
 export {
-    createMediaLibraryRecordInput,
     formatMediaFileSize,
     getFileExtension,
     getMediaDisplayTitle,

@@ -307,9 +307,13 @@ describe('object snapshots', () => {
     it('lists the objects beside the tables and copies each etag once, never its own prefix or an excluded one', async () => {
         const { vault, env, bucket } = withObjects();
         const first = await vault.backup(env);
-        expect(first.objects).toMatchObject({ key: `vault/app/${first.id}/objects.ndjson`, count: 2, copied: 2 });
+        expect(first.objects?.files).toMatchObject({
+            key: `vault/app/${first.id}/objects.files.ndjson`,
+            count: 2,
+            copied: 2,
+        });
         const entries = bucket.objects
-            .get(first.objects!.key)!
+            .get(first.objects!.files!.key)!
             .trim()
             .split('\n')
             .map((line) => JSON.parse(line));
@@ -322,9 +326,9 @@ describe('object snapshots', () => {
         expect(bucket.types.get(store.find((key) => bucket.objects.get(key) === 'alpha')!)).toBe('text/plain');
 
         // The same bucket again: nothing new to copy. A changed object: one copy.
-        expect((await vault.backup(env)).objects).toMatchObject({ count: 2, copied: 0 });
+        expect((await vault.backup(env)).objects?.files).toMatchObject({ count: 2, copied: 0 });
         bucket.objects.set('uploads/b.txt', 'beta 2');
-        expect((await vault.backup(env)).objects).toMatchObject({ count: 2, copied: 1 });
+        expect((await vault.backup(env)).objects?.files).toMatchObject({ count: 2, copied: 1 });
         expect((await vault.backup(env, { objects: false })).objects).toBeUndefined();
         expect((await vault.list(env))[0]!.objects).toBeUndefined();
     });
@@ -335,21 +339,54 @@ describe('object snapshots', () => {
         bucket.objects.set('uploads/a.txt', 'changed');
         bucket.objects.delete('uploads/b.txt');
         const restored = await vault.restore(env, backup.id);
-        expect(restored.objects).toEqual({ restored: 2, skipped: 0, missing: [] });
+        expect(restored.objects).toEqual({ files: { restored: 2, skipped: 0, missing: [] } });
         expect(bucket.objects.get('uploads/a.txt')).toBe('alpha');
         expect(bucket.types.get('uploads/a.txt')).toBe('text/plain');
         expect(bucket.objects.get('uploads/b.txt')).toBe('beta');
-        expect((await vault.restore(env, backup.id)).objects).toEqual({ restored: 0, skipped: 2, missing: [] });
+        expect((await vault.restore(env, backup.id)).objects?.files).toEqual({ restored: 0, skipped: 2, missing: [] });
 
         for (const key of [...bucket.objects.keys()])
             if (key.startsWith('vault/app/_objects/')) bucket.objects.delete(key);
         bucket.objects.delete('uploads/a.txt');
-        expect((await vault.restore(env, backup.id)).objects).toEqual({
+        expect((await vault.restore(env, backup.id)).objects?.files).toEqual({
             restored: 0,
             skipped: 1,
             missing: ['uploads/a.txt'],
         });
         expect((await vault.restore(env, backup.id, { objects: false })).objects).toBeUndefined();
+    });
+
+    it('keeps backups in their own bucket and snapshots every named source bucket', async () => {
+        const vaultBucket = memoryBucket();
+        const publicFiles = memoryBucket();
+        const privateFiles = memoryBucket();
+        publicFiles.objects.set('app/media/a.png', 'public bytes');
+        privateFiles.objects.set('app/attachment/b.pdf', 'private bytes');
+        privateFiles.objects.set('blackbox/run.json', 'artifact');
+        const vault = createVault<Env>({
+            driver: (env) => sqliteDriver(env.db),
+            bucket: () => vaultBucket,
+            appId: () => 'app',
+            objects: { buckets: { public: () => publicFiles, private: () => privateFiles, unbound: () => null } },
+        });
+        const env = { bucket: vaultBucket, db: seed() } as Env;
+        const backup = await vault.backup(env);
+
+        expect(Object.keys(backup.objects!)).toEqual(['public', 'private']);
+        expect(backup.objects!.private).toMatchObject({ count: 2, copied: 2 });
+        // Nothing of the backup lands in a source bucket.
+        expect([...publicFiles.objects.keys()]).toEqual(['app/media/a.png']);
+        expect([...privateFiles.objects.keys()].some((key) => key.startsWith('vault/'))).toBe(false);
+        expect([...vaultBucket.objects.keys()]).toContain(`vault/app/${backup.id}/objects.private.ndjson`);
+
+        // Each source gets its own objects back.
+        privateFiles.objects.delete('app/attachment/b.pdf');
+        publicFiles.objects.delete('app/media/a.png');
+        const restored = await vault.restore(env, backup.id);
+        expect(restored.objects?.public).toEqual({ restored: 1, skipped: 0, missing: [] });
+        expect(restored.objects?.private).toEqual({ restored: 1, skipped: 1, missing: [] });
+        expect(privateFiles.objects.get('app/attachment/b.pdf')).toBe('private bytes');
+        expect(publicFiles.objects.has('app/attachment/b.pdf')).toBe(false);
     });
 
     it('prunes the bytes no remaining backup names', async () => {
@@ -368,7 +405,7 @@ describe('object snapshots', () => {
         const after = [...bucket.objects.keys()].filter((key) => key.startsWith('vault/app/_objects/'));
         expect(after).toHaveLength(2);
         expect(after.map((key) => bucket.objects.get(key)).sort()).toEqual(['alpha 2', 'beta']);
-        expect((await vault.restore(env, newer.id)).objects).toEqual({ restored: 0, skipped: 2, missing: [] });
+        expect((await vault.restore(env, newer.id)).objects?.files).toEqual({ restored: 0, skipped: 2, missing: [] });
     });
 });
 

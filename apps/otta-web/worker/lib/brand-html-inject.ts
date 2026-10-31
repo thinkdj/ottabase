@@ -5,6 +5,7 @@
 // re-fetching /api/brand.
 // ---------------------------------------------------------------------------
 
+import { files } from '../../ottabase/files';
 import {
     buildCriticalStyleTagDual,
     buildCustomCssStyleTag,
@@ -40,16 +41,17 @@ function buildFontLinkTags(themes: Array<Record<string, unknown> | undefined>): 
 export interface BrandHtmlInjectEnv {
     OBCF_D1: CloudflareEnv['OBCF_D1'];
     OBCF_KV: CloudflareEnv['OBCF_KV'];
-    OBCF_R2: CloudflareEnv['OBCF_R2'];
     R2_PUBLIC_URL?: string;
+    /** The app's public origin: logo URLs are made absolute against it. */
+    AUTH_URL?: string;
 }
 
 function brandResolutionEnv(env: BrandHtmlInjectEnv): ResolveBrandConfigEnv {
     return {
         OBCF_D1: env.OBCF_D1 as ResolveBrandConfigEnv['OBCF_D1'],
         OBCF_KV: env.OBCF_KV as ResolveBrandConfigEnv['OBCF_KV'],
-        OBCF_R2: env.OBCF_R2 as unknown as ResolveBrandConfigEnv['OBCF_R2'],
-        R2_PUBLIC_URL: env.R2_PUBLIC_URL,
+        // Logo keys live in the public files bucket; the service's base is absolute (AUTH_URL).
+        R2_PUBLIC_URL: files.publicBase(env as unknown as CloudflareEnv),
     };
 }
 

@@ -5,17 +5,24 @@
 // rows are due. The HANDLERS a task may name come from the package manifests
 // (`cron` field, collected by ottabase/packages.ts), so a package ships its housekeeping
 // and the admin's handler picker learns about it with no edit here.
+//
+// With OBCF_QUEUE bound, every run (each due task, each admin "run now") is one `cron:run`
+// queue job, so it runs in an invocation of its own with the D1, CPU and wall-time budget to
+// itself; the core package registers the consumer. Without a queue the tick runs them inline.
 // ============================================================
 
 import {
+    CRON_JOB_TYPE,
     createScheduler,
     createTaskRepository,
+    type CronJobPayload,
     type SchedulerTickResult,
     type TaskExecutionResult,
     type TaskHandler,
 } from '@ottabase/cron';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { dispatchBatch } from '@ottabase/queue';
 import { resolvePlatformState } from '../../worker/bootstrap';
 import { ensureDbConnection } from '../../worker/lib/db-utils';
 import { getOttabaseConfig } from '../config.loader';
@@ -34,6 +41,16 @@ export const appCronScheduler = createScheduler<CloudflareEnv>({
     // and `tick()` awaits this hook, so the reports finish before the event does.
     onError: async (error, context) => {
         await packages.report({ error, env: context.env, source: 'cron', task: context.taskName });
+    },
+    // One message per run. A refused batch rejects the tick and the rows stay due for the next.
+    enqueue: async (env, runs) => {
+        if (!env.OBCF_QUEUE) return false;
+        const sent = await dispatchBatch(
+            env.OBCF_QUEUE,
+            runs.map((payload) => ({ type: CRON_JOB_TYPE, payload })),
+        );
+        if (!sent.success) throw sent.error;
+        return true;
     },
 });
 
@@ -58,9 +75,9 @@ function appTaskRepository(env: CloudflareEnv) {
             id: string,
             startedAt: Date,
             staleBefore: Date,
-            scheduledOnly: boolean,
+            requestedAt: Date | null,
             driver: Parameters<typeof ScheduledTask.acquireExecutionLock>[5],
-        ) => ScheduledTask.acquireExecutionLock(id, appId, startedAt, staleBefore, scheduledOnly, driver),
+        ) => ScheduledTask.acquireExecutionLock(id, appId, startedAt, staleBefore, requestedAt, driver),
         completeExecution: (
             id: string,
             startedAt: Date,
@@ -82,8 +99,22 @@ export async function runAppCronTick(env: CloudflareEnv): Promise<SchedulerTickR
     return appCronScheduler.tick(env, appTaskRepository(env));
 }
 
+/** The admin's "run now": queued when there is a queue (`queued`), otherwise run here. */
 export async function runAppCronTask(env: CloudflareEnv, taskId: string): Promise<TaskExecutionResult> {
     return appCronScheduler.runTask(taskId, env, appTaskRepository(env));
+}
+
+/**
+ * The `cron:run` consumer: one run, in this queue invocation, behind the task's lock. A
+ * duplicate delivery or a task no longer due comes back `locked` and is acked; a failing task
+ * is recorded on its row and reported, and only a bookkeeping error makes the queue retry.
+ */
+export async function runQueuedAppCronTask(env: CloudflareEnv, run: CronJobPayload): Promise<TaskExecutionResult> {
+    // A queue batch can run in an isolate that never served a request: connect the ORM first.
+    ensureDbConnection(env);
+    const execution = await appCronScheduler.runQueued(run, env, appTaskRepository(env));
+    console.log(JSON.stringify({ event: 'cron_run', taskId: execution.taskId, status: execution.status }));
+    return execution;
 }
 
 /** Cloudflare's one-minute trigger delegates into the DB-driven scheduler. */

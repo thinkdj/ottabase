@@ -25,7 +25,8 @@ export interface CfResourceNames {
      * the title is passed to `wrangler kv namespace create`; the binding stays fixed in wrangler.jsonc.
      */
     kv: { binding: string; title: string; previewTitle: string };
-    r2: { name: string; previewName: string };
+    /** Every R2 bucket the target binds (files, private files, backups...), in wrangler.jsonc order. */
+    r2: Array<{ binding: string; name: string; previewName: string }>;
     queue: { name: string; previewName: string };
     /** GitHub Secret names CI substitutes at deploy time (read from env.production / env.preview). */
     secrets: { d1Id: string; kvId: string; d1PreviewId: string; kvPreviewId: string };
@@ -122,8 +123,8 @@ function extractResourceNames(cfg: any, envName?: string): CfResourceNames {
     const d1 = pick(target, 'd1_databases') || pick(cfg, 'd1_databases') || {};
     const d1Preview = pick(preview, 'd1_databases') || {};
     const kv = pick(target, 'kv_namespaces') || pick(cfg, 'kv_namespaces') || {};
-    const r2 = pick(target, 'r2_buckets') || pick(cfg, 'r2_buckets') || {};
-    const r2Preview = pick(preview, 'r2_buckets') || {};
+    const r2List: any[] = (target.r2_buckets || (cfg && cfg.r2_buckets) || []) as any[];
+    const r2Preview: any[] = (preview.r2_buckets || []) as any[];
     const queue =
         (target.queues && target.queues.producers && target.queues.producers[0]) ||
         (cfg && cfg.queues && cfg.queues.producers && cfg.queues.producers[0]) ||
@@ -131,7 +132,6 @@ function extractResourceNames(cfg: any, envName?: string): CfResourceNames {
     const queuePreview = (preview.queues && preview.queues.producers && preview.queues.producers[0]) || {};
 
     const d1Name = d1.database_name || `${workerName}-db`;
-    const r2Name = r2.bucket_name || `${workerName}-bucket`;
     const queueName = queue.queue || `${workerName}-queue`;
     const kvTitle = envName && envName !== 'production' ? `${workerName}-${envName}-kv` : `${workerName}-kv`;
 
@@ -144,7 +144,15 @@ function extractResourceNames(cfg: any, envName?: string): CfResourceNames {
             title: kvTitle,
             previewTitle: `${kvTitle}_preview`,
         },
-        r2: { name: r2Name, previewName: r2.preview_bucket_name || r2Preview.bucket_name || `${r2Name}-preview` },
+        r2: (r2List.length ? r2List : [{ binding: 'OBCF_R2' }]).map((bucket, i) => {
+            const name = bucket.bucket_name || `${workerName}-bucket${i ? `-${i}` : ''}`;
+            const previewBlock = r2Preview.find((p) => p.binding === bucket.binding) || {};
+            return {
+                binding: bucket.binding || 'OBCF_R2',
+                name,
+                previewName: bucket.preview_bucket_name || previewBlock.bucket_name || `${name}-preview`,
+            };
+        }),
         queue: { name: queueName, previewName: queuePreview.queue || `${queueName}-preview` },
         secrets: {
             d1Id:

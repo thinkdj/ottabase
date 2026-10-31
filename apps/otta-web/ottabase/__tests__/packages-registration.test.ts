@@ -96,12 +96,12 @@ describe('what the packages contribute', () => {
             ]),
         );
         expect(cron['audit:prune'].schedule).toBe('17 3 * * *');
-        expect(cron['landing:notify-leads'].schedule).toBeUndefined(); // otta:only ottalanding
+        expect(cron['landing:notify-leads'].schedule).toBe('* * * * *'); // otta:only ottalanding
     });
 
-    it('collects the queue handlers, including the event bus consumer', () => {
+    it('collects the queue handlers, including the event bus and scheduler consumers', () => {
         expect(Object.keys(packages.queue())).toEqual(
-            expect.arrayContaining(['send-email', 'process-order', 'events:deliver']),
+            expect.arrayContaining(['send-email', 'process-order', 'events:deliver', 'cron:run']),
         );
     });
 

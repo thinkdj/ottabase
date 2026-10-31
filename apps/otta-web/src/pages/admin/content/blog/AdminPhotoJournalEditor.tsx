@@ -114,7 +114,7 @@ const JOURNAL_BODY_EDITOR_CONFIG = {
         {
             name: 'image',
             tool: AdvancedImageTool as unknown as BlockToolConstructable,
-            config: { provider: 'r2', uploadEndpoint: '/api/upload' } as ToolSettings,
+            config: { uploadEndpoint: '/api/files', purpose: 'media' } as ToolSettings,
         },
         {
             name: 'mediaLibrary',

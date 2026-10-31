@@ -3,7 +3,7 @@
 // GET /api/brand – full config (route mappings, layouts, all brand kits). Client resolves path locally.
 // ---------------------------------------------------------------------------
 
-import type { D1Database, KVNamespace, R2Bucket } from '@cloudflare/workers-types';
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import type { FullBrandConfig } from '../persistence/resolveBrandConfig';
@@ -13,7 +13,7 @@ import { PRESET_THEMES } from '../presets';
 export interface BrandApiEnv {
     OBCF_D1: D1Database;
     OBCF_KV: KVNamespace;
-    OBCF_R2: R2Bucket;
+    /** Base URL logo keys are served from (the public files bucket). The host passes it resolved. */
     R2_PUBLIC_URL?: string;
 }
 

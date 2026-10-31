@@ -174,7 +174,7 @@ describe('LandingPage', () => {
 
 describe('LandingPage social image and sitemap', () => {
     it('stores a page’s own social image, and clears it when the page goes back to the site’s', async () => {
-        const share = { heading: 'Pricing that scales', imageUrl: '/api/upload/file/landing/a/share/p.png?v=1' };
+        const share = { heading: 'Pricing that scales', imageUrl: '/api/files/public/landing/a/share/p.png?v=1' };
         const page = await LandingPage.createFor('app-share', { path: '/pricing', title: 'Pricing', share });
         const id = page.get('id') as string;
         expect((await LandingPage.findForApp('app-share', id))!.toPage().share).toEqual(share);
@@ -306,5 +306,50 @@ describe('LandingLead', () => {
             pending.map((l) => l.get('id') as string),
         );
         expect(await LandingLead.pendingNotification('app-notify')).toEqual([]);
+    });
+
+    it('announces each entry once across runs, apart from the digest', async () => {
+        await LandingLead.submit('app-announce', contact);
+        await LandingLead.submit('app-announce', { kind: 'signup', email: 'fan@example.com', elapsedMs: 4000 });
+        const emitted: unknown[] = [];
+        const emit = async (event: unknown) => void emitted.push(event);
+
+        expect(await LandingLead.announceNew('app-announce', emit)).toBe(2);
+        // Both were stored in the same millisecond, maybe: where() breaks the createdAt tie by the
+        // random UUID id, so their order is not part of the contract.
+        expect(emitted).toHaveLength(2);
+        expect(emitted).toEqual(
+            expect.arrayContaining([
+                {
+                    leadId: expect.any(String),
+                    kind: 'contact',
+                    email: 'ada@example.com',
+                    name: 'Ada',
+                    message: 'Hello!',
+                    pagePath: '/contact',
+                    at: expect.any(Number),
+                },
+                expect.objectContaining({ kind: 'signup', email: 'fan@example.com', name: '', message: '' }),
+            ]),
+        );
+        expect(await LandingLead.announceNew('app-announce', emit)).toBe(0);
+        expect(emitted).toHaveLength(2);
+        // Its own marker: the digest still has both to send.
+        expect(await LandingLead.pendingNotification('app-announce')).toHaveLength(2);
+    });
+
+    it('keeps an entry whose announcement failed for the next run', async () => {
+        await LandingLead.submit('app-announce-retry', contact);
+        await LandingLead.submit('app-announce-retry', { ...contact, name: 'Grace' });
+        const down = async () => {
+            throw new Error('bus down');
+        };
+        await expect(LandingLead.announceNew('app-announce-retry', down)).rejects.toThrow('bus down');
+
+        const names: string[] = [];
+        expect(await LandingLead.announceNew('app-announce-retry', async (event) => void names.push(event.name))).toBe(
+            2,
+        );
+        expect(names.sort()).toEqual(['Ada', 'Grace']);
     });
 });

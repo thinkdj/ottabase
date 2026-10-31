@@ -425,7 +425,7 @@ See [`docs/PREMIUM_PACKAGES.md`](docs/PREMIUM_PACKAGES.md).
 | `@ottabase/ui-mantine`        | Mantine provider, pre-built themes (optional adapter)                                                                                                        |
 | `@ottabase/ui-code-highlight` | Code syntax highlighting (highlight.js)                                                                                                                      |
 | `@ottabase/ottaeditor`        | EditorJS wrapper with 15+ plugins (Spoiler, CTA, Review)                                                                                                     |
-| `@ottabase/ottaupload`        | File upload component (R2, Cloudflare Images)                                                                                                                |
+| `@ottabase/ottaupload`        | The files service (purposes, sniffing, metadata stripping, public/private buckets, variants, quota) and the upload UI                                        |
 | `@ottabase/ottarenderer`      | Editor.js block + sanitized HTML renderer, styled by the design tokens                                                                                       |
 | `@ottabase/ottaselect`        | Headless select/combobox component                                                                                                                           |
 | `@ottabase/ui-cropper`        | Vanilla JS image cropper, fixed-viewfinder model (~9 KB, zero deps)                                                                                          |

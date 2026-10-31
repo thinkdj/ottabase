@@ -40,7 +40,7 @@ export interface RobotsOptions {
     sitemap?: string;
     /** Paths nobody should crawl: `/api/`, `/admin/`. Applied to every bot. */
     disallow?: string[];
-    /** Paths under a disallowed one that crawlers still need, such as where the images are served: `/api/upload/file/` under `/api/`. */
+    /** Paths under a disallowed one that crawlers still need, such as where the images are served: `/api/files/public/` under `/api/`. */
     allow?: string[];
     /** Training crawlers: 'allow' (default) or 'block'. */
     training?: 'allow' | 'block';

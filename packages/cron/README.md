@@ -132,10 +132,58 @@ export default {
 The `createTaskRepository` requires a database driver for atomic locking - this ensures only one worker executes a task
 even when multiple workers are triggered simultaneously.
 
-`tick()` runs due tasks one after another and resolves with final counts once they have all settled:
-`{ executed, failed, skipped }`. `failed` includes a task whose bookkeeping (lock, reload, status write) threw; the
-remaining due tasks still run. `skipped` covers lost locks and superseded executions. Only a failure to list due tasks
-rejects the tick.
+Without a queue (below), `tick()` runs due tasks one after another and resolves with final counts once they have all
+settled: `{ executed, failed, skipped, queued }`. `failed` includes a task whose bookkeeping (lock, reload, status
+write) threw; the remaining due tasks still run. `skipped` covers lost locks and superseded executions. Only a failure
+to list due tasks (or to enqueue them) rejects the tick.
+
+#### Each run in its own invocation (queue)
+
+Inline, every due task shares the one scheduled invocation: its 1000 D1 queries, its CPU time and its wall time. A
+package that sizes its batches for a whole invocation cannot count on that when several tasks fall due at the top of the
+hour. Give the scheduler an `enqueue` option and `tick()` only selects the due tasks and sends one `CRON_JOB_TYPE`
+(`cron:run`) message per task (`{ queued: n }`); the queue consumer runs each with `runQueued()` in an invocation of its
+own. `enqueue` resolves `false` when there is no queue (local tests, an app without the binding) and the tick runs
+inline as above.
+
+```typescript
+import { CRON_JOB_TYPE, createScheduler, createTaskRepository, type CronJobPayload } from '@ottabase/cron';
+import { createD1Driver } from '@ottabase/db/drizzle-d1';
+import { ScheduledTask } from '@ottabase/ottaorm/models';
+import { createRegistry, dispatchBatch, type JobHandler } from '@ottabase/queue';
+
+const scheduler = createScheduler<Env>({
+    enqueue: async (env, runs) => {
+        if (!env.QUEUE) return false; // no queue bound: run inline
+        const sent = await dispatchBatch(
+            env.QUEUE,
+            runs.map((payload) => ({ type: CRON_JOB_TYPE, payload })),
+        );
+        if (!sent.success) throw sent.error; // rejects the tick; the rows stay due for the next one
+        return true;
+    },
+}).registerHandlers<CronPayloads>(handlers);
+
+// The consumer half, registered on the app's queue registry
+const runQueued: JobHandler<CronJobPayload, Env> = async (job, ctx) => {
+    const driver = createD1Driver(ctx.env.OBCF_D1);
+    await scheduler.runQueued(job.payload, ctx.env, createTaskRepository(ScheduledTask, driver));
+};
+const registry = createRegistry<Env>().register(CRON_JOB_TYPE, runQueued);
+```
+
+The lock is the same in both modes, so nothing about a run changes: it is never run twice for the same due time, a
+crashed run's lock lapses after `lockTimeoutMs` (5 minutes), and a failure is recorded on its row and reaches `onError`.
+`runQueued()` acquires the lock first; a delivery that finds the task done, no longer due or running elsewhere comes
+back `locked`, so a duplicate delivery is a no-op. A task failure resolves (it is recorded, the queue must not retry
+it); only a bookkeeping error rejects, so the queue retries the message.
+
+A queue consumer invocation processes a whole batch, so set the consumer's `max_batch_size` to `1` or the runs of one
+batch share an invocation again.
+
+`runTask(taskId)` (a manual "run now") takes the same path: with a queue it returns `queued` and the run executes in its
+own invocation. A manual run ignores the schedule and the active flag; the message carries when it was requested, and
+the lock admits it only while no run has started since, so a redelivered request is a no-op as well.
 
 ### 2. Add Tasks to Database
 
@@ -260,9 +308,10 @@ await task.toggle(); // Toggle active status
 ```
 
 Execution status is owned by the scheduler repository. It uses the model's atomic lock/complete/fail transitions with
-the exact start timestamp as a fencing token; application code should not write `lastStatus`, counters, or run
-timestamps directly. Handlers must still be idempotent because reclaiming a Worker that exceeded the lock timeout cannot
-undo side effects that Worker already performed.
+the exact start timestamp as a fencing token (`acquireExecutionLock` takes `requestedAt`: `null` for a scheduled run,
+which must be active and due, or a manual run's request time, which must have no run since); application code should not
+write `lastStatus`, counters, or run timestamps directly. Handlers must still be idempotent because reclaiming a Worker
+that exceeded the lock timeout cannot undo side effects that Worker already performed.
 
 ### Schema
 
@@ -292,7 +341,14 @@ Create a static cron handler.
 
 ### createScheduler<Env>(options?)
 
-Create a DB-driven scheduler.
+Create a DB-driven scheduler. Options: `onBeforeTask`, `onAfterTask`, `onError`, `logger`, and `enqueue(env, runs)` to
+give every run its own invocation.
+
+| Method                       | What it does                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `tick(env, repository)`      | Run (or, with `enqueue`, queue) every due task. `{ executed, failed, skipped, queued }`         |
+| `runTask(taskId, env, repo)` | Manual run now, whatever the schedule: `completed`, `failed`, `locked`, `not_found` or `queued` |
+| `runQueued(run, env, repo)`  | The `CRON_JOB_TYPE` consumer: execute one queued `CronJobPayload` here                          |
 
 ### CronContext
 

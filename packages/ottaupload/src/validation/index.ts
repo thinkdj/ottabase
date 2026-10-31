@@ -63,35 +63,8 @@ export const uploadConfigSchema = z.object({
     maxFileSize: z.number().min(1).max(MAX_FILE_SIZE).optional(),
     acceptedFileTypes: z.array(z.string()).optional(),
     uploadEndpoint: z.string().optional(),
+    purpose: z.string().optional(),
     autoUpload: z.boolean().default(false),
-});
-
-/**
- * File metadata schema
- */
-export const fileMetadataSchema = z.object({
-    id: z.string(),
-    key: z.string(),
-    filename: z.string(),
-    size: z.number().positive(),
-    contentType: z.string(),
-    url: z.string().url(),
-    uploadedAt: z.number(),
-    userId: z.string().optional(),
-});
-
-/**
- * Upload response schema
- */
-export const uploadResponseSchema = z.object({
-    success: z.boolean(),
-    // Allow both absolute URLs (http/https) and relative URLs starting with '/'
-    url: z
-        .string()
-        .regex(/^(https?:\/\/|\/)/, 'Invalid URL format')
-        .optional(),
-    key: z.string().optional(),
-    error: z.string().optional(),
 });
 
 /**
@@ -168,21 +141,4 @@ export function formatFileSize(bytes: number): string {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-}
-
-/**
- * Generate unique file key
- */
-export function generateFileKey(file: File, prefix?: string): string {
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(2, 15);
-    const ext = file.name.split('.').pop();
-    const baseName = file.name
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[^a-z0-9]/gi, '-')
-        .toLowerCase();
-
-    return prefix
-        ? `${prefix}/${baseName}-${timestamp}-${randomStr}.${ext}`
-        : `${baseName}-${timestamp}-${randomStr}.${ext}`;
 }
