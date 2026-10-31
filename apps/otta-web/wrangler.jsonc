@@ -366,6 +366,8 @@
             // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
             "version_metadata": { "binding": "OBCF_VERSION" },
             "images": { "binding": "OBCF_IMAGES" },
+            "ai": { "binding": "OBCF_AI" },
+            "browser": { "binding": "OBCF_BROWSER" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -483,6 +485,8 @@
             ],
             "version_metadata": { "binding": "OBCF_VERSION" },
             "images": { "binding": "OBCF_IMAGES" },
+            "ai": { "binding": "OBCF_AI" },
+            "browser": { "binding": "OBCF_BROWSER" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -585,6 +589,8 @@
             ],
             "version_metadata": { "binding": "OBCF_VERSION" },
             "images": { "binding": "OBCF_IMAGES" },
+            "ai": { "binding": "OBCF_AI" },
+            "browser": { "binding": "OBCF_BROWSER" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
@@ -689,6 +695,8 @@
             // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
             "version_metadata": { "binding": "OBCF_VERSION" },
             "images": { "binding": "OBCF_IMAGES" },
+            "ai": { "binding": "OBCF_AI" },
+            "browser": { "binding": "OBCF_BROWSER" },
             "kv_namespaces": [
                 {
                     "binding": "OBCF_KV",
