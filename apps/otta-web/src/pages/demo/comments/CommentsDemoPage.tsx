@@ -4,7 +4,8 @@
  * Supports in-memory (default) and database-backed modes via a toggle.
  */
 import { DEFAULT_REACTIONS } from '@ottabase/comments';
-import { Badge, Button, Card, CardContent, Skeleton, Textarea, toast } from '@ottabase/ui';
+import { Badge, Button, Card, CardContent, Input, Skeleton, Textarea, toast } from '@ottabase/ui';
+import { useTurnstile } from '@ottabase/ui/turnstile';
 import {
     IconDatabase,
     IconFlag,
@@ -14,16 +15,13 @@ import {
     IconShieldCheck,
     IconTrash,
 } from '@tabler/icons-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
-import {
-    useComments,
-    useCreateComment,
-    useUpdateComment,
-    type CommentType,
-    type CommentUser,
-} from '@/hooks/commentHooks';
+import { useComments, useUpdateComment, type CommentType, type CommentUser } from '@/hooks/commentHooks';
+import { api } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+
+import { TURNSTILE_ACTIONS } from '../../../../ottabase/turnstile';
 
 import { DemoPageHeader } from '../DemoPageHeader';
 
@@ -430,6 +428,12 @@ interface CommentThreadProps {
     isPending?: boolean;
     mutationError?: string | null;
     onDismissError?: () => void;
+    /** Rendered in the new-comment form above the text box (a guest's name field, a notice). */
+    composerHeader?: ReactNode;
+    /** Rendered in the new-comment form under the text box (the bot check). */
+    composerFooter?: ReactNode;
+    /** False keeps Post disabled (a guest without a name). */
+    canPost?: boolean;
 }
 
 function CommentThread({
@@ -446,6 +450,9 @@ function CommentThread({
     isPending = false,
     mutationError,
     onDismissError,
+    composerHeader,
+    composerFooter,
+    canPost = true,
 }: CommentThreadProps) {
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -537,14 +544,16 @@ function CommentThread({
 
             {/* New comment form */}
             <div className="flex flex-col gap-2 rounded-xl bg-muted/40 p-4">
+                {composerHeader}
                 <Textarea
                     placeholder="Write a comment…"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     className="min-h-24 bg-background text-sm"
                 />
+                {composerFooter}
                 <div className="flex justify-end">
-                    <Button size="sm" onClick={handleSubmitNew} disabled={!newComment.trim() || isPending}>
+                    <Button size="sm" onClick={handleSubmitNew} disabled={!newComment.trim() || !canPost || isPending}>
                         {isPending && <IconLoader2 size={14} className="mr-1 animate-spin" />}
                         Post comment
                     </Button>
@@ -674,27 +683,48 @@ function DatabaseDemo() {
         orderDirection: 'asc',
     });
 
-    const createMutation = useCreateComment();
     const updateMutation = useUpdateComment();
+    // A signed-out visitor comments as a guest, like on a blog post: a name, a bot check, and the
+    // comment waits for a moderator (the demo thread lives in the platform scope).
+    const [guestName, setGuestName] = useState('');
+    const [isPosting, setIsPosting] = useState(false);
+    const [awaitsApproval, setAwaitsApproval] = useState(false);
+    const commentHuman = useTurnstile(TURNSTILE_ACTIONS.comment);
 
     function onError(err: Error) {
         setMutationError(err.message || 'Something went wrong');
     }
 
-    function handleCreate(body: string) {
+    // A direct call rather than useCreateComment: a guest's submit carries the Turnstile header,
+    // minted per submit, which a model mutation hook has no seam for.
+    async function postComment(fields: { body: string; parentId?: string }) {
         setMutationError(null);
-        createMutation.mutate(
-            { body, targetType: DEMO_TARGET_TYPE, targetId: DEMO_TARGET_ID },
-            { onSuccess: () => toast.success('Comment posted'), onError },
-        );
-    }
-
-    function handleReply(body: string, parentId: string, depth: number) {
-        setMutationError(null);
-        createMutation.mutate(
-            { body, targetType: DEMO_TARGET_TYPE, targetId: DEMO_TARGET_ID, parentId, depth },
-            { onSuccess: () => toast.success('Reply posted'), onError },
-        );
+        setAwaitsApproval(false);
+        if (!currentUserId && !guestName.trim()) {
+            setMutationError('Enter your name above to comment as a guest.');
+            return;
+        }
+        setIsPosting(true);
+        try {
+            const created = await api<CommentType>('/api/ottaorm/comments', {
+                method: 'POST',
+                body: {
+                    ...fields,
+                    targetType: DEMO_TARGET_TYPE,
+                    targetId: DEMO_TARGET_ID,
+                    ...(currentUserId ? {} : { authorName: guestName.trim() }),
+                },
+                // Signed-in commenters skip the bot check, so only a guest waits for a token.
+                headers: currentUserId ? {} : await commentHuman.headers(),
+            });
+            if (created.status === 'pending') setAwaitsApproval(true);
+            else toast.success(fields.parentId ? 'Reply posted' : 'Comment posted');
+            void refetch();
+        } catch (err) {
+            onError(err instanceof Error ? err : new Error('Something went wrong'));
+        } finally {
+            setIsPosting(false);
+        }
     }
 
     function handleReact(id: string, emoji: string) {
@@ -726,13 +756,36 @@ function DatabaseDemo() {
             isLoading={isLoading}
             error={error}
             onRefetch={() => refetch()}
-            onCreateComment={handleCreate}
-            onCreateReply={handleReply}
+            onCreateComment={(body) => void postComment({ body })}
+            // The server computes depth from the parent.
+            onCreateReply={(body, parentId) => void postComment({ body, parentId })}
             onReact={handleReact}
             onModerate={handleModerate}
-            isPending={createMutation.isPending}
+            isPending={isPosting}
             mutationError={mutationError}
             onDismissError={() => setMutationError(null)}
+            canPost={!!currentUserId || !!guestName.trim()}
+            composerHeader={
+                <>
+                    {awaitsApproval && (
+                        <p className="text-sm text-muted-foreground">
+                            Thanks. Your comment will appear once a moderator approves it.
+                        </p>
+                    )}
+                    {!currentUserId && (
+                        <Input
+                            placeholder="Name"
+                            aria-label="Name"
+                            value={guestName}
+                            onChange={(e) => setGuestName(e.target.value)}
+                            className="bg-background text-sm"
+                            autoComplete="name"
+                            required
+                        />
+                    )}
+                </>
+            }
+            composerFooter={currentUserId ? null : commentHuman.widget}
         />
     );
 }

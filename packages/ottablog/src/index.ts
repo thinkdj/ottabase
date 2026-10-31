@@ -173,13 +173,19 @@ export type { BlogExportFile, BlogExportPost, BlogImportResult } from './import-
 // Migrations (org-mode index swap; register conditionally in the app's migration registry)
 export { ottablogOrgModeMigrations, ottablogOrgModeSuppressedIndexes } from './migrations';
 
-// Draft preview tokens (Web Crypto HMAC; used by the router's ?preview= path)
-export { signPreviewToken, verifyPreviewToken } from './preview-token';
+// Draft preview and post-unlock tokens (Web Crypto HMAC; the router's ?preview= path and unlock route)
+export {
+    signPreviewToken,
+    signUnlockToken,
+    UNLOCK_TOKEN_TTL_MS,
+    verifyPreviewToken,
+    verifyUnlockToken,
+} from './preview-token';
 
 // Blog theme tokens: sparse CSS-variable overrides for the [data-brand-scope="blog"] room
 export { blogThemeTokensToCss } from './theme-tokens';
 export type { BlogThemeCssOptions, BlogThemeTokens } from './theme-tokens';
-export type { PreviewTokenPayload } from './preview-token';
+export type { PreviewTokenPayload, UnlockTokenPayload } from './preview-token';
 
 // SEO builders for edge-injected per-post meta (pure, React-free)
 export { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from './seo';

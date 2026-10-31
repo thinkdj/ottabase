@@ -23,10 +23,18 @@ export const commentsTable = sqliteTable(
         // Self-referencing FK for threaded replies; null = top-level comment
         parentId: text('parent_id'),
 
-        // The author's user ID; nullable to allow anonymous comments
+        // The author's user ID; null for an anonymous comment
         userId: text('user_id'),
 
-        // Moderation status
+        // An anonymous commenter's display name, shown with the comment as plain text. Null when
+        // the author is a signed-in user: their name comes from the account.
+        authorName: text('author_name'),
+
+        // An anonymous commenter's optional email, for the site owner only. `hidden` on the model,
+        // so no API read returns it.
+        authorEmail: text('author_email'),
+
+        // Moderation status (CommentStatus); an anonymous comment starts as 'pending'
         status: text('status').notNull().default('active'),
 
         // Nesting depth: 0 = top-level, 1 = reply, 2 = reply-to-reply, etc. Always recomputed

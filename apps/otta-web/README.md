@@ -444,6 +444,9 @@ apps/otta-web/
   never appear. Backed by `/api/admin/crudhub`, audit-logged on every write.
 - `/admin/blog/new` - Blog post editor with hero image selection from Media Library (click-to-pick) and drag-and-drop
   image upload. Unsaved changes are detected and a confirmation dialog blocks accidental navigation away.
+- `/admin/content/comments` - Comment moderation queue (org admins; the comments package's admin page): guest comments
+  awaiting review, and a Hidden filter. Approve, Hide or Delete each one. It lists the scope the org switcher selects:
+  the active org's posts, or the platform blog in Platform scope.
 - `/admin/appearance/brand-kits` - Brand Kit gallery (admin only). Each card is a live specimen rendered in the kit's
   own theme: real colors, fonts, radius, and shadows.
 - `/admin/appearance/brand-kits/:kitId` - Brand Kit editor (Brand, Logo, Theme, Fonts, Motion, Cursors, Advanced tabs)

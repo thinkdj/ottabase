@@ -404,13 +404,6 @@ export const MODEL_POLICIES: ModelRLSConfig[] = [
         contextFields: ['appId'],
         auditEnabled: true,
     },
-
-    // Comments: scoped to org on reads; organizationId auto-injected on writes
-    {
-        model: 'comments',
-        policy: RLSPolicies.TenantScoped(false),
-        auditEnabled: true,
-    },
 ];
 
 /**

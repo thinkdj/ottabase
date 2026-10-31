@@ -9,8 +9,12 @@ export interface CommentUser {
     createdAt: number;
 }
 
-/** Comment record enriched by GET responses with author and aggregated reaction data. */
-export type CommentType = CommentRecord & {
+/**
+ * Comment record enriched by GET responses with author and aggregated reaction data. `authorName`
+ * is set on an anonymous (guest) comment only; `authorEmail` is hidden by the model, never returned.
+ */
+export type CommentType = Omit<CommentRecord, 'authorName' | 'authorEmail'> & {
+    authorName?: string | null;
     _user?: CommentUser | null;
     reactions?: ReactionsMap;
 };

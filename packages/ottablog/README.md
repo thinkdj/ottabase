@@ -912,7 +912,16 @@ never "no such field".
 
 For password-protected posts that have not been unlocked, public serializers blank `content`, `footnotes`, `blurbText`,
 `photoNote`, `photoAlbum`, crossposts, and custom/plugin `meta`; `privateNotes` is omitted on every public response.
-Titles and excerpts remain available for the lock screen teaser.
+Titles and excerpts remain available for the lock screen teaser. The unlock call (`POST /api/blog/posts/unlock`) is a
+password guess a stranger can repeat, so the host gates it before this package's handler runs: otta-web rate limits it
+per IP and post and checks Turnstile with the action `post-unlock`.
+
+A right password also returns `unlockToken` (with `unlockExpiresAt`, Unix ms): an HMAC token signed with the
+`previewTokenSecret`, bound to the post's id, app and organization, valid for `UNLOCK_TOKEN_TTL_MS` (2 hours, a reading
+session). It carries `purpose: 'unlock'`, so it is never accepted as a preview token, nor a preview token as an unlock
+token. The reader keeps it in memory for that post and sends it where a write needs the post unlocked: otta-web refuses
+a comment on a protected post without it (header `X-Post-Unlock`). Without a configured secret there is no token. Hosts
+verify it with `verifyUnlockToken(secret, token, { postId, appId, organizationId })`.
 
 ### Post by Slug
 

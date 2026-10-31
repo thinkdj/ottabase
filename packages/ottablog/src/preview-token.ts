@@ -1,6 +1,9 @@
 /**
  * Signed draft-preview tokens — Web Crypto HMAC, zero dependencies.
  *
+ * The same signer mints post-unlock tokens (see `signUnlockToken` below): a different `purpose`
+ * in the signed payload, so neither kind is ever accepted as the other.
+ *
  * A preview token lets an author hand a reviewer a link to an UNPUBLISHED post
  * without any account or session. The token binds the post's slug, appId, org
  * scope, and an expiry; the public by-slug handler accepts it as an alternate
@@ -46,35 +49,36 @@ async function hmacKey(secret: string, usage: 'sign' | 'verify'): Promise<Crypto
     return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [usage]);
 }
 
-/** Sign a preview token for a post. `ttlMs` defaults to 24 hours. */
-export async function signPreviewToken(
-    secret: string,
-    input: { slug: string; appId: string; organizationId?: string | null; ttlMs?: number },
-): Promise<{ token: string; expiresAt: number }> {
-    const expiresAt = Date.now() + (input.ttlMs ?? 24 * 60 * 60 * 1000);
-    const payload: PreviewTokenPayload = {
-        slug: input.slug,
-        appId: input.appId,
-        exp: expiresAt,
-    };
-    if (input.organizationId !== undefined) payload.organizationId = input.organizationId;
+/**
+ * A post-unlock token: proof that this reader gave a password-protected post's password. The
+ * unlock route returns it; the host checks it on writes that need the post unlocked (a comment).
+ */
+export interface UnlockTokenPayload {
+    purpose: 'unlock';
+    /** Post id (not slug: the comment write names the post by id). */
+    postId: string;
+    appId: string;
+    /** The post's own organization; null = platform-owned. */
+    organizationId: string | null;
+    /** Unix ms expiry. */
+    exp: number;
+}
 
+/** How long an unlock lasts: a reading session. */
+export const UNLOCK_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+
+async function signPayload(secret: string, payload: object): Promise<string> {
     const payloadJson = JSON.stringify(payload);
     const key = await hmacKey(secret, 'sign');
     const signature = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(payloadJson)));
-
-    return {
-        token: `${base64UrlEncode(encoder.encode(payloadJson))}.${base64UrlEncode(signature)}`,
-        expiresAt,
-    };
+    return `${base64UrlEncode(encoder.encode(payloadJson))}.${base64UrlEncode(signature)}`;
 }
 
 /**
- * Verify a preview token. Returns the payload when the signature is valid and
- * the token is unexpired, null otherwise. Verification uses crypto.subtle.verify
- * (constant-time comparison inside the platform).
+ * The payload of a validly signed, unexpired token, else null. Verification uses
+ * crypto.subtle.verify (constant-time comparison inside the platform).
  */
-export async function verifyPreviewToken(secret: string, token: string): Promise<PreviewTokenPayload | null> {
+async function verifyPayload(secret: string, token: string): Promise<Record<string, unknown> | null> {
     const dot = token.indexOf('.');
     if (dot <= 0 || dot === token.length - 1) return null;
 
@@ -92,17 +96,69 @@ export async function verifyPreviewToken(secret: string, token: string): Promise
         );
         if (!valid) return null;
 
-        const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as PreviewTokenPayload;
-        if (
-            typeof payload?.slug !== 'string' ||
-            typeof payload?.appId !== 'string' ||
-            typeof payload?.exp !== 'number'
-        ) {
-            return null;
-        }
+        const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as Record<string, unknown> | null;
+        if (!payload || typeof payload !== 'object' || typeof payload.exp !== 'number') return null;
         if (payload.exp <= Date.now()) return null;
         return payload;
     } catch {
         return null;
     }
+}
+
+/** Sign a preview token for a post. `ttlMs` defaults to 24 hours. */
+export async function signPreviewToken(
+    secret: string,
+    input: { slug: string; appId: string; organizationId?: string | null; ttlMs?: number },
+): Promise<{ token: string; expiresAt: number }> {
+    const expiresAt = Date.now() + (input.ttlMs ?? 24 * 60 * 60 * 1000);
+    const payload: PreviewTokenPayload = {
+        slug: input.slug,
+        appId: input.appId,
+        exp: expiresAt,
+    };
+    if (input.organizationId !== undefined) payload.organizationId = input.organizationId;
+    return { token: await signPayload(secret, payload), expiresAt };
+}
+
+/** Verify a preview token: the payload when it is a valid, unexpired preview token, null otherwise. */
+export async function verifyPreviewToken(secret: string, token: string): Promise<PreviewTokenPayload | null> {
+    const payload = await verifyPayload(secret, token);
+    // A token of any other purpose (an unlock token) is never a preview token.
+    if (!payload || payload.purpose !== undefined) return null;
+    if (typeof payload.slug !== 'string' || typeof payload.appId !== 'string') return null;
+    return payload as unknown as PreviewTokenPayload;
+}
+
+/** Sign an unlock token for a post. `ttlMs` defaults to UNLOCK_TOKEN_TTL_MS (2 hours). */
+export async function signUnlockToken(
+    secret: string,
+    input: { postId: string; appId: string; organizationId: string | null; ttlMs?: number },
+): Promise<{ token: string; expiresAt: number }> {
+    const expiresAt = Date.now() + (input.ttlMs ?? UNLOCK_TOKEN_TTL_MS);
+    const payload: UnlockTokenPayload = {
+        purpose: 'unlock',
+        postId: input.postId,
+        appId: input.appId,
+        organizationId: input.organizationId,
+        exp: expiresAt,
+    };
+    return { token: await signPayload(secret, payload), expiresAt };
+}
+
+/**
+ * True when `token` is a valid, unexpired unlock token for exactly this post (id, app and org).
+ * A preview token, or an unlock token for another post, is refused.
+ */
+export async function verifyUnlockToken(
+    secret: string,
+    token: string,
+    post: { postId: string; appId: string; organizationId: string | null },
+): Promise<boolean> {
+    const payload = await verifyPayload(secret, token);
+    return (
+        payload?.purpose === 'unlock' &&
+        payload.postId === post.postId &&
+        payload.appId === post.appId &&
+        (payload.organizationId ?? null) === post.organizationId
+    );
 }

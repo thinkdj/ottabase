@@ -1968,6 +1968,58 @@ describe('createBlogHandlers', () => {
             expect(lastWhere.status).toBe('published');
         });
     });
+
+    describe('post unlock', () => {
+        const SECRET = 'preview-secret-32-characters-long!!!';
+        const protectedPost = {
+            get: (k: string) =>
+                (
+                    ({
+                        id: 'p7',
+                        slug: 'locked',
+                        status: 'published',
+                        contentType: 'blog',
+                        organizationId: 'org-7',
+                        isProtected: true,
+                        passwordHash: 'hash',
+                    }) as any
+                )[k] ?? null,
+            toJson: () => ({ id: 'p7', slug: 'locked', title: 'Locked', contentType: 'blog', isProtected: true }),
+            author: async () => null,
+            tags: async () => [],
+        };
+        const unlockRequest = () =>
+            ctxFor('/posts/unlock', { method: 'POST', body: JSON.stringify({ slug: 'locked', password: 'pw' }) });
+
+        it('answers a right password with an unlock token for that post, which is no preview token', async () => {
+            const handlers = createBlogHandlers<Env>({
+                ...baseConfig,
+                verifyPassword: vi.fn(async () => true),
+                previewTokenSecret: () => SECRET,
+            });
+            vi.mocked(Post.first).mockResolvedValue(protectedPost as any);
+
+            const response = await handlers.handleBlogPostUnlock(unlockRequest());
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { unlockToken: string; unlockExpiresAt: number };
+
+            const { verifyPreviewToken, verifyUnlockToken, UNLOCK_TOKEN_TTL_MS } = await import('../preview-token');
+            const post = { postId: 'p7', appId: 'test-app', organizationId: 'org-7' };
+            expect(await verifyUnlockToken(SECRET, body.unlockToken, post)).toBe(true);
+            expect(await verifyPreviewToken(SECRET, body.unlockToken)).toBeNull();
+            expect(body.unlockExpiresAt).toBeLessThanOrEqual(Date.now() + UNLOCK_TOKEN_TTL_MS);
+        });
+
+        it('carries no token without a preview secret, or for a wrong password', async () => {
+            vi.mocked(Post.first).mockResolvedValue(protectedPost as any);
+            const noSecret = createBlogHandlers<Env>({ ...baseConfig, verifyPassword: vi.fn(async () => true) });
+            const open = (await (await noSecret.handleBlogPostUnlock(unlockRequest())).json()) as object;
+            expect('unlockToken' in open).toBe(false);
+
+            const wrong = createBlogHandlers<Env>({ ...baseConfig, previewTokenSecret: () => SECRET });
+            expect((await wrong.handleBlogPostUnlock(unlockRequest())).status).toBe(401);
+        });
+    });
 });
 
 describe('org-mode migrations', () => {

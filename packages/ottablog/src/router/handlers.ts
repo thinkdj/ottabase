@@ -38,7 +38,7 @@ import {
     type BlogExportPost,
     type BlogImportResult,
 } from '../import-export';
-import { signPreviewToken, verifyPreviewToken } from '../preview-token';
+import { signPreviewToken, signUnlockToken, verifyPreviewToken } from '../preview-token';
 import { StudioManager } from '../studio';
 import {
     ContentValidationError,
@@ -2035,7 +2035,16 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
             translation: localized?.translation ?? null,
             languageConfig,
         });
-        return jsonResponse(data);
+        // Proof of the unlock for this post, for writes that need it (a comment). Signed with the
+        // preview secret; without one there is no token, and those writes stay refused.
+        const secret = config.previewTokenSecret?.(env);
+        if (!secret) return jsonResponse(data);
+        const unlock = await signUnlockToken(secret, {
+            postId: String(record.get('id')),
+            appId,
+            organizationId: (record.get('organizationId') as string | null) ?? null,
+        });
+        return jsonResponse({ ...data, unlockToken: unlock.token, unlockExpiresAt: unlock.expiresAt });
     }
 
     // ============================================================

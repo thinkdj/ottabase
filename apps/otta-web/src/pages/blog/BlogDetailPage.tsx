@@ -6,7 +6,7 @@
  */
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_DETAIL_QUERY_CONFIG } from '@/config/queryConfig';
-import { useComments, useCreateComment, type CommentType } from '@/hooks/commentHooks';
+import { useComments, type CommentType } from '@/hooks/commentHooks';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
 import { useBlogStudio } from '@/ottabase/blog/BlogStudioContext';
@@ -41,7 +41,9 @@ import {
     Skeleton,
     Textarea,
 } from '@ottabase/ui';
+import { useTurnstile } from '@ottabase/ui/turnstile';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { TURNSTILE_ACTIONS } from '../../../ottabase/turnstile';
 import { localizedPostPath, localizedPostSearch } from './blogLinks';
 import {
     ArrowLeft,
@@ -59,6 +61,8 @@ import { memo, useCallback, useMemo, useState } from 'react';
 
 interface BlogPost {
     id: string;
+    /** From the unlock route only: proof of the unlock, sent with a comment on this post. */
+    unlockToken?: string;
     language?: string;
     baseLanguage?: string;
     baseSlug?: string;
@@ -245,11 +249,13 @@ const CommentNode = memo(function CommentNode({
             <div className="flex gap-3">
                 <Avatar className="h-8 w-8 ring-1 ring-border">
                     <AvatarImage src={comment._user?.image || undefined} />
-                    <AvatarFallback className="text-xs font-medium">{getInitials(comment._user?.name)}</AvatarFallback>
+                    <AvatarFallback className="text-xs font-medium">
+                        {getInitials(comment._user?.name ?? comment.authorName)}
+                    </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">{comment._user?.name || 'Anonymous'}</span>
+                        <span className="font-medium">{comment._user?.name || comment.authorName || 'Anonymous'}</span>
                         <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                             {formatShortDate(comment.createdAt)}
                         </span>
@@ -318,6 +324,15 @@ export function BlogDetailPage() {
     const [commentDraft, setCommentDraft] = useState('');
     const [replyingToId, setReplyingToId] = useState<string | null>(null);
     const [commentError, setCommentError] = useState<string | null>(null);
+    // A signed-out visitor comments as a guest: a name (required) and an email (optional, never shown).
+    const [guestName, setGuestName] = useState('');
+    const [guestEmail, setGuestEmail] = useState('');
+    const [isPostingComment, setIsPostingComment] = useState(false);
+    const [commentAwaitsModeration, setCommentAwaitsModeration] = useState(false);
+    // Bot checks for the two forms a stranger can submit here. Off (no widget, no header) until
+    // the Worker serves a Turnstile site key.
+    const unlockHuman = useTurnstile(TURNSTILE_ACTIONS.postUnlock);
+    const commentHuman = useTurnstile(TURNSTILE_ACTIONS.comment);
 
     // useApiQuery with entity:'posts' namespaces the key as ['posts', 'by-slug', slug].
     // Any mutation on the posts entity auto-busts this cache via the global observer.
@@ -363,7 +378,14 @@ export function BlogDetailPage() {
     const allowComments = postForComments?.allowComments ?? true;
     const commentsTargetId = post?.id ?? unlockedPost?.id ?? null;
 
-    const createComment = useCreateComment();
+    const [isPostingReply, setIsPostingReply] = useState(false);
+    // A protected post's unlock token lives in memory with the unlocked post (never in storage), and
+    // goes with every comment on that post; the server refuses a comment on a locked post without it.
+    const unlockToken = unlockedPost?.id === commentsTargetId ? unlockedPost?.unlockToken : undefined;
+    const unlockHeaders = useMemo<Record<string, string>>(
+        () => (unlockToken ? { 'X-Post-Unlock': unlockToken } : ({} as Record<string, string>)),
+        [unlockToken],
+    );
     const {
         data: commentsData,
         isLoading: isLoadingComments,
@@ -405,34 +427,36 @@ export function BlogDetailPage() {
         setReplyingToId((current) => (current === commentId ? null : commentId));
     }, []);
 
+    // A direct call rather than useCreateComment, so the reply carries the unlock header too.
     const handleSubmitReply = useCallback(
-        (parent: CommentType, text: string) => {
+        async (parent: CommentType, text: string) => {
             if (!text.trim() || !commentsTargetId) return;
             if (!user?.id) {
                 setCommentError('Please sign in to reply.');
                 return;
             }
             setCommentError(null);
-            createComment.mutate(
-                {
-                    body: text.trim(),
-                    targetType: COMMENTS_TARGET_TYPE,
-                    targetId: commentsTargetId,
-                    parentId: parent.id,
-                    depth: (parent.depth ?? 0) + 1,
-                },
-                {
-                    onSuccess: () => {
-                        setReplyingToId(null);
-                        refetchComments();
+            setIsPostingReply(true);
+            try {
+                await api<CommentType>('/api/ottaorm/comments', {
+                    method: 'POST',
+                    body: {
+                        body: text.trim(),
+                        targetType: COMMENTS_TARGET_TYPE,
+                        targetId: commentsTargetId,
+                        parentId: parent.id,
                     },
-                    onError: (err) => {
-                        setCommentError(err instanceof Error ? err.message : 'Failed to post reply.');
-                    },
-                },
-            );
+                    headers: unlockHeaders,
+                });
+                setReplyingToId(null);
+                refetchComments();
+            } catch (err) {
+                setCommentError(err instanceof Error ? err.message : 'Failed to post reply.');
+            } finally {
+                setIsPostingReply(false);
+            }
         },
-        [commentsTargetId, user?.id, createComment, refetchComments],
+        [commentsTargetId, user?.id, unlockHeaders, refetchComments],
     );
 
     // Loading state — pulse skeleton matching the listing/archive pages
@@ -484,6 +508,7 @@ export function BlogDetailPage() {
                 {
                     method: 'POST',
                     body: { slug, password: password.trim() },
+                    headers: await unlockHuman.headers(),
                 },
             );
             setUnlockedPost(full);
@@ -491,6 +516,9 @@ export function BlogDetailPage() {
         } catch (err) {
             if (isApiError(err) && err.status === 401) {
                 setUnlockError('Invalid password. Please try again.');
+            } else if (isApiError(err) && (err.status === 403 || err.status === 429 || err.status === 503)) {
+                // The bot check or the rate limit said no: its message says what to do.
+                setUnlockError(err.message);
             } else {
                 setUnlockError('Something went wrong. Please try again.');
             }
@@ -499,29 +527,37 @@ export function BlogDetailPage() {
         }
     };
 
-    const handleSubmitComment = () => {
+    // A direct call rather than useCreateComment: a guest's submit carries the Turnstile header,
+    // minted per submit, which a model mutation hook has no seam for.
+    const handleSubmitComment = async () => {
         if (!commentDraft.trim() || !commentsTargetId) return;
-        if (!user?.id) {
-            setCommentError('Please sign in to comment.');
+        if (!user?.id && !guestName.trim()) {
+            setCommentError('Please enter your name.');
             return;
         }
         setCommentError(null);
-        createComment.mutate(
-            {
-                body: commentDraft.trim(),
-                targetType: COMMENTS_TARGET_TYPE,
-                targetId: commentsTargetId,
-            },
-            {
-                onSuccess: () => {
-                    setCommentDraft('');
-                    refetchComments();
+        setCommentAwaitsModeration(false);
+        setIsPostingComment(true);
+        try {
+            const created = await api<CommentType>('/api/ottaorm/comments', {
+                method: 'POST',
+                body: {
+                    body: commentDraft.trim(),
+                    targetType: COMMENTS_TARGET_TYPE,
+                    targetId: commentsTargetId,
+                    ...(user?.id ? {} : { authorName: guestName.trim(), authorEmail: guestEmail.trim() || null }),
                 },
-                onError: (err) => {
-                    setCommentError(err instanceof Error ? err.message : 'Failed to post comment.');
-                },
-            },
-        );
+                // Signed-in commenters skip the bot check, so only a guest waits for a token.
+                headers: { ...unlockHeaders, ...(user?.id ? {} : await commentHuman.headers()) },
+            });
+            setCommentDraft('');
+            setCommentAwaitsModeration(created.status === 'pending');
+            refetchComments();
+        } catch (err) {
+            setCommentError(err instanceof Error ? err.message : 'Failed to post comment.');
+        } finally {
+            setIsPostingComment(false);
+        }
     };
 
     // Convert post to BlogPostData format
@@ -659,6 +695,7 @@ export function BlogDetailPage() {
                             disabled={isUnlocking}
                         />
                         {unlockError && <p className="text-sm text-destructive">{unlockError}</p>}
+                        {unlockHuman.widget}
                         <Button type="submit" className="w-full" disabled={isUnlocking || !password.trim()}>
                             {isUnlocking ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock with password'}
                         </Button>
@@ -788,27 +825,55 @@ export function BlogDetailPage() {
                                     >
                                         Sign in
                                     </Link>{' '}
-                                    to join the discussion.
+                                    to comment with your account, or post as a guest below.
+                                </div>
+                            )}
+
+                            {commentAwaitsModeration && (
+                                <div className="mt-4 rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                                    Thanks. Your comment will appear once a moderator approves it.
                                 </div>
                             )}
 
                             <div className="mt-4 space-y-2 rounded-xl bg-muted/40 p-4">
+                                {!user?.id && (
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        <Input
+                                            placeholder="Name"
+                                            aria-label="Name"
+                                            value={guestName}
+                                            onChange={(e) => setGuestName(e.target.value)}
+                                            className="bg-background text-sm"
+                                            autoComplete="name"
+                                            required
+                                        />
+                                        <Input
+                                            type="email"
+                                            placeholder="Email (optional, never shown)"
+                                            aria-label="Email (optional, never shown)"
+                                            value={guestEmail}
+                                            onChange={(e) => setGuestEmail(e.target.value)}
+                                            className="bg-background text-sm"
+                                            autoComplete="email"
+                                        />
+                                    </div>
+                                )}
                                 <Textarea
                                     placeholder="Write a comment..."
                                     value={commentDraft}
                                     onChange={(e) => setCommentDraft(e.target.value)}
                                     className="min-h-24 bg-background text-sm"
-                                    disabled={!user?.id}
                                 />
+                                {!user?.id && commentHuman.widget}
                                 <div className="flex justify-end">
                                     <Button
                                         size="sm"
                                         onClick={handleSubmitComment}
-                                        disabled={!commentDraft.trim() || !user?.id || createComment.isPending}
+                                        disabled={
+                                            !commentDraft.trim() || (!user?.id && !guestName.trim()) || isPostingComment
+                                        }
                                     >
-                                        {createComment.isPending ? (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : null}
+                                        {isPostingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                         Post comment
                                     </Button>
                                 </div>
@@ -849,7 +914,7 @@ export function BlogDetailPage() {
                                                 replyingToId={replyingToId}
                                                 onToggleReply={toggleReply}
                                                 onSubmitReply={handleSubmitReply}
-                                                isSubmittingReply={createComment.isPending}
+                                                isSubmittingReply={isPostingReply}
                                             />
                                         ))}
                                     </div>

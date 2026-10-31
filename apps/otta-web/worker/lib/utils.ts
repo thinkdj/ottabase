@@ -135,3 +135,11 @@ export function checkCronAuth(request: Request, env: { ENVIRONMENT?: string; CRO
 
     return false;
 }
+
+/**
+ * The secret that signs blog preview and post-unlock tokens: a dedicated BLOG_PREVIEW_SECRET
+ * wins, AUTH_SECRET is the default, so both work out of the box on any configured deployment.
+ */
+export function blogTokenSecret(env: { BLOG_PREVIEW_SECRET?: string; AUTH_SECRET?: string }): string | null {
+    return env.BLOG_PREVIEW_SECRET || env.AUTH_SECRET || null;
+}

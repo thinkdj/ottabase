@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CommentRecord, CommentStatus, NewCommentRecord, ReactionsMap } from '../index';
-import { Comment, CommentReaction, commentReactionsTable, commentsTable, DEFAULT_REACTIONS } from '../index';
+import {
+    Comment,
+    COMMENT_AUTHOR_NAME_MAX_LENGTH,
+    CommentReaction,
+    commentReactionsTable,
+    commentsPolicies,
+    commentsTable,
+    createCommentsPackage,
+    DEFAULT_REACTIONS,
+} from '../index';
 import { commentReactionsTable as schemaCommentReactionsTable, commentsTable as schemaCommentsTable } from '../schema';
 
 describe('@ottabase/comments', () => {
@@ -50,13 +59,17 @@ describe('@ottabase/comments', () => {
             expect(Comment.writable.create).toContain('parentId');
             // depth passes the writable check, but Comment.create() always recomputes it.
             expect(Comment.writable.create).toContain('depth');
-            // userId and organizationId are in writable.create so the server-side
+            // userId, organizationId and appId are in writable.create so the server-side
             // injection passes through the sanitizer; the route handler always
-            // overwrites them from the session to prevent impersonation.
+            // overwrites them server-side to prevent impersonation.
             expect(Comment.writable.create).toContain('userId');
             expect(Comment.writable.create).toContain('organizationId');
-            // status must NOT be writable on create (defaults to 'active')
+            expect(Comment.writable.create).toContain('appId');
+            // status must NOT be writable on create (Comment.create picks 'active' or 'pending')
             expect(Comment.writable.create).not.toContain('status');
+            // A guest's own fields pass through; Comment.create checks them.
+            expect(Comment.writable.create).toContain('authorName');
+            expect(Comment.writable.create).toContain('authorEmail');
             expect(Comment.writable.update).toContain('body');
             // status is writable to support moderation via CRUD
             expect(Comment.writable.update).toContain('status');
@@ -80,6 +93,8 @@ describe('@ottabase/comments', () => {
             expect(columnNames).toContain('targetId');
             expect(columnNames).toContain('parentId');
             expect(columnNames).toContain('userId');
+            expect(columnNames).toContain('authorName');
+            expect(columnNames).toContain('authorEmail');
             expect(columnNames).toContain('status');
             expect(columnNames).toContain('depth');
             expect(columnNames).toContain('createdAt');
@@ -133,8 +148,8 @@ describe('@ottabase/comments', () => {
 
         it('should allow CommentStatus type values', () => {
             // Type-level test: ensure the types compile
-            const statuses: CommentStatus[] = ['active', 'deleted', 'flagged', 'hidden'];
-            expect(statuses).toHaveLength(4);
+            const statuses: CommentStatus[] = ['active', 'pending', 'deleted', 'flagged', 'hidden'];
+            expect(statuses).toHaveLength(5);
         });
 
         it('should allow ReactionsMap type', () => {
@@ -310,15 +325,87 @@ describe('@ottabase/comments', () => {
                 .spyOn(Object.getPrototypeOf(Comment), 'create')
                 .mockImplementation(async (data: unknown) => data as never);
 
-            const created = (await Comment.create({ body: 'hi', parentId: 'p1', depth: 99 })) as unknown as {
+            const created = (await Comment.create({
+                body: 'hi',
+                parentId: 'p1',
+                depth: 99,
+                userId: 'u1',
+            })) as unknown as {
                 depth: number;
             };
-            const topLevel = (await Comment.create({ body: 'hi', depth: 7 })) as unknown as { depth: number };
+            const topLevel = (await Comment.create({ body: 'hi', depth: 7, userId: 'u1' })) as unknown as {
+                depth: number;
+            };
 
             expect(created.depth).toBe(2);
             expect(topLevel.depth).toBe(0);
             baseCreate.mockRestore();
             findSpy.mockRestore();
+        });
+    });
+
+    describe('Comment.create for anonymous comments', () => {
+        async function create(data: Record<string, unknown>) {
+            const baseCreate = vi
+                .spyOn(Object.getPrototypeOf(Comment), 'create')
+                .mockImplementation(async (row: unknown) => row as never);
+            try {
+                return (await Comment.create({ body: 'hi', ...data })) as unknown as Record<string, unknown>;
+            } finally {
+                baseCreate.mockRestore();
+            }
+        }
+
+        it('starts a guest comment pending, with its name normalized and email kept', async () => {
+            const row = await create({ authorName: '  Ada \n\u0000 Lovelace ', authorEmail: ' ada@example.com ' });
+            expect(row).toMatchObject({
+                authorName: 'Ada Lovelace',
+                authorEmail: 'ada@example.com',
+                status: 'pending',
+            });
+        });
+
+        it('refuses a guest comment without a name, or with a bad email or an overlong name', async () => {
+            await expect(create({ authorName: '   ' })).rejects.toMatchObject({
+                fieldErrors: { authorName: ['Please enter your name'] },
+            });
+            await expect(create({ authorName: 'Ada', authorEmail: 'not-an-email' })).rejects.toMatchObject({
+                fieldErrors: { authorEmail: [expect.any(String)] },
+            });
+            await expect(create({ authorName: 'x'.repeat(COMMENT_AUTHOR_NAME_MAX_LENGTH + 1) })).rejects.toMatchObject({
+                fieldErrors: { authorName: [expect.any(String)] },
+            });
+        });
+
+        it('stores no email when the guest leaves it empty', async () => {
+            const row = await create({ authorName: 'Ada', authorEmail: '' });
+            expect(row.authorEmail).toBeNull();
+        });
+
+        it("drops the guest fields for a signed-in author and leaves the status to the model's default", async () => {
+            const row = await create({ userId: 'u1', authorName: 'Someone else', authorEmail: 'x@example.com' });
+            expect(row.authorName).toBeNull();
+            expect(row.authorEmail).toBeNull();
+            expect(row.status).toBeUndefined();
+        });
+    });
+
+    describe('Comment privacy and policy', () => {
+        it('hides authorEmail from JSON', () => {
+            const comment = new Comment({
+                entity: Comment.entity,
+                data: { id: 'c1', body: 'hi', authorName: 'Ada', authorEmail: 'ada@example.com' },
+            });
+            const json = comment.toJson() as Record<string, unknown>;
+            expect(json.authorName).toBe('Ada');
+            expect(json).not.toHaveProperty('authorEmail');
+        });
+
+        it('registers a tenant policy that allows platform-owned (null org) comments', () => {
+            const [config] = commentsPolicies();
+            expect(config.model).toBe('comments');
+            expect(config.policy).toMatchObject({ level: 'tenant', field: 'organizationId', allowNullTenant: true });
+            expect(createCommentsPackage().policies).toEqual(commentsPolicies());
         });
     });
 

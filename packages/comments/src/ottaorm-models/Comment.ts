@@ -1,4 +1,5 @@
-import { BaseModel, ModelFields, type PackageType } from '@ottabase/ottaorm';
+import { BaseModel, DomainValidationError, ModelFields, type PackageType } from '@ottabase/ottaorm';
+import { COMMENT_AUTHOR_NAME_MAX_LENGTH } from '../types';
 import { commentsTable } from './Comment.schema';
 import { CommentReaction } from './CommentReaction';
 
@@ -28,19 +29,34 @@ export class Comment extends BaseModel {
     static defaultSort = 'createdAt';
     static defaultSortDirection = 'desc' as const;
 
+    // An anonymous commenter's email is for the site owner, never for an API reader.
+    protected static hidden = ['authorEmail'];
+
     static casts = {
         depth: 'number' as const,
         createdAt: 'date' as const,
         updatedAt: 'date' as const,
     };
 
-    // User-supplied fields plus server-injected context fields (userId, organizationId, depth).
-    // The route handler MUST overwrite userId and organizationId from the session to prevent
+    // User-supplied fields plus server-injected context fields (userId, organizationId, appId, depth).
+    // The route handler MUST overwrite userId, organizationId and appId server-side to prevent
     // client impersonation — they are listed here only so the writable check (which rejects
     // unlisted keys) accepts them after server-side injection. `depth` is accepted but never
-    // trusted: Comment.create() always recomputes it from parentId.
+    // trusted: Comment.create() always recomputes it from parentId. `authorName`/`authorEmail` are
+    // an anonymous commenter's own; Comment.create() checks them and drops them for a signed-in one.
     static writable = {
-        create: ['body', 'targetType', 'targetId', 'parentId', 'depth', 'userId', 'organizationId'],
+        create: [
+            'body',
+            'targetType',
+            'targetId',
+            'parentId',
+            'depth',
+            'userId',
+            'organizationId',
+            'appId',
+            'authorName',
+            'authorEmail',
+        ],
         update: ['body', 'status'],
     };
 
@@ -99,6 +115,21 @@ export class Comment extends BaseModel {
             uiConfig: { label: 'Author' },
             tableConfig: { visible: true, colWidth: 150 },
         },
+        authorName: {
+            type: 'string',
+            editable: false,
+            sortable: false,
+            uiConfig: { label: 'Guest name', description: 'Display name of an anonymous commenter' },
+            tableConfig: { visible: true, colWidth: 150 },
+        },
+        authorEmail: {
+            type: 'string',
+            editable: false,
+            sortable: false,
+            uiConfig: { label: 'Guest email', description: 'Optional, never shown publicly' },
+            formConfig: { visible: false },
+            tableConfig: { visible: false },
+        },
         status: {
             type: 'string',
             editable: true,
@@ -109,6 +140,7 @@ export class Comment extends BaseModel {
                 fieldType: 'select',
                 options: [
                     { id: 'active', name: 'Active' },
+                    { id: 'pending', name: 'Pending' },
                     { id: 'deleted', name: 'Deleted' },
                     { id: 'flagged', name: 'Flagged' },
                     { id: 'hidden', name: 'Hidden' },
@@ -199,7 +231,7 @@ export class Comment extends BaseModel {
         return this.save();
     }
 
-    /** Restore a hidden/flagged comment to active */
+    /** Publish a pending comment, or restore a hidden/flagged one, by making it active */
     async restore() {
         this.set('status', 'active');
         return this.save();
@@ -230,6 +262,11 @@ export class Comment extends BaseModel {
     /**
      * Create a comment. `depth` is always recomputed from `parentId` (parent depth + 1, or 0),
      * ignoring any supplied value, so no write path — generic CRUD or app code — can forge nesting.
+     *
+     * A comment without a `userId` is anonymous: it needs an `authorName` (trimmed, up to
+     * COMMENT_AUTHOR_NAME_MAX_LENGTH), may carry an `authorEmail`, and starts `pending` unless the
+     * caller sets a status itself (generic CRUD cannot: status is not writable on create). A
+     * signed-in author's name comes from the account, so both guest fields are dropped.
      */
     static override async create<T extends typeof BaseModel>(
         this: T,
@@ -238,7 +275,34 @@ export class Comment extends BaseModel {
     ): Promise<InstanceType<T>> {
         const parentId = typeof data.parentId === 'string' && data.parentId ? data.parentId : null;
         const depth = await Comment.computeDepthForParent(parentId);
-        return super.create.call(this, { ...data, depth }, driver) as Promise<InstanceType<T>>;
+        const author = data.userId
+            ? { authorName: null, authorEmail: null }
+            : { ...Comment.guestAuthor(data), status: data.status ?? 'pending' };
+        return super.create.call(this, { ...data, ...author, depth }, driver) as Promise<InstanceType<T>>;
+    }
+
+    /**
+     * An anonymous commenter's name (required) and email (optional), normalized, or a 422 with
+     * field errors. The name is stored as plain text with control characters and runs of
+     * whitespace collapsed; it is rendered as text, like the body.
+     */
+    static guestAuthor(data: { authorName?: unknown; authorEmail?: unknown }): {
+        authorName: string;
+        authorEmail: string | null;
+    } {
+        const name = typeof data.authorName === 'string' ? data.authorName.replace(/[\p{Cc}\s]+/gu, ' ').trim() : '';
+        const email = typeof data.authorEmail === 'string' ? data.authorEmail.trim() : '';
+        const fieldErrors: Record<string, string> = {};
+        if (!name) fieldErrors.authorName = 'Please enter your name';
+        else if (name.length > COMMENT_AUTHOR_NAME_MAX_LENGTH) {
+            fieldErrors.authorName = `Name must be ${COMMENT_AUTHOR_NAME_MAX_LENGTH} characters or fewer`;
+        }
+        if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+            fieldErrors.authorEmail = 'Please enter a valid email address, or leave it empty';
+        }
+        const first = Object.values(fieldErrors)[0];
+        if (first) throw new DomainValidationError(first, { fieldErrors });
+        return { authorName: name, authorEmail: email || null };
     }
 
     /**

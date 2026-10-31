@@ -1,8 +1,8 @@
 import { getSession } from '@ottabase/auth/backend';
 import { hashPassword } from '@ottabase/auth/backend'; // otta:only ottablog
-import { Comment, CommentReaction } from '@ottabase/comments'; // otta:only comments
+import { Comment, CommentReaction, UNPUBLISHED_COMMENT_STATUSES } from '@ottabase/comments'; // otta:only comments
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { ContentValidationError, Post, validatePostWrite } from '@ottabase/ottablog'; // otta:only ottablog
+import { ContentValidationError, Post, validatePostWrite, verifyUnlockToken } from '@ottabase/ottablog'; // otta:only ottablog
 import {
     executeSecureCrudRequest,
     parseCrudRequest,
@@ -17,7 +17,10 @@ import { jsonResponse } from '@ottabase/utils/http-response';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import type { FileRecord } from '@ottabase/ottaupload/server';
 import { files } from '../../ottabase/files';
+import { TURNSTILE_ACTIONS } from '../../ottabase/turnstile'; // otta:only comments
 import { getAuthOptions, getSecurityContext, invalidateMembershipCache } from '../lib/auth-utils';
+import { guardPublicForm } from '../lib/turnstile'; // otta:only comments
+import { blogTokenSecret, getClientIpAddress } from '../lib/utils'; // otta:only comments
 
 export interface OttaormCrudContext {
     request: Request;
@@ -60,7 +63,15 @@ async function resolveCommentSecurityContext(
     session: any,
     ambient: Awaited<ReturnType<typeof getSecurityContext>>,
 ): Promise<
-    | { ok: true; organizationId: string | null; securityContext: Awaited<ReturnType<typeof getSecurityContext>> }
+    | {
+          ok: true;
+          organizationId: string | null;
+          securityContext: Awaited<ReturnType<typeof getSecurityContext>>;
+          /** False when the target has comments turned off (a post's `allowComments`). */
+          acceptsComments: boolean;
+          /** Set when the target is a password-protected post: its body is withheld until unlocked. */
+          lockedPost?: { authorId: string | null };
+      }
     | { ok: false; response: Response }
 > {
     if (typeof targetType !== 'string' || !targetType || typeof targetId !== 'string' || !targetId) {
@@ -86,8 +97,26 @@ async function resolveCommentSecurityContext(
             ok: true,
             organizationId: targetOrgId,
             securityContext: { ...ambient, organizationId: targetOrgId, memberOrganizationIds },
+            acceptsComments: post.get('allowComments') !== false,
+            // The same test the unlock route applies: protected and carrying a password.
+            ...(post.get('isProtected') === true && post.get('passwordHash')
+                ? { lockedPost: { authorId: (post.get('authorId') as string | null) ?? null } }
+                : {}),
         };
     }
+
+    // otta:begin demo
+    // The /demo/comments page's thread is public, like a platform blog post: one thread for every
+    // visitor, signed in or not, in the platform's null org (a platform admin moderates it).
+    if (targetType === 'demo') {
+        return {
+            ok: true,
+            organizationId: null,
+            securityContext: { ...ambient, organizationId: null },
+            acceptsComments: true,
+        };
+    }
+    // otta:end demo
 
     if (!session?.user?.id) {
         return { ok: false, response: errorResponse('Authentication required', 401, { code: 'UNAUTHENTICATED' }) };
@@ -95,7 +124,7 @@ async function resolveCommentSecurityContext(
     if (!ambient.organizationId) {
         return { ok: false, response: errorResponse('No active organization', 400, { code: 'VALIDATION_ERROR' }) };
     }
-    return { ok: true, organizationId: ambient.organizationId, securityContext: ambient };
+    return { ok: true, organizationId: ambient.organizationId, securityContext: ambient, acceptsComments: true };
 }
 
 /**
@@ -118,11 +147,60 @@ function isCommentOwnerOrModerator(
 ): boolean {
     const userId = session?.user?.id;
     if (userId && comment.get('userId') === userId) return true;
+    return canModerateComments(ambient, commentOrgId);
+}
+
+/** Moderation authority over comments in `commentOrgId`: a platform admin, or `comments:moderate` in that org. */
+function canModerateComments(
+    ambient: Awaited<ReturnType<typeof getSecurityContext>>,
+    commentOrgId: string | null,
+): boolean {
     if (ambient.platformAdmin) return true;
     // Org-scoped moderation authority only applies inside the comment's own org.
     if (ambient.organizationId == null || ambient.organizationId !== commentOrgId) return false;
     const permissions = (ambient.permissions as string[] | undefined) ?? [];
     return hasGrantedPermission(permissions, 'comments:moderate');
+}
+
+/**
+ * A password-protected post takes comments only from a reader who unlocked it: an unlock token for
+ * this post in `X-Post-Unlock`, minted by POST /api/blog/posts/unlock. Someone who reads it without
+ * the password may comment too: its author, a comment moderator, or a post manager in its org (the
+ * grants canManagePostInOrg in content-guard.ts checks, read here from the ambient context).
+ */
+async function canCommentOnLockedPost(
+    request: Request,
+    env: CloudflareEnv,
+    session: { user?: { id?: string } } | null,
+    ambient: Awaited<ReturnType<typeof getSecurityContext>>,
+    post: { id: string; organizationId: string | null; authorId: string | null },
+): Promise<boolean> {
+    const userId = session?.user?.id;
+    if (userId && post.authorId === userId) return true;
+    if (canModerateComments(ambient, post.organizationId)) return true;
+    const permissions = (ambient.permissions as string[] | undefined) ?? [];
+    if (
+        post.organizationId !== null &&
+        ambient.organizationId === post.organizationId &&
+        (hasGrantedPermission(permissions, 'posts:manage') || hasGrantedPermission(permissions, 'org:admin'))
+    ) {
+        return true;
+    }
+    const token = request.headers.get('x-post-unlock');
+    const secret = blogTokenSecret(env);
+    if (!token || !secret) return false;
+    return verifyUnlockToken(secret, token, {
+        postId: post.id,
+        appId: String(ambient.appId),
+        organizationId: post.organizationId,
+    });
+}
+
+/** True when a where clause, at any depth of its `$and`/`$or` groups, names `field`. */
+function whereMentions(where: unknown, field: string): boolean {
+    if (!where || typeof where !== 'object') return false;
+    if (Array.isArray(where)) return where.some((child) => whereMentions(child, field));
+    return Object.entries(where).some(([key, value]) => key === field || whereMentions(value, field));
 }
 // otta:end comments
 
@@ -566,6 +644,16 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
 
         if (crudRequest.method === 'POST' && crudRequest.body) {
             const body = crudRequest.body as Record<string, unknown>;
+            // An anonymous comment is a public form: the per-IP rate limit, then Turnstile, before
+            // any lookup. A signed-in commenter (session or API key) skips both.
+            if (!user?.id) {
+                const denied = await guardPublicForm(request, env, {
+                    action: TURNSTILE_ACTIONS.comment,
+                    key: `comments:create:${getClientIpAddress(request)}`,
+                    unreachable: 'refuse',
+                });
+                if (denied) return denied;
+            }
             const orgResolution = await resolveCommentSecurityContext(
                 body.targetType,
                 body.targetId,
@@ -573,6 +661,21 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 securityContext,
             );
             if (!orgResolution.ok) return orgResolution.response;
+            if (!orgResolution.acceptsComments) {
+                return errorResponse('Comments are closed for this post', 403, { code: 'COMMENTS_CLOSED' });
+            }
+            if (
+                orgResolution.lockedPost &&
+                !(await canCommentOnLockedPost(request, env, session, securityContext, {
+                    id: body.targetId as string,
+                    organizationId: orgResolution.organizationId,
+                    authorId: orgResolution.lockedPost.authorId,
+                }))
+            ) {
+                return errorResponse('Unlock this post with its password to comment on it', 403, {
+                    code: 'POST_LOCKED',
+                });
+            }
 
             const parentId = typeof body.parentId === 'string' && body.parentId ? body.parentId : null;
             const replyContext = await Comment.validateReplyParent(parentId, {
@@ -587,8 +690,12 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 });
             }
 
+            // Comment.create() checks an anonymous comment's authorName/authorEmail, starts it
+            // 'pending' for a moderator, and drops both fields for a signed-in author.
             body.userId = user?.id ?? null;
             body.organizationId = orgResolution.organizationId;
+            // The app from server config, so a moderator's queue (listed without a target) stays in its app.
+            body.appId = securityContext.appId;
             // Never trust a client-supplied depth — always the server-computed value from the
             // validated parent (0 for a top-level comment).
             body.depth = replyContext.depth;
@@ -623,6 +730,15 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 return errorResponse('Comment not found', 404, { code: 'NOT_FOUND' });
             }
             effectiveSecurityContext = orgResolution.securityContext;
+
+            // A pending or hidden comment exists only for its author and moderators.
+            if (
+                crudRequest.method === 'GET' &&
+                (UNPUBLISHED_COMMENT_STATUSES as readonly unknown[]).includes(comment.get('status')) &&
+                !isCommentOwnerOrModerator(comment, session, securityContext, orgResolution.organizationId)
+            ) {
+                return errorResponse('Comment not found', 404, { code: 'NOT_FOUND' });
+            }
 
             if ((crudRequest.method === 'PATCH' || crudRequest.method === 'PUT') && crudRequest.body) {
                 const body = crudRequest.body as Record<string, unknown>;
@@ -661,6 +777,15 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
                 if (!isCommentOwnerOrModerator(comment, session, securityContext, orgResolution.organizationId)) {
                     return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
                 }
+                // An author may edit and delete their own comment; any other status change
+                // (publishing a pending comment, un-hiding a hidden one) is a moderator's.
+                if (
+                    body.status !== undefined &&
+                    body.status !== 'deleted' &&
+                    !canModerateComments(securityContext, orgResolution.organizationId)
+                ) {
+                    return errorResponse('Forbidden', 403, { code: 'FORBIDDEN' });
+                }
 
                 // A transition to 'deleted' must blank the body and clear reactions
                 // server-side, regardless of what the client sent — this is the same guarantee
@@ -677,19 +802,48 @@ export async function handleOttaormCrud(context: OttaormCrudContext): Promise<Re
         }
 
         if (crudRequest.method === 'GET' && !crudRequest.id) {
-            // Comments are always fetched scoped to a target — requiring targetType/targetId
-            // here (rather than allowing a bare, unscoped list) means the org-derivation-from-
-            // target logic always has a target to resolve against, and prevents "browse every
-            // comment across every target in some org" as an unintended side channel.
-            const where = crudRequest.query?.where ?? {};
-            const orgResolution = await resolveCommentSecurityContext(
-                where.targetType,
-                where.targetId,
-                session,
-                securityContext,
-            );
-            if (!orgResolution.ok) return orgResolution.response;
-            effectiveSecurityContext = orgResolution.securityContext;
+            const query = crudRequest.query ?? {};
+            const where = query.where ?? {};
+
+            // authorEmail is hidden from reads, so it may not be filtered, looked up or sorted on
+            // either: each would answer "did this address comment here".
+            if (
+                whereMentions(where, 'authorEmail') ||
+                query.field === 'authorEmail' ||
+                query.orderBy === 'authorEmail'
+            ) {
+                return errorResponse('authorEmail cannot be queried', 400, { code: 'VALIDATION_ERROR' });
+            }
+
+            if (
+                !whereMentions(where, 'targetId') &&
+                canModerateComments(securityContext, securityContext.organizationId ?? null)
+            ) {
+                // The moderation queue: no target, so every comment in the moderator's own scope.
+                // The ambient context already is that scope (the active org, or the platform's
+                // null org), and RLS filters to it; the app filter keeps another app's rows out.
+                crudRequest.query = { ...query, where: { $and: [where, { appId: securityContext.appId }] } };
+            } else {
+                // Anyone else lists one target's comments: requiring targetType/targetId gives the
+                // org derivation a target to resolve against, and prevents "browse every comment
+                // across every target in some org" as an unintended side channel.
+                const orgResolution = await resolveCommentSecurityContext(
+                    where.targetType,
+                    where.targetId,
+                    session,
+                    securityContext,
+                );
+                if (!orgResolution.ok) return orgResolution.response;
+                effectiveSecurityContext = orgResolution.securityContext;
+
+                // Pending and hidden comments are listed to moderators only, whatever the caller asked for.
+                if (!canModerateComments(securityContext, orgResolution.organizationId)) {
+                    crudRequest.query = {
+                        ...query,
+                        where: { $and: [where, { status: { $nin: [...UNPUBLISHED_COMMENT_STATUSES] } }] },
+                    };
+                }
+            }
         }
     }
     // otta:end comments

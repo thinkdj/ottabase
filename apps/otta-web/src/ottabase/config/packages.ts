@@ -20,14 +20,29 @@ import {
     packageNotices,
     packageRoutes,
 } from '@ottabase/kernel/client';
-import { Archive, BellRing, Gift, Webhook } from 'lucide-react';
+import { Archive, BellRing, Gift, MessageSquare, Webhook } from 'lucide-react';
 
 export const CLIENT_PACKAGES = [
     definePackageClient({ key: 'core' }),
     definePackageClient({ key: 'app' }),
     definePackageClient({ key: 'brand-engine' }),
     definePackageClient({ key: 'ottablog' }),
-    definePackageClient({ key: 'comments' }),
+    definePackageClient({
+        key: 'comments',
+        adminPages: [
+            {
+                path: '/admin/content/comments',
+                title: 'Comments',
+                description: 'Approve guest comments waiting for review, and restore hidden ones.',
+                icon: MessageSquare,
+                group: 'content',
+                // An org admin moderates their own org's posts; in platform scope, the platform blog.
+                scope: 'org',
+                load: () => import('@/pages/admin/content/comments/AdminCommentsPage'),
+                exportName: 'AdminCommentsPage',
+            },
+        ],
+    }),
     definePackageClient({ key: 'ottalanding' }),
     definePackageClient({ key: 'shortlinks' }),
     definePackageClient({

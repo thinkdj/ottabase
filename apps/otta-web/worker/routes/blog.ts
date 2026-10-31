@@ -16,11 +16,13 @@ import { createBlogHandlers } from '@ottabase/ottablog/router';
 import { registerConnection } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { TURNSTILE_ACTIONS } from '../../ottabase/turnstile';
 import { demoBlogPosts } from '../fixtures/demo-blog-content'; // otta:only demo
 import { demoWhatsNewPosts } from '../fixtures/demo-whats-new'; // otta:only demo
 import { requireAdminAccess } from '../lib/admin-guard';
 import { canManagePostInOrg, requireContentPermission, requireStudioAdminForScope } from '../lib/content-guard';
-import { checkCronAuth } from '../lib/utils';
+import { guardPublicForm } from '../lib/turnstile';
+import { blogTokenSecret, checkCronAuth, getClientIpAddress } from '../lib/utils';
 
 export interface BlogRouteContext {
     request: Request;
@@ -120,12 +122,8 @@ const handlers = createBlogHandlers<CloudflareEnv>({
     // Object-level check for minting previews of posts the caller does not own:
     // manage-grade grants evaluated in the POST's org (never a request hint).
     canManagePost: (ctx, post) => canManagePostInOrg(ctx, post),
-    // Dedicated BLOG_PREVIEW_SECRET wins; AUTH_SECRET is the pragmatic default
-    // so preview links work out of the box on any configured deployment.
-    previewTokenSecret: (env) => {
-        const secrets = env as { BLOG_PREVIEW_SECRET?: string; AUTH_SECRET?: string };
-        return secrets.BLOG_PREVIEW_SECRET || secrets.AUTH_SECRET || null;
-    },
+    // Signs preview links and post-unlock tokens; the comments route verifies the latter with it.
+    previewTokenSecret: (env) => blogTokenSecret(env),
     checkCronAuth,
     verifyPassword: (password, hash) => verifyPassword(password, hash),
     // Demo seeding is platform-owner-only via the system-scoped requireAdmin above.
@@ -143,7 +141,6 @@ export const {
     handleBlogPhotoJournalCreate,
     handleBlogPhotoJournalUpdate,
     handleBlogPostBySlug,
-    handleBlogPostUnlock,
     handleBlogTagBySlug,
     handleBlogCategoryBySlug,
     handleBlogSeriesBySlug,
@@ -163,3 +160,21 @@ export const {
     handleBlogPostTranslationUpdate,
     handleBlogPostTranslationDelete,
 } = handlers;
+
+/**
+ * POST /api/blog/posts/unlock compares a post password, so a stranger could guess it. The rate
+ * limit (per IP and post) and Turnstile run first; the password is checked only after both pass.
+ */
+export async function handleBlogPostUnlock(context: BlogRouteContext): Promise<Response> {
+    const body = (await context.request
+        .clone()
+        .json()
+        .catch(() => null)) as { slug?: unknown } | null;
+    const slug = typeof body?.slug === 'string' ? body.slug.trim().slice(0, 200) : '';
+    const denied = await guardPublicForm(context.request, context.env, {
+        action: TURNSTILE_ACTIONS.postUnlock,
+        key: `blog:unlock:${getClientIpAddress(context.request)}:${slug}`,
+        unreachable: 'refuse',
+    });
+    return denied ?? handlers.handleBlogPostUnlock(context);
+}
