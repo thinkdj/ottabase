@@ -174,7 +174,10 @@ describe('LandingPage', () => {
 
 describe('LandingPage social image and sitemap', () => {
     it('stores a page’s own social image, and clears it when the page goes back to the site’s', async () => {
-        const share = { heading: 'Pricing that scales', imageUrl: '/api/files/public/landing/a/share/p.png?v=1' };
+        const share = {
+            heading: 'Pricing that scales',
+            image: { key: 'app-share/share-image/0123456789abcdef0123456789abcdef.png', width: 1200, height: 630 },
+        };
         const page = await LandingPage.createFor('app-share', { path: '/pricing', title: 'Pricing', share });
         const id = page.get('id') as string;
         expect((await LandingPage.findForApp('app-share', id))!.toPage().share).toEqual(share);

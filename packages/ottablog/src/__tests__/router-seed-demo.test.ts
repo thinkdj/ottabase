@@ -55,7 +55,7 @@ const DEMO_POSTS = [
         content: SEED_CONTENT,
         contentType: 'blog' as const,
         isFeatured: true,
-        heroImage: { url: 'https://cdn.test/hero.jpg', alt: 'Hero' },
+        heroImage: { image: 'https://cdn.test/hero.jpg', alt: 'Hero' },
     },
     {
         title: 'Sample release note',
@@ -141,7 +141,7 @@ describe('handleBlogDemoSeed', () => {
                 contentType: 'blog',
                 status: 'published',
                 isFeatured: true,
-                heroImage: { url: 'https://cdn.test/hero.jpg', alt: 'Hero' },
+                heroImage: { image: 'https://cdn.test/hero.jpg', alt: 'Hero' },
             }),
         );
     });
@@ -229,7 +229,7 @@ describe('handleBlogDemoSeed', () => {
             where.slug === 'sample-release-note' ? postRow({ id: 'existing' }) : null) as any);
         const handlers = createBlogHandlers<Env>({
             ...baseConfig,
-            demoPosts: [...DEMO_POSTS, { ...DEMO_POSTS[1], slug: 'third', heroimage: { url: '/x.webp' } } as never],
+            demoPosts: [...DEMO_POSTS, { ...DEMO_POSTS[1], slug: 'third', heroimage: { image: '/x.webp' } } as never],
         });
 
         await expect(handlers.handleBlogDemoSeed(ctxFor('/seed-demo', { method: 'POST' }))).rejects.toThrow(
@@ -256,6 +256,18 @@ describe('demoSeedProblems', () => {
             '"sample-article": Each post needs a title',
             '"sample-release-note": unknown field "tagz"',
             '"sample-release-note": slug used twice',
+        ]);
+    });
+
+    it('runs the write rules too, so an image in an old shape fails before anything is written', () => {
+        expect(
+            demoSeedProblems([
+                { ...DEMO_POSTS[0], heroImage: { url: 'https://cdn.test/hero.jpg' } as never },
+                { ...DEMO_POSTS[1], seoMeta: { ogImage: { key: 'not-a-stored-key' } as never } },
+            ]),
+        ).toEqual([
+            '"sample-article": Hero image is required',
+            '"sample-release-note": Open Graph image is not a valid stored file',
         ]);
     });
 

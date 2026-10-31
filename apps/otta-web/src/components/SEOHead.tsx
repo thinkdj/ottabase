@@ -4,6 +4,7 @@
  * Renders SEO meta tags in the document head for better search engine optimization.
  * Supports Open Graph and Twitter Card metadata.
  */
+import { fileUrl, type FileSource } from '@ottabase/utils/media';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { useEffect } from 'react';
 
@@ -16,8 +17,8 @@ export interface SEOHeadProps {
     keywords?: string[];
     /** Canonical URL */
     canonicalUrl?: string;
-    /** Open Graph image URL */
-    ogImage?: string;
+    /** Open Graph image: a stored file or an address. Emitted as an absolute URL to the original. */
+    ogImage?: FileSource | null;
     /** Open Graph type (article, website, etc.) */
     ogType?: 'article' | 'website' | 'blog';
     /** Twitter Card type */
@@ -66,7 +67,10 @@ export function SEOHead({
     tags,
 }: SEOHeadProps) {
     const safeCanonicalUrl = canonicalUrl ? sanitizeUrl(canonicalUrl) : null;
-    const safeOgImage = ogImage ? sanitizeUrl(ogImage) : null;
+    // The original, never a WebP rendition (some scrapers refuse WebP), made absolute: the
+    // configured files base, or a typed address, may be app-relative.
+    const ogImageUrl = sanitizeUrl(fileUrl(ogImage));
+    const safeOgImage = ogImageUrl === '#' ? null : new URL(ogImageUrl, window.location.origin).href;
 
     useEffect(() => {
         // Store original values to restore on unmount

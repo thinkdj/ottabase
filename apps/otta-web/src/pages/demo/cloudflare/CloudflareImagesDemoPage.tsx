@@ -18,9 +18,10 @@ export function CloudflareImagesDemoPage() {
                 <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>
                         When a purpose asks for variants (the media library and avatars do), the files service renders
-                        fixed-width WebP copies at upload time: thumb 160 px, card 640 px, full 1600 px, never upscaled.
-                        They live next to the original in R2 and are served like any other file, so nobody can mint new
-                        sizes on your bill.
+                        fixed-width WebP copies at upload time: thumb 160 px, card 640 px, full 1600 px, each only when
+                        narrower than the original. They live next to the original in R2 and are served like any other
+                        file, so nobody can mint new sizes on your bill. Content keeps the file&apos;s key, and every
+                        image is rendered with a srcset, so each screen downloads the copy that fits it.
                     </p>
                     <p>
                         The binding is already in <code className="font-mono text-xs">wrangler.jsonc</code>; local dev

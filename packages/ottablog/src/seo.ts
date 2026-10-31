@@ -8,6 +8,7 @@
  * free text and must never break out of an attribute or script tag.
  */
 
+import { fileUrl, type FileSource } from '@ottabase/utils/media';
 import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
 
 /** Escape a string for use inside an HTML attribute or text node. */
@@ -53,8 +54,12 @@ export interface PostSeoInput {
     excerpt?: string | null;
     /** Absolute canonical URL of the post page. */
     canonicalUrl: string;
-    /** Absolute URL of the hero/OG image, if any. */
-    imageUrl?: string | null;
+    /**
+     * The hero/OG image, if any: a stored file (its original's URL is used, never a WebP
+     * rendition, which some scrapers refuse) or an address. A relative URL resolves against
+     * `canonicalUrl`.
+     */
+    image?: FileSource | null;
     /** Publish timestamp (ms epoch or ISO string). */
     publishedAt?: number | string | null;
     /** Last-modified timestamp (ms epoch or ISO string). */
@@ -67,14 +72,12 @@ export interface PostSeoInput {
     contentType?: string | null;
     /** Ordered photographs used by a photo journal CollectionPage. */
     photoAlbum?: Array<{
-        url: string;
+        image: FileSource;
         title?: string | null;
         alt?: string | null;
         caption?: string | null;
         location?: string | null;
         takenAt?: number | string | null;
-        width?: number | null;
-        height?: number | null;
     }> | null;
 }
 
@@ -104,7 +107,7 @@ export function buildPostSeoTags(input: PostSeoInput): string {
     const title = escapeHtml(input.title);
     const description = input.excerpt ? escapeHtml(input.excerpt) : null;
     const canonical = escapeHtml(input.canonicalUrl);
-    const resolvedImageUrl = resolveHttpUrl(input.imageUrl, input.canonicalUrl);
+    const resolvedImageUrl = resolveHttpUrl(fileUrl(input.image), input.canonicalUrl);
     const image = resolvedImageUrl ? escapeHtml(resolvedImageUrl) : null;
     const publishedIso = toIso(input.publishedAt);
     const modifiedIso = toIso(input.updatedAt);
@@ -150,7 +153,7 @@ export function buildPostSeoTags(input: PostSeoInput): string {
     if (input.authorName) jsonLd.author = { '@type': 'Person', name: input.authorName };
     if (isPhotoJournal) {
         const photographs = (input.photoAlbum ?? []).flatMap((photo, index) => {
-            const contentUrl = resolveHttpUrl(photo.url, input.canonicalUrl);
+            const contentUrl = resolveHttpUrl(fileUrl(photo.image), input.canonicalUrl);
             if (!contentUrl) return [];
 
             const photograph: Record<string, unknown> = {
@@ -164,8 +167,8 @@ export function buildPostSeoTags(input: PostSeoInput): string {
             if (photo.location) photograph.contentLocation = { '@type': 'Place', name: photo.location };
             const takenAt = toIso(photo.takenAt);
             if (takenAt) photograph.dateCreated = takenAt;
-            if (photo.width) photograph.width = photo.width;
-            if (photo.height) photograph.height = photo.height;
+            if (typeof photo.image !== 'string' && photo.image.width) photograph.width = photo.image.width;
+            if (typeof photo.image !== 'string' && photo.image.height) photograph.height = photo.image.height;
             if (index === 0) photograph.representativeOfPage = true;
             return [photograph];
         });

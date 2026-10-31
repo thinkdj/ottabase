@@ -24,7 +24,8 @@ const full: TestimonialData = {
     authorRole: 'CTO',
     authorCompany: 'Globex',
     authorAvatar: 'https://img.test/a.png',
-    companyLogo: 'https://img.test/l.png',
+    // A stored file is kept as is
+    companyLogo: { key: 'app/media/0123456789abcdef0123456789abcdef.png', width: 240, height: 80 },
     rating: 5,
     variant: 'featured',
     sourceUrl: 'https://x.test/review',

@@ -2,7 +2,7 @@
 // Menu detail – Edit menu, add/edit/delete items (Ottamenu)
 // ---------------------------------------------------------------------------
 
-import type { MenuItemTreeNode } from '@ottabase/ottamenu';
+import type { MenuItemDto, MenuItemTreeNode, MenuRenderType, MenuWithItemsDto } from '@ottabase/ottamenu';
 import { buildItemTree } from '@ottabase/ottamenu';
 import { renderMenu } from '@ottabase/ottamenu/render';
 import {
@@ -27,8 +27,10 @@ import { useBrand } from '@ottabase/brand-engine-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { fileUrl, storedFileOf, type FileSource } from '@ottabase/utils/media';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { toast } from 'sonner';
-import { menuApi, type MenuItemDto, type MenuRenderType, type MenuWithItemsDto } from './menus/menuApi';
+import { menuApi } from './menus/menuApi';
 
 export function AdminMenuDetailPage() {
     const { menuId } = useParams({ strict: false });
@@ -527,7 +529,7 @@ function ItemRow({
         <div className="flex items-center justify-between rounded-lg bg-background p-3 ring-1 ring-border">
             {item.image && (
                 <img
-                    src={item.image}
+                    src={sanitizeUrl(fileUrl(item.image, 'thumb'))}
                     alt=""
                     className="mr-3 h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-border"
                 />
@@ -594,7 +596,7 @@ function ItemForm({
     const [authRequired, setAuthRequired] = useState(item?.authRequired ?? false);
     const [description, setDescription] = useState(item?.description ?? '');
     const [tooltip, setTooltip] = useState(item?.tooltip ?? '');
-    const [image, setImage] = useState(item?.image ?? '');
+    const [image, setImage] = useState<FileSource | null>(item?.image ?? null);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -602,7 +604,7 @@ function ItemForm({
         if (parentId !== undefined) setSelectedParentId(parentId ?? null);
     }, [parentId]);
 
-    /** Upload the image through the files service, then store its URL */
+    /** Upload the image through the files service, then keep the stored file (never its URL) */
     const handleImageUpload = useCallback(async (file: File) => {
         if (!file.type.startsWith('image/')) {
             toast.error('Please select an image file');
@@ -615,7 +617,7 @@ function ItemForm({
         setUploading(true);
         try {
             const res = await menuApi.uploadImage(file);
-            setImage(res.file.url);
+            setImage(storedFileOf(res.file));
             toast.success('Image uploaded');
         } catch {
             toast.error('Upload failed');
@@ -641,7 +643,7 @@ function ItemForm({
             authRequired,
             description: description || null,
             tooltip: tooltip || null,
-            image: image || null,
+            image,
         });
     };
 
@@ -703,13 +705,17 @@ function ItemForm({
                 />
                 {image ? (
                     <div className="flex items-center gap-2">
-                        <img src={image} alt="" className="h-10 w-10 rounded-md object-cover ring-1 ring-border" />
+                        <img
+                            src={sanitizeUrl(fileUrl(image, 'thumb'))}
+                            alt=""
+                            className="h-10 w-10 rounded-md object-cover ring-1 ring-border"
+                        />
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             className="text-muted-foreground hover:text-foreground"
-                            onClick={() => setImage('')}
+                            onClick={() => setImage(null)}
                             title="Remove image"
                         >
                             <IconX className="h-4 w-4" />

@@ -1,3 +1,5 @@
+import type { FileVariant, StoredFile } from '@ottabase/utils/media';
+
 export type MediaKind = 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other';
 
 /** Who may read a file (see the files service in `@ottabase/ottaupload`). */
@@ -6,9 +8,12 @@ export type MediaAudience = 'public' | 'members' | 'owner';
 /** `ready` is served; `quarantined` is refused by every read path. */
 export type MediaStatus = 'ready' | 'quarantined';
 
-export type MediaVariantName = 'thumb' | 'card' | 'full';
+export type MediaVariantName = FileVariant;
 
-/** One WebP rendition made at upload. Its URL is a view field (`thumbnailUrl` is thumb, `previewUrl` card). */
+/**
+ * One WebP rendition made at upload. Its URL is a view field (`thumbnailUrl` is thumb, `previewUrl`
+ * card, all of them in `srcSet`).
+ */
 export interface MediaVariant {
     key: string;
     width: number;
@@ -24,7 +29,8 @@ export interface MediaMetadataJson {
 
 /**
  * A media row as the API returns it: the stored columns plus the URLs the server computed
- * (`url`, `thumbnailUrl`, `previewUrl`). URLs are never stored, so read them from here.
+ * (`url`, `thumbnailUrl`, `previewUrl`, `srcSet`). URLs are never stored: content keeps the
+ * `StoredFile` (`file` on a selection) and builds its own with `@ottabase/utils/media`.
  */
 export interface MediaLibraryItemLike {
     id: string;
@@ -34,6 +40,7 @@ export interface MediaLibraryItemLike {
     url: string;
     thumbnailUrl?: string | null;
     previewUrl?: string | null;
+    srcSet?: string | null;
     mimeType: string;
     mediaKind: MediaKind;
     status: MediaStatus;
@@ -56,9 +63,12 @@ export interface MediaLibraryItemLike {
 
 export interface MediaViewerItem {
     id: string;
+    /** The original: what the lightbox shows when there is no `srcSet` to choose from. */
     url: string;
     thumbnailUrl?: string | null;
     previewUrl?: string | null;
+    /** Width descriptors over the renditions (see `imageSources` in `@ottabase/utils/media`). */
+    srcSet?: string | null;
     title?: string | null;
     originalName?: string | null;
     altText?: string | null;
@@ -73,6 +83,9 @@ export interface MediaViewerItem {
 
 export interface MediaSelectionPayload {
     mediaId?: string;
+    /** What content stores for a picked public file. Null for a private one, which content cannot embed. */
+    file: StoredFile | null;
+    /** For showing the pick in the picker or editor, never for storing. */
     url: string;
     name: string;
     title?: string | null;

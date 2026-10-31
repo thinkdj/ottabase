@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPostSeoTags, escapeHtml, extractBlogSlugFromPath, jsonForScriptTag, replaceDocumentTitle } from '../seo';
+import { configureMedia } from '@ottabase/utils/media';
 
 describe('extractBlogSlugFromPath', () => {
     it('extracts the slug from a detail path', () => {
@@ -39,7 +40,7 @@ describe('buildPostSeoTags', () => {
     it('emits description, canonical, OG, Twitter, and JSON-LD', () => {
         const tags = buildPostSeoTags({
             ...base,
-            imageUrl: 'https://img.test/hero.jpg',
+            image: 'https://img.test/hero.jpg',
             publishedAt: 1700000000000,
             updatedAt: 1700000100000,
             authorName: 'Ada',
@@ -80,15 +81,33 @@ describe('buildPostSeoTags', () => {
     });
 
     it('uses summary card and omits image tags when there is no valid image', () => {
-        const tags = buildPostSeoTags({ ...base, imageUrl: 'javascript:alert(1)' });
+        const tags = buildPostSeoTags({ ...base, image: 'javascript:alert(1)' });
         expect(tags).toContain('<meta name="twitter:card" content="summary"');
         expect(tags).not.toContain('og:image');
     });
 
     it('resolves application-relative media URLs against the canonical origin', () => {
-        const tags = buildPostSeoTags({ ...base, imageUrl: '/media/hero.jpg' });
+        const tags = buildPostSeoTags({ ...base, image: '/media/hero.jpg' });
         expect(tags).toContain('<meta property="og:image" content="https://x.test/media/hero.jpg"');
         expect(tags).toContain('"image":["https://x.test/media/hero.jpg"]');
+    });
+
+    it('gives a stored file as the absolute URL of its original, never a WebP rendition', () => {
+        const key = `app/media/${'c'.repeat(32)}.jpg`;
+        configureMedia({ publicUrl: 'https://files.x.test' });
+        try {
+            const tags = buildPostSeoTags({ ...base, image: { key, variants: ['thumb', 'card', 'full'] } });
+            expect(tags).toContain(`<meta property="og:image" content="https://files.x.test/${key}"`);
+            expect(tags).toContain(`<meta name="twitter:image" content="https://files.x.test/${key}"`);
+            expect(tags).toContain(`"image":["https://files.x.test/${key}"]`);
+            expect(tags).not.toContain('.webp');
+        } finally {
+            configureMedia({});
+        }
+        // With the app-relative default base, it still resolves to an absolute URL.
+        expect(buildPostSeoTags({ ...base, image: { key } })).toContain(
+            `<meta property="og:image" content="https://x.test/api/files/public/${key}"`,
+        );
     });
 
     it('omits date meta for invalid timestamps', () => {
@@ -108,14 +127,13 @@ describe('buildPostSeoTags', () => {
             contentType: 'photo',
             photoAlbum: [
                 {
-                    url: '/media/kyoto-rain.jpg',
+                    image: '/media/kyoto-rain.jpg',
                     alt: 'Lanterns reflected in a wet Kyoto lane',
                     caption: 'After the last train',
                     location: 'Kyoto, Japan',
                     takenAt: '2026-05-12T18:00:00.000Z',
-                    width: 1800,
-                    height: 1200,
                 },
+                { image: { key: `app/media/${'d'.repeat(32)}.jpg`, width: 1800, height: 1200 } },
             ],
         });
 
@@ -124,6 +142,10 @@ describe('buildPostSeoTags', () => {
         expect(tags).toContain('"contentUrl":"https://x.test/media/kyoto-rain.jpg"');
         expect(tags).toContain('"contentLocation":{"@type":"Place","name":"Kyoto, Japan"}');
         expect(tags).toContain('"representativeOfPage":true');
+        // A stored photograph carries its own size.
+        expect(tags).toContain(
+            `"contentUrl":"https://x.test/api/files/public/app/media/${'d'.repeat(32)}.jpg","position":2,"width":1800,"height":1200`,
+        );
     });
 });
 

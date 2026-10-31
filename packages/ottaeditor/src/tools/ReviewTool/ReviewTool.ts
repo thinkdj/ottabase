@@ -1,4 +1,5 @@
 import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import type { FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import './ReviewTool.css';
 import {
@@ -25,7 +26,8 @@ export interface ReviewToolConfig {
 }
 
 export interface ReviewData {
-    image?: string;
+    /** A stored file, or an outside address */
+    image?: FileSource;
     title?: string;
     content?: string;
     linkUrl?: string;
@@ -51,7 +53,7 @@ interface Point {
 export default class ReviewTool implements BlockTool {
     private readonly api: API;
     private readonly config: ReviewToolConfig;
-    private data: Required<ReviewData>;
+    private data: Required<Omit<ReviewData, 'image'>> & Pick<ReviewData, 'image'>;
     private shell: BlockShell | null = null;
     private cleanups: Array<() => void> = [];
     private pros: Point[];
@@ -69,7 +71,7 @@ export default class ReviewTool implements BlockTool {
         this.api = api;
         this.config = config || {};
         this.data = {
-            image: data?.image || '',
+            image: data?.image || undefined,
             title: data?.title || '',
             content: data?.content || '',
             linkUrl: data?.linkUrl || '',
@@ -97,7 +99,7 @@ export default class ReviewTool implements BlockTool {
         const image = mediaInput({
             value: this.data.image,
             ariaLabel: 'Image',
-            onChange: (url) => this.update({ image: url }),
+            onChange: (value) => this.update({ image: value }),
         });
         this.cleanups.push(image.destroy);
 

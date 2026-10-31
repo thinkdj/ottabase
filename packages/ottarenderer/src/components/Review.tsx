@@ -1,12 +1,15 @@
-import { sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { safeUrl, useLinkRel } from '../inline';
+import { safeImageProps, sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
+import type { FileSource } from '@ottabase/utils/media';
+import { useLinkRel } from '../inline';
+import { IMAGE_SIZES, imageUrl } from '../media';
 import type { BlockRenderer } from '../types';
 import { useId, useMemo } from 'react';
 
 /** NOTE: Do not remove `not-prose` class from the component. It is used to prevent the component from being styled by the parent prose class.  */
 
 export interface ReviewData {
-    image?: string;
+    /** A stored file, or an outside address */
+    image?: FileSource;
     title?: string;
     content?: string;
     linkUrl?: string;
@@ -143,7 +146,10 @@ const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
     const linkRel = useLinkRel();
     const title = data?.title || '';
     const content = data?.content || '';
-    const image = safeUrl(data?.image) ?? undefined;
+    // The header spans the column; the compact stamp is 6rem, 7rem from sm up.
+    const image = safeImageProps(data?.image, data?.compact ? '(min-width: 40rem) 7rem, 6rem' : IMAGE_SIZES.column);
+    // Structured data takes the original: scrapers and rich results want one absolute URL.
+    const imageLd = imageUrl(data?.image);
     const linkUrl = data?.linkUrl;
     const linkLabel = data?.linkLabel || 'Learn more';
     const pros = data?.pros?.filter((p) => p.trim()) || [];
@@ -172,11 +178,11 @@ const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
                 bestRating: maxStars,
             };
         }
-        if (image) {
-            schema.image = image;
+        if (imageLd) {
+            schema.image = imageLd;
         }
         return schema;
-    }, [title, content, rating, maxStars, image]);
+    }, [title, content, rating, maxStars, imageLd]);
 
     if (!title) return null;
 
@@ -201,7 +207,7 @@ const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
                         {image && (
                             <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 overflow-hidden">
                                 <img
-                                    src={image}
+                                    {...image}
                                     alt={title}
                                     className="w-full h-full object-cover"
                                     itemProp="image"
@@ -282,7 +288,7 @@ const Review: BlockRenderer<ReviewData> = ({ data, className = '' }) => {
                     {image && (
                         <div className="relative overflow-hidden">
                             <img
-                                src={image}
+                                {...image}
                                 alt={title}
                                 className="w-full h-auto object-cover"
                                 itemProp="image"

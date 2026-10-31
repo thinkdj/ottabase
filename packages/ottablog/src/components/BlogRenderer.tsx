@@ -8,7 +8,7 @@
 import '@ottabase/ottarenderer/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { safeImageProps, sanitizeUrl } from '@ottabase/utils/sanitize';
 import { applyFilters, HOOKS } from '../hooks';
 import { defaultTheme, getActiveTheme, getTheme } from '../themes';
 import type { EditorJSData } from '../types';
@@ -452,16 +452,20 @@ export function BlogExcerptCard({
               </article>
           );
 
+    // A card in a list: full width on a phone, a column of a grid beside it.
+    const heroImage = showHeroImage ? safeImageProps(post.heroImage?.image, '(min-width: 48rem) 24rem, 100vw') : null;
+
     return (
         <Wrapper>
             {/* Hero Image */}
-            {showHeroImage && post.heroImage?.url && (
+            {showHeroImage && heroImage && (
                 <div className="blog-card__image-wrapper">
                     <img
-                        src={sanitizeUrl(post.heroImage.url)}
-                        alt={post.heroImage.alt || post.title}
+                        {...heroImage}
+                        alt={post.heroImage?.alt || post.title}
                         className="blog-card__image"
                         loading="lazy"
+                        decoding="async"
                     />
                     {post.isFeatured && <span className="blog-card__featured-badge">Featured</span>}
                 </div>

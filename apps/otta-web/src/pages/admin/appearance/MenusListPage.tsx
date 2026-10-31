@@ -16,7 +16,8 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AssignToSlotsModal } from './menus/AssignToSlotsModal';
-import { menuApi, type MenuWithItemsDto } from './menus/menuApi';
+import type { MenuWithItemsDto } from '@ottabase/ottamenu';
+import { menuApi } from './menus/menuApi';
 
 export function AdminMenusListPage() {
     const queryClient = useQueryClient();

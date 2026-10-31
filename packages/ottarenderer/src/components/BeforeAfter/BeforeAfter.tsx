@@ -1,4 +1,6 @@
-import { safeUrl } from '../../inline';
+import { safeImageProps } from '@ottabase/utils/sanitize';
+import type { FileSource } from '@ottabase/utils/media';
+import { IMAGE_SIZES } from '../../media';
 import type { BlockRenderer } from '../../types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -32,8 +34,10 @@ function positionToCSS(pos: ImagePosition | undefined): string {
 }
 
 export interface BeforeAfterData {
-    beforeUrl?: string;
-    afterUrl?: string;
+    /** The "before" image (left / top): a stored file, or an outside address */
+    before?: FileSource;
+    /** The "after" image (right / bottom) */
+    after?: FileSource;
     /** Optional label. If null/empty, the label is not rendered. */
     beforeLabel?: string | null;
     /** Optional label. If null/empty, the label is not rendered. */
@@ -61,8 +65,9 @@ export interface BeforeAfterData {
  * - Triple-click: Always resets to 0 (show full "after" image)
  */
 const BeforeAfter: BlockRenderer<BeforeAfterData> = ({ data, className = '' }) => {
-    const beforeUrl = safeUrl(data?.beforeUrl) ?? '';
-    const afterUrl = safeUrl(data?.afterUrl) ?? '';
+    // Both layers span the reading column
+    const before = safeImageProps(data?.before, IMAGE_SIZES.column);
+    const after = safeImageProps(data?.after, IMAGE_SIZES.column);
     /* Labels: null or empty string means don't render */
     const beforeLabel = data?.beforeLabel || null;
     const afterLabel = data?.afterLabel || null;
@@ -177,7 +182,7 @@ const BeforeAfter: BlockRenderer<BeforeAfterData> = ({ data, className = '' }) =
         return { objectPosition: positionToCSS(beforePosition) };
     }, [imageFit, beforePosition]);
 
-    if (!beforeUrl && !afterUrl) return null;
+    if (!before && !after) return null;
 
     const containerClasses = [
         'otta-before-after__container',
@@ -205,9 +210,9 @@ const BeforeAfter: BlockRenderer<BeforeAfterData> = ({ data, className = '' }) =
                 onClick={handleClick}
             >
                 {/* After layer (bottom) */}
-                {afterUrl && (
+                {after && (
                     <img
-                        src={afterUrl}
+                        {...after}
                         alt={afterLabel || 'After'}
                         className="otta-before-after__after"
                         style={afterImgStyle}
@@ -216,9 +221,9 @@ const BeforeAfter: BlockRenderer<BeforeAfterData> = ({ data, className = '' }) =
                 )}
 
                 {/* Before layer (clipped) */}
-                {beforeUrl && (
+                {before && (
                     <div className="otta-before-after__before" style={{ clipPath: clipBefore }}>
-                        <img src={beforeUrl} alt={beforeLabel || 'Before'} style={beforeImgStyle} draggable={false} />
+                        <img {...before} alt={beforeLabel || 'Before'} style={beforeImgStyle} draggable={false} />
                     </div>
                 )}
 

@@ -5,6 +5,7 @@
  * its runtime validation (`toZod(F)`), and the admin form that edits it.
  */
 
+import { isStoredFile, type FileSource, type StoredFile } from '@ottabase/utils/media';
 import { z } from 'zod';
 
 type Base = { label: string; help?: string; placeholder?: string };
@@ -14,8 +15,9 @@ export type ScalarField =
     /** `absolute`: only a full http(s) address (e.g. a site's public URL), not a path or mailto:. */
     | (Base & { kind: 'url'; required?: boolean; absolute?: boolean })
     /**
-     * An uploaded (media library) or linked image. `altKey` names a sibling text field that
-     * describes it; picking from the library fills that in from the image's alt text.
+     * An image: a `FileSource`, the media library file (`StoredFile`) or an outside address as
+     * typed. `altKey` names a sibling text field that describes it; picking from the library fills
+     * that in from the image's alt text.
      */
     | (Base & { kind: 'image'; required?: boolean; altKey?: string })
     /** `#rrggbb`, or empty for "the theme's own". */
@@ -40,9 +42,11 @@ type Value<F> = F extends { kind: 'list'; fields: infer S extends Fields }
         ? string[]
         : F extends { kind: 'boolean' }
           ? boolean
-          : F extends { kind: 'select'; options: readonly { value: infer V }[] }
-            ? V
-            : string;
+          : F extends { kind: 'image' }
+            ? FileSource
+            : F extends { kind: 'select'; options: readonly { value: infer V }[] }
+              ? V
+              : string;
 
 type RequiredKeys<S> = { [K in keyof S]: S[K] extends { required: true } | { kind: 'select' } ? K : never }[keyof S];
 
@@ -60,12 +64,27 @@ export function defineFields<const S extends Fields>(fields: S): S {
 const HREF_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\])|#|mailto:|tel:)/i;
 /** A full site address: http(s) scheme plus a host. */
 const ABSOLUTE_OR_EMPTY = /^$|^https?:\/\/[^/\s]+/i;
-/** Image sources: absolute http(s) or site-relative (public files are served at /api/files/public/…). */
+/** Outside image addresses: absolute http(s) or site-relative. A stored file is a `StoredFile`, never a URL. */
 const IMAGE_OR_EMPTY = /^$|^(https?:\/\/|\/(?![/\\]))/i;
 const COLOR_OR_EMPTY = /^$|^#[0-9a-f]{6}$/i;
 /** Deliberately simple (something@something.tld): delivery is the real test of an address. */
 export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_OR_EMPTY = /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const IMAGE_MESSAGE = 'Upload an image, or use an https:// or /path address';
+
+/**
+ * A stored file, or an outside address (or empty). The string rule comes first and the stored
+ * file check is not fatal: a zod union then reports the first option that matched the type, so
+ * a bad address and a bad object each get a readable message instead of "Invalid input".
+ */
+function imageToZod(required?: boolean): z.ZodTypeAny {
+    const address = z.string().trim().max(2048).regex(IMAGE_OR_EMPTY, IMAGE_MESSAGE);
+    const image = z.union([
+        required ? address.min(1, 'Required') : address,
+        z.custom<StoredFile>(isStoredFile, { message: IMAGE_MESSAGE, fatal: false }),
+    ]);
+    return required ? image : image.optional();
+}
 
 function scalarToZod(field: ScalarField): z.ZodTypeAny {
     switch (field.kind) {
@@ -81,6 +100,8 @@ function scalarToZod(field: ScalarField): z.ZodTypeAny {
             return z.enum(field.options.map((o) => o.value) as [string, ...string[]]);
         case 'color':
             return z.string().trim().regex(COLOR_OR_EMPTY, 'Use a hex color like #2563eb').optional();
+        case 'image':
+            return imageToZod(field.required);
         default: {
             let s = z
                 .string()
@@ -88,8 +109,6 @@ function scalarToZod(field: ScalarField): z.ZodTypeAny {
                 .max(field.kind === 'textarea' ? 4000 : field.kind === 'text' ? 200 : 2048);
             if (field.kind === 'email') {
                 s = s.max(254).regex(EMAIL_OR_EMPTY, 'Enter an email address like name@example.com');
-            } else if (field.kind === 'image') {
-                s = s.regex(IMAGE_OR_EMPTY, 'Upload an image, or use an https:// or /path address');
             } else if (field.kind === 'url') {
                 s = field.absolute
                     ? s.regex(ABSOLUTE_OR_EMPTY, 'Use a full address starting with https://')

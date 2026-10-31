@@ -29,7 +29,6 @@ describe('ReviewTool', () => {
         const { tool, element } = mount();
         expect(element.dataset.mode).toBe('edit');
         expect(tool.save()).toEqual({
-            image: '',
             title: '',
             content: '',
             linkUrl: '',

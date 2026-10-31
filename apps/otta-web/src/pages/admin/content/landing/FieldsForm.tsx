@@ -3,6 +3,7 @@
 
 import type { Fields, ListField, ScalarField } from '@ottabase/ottalanding';
 import { Button, Input, Label, NativeSelect, NativeSelectOption, Switch, Textarea } from '@ottabase/ui';
+import type { FileSource } from '@ottabase/utils/media';
 import { ArrowDown, ArrowUp, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { createContext, useContext, useId, useState } from 'react';
 import { ImageField } from './ImageField';
@@ -144,7 +145,9 @@ function ScalarInput({
 
     let control;
     if (field.kind === 'image') {
-        control = <ImageField {...common} label={field.label} value={(value as string) ?? ''} onChange={onChange} />;
+        control = (
+            <ImageField {...common} label={field.label} value={value as FileSource | undefined} onChange={onChange} />
+        );
     } else if (field.kind === 'color') {
         const hex = (value as string) ?? '';
         // An empty color means "the theme's own": show that color, not an arbitrary black.

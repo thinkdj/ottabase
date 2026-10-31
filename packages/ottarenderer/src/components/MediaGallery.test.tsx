@@ -1,10 +1,19 @@
 import { render, screen } from '@testing-library/react';
+import { configureMedia } from '@ottabase/utils/media';
 import { describe, expect, it, vi } from 'vitest';
 import MediaGallery from './MediaGallery';
 
+type PreviewItem = { mediaKind: string; title: string | null; previewUrl?: string; srcSet?: string | null };
+
 vi.mock('@ottabase/medialibrary/react', () => ({
-    MediaPreview: ({ item, mode }: { item: { mediaKind: string; title: string | null }; mode: string }) => (
-        <div data-testid="media-preview" data-kind={item.mediaKind} data-mode={mode}>
+    MediaPreview: ({ item, mode }: { item: PreviewItem; mode: string }) => (
+        <div
+            data-testid="media-preview"
+            data-kind={item.mediaKind}
+            data-mode={mode}
+            data-preview={item.previewUrl}
+            data-srcset={item.srcSet ?? undefined}
+        >
             {item.title ?? 'untitled'}
         </div>
     ),
@@ -31,8 +40,8 @@ describe('MediaGallery Renderer', () => {
                 data={{
                     title: 'Product Gallery',
                     items: [
-                        { url: 'https://cdn.example.com/one.jpg', title: 'One', mediaKind: 'image' },
-                        { url: 'https://cdn.example.com/two.mp4', title: 'Two', mediaKind: 'video' },
+                        { media: 'https://cdn.example.com/one.jpg', title: 'One', mediaKind: 'image' },
+                        { media: 'https://cdn.example.com/two.mp4', title: 'Two', mediaKind: 'video' },
                     ],
                 }}
             />,
@@ -50,7 +59,7 @@ describe('MediaGallery Renderer', () => {
             <MediaGallery
                 data={{
                     layout: 'filmstrip',
-                    items: [{ url: 'https://cdn.example.com/song.mp3', title: 'Audio Preview', mediaKind: 'audio' }],
+                    items: [{ media: 'https://cdn.example.com/song.mp3', title: 'Audio Preview', mediaKind: 'audio' }],
                 }}
             />,
         );
@@ -64,7 +73,7 @@ describe('MediaGallery Renderer', () => {
             <MediaGallery
                 data={{
                     caption: 'Gallery caption',
-                    items: [{ url: 'https://cdn.example.com/file.pdf', title: 'Doc', mediaKind: 'document' }],
+                    items: [{ media: 'https://cdn.example.com/file.pdf', title: 'Doc', mediaKind: 'document' }],
                 }}
             />,
         );
@@ -80,8 +89,8 @@ describe('MediaGallery Renderer', () => {
                 data={{
                     layout: 'filmstrip',
                     items: [
-                        { url: 'https://cdn.example.com/a.jpg', title: 'A', mediaKind: 'image' },
-                        { url: 'https://cdn.example.com/b.jpg', title: 'B', mediaKind: 'image' },
+                        { media: 'https://cdn.example.com/a.jpg', title: 'A', mediaKind: 'image' },
+                        { media: 'https://cdn.example.com/b.jpg', title: 'B', mediaKind: 'image' },
                     ],
                 }}
             />,
@@ -103,11 +112,36 @@ describe('MediaGallery Renderer', () => {
         const { container } = render(
             <MediaGallery
                 className="custom-gallery"
-                data={{ items: [{ url: 'https://cdn.example.com/one.jpg', title: 'One', mediaKind: 'image' }] }}
+                data={{ items: [{ media: 'https://cdn.example.com/one.jpg', title: 'One', mediaKind: 'image' }] }}
             />,
         );
 
         const figure = container.querySelector('figure');
         expect(figure?.className).toContain('custom-gallery');
+    });
+
+    it('builds each stored item from the configured base and skips items that are not a source', () => {
+        configureMedia({ publicUrl: 'https://files.test' });
+        const key = 'app/media/0123456789abcdef0123456789abcdef.jpg';
+        const stem = 'https://files.test/app/media/0123456789abcdef0123456789abcdef';
+        render(
+            <MediaGallery
+                data={{
+                    items: [
+                        { media: { key, width: 2000, height: 1000, variants: ['thumb', 'card', 'full'] }, title: 'S' },
+                        { media: { url: 'https://cdn.example.com/legacy.jpg' } as never, title: 'Bad' },
+                        { media: 'javascript:alert(1)', title: 'Unsafe' },
+                    ],
+                }}
+            />,
+        );
+        configureMedia({ publicUrl: null });
+
+        const previews = screen.getAllByTestId('media-preview');
+        expect(previews).toHaveLength(1);
+        expect(previews[0].getAttribute('data-preview')).toBe(`${stem}/card.webp`);
+        expect(previews[0].getAttribute('data-srcset')).toBe(
+            `${stem}/thumb.webp 160w, ${stem}/card.webp 640w, ${stem}/full.webp 1600w`,
+        );
     });
 });

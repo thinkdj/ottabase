@@ -1,4 +1,5 @@
 import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
+import { fileUrl } from '@ottabase/utils/media';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import type { Metadata } from 'next';
 import { getSite, isProduction, siteOrigin } from '../lib/content';
@@ -26,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
         // Resolves canonical, Open Graph and social-image URLs: the Public URL, else this request's origin.
         metadataBase: toUrl(await siteOrigin(site)),
         // The uploaded favicon; without one, browsers fall back to /favicon.ico.
-        ...(site?.faviconUrl ? { icons: { icon: site.faviconUrl } } : {}),
+        ...(site?.favicon ? { icons: { icon: fileUrl(site.favicon) } } : {}),
     };
 }
 

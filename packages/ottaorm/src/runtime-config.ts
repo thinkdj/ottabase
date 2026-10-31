@@ -13,20 +13,6 @@ let effectiveMaxAllRows = Math.min(DEFAULT_REQUESTED_MAX_ALL_ROWS, OTTAORM_ALL_H
 export interface OttaORMRuntimeConfig {
     /** Value of OTTAORM_MAX_ALL_ROWS from the Worker environment. */
     maxAllRows?: unknown;
-    /**
-     * Base URL of the public files bucket (`R2_PUBLIC_URL`), for URLs built from a stored key
-     * such as `User#imageUrl()`. Default `/api/files/public`, the Worker's fallback route.
-     */
-    filesPublicUrl?: string | null;
-}
-
-/** Same default as `DEFAULT_PUBLIC_FILES_URL` in @ottabase/ottaupload (no dependency between the two). */
-const DEFAULT_FILES_PUBLIC_URL = '/api/files/public';
-let filesPublicUrl = DEFAULT_FILES_PUBLIC_URL;
-
-/** The public URL of a key in the public files bucket. */
-export function publicFileUrl(key: string): string {
-    return `${filesPublicUrl}/${key}`;
 }
 
 export class OttaORMAllRowsLimitError extends Error {
@@ -65,7 +51,6 @@ function parseRequestedMaxAllRows(value: unknown): number {
 export function configureOttaORM(config: OttaORMRuntimeConfig = {}): number {
     const requested = parseRequestedMaxAllRows(config.maxAllRows);
     effectiveMaxAllRows = Math.min(requested, OTTAORM_ALL_HARD_LIMIT);
-    filesPublicUrl = (config.filesPublicUrl || DEFAULT_FILES_PUBLIC_URL).replace(/\/+$/, '');
     return effectiveMaxAllRows;
 }
 

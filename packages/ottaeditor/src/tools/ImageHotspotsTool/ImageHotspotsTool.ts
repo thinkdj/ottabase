@@ -1,4 +1,5 @@
 import type { API, BlockTool } from '@editorjs/editorjs';
+import { fileUrl, type FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import {
     button,
@@ -32,7 +33,8 @@ export interface HotspotItem {
 }
 
 export interface ImageHotspotsData {
-    imageUrl: string;
+    /** A stored file, or an outside address */
+    image?: FileSource;
     alt: string;
     caption: string;
     hotspots: HotspotItem[];
@@ -50,7 +52,6 @@ export interface ImageHotspotsToolConfig {
 }
 
 const DEFAULT_DATA: ImageHotspotsData = {
-    imageUrl: '',
     alt: '',
     caption: '',
     hotspots: [],
@@ -112,19 +113,19 @@ export default class ImageHotspotsTool implements BlockTool {
     render(): HTMLElement {
         const shell = new BlockShell({
             type: 'imageHotspots',
-            hasContent: Boolean(this.data.imageUrl),
+            hasContent: Boolean(this.data.image),
             summary: this.summary(),
         });
         this.shell = shell;
 
         const image = mediaInput({
-            value: this.data.imageUrl,
+            value: this.data.image,
             ariaLabel: 'Image',
-            onChange: (url, media) => {
-                this.data.imageUrl = url;
-                if (media?.altText && !this.data.alt) {
-                    this.data.alt = media.altText;
-                    alt.value = media.altText;
+            onChange: (value, media) => {
+                this.data.image = value;
+                if (media?.alt && !this.data.alt) {
+                    this.data.alt = media.alt;
+                    alt.value = media.alt;
                 }
                 this.changed();
                 this.buildCanvas();
@@ -212,7 +213,7 @@ export default class ImageHotspotsTool implements BlockTool {
 
     private summary() {
         const n = this.data.hotspots.length;
-        return this.data.imageUrl ? `${n} ${n === 1 ? 'hotspot' : 'hotspots'}` : 'no image';
+        return this.data.image ? `${n} ${n === 1 ? 'hotspot' : 'hotspots'}` : 'no image';
     }
 
     /* ── Canvas: image + draggable numbered dots ───────────────────────────── */
@@ -221,7 +222,7 @@ export default class ImageHotspotsTool implements BlockTool {
         if (!this.canvasHost) return;
         this.canvasHost.innerHTML = '';
         this.canvas = null;
-        if (!this.data.imageUrl) return;
+        if (!this.data.image) return;
 
         const cover = this.data.imageFit === 'cover';
         const canvas = h('div', { className: `oe-hotspots__canvas${cover ? ' oe-hotspots__canvas--cover' : ''}` });
@@ -230,7 +231,8 @@ export default class ImageHotspotsTool implements BlockTool {
 
         const img = h('img', {
             className: 'oe-hotspots__img',
-            src: this.data.imageUrl,
+            // The canvas spans the block: the full rendition, never the unoptimised original
+            src: fileUrl(this.data.image, 'full'),
             alt: this.data.alt || '',
             draggable: false,
         });
@@ -383,7 +385,7 @@ export default class ImageHotspotsTool implements BlockTool {
     }
 
     validate(savedData: ImageHotspotsData): boolean {
-        return typeof savedData.imageUrl === 'string' && savedData.imageUrl.trim() !== '';
+        return Boolean(savedData.image);
     }
 
     destroy(): void {

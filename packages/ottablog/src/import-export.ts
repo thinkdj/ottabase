@@ -8,6 +8,7 @@
  *
  * Pure module: no DB, no React. Safe for the browser and the Worker.
  */
+import { fileUrl, isStoredFile } from '@ottabase/utils/media';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { escapeHtml } from './seo';
 import {
@@ -73,6 +74,20 @@ export interface BlogImportResult {
     created: Array<{ slug: string; id: string }>;
     skipped: Array<{ slug: string; reason: string }>;
     warnings: Array<{ slug: string; message: string }>;
+}
+
+/**
+ * A value with every stored file in it (hero, Open Graph image, album photographs, editor blocks)
+ * replaced by the absolute URL of its original, so an export opens anywhere. `origin` makes a
+ * relative files base absolute. Import keeps those URLs as outside addresses.
+ */
+export function exportFileUrls<T>(value: T, origin: string): T {
+    if (isStoredFile(value)) return new URL(fileUrl(value), origin).href as T;
+    if (Array.isArray(value)) return value.map((item) => exportFileUrls(item, origin)) as T;
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, exportFileUrls(item, origin)])) as T;
+    }
+    return value;
 }
 
 /**
@@ -153,9 +168,12 @@ export function parseMarkdownPost(source: string, fileName = ''): BlogExportPost
               ? 'draft'
               : 'published';
 
-    const cover = stringValue(
+    const coverText = stringValue(
         data.cover_image ?? data.image ?? data.cover ?? data.hero ?? data.feature_image ?? data.featured_image,
     );
+    // Only an address that resolves here becomes the hero: a path relative to the Markdown file
+    // (`cover.jpg`) points nowhere once imported, and the write rules would refuse the whole post.
+    const cover = /^(https?:\/\/|\/(?!\/))/i.test(coverText) ? coverText : '';
     const series = listValue(data.series)[0] ?? null;
 
     return {
@@ -166,7 +184,7 @@ export function parseMarkdownPost(source: string, fileName = ''): BlogExportPost
         status,
         excerpt: stringValue(data.description ?? data.excerpt ?? data.summary ?? data.subtitle) || null,
         content: markdownToEditorJs(markdown),
-        heroImage: cover ? { url: cover, alt: title } : null,
+        heroImage: cover ? { image: cover, alt: title } : null,
         publishedAt: Number.isFinite(parsedDate) ? parsedDate : null,
         tags: listValue(data.tags ?? data.tag ?? data.keywords),
         categories: listValue(data.categories ?? data.category),
@@ -303,7 +321,8 @@ export function markdownToEditorJs(markdown: string): EditorJSData {
         if (image) {
             flushParagraph();
             const url = sanitizeUrl(image[2]);
-            if (url !== '#') blocks.push({ type: 'image', data: { url, alt: image[1], caption: image[3] ?? '' } });
+            if (url !== '#')
+                blocks.push({ type: 'image', data: { image: url, alt: image[1], caption: image[3] ?? '' } });
             continue;
         }
 

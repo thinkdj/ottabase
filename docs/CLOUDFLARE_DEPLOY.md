@@ -236,8 +236,9 @@ Uploads live in three buckets, because a bucket is the unit of exposure (see `pa
 
 Also set, as secrets: `FILES_SIGNING_SECRET` (32+ random chars; signs `?t=` links to private files, which are refused
 while it is unset) and, if 1024 MB per organization does not fit, the var `FILES_QUOTA_MB`. The Images binding
-(`OBCF_IMAGES`, in every env block) makes the thumb/card/full WebP variants (each image upload costs up to three
-transformations) and re-encodes AVIF uploads, whose metadata cannot be stripped in code; without it AVIF is refused.
+(`OBCF_IMAGES`, in every env block) makes the thumb/card/full WebP variants narrower than the original (each image
+upload costs up to three transformations) and re-encodes AVIF uploads, whose metadata cannot be stripped in code;
+without it AVIF is refused.
 
 **Quarantine purges the edge cache when it can.** Public files are cached as immutable for a year, so quarantining one
 (media library → Quarantine) moves it out of the public bucket and then purges its URLs: set the var

@@ -4,7 +4,8 @@
 
 import type { BrandApiEnv } from '@ottabase/brand-engine/handlers';
 import type { BrandAssetClient } from '@ottabase/brand-engine/persistence';
-import { fileIdFromKey, FilesError } from '@ottabase/ottaupload/server';
+import { FilesError } from '@ottabase/ottaupload/server';
+import { fileIdFromKey } from '@ottabase/utils/media';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { files } from '../../ottabase/files';

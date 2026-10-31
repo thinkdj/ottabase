@@ -6,6 +6,8 @@ export type ZoomStartGesture = 'single' | 'double';
 
 export interface ZoomableImageProps {
     src: string;
+    srcSet?: string;
+    sizes?: string;
     alt: string;
     className?: string;
     /** The lightbox mode (immersive gets different styling) */
@@ -37,6 +39,8 @@ const getDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =
  */
 export function ZoomableImage({
     src,
+    srcSet,
+    sizes,
     alt,
     className,
     mode = 'lightbox',
@@ -265,6 +269,8 @@ export function ZoomableImage({
             >
                 <img
                     src={src}
+                    srcSet={srcSet}
+                    sizes={srcSet ? sizes : undefined}
                     alt={alt}
                     className={imgClassName}
                     style={imageStyle}

@@ -132,3 +132,29 @@ describe('MediaPreview immersive mode', () => {
         expect(markup).toContain('object-cover');
     });
 });
+
+describe('MediaPreview renditions', () => {
+    const item = {
+        id: 'media-3',
+        url: 'https://files.test/app/media/a.jpg',
+        previewUrl: 'https://files.test/app/media/a/card.webp',
+        thumbnailUrl: 'https://files.test/app/media/a/thumb.webp',
+        srcSet: 'https://files.test/app/media/a/thumb.webp 160w, https://files.test/app/media/a/full.webp 1600w',
+        mimeType: 'image/jpeg',
+        mediaKind: 'image' as const,
+    };
+
+    it('offers the srcset to a tile, with the sizes the layout passes', () => {
+        const markup = renderToStaticMarkup(<MediaPreview item={item} mode="tile" sizes="24rem" />);
+        expect(markup).toContain(`srcSet="${item.srcSet}"`);
+        expect(markup).toContain('sizes="24rem"');
+        expect(markup).toContain(`src="${item.previewUrl}"`);
+    });
+
+    it('shows the original, not the card, in the lightbox, with the srcset at screen width', () => {
+        const markup = renderToStaticMarkup(<MediaPreview item={item} mode="lightbox" />);
+        expect(markup).toContain(`src="${item.url}"`);
+        expect(markup).toContain(`srcSet="${item.srcSet}"`);
+        expect(markup).toContain('sizes="100vw"');
+    });
+});

@@ -13,13 +13,13 @@ export const SHARE_FIELDS = defineFields({
     heading: { kind: 'text', label: 'Heading' },
     subtext: { kind: 'textarea', label: 'Supporting text' },
     color: { kind: 'color', label: 'Background color', help: 'Defaults to the brand color.' },
-    backgroundUrl: {
+    background: {
         kind: 'image',
         label: 'Background image',
         help: 'Shown behind the text, darkened so the text stays readable.',
     },
-    /** The rendered PNG, written by the admin when the card is saved; never typed in. */
-    imageUrl: { kind: 'image', label: 'Rendered image' },
+    /** The rendered PNG (a stored file of the `share-image` purpose), written by the admin when the card is saved; never typed in. */
+    image: { kind: 'image', label: 'Rendered image' },
 });
 
 export type ShareCard = Data<typeof SHARE_FIELDS>;

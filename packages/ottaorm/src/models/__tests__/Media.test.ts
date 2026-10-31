@@ -1,6 +1,6 @@
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { configureOttaORM } from '../../runtime-config';
+import { configureMedia } from '@ottabase/utils/media';
 import { Media, mediaFileStore } from '../Media';
 import { mediaTable } from '../Media.schema';
 import { User } from '../User';
@@ -37,13 +37,13 @@ describe('mediaFileStore.usedBytes', () => {
 });
 
 describe('User.imageUrl', () => {
-    afterEach(() => configureOttaORM({}));
+    afterEach(() => configureMedia({}));
 
     it('prefers the uploaded avatar, on the configured public files URL, then the provider picture', () => {
         expect(User.imageUrl({ avatarKey: 'app/avatar/abc/thumb.webp', image: 'https://lh3.test/me.png' })).toBe(
             '/api/files/public/app/avatar/abc/thumb.webp',
         );
-        configureOttaORM({ filesPublicUrl: 'https://files.example.com/' });
+        configureMedia({ publicUrl: 'https://files.example.com/' });
         expect(User.imageUrl({ avatarKey: 'app/avatar/abc.png' })).toBe('https://files.example.com/app/avatar/abc.png');
         expect(User.imageUrl({ avatarKey: null, image: 'https://lh3.test/me.png' })).toBe('https://lh3.test/me.png');
         expect(User.imageUrl({})).toBeNull();

@@ -5,7 +5,7 @@
  */
 
 import { OttaRenderer } from '@ottabase/ottarenderer';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { safeImageProps, sanitizeUrl } from '@ottabase/utils/sanitize';
 import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
@@ -47,14 +47,19 @@ export const minimalTheme: Theme = {
         renderBlurb: (post, props) => <BlurbCard post={post} props={props} tone="minimal" />,
         renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="minimal" />,
         renderHero: (post, props) => {
-            if (!props.showHeroImage || !post.heroImage?.url) return null;
+            // The article column: max-w-3xl less its px-6 gutters.
+            const image = props.showHeroImage
+                ? safeImageProps(post.heroImage?.image, '(min-width: 48rem) 45rem, calc(100vw - 3rem)')
+                : null;
+            if (!post.heroImage || !image) return null;
             return (
                 <figure className={`${props.className || ''} ${minimalTheme.config?.classes?.hero || ''}`}>
                     <img
-                        src={sanitizeUrl(post.heroImage.url)}
+                        {...image}
                         alt={post.heroImage.alt || post.title}
                         className="w-full h-auto object-cover"
                         loading="eager"
+                        decoding="async"
                     />
                     {post.heroImage.caption && (
                         <figcaption className="mt-4 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
@@ -146,6 +151,7 @@ export const minimalTheme: Theme = {
                 return minimalTheme.renderers.renderPhotoJournal?.(post, { ...props, variant: 'timeline' });
             }
             const formatDate = props.formatDate || defaultFormatDate;
+            const thumb = props.showHeroImage ? safeImageProps(post.heroImage?.image, '5rem') : null;
             return (
                 <article
                     className={`group border-b border-border/60 pb-6 mb-2 last:border-b-0 ${minimalTheme.config?.classes?.card || ''}`}
@@ -156,11 +162,13 @@ export const minimalTheme: Theme = {
                                 {String(post.seriesOrder).padStart(2, '0')}
                             </div>
                         )}
-                        {props.showHeroImage && post.heroImage?.url && (
+                        {thumb && (
                             <img
-                                src={sanitizeUrl(post.heroImage.url)}
-                                alt={post.heroImage.alt || post.title}
+                                {...thumb}
+                                alt={post.heroImage?.alt || post.title}
                                 className="w-20 h-20 object-cover rounded-lg shrink-0 hidden sm:block"
+                                loading="lazy"
+                                decoding="async"
                             />
                         )}
                         <div className="min-w-0 flex-1">

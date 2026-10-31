@@ -1,4 +1,5 @@
 import type { API, BlockTool, BlockToolConstructorOptions } from '@editorjs/editorjs';
+import type { FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import { field, mediaInput, row, select, stack, stars, textInput, textarea, toggle } from '../../ui/kit';
 import { BlockShell } from '../../ui/shell';
@@ -10,9 +11,10 @@ export interface TestimonialData {
     authorName: string;
     authorRole?: string;
     authorCompany?: string;
-    authorAvatar?: string;
-    /** Optional URL to company/product logo */
-    companyLogo?: string;
+    /** A stored file, or an outside address */
+    authorAvatar?: FileSource;
+    /** Optional company/product logo: a stored file, or an outside address */
+    companyLogo?: FileSource;
     /** Rating 0-5 (0 = no rating shown) */
     rating?: number;
     variant: TestimonialVariant;
@@ -38,7 +40,8 @@ const VARIANTS: ReadonlyArray<{ value: TestimonialVariant; label: string }> = [
 export default class TestimonialTool implements BlockTool {
     private readonly api: API;
     private readonly config: TestimonialToolConfig;
-    private data: Required<TestimonialData>;
+    private data: Required<Omit<TestimonialData, 'authorAvatar' | 'companyLogo'>> &
+        Pick<TestimonialData, 'authorAvatar' | 'companyLogo'>;
     private shell: BlockShell | null = null;
     private cleanups: Array<() => void> = [];
 
@@ -58,8 +61,8 @@ export default class TestimonialTool implements BlockTool {
             authorName: data?.authorName ?? '',
             authorRole: data?.authorRole ?? '',
             authorCompany: data?.authorCompany ?? '',
-            authorAvatar: data?.authorAvatar ?? '',
-            companyLogo: data?.companyLogo ?? '',
+            authorAvatar: data?.authorAvatar || undefined,
+            companyLogo: data?.companyLogo || undefined,
             rating: data?.rating ?? 0,
             variant: data?.variant ?? this.config.defaultVariant ?? 'card',
             sourceUrl: data?.sourceUrl ?? '',
@@ -84,12 +87,12 @@ export default class TestimonialTool implements BlockTool {
         const avatar = mediaInput({
             value: this.data.authorAvatar,
             ariaLabel: 'Avatar',
-            onChange: (url) => this.update({ authorAvatar: url }),
+            onChange: (value) => this.update({ authorAvatar: value }),
         });
         const logo = mediaInput({
             value: this.data.companyLogo,
             ariaLabel: 'Company logo',
-            onChange: (url) => this.update({ companyLogo: url }),
+            onChange: (value) => this.update({ companyLogo: value }),
         });
         this.cleanups.push(avatar.destroy, logo.destroy);
 
@@ -168,8 +171,9 @@ export default class TestimonialTool implements BlockTool {
             authorName: this.data.authorName.trim(),
             authorRole: this.data.authorRole?.trim() || undefined,
             authorCompany: this.data.authorCompany?.trim() || undefined,
-            authorAvatar: this.data.authorAvatar?.trim() || undefined,
-            companyLogo: this.data.companyLogo?.trim() || undefined,
+            // mediaInput already trims a typed address and gives undefined for an empty field
+            authorAvatar: this.data.authorAvatar || undefined,
+            companyLogo: this.data.companyLogo || undefined,
             rating: this.data.rating > 0 ? this.data.rating : undefined,
             variant: this.data.variant,
             sourceUrl: this.data.sourceUrl?.trim() || undefined,

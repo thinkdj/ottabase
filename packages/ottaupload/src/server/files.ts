@@ -15,10 +15,19 @@
 // only `/api/files/:id` reads it, after checking who is asking.
 //
 // Keys are `<appId>/<purpose>/<id>.<ext>`, the id 32 hex chars of a random UUID (the media row
-// has the same id), the extension the sniffed type's. Variants are `<appId>/<purpose>/<id>/<variant>.webp`.
-// A key is never written twice: replacing a file is a new key and a delete of the old one.
+// has the same id), the extension the sniffed type's. Variants are `<appId>/<purpose>/<id>/<variant>.webp`,
+// made only narrower than the original. The key format and widths live in `@ottabase/utils/media`,
+// which content renderers use to build URLs from a stored key. A key is never written twice:
+// replacing a file is a new key and a delete of the old one.
 // ============================================================
 
+import {
+    DEFAULT_PUBLIC_FILES_URL,
+    FILE_VARIANT_WIDTHS,
+    imageSources,
+    storedFileOf,
+    variantKey,
+} from '@ottabase/utils/media';
 import { RASTER_IMAGE_TYPES, imageSize, sniff } from './sniff';
 import { stripMetadata } from './strip';
 import {
@@ -37,11 +46,8 @@ import {
     type ImagesBindingLike,
 } from '../types';
 
-/** Where public files are served when `R2_PUBLIC_URL` is unset: the Worker's own fallback route. */
-export const DEFAULT_PUBLIC_FILES_URL = '/api/files/public';
 /** The route that serves files by id (private ones, and redirects for public ones). */
 export const FILES_ROUTE = '/api/files';
-export const FILE_VARIANT_WIDTHS: Record<FileVariant, number> = { thumb: 160, card: 640, full: 1600 };
 export const PUBLIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 export const PRIVATE_CACHE_CONTROL = 'private, no-store';
 const DEFAULT_QUOTA_MB = 1024;
@@ -71,16 +77,6 @@ export const newFileId = (): string => crypto.randomUUID().replace(/-/g, '');
 
 export const fileKey = (appId: string, purpose: string, id: string, ext: string): string =>
     `${appId}/${purpose}/${id}.${ext}`;
-
-export const variantKey = (appId: string, purpose: string, id: string, variant: FileVariant): string =>
-    `${appId}/${purpose}/${id}/${variant}.webp`;
-
-const KEY_ID_RE = /\/([0-9a-f]{32})(?:\.[a-z0-9]+|\/(?:thumb|card|full)\.webp)$/;
-
-/** The file id inside a storage key (an original's or a variant's), or null. */
-export function fileIdFromKey(key: string): string | null {
-    return KEY_ID_RE.exec(key)?.[1] ?? null;
-}
 
 /** A key that is safe to look up: plain segments, no traversal, no empty parts. */
 const SAFE_KEY_RE = /^[A-Za-z0-9_-][A-Za-z0-9._-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$/;
@@ -458,7 +454,11 @@ export function createFiles<Env>(options: FilesOptions<Env>): Files<Env> {
             url = `${FILES_ROUTE}/${record.id}`;
             variantUrl = (variant) => (record.variants?.[variant] ? `${url}/${variant}` : url);
         }
-        return { ...record, url, thumbnailUrl: variantUrl('thumb'), previewUrl: variantUrl('card') };
+        // Content embeds public images by key and builds the same srcset itself; this one is for
+        // the screens that show the record (the media library, its viewer).
+        const file = RASTER_IMAGE_TYPES.has(record.mimeType) ? storedFileOf(record) : null;
+        const srcSet = file ? (imageSources(file, publicBase(env)).srcSet ?? null) : null;
+        return { ...record, url, thumbnailUrl: variantUrl('thumb'), previewUrl: variantUrl('card'), srcSet };
     }
 
     /** Re-encode an image the code cannot strip (see REENCODED_TYPES) to WebP through the binding. */
@@ -499,9 +499,9 @@ export function createFiles<Env>(options: FilesOptions<Env>): Files<Env> {
         env: Env,
         bucket: FilesBucket,
         input: {
-            appId: string;
+            /** The original's key: each variant sits beside it. */
+            key: string;
             purpose: FilePurpose;
-            id: string;
             bytes: Uint8Array;
             width: number | null;
             height: number | null;
@@ -509,19 +509,22 @@ export function createFiles<Env>(options: FilesOptions<Env>): Files<Env> {
         written: string[],
     ): Promise<FileRecord['variants']> {
         const images = options.images?.(env);
-        if (!images || !input.purpose.variants?.length) return null;
+        // Without a known width there is no telling which variants would be smaller.
+        if (!images || !input.purpose.variants?.length || !input.width) return null;
         const out: Partial<Record<FileVariant, FileVariantInfo>> = {};
         for (const variant of input.purpose.variants) {
             const target = FILE_VARIANT_WIDTHS[variant];
+            // A variant as wide as the original or wider would be the original again, re-encoded.
+            if (target >= input.width) continue;
             try {
                 const stream = new Response(input.bytes as BodyInit).body as ReadableStream<Uint8Array>;
-                // scale-down: never upscaled. The Images binding applies the EXIF orientation.
+                // The Images binding applies the EXIF orientation.
                 const result = await images
                     .input(stream)
                     .transform({ width: target, fit: 'scale-down' })
                     .output({ format: 'image/webp', quality: VARIANT_QUALITY });
                 const bytes = new Uint8Array(await result.response().arrayBuffer());
-                const key = variantKey(input.appId, input.purpose.purpose, input.id, variant);
+                const key = variantKey(input.key, variant);
                 await bucket.put(key, bytes, {
                     httpMetadata: {
                         contentType: 'image/webp',
@@ -531,9 +534,8 @@ export function createFiles<Env>(options: FilesOptions<Env>): Files<Env> {
                     },
                 });
                 written.push(key);
-                const width = input.width ? Math.min(target, input.width) : target;
-                const height = input.width && input.height ? Math.round((input.height * width) / input.width) : 0;
-                out[variant] = { key, width, height, size: bytes.byteLength };
+                const height = input.height ? Math.round((input.height * target) / input.width) : 0;
+                out[variant] = { key, width: target, height, size: bytes.byteLength };
             } catch (error) {
                 // A variant is an optimisation: without it the URL falls back to the original.
                 console.warn(
@@ -640,12 +642,7 @@ export function createFiles<Env>(options: FilesOptions<Env>): Files<Env> {
                 });
                 written.push(key);
                 const variants = RASTER_IMAGE_TYPES.has(mime)
-                    ? await renderVariants(
-                          env,
-                          bucket,
-                          { appId: owner.appId, purpose, id, bytes, width, height },
-                          written,
-                      )
+                    ? await renderVariants(env, bucket, { key, purpose, bytes, width, height }, written)
                     : null;
                 const now = Date.now();
                 const record: FileRecord = {

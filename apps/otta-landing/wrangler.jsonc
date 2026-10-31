@@ -57,6 +57,8 @@
     "vars": {
         // Which app's landing content to show (otta-web's config.appId)
         "APP_ID": "otta-web",
+        // R2_PUBLIC_URL: base URL of the public files bucket, set to the same value as otta-web's
+        // (its custom domain) in any environment that has one. Unset: app/api/files/public serves them.
         "ENVIRONMENT": "development",
         "NODE_ENV": "production",
     },

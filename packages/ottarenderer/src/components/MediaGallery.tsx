@@ -1,26 +1,20 @@
 import { type MediaKind, type MediaViewerItem } from '@ottabase/medialibrary';
 import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
-import { safeUrl } from '../inline';
+import type { FileSource } from '@ottabase/utils/media';
+import { IMAGE_SIZES, safeSource, sourceId, viewerUrls } from '../media';
 import type { BlockRenderer } from '../types';
-import React from 'react';
 
 export type MediaGalleryLayoutPreset = 'grid-balanced' | 'grid-featured' | 'masonry' | 'filmstrip' | 'mosaic';
 
 export interface MediaGalleryItem {
     id?: string;
-    url: string;
+    /** A stored file (its size reserves layout space), or an outside address */
+    media: FileSource;
     title?: string;
     caption?: string;
-    mediaId?: string;
+    alt?: string;
     mimeType?: string;
     mediaKind?: MediaKind;
-    thumbnailUrl?: string;
-    previewUrl?: string;
-    altText?: string;
-    /** Intrinsic width, used by the renderer to reserve layout space (CLS=0) */
-    width?: number;
-    /** Intrinsic height, used by the renderer to reserve layout space (CLS=0) */
-    height?: number;
 }
 
 export interface MediaGalleryData {
@@ -30,27 +24,23 @@ export interface MediaGalleryData {
     layout?: MediaGalleryLayoutPreset;
 }
 
-const normalizeItem = (item: MediaGalleryItem): MediaViewerItem => {
-    const title = item.title || item.url.substring(item.url.lastIndexOf('/') + 1);
+/** A gallery item as the viewer takes it, or null when its source is not safe to show. */
+const normalizeItem = (item: MediaGalleryItem): MediaViewerItem | null => {
+    const source = safeSource(item?.media);
+    if (!source) return null;
+    const urls = viewerUrls(source);
+    const title = item.title || urls.url.substring(urls.url.lastIndexOf('/') + 1);
 
     return {
-        id: item.mediaId || item.id || item.url,
-        url: safeUrl(item.url) ?? '',
-        previewUrl: safeUrl(item.previewUrl) ?? safeUrl(item.url) ?? '',
-        thumbnailUrl: safeUrl(item.thumbnailUrl) ?? safeUrl(item.url) ?? '',
+        id: item.id || sourceId(source),
+        ...urls,
         title,
         originalName: title,
-        altText: item.altText || title,
+        altText: item.alt || title,
         caption: item.caption || null,
         mimeType: item.mimeType || null,
         mediaKind: item.mediaKind || 'other',
-        width: item.width ?? null,
-        height: item.height ?? null,
     };
-};
-
-const getGalleryItems = (data: MediaGalleryData): MediaGalleryItem[] => {
-    return (data.items || []).filter((item) => safeUrl(item?.url) !== null);
 };
 
 const layoutClassByPreset: Record<MediaGalleryLayoutPreset, string> = {
@@ -64,7 +54,7 @@ const layoutClassByPreset: Record<MediaGalleryLayoutPreset, string> = {
 };
 
 interface MediaGalleryItemCardProps {
-    item: MediaGalleryItem;
+    item: MediaViewerItem;
     index: number;
     layout: MediaGalleryLayoutPreset;
 }
@@ -105,10 +95,9 @@ function getLayoutItemClass(layout: MediaGalleryLayoutPreset, index: number): st
 
 function MediaGalleryItemCard({ item, index, layout }: MediaGalleryItemCardProps) {
     const isMasonry = layout === 'masonry';
-    const normalized = React.useMemo(() => normalizeItem(item), [item]);
     const { open: openLightbox, isEnabled: hasLightbox } = useMediaLightboxRegistration(
-        `media-gallery-${normalized.id || index}`,
-        normalized,
+        `media-gallery-${item.id || index}`,
+        item,
     );
     // Masonry items: break-inside-avoid + mb-3 for column gap; no fixed aspect ratio.
     // All other layouts: aspect class from getLayoutItemClass.
@@ -135,8 +124,9 @@ function MediaGalleryItemCard({ item, index, layout }: MediaGalleryItemCardProps
             }}
         >
             <MediaPreview
-                item={normalized}
+                item={item}
                 mode="tile"
+                sizes={IMAGE_SIZES.galleryTile}
                 className={
                     isMasonry
                         ? // Natural image height: w-full, h-auto so images determine card height
@@ -161,7 +151,7 @@ const MediaGallery: BlockRenderer<MediaGalleryData> = ({ data, className = '' })
         return <></>;
     }
 
-    const items = getGalleryItems(data);
+    const items = (data.items || []).map(normalizeItem).filter((item): item is MediaViewerItem => item !== null);
     if (items.length === 0) {
         return <></>;
     }
@@ -185,12 +175,7 @@ const MediaGallery: BlockRenderer<MediaGalleryData> = ({ data, className = '' })
             <div className={isFilmstrip ? 'relative' : undefined}>
                 <div className={containerClass}>
                     {items.map((item, index) => (
-                        <MediaGalleryItemCard
-                            key={item.mediaId || item.id || item.url}
-                            item={item}
-                            index={index}
-                            layout={layout}
-                        />
+                        <MediaGalleryItemCard key={`${item.id}-${index}`} item={item} index={index} layout={layout} />
                     ))}
                 </div>
 

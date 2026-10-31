@@ -1,18 +1,17 @@
 import type { API, BlockTool } from '@editorjs/editorjs';
+import type { FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import { field, mediaInput, row, stack, textInput, type MediaSelection } from '../../ui/kit';
 import { BlockShell } from '../../ui/shell';
 
 /** Editor.js block data for a non-image media embed */
 export interface MediaEmbedData {
-    url: string;
+    /** A stored file, or an outside address */
+    media?: FileSource;
     title?: string;
     caption?: string;
-    mediaId?: string;
     mimeType?: string;
     mediaKind?: string;
-    thumbnailUrl?: string;
-    previewUrl?: string;
 }
 
 /**
@@ -34,32 +33,29 @@ export default class MediaEmbedTool implements BlockTool {
 
     constructor({ data }: { data: Partial<MediaEmbedData>; api?: API }) {
         this.data = {
-            url: data?.url || '',
+            media: data?.media || undefined,
             title: data?.title || '',
             caption: data?.caption || '',
-            mediaId: data?.mediaId || '',
             mimeType: data?.mimeType || '',
             mediaKind: data?.mediaKind || 'other',
-            thumbnailUrl: data?.thumbnailUrl || '',
-            previewUrl: data?.previewUrl || '',
         };
     }
 
     render(): HTMLElement {
         const shell = new BlockShell({
             type: 'mediaEmbed',
-            hasContent: Boolean(this.data.url),
+            hasContent: Boolean(this.data.media),
             summary: this.summary(),
         });
         this.shell = shell;
 
         const media = mediaInput({
-            value: this.data.url,
+            value: this.data.media,
             ariaLabel: 'Media file',
             placeholder: 'Choose a video, audio file or document',
             accept: ['video', 'audio', 'document', 'archive', 'other'],
             noThumb: true,
-            onChange: (url, picked) => this.setMedia(url, picked),
+            onChange: (value, picked) => this.setMedia(value, picked),
         });
         this.unsubscribe = media.destroy;
 
@@ -87,15 +83,12 @@ export default class MediaEmbedTool implements BlockTool {
         return shell.element;
     }
 
-    private setMedia(url: string, picked?: MediaSelection) {
+    private setMedia(media: FileSource | undefined, picked?: MediaSelection) {
         this.update({
-            url,
-            mediaId: picked?.mediaId || picked?.id || this.data.mediaId,
+            media,
             mimeType: picked?.mimeType || this.data.mimeType,
             mediaKind: picked?.mediaKind || this.data.mediaKind || 'other',
-            thumbnailUrl: picked?.thumbnailUrl || this.data.thumbnailUrl,
-            previewUrl: picked?.previewUrl || this.data.previewUrl,
-            title: picked ? picked.title || picked.originalName || this.data.title : this.data.title,
+            title: picked ? picked.title || picked.name || this.data.title : this.data.title,
         });
         if (picked) this.shell?.setMode('preview');
     }
@@ -107,7 +100,7 @@ export default class MediaEmbedTool implements BlockTool {
     }
 
     private summary(): string {
-        if (!this.data.url) return 'no file yet';
+        if (!this.data.media) return 'no file yet';
         return this.data.mediaKind && this.data.mediaKind !== 'other' ? this.data.mediaKind : 'file';
     }
 

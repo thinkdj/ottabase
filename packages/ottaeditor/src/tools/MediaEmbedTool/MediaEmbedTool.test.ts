@@ -26,43 +26,36 @@ describe('MediaEmbedTool', () => {
 
     it('starts with default empty values and keeps provided data', () => {
         expect(new MediaEmbedTool({ data: {} }).save()).toEqual({
-            url: '',
             title: '',
             caption: '',
-            mediaId: '',
             mimeType: '',
             mediaKind: 'other',
-            thumbnailUrl: '',
-            previewUrl: '',
         });
         const data: MediaEmbedData = {
-            url: 'https://cdn.example.com/track.mp3',
+            media: { key: 'app/media/0123456789abcdef0123456789abcdef.mp3' },
             title: 'My Track',
             caption: 'Listen now',
-            mediaId: 'media-99',
             mimeType: 'audio/mpeg',
             mediaKind: 'audio',
-            thumbnailUrl: 'https://cdn.example.com/track-thumb.jpg',
-            previewUrl: 'https://cdn.example.com/track-preview.mp3',
         };
         expect(new MediaEmbedTool({ data }).save()).toEqual(data);
     });
 
     it('opens in edit when empty, preview when it has a file', () => {
         expect(mount().element.dataset.mode).toBe('edit');
-        expect(mount({ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }).element.dataset.mode).toBe(
+        expect(mount({ media: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }).element.dataset.mode).toBe(
             'preview',
         );
     });
 
     it('title and caption fields flow into save()', () => {
-        const { tool } = mount({ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' });
+        const { tool } = mount({ media: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' });
         fireEvent.input(screen.getByLabelText('Title'), { target: { value: 'Demo video' } });
         fireEvent.input(screen.getByLabelText('Caption'), { target: { value: 'A quick demo' } });
         expect(tool.save()).toMatchObject({ title: 'Demo video', caption: 'A quick demo', mediaKind: 'video' });
     });
 
-    it('a library pick fills url, kind and metadata', () => {
+    it('a library pick stores its file, kind and metadata', () => {
         const { tool, element } = mount();
         let field: string | undefined;
         window.addEventListener(
@@ -80,7 +73,7 @@ describe('MediaEmbedTool', () => {
                     field,
                     media: {
                         url: 'https://cdn.example.com/guide.pdf',
-                        mediaId: 'm7',
+                        file: { key: 'app/media/0123456789abcdef0123456789abcdef.pdf' },
                         mimeType: 'application/pdf',
                         mediaKind: 'document',
                         title: 'User Guide',
@@ -89,8 +82,7 @@ describe('MediaEmbedTool', () => {
             }),
         );
         expect(tool.save()).toMatchObject({
-            url: 'https://cdn.example.com/guide.pdf',
-            mediaId: 'm7',
+            media: { key: 'app/media/0123456789abcdef0123456789abcdef.pdf' },
             mimeType: 'application/pdf',
             mediaKind: 'document',
             title: 'User Guide',

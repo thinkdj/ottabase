@@ -17,7 +17,7 @@ vi.mock('@ottabase/medialibrary/react', () => ({
 
 describe('MediaEmbed Renderer', () => {
     describe('Empty / missing data', () => {
-        it('should render nothing when data has no url', () => {
+        it('should render nothing when data has no media', () => {
             const { container } = render(<MediaEmbed data={{} as any} />);
             expect(container.innerHTML).toBe('');
         });
@@ -33,7 +33,7 @@ describe('MediaEmbed Renderer', () => {
             render(
                 <MediaEmbed
                     data={{
-                        url: 'https://cdn.example.com/clip.mp4',
+                        media: 'https://cdn.example.com/clip.mp4',
                         title: 'Demo Video',
                         mediaKind: 'video',
                         mimeType: 'video/mp4',
@@ -51,7 +51,7 @@ describe('MediaEmbed Renderer', () => {
             render(
                 <MediaEmbed
                     data={{
-                        url: 'https://cdn.example.com/song.mp3',
+                        media: 'https://cdn.example.com/song.mp3',
                         title: 'My Song',
                         mediaKind: 'audio',
                         mimeType: 'audio/mpeg',
@@ -64,7 +64,7 @@ describe('MediaEmbed Renderer', () => {
         });
 
         it('should default mediaKind to "other" when not provided', () => {
-            render(<MediaEmbed data={{ url: 'https://cdn.example.com/file.bin' }} />);
+            render(<MediaEmbed data={{ media: 'https://cdn.example.com/file.bin' }} />);
 
             const preview = screen.getByTestId('media-preview');
             expect(preview.getAttribute('data-kind')).toBe('other');
@@ -76,7 +76,7 @@ describe('MediaEmbed Renderer', () => {
             const { container } = render(
                 <MediaEmbed
                     data={{
-                        url: 'https://cdn.example.com/clip.mp4',
+                        media: 'https://cdn.example.com/clip.mp4',
                         caption: 'A short clip',
                         mediaKind: 'video',
                     }}
@@ -90,7 +90,7 @@ describe('MediaEmbed Renderer', () => {
 
         it('should not render a figcaption when caption is absent', () => {
             const { container } = render(
-                <MediaEmbed data={{ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }} />,
+                <MediaEmbed data={{ media: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }} />,
             );
 
             expect(container.querySelector('figcaption')).toBeNull();
@@ -100,7 +100,7 @@ describe('MediaEmbed Renderer', () => {
     describe('CSS classes', () => {
         it('should have border on the figure element', () => {
             const { container } = render(
-                <MediaEmbed data={{ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }} />,
+                <MediaEmbed data={{ media: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }} />,
             );
 
             const figure = container.querySelector('figure');
@@ -110,7 +110,7 @@ describe('MediaEmbed Renderer', () => {
         it('should pass through className prop', () => {
             const { container } = render(
                 <MediaEmbed
-                    data={{ url: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }}
+                    data={{ media: 'https://cdn.example.com/clip.mp4', mediaKind: 'video' }}
                     className="custom-class"
                 />,
             );

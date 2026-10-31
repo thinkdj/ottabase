@@ -1,5 +1,7 @@
-import { sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
-import { safeUrl, useLinkRel } from '../inline';
+import { safeImageProps, sanitizeJsonForScript, sanitizeUrl } from '@ottabase/utils/sanitize';
+import type { FileSource } from '@ottabase/utils/media';
+import { useLinkRel } from '../inline';
+import { imageUrl } from '../media';
 import type { BlockRenderer } from '../types';
 
 export type TestimonialVariant = 'card' | 'minimal' | 'featured' | 'quote-bubble' | 'side-by-side';
@@ -9,8 +11,10 @@ export interface TestimonialData {
     authorName?: string;
     authorRole?: string;
     authorCompany?: string;
-    authorAvatar?: string;
-    companyLogo?: string;
+    /** A stored file, or an outside address */
+    authorAvatar?: FileSource;
+    /** A stored file, or an outside address */
+    companyLogo?: FileSource;
     rating?: number;
     variant?: TestimonialVariant;
     /** URL to link the author name to */
@@ -122,8 +126,9 @@ const Testimonial: BlockRenderer<TestimonialData> = ({ data, className = '' }) =
     const authorName = data?.authorName?.trim() ?? '';
     const authorRole = data?.authorRole?.trim() || undefined;
     const authorCompany = data?.authorCompany?.trim() || undefined;
-    const authorAvatar = safeUrl(data?.authorAvatar) ?? undefined;
-    const companyLogo = safeUrl(data?.companyLogo) ?? undefined;
+    // Small fixed slots: the avatar is at most 3.5rem (the thumb rendition), the logo 7.5rem wide.
+    const authorAvatar = imageUrl(data?.authorAvatar, 'thumb') || undefined;
+    const companyLogo = safeImageProps(data?.companyLogo, '7.5rem');
     const rating = typeof data?.rating === 'number' && data.rating > 0 ? data.rating : undefined;
     const variant = data?.variant ?? 'card';
     const sourceUrl = data?.sourceUrl?.trim() || undefined;
@@ -182,7 +187,7 @@ const Testimonial: BlockRenderer<TestimonialData> = ({ data, className = '' }) =
                         />
                         {companyLogo && (
                             <img
-                                src={companyLogo}
+                                {...companyLogo}
                                 alt={authorCompany ? `${authorCompany} logo` : 'Company logo'}
                                 className="otta-testimonial-company-logo"
                                 loading="lazy"
@@ -238,7 +243,7 @@ const Testimonial: BlockRenderer<TestimonialData> = ({ data, className = '' }) =
                             {rating && <StarRating rating={rating} />}
                             {companyLogo && (
                                 <img
-                                    src={companyLogo}
+                                    {...companyLogo}
                                     alt={authorCompany ? `${authorCompany} logo` : 'Company logo'}
                                     className="otta-testimonial-company-logo"
                                     loading="lazy"
@@ -323,7 +328,7 @@ const Testimonial: BlockRenderer<TestimonialData> = ({ data, className = '' }) =
                         </blockquote>
                         {companyLogo && (
                             <img
-                                src={companyLogo}
+                                {...companyLogo}
                                 alt={authorCompany ? `${authorCompany} logo` : 'Company logo'}
                                 className="otta-testimonial-company-logo"
                                 loading="lazy"

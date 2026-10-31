@@ -5,7 +5,7 @@ import { DEFAULT_PLUGIN_NAMES, defaultPluginsMap } from '../../defaultPlugins';
 import BeforeAfterTool, { type BeforeAfterData, type BeforeAfterToolConfig } from './BeforeAfterTool';
 
 const tools: BeforeAfterTool[] = [];
-const URLS = { beforeUrl: 'https://cdn.example.com/before.jpg', afterUrl: 'https://cdn.example.com/after.jpg' };
+const URLS = { before: 'https://cdn.example.com/before.jpg', after: 'https://cdn.example.com/after.jpg' };
 
 function mount(data?: Partial<BeforeAfterData>, config?: BeforeAfterToolConfig) {
     const tool = new BeforeAfterTool({ api: {} as API, data, config });
@@ -25,8 +25,6 @@ describe('BeforeAfterTool', () => {
         expect(defaultPluginsMap.get(DEFAULT_PLUGIN_NAMES.BEFORE_AFTER)?.tool).toBe(BeforeAfterTool);
         expect(BeforeAfterTool.toolbox.title).toBe('Before / after');
         expect(mount().tool.save()).toEqual({
-            beforeUrl: '',
-            afterUrl: '',
             beforeLabel: 'Before',
             afterLabel: 'After',
             orientation: 'horizontal',
@@ -51,14 +49,14 @@ describe('BeforeAfterTool', () => {
     });
 
     it('opens in edit mode without both images, in preview with them', () => {
-        expect(mount({ beforeUrl: URLS.beforeUrl }).element.dataset.mode).toBe('edit');
+        expect(mount({ before: URLS.before }).element.dataset.mode).toBe('edit');
         expect(mount(URLS).element.dataset.mode).toBe('preview');
     });
 
     it('edits reach save(): images, labels, orientation, start position, caption, sizing', () => {
         const { tool, element } = mount();
-        fireEvent.input(screen.getByLabelText('Before image'), { target: { value: URLS.beforeUrl } });
-        fireEvent.input(screen.getByLabelText('After image'), { target: { value: URLS.afterUrl } });
+        fireEvent.input(screen.getByLabelText('Before image'), { target: { value: URLS.before } });
+        fireEvent.input(screen.getByLabelText('After image'), { target: { value: URLS.after } });
         fireEvent.input(screen.getByLabelText('Before label'), { target: { value: '' } });
         fireEvent.input(screen.getByLabelText('After label'), { target: { value: 'Now' } });
         fireEvent.click(screen.getByRole('radio', { name: 'Vertical' }));
@@ -132,6 +130,16 @@ describe('BeforeAfterTool', () => {
     it('validates that at least one image is set', () => {
         const { tool } = mount();
         expect(tool.validate(tool.save())).toBe(false);
-        expect(tool.validate({ ...tool.save(), afterUrl: URLS.afterUrl })).toBe(true);
+        expect(tool.validate({ ...tool.save(), after: URLS.after })).toBe(true);
+    });
+
+    it('shows a stored image on the stage through its full rendition', () => {
+        const before = { key: 'app/media/0123456789abcdef0123456789abcdef.jpg', variants: ['thumb', 'full'] as const };
+        const { element } = mount({ before: { ...before, variants: [...before.variants] }, after: URLS.after });
+        fireEvent.click(screen.getByRole('radio', { name: 'Edit' }));
+        expect(element.querySelector('.oe-compare__before img')?.getAttribute('src')).toBe(
+            '/api/files/public/app/media/0123456789abcdef0123456789abcdef/full.webp',
+        );
+        expect(element.querySelector('.oe-compare__after')?.getAttribute('src')).toBe(URLS.after);
     });
 });

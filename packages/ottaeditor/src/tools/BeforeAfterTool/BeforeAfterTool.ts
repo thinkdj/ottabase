@@ -1,4 +1,5 @@
 import type { API, BlockTool } from '@editorjs/editorjs';
+import { fileUrl, type FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import {
     field,
@@ -19,10 +20,10 @@ import './BeforeAfterTool.css';
 export type { ImagePosition };
 
 export interface BeforeAfterData {
-    /** URL for the "before" image (left / top) */
-    beforeUrl: string;
-    /** URL for the "after" image (right / bottom) */
-    afterUrl: string;
+    /** The "before" image (left / top): a stored file, or an outside address */
+    before?: FileSource;
+    /** The "after" image (right / bottom) */
+    after?: FileSource;
     /** Optional label shown on the before side (empty = don't render) */
     beforeLabel: string;
     /** Optional label shown on the after side (empty = don't render) */
@@ -48,8 +49,6 @@ export interface BeforeAfterToolConfig {
 }
 
 const DEFAULT_DATA: BeforeAfterData = {
-    beforeUrl: '',
-    afterUrl: '',
     beforeLabel: 'Before',
     afterLabel: 'After',
     orientation: 'horizontal',
@@ -107,20 +106,20 @@ export default class BeforeAfterTool implements BlockTool {
     render(): HTMLElement {
         const shell = new BlockShell({
             type: 'beforeAfter',
-            hasContent: Boolean(this.data.beforeUrl && this.data.afterUrl),
+            hasContent: Boolean(this.data.before && this.data.after),
             summary: this.summary(),
         });
         this.shell = shell;
 
         const before = mediaInput({
-            value: this.data.beforeUrl,
+            value: this.data.before,
             ariaLabel: 'Before image',
-            onChange: (url) => this.set({ beforeUrl: url }),
+            onChange: (value) => this.set({ before: value }),
         });
         const after = mediaInput({
-            value: this.data.afterUrl,
+            value: this.data.after,
             ariaLabel: 'After image',
-            onChange: (url) => this.set({ afterUrl: url }),
+            onChange: (value) => this.set({ after: value }),
         });
         this.cleanups.push(before.destroy, after.destroy);
 
@@ -203,7 +202,7 @@ export default class BeforeAfterTool implements BlockTool {
     }
 
     private summary() {
-        const sides = [this.data.beforeUrl && 'before', this.data.afterUrl && 'after'].filter(Boolean).length;
+        const sides = [this.data.before, this.data.after].filter(Boolean).length;
         return sides === 2 ? `${this.data.orientation} · ${this.data.sliderPosition}%` : `${sides} of 2 images`;
     }
 
@@ -213,7 +212,7 @@ export default class BeforeAfterTool implements BlockTool {
         if (!this.stageHost) return;
         this.stageHost.innerHTML = '';
         this.stage = null;
-        if (!this.data.beforeUrl && !this.data.afterUrl) return;
+        if (!this.data.before && !this.data.after) return;
 
         const vertical = this.data.orientation === 'vertical';
         const cover = this.data.imageFit === 'cover';
@@ -230,19 +229,20 @@ export default class BeforeAfterTool implements BlockTool {
         if (this.data.height) stage.style.height = this.data.height;
         else if (cover) stage.style.height = '300px';
 
-        if (this.data.afterUrl) {
+        // The stage spans the block: the full rendition, never the unoptimised original
+        if (this.data.after) {
             const img = h('img', {
                 className: 'oe-compare__after',
-                src: this.data.afterUrl,
+                src: fileUrl(this.data.after, 'full'),
                 alt: this.data.afterLabel || 'After',
                 draggable: false,
             });
             if (cover) img.style.objectPosition = positionToCSS(this.data.afterPosition);
             stage.append(img);
         }
-        if (this.data.beforeUrl) {
+        if (this.data.before) {
             const img = h('img', {
-                src: this.data.beforeUrl,
+                src: fileUrl(this.data.before, 'full'),
                 alt: this.data.beforeLabel || 'Before',
                 draggable: false,
             });
@@ -320,7 +320,7 @@ export default class BeforeAfterTool implements BlockTool {
     }
 
     validate(savedData: BeforeAfterData): boolean {
-        return !!(savedData.beforeUrl || savedData.afterUrl);
+        return !!(savedData.before || savedData.after);
     }
 
     destroy(): void {

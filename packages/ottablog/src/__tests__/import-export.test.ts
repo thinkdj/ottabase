@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { inlineMarkdown, markdownToEditorJs, parseMarkdownPost, readBlogImportFile } from '../import-export';
+import { configureMedia } from '@ottabase/utils/media';
+import {
+    exportFileUrls,
+    inlineMarkdown,
+    markdownToEditorJs,
+    parseMarkdownPost,
+    readBlogImportFile,
+} from '../import-export';
 
 const blocksOf = (markdown: string) => markdownToEditorJs(markdown).blocks.map(({ type, data }) => ({ type, data }));
 
@@ -34,7 +41,7 @@ describe('markdownToEditorJs', () => {
             { type: 'code', data: { code: 'const a = 1 * 2;', language: 'ts' } },
             { type: 'quote', data: { text: 'Quoted wisdom', caption: '' } },
             { type: 'delimiter', data: {} },
-            { type: 'image', data: { url: 'https://img.example/cat.png', alt: 'A cat', caption: 'Sleepy' } },
+            { type: 'image', data: { image: 'https://img.example/cat.png', alt: 'A cat', caption: 'Sleepy' } },
             {
                 type: 'list',
                 data: {
@@ -122,9 +129,16 @@ describe('parseMarkdownPost', () => {
             publishedAt: Date.parse('2019-05-12'),
             tags: ['travel', 'japan'],
             categories: ['Journal'],
-            heroImage: { url: 'https://img.example/kyoto.jpg', alt: 'Kyoto in the rain' },
+            heroImage: { image: 'https://img.example/kyoto.jpg', alt: 'Kyoto in the rain' },
         });
         expect(post.content?.blocks).toEqual([{ type: 'paragraph', data: { text: 'Body text.' } }]);
+    });
+
+    it('drops a cover image that only resolves next to the Markdown file', () => {
+        const withCover = (cover: string) => parseMarkdownPost(`---\ntitle: T\ncover_image: ${cover}\n---\nBody.`);
+        expect(withCover('images/cover.jpg').heroImage).toBeNull();
+        expect(withCover('//cdn.example/cover.jpg').heroImage).toBeNull();
+        expect(withCover('/media/cover.jpg').heroImage).toEqual({ image: '/media/cover.jpg', alt: 'T' });
     });
 
     it('takes the title from a leading heading and slug/date from a Jekyll filename', () => {
@@ -152,5 +166,51 @@ describe('readBlogImportFile', () => {
         expect(() => readBlogImportFile('{"posts":[]}', 'other.json')).toThrow(/not an ottablog export/);
         expect(() => readBlogImportFile('nope', 'bad.json')).toThrow(/not valid JSON/);
         expect(() => readBlogImportFile('x', 'notes.txt')).toThrow(/only .json exports and .md files/);
+    });
+});
+
+describe('exportFileUrls', () => {
+    const key = `app/media/${'e'.repeat(32)}.jpg`;
+
+    it('swaps every stored file, however deep, for its original at an absolute URL', () => {
+        configureMedia({ publicUrl: 'https://files.example' });
+        try {
+            const post = {
+                heroImage: { image: { key, variants: ['thumb', 'card', 'full'] }, alt: 'Rain' },
+                photoAlbum: [
+                    { id: 'a', image: { key, width: 1800 } },
+                    { id: 'b', image: '/outside.jpg' },
+                ],
+                content: { blocks: [{ type: 'mediaGallery', data: { items: [{ media: { key }, title: 'One' }] } }] },
+                title: 'Kyoto',
+                readingTimeMinutes: 3,
+            };
+            expect(exportFileUrls(post, 'https://blog.example')).toEqual({
+                heroImage: { image: `https://files.example/${key}`, alt: 'Rain' },
+                photoAlbum: [
+                    { id: 'a', image: `https://files.example/${key}` },
+                    // An outside address stays exactly as typed: import keeps strings too.
+                    { id: 'b', image: '/outside.jpg' },
+                ],
+                content: {
+                    blocks: [
+                        {
+                            type: 'mediaGallery',
+                            data: { items: [{ media: `https://files.example/${key}`, title: 'One' }] },
+                        },
+                    ],
+                },
+                title: 'Kyoto',
+                readingTimeMinutes: 3,
+            });
+        } finally {
+            configureMedia({});
+        }
+    });
+
+    it('makes an app-relative files base absolute against the export origin', () => {
+        expect(exportFileUrls({ image: { key } }, 'https://blog.example')).toEqual({
+            image: `https://blog.example/api/files/public/${key}`,
+        });
     });
 });

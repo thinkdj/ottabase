@@ -5,6 +5,8 @@
 // Used by renderers (in this package) and by brand-engine (for persistence).
 // ---------------------------------------------------------------------------
 
+import type { FileSource } from '@ottabase/utils/media';
+
 /** Menu item shape (API + renderer). Flat list; build tree via parentId. */
 export interface MenuItemDto {
     id: string;
@@ -16,7 +18,8 @@ export interface MenuItemDto {
     newTab?: boolean;
     authRequired?: boolean;
     description?: string | null;
-    image?: string | null;
+    /** A stored file (rendered as its thumb) or an outside address. */
+    image?: FileSource | null;
     tooltip?: string | null;
     sortOrder?: number;
 }

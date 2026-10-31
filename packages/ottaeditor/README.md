@@ -111,7 +111,40 @@ inline tools wrap text in `<span>` and share one sanitize rule (`SHARED_SPAN_SAN
 rules across inline tools and two different ones would overwrite each other. Markdown export writes spoilers as
 `||text||`.
 
-Saved data shapes are unchanged from earlier versions; the renderer reads them as they are.
+### Images
+
+Every image a block stores is a `FileSource` from `@ottabase/utils/media`. An upload or a library pick stores its
+`StoredFile` (`{ key, width?, height?, variants? }`); a typed address stores the trimmed string. Content never keeps a
+stored file's URL: the renderer builds it, with `srcSet` over the renditions, from the base set by `configureMedia`. A
+private file (a pick whose `file` is `null`, an upload that is not public) is refused with a short status line, because
+content cannot embed it.
+
+| Block           | Stores                                                             |
+| --------------- | ------------------------------------------------------------------ |
+| `image`         | `image`, plus caption, alt, link and the display options           |
+| `beforeAfter`   | `before`, `after`                                                  |
+| `imageHotspots` | `image`                                                            |
+| `mediaEmbed`    | `media`, `mimeType`, `mediaKind`                                   |
+| `mediaGallery`  | `items[]` of `{ media, title, caption, alt, mimeType, mediaKind }` |
+| `review`        | `image`                                                            |
+| `testimonial`   | `authorAvatar`, `companyLogo`                                      |
+
+```ts
+// What an image block saves after a library pick
+const block = {
+    type: 'image',
+    data: {
+        image: {
+            key: 'app/media/0123456789abcdef0123456789abcdef.jpg',
+            width: 2400,
+            height: 1600,
+            variants: ['thumb', 'card', 'full'],
+        },
+        alt: 'The harbour at dawn',
+        caption: '',
+    },
+};
+```
 
 ## Writing your own block
 
@@ -155,7 +188,8 @@ export default class NoteTool implements BlockTool {
 
 The kit (`kit.*`): `field`, `row`, `stack`, `sectionLabel`, `textInput`, `textarea`, `select`, `segment`, `toggle`,
 `checkbox`, `range`, `stars`, `button`, `iconButton`, `addButton`, `positionGrid`, `confirmInline`, `mediaInput` (URL
-input with a library button; the host answers `media-library-open` events, see `MediaLibraryPickerBridge` in otta-web),
+input with a library button whose value is a `FileSource`: a pick gives its `file`, a typed address the trimmed string;
+the host answers `media-library-open` events with a `MediaSelection`, see `MediaLibraryPickerBridge` in otta-web),
 `sortableList` (drag handle, arrows, remove with inline confirmation), plus `h` and `iconEl`. Register a block type in
 your own `BLOCKS`-style metadata if you want it in the palette; `blockMeta(type)` is what the shell reads.
 
@@ -169,7 +203,8 @@ Everything reads the design tokens (`--background`, `--primary`, `--radius`, `--
 ## Export
 
 `exportToJSON(data)` pretty-prints Editor.js output; `exportToMarkdown(data)` converts every block type it knows,
-keeping inline bold, italic, links, code and marks.
+keeping inline bold, italic, links, code and marks. A stored image exports as its original's URL (`fileUrl`, absolute
+where the configured base is), never a WebP rendition, so the Markdown works anywhere.
 
 ## Testing
 

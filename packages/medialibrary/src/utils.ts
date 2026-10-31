@@ -1,3 +1,4 @@
+import { storedFileOf } from '@ottabase/utils/media';
 import type { MediaKind, MediaLibraryItemLike, MediaSelectionPayload, MediaViewerItem } from './types';
 
 const IMAGE_PREFIX = 'image/';
@@ -113,6 +114,7 @@ export function toMediaViewerItem(media: Partial<MediaLibraryItemLike>): MediaVi
         url: media.url || '',
         thumbnailUrl: media.thumbnailUrl ?? media.url ?? null,
         previewUrl: media.previewUrl ?? media.url ?? null,
+        srcSet: media.srcSet ?? null,
         title: media.title ?? null,
         originalName: media.originalName ?? null,
         altText: media.altText ?? null,
@@ -135,6 +137,7 @@ export function toMediaSelectionPayload(media: Partial<MediaLibraryItemLike>): M
 
     return {
         mediaId: media.id,
+        file: media.storageKey ? storedFileOf({ ...media, storageKey: media.storageKey }) : null,
         url: media.url || '',
         name: media.originalName || title,
         title: media.title ?? title,

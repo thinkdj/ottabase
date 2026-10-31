@@ -1789,6 +1789,10 @@ importers:
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.28)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.7.0)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.31))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/medialibrary:
+    dependencies:
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@tabler/icons-react':
         specifier: 'catalog:'
@@ -2111,6 +2115,9 @@ importers:
       '@ottabase/ottaupload':
         specifier: workspace:*
         version: link:../ottaupload
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -2209,6 +2216,9 @@ importers:
 
   packages/ottamenu:
     dependencies:
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.147.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -2378,6 +2388,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../db
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
       zod:
         specifier: 'catalog:'
         version: 3.25.76

@@ -203,6 +203,20 @@ describe('DropdownMenuRenderer', () => {
         expect(img?.getAttribute('src')).toBe('/img.png');
     });
 
+    it('shows a stored image as its thumb rendition, and drops an unsafe address', () => {
+        const key = 'app/media/0123456789abcdef0123456789abcdef.png';
+        const items = [
+            makeItem({ id: '1', name: 'Stored', link: '/s', image: { key, width: 800, variants: ['thumb'] } }),
+            makeItem({ id: '2', name: 'Unsafe', link: '/u', image: 'javascript:alert(1)' }),
+        ];
+        const { container } = render(<DropdownMenuRenderer items={items} pathname="/" />);
+        const images = container.querySelectorAll('img');
+        expect(images).toHaveLength(1);
+        expect(images[0].getAttribute('src')).toBe(
+            '/api/files/public/app/media/0123456789abcdef0123456789abcdef/thumb.webp',
+        );
+    });
+
     it('renders item description', () => {
         const items = [makeItem({ id: '1', name: 'Product', link: '/p', description: 'A great product' })];
         render(<DropdownMenuRenderer items={items} pathname="/" />);

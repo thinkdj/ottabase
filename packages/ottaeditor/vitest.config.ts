@@ -8,6 +8,8 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         setupFiles: ['../../vitest.setup.ts'],
+        // jsdom tool tests drive whole blocks through the kit; under a full parallel run they take several seconds.
+        testTimeout: 15000,
         coverage: {
             provider: 'v8',
             include: ['src/**/*.{ts,tsx}'],

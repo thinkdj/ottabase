@@ -47,11 +47,14 @@ Both apps bind `OBCF_D1` to the same database. Keep the `d1_databases` blocks in
 
 **Files.** Both apps bind `OBCF_R2`, otta-web's PUBLIC files bucket (and only that one: private files and Vault backups
 live in buckets this app never binds). Local R2 is keyed by `preview_bucket_name`, so keep that identical too. Images
-picked in otta-web's admin are public files, `<R2_PUBLIC_URL>/<key>`, by default `/api/files/public/<key>`, and
+picked in otta-web's admin are stored as `StoredFile`s (the key, the size and which WebP renditions exist), never as
+URLs. `connect()` in `lib/content.ts` runs before every read and calls `configureMedia({ publicUrl: R2_PUBLIC_URL })`,
+so the themes build `src`/`srcSet` on this app's files base, by default `/api/files/public`.
 `app/api/files/public/[...key]` serves that path here from the same bucket with `servePublicFile` from
 `@ottabase/ottaupload/server`: ETag/304, Range, no MIME sniffing, a sandboxing CSP, and only safe types inline. A key is
-never written twice, so responses are cached for a year. With a custom domain on the bucket (`R2_PUBLIC_URL`), the URLs
-point there and this route is only a fallback.
+never written twice, so responses are cached for a year. With a custom domain on the bucket, set `R2_PUBLIC_URL` (a
+wrangler var, typed in `cloudflare-env.d.ts`) to the same value as otta-web's: the URLs point there and this route is
+only a fallback. Only server components draw images, so the browser needs no base of its own.
 
 Schema changes go through otta-web's migrations (`/api/ottaorm/init`). This app never migrates.
 
@@ -66,7 +69,10 @@ Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes).
   URL, the canonical and `og:url` are omitted rather than guessed, and `metadataBase` falls back to the request's own
   origin (`siteOrigin()` in `lib/content.ts`) so image URLs are still absolute.
 - **Social images:** each page shares its own social image, or else the site's, as `og:image` (1200×630, with alt text)
-  and a `summary_large_image` Twitter card. The images are drawn and uploaded by the admin; see the package README.
+  and a `summary_large_image` Twitter card. The images are drawn and uploaded by the admin; see the package README. The
+  tag names the original file (`fileUrl(image)`, never a WebP rendition), on the files base: absolute with a custom
+  domain, else resolved against `metadataBase`. The JSON-LD logo and image are the originals too, made absolute against
+  the site's origin.
 - **Sitemap and robots:** `/sitemap.xml` lists every published page with its last change. `/robots.txt` (from
   `@ottabase/discover`) allows crawling in production only, naming the AI search crawlers (`OAI-SearchBot`,
   `PerplexityBot`, `Claude-SearchBot`, Googlebot, Bingbot) one by one so a crawler control that splits search from

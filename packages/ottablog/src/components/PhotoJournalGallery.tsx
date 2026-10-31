@@ -1,7 +1,8 @@
 import { useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { fileUrl } from '@ottabase/utils/media';
 import type { PhotoJournalItem } from '../types';
 import { formatDate as defaultFormatDate } from '../types';
+import { safeImageProps } from '@ottabase/utils/sanitize';
 import type { BlogPostData, PhotoJournalRendererProps } from './blog-renderer-types';
 import { BlurbText } from './BlurbText';
 
@@ -22,13 +23,21 @@ export interface PhotoJournalGalleryProps {
  * stops the shorter one from stretching into a void.
  */
 const EDITORIAL_SPANS = [
-    'col-span-2 md:col-span-8',
-    'col-span-1 md:col-span-4',
-    'col-span-1 md:col-span-5',
-    'col-span-1 md:col-span-7',
-    'col-span-1 md:col-span-6',
-    'col-span-1 md:col-span-6',
+    { className: 'col-span-2 md:col-span-8', sizes: tileSizes(2, 8) },
+    { className: 'col-span-1 md:col-span-4', sizes: tileSizes(1, 4) },
+    { className: 'col-span-1 md:col-span-5', sizes: tileSizes(1, 5) },
+    { className: 'col-span-1 md:col-span-7', sizes: tileSizes(1, 7) },
+    { className: 'col-span-1 md:col-span-6', sizes: tileSizes(1, 6) },
+    { className: 'col-span-1 md:col-span-6', sizes: tileSizes(1, 6) },
 ];
+
+/**
+ * A tile's `sizes`: its share of the two-column phone grid, then of the 12-column grid, which
+ * stops growing at the journal's max-w-6xl (72rem, so 6rem a column).
+ */
+function tileSizes(phoneColumns: number, columns: number): string {
+    return `(min-width: 72rem) ${columns * 6}rem, (min-width: 48rem) ${Math.round((columns / 12) * 100)}vw, ${phoneColumns * 50}vw`;
+}
 
 /**
  * The photograph's own shape decides the frame, leaning portrait when nothing else says otherwise:
@@ -36,8 +45,9 @@ const EDITORIAL_SPANS = [
  * carry no dimensions still varies rather than settling into a single ratio.
  */
 function photoAspect(item: PhotoJournalItem, index: number): string {
-    if (!item.width || !item.height) return index % 3 === 0 ? 'aspect-[4/3]' : 'aspect-[3/4]';
-    const ratio = item.width / item.height;
+    const { width, height } = typeof item.image === 'string' ? {} : item.image;
+    if (!width || !height) return index % 3 === 0 ? 'aspect-[4/3]' : 'aspect-[3/4]';
+    const ratio = width / height;
     if (ratio < 0.95) return 'aspect-[3/4]';
     if (ratio > 1.45) return 'aspect-[3/2]';
     if (ratio > 1.15) return 'aspect-[4/3]';
@@ -60,24 +70,24 @@ function formatPhotoDate(value: number): string {
     return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(value));
 }
 
+/** The lightbox's view of a photograph: the original to zoom into, the renditions to choose from. */
 function photoViewerItem(item: PhotoJournalItem) {
-    const url = sanitizeUrl(item.url);
-    if (url === '#') return null;
-    const previewUrl = item.previewUrl ? sanitizeUrl(item.previewUrl) : null;
-    const thumbnailUrl = item.thumbnailUrl ? sanitizeUrl(item.thumbnailUrl) : null;
+    const sources = safeImageProps(item.image, '100vw');
+    if (!sources) return null;
+    const stored = typeof item.image !== 'string';
     return {
-        id: item.mediaId || item.id,
-        url,
-        previewUrl: previewUrl === '#' ? null : previewUrl,
-        thumbnailUrl: thumbnailUrl === '#' ? null : thumbnailUrl,
+        id: item.id,
+        url: stored ? fileUrl(item.image) : sources.src,
+        srcSet: sources.srcSet ?? null,
+        previewUrl: stored ? fileUrl(item.image, 'card') : null,
+        thumbnailUrl: stored ? fileUrl(item.image, 'thumb') : null,
         title: item.title || null,
         originalName: item.title || null,
         altText: item.alt || null,
         caption: item.caption || null,
-        mimeType: item.mimeType || 'image/jpeg',
         mediaKind: 'image' as const,
-        width: item.width || null,
-        height: item.height || null,
+        width: sources.width ?? null,
+        height: sources.height ?? null,
         createdAt: item.takenAt || null,
     };
 }
@@ -88,29 +98,29 @@ function PhotoTile({
     postId,
     interactive,
     tone,
+    sizes,
 }: {
     item: PhotoJournalItem;
     index: number;
     postId: string;
     interactive: boolean;
     tone: 'editorial' | 'minimal';
+    /** The tile's rendered width, for the browser to pick a rendition. */
+    sizes: string;
 }) {
     const viewerItem = photoViewerItem(item);
+    const sources = safeImageProps(item.image, sizes);
     const takenAt = item.takenAt ? renderableDate(item.takenAt, formatPhotoDate) : null;
     const { open, isEnabled } = useMediaLightboxRegistration(
         `photo-journal-${postId}-${item.id}`,
         interactive ? viewerItem : null,
     );
-    if (!viewerItem) return null;
+    if (!viewerItem || !sources) return null;
 
     const image = (
         <>
             <img
-                src={
-                    interactive
-                        ? viewerItem.previewUrl || viewerItem.url
-                        : viewerItem.thumbnailUrl || viewerItem.previewUrl || viewerItem.url
-                }
+                {...sources}
                 alt={item.alt || item.caption || item.title || ''}
                 loading={interactive && index < 2 ? 'eager' : 'lazy'}
                 decoding="async"
@@ -138,7 +148,9 @@ function PhotoTile({
     }`;
     return (
         <figure
-            className={interactive ? EDITORIAL_SPANS[index % EDITORIAL_SPANS.length] : 'flex h-full min-h-0 flex-col'}
+            className={
+                interactive ? EDITORIAL_SPANS[index % EDITORIAL_SPANS.length].className : 'flex h-full min-h-0 flex-col'
+            }
         >
             {interactive ? (
                 <button
@@ -165,6 +177,13 @@ function PhotoTile({
     );
 }
 
+/** The timeline collage sits in a list column (about 48rem): a lead two thirds wide and two side tiles. */
+const COLLAGE_SIZES = {
+    alone: '(min-width: 48rem) 48rem, 100vw',
+    lead: '(min-width: 48rem) 32rem, 67vw',
+    side: '(min-width: 48rem) 16rem, 33vw',
+};
+
 function TimelineCollage({ post, tone }: { post: BlogPostData; tone: 'editorial' | 'minimal' }) {
     const photos = (post.photoAlbum ?? []).slice(0, 3);
     if (photos.length === 0) return null;
@@ -176,13 +195,34 @@ function TimelineCollage({ post, tone }: { post: BlogPostData; tone: 'editorial'
                 className={`grid aspect-[16/10] gap-0.5 bg-background ${photos.length === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}
             >
                 <div className={photos.length === 1 ? '' : 'col-span-2'}>
-                    <PhotoTile item={photos[0]} index={0} postId={post.id} interactive={false} tone={tone} />
+                    <PhotoTile
+                        item={photos[0]}
+                        index={0}
+                        postId={post.id}
+                        interactive={false}
+                        tone={tone}
+                        sizes={photos.length === 1 ? COLLAGE_SIZES.alone : COLLAGE_SIZES.lead}
+                    />
                 </div>
                 {photos.length > 1 && (
                     <div className="grid grid-rows-2 gap-0.5">
-                        <PhotoTile item={photos[1]} index={1} postId={post.id} interactive={false} tone={tone} />
+                        <PhotoTile
+                            item={photos[1]}
+                            index={1}
+                            postId={post.id}
+                            interactive={false}
+                            tone={tone}
+                            sizes={COLLAGE_SIZES.side}
+                        />
                         {photos[2] ? (
-                            <PhotoTile item={photos[2]} index={2} postId={post.id} interactive={false} tone={tone} />
+                            <PhotoTile
+                                item={photos[2]}
+                                index={2}
+                                postId={post.id}
+                                interactive={false}
+                                tone={tone}
+                                sizes={COLLAGE_SIZES.side}
+                            />
                         ) : (
                             <div className="bg-muted/60" />
                         )}
@@ -272,7 +312,15 @@ export function PhotoJournalGallery({ post, props, tone = 'editorial' }: PhotoJo
                 className={`grid grid-cols-2 items-start gap-x-2 gap-y-5 md:grid-cols-12 md:gap-x-3 md:gap-y-8 ${tone === 'minimal' ? 'md:gap-x-1' : ''}`}
             >
                 {photos.map((item, index) => (
-                    <PhotoTile key={item.id} item={item} index={index} postId={post.id} interactive tone={tone} />
+                    <PhotoTile
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        postId={post.id}
+                        interactive
+                        tone={tone}
+                        sizes={EDITORIAL_SPANS[index % EDITORIAL_SPANS.length].sizes}
+                    />
                 ))}
             </div>
         </div>

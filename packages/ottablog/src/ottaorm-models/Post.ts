@@ -37,6 +37,7 @@ import {
     normalizeLanguageCode,
     type ContentType,
     type EditorJSData,
+    type HeroImage,
     type PhotoJournalItem,
     type PostCrosspost,
     type PostStatus,
@@ -96,15 +97,11 @@ function photoJournalWordCount(note: string | null, items: PhotoJournalItem[]): 
         .filter(Boolean).length;
 }
 
-function photoJournalHero(item: PhotoJournalItem, title: string) {
+function photoJournalHero(item: PhotoJournalItem, title: string): HeroImage {
     return {
-        url: item.url,
+        image: item.image,
         alt: item.alt || item.caption || title,
-        caption: item.caption || undefined,
-        mediaId: item.mediaId || undefined,
-        width: item.width || undefined,
-        height: item.height || undefined,
-        mimeType: item.mimeType || undefined,
+        ...(item.caption ? { caption: item.caption } : {}),
     };
 }
 

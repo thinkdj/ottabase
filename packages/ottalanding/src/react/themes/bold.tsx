@@ -1,14 +1,16 @@
+import { safeImageProps } from '@ottabase/utils/sanitize';
 // Bold — dark, loud launch page. Oversized headline, a logo ticker (the one moving thing,
 // paused for reduced motion), bento features led by one big cell, inverted featured plan,
 // full-bleed closing block.
 
 import {
+    AVATAR_SIZES,
     focusRing,
     initials,
     isCurrent,
+    LOGO_SIZES,
     MobileMenu,
     paragraphs,
-    safeSrc,
     SiteBrand,
     SiteLink,
     type Action,
@@ -121,10 +123,11 @@ export const bold: ThemeComponents = {
     },
 
     sections: {
-        hero({ eyebrow, title, subtitle, actions, imageUrl, imageAlt, lead }) {
+        hero({ eyebrow, title, subtitle, actions, image, imageAlt, lead }) {
             // The page's first hero carries its one <h1>; any later hero is a section heading.
             const HeroTag = lead === false ? 'h2' : 'h1';
-            const src = safeSrc(imageUrl);
+            // Full width of the 80rem wrap, less its 2rem gutters.
+            const img = safeImageProps(image, '(min-width: 80rem) 76rem, 100vw');
             return (
                 <div className={`${wrap} pb-20 pt-14 sm:pt-24`}>
                     {eyebrow && (
@@ -143,8 +146,15 @@ export const bold: ThemeComponents = {
                         )}
                         <Actions actions={actions} />
                     </div>
-                    {src && (
-                        <img src={src} alt={imageAlt ?? ''} className="mt-16 w-full rounded-3xl border border-border" />
+                    {img && (
+                        <img
+                            {...img}
+                            alt={imageAlt ?? ''}
+                            // The lead hero's image is above the fold: load it at once.
+                            loading={lead === false ? 'lazy' : undefined}
+                            decoding="async"
+                            className="mt-16 w-full rounded-3xl border border-border"
+                        />
                     )}
                 </div>
             );
@@ -154,17 +164,19 @@ export const bold: ThemeComponents = {
             if (!items?.length) return null;
             const row = (hidden: boolean) =>
                 items.map((l, i) => {
-                    const src = safeSrc(l.logoUrl);
+                    const img = safeImageProps(l.logo, LOGO_SIZES);
                     return (
                         <li
                             key={`${hidden}-${i}`}
                             aria-hidden={hidden || undefined}
                             className="flex shrink-0 items-center px-8"
                         >
-                            {src ? (
+                            {img ? (
                                 <img
-                                    src={src}
+                                    {...img}
                                     alt={hidden ? '' : l.name}
+                                    // Not lazy: the ticker slides logos in from off screen, they would pop in.
+                                    decoding="async"
                                     className="h-8 w-auto opacity-70 brightness-0 [[data-scheme=dark]_&]:invert"
                                 />
                             ) : (
@@ -218,7 +230,7 @@ export const bold: ThemeComponents = {
                     <Heading title={title} />
                     <div className="mt-12 gap-4 [column-fill:_balance] sm:columns-2 lg:columns-3">
                         {items?.map((t, i) => {
-                            const src = safeSrc(t.avatarUrl);
+                            const img = safeImageProps(t.avatar, AVATAR_SIZES);
                             return (
                                 <figure
                                     key={i}
@@ -226,8 +238,14 @@ export const bold: ThemeComponents = {
                                 >
                                     <blockquote className="text-lg leading-relaxed">{t.quote}</blockquote>
                                     <figcaption className="mt-6 flex items-center gap-3">
-                                        {src ? (
-                                            <img src={src} alt="" className="h-10 w-10 rounded-full object-cover" />
+                                        {img ? (
+                                            <img
+                                                {...img}
+                                                alt=""
+                                                loading="lazy"
+                                                decoding="async"
+                                                className="h-10 w-10 rounded-full object-cover"
+                                            />
                                         ) : (
                                             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                                                 {initials(t.author)}

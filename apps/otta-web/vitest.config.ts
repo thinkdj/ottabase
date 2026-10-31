@@ -112,6 +112,7 @@ export default defineConfig({
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../../packages/utils/src/http-errors'),
             '@ottabase/utils/hmac-signature': path.resolve(__dirname, '../../packages/utils/src/hmac-signature'),
             '@ottabase/utils/outbound-url': path.resolve(__dirname, '../../packages/utils/src/outbound-url'),
+            '@ottabase/utils/media': path.resolve(__dirname, '../../packages/utils/src/media'),
             '@ottabase/rbac/admin-guard': path.resolve(__dirname, '../../packages/rbac/src/admin-guard.ts'),
             '@ottabase/rbac/request-context': path.resolve(__dirname, '../../packages/rbac/src/request-context.ts'),
         },

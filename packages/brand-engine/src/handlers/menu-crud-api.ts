@@ -12,6 +12,8 @@ const MAX_ITEMS_PER_MENU = 100;
 import type { MenuItemDto } from '@ottabase/ottamenu';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { isStoredFile, type FileSource } from '@ottabase/utils/media';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Menu } from '../persistence/Menu.model';
 import { MenuItem } from '../persistence/MenuItem.model';
 import { getMenuBySlug } from '../persistence/menuData';
@@ -29,11 +31,21 @@ function serializeItem(item: InstanceType<typeof MenuItem>): MenuItemDto {
         newTab: (item.get('newTab') as boolean) ?? false,
         authRequired: (item.get('authRequired') as boolean) ?? false,
         description: (item.get('description') as string | null) ?? null,
-        image: (item.get('image') as string | null) ?? null,
+        image: (item.get('image') as FileSource | null) ?? null,
         tooltip: (item.get('tooltip') as string | null) ?? null,
         sortOrder: (item.get('sortOrder') as number) ?? 0,
     };
 }
+
+/** A menu image from a request: null, a stored file, or a safe outside address. Undefined: refused. */
+export function parseMenuImage(value: unknown): FileSource | null | undefined {
+    if (value === null || value === '') return null;
+    if (isStoredFile(value)) return value;
+    if (typeof value === 'string' && sanitizeUrl(value) !== '#') return value.trim();
+    return undefined;
+}
+
+const INVALID_IMAGE = 'image must be a stored file or an https:// or /path address';
 
 /** Serialize timestamp (handles Date from OttaORM 'date' cast or raw number) */
 function toUnixMs(v: unknown): number {
@@ -210,6 +222,9 @@ export async function handleCreateMenuItem(
         sortOrder = n;
     }
 
+    const image = body.image === undefined ? null : parseMenuImage(body.image);
+    if (image === undefined) return errorResponse(INVALID_IMAGE, 400);
+
     // Inherit appId strictly from parent menu to preserve RLS boundaries
     const itemAppId = menu.get('appId') as string | null;
     const item = (await MenuItem.create({
@@ -221,7 +236,7 @@ export async function handleCreateMenuItem(
         newTab: body.newTab ?? false,
         authRequired: body.authRequired ?? false,
         description: body.description ?? null,
-        image: body.image ?? null,
+        image,
         tooltip: body.tooltip ?? null,
         sortOrder,
     })) as InstanceType<typeof MenuItem>;
@@ -251,6 +266,11 @@ export async function handleUpdateMenuItem(
             return errorResponse('sortOrder must be a number', 400);
         }
         body.sortOrder = n;
+    }
+    if (body.image !== undefined) {
+        const image = parseMenuImage(body.image);
+        if (image === undefined) return errorResponse(INVALID_IMAGE, 400);
+        body.image = image;
     }
     const fields: (keyof UpdateMenuItemPayload)[] = [
         'parentId',

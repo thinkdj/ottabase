@@ -4,7 +4,7 @@
 
 import { BaseModel, ModelFields, type PackageType } from '../base/BaseModel';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import { publicFileUrl } from '../runtime-config';
+import { publicFileUrl } from '@ottabase/utils/media';
 import { usersTable } from './User.schema';
 
 export { usersTable, type NewUserType, type UserType } from './User.schema';

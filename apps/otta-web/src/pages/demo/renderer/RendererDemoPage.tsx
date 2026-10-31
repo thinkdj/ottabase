@@ -37,7 +37,7 @@ const sampleEditorJSData = {
             id: 'advimg1',
             type: 'advancedImage',
             data: {
-                url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=800&q=80',
+                image: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=800&q=80',
                 caption: 'Stellar nursery – the cosmic birthplace of stars',
                 alt: 'Nebula in deep space',
                 withBorder: true,
@@ -75,7 +75,7 @@ const sampleEditorJSData = {
             id: 'advimg2',
             type: 'advancedImage',
             data: {
-                url: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&q=80',
+                image: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&q=80',
                 caption: 'Earth from orbit – pale blue dot in the cosmic ocean',
                 alt: 'Earth from space',
                 withBackground: true,
@@ -100,26 +100,26 @@ const sampleEditorJSData = {
                 layout: 'grid-featured',
                 items: [
                     {
-                        url: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=1200&q=80',
+                        media: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=1200&q=80',
                         title: 'Milky Way Core',
                         caption: 'Our galactic center',
                         mediaKind: 'image',
                     },
                     {
-                        url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+                        media: 'https://www.w3schools.com/html/mov_bbb.mp4',
                         title: 'Big Buck Bunny',
                         caption: 'Sample video',
                         mediaKind: 'video',
                         mimeType: 'video/mp4',
                     },
                     {
-                        url: 'https://images.unsplash.com/photo-1454789548928-9efd52dc4031?w=1200&q=80',
+                        media: 'https://images.unsplash.com/photo-1454789548928-9efd52dc4031?w=1200&q=80',
                         title: 'Astronaut',
                         caption: 'Spacewalk',
                         mediaKind: 'image',
                     },
                     {
-                        url: 'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=1200&q=80',
+                        media: 'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=1200&q=80',
                         title: 'Saturn Rings',
                         caption: 'Gas giant',
                         mediaKind: 'image',
@@ -253,7 +253,7 @@ function MyHtmlContent({ htmlString }) {
             id: 'advimg3',
             type: 'advancedImage',
             data: {
-                url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1000&q=80',
+                image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1000&q=80',
                 caption: 'Earth at night – the glow of human civilization from orbit',
                 alt: 'Earth at night from space',
                 withBorder: true,

@@ -39,6 +39,9 @@
     ],
     "author": "",
     "license": "MIT",
+    "dependencies": {
+        "@ottabase/utils": "workspace:*"
+    },
     "peerDependencies": {
         "@tanstack/react-router": "catalog:",
         "react": "catalog:"

@@ -96,13 +96,41 @@ describe('content contracts', () => {
         }
     });
 
-    it('accepts uploaded and linked images, nothing script-like or protocol-relative', () => {
-        const withLogo = (logoUrl: string) => SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, logoUrl }).success;
-        for (const ok of ['', '/api/files/public/logo-1.png', 'https://cdn.acme.dev/logo.svg']) {
+    it('accepts linked images as addresses, nothing script-like or protocol-relative', () => {
+        const withLogo = (logo: unknown) => SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, logo }).success;
+        for (const ok of ['', '/brand/logo-1.png', 'https://cdn.acme.dev/logo.svg']) {
             expect(withLogo(ok), ok).toBe(true);
         }
         for (const bad of ['javascript:alert(1)', '//evil.dev/x.png', 'data:image/png;base64,AAA', 'logo.png']) {
             expect(withLogo(bad), bad).toBe(false);
+        }
+    });
+
+    it('accepts an uploaded image as a well-formed stored file, never a half-made one', () => {
+        const key = 'otta-web/media/0123456789abcdef0123456789abcdef.png';
+        const parse = (image: unknown) =>
+            SectionSchema.safeParse({ id: 'h', type: 'hero', data: { title: 'T', image } });
+        const stored = { key, width: 2400, height: 1200, variants: ['thumb', 'card', 'full'] };
+        const ok = parse(stored);
+        expect(ok.success && ok.data.data).toEqual({ title: 'T', image: stored });
+        expect(parse({ key }).success).toBe(true);
+        for (const bad of [
+            { key: 'logo.png' },
+            { key: '../secrets/0123456789abcdef0123456789abcdef.png' },
+            { key, width: 0 },
+            { key, width: 1.5 },
+            { key, variants: ['huge'] },
+            { url: '/api/files/public/x.png' },
+            null,
+            42,
+        ]) {
+            expect(parse(bad).success, JSON.stringify(bad)).toBe(false);
+        }
+        // A broken address keeps its own message; so does an object that is not a stored file.
+        const message = 'Upload an image, or use an https:// or /path address';
+        for (const bad of ['javascript:alert(1)', { key: 'x' }]) {
+            const r = SiteSettingsSchema.safeParse({ ...DEFAULT_SITE, logo: bad });
+            expect(!r.success && r.error.issues.map((i) => [i.path.join('.'), i.message])).toEqual([['logo', message]]);
         }
     });
 

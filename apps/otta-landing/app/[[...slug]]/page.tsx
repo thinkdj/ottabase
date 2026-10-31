@@ -1,5 +1,6 @@
 import { ProductJsonLd } from '@ottabase/discover/next';
 import { LandingView } from '@ottabase/ottalanding/react';
+import { fileUrl } from '@ottabase/utils/media';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getPage, getSite, siteOrigin, toPath } from '../../lib/content';
@@ -34,8 +35,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     // A draft preview is for the people it was shared with: never indexed, never canonical.
     if (!page.published) return { title: page.title, robots: 'noindex, nofollow' };
     const description = page.description || site.tagline;
-    // The page's own social image, else the site's (relative upload URLs resolve via metadataBase).
-    const image = page.share?.imageUrl || site.share?.imageUrl;
+    // The page's own social image, else the site's: the original, never a WebP rendition (not every
+    // scraper takes WebP). A relative files URL resolves against metadataBase.
+    const image = fileUrl(page.share?.image || site.share?.image);
     const alt = page.share?.heading || (page.share ? page.title : site.share?.heading || site.name);
     return {
         title: page.title,

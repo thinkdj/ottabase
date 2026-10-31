@@ -9,12 +9,14 @@ import { UnsavedChangesDialog } from '@/components/editor/UnsavedChangesDialog';
 import { AdminBlurbEditor } from './AdminBlurbEditor';
 import { AdminPhotoJournalEditor } from './AdminPhotoJournalEditor';
 import { AdminBlogTranslationsPanel } from './AdminBlogTranslationsPanel';
+import { heroFromPick, heroFromUpload, PRIVATE_IMAGE_MESSAGE, typedImageAddress } from './blogImages';
 import { getPublicContentPath, useBlogSurface } from './blogAdminPaths';
 import { MediaLibraryBrowser } from '@/components/media-library/MediaLibraryBrowser';
 import { SERIES_LIST_QUERY_CONFIG, VERSION_HISTORY_QUERY_CONFIG } from '@/config/queryConfig';
 import { useEditorLeaveGuard } from '@/hooks/useEditorLeaveGuard';
 import { api, isApiError } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+import type { MediaLibraryItemLike, MediaSelectionPayload } from '@ottabase/medialibrary';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import {
     CONTENT_TYPES,
@@ -32,6 +34,8 @@ import {
     type SeoMeta,
 } from '@ottabase/ottablog';
 import { parseFuzzyInput, type FuzzyDateTime } from '@ottabase/ottadate';
+import { fileUrl, storedFileOf } from '@ottabase/utils/media';
+import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import {
     AdvancedImageTool,
     BlockPalette,
@@ -434,6 +438,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
     // Hero image state
     const [heroImage, setHeroImage] = useState<HeroImage | null>(initialData?.heroImage || null);
     const [isUploadingHero, setIsUploadingHero] = useState(false);
+    const [heroAddress, setHeroAddress] = useState('');
     const [isHeroMediaPickerOpen, setIsHeroMediaPickerOpen] = useState(false);
     const [isHeroDropActive, setIsHeroDropActive] = useState(false);
 
@@ -927,22 +932,15 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
             formData.append('file', file);
             formData.append('purpose', 'media');
 
-            const data = await api<{
-                file?: { id: string; url: string; width?: number | null; height?: number | null };
-            }>('/api/files', {
+            const data = await api<{ file?: MediaLibraryItemLike }>('/api/files', {
                 method: 'POST',
                 body: formData,
             });
-            if (data.file?.url) {
-                setHeroImage({
-                    url: data.file.url,
-                    alt: heroImage?.alt || file.name,
-                    caption: heroImage?.caption,
-                    mediaId: data.file.id,
-                    width: data.file.width ?? undefined,
-                    height: data.file.height ?? undefined,
-                });
-            }
+            if (!data.file) return;
+            // The stored file, never its URL. A private upload cannot be shown in a post.
+            const next = heroFromUpload(storedFileOf(data.file), file.name, heroImage);
+            if (next) setHeroImage(next);
+            else setAlertDialog({ open: true, title: 'Private file', message: PRIVATE_IMAGE_MESSAGE });
         } catch (error) {
             console.error('Hero image upload failed:', error);
             setAlertDialog({ open: true, title: 'Error', message: 'Failed to upload image. Please try again.' });
@@ -968,24 +966,30 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
         await uploadHeroFile(file);
     };
 
-    const handleHeroMediaSelect = (item: {
-        url: string;
-        name?: string | null;
-        alt?: string | null;
-        caption?: string | null;
-        mediaId?: string;
-        width?: number | null;
-        height?: number | null;
-    }) => {
-        setHeroImage({
-            url: item.url,
-            alt: item.alt || heroImage?.alt || item.name || '',
-            caption: item.caption || undefined,
-            mediaId: item.mediaId,
-            width: item.width ?? undefined,
-            height: item.height ?? undefined,
-        });
+    const handleHeroMediaSelect = (item: MediaSelectionPayload) => {
+        const next = heroFromPick(item, heroImage);
+        if (!next) {
+            setAlertDialog({ open: true, title: 'Private file', message: PRIVATE_IMAGE_MESSAGE });
+            return;
+        }
+        setHeroImage(next);
         setIsHeroMediaPickerOpen(false);
+    };
+
+    // A typed address is an outside image, kept as typed. Only https: a post page is served over it.
+    const handleHeroAddress = (value: string) => {
+        if (!value.trim()) return;
+        const address = typedImageAddress(value);
+        if (!address) {
+            setAlertDialog({
+                open: true,
+                title: 'Invalid address',
+                message: 'Enter an image address that starts with https://',
+            });
+            return;
+        }
+        setHeroImage({ ...heroImage, image: address });
+        setHeroAddress('');
     };
 
     // Update hero image alt
@@ -1083,6 +1087,8 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                 noIndex: seoNoIndex,
                 ogType: 'article',
                 twitterCard: 'summary_large_image',
+                // No field edits it here (an import or the API sets it), so a save must not drop it.
+                ogImage: initialData?.seoMeta?.ogImage,
             };
 
             if (baseSlug !== slug) {
@@ -1789,7 +1795,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {heroImage?.url ? (
+                            {heroImage ? (
                                 <div
                                     className={`relative rounded-lg transition-colors ${
                                         isHeroDropActive ? 'ring-2 ring-primary ring-offset-2' : ''
@@ -1812,7 +1818,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     onDrop={handleHeroDrop}
                                 >
                                     <img
-                                        src={heroImage.url}
+                                        src={sanitizeUrl(fileUrl(heroImage.image, 'card'))}
                                         alt={heroImage.alt || 'Hero image'}
                                         className="w-full rounded-lg object-cover aspect-video"
                                     />
@@ -1876,6 +1882,25 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                             )}
 
                             <div className="space-y-2">
+                                <Label htmlFor="heroAddress">Or an image address</Label>
+                                <Input
+                                    id="heroAddress"
+                                    type="url"
+                                    inputMode="url"
+                                    value={heroAddress}
+                                    onChange={(e) => setHeroAddress(e.target.value)}
+                                    onBlur={(e) => handleHeroAddress(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleHeroAddress(e.currentTarget.value);
+                                        }
+                                    }}
+                                    placeholder="https://example.com/photo.jpg"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
                                 <Label>Alt Text</Label>
                                 <Input
                                     value={heroImage?.alt || ''}
@@ -1893,7 +1918,7 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                                     value={heroImage?.maxHeight ?? ''}
                                     onChange={(e) => handleHeroMaxHeightChange(e.target.value)}
                                     placeholder="Default (natural height)"
-                                    disabled={!heroImage?.url}
+                                    disabled={!heroImage}
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     100–3000 px. Leave blank to use natural height.
@@ -2466,10 +2491,10 @@ function BlogEditorForm({ postId, isEditMode, initialData, defaultContentType }:
                     {previewPost && (
                         <article className="max-w-3xl mx-auto">
                             {/* Hero Image */}
-                            {previewPost.heroImage?.url && (
+                            {previewPost.heroImage && (
                                 <figure className="mb-8">
                                     <img
-                                        src={previewPost.heroImage.url}
+                                        src={sanitizeUrl(fileUrl(previewPost.heroImage.image, 'card'))}
                                         alt={previewPost.heroImage.alt || previewPost.title}
                                         className="w-full rounded-lg object-cover aspect-video"
                                     />

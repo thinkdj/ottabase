@@ -4,6 +4,7 @@
 import { api, getErrorMessage } from '@/lib/api';
 import { SHARE_CARD_SIZE, themeAccent, themeFonts, type ShareCard, type SiteSettings } from '@ottabase/ottalanding';
 import { drawShareCard } from '@ottabase/ottalanding/react';
+import { fileUrl, type StoredFile } from '@ottabase/utils/media';
 
 /** What an empty heading / supporting text falls back to: the page's title, or the site's name. */
 export type ShareDefaults = { heading: string; subtext?: string };
@@ -84,7 +85,7 @@ export async function paintShareCard(
     defaults: ShareDefaults,
 ): Promise<string[]> {
     const warnings: string[] = [];
-    const optional = (url: string | undefined, what: string) =>
+    const optional = (url: string, what: string) =>
         url
             ? loadImage(url).catch(() => {
                   warnings.push(`The ${what} can’t be drawn. Upload it to the media library and pick it from there.`);
@@ -93,8 +94,9 @@ export async function paintShareCard(
             : undefined;
     const [fonts, background, logo] = await Promise.all([
         loadFonts(site.theme),
-        optional(card?.backgroundUrl, 'background image'),
-        optional(site.logoUrl, 'logo'),
+        // Renditions wide enough for where they are drawn: the 1200px card, a logo 56px tall.
+        optional(fileUrl(card?.background, 'full'), 'background image'),
+        optional(fileUrl(site.logo, 'card'), 'logo'),
     ]);
     canvas.width = SHARE_CARD_SIZE.width;
     canvas.height = SHARE_CARD_SIZE.height;
@@ -115,7 +117,7 @@ export async function paintShareCard(
 
 /**
  * Render the card and store it as the social image of `target` (`site` or a page id).
- * Returns the card with its new `imageUrl`.
+ * Returns the card with its new `image`.
  */
 export async function publishShareCard(
     target: string,
@@ -130,8 +132,8 @@ export async function publishShareCard(
     const form = new FormData();
     form.append('file', new File([blob], 'share.png', { type: 'image/png' }));
     form.append('target', target);
-    const { url } = await api<{ url: string }>('/api/landing/share-image', { method: 'POST', body: form });
-    return { ...card, imageUrl: url };
+    const { file } = await api<{ file: StoredFile }>('/api/landing/share-image', { method: 'POST', body: form });
+    return { ...card, image: file };
 }
 
 /**

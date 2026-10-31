@@ -9,8 +9,9 @@
 // ---------------------------------------------------------------------------
 
 import { ogImageUrl } from '@ottabase/og'; // otta:only og
-import { Post } from '@ottabase/ottablog';
+import { Post, type HeroImage, type SeoMeta } from '@ottabase/ottablog';
 import { buildPostSeoTags, extractBlogSlugFromPath, replaceDocumentTitle } from '@ottabase/ottablog/seo';
+import type { FileSource } from '@ottabase/utils/media';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { resolveBlogOrganizationIdCached } from '../routes/blog';
 import { ensureDbConnection } from './db-utils';
@@ -68,14 +69,17 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
                   ? (post.get('photoNote') as string) || (post.get('excerpt') as string)
                   : (post.get('excerpt') as string)) || null;
         const publishedAt = post.get('publishedAt') as number | string | null;
-        const heroImage = post.get('heroImage') as { url?: string } | null;
+        const heroImage = post.get('heroImage') as HeroImage | null;
+        const seoMeta = post.get('seoMeta') as SeoMeta | null;
         const origin = `${url.protocol}//${url.host}`;
         const canonicalUrl = `${origin}/blog/${encodeURIComponent((post.get('slug') as string) || slug)}`;
-        let imageUrl = heroImage?.url ?? null;
+        // The author's Open Graph image, else the hero: buildPostSeoTags gives either as its
+        // original's absolute URL (ensureDbConnection above configured the files base).
+        let image: FileSource | null = seoMeta?.ogImage || heroImage?.image || null;
         // otta:begin og
         // A post without a hero still unfurls with a card: title, excerpt and author, drawn by @ottabase/og.
-        if (!imageUrl && env.AUTH_SECRET) {
-            imageUrl = await ogImageUrl(
+        if (!image && env.AUTH_SECRET) {
+            image = await ogImageUrl(
                 origin,
                 {
                     title,
@@ -99,7 +103,7 @@ export async function injectBlogPostSeo(response: Response, request: Request, en
             title,
             excerpt,
             canonicalUrl,
-            imageUrl,
+            image,
             publishedAt,
             updatedAt: post.get('updatedAt') as number | string | null,
             authorName,

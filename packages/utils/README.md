@@ -157,6 +157,8 @@ import {
   every link `rel="ugc nofollow noopener"` (`UGC_LINK_REL`), replacing any `rel` it had
 - **`sanitizeJsonForScript(data: unknown): string`** - Serialize and escape JSON for safe `<script>` embedding
 - **`sanitizeCssForStyleTag(css: string): string`** - Neutralize unsafe CSS when injecting into `<style>` tags
+- **`safeImageProps(value, sizes)`** - `<img>` attributes for a content image (`FileSource`): a stored file's renditions
+  with `srcSet`/`sizes`/`width`/`height`, or a sanitized outside address as a lone `src`; null otherwise
 
 Use the appropriate sanitizer helper for each untrusted renderer input type:
 
@@ -166,6 +168,31 @@ Use the appropriate sanitizer helper for each untrusted renderer input type:
 - `sanitizeUrl` for anchor/link URL fields before assigning to `href`
 - `sanitizeJsonForScript` for `application/ld+json` and other inline JSON script tags
 - `sanitizeCssForStyleTag` for generated theme CSS inserted via `dangerouslySetInnerHTML`
+
+### Stored Files (`@ottabase/utils/media`)
+
+Content never keeps a stored file's URL. It keeps a `StoredFile` (`{ key, width?, height?, variants? }`: the original's
+key in the public files bucket and the WebP renditions the files service made of it), or a plain string for an outside
+address (`FileSource = StoredFile | string`). URLs are built at render time on one base.
+
+- **`configureMedia({ publicUrl })`** - Set the public files base once per runtime (the Worker per request, the browser
+  at boot before the first render, an SSR host on both sides with the same value). Default `/api/files/public`.
+- **`imageSources(source, base?)`** - `{ src, srcSet?, width?, height? }` for an `<img>`: the renditions up to `full`,
+  plus the original only when no `full` was made. Pair `srcSet` with a `sizes` for the layout.
+- **`fileUrl(source, variant?, base?)`** - One URL: an outside string as it is, a stored original, or a rendition (the
+  original when that one was not made). Use the original for og:image, feeds and mail.
+- **`storedFileOf(record)`** - The `StoredFile` for an upload response or media library item; null for a private file.
+- **`isStoredFile(value)`** - Strict validator for request bodies and stored JSON.
+- **`publicFileUrl(key, base?)`**, **`variantKey(key, variant)`**, **`fileIdFromKey(key)`**, **`mediaBase()`**,
+  `FILE_VARIANT_WIDTHS` (thumb 160, card 640, full 1600), `DEFAULT_PUBLIC_FILES_URL`.
+
+```tsx
+import { imageSources } from '@ottabase/utils/media';
+
+const { src, srcSet, width, height } = imageSources(post.heroImage?.image);
+<img src={src} srcSet={srcSet} sizes="(min-width: 768px) 720px, 100vw" width={width} height={height} alt="" />;
+// Content from people: safeImageProps(value, sizes) from @ottabase/utils/sanitize validates and sanitizes first.
+```
 
 ### HTTP Errors (`@ottabase/utils/http-errors`)
 

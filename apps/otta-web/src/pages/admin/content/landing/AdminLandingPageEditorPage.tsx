@@ -34,6 +34,7 @@ import {
     Switch,
     Textarea,
 } from '@ottabase/ui';
+import { fileUrl } from '@ottabase/utils/media';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, Plus, Settings2, Trash2 } from 'lucide-react';
@@ -483,7 +484,7 @@ function PageSettingsSheet(props: {
                                         share: on
                                             ? {
                                                   color: state.site.share?.color,
-                                                  backgroundUrl: state.site.share?.backgroundUrl,
+                                                  background: state.site.share?.background,
                                               }
                                             : undefined,
                                     }))
@@ -507,9 +508,9 @@ function PageSettingsSheet(props: {
                                 errors={errors}
                                 path="share."
                             />
-                        ) : state.site.share?.imageUrl ? (
+                        ) : state.site.share?.image ? (
                             <img
-                                src={state.site.share.imageUrl}
+                                src={fileUrl(state.site.share.image)}
                                 alt="The site’s social image"
                                 className="aspect-[1200/630] w-full max-w-sm rounded-md border border-border"
                             />

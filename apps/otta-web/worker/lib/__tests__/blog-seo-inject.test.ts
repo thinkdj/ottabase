@@ -68,7 +68,7 @@ describe('injectBlogPostSeo', () => {
                 contentType: 'blog',
                 publishedAt: 1700000000000,
                 updatedAt: 1700000100000,
-                heroImage: { url: 'https://img.test/hero.jpg' },
+                heroImage: { image: 'https://img.test/hero.jpg' },
             }),
         );
     });
@@ -90,6 +90,26 @@ describe('injectBlogPostSeo', () => {
         const where = mockPostFirst.mock.calls[0][0];
         expect('organizationId' in where).toBe(false);
         expect(mockResolveBlogOrganizationId).not.toHaveBeenCalled();
+    });
+
+    it('prefers the Open Graph image, as a stored file original at an absolute URL', async () => {
+        const key = `otta-web/media/${'f'.repeat(32)}.png`;
+        mockPostFirst.mockResolvedValue(
+            fakePost({
+                title: 'Stored',
+                slug: 'stored',
+                contentType: 'blog',
+                heroImage: { image: 'https://img.test/hero.jpg' },
+                seoMeta: { ogImage: { key, variants: ['thumb', 'card', 'full'] } },
+            }),
+        );
+        const html = await (
+            await injectBlogPostSeo(htmlResponse(), requestFor('https://demo.test/blog/stored'), env)
+        ).text();
+
+        expect(html).toContain(`property="og:image" content="https://demo.test/api/files/public/${key}"`);
+        expect(html).not.toContain('hero.jpg');
+        expect(html).not.toContain('.webp');
     });
 
     it('points og:image at a signed @ottabase/og card when the post has no hero image', async () => {
@@ -150,7 +170,7 @@ describe('injectBlogPostSeo', () => {
                 photoAlbum: [
                     {
                         id: 'p1',
-                        url: '/media/kyoto.jpg',
+                        image: '/media/kyoto.jpg',
                         alt: 'Lanterns reflected in a wet lane',
                         caption: 'After the last train',
                         location: 'Kyoto, Japan',
@@ -158,7 +178,7 @@ describe('injectBlogPostSeo', () => {
                 ],
                 contentType: 'photo',
                 publishedAt: 1700000000000,
-                heroImage: { url: 'https://img.test/kyoto.jpg' },
+                heroImage: { image: 'https://img.test/kyoto.jpg' },
             }),
         );
 

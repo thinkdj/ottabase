@@ -7,6 +7,7 @@ import { useSession } from '@/lib/auth';
 import type { MediaSelectionPayload } from '@ottabase/medialibrary';
 import {
     createPhotoJournalTitle,
+    imageIdentity,
     PHOTO_JOURNAL_MAX_ITEMS,
     PHOTO_JOURNAL_NOTE_MAX_LENGTH,
     POST_STATUSES,
@@ -52,6 +53,7 @@ import {
     NativeSelectOption,
     Textarea,
 } from '@ottabase/ui';
+import { fileUrl } from '@ottabase/utils/media';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -70,6 +72,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useBlogSurface } from './blogAdminPaths';
+import { photoFromPick, PRIVATE_IMAGE_MESSAGE, typedImageAddress } from './blogImages';
 
 export interface PhotoJournalEditorPost {
     id: string;
@@ -142,24 +145,6 @@ interface PhotoTagLink {
 
 const blogTagLinkHooks = createModelHooks<PhotoTagLink>({ entityName: 'post_tag_links' });
 
-function photoFromMedia(item: MediaSelectionPayload): PhotoJournalItem {
-    return {
-        id: item.mediaId || crypto.randomUUID(),
-        mediaId: item.mediaId ?? null,
-        url: item.url,
-        thumbnailUrl: item.thumbnailUrl ?? null,
-        previewUrl: item.previewUrl ?? null,
-        title: item.title ?? null,
-        alt: item.alt ?? null,
-        caption: item.caption ?? null,
-        location: null,
-        takenAt: null,
-        width: item.width ?? null,
-        height: item.height ?? null,
-        mimeType: item.mimeType ?? null,
-    };
-}
-
 function dateInputValue(value: number | null | undefined): string {
     if (!value) return '';
     const date = new Date(value);
@@ -185,6 +170,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
     const [publishAt, setPublishAt] = useState(initialPublishAt(initialData?.publishAt));
     const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
     const [libraryOpen, setLibraryOpen] = useState(false);
+    const [photoAddress, setPhotoAddress] = useState('');
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [alert, setAlert] = useState({ open: false, title: '', message: '' });
     const [pendingSavedPostId, setPendingSavedPostId] = useState<string | null>(null);
@@ -282,27 +268,19 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
         });
     };
 
-    const addPhotos = (items: MediaSelectionPayload[]) => {
-        const incoming = items.map(photoFromMedia);
+    const appendPhotos = (incoming: PhotoJournalItem[]) => {
         // Seeded from the album, then GROWN as each photograph is accepted — otherwise one selection
         // containing the same photo twice is filtered here so the model never receives a duplicate.
         // validatePhotoJournalItems rejects them as well, avoiding a mismatch between editor and DB.
-        // Keep the three identity namespaces separate, matching validatePhotoJournalItems. An
-        // app-local photo ID can legitimately equal a different asset's media-library ID.
+        // Keep the two identity namespaces separate, matching validatePhotoJournalItems: an
+        // app-local photo ID can legitimately equal a different photograph's file id.
         const seenIds = new Set(photos.map((photo) => photo.id));
-        const seenMediaIds = new Set(photos.map((photo) => photo.mediaId).filter(Boolean));
-        const seenUrls = new Set(photos.map((photo) => photo.url));
+        const seenImages = new Set(photos.map((photo) => imageIdentity(photo.image)));
         const unique = incoming.filter((photo) => {
-            if (
-                seenIds.has(photo.id) ||
-                (photo.mediaId != null && seenMediaIds.has(photo.mediaId)) ||
-                seenUrls.has(photo.url)
-            ) {
-                return false;
-            }
+            const identity = imageIdentity(photo.image);
+            if (seenIds.has(photo.id) || seenImages.has(identity)) return false;
             seenIds.add(photo.id);
-            if (photo.mediaId != null) seenMediaIds.add(photo.mediaId);
-            seenUrls.add(photo.url);
+            seenImages.add(identity);
             return true;
         });
         const available = PHOTO_JOURNAL_MAX_ITEMS - photos.length;
@@ -315,6 +293,41 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                 message: `A photo journal can contain up to ${PHOTO_JOURNAL_MAX_ITEMS} photographs.`,
             });
         }
+    };
+
+    // A pick is stored as its file, never its URL; a private one cannot be shown in a post.
+    const addPhotos = (items: MediaSelectionPayload[]) => {
+        const picked = items.map(photoFromPick);
+        const publicPhotos = picked.filter((photo): photo is PhotoJournalItem => photo !== null);
+        appendPhotos(publicPhotos);
+        if (publicPhotos.length < picked.length) {
+            setAlert({ open: true, title: 'Private file', message: PRIVATE_IMAGE_MESSAGE });
+        }
+    };
+
+    // A typed address is an outside photograph, kept as typed.
+    const addPhotoAddress = () => {
+        const address = typedImageAddress(photoAddress);
+        if (!address) {
+            setAlert({
+                open: true,
+                title: 'Invalid address',
+                message: 'Enter an image address that starts with https://',
+            });
+            return;
+        }
+        appendPhotos([
+            {
+                id: crypto.randomUUID(),
+                image: address,
+                title: null,
+                alt: null,
+                caption: null,
+                location: null,
+                takenAt: null,
+            },
+        ]);
+        setPhotoAddress('');
     };
 
     const handleSave = async (publishNow: boolean) => {
@@ -580,9 +593,7 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                             ) : (
                                 <div className="space-y-3">
                                     {photos.map((photo, index) => {
-                                        const imageUrl = sanitizeUrl(
-                                            photo.thumbnailUrl || photo.previewUrl || photo.url,
-                                        );
+                                        const imageUrl = sanitizeUrl(fileUrl(photo.image, 'thumb'));
                                         return (
                                             <details
                                                 key={photo.id}
@@ -740,6 +751,30 @@ export function AdminPhotoJournalEditor({ initialData }: { initialData?: PhotoJo
                                     </div>
                                 </div>
                             )}
+                            <form
+                                className="mt-4 flex gap-2"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    addPhotoAddress();
+                                }}
+                            >
+                                <Input
+                                    type="url"
+                                    inputMode="url"
+                                    aria-label="Image address"
+                                    value={photoAddress}
+                                    onChange={(event) => setPhotoAddress(event.target.value)}
+                                    placeholder="Or add by address: https://example.com/photo.jpg"
+                                    className="bg-background"
+                                />
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={!photoAddress.trim() || photos.length >= PHOTO_JOURNAL_MAX_ITEMS}
+                                >
+                                    Add
+                                </Button>
+                            </form>
                         </CardContent>
                     </Card>
 

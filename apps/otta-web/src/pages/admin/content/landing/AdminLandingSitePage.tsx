@@ -64,8 +64,8 @@ type Tab = (typeof TABS)[number];
 
 /** Which tab edits which setting, so a validation error can bring its field into view. */
 const TAB_OF: Record<string, Tab> = {
-    logoUrl: 'design',
-    faviconUrl: 'design',
+    logo: 'design',
+    favicon: 'design',
     logoIncludesName: 'design',
     brandColor: 'design',
     nav: 'navigation',
@@ -170,7 +170,7 @@ function SiteAdmin({ state }: { state: LandingState }) {
                                 title="Brand"
                                 description="Your logo, browser-tab icon and accent color, in every theme."
                             >
-                                {settings.fields(['logoUrl', 'faviconUrl', 'logoIncludesName', 'brandColor'], {
+                                {settings.fields(['logo', 'favicon', 'logoIncludesName', 'brandColor'], {
                                     brandColor: themeAccent(state.site.theme),
                                 })}
                             </Panel>

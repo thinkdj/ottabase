@@ -5,7 +5,7 @@
  */
 
 import { OttaRenderer } from '@ottabase/ottarenderer';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { safeImageProps, sanitizeUrl } from '@ottabase/utils/sanitize';
 import { BlurbCard } from '../components/BlurbCard';
 import { PhotoJournalGallery } from '../components/PhotoJournalGallery';
 import type { EditorJSData } from '../types';
@@ -46,7 +46,11 @@ export const defaultTheme: Theme = {
         renderBlurb: (post, props) => <BlurbCard post={post} props={props} tone="editorial" />,
         renderPhotoJournal: (post, props) => <PhotoJournalGallery post={post} props={props} tone="editorial" />,
         renderHero: (post, props) => {
-            if (!props.showHeroImage || !post.heroImage?.url) return null;
+            // The article column: max-w-3xl less its px-4 gutters.
+            const image = props.showHeroImage
+                ? safeImageProps(post.heroImage?.image, '(min-width: 48rem) 46rem, calc(100vw - 2rem)')
+                : null;
+            if (!post.heroImage || !image) return null;
             // Same print-edge treatment as the photo journal's frames: a barely-there radius that
             // reads as a photographic print rather than a UI card, and a hairline over the image so
             // a light photo still has an edge. The caption is set like a journal's, not a browser's.
@@ -57,7 +61,7 @@ export const defaultTheme: Theme = {
                         style={post.heroImage.maxHeight ? { maxHeight: `${post.heroImage.maxHeight}px` } : undefined}
                     >
                         <img
-                            src={sanitizeUrl(post.heroImage.url)}
+                            {...image}
                             alt={post.heroImage.alt || post.title}
                             className="h-full w-full object-cover"
                             loading="eager"
@@ -184,6 +188,7 @@ export const defaultTheme: Theme = {
                 return defaultTheme.renderers.renderPhotoJournal?.(post, { ...props, variant: 'timeline' });
             }
             const formatDate = props.formatDate || defaultFormatDate;
+            const thumb = props.showHeroImage ? safeImageProps(post.heroImage?.image, '6rem') : null;
             return (
                 <article
                     className={`group rounded-xl border border-transparent bg-muted/40 transition-colors duration-normal hover:bg-muted/70 ${defaultTheme.config?.classes?.card || ''}`}
@@ -194,11 +199,13 @@ export const defaultTheme: Theme = {
                                 {post.seriesOrder}
                             </div>
                         )}
-                        {props.showHeroImage && post.heroImage?.url && (
+                        {thumb && (
                             <img
-                                src={sanitizeUrl(post.heroImage.url)}
-                                alt={post.heroImage.alt || post.title}
+                                {...thumb}
+                                alt={post.heroImage?.alt || post.title}
                                 className="w-24 h-24 object-cover rounded-lg shrink-0 hidden sm:block"
+                                loading="lazy"
+                                decoding="async"
                             />
                         )}
                         <div className="min-w-0 flex-1">

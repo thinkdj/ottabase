@@ -8,6 +8,7 @@ import {
     generateSlug,
     normalizeLanguageCode,
     normalizePostTimestamp,
+    validateImageSource,
     validatePostContent,
     validatePostWrite,
     type BlogLanguageConfig,
@@ -114,13 +115,14 @@ function normalizeSeoMeta(value: unknown): SeoMeta | null {
     } else if (twitterCard) {
         throw new DomainValidationError('SEO Twitter card is invalid', { status: 422 });
     }
-    for (const key of ['canonicalUrl', 'ogImage'] as const) {
-        const text = seoText(raw[key], 'SEO ' + key, 4096);
-        if (text) {
-            const safe = sanitizeUrl(text);
-            if (safe === '#') throw new DomainValidationError('SEO ' + key + ' must be a safe URL', { status: 422 });
-            result[key] = safe;
-        }
+    const canonicalUrl = seoText(raw.canonicalUrl, 'SEO canonicalUrl', 4096);
+    if (canonicalUrl) {
+        const safe = sanitizeUrl(canonicalUrl);
+        if (safe === '#') throw new DomainValidationError('SEO canonicalUrl must be a safe URL', { status: 422 });
+        result.canonicalUrl = safe;
+    }
+    if (raw.ogImage !== undefined && raw.ogImage !== null && raw.ogImage !== '') {
+        result.ogImage = validateImageSource(raw.ogImage, 'SEO ogImage');
     }
     if (raw.keywords !== undefined && raw.keywords !== null) {
         if (!Array.isArray(raw.keywords) || raw.keywords.length > 30) {
@@ -193,6 +195,7 @@ function normalizeTranslationData(
         photoNote: inherited.photoNote,
         photoAlbum: inherited.photoAlbum,
         content: inherited.content,
+        heroImage: inherited.heroImage,
     });
     const content = validated.content as EditorJSData | null;
     const photoAlbum = validated.photoAlbum as PhotoJournalItem[] | null;
@@ -227,7 +230,7 @@ function normalizeTranslationData(
         photoNote,
         photoAlbum,
         content,
-        heroImage: inherited.heroImage ?? null,
+        heroImage: (validated.heroImage as HeroImage | null | undefined) ?? null,
         seoMeta,
         footnotes,
         status,

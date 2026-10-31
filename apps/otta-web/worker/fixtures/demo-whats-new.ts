@@ -22,7 +22,7 @@ const release = (
     const { date, hero, ...rest } = seed;
     return {
         ...rest,
-        ...(hero ? { heroImage: { url: `/ottabase-demo/whats-new/${seed.slug}.webp`, alt: hero } } : {}),
+        ...(hero ? { heroImage: { image: `/ottabase-demo/whats-new/${seed.slug}.webp`, alt: hero } } : {}),
         contentType: 'changelog',
         publishedAt: on(date),
         categories: ['Release notes'],

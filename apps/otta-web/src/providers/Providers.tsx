@@ -24,6 +24,7 @@ import { OttaQueryProvider } from '@ottabase/ottaorm/client';
 import { SpotlightProvider } from '@ottabase/spotlight/react';
 import { ProviderState } from '@ottabase/state';
 import { UIProviders } from '@ottabase/ui';
+import { configureMedia } from '@ottabase/utils/media';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useAtomValue } from 'jotai';
 import React from 'react';
@@ -53,6 +54,9 @@ export function readInjectedBrandConfig(): FullBrandConfig | undefined {
 }
 
 const injectedBrandConfig = readInjectedBrandConfig();
+// Content keeps stored files by key and builds their URLs on this base, so it is set before the
+// first render. Without the payload it stays the same-origin fallback route, which serves them too.
+configureMedia({ publicUrl: injectedBrandConfig?.r2PublicUrl });
 
 export function Providers({ children }: { children: React.ReactNode }) {
     return (

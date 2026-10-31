@@ -1,4 +1,5 @@
 import createDOMPurify from 'dompurify';
+import { imageSources, isStoredFile } from './media';
 
 type SanitizeConfig = Record<string, unknown>;
 type ProcessLike = {
@@ -252,6 +253,30 @@ export function sanitizeUrl(url: string | null | undefined): string {
     }
 
     return trimmed;
+}
+
+/** `<img>` attributes for a content image (see `@ottabase/utils/media`). */
+export interface SafeImageProps {
+    src: string;
+    srcSet?: string;
+    sizes?: string;
+    width?: number;
+    height?: number;
+}
+
+/**
+ * The `<img>` attributes for a content image, or null when there is nothing safe to show. A stored file offers its
+ * renditions with `sizes` (the slot's rendered CSS width); an outside address is sanitized and stands alone. An object
+ * that is not a well-formed `StoredFile` renders nothing.
+ */
+export function safeImageProps(value: unknown, sizes: string): SafeImageProps | null {
+    if (typeof value === 'string') {
+        const src = value.trim() ? sanitizeUrl(value) : '#';
+        return src === '#' ? null : { src };
+    }
+    if (!isStoredFile(value)) return null;
+    const { src, srcSet, width, height } = imageSources(value);
+    return { src, srcSet, sizes: srcSet ? sizes : undefined, width, height };
 }
 
 /**

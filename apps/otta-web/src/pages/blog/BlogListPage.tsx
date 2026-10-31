@@ -4,6 +4,7 @@
  * Displays published blog posts with filtering and pagination.
  * Uses public API so protected posts only return excerpt (no full body).
  */
+import { safeImageProps } from '@ottabase/utils/sanitize';
 import { SEOHead } from '@/components/SEOHead';
 import { BLOG_LIST_QUERY_CONFIG, SERIES_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
@@ -13,6 +14,7 @@ import {
     contentTypeLabel,
     formatDate,
     type ContentType,
+    type HeroImage,
     type PhotoJournalItem,
 } from '@ottabase/ottablog';
 import { BlurbRenderer, PhotoJournalRenderer } from '@ottabase/ottablog/renderer';
@@ -31,7 +33,6 @@ import {
     NativeSelectOption,
 } from '@ottabase/ui';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
 import { Link, useSearch } from '@tanstack/react-router';
 import { localizedPostSearch } from './blogLinks';
 import {
@@ -66,7 +67,7 @@ interface BlogPost {
     photoAlbum: PhotoJournalItem[] | null;
     contentType: ContentType;
     status: string;
-    heroImage: { url: string; alt?: string } | null;
+    heroImage: HeroImage | null;
     // Author from User relationship
     authorId?: string | null;
     author?: PostAuthor | null;
@@ -409,14 +410,15 @@ function PostImageLink({
 }
 
 function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
-    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
+    // Featured cards sit two to a row in the 48rem column from md up.
+    const hero = safeImageProps(post.heroImage?.image, '(min-width: 48rem) 24rem, 100vw');
     const photoCount = post.photoAlbum?.length ?? 0;
     return (
         <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
-            {heroUrl !== '#' && (
+            {hero && (
                 <PostImageLink post={post} activeLanguage={activeLanguage} className="relative h-48 overflow-hidden">
                     <img
-                        src={heroUrl}
+                        {...hero}
                         alt={post.heroImage?.alt || post.title}
                         loading="lazy"
                         decoding="async"
@@ -508,10 +510,11 @@ function FeaturedPostCard({ post, activeLanguage }: { post: BlogPost; activeLang
 }
 
 function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: string }) {
-    const heroUrl = post.heroImage?.url ? sanitizeUrl(post.heroImage.url) : '#';
+    // A timeline card spans the 48rem list column.
+    const hero = safeImageProps(post.heroImage?.image, '(min-width: 48rem) 48rem, 100vw');
     return (
         <Card className="group h-full overflow-hidden rounded-2xl border-transparent bg-muted/40 shadow-none transition-colors duration-normal hover:bg-muted/70">
-            {heroUrl !== '#' && (
+            {hero && (
                 // Print-edge frame, matching the photo journal's tiles and the article hero:
                 // a fixed ratio so the timeline does not reflow as images arrive, a hairline so
                 // a pale photo still has an edge, and the same slow lift on hover.
@@ -521,7 +524,7 @@ function PostCard({ post, activeLanguage }: { post: BlogPost; activeLanguage?: s
                     className="relative aspect-[16/9] overflow-hidden bg-muted/40"
                 >
                     <img
-                        src={heroUrl}
+                        {...hero}
                         alt={post.heroImage?.alt || post.title}
                         loading="lazy"
                         decoding="async"

@@ -1,4 +1,5 @@
 import type { OutputData } from '@editorjs/editorjs';
+import { fileUrl, type FileSource } from '@ottabase/utils/media';
 
 /**
  * Pretty-prints EditorJS OutputData as formatted JSON string
@@ -122,9 +123,10 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
             return `> ⚠️ **${title}**: ${message}`;
         }
 
+        // Images export as their original's URL (absolute on a server): a portable file, never a rendition
         case 'image':
         case 'advancedImage': {
-            const url = data.file?.url || data.url || '';
+            const url = fileUrl(data.image);
             const alt = data.alt || data.caption || '';
             const caption = data.caption || '';
             return caption ? `![${alt}](${url} "${caption}")` : `![${alt}](${url})`;
@@ -219,7 +221,7 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
         }
 
         case 'mediaEmbed': {
-            const url = data.url || '';
+            const url = fileUrl(data.media);
             const caption = data.caption || data.title || '';
             return caption ? `[${convertInlineHTML(caption)}](${url})` : `[media](${url})`;
         }
@@ -228,24 +230,24 @@ function blockToMarkdown(block: { type: string; data: Record<string, any> }): st
             const items = data.items || [];
             if (items.length === 0) return '<!-- empty media gallery -->';
             return items
-                .map((item: { url: string; altText?: string; caption?: string; title?: string }) => {
-                    const alt = item.altText || item.caption || item.title || '';
-                    return `![${alt}](${item.url})`;
+                .map((item: { media: FileSource; alt?: string; caption?: string; title?: string }) => {
+                    const alt = item.alt || item.caption || item.title || '';
+                    return `![${alt}](${fileUrl(item.media)})`;
                 })
                 .join('\n');
         }
 
         case 'beforeAfter': {
             const lines: string[] = ['### Before / After'];
-            if (data.beforeUrl) lines.push(`**${data.beforeLabel || 'Before'}:** ![before](${data.beforeUrl})`);
-            if (data.afterUrl) lines.push(`**${data.afterLabel || 'After'}:** ![after](${data.afterUrl})`);
+            if (data.before) lines.push(`**${data.beforeLabel || 'Before'}:** ![before](${fileUrl(data.before)})`);
+            if (data.after) lines.push(`**${data.afterLabel || 'After'}:** ![after](${fileUrl(data.after)})`);
             if (data.caption) lines.push(`*${convertInlineHTML(data.caption)}*`);
             return lines.join('\n\n');
         }
 
         case 'imageHotspots': {
             const lines: string[] = [];
-            if (data.imageUrl) lines.push(`![${data.alt || ''}](${data.imageUrl})`);
+            if (data.image) lines.push(`![${data.alt || ''}](${fileUrl(data.image)})`);
             const hotspots = data.hotspots || [];
             if (hotspots.length > 0) {
                 lines.push('');

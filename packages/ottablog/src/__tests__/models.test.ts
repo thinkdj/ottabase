@@ -185,16 +185,14 @@ describe('ottablog models', () => {
 
         it('creates photo journals with an ordered album and lead-photo compatibility metadata', async () => {
             const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
+            const kyoto = { key: `app/media/${'a'.repeat(32)}.jpg`, width: 1800, height: 1200, variants: ['card'] };
             const photos = [
                 {
                     id: 'photo-1',
-                    mediaId: 'media-1',
-                    url: 'https://images.test/kyoto.jpg',
+                    image: kyoto,
                     alt: 'Lanterns reflected in a wet lane',
                     caption: 'After the last train',
                     location: 'Kyoto, Japan',
-                    width: 1800,
-                    height: 1200,
                 },
             ];
 
@@ -217,18 +215,17 @@ describe('ottablog models', () => {
                     photoAlbum: [
                         expect.objectContaining({
                             id: 'photo-1',
-                            mediaId: 'media-1',
-                            url: 'https://images.test/kyoto.jpg',
+                            image: kyoto,
                             caption: 'After the last train',
                         }),
                     ],
                     content: null,
                     contentType: 'photo',
-                    heroImage: expect.objectContaining({
-                        url: 'https://images.test/kyoto.jpg',
-                        mediaId: 'media-1',
+                    heroImage: {
+                        image: kyoto,
                         alt: 'Lanterns reflected in a wet lane',
-                    }),
+                        caption: 'After the last train',
+                    },
                     status: 'published',
                     isFeatured: true,
                     isProtected: false,
@@ -246,7 +243,7 @@ describe('ottablog models', () => {
 
         it('keeps the stored field note when updatePhotoJournal omits it', async () => {
             const stored: Record<string, unknown> = { title: 'Kyoto, in the rain', photoNote: 'A quiet blue hour.' };
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
             const post = Object.assign(Object.create(Post.prototype) as Post, {
                 get: (field: string) => stored[field],
                 set: (field: string, value: unknown) => {
@@ -266,7 +263,7 @@ describe('ottablog models', () => {
 
         it('clears the field note when updatePhotoJournal passes an explicit null', async () => {
             const stored: Record<string, unknown> = { title: 'Kyoto, in the rain', photoNote: 'A quiet blue hour.' };
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
             const post = Object.assign(Object.create(Post.prototype) as Post, {
                 get: (field: string) => stored[field],
                 set: (field: string, value: unknown) => {
@@ -283,11 +280,11 @@ describe('ottablog models', () => {
 
         it('stores an optional journal body and counts its words toward reading time', async () => {
             const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg', caption: 'After the last train' }];
             const content = {
                 blocks: [
                     { type: 'paragraph', data: { text: 'The rain emptied the streets just before blue hour.' } },
-                    { type: 'mediaGallery', data: { items: [{ url: 'https://images.test/lane.jpg' }] } },
+                    { type: 'mediaGallery', data: { items: [{ media: 'https://images.test/lane.jpg' }] } },
                 ],
             };
 
@@ -303,7 +300,7 @@ describe('ottablog models', () => {
         it('keeps a stored journal body when updatePhotoJournal omits content and clears it on explicit null', async () => {
             const body = { blocks: [{ type: 'paragraph', data: { text: 'Still here.' } }] };
             const stored: Record<string, unknown> = { title: 'Kyoto, in the rain', content: body };
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg' }];
             const post = Object.assign(Object.create(Post.prototype) as Post, {
                 get: (field: string) => stored[field],
                 set: (field: string, value: unknown) => {
@@ -322,7 +319,7 @@ describe('ottablog models', () => {
 
         it('stores crossposts on a photo journal with the same PATCH semantics as a blurb', async () => {
             const create = vi.spyOn(Post, 'create').mockResolvedValue({} as any);
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg' }];
             await Post.createPhotoJournal(photos, { crossposts: ['https://www.instagram.com/p/abc'] });
             expect((create.mock.calls[0][0] as { crossposts: unknown }).crossposts).toEqual([
                 { url: 'https://www.instagram.com/p/abc' },
@@ -355,10 +352,10 @@ describe('ottablog models', () => {
             const stored: Record<string, unknown> = {
                 title: 'Kyoto, in the rain',
                 photoNote: 'A quiet blue hour.', // 4 album words
-                photoAlbum: [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }],
+                photoAlbum: [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg' }],
                 wordCount: 104, // 4 album + 100 body
             };
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg' }];
             const post = Object.assign(Object.create(Post.prototype) as Post, {
                 get: (field: string) => stored[field],
                 set: (field: string, value: unknown) => {
@@ -375,14 +372,14 @@ describe('ottablog models', () => {
         });
 
         it('rejects a journal body that is not editor content', async () => {
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg' }];
             await expect(Post.createPhotoJournal(photos, { content: { blocks: 'nope' } as never })).rejects.toThrow(
                 PostContentValidationError,
             );
         });
 
         it('rejects a journal body past the size ceiling', async () => {
-            const photos = [{ id: 'photo-1', url: 'https://images.test/kyoto.jpg' }];
+            const photos = [{ id: 'photo-1', image: 'https://images.test/kyoto.jpg' }];
             const oversized = {
                 blocks: [{ type: 'paragraph', data: { text: 'x'.repeat(POST_CONTENT_MAX_BYTES + 1) } }],
             };
@@ -693,7 +690,7 @@ describe('ottablog models', () => {
             ).prepareUpdateMutation(data, { id, currentData, driver: undefined });
 
         it('runs the content validators from the model, not only from the routes', () => {
-            expect(() => prepare({ contentType: 'photo', photoAlbum: [{ url: 'javascript:alert(1)' }] })).toThrow(
+            expect(() => prepare({ contentType: 'photo', photoAlbum: [{ image: 'javascript:alert(1)' }] })).toThrow(
                 'HTTP(S)',
             );
             expect(() => prepare({ contentType: 'photo', photoAlbum: [] })).toThrow('needs at least one photograph');
@@ -801,10 +798,10 @@ describe('ottablog models', () => {
                     id: 'photo-1',
                     title: 'A journal',
                     contentType: 'photo',
-                    photoAlbum: [{ id: 'p1', url: 'https://images.test/p1.jpg' }],
+                    photoAlbum: [{ id: 'p1', image: 'https://images.test/p1.jpg' }],
                     photoNote: 'A note',
                     content: { blocks: [{ type: 'paragraph', data: { text: 'body' } }] },
-                    heroImage: { url: 'https://images.test/p1.jpg' },
+                    heroImage: { image: 'https://images.test/p1.jpg' },
                     footnotes: { blocks: [] },
                 },
             });
@@ -831,7 +828,7 @@ describe('ottablog models', () => {
                 id: 'photo-1',
                 title: 'A journal',
                 contentType: 'photo',
-                photoAlbum: [{ id: 'p1', url: 'https://images.test/p1.jpg' }],
+                photoAlbum: [{ id: 'p1', image: 'https://images.test/p1.jpg' }],
                 photoNote: 'A note',
                 content: { blocks: [{ type: 'paragraph', data: { text: 'body' } }] },
             };

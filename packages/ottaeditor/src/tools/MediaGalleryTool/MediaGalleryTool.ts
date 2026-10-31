@@ -1,4 +1,5 @@
 import type { API, BlockTool } from '@editorjs/editorjs';
+import { fileIdFromKey, fileUrl, type FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import {
     button,
@@ -14,6 +15,7 @@ import {
     textInput,
     textarea,
     uid,
+    PRIVATE_FILE_MESSAGE,
     type MediaSelection,
 } from '../../ui/kit';
 import { BlockShell } from '../../ui/shell';
@@ -22,15 +24,13 @@ export type MediaGalleryLayoutPreset = 'grid-balanced' | 'grid-featured' | 'maso
 
 export interface MediaGalleryItem {
     id?: string;
-    url: string;
+    /** A stored file, or an outside address */
+    media: FileSource;
     title?: string;
     caption?: string;
-    mediaId?: string;
+    alt?: string;
     mimeType?: string;
     mediaKind?: string;
-    thumbnailUrl?: string;
-    previewUrl?: string;
-    altText?: string;
 }
 
 export interface MediaGalleryData {
@@ -63,6 +63,9 @@ const LAYOUTS: ReadonlyArray<{ value: MediaGalleryLayoutPreset; label: string }>
 ];
 const ALL_KINDS = ['image', 'video', 'audio', 'document', 'archive', 'other'] as const;
 
+/** One gallery entry per file: a stored file by its id, an outside one by its address. */
+const identity = (media: FileSource) => (typeof media === 'string' ? media : (fileIdFromKey(media.key) ?? media.key));
+
 /**
  * Gallery block. Edit mode: title, layout, caption and a sortable list of items fed by the host's
  * media picker (multiselect). Preview is the renderer's gallery in the chosen layout.
@@ -75,6 +78,7 @@ export default class MediaGalleryTool implements BlockTool {
     private shell: BlockShell | null = null;
     private list: ReturnType<typeof sortableList<MediaGalleryItem>> | null = null;
     private countEl: HTMLElement | null = null;
+    private statusEl: HTMLElement | null = null;
     private addBtn: HTMLButtonElement | null = null;
     private readonly field = uid('gallery');
     private unsubscribe: (() => void) | null = null;
@@ -102,7 +106,7 @@ export default class MediaGalleryTool implements BlockTool {
             title: data?.title || '',
             caption: data?.caption || '',
             layout,
-            items: (data?.items || []).filter((item) => Boolean(item?.url)).map((item) => ({ ...item })),
+            items: (data?.items || []).filter((item) => Boolean(item?.media)).map((item) => ({ ...item })),
         };
     }
 
@@ -147,6 +151,7 @@ export default class MediaGalleryTool implements BlockTool {
         });
 
         this.countEl = h('span', { className: 'oe-hint' });
+        this.statusEl = h('p', { className: 'oe-hint oe-status', role: 'status' });
         this.addBtn = button({
             label: 'Add media',
             icon: 'library',
@@ -189,6 +194,7 @@ export default class MediaGalleryTool implements BlockTool {
                 row(field({ label: 'Title', control: title, grow: true }), field({ label: 'Layout', control: layout })),
                 field({ label: 'Caption', control: caption }),
                 bar,
+                this.statusEl,
                 this.list.element,
             ),
         );
@@ -200,11 +206,7 @@ export default class MediaGalleryTool implements BlockTool {
     private itemRow(item: MediaGalleryItem): HTMLElement {
         const isImage = (item.mediaKind || 'image') === 'image';
         const thumb = isImage
-            ? h('img', {
-                  className: 'oe-gallery__thumb',
-                  src: item.thumbnailUrl || item.previewUrl || item.url,
-                  alt: '',
-              })
+            ? h('img', { className: 'oe-gallery__thumb', src: fileUrl(item.media, 'thumb'), alt: '' })
             : h(
                   'span',
                   { className: 'oe-gallery__thumb oe-gallery__thumb--kind' },
@@ -226,11 +228,11 @@ export default class MediaGalleryTool implements BlockTool {
                     },
                 }),
                 textInput({
-                    value: item.altText || '',
+                    value: item.alt || '',
                     placeholder: 'Alt text',
                     ariaLabel: `Alt text for ${label}`,
                     onInput: (v) => {
-                        item.altText = v;
+                        item.alt = v;
                         this.changed();
                     },
                 }),
@@ -252,24 +254,25 @@ export default class MediaGalleryTool implements BlockTool {
         openMediaLibrary(this.field, { accept: [...ALL_KINDS], multiselect: this.config.allowMultiselect !== false });
     }
 
-    /** A picker result for this block (also the test seam). */
+    /** A picker result for this block (also the test seam). A private file is refused. */
     handleMediaSelected(media?: MediaSelection) {
-        if (!media?.url) return;
-        const next: MediaGalleryItem = {
-            id: media.id,
-            url: media.url,
-            title: media.title || media.originalName || '',
+        if (!media) return;
+        if (!media.file) {
+            if (this.statusEl) this.statusEl.textContent = PRIVATE_FILE_MESSAGE;
+            return;
+        }
+        if (this.statusEl) this.statusEl.textContent = '';
+        const id = identity(media.file);
+        if (this.data.items.some((item) => identity(item.media) === id)) return;
+        if (this.data.items.length >= this.maxItems) return;
+        this.data.items.push({
+            media: media.file,
+            title: media.title || media.name || '',
             caption: media.caption || '',
-            mediaId: media.mediaId || media.id,
+            alt: media.alt || media.title || media.name || '',
             mimeType: media.mimeType || '',
             mediaKind: media.mediaKind || 'other',
-            thumbnailUrl: media.thumbnailUrl || media.url,
-            previewUrl: media.previewUrl || media.url,
-            altText: media.altText || media.title || media.originalName || '',
-        };
-        if (this.data.items.some((item) => item.mediaId && next.mediaId && item.mediaId === next.mediaId)) return;
-        if (this.data.items.length >= this.maxItems) return;
-        this.data.items.push(next);
+        });
         this.list?.refresh();
         this.changed();
     }
@@ -306,12 +309,12 @@ export default class MediaGalleryTool implements BlockTool {
             caption: this.data.caption?.trim() || '',
             layout: this.data.layout || DEFAULT_LAYOUT,
             items: this.data.items
-                .filter((item) => item.url)
+                .filter((item) => item.media)
                 .map((item) => ({
                     ...item,
                     title: item.title?.trim() || '',
                     caption: item.caption?.trim() || '',
-                    altText: item.altText?.trim() || '',
+                    alt: item.alt?.trim() || '',
                 })),
         };
     }

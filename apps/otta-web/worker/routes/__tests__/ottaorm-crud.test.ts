@@ -420,7 +420,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
             body: {
                 photoAlbum: Array.from({ length: 61 }, (_, index) => ({
                     id: `p${index}`,
-                    url: `https://images.test/${index}.jpg`,
+                    image: `https://images.test/${index}.jpg`,
                 })),
             },
         });
@@ -441,7 +441,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
             method: 'PATCH',
             id: 'post-1',
             // A javascript: URL must not survive into the stored album.
-            body: { blurbText: '  A thought  ', photoAlbum: [{ id: 'p1', url: 'https://images.test/1.jpg' }] },
+            body: { blurbText: '  A thought  ', photoAlbum: [{ id: 'p1', image: 'https://images.test/1.jpg' }] },
         });
         (executeSecureCrudRequest as any).mockResolvedValue({ success: true, data: { id: 'post-1' }, status: 200 });
 
@@ -450,7 +450,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
 
         expect(response.status).toBe(200);
         expect(call.body.blurbText).toBe('A thought');
-        expect(call.body.photoAlbum).toEqual([expect.objectContaining({ url: 'https://images.test/1.jpg' })]);
+        expect(call.body.photoAlbum).toEqual([expect.objectContaining({ image: 'https://images.test/1.jpg' })]);
     });
 
     it('validates crossposts on the generic route, which is the only way an article writes them', async () => {
@@ -530,7 +530,7 @@ describe('handleOttaormCrud (posts blurb/photo-journal shape validation)', () =>
             model: 'posts',
             method: 'PATCH',
             id: 'post-1',
-            body: { photoAlbum: [{ id: 'p1', url: 'javascript:alert(1)' }] },
+            body: { photoAlbum: [{ id: 'p1', image: 'javascript:alert(1)' }] },
         });
 
         const response = await handleOttaormCrud(createContext());

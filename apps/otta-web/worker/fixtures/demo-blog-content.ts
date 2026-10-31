@@ -58,7 +58,6 @@ const lofotenJournal: BlogDemoPostSeed = {
     photoAlbum: [
         frame(
             '1681023930137-1d0a3e3158dc',
-            [4032, 3024],
             '2023-04-03T16:08:40Z',
             'Cabins on stilts, the first evening',
             'Red fishermen’s cabins on stilts above a calm harbour, a snow-covered peak behind',
@@ -66,7 +65,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681023930308-94d093bc23e4',
-            [3024, 4032],
             '2023-04-03T15:36:57Z',
             'The harbour on arrival, boats in for the night',
             'Small fishing boats moored in a harbour beneath a snowy mountain',
@@ -74,7 +72,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681023930177-18c1984225cf',
-            [4032, 3024],
             '2023-04-03T16:23:02Z',
             'Rorbuer in a row, the classic Lofoten frame',
             'A row of red cabins along the water under a bright blue sky',
@@ -82,7 +79,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025243436-70663a275eed',
-            [3915, 2936],
             '2023-04-04T05:16:14Z',
             'Dawn on day two, not a breath of wind',
             'Red and white houses mirrored perfectly in still water under a dramatic sky',
@@ -90,7 +86,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025242452-54ee1c3fc431',
-            [2268, 3024],
             '2023-04-04T05:22:48Z',
             'Red and ochre, doubled in the water',
             'Red and ochre buildings on stilts reflected in a glassy harbour',
@@ -98,7 +93,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025243039-43d81e29a676',
-            [4032, 3024],
             '2023-04-04T05:24:53Z',
             'A working boat, still moored at seven',
             'A wooden fishing boat moored in front of red houses with jagged peaks behind',
@@ -106,7 +100,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025243609-621f2e15bd24',
-            [3024, 4032],
             '2023-04-04T05:18:31Z',
             'The waterfront from just above',
             'Red and yellow waterfront houses seen from slightly above, the town behind them',
@@ -114,7 +107,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025243319-59c5c476bc49',
-            [3024, 4032],
             '2023-04-04T06:07:17Z',
             'Following a boat out toward the light',
             'The wake of a small boat heading toward a low golden sun between islands',
@@ -122,7 +114,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025243733-925a47988e41',
-            [4032, 3024],
             '2023-04-04T06:04:28Z',
             'The village from above, just after eight',
             'Aerial view of a snowy fishing village along a channel, mountains on the horizon',
@@ -130,7 +121,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681025243786-131a32e60967',
-            [4032, 3024],
             '2023-04-04T06:08:09Z',
             'Sailboats waiting for spring',
             'A red house on a snowy pier with small sailboats moored below in warm light',
@@ -138,7 +128,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681027100406-8e7d870c5ed1',
-            [3024, 4032],
             '2023-04-04T08:33:53Z',
             'The road inland, all birch and switchbacks',
             'A cleared road between snowy birches leading toward a sharp mountain',
@@ -146,7 +135,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681027098644-01f73b609393',
-            [3024, 4032],
             '2023-04-04T09:05:21Z',
             'A causeway road from straight above',
             'Aerial view of a narrow road crossing snow and dark rock',
@@ -154,7 +142,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681027104459-7deb829db0a9',
-            [7200, 5184],
             '2023-04-04T09:41:16Z',
             'Skerries all the way to the horizon',
             'Calm sea scattered with small snowy islets under a grey sky',
@@ -162,7 +149,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681027099729-70da39869fde',
-            [3024, 4032],
             '2023-04-04T09:54:42Z',
             'The harbour, from the air',
             'Aerial view of a harbour village spread across small islands, peaks behind',
@@ -170,7 +156,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681027101434-eeada3d35abb',
-            [4032, 3024],
             '2023-04-05T10:19:09Z',
             'The pitch, half cleared of snow',
             'A football pitch on a rocky island, half covered in snow, the village and mountains behind',
@@ -178,7 +163,6 @@ const lofotenJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1681027101477-18474149c45d',
-            [3024, 4032],
             '2023-04-05T10:19:27Z',
             'Same pitch, straight down the touchline',
             'Overhead view along a football pitch surrounded by snow and sea',
@@ -215,8 +199,8 @@ const lofotenJournal: BlogDemoPostSeed = {
         {
             type: 'beforeAfter',
             data: {
-                beforeUrl: unsplash('1681025243436-70663a275eed'),
-                afterUrl: `${unsplash('1681025243436-70663a275eed')}&sat=-100`,
+                before: unsplash('1681025243436-70663a275eed'),
+                after: `${unsplash('1681025243436-70663a275eed')}&sat=-100`,
                 beforeLabel: 'As shot',
                 afterLabel: 'Monochrome',
                 orientation: 'horizontal',
@@ -247,7 +231,7 @@ const lofotenJournal: BlogDemoPostSeed = {
         {
             type: 'imageHotspots',
             data: {
-                imageUrl: unsplash('1681027101434-eeada3d35abb', 2000),
+                image: unsplash('1681027101434-eeada3d35abb', 2000),
                 alt: 'Aerial view of the Henningsvær football pitch, the village and the mountains of Austvågøya',
                 caption: 'Tap a pin.',
                 imageFit: 'contain',
@@ -342,7 +326,6 @@ const keralaJournal: BlogDemoPostSeed = {
     photoAlbum: [
         frame(
             '1593417033772-3f63f5b8f804',
-            [4282, 2854],
             '2016-10-29T12:09:24Z',
             'A houseboat comes in at dusk',
             'A houseboat silhouetted at dusk beyond a carpet of water hyacinth',
@@ -350,7 +333,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1597458816655-6c077c9a17ec',
-            [4277, 2851],
             '2016-10-26T04:38:58Z',
             'An elephant and its mahout, three days before the water',
             'A man walking ahead of an elephant on a dusty path between trees',
@@ -358,7 +340,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417033852-66b46de814b8',
-            [4424, 2949],
             '2016-10-29T11:46:51Z',
             'Two storeys of houseboat, one man in a canoe',
             'A large two-storey wooden houseboat moored under palms, a small canoe beside it',
@@ -366,7 +347,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417034123-609e40341d20',
-            [4380, 2920],
             '2016-10-29T12:02:23Z',
             'Sunset, and someone still fishing',
             'A low orange sun over a lake, a lone canoe silhouetted among the reeds',
@@ -374,7 +354,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417034675-3ed7eda1bee9',
-            [4462, 2974],
             '2016-10-29T12:16:27Z',
             'Through the hyacinth',
             'A canoe and a houseboat crossing water thick with floating hyacinth',
@@ -382,7 +361,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417033920-3c04818ee8a8',
-            [4027, 2684],
             '2016-10-29T12:19:58Z',
             'A kettuvallam, the old rice barge shape',
             'A thatched houseboat almost hidden behind a field of water hyacinth',
@@ -390,7 +368,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417033868-d18d4099d78e',
-            [4515, 3010],
             '2016-10-30T06:31:45Z',
             'Cormorants, holding court',
             'Cormorants perched along a bare branch above the water',
@@ -398,7 +375,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1597387019303-dad392814837',
-            [4598, 1652],
             '2016-10-30T06:39:50Z',
             'Houseboats along the bank, end to end',
             'A long line of houseboats moored beneath coconut palms',
@@ -406,7 +382,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417034505-afe9e3faf3f4',
-            [4314, 2876],
             '2016-10-30T06:40:29Z',
             'Open water at last',
             'A houseboat crossing a wide stretch of open water',
@@ -414,7 +389,6 @@ const keralaJournal: BlogDemoPostSeed = {
         ),
         frame(
             '1593417033942-bcdf26b74700',
-            [4172, 2835],
             '2016-10-30T06:47:04Z',
             'Into a side canal',
             'A houseboat turning into a narrow canal between palm trees',
@@ -446,7 +420,7 @@ const alfamaWalk: BlogDemoPostSeed = {
     excerpt:
         'Lisbon’s oldest neighbourhood has stairs instead of streets and no two corners at the same angle. A route through it, and permission to abandon the route.',
     heroImage: {
-        url: unsplash('1675194722358-4d36d837dfc7', 2000),
+        image: unsplash('1675194722358-4d36d837dfc7', 2000),
         alt: 'Early morning light over the terracotta rooftops and church towers of Alfama',
         caption: 'Alfama at sunrise, from the top of the hill.',
     },
@@ -471,7 +445,7 @@ const alfamaWalk: BlogDemoPostSeed = {
         {
             type: 'imageHotspots',
             data: {
-                imageUrl: unsplash('1501927023255-9063be98970c', 2000),
+                image: unsplash('1501927023255-9063be98970c', 2000),
                 alt: 'Alfama rooftops with the Monastery of São Vicente de Fora on the left and the white dome of the National Pantheon on the right',
                 caption: 'The view east from the viewpoints. Tap a pin.',
                 imageFit: 'contain',
@@ -622,7 +596,7 @@ const sourdough: BlogDemoPostSeed = {
     excerpt:
         'Most sourdough recipes are written for people who are home all day. This one moves the slow parts to the hours you are asleep or at work.',
     heroImage: {
-        url: unsplash('1778472459221-0df20e520241', 2000),
+        image: unsplash('1778472459221-0df20e520241', 2000),
         alt: 'A round scored sourdough loaf with a deep golden crust on a dark blue cloth',
     },
     series: 'Slow Craft',
@@ -747,7 +721,7 @@ const filmCamera: BlogDemoPostSeed = {
     excerpt:
         'Sixty euros at a flea market, twenty-odd rolls, and the surprising discovery that the camera with no undo button is the one I reach for first.',
     heroImage: {
-        url: unsplash('1608517492956-82cd49655f40', 2000),
+        image: unsplash('1608517492956-82cd49655f40', 2000),
         alt: 'A Minolta film camera on a desk beside a box of Kodak Ektar 100',
     },
     series: 'Slow Craft',
@@ -833,7 +807,7 @@ const edgeLatency: BlogDemoPostSeed = {
     excerpt:
         'Edge runtimes put your code next to the reader and leave the database far away. The habits we had to unlearn, and the ones that replaced them.',
     heroImage: {
-        url: unsplash('1451187580459-43490279c0fa', 2000),
+        image: unsplash('1451187580459-43490279c0fa', 2000),
         alt: 'The night side of the Earth seen from orbit, city lights strung along the coastlines',
     },
     seoMeta: {
@@ -965,7 +939,7 @@ const offsite: BlogDemoPostSeed = {
     excerpt:
         'Once a year the whole team spends four days around one table in a rented farmhouse. It took us three tries to make it the most useful week of the year instead of the most tiring.',
     heroImage: {
-        url: unsplash('1696805966408-5f92fdb79ae7', 2000),
+        image: unsplash('1696805966408-5f92fdb79ae7', 2000),
         alt: 'A long wooden table set with chairs in a bright farmhouse room',
     },
     tags: ['Remote work', 'Teams'],
@@ -1068,7 +1042,7 @@ const notesFrom2003: BlogDemoPostSeed = {
     excerpt:
         'Found on a floppy disk in a box of cables: five predictions about the web, written the summer I put my first homepage online. Three of them came true.',
     heroImage: {
-        url: unsplash('1661793422829-e1f648ab4a15', 2000),
+        image: unsplash('1661793422829-e1f648ab4a15', 2000),
         alt: 'A beige desktop computer with a CRT monitor, keyboard and joystick',
     },
     tags: ['Archive', 'Web history'],
@@ -1134,7 +1108,7 @@ const kitchensink: BlogDemoPostSeed = {
         'Every block OttaEditor can write, on one page: text, media and the interactive ones, so you can see exactly how your theme renders them.',
     content: kitchensinkContent as BlogDemoPostSeed['content'],
     heroImage: {
-        url: unsplash('1439405326854-014607f694d7', 2000),
+        image: unsplash('1439405326854-014607f694d7', 2000),
         alt: 'Sunset over open water, seen from just above the waves',
     },
     tags: ['Blocks', 'Themes'],

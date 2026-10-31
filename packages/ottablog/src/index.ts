@@ -8,7 +8,7 @@
  * - Multiple content types (blog, blurb, photo, changelog, docs, news, announcement)
  * - EditorJS integration via OttaEditor
  * - SEO metadata support
- * - Hero images with Cloudflare Images integration
+ * - Hero images from the files service, served as responsive renditions
  * - Categories with hierarchy support
  * - PostTag model for blog-specific tags (with color, type)
  * - Multi-app database sharing via appId
@@ -136,6 +136,7 @@ export {
     MAX_CROSSPOSTS,
     normalizeBlurbText,
     PHOTO_JOURNAL_MAX_ITEMS,
+    imageIdentity,
     PHOTO_JOURNAL_NOTE_MAX_LENGTH,
     PhotoJournalValidationError,
     POST_CONTENT_MAX_BYTES,
@@ -143,11 +144,15 @@ export {
     POST_STATUSES,
     validateBlurbText,
     validateCrossposts,
+    validateHeroImage,
+    validateImageSource,
     validatePhotoJournalItems,
     validatePhotoJournalNote,
     validatePostContent,
     validatePostWrite,
 } from './types';
+
+// `<img>` attributes for a post image (renditions + sizes), for hosts that draw their own cards (pure)
 
 // Slug utilities (shared across models)
 export { normalizeSlugInput, resolveUniqueSlug } from './slug-utils';
@@ -158,6 +163,7 @@ export {
     BLOG_EXPORT_FORMAT,
     BLOG_EXPORT_VERSION,
     BLOG_IMPORT_BATCH_SIZE,
+    exportFileUrls,
     markdownToEditorJs,
     parseMarkdownPost,
     readBlogImportFile,

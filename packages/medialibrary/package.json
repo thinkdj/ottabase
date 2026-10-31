@@ -20,6 +20,9 @@
         "lint": "eslint src",
         "type-check": "tsc --noEmit"
     },
+    "dependencies": {
+        "@ottabase/utils": "workspace:*"
+    },
     "peerDependencies": {
         "@tabler/icons-react": "catalog:",
         "react": "catalog:",

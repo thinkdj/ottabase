@@ -9,6 +9,7 @@ import { useSession } from '@/lib/auth';
 import type { PostAuthor } from '@/types/blog';
 import { MediaLightboxProvider } from '@ottabase/medialibrary/react';
 import type { HeroImage } from '@ottabase/ottablog';
+import { safeImageProps } from '@ottabase/utils/sanitize';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { OttaRenderer } from '@ottabase/ottarenderer';
@@ -92,7 +93,8 @@ export function ChangelogDetailPage() {
 
     // entry is guaranteed to be defined after the above checks
     const description = entry.excerpt ?? undefined;
-    const heroUrl = entry.heroImage?.url;
+    // The article column (max-w-3xl less its gutters and the frame's padding).
+    const hero = safeImageProps(entry.heroImage?.image, '(min-width: 48rem) 43rem, calc(100vw - 3rem)');
     const currentUserId = user?.id;
     const isAuthor = currentUserId && entry.authorId && currentUserId === entry.authorId;
 
@@ -103,7 +105,7 @@ export function ChangelogDetailPage() {
                 description={description}
                 ogType="article"
                 twitterCard="summary_large_image"
-                ogImage={heroUrl}
+                ogImage={entry.heroImage?.image}
                 publishedTime={entry.publishedAt ?? undefined}
                 author={entry.author?.name ?? undefined}
             />
@@ -156,12 +158,13 @@ export function ChangelogDetailPage() {
                     )}
                 </header>
 
-                {entry.heroImage?.url && (
+                {entry.heroImage && hero && (
                     <div className="mb-8 overflow-hidden rounded-2xl bg-muted/30 p-2 ring-1 ring-border dark:bg-muted/20 dark:ring-border sm:p-3">
                         <img
-                            src={entry.heroImage.url}
+                            {...hero}
                             alt={entry.heroImage.alt ?? ''}
                             className="w-full rounded-xl object-cover"
+                            decoding="async"
                         />
                         {entry.heroImage.caption && (
                             <p className="mt-2 text-center text-sm text-muted-foreground dark:text-muted-foreground">

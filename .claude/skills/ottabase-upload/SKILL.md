@@ -22,13 +22,20 @@ files: [{ purpose: 'invoice', label: 'Invoices', audience: 'members', types: ['a
 - `audience`: `public` (anyone; public bucket `OBCF_R2`, served by key), `members` (the owning org) or `owner` (the
   uploader and admins); both private ones live in `OBCF_R2_PRIVATE`, which is never served by key.
 - `types` are SNIFFED MIME types (the bytes decide, never `file.type` or the extension); `image/*` = the raster family.
-- `variants: ['thumb' | 'card' | 'full']` for images (160/640/1600 px WebP via `OBCF_IMAGES`); `svg: true` only for
-  purposes trusted admins write; `server: true` when only your own guarded route may write it.
+- `variants: ['thumb' | 'card' | 'full']` for images (160/640/1600 px WebP via `OBCF_IMAGES`, each made only when
+  narrower than the original); `svg: true` only for purposes trusted admins write; `server: true` when only your own
+  guarded route may write it.
 
 ## Client
 
 - `POST /api/files` with multipart `file` + `purpose` (+ `title`, `altText`) answers `{ success, file }` (the view:
-  `url`, `thumbnailUrl`, `previewUrl`, `id`, sniffed `mimeType`, `width`, `height`).
+  `url`, `thumbnailUrl`, `previewUrl`, `srcSet`, `id`, `storageKey`, `variants`, sniffed `mimeType`, `width`, `height`).
+- Content (a block, a post field, a landing field, a menu item) that holds an upload stores
+  `storedFileOf(response.file)` from `@ottabase/utils/media` (a media library pick's `selection.file`), never a URL;
+  null means a private file, which content cannot embed. A typed outside address stays a string (`FileSource`).
+- Render it with `imageSources(value)` (`src`, `srcSet`, `width`, `height`) plus a `sizes` for the layout, or
+  `fileUrl(value, 'thumb' | 'card')` for a small fixed slot. og:image, feeds, JSON-LD and mail use `fileUrl(value)`, the
+  original (not every client takes WebP). Validate request bodies with `isStoredFile`.
 - Headless/vanilla: `uploadFile(file, { purpose })` (`@ottabase/ottaupload/utils`). React: `useFileUpload({ purpose })`,
   `useDragAndDrop`, `<FileUploader purpose="…">` (`@ottabase/ottaupload/client`).
 - Edit with `PATCH /api/files/:id`, delete with `DELETE /api/files/:id`. List media rows with generic CRUD
@@ -45,8 +52,9 @@ files: [{ purpose: 'invoice', label: 'Invoices', audience: 'members', types: ['a
   mail, social cards and exports.
 - A package takes the service as an option (`files?: Files<Env>`); the app composition passes `files`. Never import the
   app's instance from a package.
-- Store a public file's KEY on the row that uses it (or the media id for a private file); URLs come from
-  `files.url(env, key)` / `files.view(env, record)`. Replacing a file is a new key: `files.remove` the old one.
+- Store a public file's KEY on the row that uses it (or the media id for a private file), or its `StoredFile` when the
+  row renders it (content); URLs come from `files.url(env, key)` / `files.view(env, record)` / `@ottabase/utils/media`
+  (on the base the app sets with `configureMedia`). Replacing a file is a new key: `files.remove` the old one.
 - `files.signedUrl(env, id)` makes a link that opens one private file without a session (needs `FILES_SIGNING_SECRET`).
 - `files.quarantine(env, id)` / `files.restore(env, id)` take a file out of circulation (admins; the media library has
   the buttons). A public file leaves the public bucket and its cached URLs are purged when the purge vars are set.

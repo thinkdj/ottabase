@@ -3,7 +3,7 @@
  */
 import { sql } from 'drizzle-orm';
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { PhotoJournalItem, PostCrosspost } from '../types';
+import type { HeroImage, PhotoJournalItem, PostCrosspost, SeoMeta } from '../types';
 
 export const postsTable = sqliteTable(
     'posts',
@@ -59,30 +59,11 @@ export const postsTable = sqliteTable(
         // Order within the series (1, 2, 3, etc.)
         seriesOrder: integer('series_order'),
 
-        // Hero/featured image as JSON
-        heroImage: text('hero_image', { mode: 'json' }).$type<{
-            url: string;
-            alt?: string;
-            caption?: string;
-            mediaId?: string;
-            width?: number;
-            height?: number;
-            maxHeight?: number;
-            focalPoint?: { x: number; y: number };
-        }>(),
+        // Hero/featured image as JSON: a stored file or an outside address, plus display fields
+        heroImage: text('hero_image', { mode: 'json' }).$type<HeroImage>(),
 
-        // SEO metadata as JSON
-        seoMeta: text('seo_meta', { mode: 'json' }).$type<{
-            title?: string;
-            description?: string;
-            keywords?: string[];
-            canonicalUrl?: string;
-            ogImage?: string;
-            ogType?: string;
-            twitterCard?: string;
-            noIndex?: boolean;
-            noFollow?: boolean;
-        }>(),
+        // SEO metadata as JSON (`ogImage` is a stored file or an outside address)
+        seoMeta: text('seo_meta', { mode: 'json' }).$type<SeoMeta>(),
 
         // When the content was originally written — a fuzzy date with OttaDate resolution.
         // Distinct from publishedAt (when it appeared on the blog). Use case: a diary entry

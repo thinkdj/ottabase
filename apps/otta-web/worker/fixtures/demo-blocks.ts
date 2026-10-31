@@ -52,9 +52,10 @@ export const code = (source: string, language: string): Block => ({
     data: { code: source, language, showLineNumbers: true, lineNumberStart: 1, wrapLongLines: false, tabSize: 4 },
 });
 
+/** An image block. Demo photos are outside addresses, so `image` is the URL string as typed. */
 export const image = (url: string, caption: string, alt: string, options: { stretched?: boolean } = {}): Block => ({
     type: 'image',
-    data: { url, caption, alt, withBorder: false, withBackground: false, stretched: options.stretched ?? false },
+    data: { image: url, caption, alt, withBorder: false, withBackground: false, stretched: options.stretched ?? false },
 });
 
 export const faq = (...items: Array<[question: string, answer: string]>): Block => ({
@@ -74,41 +75,35 @@ export const gallery = (
     layout: GalleryLayout,
     title: string,
     caption: string,
-    items: Array<[id: string, caption: string, altText: string]>,
+    items: Array<[id: string, caption: string, alt: string]>,
 ): Block => ({
     type: 'mediaGallery',
     data: {
         title,
         caption,
         layout,
-        items: items.map(([id, itemCaption, altText]) => ({
-            url: unsplash(id, 1600),
-            thumbnailUrl: unsplash(id, 800),
+        items: items.map(([id, itemCaption, alt]) => ({
+            media: unsplash(id, 1600),
             caption: itemCaption,
-            altText,
+            alt,
             mediaKind: 'image',
             title: '',
         })),
     },
 });
 
-/** A photo-journal frame from Unsplash, sized for the lightbox, the page and the timeline collage. */
+/** A photo-journal frame from Unsplash: an outside address, so one URL serves the lightbox, the page and the collage. */
 export const frame = (
     id: string,
-    [width, height]: [number, number],
     takenAt: string,
     caption: string,
     alt: string,
     location: string,
 ): PhotoJournalItem => ({
     id,
-    url: unsplash(id, 2400),
-    previewUrl: unsplash(id, 1400),
-    thumbnailUrl: unsplash(id, 720),
+    image: unsplash(id, 2400),
     caption,
     alt,
     location,
     takenAt: Date.parse(takenAt),
-    width,
-    height,
 });

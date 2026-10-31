@@ -49,14 +49,31 @@ vi.mock('../shareImage', async (importOriginal) => ({
     paintShareCard: async () => [],
     ...share,
 }));
-// The media library is its own feature; here it hands back one image, as a pick would.
+// The media library is its own feature; here it hands back a public image, or a private one
+// (no `file`), as a pick would.
+const SHOT = vi.hoisted(() => ({
+    key: `otta-web/media/${'c'.repeat(32)}.png`,
+    width: 1200,
+    height: 800,
+    variants: ['thumb' as const, 'card' as const],
+}));
+type Pick = { url: string; alt: string; file: typeof SHOT | null };
 vi.mock('@/components/media-library/MediaLibraryBrowser', () => ({
-    MediaLibraryBrowser: ({ onSelectItem }: { onSelectItem: (item: { url: string; alt: string }) => void }) => (
-        <button type="button" onClick={() => onSelectItem({ url: '/api/files/public/shot.png', alt: 'Dashboard' })}>
-            Pick sample
-        </button>
+    MediaLibraryBrowser: ({ onSelectItem }: { onSelectItem: (item: Pick) => void }) => (
+        <>
+            <button
+                type="button"
+                onClick={() => onSelectItem({ url: `/api/files/public/${SHOT.key}`, alt: 'Dashboard', file: SHOT })}
+            >
+                Pick sample
+            </button>
+            <button type="button" onClick={() => onSelectItem({ url: '/api/files/abc', alt: '', file: null })}>
+                Pick private
+            </button>
+        </>
     ),
 }));
+const SHARE = { key: `otta-web/share-image/${'d'.repeat(32)}.png`, width: 1200, height: 630 };
 vi.mock('@ottabase/ui', async (importOriginal) => {
     const real = await importOriginal<object>();
     const Pass = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
@@ -374,18 +391,45 @@ describe('site page', () => {
 });
 
 describe('images and colors', () => {
-    it('picks a logo from the media library and saves it with a brand color', async () => {
-        renderWithQuery(<AdminLandingSitePage />);
+    it('picks a logo from the media library, stores the file (not its URL) and saves it with a brand color', async () => {
+        const { container } = renderWithQuery(<AdminLandingSitePage />);
         await openTab('Design');
         fireEvent.click(await screen.findByRole('button', { name: 'Choose logo' }));
         fireEvent.click(await screen.findByRole('button', { name: 'Pick sample' }));
-        expect(screen.getByText('shot.png')).toBeInTheDocument();
+        expect(screen.getByText(`${'c'.repeat(32)}.png`)).toBeInTheDocument();
+        // The small preview shows the thumbnail rendition, not the original.
+        expect(
+            container.querySelector(`img[src="/api/files/public/otta-web/media/${'c'.repeat(32)}/thumb.webp"]`),
+        ).not.toBeNull();
         fireEvent.change(screen.getByLabelText('Brand color'), { target: { value: '#2563eb' } });
         fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
         await waitFor(() =>
             expect(api).toHaveBeenCalledWith('/api/landing/site', {
                 method: 'PUT',
-                body: expect.objectContaining({ logoUrl: '/api/files/public/shot.png', brandColor: '#2563eb' }),
+                body: expect.objectContaining({ logo: SHOT, brandColor: '#2563eb' }),
+            }),
+        );
+    });
+
+    it('refuses a private file, which the public site could not show', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Design');
+        fireEvent.click(await screen.findByRole('button', { name: 'Choose logo' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Pick private' }));
+        expect(toast.error).toHaveBeenCalledWith('That image is private. Pick a public one.');
+        expect(screen.queryByRole('button', { name: 'Replace logo' })).toBeNull();
+    });
+
+    it('keeps a typed image address as the trimmed string', async () => {
+        renderWithQuery(<AdminLandingSitePage />);
+        await openTab('Design');
+        fireEvent.click((await screen.findAllByRole('button', { name: 'Use an image address' }))[0]);
+        fireEvent.change(screen.getByLabelText('Logo'), { target: { value: '  https://cdn.acme.dev/logo.svg ' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+        await waitFor(() =>
+            expect(api).toHaveBeenCalledWith('/api/landing/site', {
+                method: 'PUT',
+                body: expect.objectContaining({ logo: 'https://cdn.acme.dev/logo.svg' }),
             }),
         );
     });
@@ -421,7 +465,7 @@ describe('social image', () => {
         share.withSiteShareImage.mockImplementationOnce(async (site: object) => ({
             site: {
                 ...site,
-                share: { ...(site as { share?: object }).share, imageUrl: '/api/files/public/s.png?v=1' },
+                share: { ...(site as { share?: object }).share, image: SHARE },
             },
         }));
         renderWithQuery(<AdminLandingSitePage />);
@@ -434,7 +478,7 @@ describe('social image', () => {
             expect(api).toHaveBeenCalledWith('/api/landing/site', {
                 method: 'PUT',
                 body: expect.objectContaining({
-                    share: { heading: 'Ship faster', imageUrl: '/api/files/public/s.png?v=1' },
+                    share: { heading: 'Ship faster', image: SHARE },
                 }),
             }),
         );

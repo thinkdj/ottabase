@@ -30,7 +30,6 @@ describe('ImageHotspotsTool', () => {
         expect(ImageHotspotsTool.toolbox.title).toBe('Hotspots');
         const { tool, element } = mount();
         expect(tool.save()).toEqual({
-            imageUrl: '',
             alt: '',
             caption: '',
             hotspots: [],
@@ -49,7 +48,7 @@ describe('ImageHotspotsTool', () => {
         fireEvent.click(screen.getByRole('radio', { name: 'Cover' }));
         fireEvent.click(screen.getByRole('radio', { name: 'bottom right' }));
         expect(tool.save()).toMatchObject({
-            imageUrl: IMG,
+            image: IMG,
             alt: 'Product',
             caption: 'Tap a pin',
             imageFit: 'cover',
@@ -57,8 +56,24 @@ describe('ImageHotspotsTool', () => {
         });
     });
 
+    it('a library pick stores its file and takes its alt text when none is set', () => {
+        const { tool } = mount();
+        let field: string | undefined;
+        window.addEventListener('media-library-open', ((e: CustomEvent) => (field = e.detail.field)) as EventListener, {
+            once: true,
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Image: choose from library' }));
+        const file = { key: 'app/media/0123456789abcdef0123456789abcdef.jpg', width: 900, height: 600 };
+        window.dispatchEvent(
+            new CustomEvent('media-library-selected-item', {
+                detail: { field, media: { url: '/shown.jpg', file, alt: 'The device, front' } },
+            }),
+        );
+        expect(tool.save()).toMatchObject({ image: file, alt: 'The device, front' });
+    });
+
     it('clicking the canvas adds a hotspot at the click position and opens its card', () => {
-        const { tool, canvas } = mount({ imageUrl: IMG });
+        const { tool, canvas } = mount({ image: IMG });
         fireEvent.click(canvas!, { clientX: 50, clientY: 25 });
         const [hs] = tool.save().hotspots;
         expect(hs).toMatchObject({ x: 25, y: 25, title: '', content: '' });
@@ -75,7 +90,7 @@ describe('ImageHotspotsTool', () => {
     });
 
     it('respects maxHotspots', () => {
-        const { tool, canvas } = mount({ imageUrl: IMG }, { maxHotspots: 1 });
+        const { tool, canvas } = mount({ image: IMG }, { maxHotspots: 1 });
         fireEvent.click(canvas!, { clientX: 20, clientY: 20 });
         fireEvent.click(canvas!, { clientX: 80, clientY: 80 });
         expect(tool.save().hotspots).toHaveLength(1);
@@ -83,7 +98,7 @@ describe('ImageHotspotsTool', () => {
 
     it('reorders and removes hotspots through the list, renumbering the dots', async () => {
         const { tool, element } = mount({
-            imageUrl: IMG,
+            image: IMG,
             hotspots: [
                 { id: 'a', x: 10, y: 10, title: 'A', content: '' },
                 { id: 'b', x: 60, y: 60, title: 'B', content: '' },
@@ -101,6 +116,6 @@ describe('ImageHotspotsTool', () => {
     it('validates that an image is set', () => {
         const { tool } = mount();
         expect(tool.validate(tool.save())).toBe(false);
-        expect(tool.validate({ ...tool.save(), imageUrl: IMG })).toBe(true);
+        expect(tool.validate({ ...tool.save(), image: IMG })).toBe(true);
     });
 });

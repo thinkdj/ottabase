@@ -7,6 +7,7 @@
  */
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { fileUrl } from '@ottabase/utils/media';
 import { hasGrantedPermission } from '@ottabase/utils/permissions';
 import {
     DomainValidationError,
@@ -32,6 +33,7 @@ import {
     BLOG_EXPORT_FORMAT,
     BLOG_EXPORT_VERSION,
     BLOG_IMPORT_BATCH_SIZE,
+    exportFileUrls,
     type BlogExportFile,
     type BlogExportPost,
     type BlogImportResult,
@@ -43,9 +45,11 @@ import {
     generateSlug,
     normalizeLanguageCode,
     POST_STATUSES,
+    validatePostWrite,
     type BlogLanguage,
     type BlogLanguageConfig,
     type EditorJSData,
+    type HeroImage,
     type PostCrosspost,
     type PostStatus,
 } from '../types';
@@ -57,6 +61,22 @@ import type {
     BlogRouterConfig,
     BlogTranslationBody,
 } from './types';
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+    avif: 'image/avif',
+    gif: 'image/gif',
+    jpeg: 'image/jpeg',
+    jpg: 'image/jpeg',
+    png: 'image/png',
+    svg: 'image/svg+xml',
+    webp: 'image/webp',
+};
+
+/** An image's type from its address's extension, JPEG when it has none we know. */
+function imageMimeType(url: string): string {
+    const extension = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(url)?.[1]?.toLowerCase() ?? '';
+    return IMAGE_MIME_TYPES[extension] ?? 'image/jpeg';
+}
 
 function parseBoundedInteger(value: unknown, fallback: number, min: number, max: number): number {
     const raw = value == null || value === '' ? '' : String(value);
@@ -238,6 +258,15 @@ export function demoSeedProblems(seeds: readonly BlogDemoPostSeed[]): string[] {
     for (const seed of seeds) {
         const item = readImportPost(seed);
         if (typeof item === 'string') problems.push(`"${seed.slug}": ${item}`);
+        // The write rules too (image shapes, album, body), so a bad seed fails here, not mid-seed.
+        else {
+            try {
+                validatePostWrite(item.data);
+            } catch (error) {
+                if (!(error instanceof ContentValidationError)) throw error;
+                problems.push(`"${seed.slug}": ${error.message}`);
+            }
+        }
         for (const key of Object.keys(seed)) {
             if (!DEMO_SEED_KEYS.has(key)) problems.push(`"${seed.slug}": unknown field "${key}"`);
         }
@@ -2270,8 +2299,8 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
                 const publishedAt =
                     (localized.publishedAt as number | null) ?? (post.get('publishedAt') as number | null);
                 const pubDate = publishedAt ? new Date(publishedAt).toUTCString() : '';
-                const heroImage = localized.heroImage as { url?: string; mimeType?: string } | null;
-                const enclosureUrl = absoluteMediaUrl(heroImage?.url);
+                // The original, never a WebP rendition: feed readers do not all take WebP.
+                const enclosureUrl = absoluteMediaUrl(fileUrl((localized.heroImage as HeroImage | null)?.image));
 
                 return `    <item>
       <title>${title}</title>
@@ -2281,7 +2310,7 @@ export function createBlogHandlers<Env = unknown>(config: BlogRouterConfig<Env>)
       ${authorName ? `<dc:creator>${authorName}</dc:creator>` : ''}
       ${isBlurb ? '<category>Blurb</category>' : ''}${isPhotoJournal ? '<category>Photo Journal</category>' : ''}
       ${pubDate ? `<pubDate>${pubDate}</pubDate>` : ''}
-      ${enclosureUrl ? `<enclosure url="${escapeXml(enclosureUrl)}" type="${escapeXml(heroImage?.mimeType || 'image/jpeg')}" />` : ''}
+      ${enclosureUrl ? `<enclosure url="${escapeXml(enclosureUrl)}" type="${imageMimeType(enclosureUrl)}" />` : ''}
     </item>`;
             })
             .join('\n');
@@ -2769,6 +2798,7 @@ ${urls}
                 PostSeries.whereIn('id', ids, { select: ['id', 'title'] }),
             ),
         ]);
+        const siteOrigin = context.url.origin;
         const nameById = new Map<string, string>();
         for (const row of [...tags, ...categories]) nameById.set(row.get('id') as string, row.get('name') as string);
         for (const row of series) nameById.set(row.get('id') as string, row.get('title') as string);
@@ -2798,7 +2828,8 @@ ${urls}
                     row[field] = value instanceof Date ? value.getTime() : (value ?? null);
                 }
                 return {
-                    ...row,
+                    // Stored files leave as their originals' absolute URLs, so the file is portable.
+                    ...exportFileUrls(row, siteOrigin),
                     isProtected: post.get('isProtected') === true,
                     tags: tagNames.get(id) ?? [],
                     categories: categoryNames.get(id) ?? [],

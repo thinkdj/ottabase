@@ -8,6 +8,7 @@ import { BLOG_LIST_QUERY_CONFIG } from '@/config/queryConfig';
 import { useSession } from '@/lib/auth';
 import type { PostAuthor } from '@/types/blog';
 import type { HeroImage } from '@ottabase/ottablog';
+import { safeImageProps } from '@ottabase/utils/sanitize';
 import type { OutputData } from '@ottabase/ottaeditor';
 import { useApiQuery } from '@ottabase/ottaorm/client';
 import { Button } from '@ottabase/ui';
@@ -106,6 +107,8 @@ export function ChangelogListPage() {
                 <ol className="relative space-y-14 border-l border-border pl-8 dark:border-border">
                     {entries.map((entry) => {
                         const isHighlighted = entry.isFeatured === true;
+                        // The timeline column, inset from the max-w-3xl page by its rail.
+                        const hero = safeImageProps(entry.heroImage?.image, '(min-width: 48rem) 42rem, 100vw');
                         return (
                             <li key={entry.id} className="relative">
                                 {/* Timeline dot — golden star for highlighted, green dot otherwise */}
@@ -174,13 +177,14 @@ export function ChangelogListPage() {
                                     params={{ slug: entry.slug }}
                                     className="group block rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                    {entry.heroImage?.url && (
+                                    {entry.heroImage && hero && (
                                         <div className="mt-4 overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border dark:bg-muted/30 dark:ring-border">
                                             <img
-                                                src={entry.heroImage.url}
+                                                {...hero}
                                                 alt={entry.heroImage.alt ?? ''}
                                                 className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                                                 loading="lazy"
+                                                decoding="async"
                                             />
                                         </div>
                                     )}

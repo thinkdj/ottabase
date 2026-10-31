@@ -1,13 +1,15 @@
+import { safeImageProps } from '@ottabase/utils/sanitize';
 // Launch — product-forward SaaS. Frosted sticky nav, centered display headline,
 // split "heading left / features right" layout, tiered pricing, solid closing panel.
 
 import {
+    AVATAR_SIZES,
     focusRing,
     initials,
     isCurrent,
+    LOGO_SIZES,
     MobileMenu,
     paragraphs,
-    safeSrc,
     SiteBrand,
     SiteLink,
     type Action,
@@ -109,10 +111,11 @@ export const launch: ThemeComponents = {
     },
 
     sections: {
-        hero({ eyebrow, title, subtitle, actions, imageUrl, imageAlt, lead }) {
+        hero({ eyebrow, title, subtitle, actions, image, imageAlt, lead }) {
             // The page's first hero carries its one <h1>; any later hero is a section heading.
             const HeroTag = lead === false ? 'h2' : 'h1';
-            const src = safeSrc(imageUrl);
+            // The 64rem frame, less its 0.5rem padding.
+            const img = safeImageProps(image, '(min-width: 64rem) 63rem, 100vw');
             return (
                 <div className={`${wrap} pb-16 pt-20 text-center sm:pt-28`}>
                     {eyebrow && (
@@ -132,9 +135,16 @@ export const launch: ThemeComponents = {
                     <div className="mt-10">
                         <Actions actions={actions} center />
                     </div>
-                    {src && (
+                    {img && (
                         <div className="mx-auto mt-16 max-w-5xl rounded-2xl border border-border bg-muted/40 p-2 shadow-2xl shadow-primary/10">
-                            <img src={src} alt={imageAlt ?? ''} className="w-full rounded-xl" />
+                            <img
+                                {...img}
+                                alt={imageAlt ?? ''}
+                                // The lead hero's image is above the fold: load it at once.
+                                loading={lead === false ? 'lazy' : undefined}
+                                decoding="async"
+                                className="w-full rounded-xl"
+                            />
                         </div>
                     )}
                 </div>
@@ -147,11 +157,17 @@ export const launch: ThemeComponents = {
                     {title && <p className="text-center text-sm text-muted-foreground">{title}</p>}
                     <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
                         {items?.map((l, i) => {
-                            const src = safeSrc(l.logoUrl);
+                            const img = safeImageProps(l.logo, LOGO_SIZES);
                             return (
                                 <li key={i} className="text-lg font-semibold text-muted-foreground/80">
-                                    {src ? (
-                                        <img src={src} alt={l.name} className="h-7 w-auto opacity-70 grayscale" />
+                                    {img ? (
+                                        <img
+                                            {...img}
+                                            alt={l.name}
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="h-7 w-auto opacity-70 grayscale"
+                                        />
                                     ) : (
                                         l.name
                                     )}
@@ -202,13 +218,19 @@ export const launch: ThemeComponents = {
                     {rest.length > 0 && (
                         <div className="mt-14 grid gap-6 md:grid-cols-2">
                             {rest.map((t, i) => {
-                                const src = safeSrc(t.avatarUrl);
+                                const img = safeImageProps(t.avatar, AVATAR_SIZES);
                                 return (
                                     <figure key={i} className="rounded-2xl border border-border p-6">
                                         <blockquote className="leading-relaxed">“{t.quote}”</blockquote>
                                         <figcaption className="mt-5 flex items-center gap-3 text-sm">
-                                            {src ? (
-                                                <img src={src} alt="" className="h-9 w-9 rounded-full object-cover" />
+                                            {img ? (
+                                                <img
+                                                    {...img}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    className="h-9 w-9 rounded-full object-cover"
+                                                />
                                             ) : (
                                                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                                                     {initials(t.author)}

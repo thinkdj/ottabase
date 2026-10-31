@@ -1,6 +1,7 @@
 import type { API, BlockTool, BlockToolConstructorOptions, PasteEvent } from '@editorjs/editorjs';
 import { uploadFile } from '@ottabase/ottaupload/utils';
 import { validateFileType } from '@ottabase/ottaupload/validation';
+import { fileUrl, storedFileOf, type FileSource } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
 import {
     button,
@@ -14,6 +15,7 @@ import {
     stack,
     textInput,
     toggle,
+    PRIVATE_FILE_MESSAGE,
     type MediaSelection,
 } from '../../ui/kit';
 import { BlockShell } from '../../ui/shell';
@@ -63,17 +65,14 @@ export default class AdvancedImageTool implements BlockTool {
 
     static get sanitize() {
         return {
-            url: {},
-            mediaId: true,
-            mimeType: true,
+            // A stored file or an outside address, kept as is: the renderer validates and sanitizes it
+            image: true,
             caption: true,
             withBorder: true,
             withBackground: true,
             stretched: true,
             alt: true,
             linkUrl: true,
-            width: true,
-            height: true,
             featuredImage: true,
             aspectRatio: true,
         };
@@ -91,24 +90,20 @@ export default class AdvancedImageTool implements BlockTool {
             purpose: config?.purpose || 'media',
         };
         this.data = {
-            url: data?.url || '',
-            mediaId: data?.mediaId || '',
-            mimeType: data?.mimeType || '',
+            image: data?.image || undefined,
             caption: data?.caption || '',
             withBorder: data?.withBorder ?? false,
             withBackground: data?.withBackground ?? false,
             stretched: data?.stretched ?? false,
             alt: data?.alt || '',
             linkUrl: data?.linkUrl || '',
-            width: data?.width || 0,
-            height: data?.height || 0,
             featuredImage: data?.featuredImage ?? false,
             aspectRatio: data?.aspectRatio || 'original',
         };
     }
 
     render(): HTMLElement {
-        this.shell = new BlockShell({ type: 'image', hasContent: Boolean(this.data.url), summary: this.summary() });
+        this.shell = new BlockShell({ type: 'image', hasContent: Boolean(this.data.image), summary: this.summary() });
         this.buildFields();
         this.shell.preview({ ...this.data });
         return this.shell.element;
@@ -124,7 +119,7 @@ export default class AdvancedImageTool implements BlockTool {
         shell.fields.innerHTML = '';
         this.status = h('p', { className: 'oe-hint oe-image__status', role: 'status' });
 
-        shell.fields.append(this.data.url ? this.filledFields() : this.emptyFields(), this.status);
+        shell.fields.append(this.data.image ? this.filledFields() : this.emptyFields(), this.status);
     }
 
     private emptyFields(): HTMLElement {
@@ -176,16 +171,15 @@ export default class AdvancedImageTool implements BlockTool {
 
     private urlField(label: string): HTMLElement {
         const media = mediaInput({
-            value: '',
+            value: undefined,
             ariaLabel: label,
             placeholder: 'https://… or choose from the library',
-            onChange: (url, picked) => {
-                if (picked) return this.setImage(picked.url, picked);
-                const trimmed = url.trim();
-                if (!trimmed) return this.setStatus('');
-                if (!this.isValidImageUrl(trimmed))
+            onChange: (value, picked) => {
+                if (picked) return this.setImage(value, picked);
+                if (!value) return this.setStatus('');
+                if (typeof value !== 'string' || !this.isValidImageUrl(value))
                     return this.setStatus('Enter a direct image URL (.jpg, .png, .webp, .gif, .svg).');
-                this.setImage(trimmed);
+                this.setImage(value);
             },
         });
         this.cleanups.push(media.destroy);
@@ -206,7 +200,11 @@ export default class AdvancedImageTool implements BlockTool {
         const current = h(
             'div',
             { className: 'oe-image__current' },
-            h('img', { className: 'oe-image__thumb', src: this.data.url, alt: this.data.alt || '' }),
+            h('img', {
+                className: 'oe-image__thumb',
+                src: fileUrl(this.data.image, 'thumb'),
+                alt: this.data.alt || '',
+            }),
             h(
                 'div',
                 { className: 'oe-image__actions' },
@@ -216,7 +214,7 @@ export default class AdvancedImageTool implements BlockTool {
                     icon: 'trash',
                     variant: 'ghost',
                     size: 'sm',
-                    onClick: () => this.setImage(''),
+                    onClick: () => this.setImage(undefined),
                 }),
             ),
             fileInput,
@@ -305,22 +303,18 @@ export default class AdvancedImageTool implements BlockTool {
         this.shell?.preview({ ...this.data });
     }
 
-    private setImage(url: string, media?: MediaSelection) {
+    private setImage(image: FileSource | undefined, media?: MediaSelection) {
         this.data = {
             ...this.data,
-            url,
-            mediaId: media?.mediaId || media?.id || (url ? this.data.mediaId : ''),
-            mimeType: media?.mimeType || (url ? this.data.mimeType : ''),
+            image,
             caption: media?.caption || this.data.caption,
-            alt: media?.altText || this.data.alt,
-            width: media?.width || (url ? this.data.width : 0),
-            height: media?.height || (url ? this.data.height : 0),
+            alt: media?.alt || this.data.alt,
         };
         this.setStatus('');
         this.buildFields();
         this.shell?.setSummary(this.summary());
         this.shell?.preview({ ...this.data });
-        if (url) this.shell?.setMode('preview');
+        if (image) this.shell?.setMode('preview');
     }
 
     private setStatus(text: string, error = false) {
@@ -330,7 +324,7 @@ export default class AdvancedImageTool implements BlockTool {
     }
 
     private summary(): string {
-        if (!this.data.url) return 'no image yet';
+        if (!this.data.image) return 'no image yet';
         const parts = [
             this.data.aspectRatio && this.data.aspectRatio !== 'original' ? this.data.aspectRatio : '',
             this.data.stretched ? 'stretched' : '',
@@ -351,19 +345,17 @@ export default class AdvancedImageTool implements BlockTool {
                 acceptedFileTypes: ['image/*'],
                 onProgress: (progress) => this.setStatus(`Uploading… ${progress}%`),
                 onSuccess: (response) => {
-                    // The stored file's view: its URL and the sniffed type and size.
-                    const stored = response.file;
-                    if (stored?.url) {
-                        this.setImage(stored.url, {
-                            url: stored.url,
-                            mediaId: stored.id,
-                            mimeType: stored.mimeType || file.type,
-                            caption: stored.caption || file.name,
-                            altText: stored.altText ?? undefined,
-                            width: stored.width ?? undefined,
-                            height: stored.height ?? undefined,
-                        });
-                    }
+                    // The stored file's view; content keeps its key, size and renditions, never its URL.
+                    const view = response.file;
+                    if (!view) return;
+                    const image = storedFileOf(view);
+                    if (!image) return this.setStatus(PRIVATE_FILE_MESSAGE, true);
+                    this.setImage(image, {
+                        file: image,
+                        url: view.url,
+                        caption: view.caption || file.name,
+                        alt: view.altText ?? undefined,
+                    });
                 },
                 onError: (error) => this.setStatus(error.message || 'Upload failed.', true),
             });
@@ -403,7 +395,7 @@ export default class AdvancedImageTool implements BlockTool {
     }
 
     validate(savedData: AdvancedImageData) {
-        return typeof savedData.url === 'string' && savedData.url.trim() !== '';
+        return Boolean(savedData.image);
     }
 
     onPaste(event: PasteEvent) {

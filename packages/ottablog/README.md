@@ -227,7 +227,13 @@ const post = await Post.create({
     status: 'published', // draft, published, archived, scheduled
     seriesId: 'series-123',
     heroImage: {
-        url: 'https://...',
+        // A StoredFile from an upload or a media library pick, or an outside address as a string
+        image: {
+            key: 'my-app/media/0123456789abcdef0123456789abcdef.jpg',
+            width: 2400,
+            height: 1600,
+            variants: ['thumb', 'card', 'full'],
+        },
         alt: 'Image alt text',
         caption: 'Image caption',
         maxHeight: 600, // optional: clamp display height (100–3000 px)
@@ -237,6 +243,7 @@ const post = await Post.create({
         description: 'Meta description',
         keywords: ['keyword1', 'keyword2'],
         canonicalUrl: 'https://...',
+        ogImage: 'https://images.example.com/card.jpg', // optional; a StoredFile or an address, else the hero
     },
     authorId: 'user-123',
     publishedAt: Date.now(),
@@ -293,6 +300,35 @@ composer plus a dedicated blurb editor for status, scheduling, comments, and tag
 Blurbs, like every other content type, can link their copies on Instagram/X/Facebook — see
 [Crossposts](#crossposts-the-same-post-elsewhere).
 
+### Images: stored files and outside addresses
+
+Every image the blog keeps (`heroImage.image`, `seoMeta.ogImage`, each photo journal frame's `image`, series
+`coverImage.image`) is a `FileSource` from `@ottabase/utils/media`: a `StoredFile`
+(`{ key, width?, height?, variants? }` from the files service) or an outside address kept as typed. A stored file's URL
+is never stored; it is built at render time from the configured public files base, so moving the bucket to another
+domain moves every image with it.
+
+- **Writes** validate it with `validateImageSource`: an object must pass `isStoredFile`, a string must be http(s) or
+  app-relative and at most 4096 characters. `validateHeroImage` keeps `image`, `alt`, `caption`, `maxHeight` and
+  `focalPoint` and drops anything else. Both run in `validatePostWrite`, so every write path (model, routes, generic
+  CRUD, translations) checks them.
+- **Pages** render with `srcSet` and a `sizes` that fits the slot: the hero spans the article column, list cards their
+  grid cell, journal tiles their grid cell. `safeImageProps(image, sizes)` (`@ottabase/utils/sanitize`) returns the
+  `<img>` attributes, sanitizes an outside address, and returns `null` for an object that is not a valid stored file.
+- **Absolute URLs** (og:image, twitter:image, JSON-LD, the RSS enclosure) use `fileUrl(image)`, the original: some
+  social scrapers and feed readers refuse WebP renditions. A relative files base resolves against the request.
+- **The lightbox** gets the original as `url` plus the renditions as `srcSet`.
+
+```tsx
+import type { HeroImage } from '@ottabase/ottablog';
+import { safeImageProps } from '@ottabase/utils/sanitize';
+
+function Hero({ hero }: { hero: HeroImage }) {
+    const image = safeImageProps(hero.image, '(min-width: 48rem) 46rem, 100vw');
+    return image ? <img {...image} alt={hero.alt ?? ''} loading="lazy" decoding="async" /> : null;
+}
+```
+
 ### Photo Journals
 
 Photo journals use `contentType: 'photo'` for photo-first stories: travel logs, walks, events, visual essays, or a
@@ -304,15 +340,17 @@ const journal = await Post.createPhotoJournal(
     [
         {
             id: 'frame-1',
-            mediaId: 'media-123',
-            url: 'https://images.example.com/kyoto-rain.jpg',
-            previewUrl: 'https://images.example.com/kyoto-rain-preview.jpg',
+            // A StoredFile (sizes and renditions ride along), or an outside address as a string
+            image: {
+                key: 'my-app/media/0123456789abcdef0123456789abcdef.jpg',
+                width: 1800,
+                height: 1200,
+                variants: ['thumb', 'card', 'full'],
+            },
             alt: 'Lanterns reflected in a wet Kyoto lane',
             caption: 'After the last train',
             location: 'Kyoto, Japan',
             takenAt: Date.parse('2026-05-12'),
-            width: 1800,
-            height: 1200,
         },
     ],
     {
@@ -326,10 +364,11 @@ const journal = await Post.createPhotoJournal(
 );
 ```
 
-The ordered `photoAlbum` supports 1–60 photographs. Each frame may carry stable media identity, responsive media URLs,
-alt text, a caption, location, capture date, dimensions, and MIME type. The model derives `heroImage` from the first
-frame for existing featured cards, Open Graph previews, and RSS enclosure support. It also owns the permalink, excerpt,
-reading stats, publication dates, and article-only field resets.
+The ordered `photoAlbum` supports 1 to 60 photographs. Each frame is an `image` (a `FileSource`, whose stored file
+carries the size) plus optional title, alt text, caption, location, and capture date; a stored frame without its own
+`id` takes the file's id. The model derives `heroImage` from the first frame for existing featured cards, Open Graph
+previews, and RSS enclosure support. It also owns the permalink, excerpt, reading stats, publication dates, and
+article-only field resets.
 
 Applications should use `POST /api/blog/photo-journals` and `PATCH /api/blog/photo-journals/{postId}`. The endpoints
 derive ownership from the verified server context, enforce create/update and separate publish capabilities, validate the
@@ -364,9 +403,8 @@ so it renders whatever the header flags say.
 - `status` - Publication status (draft, published, archived, scheduled)
 - `seriesId` - Series reference
 - `seriesOrder` - Position in series
-- `heroImage` - Featured image JSON (`url`, `alt`, `caption`, `maxHeight`, `width`, `height`, `focalPoint`, `cfImageId`,
-  `mediaId`, `mimeType`)
-- `seoMeta` - SEO metadata JSON
+- `heroImage` - Featured image JSON (`image`, a `FileSource`; `alt`, `caption`, `maxHeight`, `focalPoint`)
+- `seoMeta` - SEO metadata JSON (`ogImage` is a `FileSource`)
 - `meta` - Free-form custom key/value metadata JSON (not used by the engine; available to themes/plugins/custom
   renderers)
 - `privateNotes` - Author-only notes (EditorJS)
@@ -545,7 +583,7 @@ const series = await PostSeries.create({
     title: 'Learning React',
     slug: 'learning-react',
     description: 'A 5-part series on React basics',
-    coverImage: { url: '...', alt: '...' },
+    coverImage: { image: 'https://images.example.com/cover.jpg', alt: '...' }, // `image` is a FileSource
     isComplete: false,
     sortOrder: 1,
     appId: 'app-123',
@@ -746,7 +784,8 @@ const post = await Post.create({
             },
             {
                 type: 'image',
-                data: { url: '...' },
+                // A StoredFile or an outside address, as every image in content (see ottarenderer)
+                data: { image: 'https://images.example.com/photo.jpg', alt: '...' },
             },
         ],
         version: '2.28.0',
@@ -765,7 +804,7 @@ const post = await Post.create({
         description: 'Meta description for search engines',
         keywords: ['keyword1', 'keyword2'],
         canonicalUrl: 'https://example.com/canonical',
-        ogImage: 'https://...',
+        ogImage: 'https://...', // or a StoredFile; emitted as the original's absolute URL
         ogType: 'article',
         twitterCard: 'summary_large_image',
         noIndex: false,
@@ -816,9 +855,9 @@ const blogRouter = createBlogRouter<Env>({
             excerpt: 'A sample article for a fresh demo.',
             content: { version: '2.28.2', blocks: [{ type: 'paragraph', data: { text: 'Hello, world.' } }] },
             contentType: 'blog',
-            // Optional. Must be a URL that resolves on a fresh install — a new
+            // Optional. An outside address that resolves on a fresh install: a new
             // deployment has no uploaded media to reference.
-            heroImage: { url: 'https://example.com/hero.jpg', alt: 'Hero image' },
+            heroImage: { image: 'https://example.com/hero.jpg', alt: 'Hero image' },
         },
     ],
 });
@@ -915,7 +954,7 @@ Content-Type: application/json
 {
   "title": "Kyoto, in the rain",
   "note": "A quiet blue hour.",
-  "photos": [{ "id": "p1", "mediaId": "m1", "url": "https://...", "alt": "Wet lantern-lit lane" }],
+  "photos": [{ "id": "p1", "image": { "key": "my-app/media/0123456789abcdef0123456789abcdef.jpg" }, "alt": "Wet lantern-lit lane" }],
   "status": "published",
   "allowComments": true,
   "isFeatured": true
@@ -1049,13 +1088,15 @@ cannot bypass the caps or cross-column checks.
 
 What it enforces, per column, when that column is part of the write:
 
-| Column       | Rule                                                                                                                                                                                                                                                |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `blurbText`  | Non-empty, ≤ `BLURB_MAX_LENGTH`, line endings normalized                                                                                                                                                                                            |
-| `photoNote`  | ≤ `PHOTO_JOURNAL_NOTE_MAX_LENGTH`, trimmed, blank → null                                                                                                                                                                                            |
-| `photoAlbum` | 1–`PHOTO_JOURNAL_MAX_ITEMS` frames, unique IDs, media IDs, and URLs within their respective namespaces, JavaScript-Date-safe `takenAt`, every URL sanitized and http(s)/relative, each URL ≤ 4096 chars, serialized metadata ≤ 512 KiB, `[]` → null |
-| `content`    | EditorJS envelope with a `blocks` array, ≤ `POST_CONTENT_MAX_BYTES` serialized                                                                                                                                                                      |
-| `crossposts` | ≤ `MAX_CROSSPOSTS` absolute http(s) links, deduplicated, at most one `origin`                                                                                                                                                                       |
+| Column       | Rule                                                                                                                                                                                                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blurbText`  | Non-empty, ≤ `BLURB_MAX_LENGTH`, line endings normalized                                                                                                                                                                                                             |
+| `photoNote`  | ≤ `PHOTO_JOURNAL_NOTE_MAX_LENGTH`, trimmed, blank → null                                                                                                                                                                                                             |
+| `photoAlbum` | 1 to `PHOTO_JOURNAL_MAX_ITEMS` frames, unique IDs and images within their respective namespaces, JavaScript-Date-safe `takenAt`, every `image` a valid `StoredFile` or a sanitized http(s)/relative address ≤ 4096 chars, serialized metadata ≤ 512 KiB, `[]` → null |
+| `heroImage`  | `image` a valid `StoredFile` or a sanitized http(s)/relative address; only `alt`, `caption`, `maxHeight`, `focalPoint` are kept beside it; null clears                                                                                                               |
+| `seoMeta`    | `ogImage`, when present, a valid `StoredFile` or a sanitized http(s)/relative address; blank is dropped                                                                                                                                                              |
+| `content`    | EditorJS envelope with a `blocks` array, ≤ `POST_CONTENT_MAX_BYTES` serialized                                                                                                                                                                                       |
+| `crossposts` | ≤ `MAX_CROSSPOSTS` absolute http(s) links, deduplicated, at most one `origin`                                                                                                                                                                                        |
 
 Plus cross-column coherence, evaluated against the effective row on updates:
 
@@ -1072,12 +1113,14 @@ Plus cross-column coherence, evaluated against the effective row on updates:
 what lets single-column writes such as `trackView()` and `publish()` keep working under a validator that runs on
 everything.
 
-Duplicate photographs are rejected when an `id`, `mediaId`, or URL repeats in the same identity namespace. The
-namespaces stay separate: an app-local ID may legitimately equal another asset's media-library ID. `id` keys both the
-React tile and the lightbox registration, so a repeated ID would render one unopenable frame. The admin editor applies
-the same rule when photographs are added, including within a single media-library selection. Publication timestamps must
-be positive values inside JavaScript's renderable Date range and are normalized to integer D1 milliseconds; photo
-`takenAt` values use the same Date range (and may represent pre-epoch archival images).
+Duplicate photographs are rejected when an `id` or an image repeats in the same identity namespace. An image's identity
+is its file id (`fileIdFromKey`) for a stored file and the address for an outside one (`imageIdentity`), so the same
+upload recorded with different sizes is still one photograph. The namespaces stay separate: an app-local ID may
+legitimately equal another photograph's file id. `id` keys both the React tile and the lightbox registration, so a
+repeated ID would render one unopenable frame. The admin editor applies the same rule when photographs are added,
+including within a single media-library selection. Publication timestamps must be positive values inside JavaScript's
+renderable Date range and are normalized to integer D1 milliseconds; photo `takenAt` values use the same Date range (and
+may represent pre-epoch archival images).
 
 ## CRUD Writable Fields
 
@@ -1123,9 +1166,11 @@ status, body and private notes included — as one JSON file:
 }
 ```
 
-Tags, categories, and series travel **by name**, so the file imports into another app, organization, or database. Not
-exported: translations, version history, comments, view counts, and password hashes (`isProtected` is kept as
-information only).
+Tags, categories, and series travel **by name**, so the file imports into another app, organization, or database. Every
+stored file (hero, Open Graph image, journal frames, images inside the body) is written as the absolute URL of its
+original (`exportFileUrls`), so the images still load wherever the file goes; an import keeps those URLs as outside
+addresses. Not exported: translations, version history, comments, view counts, and password hashes (`isProtected` is
+kept as information only).
 
 **Import** (`POST /api/blog/import`, needs `posts:create`) accepts that JSON file or Markdown files. Markdown is
 converted in the browser with `parseMarkdownPost` / `markdownToEditorJs` (headings, paragraphs, nested lists, fenced
@@ -1218,7 +1263,7 @@ Create your own theme with complete control:
 
 ```typescript
 import { registerTheme, setActiveTheme, type Theme } from '@ottabase/ottablog';
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { safeImageProps } from '@ottabase/utils/sanitize';
 
 const myTheme: Theme = {
   metadata: {
@@ -1236,7 +1281,10 @@ const myTheme: Theme = {
     ),
     renderPhotoJournal: (post, props) => (
       <div className={props.variant === 'detail' ? 'journal-contact-sheet' : 'journal-collage'}>
-        {post.photoAlbum?.map((photo) => <img key={photo.id} src={sanitizeUrl(photo.url)} alt={photo.alt ?? ''} />)}
+        {post.photoAlbum?.map((photo) => {
+          const image = safeImageProps(photo.image, '(min-width: 48rem) 33vw, 50vw');
+          return image && <img key={photo.id} {...image} alt={photo.alt ?? ''} loading="lazy" />;
+        })}
       </div>
     ),
     // renderCard controls post cards on archive/listing pages

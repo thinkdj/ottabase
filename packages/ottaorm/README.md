@@ -995,9 +995,8 @@ row. `mediaFileStore` is the service's store over this model (`createFiles({ sto
 writer: `Media.writable` lets a person change nothing but `title`, `altText` and `caption`.
 
 `User.imageUrl(row)` (and `user.imageUrl()`) is the picture every user view shows: the uploaded avatar at
-`<filesPublicUrl>/<avatarKey>`, else the provider's `image`, else null. Set the base once per isolate with
-`configureOttaORM({ maxAllRows, filesPublicUrl: env.R2_PUBLIC_URL })` (default `/api/files/public`);
-`publicFileUrl(key)` builds the same URL for any public key.
+`publicFileUrl(avatarKey)` from `@ottabase/utils/media`, else the provider's `image`, else null. The base is the one the
+app sets with `configureMedia({ publicUrl })` (default `/api/files/public`).
 
 ### Role grants (`User` RBAC methods, `UserRole`)
 

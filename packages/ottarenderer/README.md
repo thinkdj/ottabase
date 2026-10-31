@@ -57,9 +57,9 @@ const Callout: BlockRenderer<{ text: string }> = ({ data }) => <aside className=
 ```
 
 A renderer receives `{ data, block }`. Inside it, `Inline` renders the editor's rich text safely (`useInline` +
-`renderNodes` when you also need the plain text), `safeUrl` turns a stored URL into something fit for `src` or null, and
-`useHeadingId(block, text)` returns the document-unique id a heading was given. Heading ids are computed once from the
-block tree, including Layout columns, so they never depend on what React chooses to re-render. `BlockList` renders a
+`renderNodes` when you also need the plain text), `safeUrl` turns an outside URL into something fit for `src` or null,
+and `useHeadingId(block, text)` returns the document-unique id a heading was given. Heading ids are computed once from
+the block tree, including Layout columns, so they never depend on what React chooses to re-render. `BlockList` renders a
 block array with the built-in renderers when used outside an `OttaRenderer`.
 
 ### Injections
@@ -89,6 +89,45 @@ The string passes through `sanitizeBlockHtml` and the bare tags get the same typ
 renders, inline or in a block, gets `rel="ugc nofollow noopener"` (plus `noreferrer` when it opens a new tab).
 `useLinkRel()` gives a custom block the same rule. The ottablog themes turn it on for organization posts.
 
+### Images
+
+An image field in block data is a `FileSource` from `@ottabase/utils/media`: a `StoredFile`
+(`{ key, width?, height?, variants? }`, what an upload or a library pick stores) or an outside address kept as a string.
+Content never stores a stored file's URL: URLs are built at render time from the base set once with
+`configureMedia({ publicUrl })`, so moving the files bucket moves every image.
+
+```tsx
+import { OttaRenderer } from '@ottabase/ottarenderer';
+import { configureMedia } from '@ottabase/utils/media';
+
+configureMedia({ publicUrl: 'https://files.example.com' }); // once, before the first render
+
+const image = {
+    key: 'app/media/0123456789abcdef0123456789abcdef.jpg',
+    width: 2400,
+    height: 1600,
+    variants: ['thumb', 'card', 'full'],
+};
+
+<OttaRenderer data={{ blocks: [{ type: 'image', data: { image, alt: 'The harbour at dawn' } }] }} />;
+```
+
+A stored image renders with `srcSet` over its renditions, its intrinsic `width`/`height`, and a `sizes` that follows its
+CSS width: 34rem for a plain image, the 48rem reading column when featured (and for before/after, hotspots and the
+review header), `100vw` when stretched. Avatars take the `thumb` rendition, logos `sizes="7.5rem"`. An outside address
+is a lone `src` through `sanitizeUrl`; an object that is not a valid `StoredFile` renders nothing. The lightbox gets the
+original as `url`, the `thumb` and `card` renditions and the `srcSet`.
+
+| Block           | Image fields                                                    |
+| --------------- | --------------------------------------------------------------- |
+| `advancedImage` | `image`                                                         |
+| `beforeAfter`   | `before`, `after`                                               |
+| `imageHotspots` | `image`                                                         |
+| `mediaEmbed`    | `media`, with `mimeType` / `mediaKind` to tell video from image |
+| `mediaGallery`  | `items[].media`, with `alt`, `mimeType` / `mediaKind` per item  |
+| `review`        | `image`                                                         |
+| `testimonial`   | `authorAvatar`, `companyLogo`                                   |
+
 ## Blocks
 
 ### Editor.js core and official tools
@@ -111,23 +150,23 @@ renders, inline or in a block, gets `rel="ugc nofollow noopener"` (plus `norefer
 
 ### `@ottabase/ottaeditor` tools
 
-| Type            | Renders                                                                                                                                             |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `advancedImage` | Caption, border, background, featured, aspect ratio, stretched (breaks out of the column symmetrically), link; intrinsic size reserved, lazy-loaded |
-| `beforeAfter`   | Drag-to-compare slider, horizontal or vertical, cover or contain                                                                                    |
-| `cta`           | Button with four styles and alignment, plus `Action` structured data                                                                                |
-| `disclosure`    | AI-use and sponsored-content notices                                                                                                                |
-| `faq`           | Accordion or flat Q&A with `FAQPage` structured data                                                                                                |
-| `imageHotspots` | Numbered markers with notes                                                                                                                         |
-| `layout`        | Two or three columns in six presets; nested blocks share the document's renderers and ids                                                           |
-| `map`           | OpenStreetMap or Google Maps embed                                                                                                                  |
-| `mediaEmbed`    | Video, audio, PDF, document via `MediaPreview`                                                                                                      |
-| `mediaGallery`  | Five layouts: balanced, featured, masonry, filmstrip, mosaic                                                                                        |
-| `references`    | Numbered or footnote bibliography                                                                                                                   |
-| `review`        | Rating, pros and cons, verdict, `Review` structured data                                                                                            |
-| `spoiler`       | Blurred until clicked, still indexable                                                                                                              |
-| `steps`         | Numbered vertical timeline                                                                                                                          |
-| `testimonial`   | Five variants with avatar, stars and `Review` structured data                                                                                       |
+| Type            | Renders                                                                                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `advancedImage` | Caption, border, background, featured, aspect ratio, stretched (breaks out of the column symmetrically), link; renditions in `srcSet`, intrinsic size reserved, lazy-loaded |
+| `beforeAfter`   | Drag-to-compare slider, horizontal or vertical, cover or contain                                                                                                            |
+| `cta`           | Button with four styles and alignment, plus `Action` structured data                                                                                                        |
+| `disclosure`    | AI-use and sponsored-content notices                                                                                                                                        |
+| `faq`           | Accordion or flat Q&A with `FAQPage` structured data                                                                                                                        |
+| `imageHotspots` | Numbered markers with notes                                                                                                                                                 |
+| `layout`        | Two or three columns in six presets; nested blocks share the document's renderers and ids                                                                                   |
+| `map`           | OpenStreetMap or Google Maps embed                                                                                                                                          |
+| `mediaEmbed`    | Video, audio, PDF, document via `MediaPreview`                                                                                                                              |
+| `mediaGallery`  | Five layouts: balanced, featured, masonry, filmstrip, mosaic                                                                                                                |
+| `references`    | Numbered or footnote bibliography                                                                                                                                           |
+| `review`        | Rating, pros and cons, verdict, `Review` structured data                                                                                                                    |
+| `spoiler`       | Blurred until clicked, still indexable                                                                                                                                      |
+| `steps`         | Numbered vertical timeline                                                                                                                                                  |
+| `testimonial`   | Five variants with avatar, stars and `Review` structured data                                                                                                               |
 
 Unknown block types render nothing.
 

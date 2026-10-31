@@ -59,15 +59,18 @@ media row and computes its URLs. This package types and presents what the API re
 ## Basic Usage
 
 A media item (`MediaLibraryItemLike`) is a row plus the view fields the server computed: `url`, `thumbnailUrl` (the
-thumb variant, else the original) and `previewUrl` (the card variant, else the original). URLs are never stored, so
-always read them from the view:
+thumb variant, else the original), `previewUrl` (the card variant, else the original) and `srcSet` (the variants as
+width descriptors). `MediaPreview` and the lightbox use `srcSet`, so a tile loads a thumb and the lightbox the rendition
+that fits the screen. URLs are never stored: a selection carries `file`, the `StoredFile` content keeps.
 
 ```typescript
 import { toMediaSelectionPayload, type MediaLibraryItemLike } from '@ottabase/medialibrary';
+import { imageSources } from '@ottabase/utils/media';
 
 // GET /api/ottaorm/media lists `media`-purpose rows with their view URLs
 const payload = toMediaSelectionPayload(item as MediaLibraryItemLike);
-// → { mediaId, url, thumbnailUrl, previewUrl, alt, caption, width, height, ... } for an editor block
+// → { file: { key, width, height, variants }, url, alt, caption, ... }; `file` is null for a private file
+const { src, srcSet } = imageSources(payload.file); // at render time, on the configured base
 ```
 
 ## Wrap Renderer Output

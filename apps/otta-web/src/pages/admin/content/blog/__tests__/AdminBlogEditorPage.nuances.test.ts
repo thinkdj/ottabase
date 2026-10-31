@@ -1,10 +1,13 @@
 /**
  * Blog editor nuance tests
  *
- * Tests for slug check only when changed, version delete warning, save disabled when not dirty.
+ * Tests for image picks and uploads, slug check only when changed, version delete warning, save
+ * disabled when not dirty.
  */
 
+import type { MediaSelectionPayload } from '@ottabase/medialibrary';
 import { describe, expect, it } from 'vitest';
+import { heroFromPick, heroFromUpload, photoFromPick, typedImageAddress } from '../blogImages';
 
 // Slug availability: run check only when slug has changed from initial
 function shouldRunSlugCheck(currentSlug: string, initialSlug: string): boolean {
@@ -29,80 +32,59 @@ function isSaveDisabled(isSaving: boolean, isEditMode: boolean, isDirty: boolean
 }
 
 describe('AdminBlogEditorPage nuances', () => {
-    describe('hero image mapping', () => {
-        function mapPickerPayloadToHeroImage(
-            payload: {
-                url: string;
-                name?: string;
-                alt?: string;
-                caption?: string;
-                mediaId?: string;
-                width?: number;
-                height?: number;
-            },
-            currentAlt?: string,
-        ) {
-            return {
-                url: payload.url,
-                alt: payload.alt || currentAlt || payload.name || '',
-                caption: payload.caption,
-                mediaId: payload.mediaId,
-                width: payload.width,
-                height: payload.height,
-            };
-        }
-
-        /** POST /api/files answers `{ file }`, the stored file's view. */
-        function mapUploadResponseToHeroImage(
-            response: { file?: { id: string; url: string } },
-            fileName: string,
-            currentAlt?: string,
-            currentCaption?: string,
-        ) {
-            if (!response.file?.url) return null;
-            return {
-                url: response.file.url,
-                alt: currentAlt || fileName,
-                caption: currentCaption,
-                mediaId: response.file.id,
-            };
-        }
-
-        it('should prefer picker alt text, then current alt, then media name', () => {
-            const fromPickerAlt = mapPickerPayloadToHeroImage(
-                { url: 'https://img.test/1.jpg', alt: 'Library alt', name: 'fallback-name' },
-                'Current alt',
-            );
-            expect(fromPickerAlt.alt).toBe('Library alt');
-
-            const fromCurrentAlt = mapPickerPayloadToHeroImage(
-                { url: 'https://img.test/2.jpg', name: 'fallback-name' },
-                'Current alt',
-            );
-            expect(fromCurrentAlt.alt).toBe('Current alt');
-
-            const fromName = mapPickerPayloadToHeroImage({ url: 'https://img.test/3.jpg', name: 'fallback-name' });
-            expect(fromName.alt).toBe('fallback-name');
+    describe('hero image and journal photo mapping', () => {
+        const file = { key: `otta-web/media/${'a'.repeat(32)}.jpg`, width: 1600, variants: ['thumb' as const] };
+        const pick = (overrides: Partial<MediaSelectionPayload> = {}): MediaSelectionPayload => ({
+            file,
+            url: 'https://files.test/shown-only.jpg',
+            name: 'fallback-name',
+            ...overrides,
         });
 
-        it('should map upload response to hero image and preserve caption', () => {
-            const mapped = mapUploadResponseToHeroImage(
-                { file: { id: 'media-123', url: 'https://img.test/uploaded.jpg' } },
-                'photo.png',
-                '',
-                'Existing caption',
-            );
+        it('stores the picked file, never its URL, and prefers picker alt, then current alt, then name', () => {
+            const fromPickerAlt = heroFromPick(pick({ alt: 'Library alt' }), { image: 'x', alt: 'Current alt' });
+            expect(fromPickerAlt).toEqual({ image: file, alt: 'Library alt', caption: undefined });
 
-            expect(mapped).toEqual({
-                url: 'https://img.test/uploaded.jpg',
+            expect(heroFromPick(pick(), { image: 'x', alt: 'Current alt', maxHeight: 400 })).toEqual({
+                image: file,
+                alt: 'Current alt',
+                caption: undefined,
+                maxHeight: 400,
+            });
+            expect(heroFromPick(pick(), null)?.alt).toBe('fallback-name');
+        });
+
+        it('keeps the alt text and caption the author wrote when a fresh upload replaces the image', () => {
+            expect(heroFromUpload(file, 'photo.png', { image: 'x', alt: '', caption: 'Existing caption' })).toEqual({
+                image: file,
                 alt: 'photo.png',
                 caption: 'Existing caption',
-                mediaId: 'media-123',
             });
         });
 
-        it('should return null when upload response has no url', () => {
-            expect(mapUploadResponseToHeroImage({}, 'photo.png')).toBeNull();
+        it('refuses a private file, which has no StoredFile to keep', () => {
+            expect(heroFromPick(pick({ file: null }), null)).toBeNull();
+            expect(heroFromUpload(null, 'photo.png', null)).toBeNull();
+            expect(photoFromPick(pick({ file: null }))).toBeNull();
+        });
+
+        it('keys a journal photograph by its file id', () => {
+            expect(photoFromPick(pick({ caption: 'Lane' }))).toEqual({
+                id: 'a'.repeat(32),
+                image: file,
+                title: null,
+                alt: null,
+                caption: 'Lane',
+                location: null,
+                takenAt: null,
+            });
+        });
+
+        it('accepts a typed https address as typed, and nothing else', () => {
+            expect(typedImageAddress('  https://example.com/a.jpg ')).toBe('https://example.com/a.jpg');
+            expect(typedImageAddress('http://example.com/a.jpg')).toBeNull();
+            expect(typedImageAddress('javascript:alert(1)')).toBeNull();
+            expect(typedImageAddress('/relative.jpg')).toBeNull();
         });
     });
 

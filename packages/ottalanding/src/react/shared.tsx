@@ -1,4 +1,4 @@
-import { sanitizeUrl } from '@ottabase/utils/sanitize';
+import { safeImageProps, sanitizeUrl } from '@ottabase/utils/sanitize';
 import type { AnchorHTMLAttributes, FC, ReactNode } from 'react';
 import type { SectionData, SectionType } from '../sections';
 import type { SiteSettings } from '../site';
@@ -17,6 +17,10 @@ export type ThemeComponents = {
 
 export type Action = { label: string; href: string };
 
+/** `sizes` for the small image slots every theme shares: a logo in a strip, a testimonial photo. */
+export const LOGO_SIZES = '10rem';
+export const AVATAR_SIZES = '2.5rem';
+
 export const focusRing =
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
@@ -31,12 +35,6 @@ export function SiteLink({ href, children, ...rest }: AnchorHTMLAttributes<HTMLA
             {children}
         </a>
     );
-}
-
-/** Sanitized image source, or undefined when there is nothing safe to show. */
-export function safeSrc(src?: string): string | undefined {
-    const safe = src ? sanitizeUrl(src) : '#';
-    return safe === '#' ? undefined : safe;
 }
 
 /** Split a textarea body into paragraphs on blank lines. */
@@ -101,12 +99,13 @@ export function MobileMenu({ site, className = '' }: { site: SiteSettings; class
  * called — as the logo's alt text when the logo shows it, as visible text otherwise.
  */
 export function SiteBrand({ site, logoClassName = 'h-8' }: { site: SiteSettings; logoClassName?: string }) {
-    const logo = safeSrc(site.logoUrl);
+    // At most 12rem wide (the class below), so a small rendition is plenty.
+    const logo = safeImageProps(site.logo, '12rem');
     if (!logo) return <>{site.name}</>;
     return (
         <span className="inline-flex items-center gap-2.5">
             <img
-                src={logo}
+                {...logo}
                 alt={site.logoIncludesName ? site.name : ''}
                 className={`${logoClassName} w-auto max-w-[12rem] object-contain`}
             />

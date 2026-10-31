@@ -24,7 +24,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { menuSlotsApi, type MenuSlotAssignmentItem, type MenuSlotRenderType } from '../brand/brandApi';
-import { menuApi, type MenuWithItemsDto } from './menuApi';
+import type { MenuWithItemsDto } from '@ottabase/ottamenu';
+import { menuApi } from './menuApi';
 
 const RENDER_TYPES: MenuSlotRenderType[] = ['sidebar', 'flyout', 'mega', 'navbar', 'dropdown', 'footer'];
 

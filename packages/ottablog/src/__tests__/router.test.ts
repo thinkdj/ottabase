@@ -310,10 +310,10 @@ describe('createBlogHandlers', () => {
             excerpt: 'A quiet blue hour.',
             blurbText: null,
             photoNote: 'A quiet blue hour.',
-            photoAlbum: [{ id: 'ph1', url: 'https://images.test/1.jpg' }],
+            photoAlbum: [{ id: 'ph1', image: 'https://images.test/1.jpg' }],
             contentType: 'photo',
             status: 'published',
-            heroImage: { url: 'https://images.test/1.jpg' },
+            heroImage: { image: 'https://images.test/1.jpg' },
             isProtected: false,
             authorId: 'u1',
             publishedAt: 1,
@@ -346,9 +346,9 @@ describe('createBlogHandlers', () => {
                 excerpt: 'A quiet blue hour.',
                 photoNote: 'A quiet blue hour.',
                 contentType: 'photo',
-                heroImage: { url: 'https://images.test/1.jpg' },
+                heroImage: { image: 'https://images.test/1.jpg' },
             });
-            expect(post.photoAlbum).toEqual([{ id: 'ph1', url: 'https://images.test/1.jpg' }]);
+            expect(post.photoAlbum).toEqual([{ id: 'ph1', image: 'https://images.test/1.jpg' }]);
             expect('privateNotes' in post).toBe(false);
         });
 
@@ -375,7 +375,7 @@ describe('createBlogHandlers', () => {
             // stay off public payloads entirely.
             expect('privateNotes' in post).toBe(false);
             // Everything a card actually renders is still a real value, not a null placeholder.
-            expect(post.photoAlbum).toEqual([{ id: 'ph1', url: 'https://images.test/1.jpg' }]);
+            expect(post.photoAlbum).toEqual([{ id: 'ph1', image: 'https://images.test/1.jpg' }]);
         });
 
         it('drops crossposts from a protected post along with its body', async () => {
@@ -1033,7 +1033,7 @@ describe('createBlogHandlers', () => {
             session: { user: { id: 'u1', organizationId: 'org-1' } },
             securityContext,
         }));
-        const photos = [{ id: 'm1', mediaId: 'm1', url: 'https://images.test/kyoto.jpg' }];
+        const photos = [{ id: 'm1', image: 'https://images.test/kyoto.jpg' }];
         const created = { toJson: () => ({ id: 'p1', contentType: 'photo', photoAlbum: photos }) };
         vi.mocked(Post.createPhotoJournal).mockResolvedValueOnce(created as any);
         const validateWrite = vi.spyOn(globalRLS, 'validateWrite').mockImplementation(() => undefined);
@@ -1086,7 +1086,7 @@ describe('createBlogHandlers', () => {
             session: { user: { id: 'owner-1', organizationId: null, platformAdmin: true } },
             securityContext,
         }));
-        const photos = [{ id: 'm1', mediaId: 'm1', url: 'https://images.test/kyoto.jpg' }];
+        const photos = [{ id: 'm1', image: 'https://images.test/kyoto.jpg' }];
         vi.mocked(Post.createBlurb).mockResolvedValueOnce({
             toJson: () => ({ id: 'b-platform', contentType: 'blurb' }),
         } as any);
@@ -1159,7 +1159,7 @@ describe('createBlogHandlers', () => {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({
-                    photos: [{ id: 'm1', mediaId: 'm1', url: 'https://images.test/kyoto.jpg' }],
+                    photos: [{ id: 'm1', image: 'https://images.test/kyoto.jpg' }],
                     status: 'draft',
                 }),
             }),
@@ -1270,7 +1270,7 @@ describe('createBlogHandlers', () => {
             id: 'b1',
             contentType: 'blurb',
             blurbText: 'Stored thought',
-            photoAlbum: [{ id: 'p1', url: 'https://images.test/one.jpg' }],
+            photoAlbum: [{ id: 'p1', image: 'https://images.test/one.jpg' }],
         };
         const record = {
             get: (field: string) => stored[field],
@@ -1319,7 +1319,7 @@ describe('createBlogHandlers', () => {
             status: 'published',
             contentType: 'blurb',
             blurbText: 'Public thought',
-            photoAlbum: [{ id: 'p1', url: 'https://images.test/one.jpg' }],
+            photoAlbum: [{ id: 'p1', image: 'https://images.test/one.jpg' }],
         };
         const record = {
             get: (field: string) => stored[field],
@@ -1413,7 +1413,7 @@ describe('createBlogHandlers', () => {
             footnotes: { blocks: [] },
             blurbText: 'secret thought',
             photoNote: 'secret note',
-            photoAlbum: [{ id: 'p1', url: 'https://images.test/secret.jpg' }],
+            photoAlbum: [{ id: 'p1', image: 'https://images.test/secret.jpg' }],
             meta: { pluginSecret: 'do not ship' },
         };
         const record = {
@@ -1508,7 +1508,7 @@ describe('createBlogHandlers', () => {
             contentType: 'photo',
             authorId: null,
             publishedAt: 1_700_000_000_000,
-            heroImage: { url: 'https://images.test/kyoto.png', mimeType: 'image/png' },
+            heroImage: { image: 'https://images.test/kyoto.png' },
         };
         vi.mocked(Post.where).mockResolvedValueOnce([
             { get: (field: string) => fields[field as keyof typeof fields] ?? null },
@@ -1522,6 +1522,30 @@ describe('createBlogHandlers', () => {
         expect(xml).toContain('<category>Photo Journal</category>');
         expect(xml).toContain('<description>A quiet blue hour.</description>');
         expect(xml).toContain('<enclosure url="https://images.test/kyoto.png" type="image/png" />');
+    });
+
+    it('encloses a stored hero as its original at an absolute URL, never a WebP rendition', async () => {
+        const fields = {
+            id: 'p2',
+            title: 'Stored',
+            slug: 'stored',
+            contentType: 'blog',
+            authorId: null,
+            publishedAt: 1_700_000_000_000,
+            heroImage: { image: { key: `app/media/${'b'.repeat(32)}.png`, variants: ['thumb', 'card', 'full'] } },
+        };
+        vi.mocked(Post.where).mockResolvedValueOnce([
+            { get: (field: string) => fields[field as keyof typeof fields] ?? null },
+        ] as any);
+        const handlers = createBlogHandlers<Env>({ ...baseConfig });
+
+        const xml = await (await handlers.handleBlogRssFeed(ctxFor('/rss'))).text();
+
+        // The default files base is app-relative; the feed resolves it against the site.
+        expect(xml).toContain(
+            `<enclosure url="https://x.test/api/files/public/app/media/${'b'.repeat(32)}.png" type="image/png" />`,
+        );
+        expect(xml).not.toContain('.webp');
     });
 
     describe('platform mode (default)', () => {
@@ -2065,6 +2089,38 @@ describe('author archive, export, and import', () => {
         });
         expect(file.posts[0]).not.toHaveProperty('passwordHash');
         expect(file.posts[0]).not.toHaveProperty('id');
+    });
+
+    it('exports every stored file as the absolute URL of its original, and keeps outside addresses', async () => {
+        const key = (n: number) => `app/media/${String(n).repeat(32)}.jpg`;
+        vi.mocked(Post.where).mockResolvedValueOnce([
+            record({
+                id: 'p1',
+                title: 'Kyoto',
+                slug: 'kyoto',
+                contentType: 'photo',
+                heroImage: { image: { key: key(1), variants: ['card'] }, alt: 'Rain' },
+                seoMeta: { ogImage: { key: key(2) } },
+                photoAlbum: [
+                    { id: 'a', image: { key: key(1), width: 1800, variants: ['thumb', 'card', 'full'] } },
+                    { id: 'b', image: 'https://images.test/outside.jpg' },
+                ],
+                content: { blocks: [{ type: 'advancedImage', data: { image: { key: key(3) }, caption: 'Lane' } }] },
+            }),
+        ] as any);
+        const handlers = createBlogHandlers<Env>(configFor(editorContext));
+
+        const response = await handlers.handleBlogExport(ctxFor('/export'));
+        const post = ((await response.json()) as { posts: Record<string, any>[] }).posts[0];
+        const original = (n: number) => `https://x.test/api/files/public/${key(n)}`;
+
+        expect(post.heroImage).toEqual({ image: original(1), alt: 'Rain' });
+        expect(post.seoMeta).toEqual({ ogImage: original(2) });
+        expect(post.photoAlbum).toEqual([
+            { id: 'a', image: original(1) },
+            { id: 'b', image: 'https://images.test/outside.jpg' },
+        ]);
+        expect(post.content.blocks[0].data).toEqual({ image: original(3), caption: 'Lane' });
     });
 
     it('imports as the caller, keeps the original date, and skips existing slugs', async () => {

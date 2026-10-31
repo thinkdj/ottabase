@@ -6,14 +6,22 @@ import { DEFAULT_APP_ID } from '@ottabase/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { LandingPage, LandingSite, type LandingPageData, type SiteSettings } from '@ottabase/ottalanding';
 import { registerConnection } from '@ottabase/ottaorm';
+import { configureMedia } from '@ottabase/utils/media';
 import { headers } from 'next/headers';
 import { cache } from 'react';
 
-/** Point the models at the shared D1 and return the app whose landing site to show. */
+/**
+ * Point the models at the shared D1 and the image URLs at the public files base, and return the
+ * app whose landing site to show. Every read goes through here, so both are set before anything
+ * renders. Only server components draw images, so the browser needs no media base of its own.
+ */
 export async function connect(): Promise<string> {
     const { env } = await getCloudflareContext({ async: true });
     if (!env.OBCF_D1) throw new Error('OBCF_D1 is not bound. See apps/otta-landing/README.md → Database.');
     registerConnection('default', createD1Driver(env.OBCF_D1));
+    // The bucket's custom domain, else this app's own /api/files/public route (made absolute where
+    // a tag needs it: metadataBase for Open Graph, the origin for JSON-LD).
+    configureMedia({ publicUrl: env.R2_PUBLIC_URL });
     return env.APP_ID || DEFAULT_APP_ID;
 }
 

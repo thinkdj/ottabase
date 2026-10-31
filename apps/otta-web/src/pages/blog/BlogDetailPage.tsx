@@ -17,7 +17,9 @@ import {
     formatShortDate,
     type BlogPostData,
     type ContentType,
+    type HeroImage,
     type PhotoJournalItem,
+    type SeoMeta,
 } from '@ottabase/ottablog';
 import { BlogRenderer } from '@ottabase/ottablog/renderer';
 import { ShareButton } from '@ottabase/ottablog/share';
@@ -71,16 +73,8 @@ interface BlogPost {
     content: OutputData | null;
     contentType: ContentType;
     status: string;
-    heroImage: { url: string; alt?: string; caption?: string } | null;
-    seoMeta: {
-        title?: string;
-        description?: string;
-        keywords?: string[];
-        canonicalUrl?: string;
-        ogImage?: string;
-        noIndex?: boolean;
-        noFollow?: boolean;
-    } | null;
+    heroImage: HeroImage | null;
+    seoMeta: SeoMeta | null;
     footnotes: OutputData | null;
     authorId: string | null;
     // Author from User relationship
@@ -583,7 +577,7 @@ export function BlogDetailPage() {
     const seoKeywords = displayPost.seoMeta?.keywords;
     const canonicalUrl =
         displayPost.seoMeta?.canonicalUrl || (typeof window !== 'undefined' ? window.location.href : undefined);
-    const ogImage = displayPost.seoMeta?.ogImage || displayPost.heroImage?.url;
+    const ogImage = displayPost.seoMeta?.ogImage || displayPost.heroImage?.image;
 
     return (
         <div>

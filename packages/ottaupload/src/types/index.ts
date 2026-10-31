@@ -1,3 +1,5 @@
+import type { FileVariant } from '@ottabase/utils/media';
+
 /**
  * File upload types and interfaces
  */
@@ -126,7 +128,7 @@ export interface UploadResponse {
 export type FileAudience = 'public' | 'members' | 'owner';
 
 /** Fixed-width WebP renditions made at upload: thumb 160, card 640, full 1600. */
-export type FileVariant = 'thumb' | 'card' | 'full';
+export type { FileVariant };
 
 /** `ready` is served; `quarantined` is refused by every read path. */
 export type FileStatus = 'ready' | 'quarantined';
@@ -207,6 +209,8 @@ export interface FileView extends FileRecord {
     thumbnailUrl: string;
     /** The card variant, else the original. */
     previewUrl: string;
+    /** Width descriptors over the variants (see `imageSources`), for a public image that has them. */
+    srcSet: string | null;
 }
 
 /** Fields a person may change after upload. */

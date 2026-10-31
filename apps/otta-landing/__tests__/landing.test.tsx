@@ -53,6 +53,13 @@ import { getSite, toPath } from '../lib/content';
 import { money } from '../lib/product';
 
 const site = { getSettings: () => ({ ...DEFAULT_SITE, theme: 'editorial' }) };
+/** A stored file as otta-web's admin saves it: a key with its renditions, never a URL. */
+const stored = (purpose: string, hex: string) => ({
+    key: `acme/${purpose}/${hex.repeat(32 / hex.length)}.png`,
+    width: 2400,
+    height: 1260,
+    variants: ['thumb' as const, 'card' as const, 'full' as const],
+});
 const home = {
     toPage: () => ({ ...DEFAULT_PAGES[0], id: 'home', sections: parseSections(DEFAULT_PAGES[0].sections) }),
 };
@@ -137,6 +144,26 @@ describe('pages', () => {
         expect(out).toContain('has no content yet');
     });
 
+    it('renders stored images as renditions on the public files base, the custom domain when set', async () => {
+        const image = stored('media', 'ab');
+        const withHero = (data: object) => ({
+            toPage: () => ({
+                ...home.toPage(),
+                sections: [{ id: 'h', type: 'hero', data: { title: 'Hi', image, ...data } }],
+            }),
+        });
+        store.findPage.mockResolvedValue(withHero({}));
+        const stem = image.key.replace(/\.png$/, '');
+        expect(html(await LandingRoute(params()))).toContain(
+            `srcSet="/api/files/public/${stem}/thumb.webp 160w, /api/files/public/${stem}/card.webp 640w, /api/files/public/${stem}/full.webp 1600w"`,
+        );
+
+        env.value = { ...env.value, R2_PUBLIC_URL: 'https://files.acme.dev/' };
+        const out = html(await LandingRoute(params()));
+        expect(out).toContain(`src="https://files.acme.dev/${stem}/full.webp"`);
+        expect(out).not.toContain('/api/files/public/');
+    });
+
     it('renders the 404 inside the site’s own theme and navigation', async () => {
         const out = html(await NotFound());
         expect(out).toContain('This page doesn’t exist');
@@ -174,24 +201,30 @@ describe('metadata', () => {
     });
 
     it('shares the page’s own social image, else the site’s, as a large card', async () => {
-        const siteImage = '/api/files/public/acme/share-image/0123456789abcdef0123456789abcdef.png';
+        const siteImage = stored('share-image', '01');
         store.findSite.mockResolvedValue({
-            getSettings: () => ({ ...DEFAULT_SITE, share: { imageUrl: siteImage } }),
+            getSettings: () => ({ ...DEFAULT_SITE, share: { image: siteImage } }),
         });
         store.findPage.mockResolvedValue(home);
         let meta = await generateMetadata(params());
+        // The original, never a WebP rendition; relative, so metadataBase makes it absolute.
+        const siteUrl = `/api/files/public/${siteImage.key}`;
         expect(meta.openGraph).toMatchObject({
-            images: [{ url: siteImage, width: 1200, height: 630, alt: 'Ottabase' }],
+            images: [{ url: siteUrl, width: 1200, height: 630, alt: 'Ottabase' }],
         });
-        expect(meta.twitter).toMatchObject({ card: 'summary_large_image', images: [{ url: siteImage }] });
+        expect(meta.twitter).toMatchObject({ card: 'summary_large_image', images: [{ url: siteUrl }] });
 
-        const own = {
-            imageUrl: '/api/files/public/acme/share-image/fedcba9876543210fedcba9876543210.png',
-            heading: 'Ship it',
-        };
+        const own = { image: stored('share-image', 'fe'), heading: 'Ship it' };
         store.findPage.mockResolvedValue({ toPage: () => ({ ...home.toPage(), share: own }) });
         meta = await generateMetadata(params());
-        expect(meta.openGraph).toMatchObject({ images: [{ url: own.imageUrl, alt: 'Ship it' }] });
+        expect(meta.openGraph).toMatchObject({
+            images: [{ url: `/api/files/public/${own.image.key}`, alt: 'Ship it' }],
+        });
+
+        // On the bucket's custom domain the tag is absolute already.
+        env.value = { ...env.value, R2_PUBLIC_URL: 'https://files.acme.dev' };
+        meta = await generateMetadata(params());
+        expect(meta.openGraph).toMatchObject({ images: [{ url: `https://files.acme.dev/${own.image.key}` }] });
 
         store.findSite.mockResolvedValue(site);
         store.findPage.mockResolvedValue(home);
@@ -323,8 +356,19 @@ describe('the product for machines', () => {
         }
     });
 
+    it('names a stored logo and social image by their absolute originals', async () => {
+        const logo = stored('media', 'cd');
+        const image = stored('share-image', 'ef');
+        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, logo, share: { image } }) });
+        store.findPage.mockResolvedValue(home);
+        const res = await ottaJson(new Request('https://landing.acme.test/.well-known/otta.json'));
+        const { product } = await res.json();
+        expect(product.logo).toBe(`https://landing.acme.test/api/files/public/${logo.key}`);
+        expect(product.image).toBe(`https://landing.acme.test/api/files/public/${image.key}`);
+    });
+
     it('leaves out an image address it cannot resolve instead of failing the home page', async () => {
-        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, logoUrl: 'https://[' }) });
+        store.findSite.mockResolvedValue({ getSettings: () => ({ ...DEFAULT_SITE, logo: 'https://[' }) });
         store.findPage.mockResolvedValue(home);
         const res = await ottaJson(new Request('https://landing.acme.test/.well-known/otta.json'));
         expect((await res.json()).product.logo).toBeNull();

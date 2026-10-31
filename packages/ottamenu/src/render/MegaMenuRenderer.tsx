@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildItemTree, type MenuItemTreeNode } from '../treeUtils';
 import type { MenuItemDto } from '../types';
+import { MenuItemImage } from './MenuItemImage';
 import { MenuItemLink } from './MenuItemLink';
 
 export interface MegaMenuRendererProps {
@@ -31,9 +32,7 @@ function MegaMenuItem({ item, pathname }: { item: MenuItemDto; pathname: string 
                 renderChildren={
                     <>
                         {/* Image thumbnail (left of text) rendered via slot */}
-                        {hasImage && (
-                            <img src={item.image!} alt="" className="mt-0.5 h-5 w-5 shrink-0 rounded object-cover" />
-                        )}
+                        <MenuItemImage image={item.image} className="mt-0.5 h-5 w-5 shrink-0 rounded object-cover" />
                         <span className="flex flex-col gap-0.5">
                             <span className="flex items-center gap-1.5 text-sm font-medium leading-tight">
                                 {item.name}
@@ -62,13 +61,11 @@ function MegaMenuItem({ item, pathname }: { item: MenuItemDto; pathname: string 
 
 // ── Column (one group: header + child links) ─────────────────────────────
 function MegaMenuColumn({ node, pathname }: { node: MenuItemTreeNode; pathname: string }) {
-    const hasImage = !!node.item.image;
-
     return (
         <div className="flex flex-col gap-1">
             {/* Column header – optionally with image */}
             <div className="flex items-center gap-2 px-3 pb-1">
-                {hasImage && <img src={node.item.image!} alt="" className="h-5 w-5 shrink-0 rounded object-cover" />}
+                <MenuItemImage image={node.item.image} className="h-5 w-5 shrink-0 rounded object-cover" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {node.item.name}
                 </span>

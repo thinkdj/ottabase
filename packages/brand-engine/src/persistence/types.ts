@@ -3,6 +3,7 @@
 // v2: Per-app scoping – no organizationId references
 // ---------------------------------------------------------------------------
 
+import type { FileSource } from '@ottabase/utils/media';
 import type { LayoutConfig } from '@ottabase/ottalayout';
 import type { MenuItemDto, MenuRenderType } from '@ottabase/ottamenu';
 import type { ResolvedBrandTheme } from '../resolver';
@@ -203,7 +204,7 @@ export interface CreateMenuItemPayload {
     newTab?: boolean;
     authRequired?: boolean;
     description?: string | null;
-    image?: string | null;
+    image?: FileSource | null;
     tooltip?: string | null;
     sortOrder?: number;
 }
@@ -216,7 +217,7 @@ export interface UpdateMenuItemPayload {
     newTab?: boolean;
     authRequired?: boolean;
     description?: string | null;
-    image?: string | null;
+    image?: FileSource | null;
     tooltip?: string | null;
     sortOrder?: number;
 }

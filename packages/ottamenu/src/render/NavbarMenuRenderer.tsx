@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildItemTree, type MenuItemTreeNode } from '../treeUtils';
 import type { MenuItemDto } from '../types';
+import { MenuItemImage } from './MenuItemImage';
 import { MenuItemLink } from './MenuItemLink';
 
 export interface NavbarMenuRendererProps {
@@ -20,7 +21,7 @@ export interface NavbarMenuRendererProps {
 function NavbarDropdownItem({ item, pathname }: { item: MenuItemDto; pathname: string }) {
     return (
         <div className="flex items-center gap-2">
-            {item.image && <img src={item.image} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />}
+            <MenuItemImage image={item.image} className="h-4 w-4 shrink-0 rounded object-cover" />
             <MenuItemLink item={item} pathname={pathname} className="block w-full" />
         </div>
     );
@@ -70,9 +71,7 @@ function NavbarItem({
                 }`}
                 onClick={isOpen ? onClose : handleOpen}
             >
-                {node.item.image && (
-                    <img src={node.item.image} alt="" className="mr-1.5 h-4 w-4 shrink-0 rounded object-cover" />
-                )}
+                <MenuItemImage image={node.item.image} className="mr-1.5 h-4 w-4 shrink-0 rounded object-cover" />
                 {node.item.name}
                 <svg
                     className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}

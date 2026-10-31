@@ -7,7 +7,8 @@
 
 import { LandingLead, LandingPage, LandingSite, LEAD_KINDS, leadsToCsv, type LeadKind } from '@ottabase/ottalanding';
 import { DomainValidationError } from '@ottabase/ottaorm';
-import { fileIdFromKey, FilesError } from '@ottabase/ottaupload/server';
+import { FilesError } from '@ottabase/ottaupload/server';
+import { fileIdFromKey, isStoredFile, storedFileOf, type StoredFile } from '@ottabase/utils/media';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { files } from '../../ottabase/files';
@@ -104,20 +105,24 @@ export function handleLandingPagePreview(context: ApiRouteContext, id: string): 
 
 // ── Social images ───────────────────────────────────────────────────────────
 
-/** The rendered social image a site or page points at, if any. */
-function shareImageOf(owner: { share?: { imageUrl?: string | null } | null } | null | undefined): string | null {
-    return owner?.share?.imageUrl || null;
+/** The rendered social image a site or page points at, if it is a stored file. */
+function shareImageOf(owner: { share?: { image?: unknown } | null } | null | undefined): StoredFile | null {
+    const image = owner?.share?.image;
+    return isStoredFile(image) ? image : null;
 }
 
 /**
  * Delete a social image once nothing points at it: a save that replaced it, or a deleted page.
- * Only this app's own share-image files are touched (an absolute URL someone pasted is left
- * alone). Best effort: a leftover image is harmless, a failed delete must not fail the save.
+ * Only this app's own share-image files are touched (an address someone pasted is left alone).
+ * Best effort: a leftover image is harmless, a failed delete must not fail the save.
  */
-async function releaseShareImage(env: CloudflareEnv, before: string | null, after: string | null): Promise<void> {
-    if (!before || before === after) return;
-    const key = files.keyOf(env, before);
-    const id = key ? fileIdFromKey(key) : null;
+async function releaseShareImage(
+    env: CloudflareEnv,
+    before: StoredFile | null,
+    after: StoredFile | null,
+): Promise<void> {
+    if (!before || before.key === after?.key) return;
+    const id = fileIdFromKey(before.key);
     if (!id) return;
     const record = await files.get(env, id).catch(() => null);
     if (record?.purpose === 'share-image') await files.remove(env, id).catch(() => undefined);
@@ -125,9 +130,10 @@ async function releaseShareImage(env: CloudflareEnv, before: string | null, afte
 
 /**
  * POST /api/landing/share-image — store the social image (multipart `file`, rendered in the
- * admin's browser) for `target`: `site`, or the id of one of this app's pages. Every save is a
- * new file at a new key (so caches never serve a stale one); the previous image goes when the
- * site or page is saved pointing at the new one.
+ * admin's browser) for `target`: `site`, or the id of one of this app's pages. Answers with its
+ * `StoredFile` (the purpose is public and makes no renditions), which the card keeps as `image`.
+ * Every save is a new file at a new key (so caches never serve a stale one); the previous image
+ * goes when the site or page is saved pointing at the new one.
  */
 export function handleLandingShareImage(context: ApiRouteContext): Promise<Response> {
     return asAdmin(context, async (appId) => {
@@ -144,7 +150,7 @@ export function handleLandingShareImage(context: ApiRouteContext): Promise<Respo
                 file,
                 name: `share-${target}.png`,
             });
-            return jsonResponse({ url: view.url }, 201);
+            return jsonResponse({ file: storedFileOf(view) }, 201);
         } catch (error) {
             if (error instanceof FilesError) {
                 return errorResponse('The social image must be a PNG, JPEG or WebP under 2 MB', error.status, {

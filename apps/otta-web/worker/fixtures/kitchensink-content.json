@@ -35,8 +35,8 @@
             "id": "-lczZ8_LTp",
             "type": "beforeAfter",
             "data": {
-                "beforeUrl": "https://images.unsplash.com/photo-1600691098177-d704b774f5e8?w=1600",
-                "afterUrl": "https://images.unsplash.com/photo-1600691098177-d704b774f5e8?w=1600&sat=-100&exp=-25",
+                "before": "https://images.unsplash.com/photo-1600691098177-d704b774f5e8?w=1600",
+                "after": "https://images.unsplash.com/photo-1600691098177-d704b774f5e8?w=1600&sat=-100&exp=-25",
                 "beforeLabel": "Day",
                 "afterLabel": "Night",
                 "orientation": "horizontal",
@@ -200,21 +200,18 @@
             "id": "GQNWwAFXSK",
             "type": "mediaEmbed",
             "data": {
-                "url": "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
+                "media": "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
                 "title": "Five seconds of sample video",
                 "caption": "MediaEmbed handles the assets that are not photos: video, audio, and files.",
-                "mediaId": "",
                 "mimeType": "video/mp4",
-                "mediaKind": "video",
-                "thumbnailUrl": "",
-                "previewUrl": ""
+                "mediaKind": "video"
             }
         },
         {
             "id": "yWXVRnpj9z",
             "type": "imageHotspots",
             "data": {
-                "imageUrl": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600",
+                "image": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600",
                 "alt": "A wide city avenue framed by tall office towers",
                 "caption": "Click a numbered pin to open its note. Great for product tours, diagrams, and maps of anything.",
                 "hotspots": [
@@ -326,36 +323,36 @@
                 "layout": "mosaic",
                 "items": [
                     {
-                        "url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800",
-                        "altText": "Modern skyscraper",
+                        "media": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800",
+                        "alt": "Modern skyscraper",
                         "caption": "Glass and steel tower",
                         "mediaKind": "image",
                         "title": ""
                     },
                     {
-                        "url": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800",
-                        "altText": "Urban skyline",
+                        "media": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800",
+                        "alt": "Urban skyline",
                         "caption": "Downtown panorama",
                         "mediaKind": "image",
                         "title": ""
                     },
                     {
-                        "url": "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=800",
-                        "altText": "Bridge at sunset",
+                        "media": "https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=800",
+                        "alt": "Bridge at sunset",
                         "caption": "Iconic city bridge",
                         "mediaKind": "image",
                         "title": ""
                     },
                     {
-                        "url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800",
-                        "altText": "City at night",
+                        "media": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800",
+                        "alt": "City at night",
                         "caption": "Neon-lit streets",
                         "mediaKind": "image",
                         "title": ""
                     },
                     {
-                        "url": "https://images.unsplash.com/photo-1683650986248-b6eaa60da28f?w=800",
-                        "altText": "A yellow building beneath a white church dome",
+                        "media": "https://images.unsplash.com/photo-1683650986248-b6eaa60da28f?w=800",
+                        "alt": "A yellow building beneath a white church dome",
                         "caption": "Old town colour",
                         "mediaKind": "image",
                         "title": ""
@@ -436,7 +433,6 @@
             "id": "HpqxU1KdBh",
             "type": "review",
             "data": {
-                "image": "",
                 "title": "OttaEditor",
                 "content": "",
                 "linkUrl": "",

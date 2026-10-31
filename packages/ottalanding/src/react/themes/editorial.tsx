@@ -1,3 +1,4 @@
+import { safeImageProps } from '@ottabase/utils/sanitize';
 // Editorial — long-form magazine. Persistent side navigation, large left-aligned serif,
 // logos written as a sentence, features as a definition list, pricing as a menu of rows,
 // FAQ fully open, drop cap on prose.
@@ -5,9 +6,9 @@
 import {
     focusRing,
     isCurrent,
+    LOGO_SIZES,
     MobileMenu,
     paragraphs,
-    safeSrc,
     SiteBrand,
     SiteLink,
     type Action,
@@ -109,10 +110,11 @@ export const editorial: ThemeComponents = {
     },
 
     sections: {
-        hero({ eyebrow, title, subtitle, actions, imageUrl, imageAlt, lead }) {
+        hero({ eyebrow, title, subtitle, actions, image, imageAlt, lead }) {
             // The page's first hero carries its one <h1>; any later hero is a section heading.
             const HeroTag = lead === false ? 'h2' : 'h1';
-            const src = safeSrc(imageUrl);
+            // The 48rem text column, less its 2.5rem gutters.
+            const img = safeImageProps(image, '(min-width: 48rem) 43rem, 100vw');
             return (
                 <header className={`${column} pb-14 pt-16 sm:pt-24`}>
                     {eyebrow && <p className="mb-6 font-heading text-lg italic text-primary">{eyebrow}</p>}
@@ -127,14 +129,26 @@ export const editorial: ThemeComponents = {
                     <div className="mt-10">
                         <Actions actions={actions} />
                     </div>
-                    {src && <img src={src} alt={imageAlt ?? ''} className="mt-14 w-full rounded-sm" />}
+                    {img && (
+                        <img
+                            {...img}
+                            alt={imageAlt ?? ''}
+                            // The lead hero's image is above the fold: load it at once.
+                            loading={lead === false ? 'lazy' : undefined}
+                            decoding="async"
+                            className="mt-14 w-full rounded-sm"
+                        />
+                    )}
                 </header>
             );
         },
 
         logos({ title, items }) {
             if (!items?.length) return null;
-            const withImages = items.filter((l) => safeSrc(l.logoUrl));
+            const withImages = items.flatMap((l) => {
+                const img = safeImageProps(l.logo, LOGO_SIZES);
+                return img ? [{ name: l.name, img }] : [];
+            });
             return (
                 <div className={`${column} py-8`}>
                     <p className="border-l-2 border-primary pl-5 font-heading text-xl leading-relaxed">
@@ -146,8 +160,10 @@ export const editorial: ThemeComponents = {
                             {withImages.map((l, i) => (
                                 <img
                                     key={i}
-                                    src={safeSrc(l.logoUrl)}
+                                    {...l.img}
                                     alt={l.name}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="h-6 w-auto opacity-60 grayscale"
                                 />
                             ))}

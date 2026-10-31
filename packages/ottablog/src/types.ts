@@ -2,6 +2,7 @@
  * @ottabase/ottablog - Type Definitions
  * Blog and content management types for Ottabase apps
  */
+import { fileIdFromKey, isStoredFile, type FileSource } from '@ottabase/utils/media';
 import { sanitizeUrl } from '@ottabase/utils/sanitize';
 
 /**
@@ -92,8 +93,8 @@ export interface SeoMeta {
     keywords?: string[];
     /** Canonical URL if different from post URL */
     canonicalUrl?: string;
-    /** Open Graph image URL */
-    ogImage?: string;
+    /** Open Graph image: a stored file, or an outside address. Rendered as its original's absolute URL. */
+    ogImage?: FileSource;
     /** Open Graph type (article, website, etc.) */
     ogType?: string;
     /** Twitter card type */
@@ -108,43 +109,28 @@ export interface SeoMeta {
  * Hero image configuration
  */
 export interface HeroImage {
-    /** Image URL (a files view URL, or any external image) */
-    url: string;
+    /** A stored file (sizes and renditions come with it), or an outside image address. */
+    image: FileSource;
     /** Alt text for accessibility */
     alt?: string;
     /** Image caption */
     caption?: string;
-    /** Media library item ID (when the image is a stored file) */
-    mediaId?: string;
-    /** Width in pixels */
-    width?: number;
-    /** Height in pixels */
-    height?: number;
-    /** MIME type for feeds and media integrations */
-    mimeType?: string;
     /** Max display height in pixels (applied to the hero figure container) */
     maxHeight?: number;
     /** Focal point for cropping (0-100 percentage) */
     focalPoint?: { x: number; y: number };
 }
 
-/** One ordered photograph in a photo journal. */
+/** One ordered photograph in a photo journal. Its size, when known, is the stored file's. */
 export interface PhotoJournalItem {
     /** Stable identity used by reordering, lightbox deep links, and React rendering. */
     id: string;
-    /** Media library identity when the photograph came from Ottabase media. */
-    mediaId?: string | null;
-    url: string;
-    thumbnailUrl?: string | null;
-    previewUrl?: string | null;
+    image: FileSource;
     title?: string | null;
     alt?: string | null;
     caption?: string | null;
     location?: string | null;
     takenAt?: number | null;
-    width?: number | null;
-    height?: number | null;
-    mimeType?: string | null;
 }
 
 /**
@@ -393,7 +379,7 @@ export class PhotoJournalValidationError extends ContentValidationError {
 /**
  * Serialized ceiling for a post body. D1 caps a whole row, and the body shares that row with the
  * album, the note, and every other column, so the body gets a fraction rather than the lot.
- * Generous for prose: images live in the body as URLs, never as inline data.
+ * Generous for prose: images live in the body as stored-file references or addresses, never as inline data.
  */
 export const POST_CONTENT_MAX_BYTES = 512 * 1024;
 
@@ -443,21 +429,60 @@ function optionalPhotoText(value: unknown, label: string, maxLength: number): st
     return normalized || null;
 }
 
-function safePhotoUrl(value: unknown, label: string, required = false): string | null {
-    if (value === undefined || value === null || value === '') {
-        if (required) throw new PhotoJournalValidationError(`${label} is required`);
-        return null;
+/**
+ * An image as content stores it: a well-formed `StoredFile`, or an outside address (HTTP(S) or
+ * app-relative), trimmed and sanitized. Any other object is refused: content never keeps a stored
+ * file's URL, and an object that is not a `StoredFile` would render nothing.
+ */
+export function validateImageSource(
+    value: unknown,
+    label: string,
+    Failure: new (message: string) => ContentValidationError = ContentValidationError,
+): FileSource {
+    if (value !== null && typeof value === 'object') {
+        if (isStoredFile(value)) return value;
+        throw new Failure(`${label} is not a valid stored file`);
     }
-    if (typeof value !== 'string') throw new PhotoJournalValidationError(`${label} must be a URL`);
+    if (value === undefined || value === null || value === '') throw new Failure(`${label} is required`);
+    if (typeof value !== 'string') throw new Failure(`${label} must be a URL`);
     const trimmed = value.trim();
     if (trimmed.length > PHOTO_JOURNAL_URL_MAX_LENGTH) {
-        throw new PhotoJournalValidationError(`${label} must be ${PHOTO_JOURNAL_URL_MAX_LENGTH} characters or fewer`);
+        throw new Failure(`${label} must be ${PHOTO_JOURNAL_URL_MAX_LENGTH} characters or fewer`);
     }
     const sanitized = sanitizeUrl(trimmed);
     if (sanitized.startsWith('//') || sanitized === '#' || !/^(https?:\/\/|\/|\.\/|\.\.\/)/i.test(sanitized)) {
-        throw new PhotoJournalValidationError(`${label} must use HTTP(S) or an application-relative URL`);
+        throw new Failure(`${label} must use HTTP(S) or an application-relative URL`);
     }
     return sanitized;
+}
+
+/** What makes two images the same picture: a stored file's id, or an outside address. */
+export function imageIdentity(image: FileSource): string {
+    return typeof image === 'string' ? image : (fileIdFromKey(image.key) ?? image.key);
+}
+
+/**
+ * Validate a hero image. `image` is required; the display fields are kept only in their own
+ * shape and anything else is dropped. Null or absent clears it.
+ */
+export function validateHeroImage(value: unknown): HeroImage | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== 'object' || Array.isArray(value)) {
+        throw new ContentValidationError('Hero image must be an object');
+    }
+    const raw = value as Record<string, unknown>;
+    const hero: HeroImage = { image: validateImageSource(raw.image, 'Hero image') };
+    for (const key of ['alt', 'caption'] as const) {
+        const text = typeof raw[key] === 'string' ? (raw[key] as string).trim().slice(0, 600) : '';
+        if (text) hero[key] = text;
+    }
+    if (typeof raw.maxHeight === 'number' && Number.isFinite(raw.maxHeight) && raw.maxHeight > 0) {
+        hero.maxHeight = raw.maxHeight;
+    }
+    const focal = raw.focalPoint as { x?: unknown; y?: unknown } | null | undefined;
+    const percent = (n: unknown): n is number => typeof n === 'number' && n >= 0 && n <= 100;
+    if (focal && percent(focal.x) && percent(focal.y)) hero.focalPoint = { x: focal.x, y: focal.y };
+    return hero;
 }
 
 /** Validate and normalize the complete ordered photo-journal payload. */
@@ -470,12 +495,11 @@ export function validatePhotoJournalItems(value: unknown): PhotoJournalItem[] {
     }
 
     // Identity namespaces are intentionally independent. An app-generated photo `id` may happen
-    // to equal another asset's media-library ID (or even its URL) without identifying the same
+    // to equal another photograph's file id (or even its address) without identifying the same
     // photograph. Conflating the namespaces rejected valid albums while still making it hard to
     // explain which identity was duplicated.
     const seenIds = new Set<string>();
-    const seenMediaIds = new Set<string>();
-    const seenUrls = new Set<string>();
+    const seenImages = new Set<string>();
     const items: PhotoJournalItem[] = [];
 
     value.forEach((raw, index) => {
@@ -483,53 +507,40 @@ export function validatePhotoJournalItems(value: unknown): PhotoJournalItem[] {
             throw new PhotoJournalValidationError(`Photograph ${index + 1} is invalid`);
         }
         const item = raw as Record<string, unknown>;
-        const width = item.width == null ? null : Number(item.width);
-        const height = item.height == null ? null : Number(item.height);
         const takenAt = item.takenAt == null ? null : Number(item.takenAt);
-        if (width !== null && (!Number.isFinite(width) || width <= 0)) {
-            throw new PhotoJournalValidationError(`Photograph ${index + 1} has an invalid width`);
-        }
-        if (height !== null && (!Number.isFinite(height) || height <= 0)) {
-            throw new PhotoJournalValidationError(`Photograph ${index + 1} has an invalid height`);
-        }
         if (takenAt !== null && !isJavascriptDateTimestamp(takenAt)) {
             throw new PhotoJournalValidationError(`Photograph ${index + 1} has an invalid date`);
         }
 
-        const mediaId = optionalPhotoText(item.mediaId, 'Media ID', 128);
+        const image = validateImageSource(item.image, `Photograph ${index + 1} image`, PhotoJournalValidationError);
+        const identity = imageIdentity(image);
         const entry: PhotoJournalItem = {
-            id: optionalPhotoText(item.id, 'Photograph ID', 128) ?? mediaId ?? crypto.randomUUID(),
-            mediaId,
-            url: safePhotoUrl(item.url, `Photograph ${index + 1} URL`, true)!,
-            thumbnailUrl: safePhotoUrl(item.thumbnailUrl, `Photograph ${index + 1} thumbnail`),
-            previewUrl: safePhotoUrl(item.previewUrl, `Photograph ${index + 1} preview`),
+            // A stored photograph without its own id takes the file's, which is stable across edits.
+            id:
+                optionalPhotoText(item.id, 'Photograph ID', 128) ??
+                (typeof image === 'string' ? null : identity) ??
+                crypto.randomUUID(),
+            image,
             title: optionalPhotoText(item.title, 'Photograph title', 180),
             alt: optionalPhotoText(item.alt, 'Alternative text', 300),
             caption: optionalPhotoText(item.caption, 'Caption', 600),
             location: optionalPhotoText(item.location, 'Location', 180),
             takenAt: takenAt === null ? null : Math.trunc(takenAt),
-            width,
-            height,
-            mimeType: optionalPhotoText(item.mimeType, 'MIME type', 100),
         };
 
         /*
          * The same photograph twice is a caller mistake, and a silently damaging one: `id` is both
          * the React key for the tile and the lightbox registration key, so a repeat renders one
          * frame where two were asked for and leaves that frame unopenable. Reject on ANY identity
-         * a duplicate can arrive under — an explicit `id`, the media library's `mediaId`, or the URL
-         * itself. Rejecting preserves the caller's ordered album instead of silently changing it.
+         * a duplicate can arrive under: an explicit `id`, or the image itself (a stored file's id,
+         * an outside address). Rejecting preserves the caller's ordered album instead of silently
+         * changing it.
          */
-        if (
-            seenIds.has(entry.id) ||
-            (entry.mediaId != null && seenMediaIds.has(entry.mediaId)) ||
-            seenUrls.has(entry.url)
-        ) {
+        if (seenIds.has(entry.id) || seenImages.has(identity)) {
             throw new PhotoJournalValidationError(`Photograph ${index + 1} duplicates an earlier photograph`);
         }
         seenIds.add(entry.id);
-        if (entry.mediaId != null) seenMediaIds.add(entry.mediaId);
-        seenUrls.add(entry.url);
+        seenImages.add(identity);
         items.push(entry);
     });
 
@@ -585,6 +596,8 @@ export function validatePostWrite<T extends Record<string, any>>(data: T): T {
     }
 
     if (present('blurbText') && out.blurbText !== null) out.blurbText = validateBlurbText(out.blurbText);
+    if (present('heroImage')) out.heroImage = validateHeroImage(out.heroImage);
+    if (present('seoMeta') && out.seoMeta !== null) out.seoMeta = validateSeoMetaImage(out.seoMeta);
     if (present('photoNote')) out.photoNote = validatePhotoJournalNote(out.photoNote);
     if (present('crossposts')) out.crossposts = validateCrossposts(out.crossposts);
     if (present('content')) out.content = validatePostContent(out.content);
@@ -620,6 +633,16 @@ export function validatePostWrite<T extends Record<string, any>>(data: T): T {
     }
 
     return out as T;
+}
+
+/** `seoMeta` where it holds an image: `ogImage` is a stored file or a safe address, or it is dropped. */
+function validateSeoMetaImage(value: unknown): SeoMeta {
+    if (typeof value !== 'object' || Array.isArray(value) || value === null) {
+        throw new ContentValidationError('SEO metadata must be an object');
+    }
+    const { ogImage, ...rest } = value as SeoMeta;
+    if (ogImage === undefined || ogImage === null || ogImage === '') return rest;
+    return { ...rest, ogImage: validateImageSource(ogImage, 'Open Graph image') };
 }
 
 export function createPhotoJournalTitle(

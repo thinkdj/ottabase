@@ -1,3 +1,4 @@
+import { configureMedia } from '@ottabase/utils/media';
 import { describe, expect, it } from 'vitest';
 import { exportToJSON, exportToMarkdown, convertInlineHTML } from '../export';
 import type { OutputData } from '@editorjs/editorjs';
@@ -273,12 +274,38 @@ describe('Export Utilities', () => {
                     {
                         id: '1',
                         type: 'image',
-                        data: { file: { url: 'https://example.com/img.png' }, caption: 'My image' },
+                        data: { image: 'https://example.com/img.png', caption: 'My image' },
                     },
                 ],
                 version: '',
             };
             expect(exportToMarkdown(data)).toContain('![My image](https://example.com/img.png "My image")');
+        });
+
+        it('exports a stored image as its original under the configured base, never a rendition', () => {
+            configureMedia({ publicUrl: 'https://files.test' });
+            const file = {
+                key: 'app/media/0123456789abcdef0123456789abcdef.png',
+                width: 2400,
+                height: 1600,
+                variants: ['thumb' as const, 'card' as const, 'full' as const],
+            };
+            const original = 'https://files.test/app/media/0123456789abcdef0123456789abcdef.png';
+            const md = exportToMarkdown({
+                blocks: [
+                    { type: 'image', data: { image: file, alt: 'Harbour' } },
+                    { type: 'beforeAfter', data: { before: file, after: 'https://example.com/after.jpg' } },
+                    { type: 'imageHotspots', data: { image: file, alt: 'Map' } },
+                    { type: 'mediaGallery', data: { items: [{ media: file, alt: 'One' }] } },
+                ],
+            });
+            configureMedia({ publicUrl: null });
+            expect(md).toContain(`![Harbour](${original})`);
+            expect(md).toContain(`![before](${original})`);
+            expect(md).toContain('![after](https://example.com/after.jpg)');
+            expect(md).toContain(`![Map](${original})`);
+            expect(md).toContain(`![One](${original})`);
+            expect(md).not.toContain('.webp');
         });
 
         it('should convert embed blocks', () => {
@@ -471,7 +498,7 @@ describe('Export Utilities', () => {
                     {
                         id: '1',
                         type: 'mediaEmbed',
-                        data: { url: 'https://example.com/video.mp4', title: 'My Video' },
+                        data: { media: 'https://example.com/video.mp4', title: 'My Video' },
                     },
                 ],
                 version: '',
@@ -488,8 +515,8 @@ describe('Export Utilities', () => {
                         type: 'mediaGallery',
                         data: {
                             items: [
-                                { url: 'https://example.com/1.jpg', altText: 'Photo 1' },
-                                { url: 'https://example.com/2.jpg', altText: 'Photo 2' },
+                                { media: 'https://example.com/1.jpg', alt: 'Photo 1' },
+                                { media: 'https://example.com/2.jpg', alt: 'Photo 2' },
                             ],
                         },
                     },

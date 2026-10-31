@@ -1,17 +1,16 @@
+import type { MediaKind } from '@ottabase/medialibrary';
 import { MediaPreview, useMediaLightboxRegistration } from '@ottabase/medialibrary/react';
-import { safeUrl } from '../inline';
+import type { FileSource } from '@ottabase/utils/media';
+import { IMAGE_SIZES, safeSource, sourceId, viewerUrls } from '../media';
 import type { BlockRenderer } from '../types';
-import React from 'react';
 
 export interface MediaEmbedData {
-    url: string;
+    /** A stored file, or an outside address */
+    media?: FileSource;
     title?: string;
     caption?: string;
-    mediaId?: string;
     mimeType?: string;
     mediaKind?: string;
-    thumbnailUrl?: string;
-    previewUrl?: string;
 }
 
 /**
@@ -19,28 +18,26 @@ export interface MediaEmbedData {
  * Delegates presentation to MediaPreview which already handles all media kinds.
  */
 const MediaEmbed: BlockRenderer<MediaEmbedData> = ({ data, className = '' }) => {
-    const { title, caption, mediaId, mimeType, mediaKind, thumbnailUrl, previewUrl } = data ?? {};
-    const url = safeUrl(data?.url) ?? '';
+    const { title, caption, mimeType, mediaKind } = data ?? {};
+    const source = safeSource(data?.media);
+    const id = source ? sourceId(source) : '';
+    const urls = source ? viewerUrls(source) : null;
 
-    const item = React.useMemo(
-        () => ({
-            id: mediaId || url,
-            url,
-            previewUrl: safeUrl(previewUrl) ?? url,
-            thumbnailUrl: safeUrl(thumbnailUrl) ?? url,
-            title: title || null,
-            originalName: title || url.substring(url.lastIndexOf('/') + 1),
-            altText: title || null,
-            caption: caption || null,
-            mimeType: mimeType || null,
-            mediaKind: (mediaKind || 'other') as 'video' | 'audio' | 'document' | 'archive' | 'other',
-        }),
-        [caption, mediaId, mediaKind, mimeType, previewUrl, thumbnailUrl, title, url],
-    );
+    // The registration keys on the item's JSON, so a fresh object per render is fine.
+    const item = urls && {
+        id,
+        ...urls,
+        title: title || null,
+        originalName: title || urls.url.substring(urls.url.lastIndexOf('/') + 1),
+        altText: title || null,
+        caption: caption || null,
+        mimeType: mimeType || null,
+        mediaKind: (mediaKind || 'other') as MediaKind,
+    };
 
-    const { open: openLightbox, isEnabled: hasLightbox } = useMediaLightboxRegistration(mediaId || url, item as any);
+    const { open: openLightbox, isEnabled: hasLightbox } = useMediaLightboxRegistration(id, item);
 
-    if (!url) return null;
+    if (!item) return null;
 
     return (
         <figure className={`${className} overflow-hidden rounded-xl border border-border/60`}>
@@ -64,7 +61,14 @@ const MediaEmbed: BlockRenderer<MediaEmbedData> = ({ data, className = '' }) => 
                 }}
             >
                 {/* detail mode adds its own border+rounding; suppress to avoid double border */}
-                <MediaPreview item={item} mode="detail" className="!border-0 !rounded-none" fit="contain" controls />
+                <MediaPreview
+                    item={item}
+                    mode="detail"
+                    sizes={IMAGE_SIZES.column}
+                    className="!border-0 !rounded-none"
+                    fit="contain"
+                    controls
+                />
             </div>
             {caption && (
                 <figcaption className="border-t border-border/60 px-4 py-2 text-center text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">

@@ -24,7 +24,9 @@ Pure menu types, renderers, and tree utilities for Ottabase — 6 built-in rende
 
 - **6 renderers**: Sidebar, flyout, mega, navbar, dropdown, footer
 - **Nested items**: Multi-level nesting via `parentId`, auto-built into tree with `buildItemTree()`
-- **Images & descriptions**: Items support `image`, `description`, `tooltip`, `newTab`
+- **Images & descriptions**: Items support `image`, `description`, `tooltip`, `newTab`. `image` is a `FileSource` from
+  `@ottabase/utils/media`: an uploaded file's `StoredFile` (shown as its thumb rendition) or an outside address,
+  sanitized before it reaches `src`. The brand menus API refuses anything else.
 - **Auth filtering**: `authRequired` items hidden when user is not authenticated
 - **Active state**: Automatic active-link highlighting via pathname matching
 - **Menu slots**: `MenuSlotRenderer` renders menus assigned to named layout slots via brand API data

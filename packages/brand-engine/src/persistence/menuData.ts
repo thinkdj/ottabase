@@ -3,6 +3,7 @@
 // Returns menu with items sorted by sortOrder, or null if none found.
 // ---------------------------------------------------------------------------
 
+import type { FileSource } from '@ottabase/utils/media';
 import type { MenuItemDto, MenuRenderType } from '@ottabase/ottamenu';
 import { Menu } from './Menu.model';
 import { MenuItem } from './MenuItem.model';
@@ -36,7 +37,7 @@ export async function getMenuBySlug(
         newTab: (item.get('newTab') as boolean) ?? false,
         authRequired: (item.get('authRequired') as boolean) ?? false,
         description: (item.get('description') as string | null) ?? null,
-        image: (item.get('image') as string | null) ?? null,
+        image: (item.get('image') as FileSource | null) ?? null,
         tooltip: (item.get('tooltip') as string | null) ?? null,
         sortOrder: (item.get('sortOrder') as number) ?? 0,
     }));

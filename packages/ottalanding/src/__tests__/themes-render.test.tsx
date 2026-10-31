@@ -1,3 +1,4 @@
+import { configureMedia } from '@ottabase/utils/media';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PAGES, DEFAULT_SITE } from '../defaults';
@@ -6,6 +7,11 @@ import { parseSections, SECTION_TYPES } from '../sections';
 import { THEMES } from '../themes';
 
 const home = parseSections(DEFAULT_PAGES[0].sections);
+// Stored files render on the configured public files base.
+const BASE = 'https://files.acme.dev';
+const STEM = 'otta-web/media/0123456789abcdef0123456789abcdef';
+const KEY = `${STEM}.png`;
+configureMedia({ publicUrl: BASE });
 const render = (theme: string, sections = home, currentPath = '/about') =>
     renderToStaticMarkup(
         <LandingView site={{ ...DEFAULT_SITE, theme: theme as never }} sections={sections} currentPath={currentPath} />,
@@ -97,11 +103,60 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
 
     it('describes the hero image for screen readers when given, and treats it as decorative otherwise', () => {
         const withImage = (data: object) =>
-            render(theme, [
-                { id: 'h', type: 'hero', data: { title: 'T', imageUrl: 'https://x.dev/shot.png', ...data } },
-            ]);
+            render(theme, [{ id: 'h', type: 'hero', data: { title: 'T', image: 'https://x.dev/shot.png', ...data } }]);
         expect(withImage({ imageAlt: 'Dashboard with three charts' })).toContain('alt="Dashboard with three charts"');
         expect(withImage({})).toMatch(/<img src="https:\/\/x\.dev\/shot\.png" alt=""/);
+    });
+
+    it('offers a stored hero image as its renditions, sized to the layout, and lazy only after the first hero', () => {
+        const image = { key: KEY, width: 2400, height: 1200, variants: ['thumb', 'card', 'full'] as const };
+        const out = render(theme, [
+            { id: 'h1', type: 'hero', data: { title: 'T', image: { ...image, variants: [...image.variants] } } },
+            { id: 'h2', type: 'hero', data: { title: 'U', image: { ...image, variants: [...image.variants] } } },
+        ]);
+        const imgs = [...out.matchAll(/<img [^>]*>/g)].map((m) => m[0]);
+        expect(imgs).toHaveLength(2);
+        const [first, second] = imgs;
+        expect(first).toContain(`src="${BASE}/${STEM}/full.webp"`);
+        expect(first).toContain(
+            `srcSet="${BASE}/${STEM}/thumb.webp 160w, ${BASE}/${STEM}/card.webp 640w, ${BASE}/${STEM}/full.webp 1600w"`,
+        );
+        expect(first).toMatch(/sizes="\(min-width: \d+rem\) \d+rem, 100vw"/);
+        expect(first).toContain('width="2400" height="1200"');
+        expect(first).not.toContain('loading=');
+        expect(second).toContain('loading="lazy"');
+        // The unoptimised 2400px original is never offered to the page.
+        expect(out).not.toContain(`${KEY}"`);
+    });
+
+    it('sizes logos and testimonial photos as small slots, and leaves out a malformed stored file', () => {
+        const logo = { key: KEY, width: 800, height: 200, variants: ['thumb', 'card'] as ('thumb' | 'card')[] };
+        const out = render(theme, [
+            {
+                id: 'l',
+                type: 'logos',
+                data: {
+                    items: [
+                        { name: 'Acme', logo },
+                        { name: 'Bad', logo: { key: 'x' } },
+                    ],
+                },
+            },
+            {
+                id: 't',
+                type: 'testimonials',
+                // Launch shows the first quote large, without a photo; the second one has its photo.
+                data: { items: [1, 2].map((n) => ({ quote: `Q${n}`, author: `A${n}`, avatar: logo })) },
+            },
+        ]);
+        expect(out).toContain(
+            `srcSet="${BASE}/${STEM}/thumb.webp 160w, ${BASE}/${STEM}/card.webp 640w, ${BASE}/${KEY} 800w"`,
+        );
+        expect(out).toContain('sizes="10rem"');
+        // Editorial sets quotes as type, without photos.
+        if (theme !== 'editorial') expect(out).toContain('sizes="2.5rem"');
+        expect(out).not.toContain('src="x"');
+        expect(out).not.toContain('alt="Bad"');
     });
 
     it('shows the logo with the name, or the logo alone (named by its alt) when it already shows it', () => {
@@ -109,11 +164,15 @@ describe.each(THEMES.map((t) => t.id))('theme "%s"', (theme) => {
             renderToStaticMarkup(
                 <LandingView site={{ ...DEFAULT_SITE, theme: theme as never, ...site }} sections={[]} />,
             );
-        const withName = brand({ logoUrl: '/api/files/public/logo.png' });
-        expect(withName).toMatch(/<img src="\/api\/files\/public\/logo\.png" alt=""[^>]*><span>Ottabase<\/span>/);
-        const logoOnly = brand({ logoUrl: '/api/files/public/logo.png', logoIncludesName: true });
-        expect(logoOnly).toContain('<img src="/api/files/public/logo.png" alt="Ottabase"');
+        const withName = brand({ logo: '/brand/logo.png' });
+        expect(withName).toMatch(/<img src="\/brand\/logo\.png" alt=""[^>]*><span>Ottabase<\/span>/);
+        const logoOnly = brand({ logo: '/brand/logo.png', logoIncludesName: true });
+        expect(logoOnly).toContain('<img src="/brand/logo.png" alt="Ottabase"');
         expect(logoOnly).not.toContain('<span>Ottabase</span>');
+        // An uploaded logo is a stored file on the configured files base, with a small rendition.
+        const stored = brand({ logo: { key: KEY, width: 400, height: 100, variants: ['thumb'] } });
+        expect(stored).toContain(`src="${BASE}/${KEY}" srcSet="${BASE}/${STEM}/thumb.webp 160w, ${BASE}/${KEY} 400w"`);
+        expect(stored).toContain('sizes="12rem"');
     });
 
     it('renders an empty page without crashing', () => {

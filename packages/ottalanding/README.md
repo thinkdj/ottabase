@@ -57,13 +57,33 @@ declaration:
 Adding a field is a one-line change, and the type, the validation and the admin form all follow.
 
 Links accept `https://`, site-relative `/path` (not protocol-relative), `#anchor`, `mailto:` and `tel:`. A field marked
-`absolute` (the site's public URL) accepts only a full `http(s)://host` address. Every rendered href and image `src`
-also goes through `sanitizeUrl`.
+`absolute` (the site's public URL) accepts only a full `http(s)://host` address. Every rendered href and outside image
+address also goes through `sanitizeUrl`.
 
-**Images** (`kind: 'image'`) are picked from, or uploaded to, the media library in the admin. Uploads are stored as
-`/api/files/public/<key>` URLs. The landing app binds the same public R2 bucket and serves that path too, so one URL
-works in both apps. An image field may name an `altKey`: picking a library image fills that description field from the
-image's alt text while it is still empty. **Colors** (`kind: 'color'`) are `#rrggbb`, or empty for the theme's own.
+**Images** (`kind: 'image'`: hero `image`, a logo's `logo`, a quote's `avatar`, the site's `logo` and `favicon`, the
+social image's `background` and `image`) hold a `FileSource` from `@ottabase/utils/media`. A media library pick or
+upload is stored as a `StoredFile` (`{ key, width, height, variants }`), never as a URL; an address typed in stays the
+trimmed string (`https://…` or `/path`). Validation takes a well-formed stored file (`isStoredFile`), such an address,
+or empty. URLs are built at render time on the configured public files base (`configureMedia`), so moving the bucket to
+a custom domain moves every image. The themes render through `imageSources()`: the WebP renditions in `srcSet`, with a
+`sizes` that fits each slot (the hero at its column width, logos `10rem`, quote photos `2.5rem`, the site logo `12rem`).
+Places that need one absolute URL (og:image, JSON-LD) use `fileUrl(image)`, the original. The landing app binds the same
+public R2 bucket and serves `/api/files/public/<key>` too. An image field may name an `altKey`: picking a library image
+fills that description field from the image's alt text while it is still empty. **Colors** (`kind: 'color'`) are
+`#rrggbb`, or empty for the theme's own.
+
+```ts
+import { imageSources, type StoredFile } from '@ottabase/utils/media';
+
+// A hero image picked from the media library: a 2400px original with all three renditions.
+const image: StoredFile = {
+    key: 'otta-web/media/0123456789abcdef0123456789abcdef.png',
+    width: 2400,
+    height: 1200,
+    variants: ['thumb', 'card', 'full'],
+};
+imageSources(image).srcSet; // '…/thumb.webp 160w, …/card.webp 640w, …/full.webp 1600w' (the original is not offered)
+```
 
 **Stored data is read leniently.** Rules can tighten over time, so `getSettings()` uses `parseLenient()`: every valid
 setting is kept, invalid list items are dropped, and only a field that no longer fits falls back to its starter value.
@@ -144,7 +164,7 @@ read), reply by email, mark unread, delete, and export CSV.
 ## Social images
 
 The picture link previews show (X, LinkedIn, Slack, iMessage…) is typed content like everything else: `SHARE_FIELDS`
-holds the heading, supporting text, color, background image and the rendered `imageUrl`. The site has a default card
+holds the heading, supporting text, color, `background` image and the rendered `image`. The site has a default card
 (`settings.share`), and any page may have its own (`landing_pages.share`, null means "use the site's").
 
 The admin draws the card in the browser with `drawShareCard(ctx, scene)` from `@ottabase/ottalanding/react` (canvas
@@ -156,9 +176,11 @@ same call, so what you see is exactly what gets shared:
 - a background image is drawn cover-fit under a dark shade, with white text on top;
 - the logo and domain sit in the top row, and the site name is left out when the heading already is the name.
 
-otta-web stores the PNG at one fixed key per site or page (`POST /api/landing/share-image`, PNG-signature checked) and
-returns it cache-busted with `?v=`, so re-renders never pile up. A deleted page's image is removed with it. The site's
-card is re-rendered on every settings save and theme switch; a page's on every save of that page.
+otta-web stores the PNG through its files service as a `share-image` file (`POST /api/landing/share-image`, type and
+size checked there; that purpose makes no renditions) and answers with its `StoredFile`, which the card keeps as
+`image`. Every render is a new file at a new key, so caches never serve a stale one; once a save points at the new one,
+the previous image is deleted, and a deleted page's image goes with it. The site's card is re-rendered on every settings
+save and theme switch; a page's on every save of that page.
 
 ## Themes
 
@@ -248,7 +270,8 @@ pnpm --filter @ottabase/ottalanding test
 
 The model tests run against a real in-memory SQLite database (`node:sqlite` behind a D1-shaped shim) and create the
 tables through OttaORM's own auto-migration. They cover constraints, JSON casts and app isolation. The theme tests
-server-render every theme with the starter content and check link sanitization and anchors.
+server-render every theme with the starter content and check link sanitization, anchors and each image slot's
+`srcSet`/`sizes`.
 
 ## License
 

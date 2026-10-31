@@ -17,6 +17,11 @@ declare global {
         OBCF_D1?: D1Database;
         /** The R2 bucket shared with otta-web: serves images uploaded in its admin. */
         OBCF_R2?: R2Bucket;
+        /**
+         * Base URL of that public bucket, the same as otta-web's: its custom domain in production.
+         * Unset: this app's own /api/files/public route.
+         */
+        R2_PUBLIC_URL?: string;
         OBCF_ASSETS?: Fetcher;
         /** Cloudflare Images, required by the OpenNext worker bundle. */
         IMAGES?: ImagesBinding;

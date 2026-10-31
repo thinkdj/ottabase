@@ -1,4 +1,6 @@
-import { safeUrl } from '../../inline';
+import { safeImageProps } from '@ottabase/utils/sanitize';
+import type { FileSource } from '@ottabase/utils/media';
+import { IMAGE_SIZES } from '../../media';
 import type { BlockRenderer } from '../../types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -40,7 +42,8 @@ function positionToCSS(pos: ImagePosition | undefined): string {
 }
 
 export interface ImageHotspotsData {
-    imageUrl?: string;
+    /** A stored file, or an outside address */
+    image?: FileSource;
     alt?: string;
     caption?: string;
     hotspots?: HotspotItem[];
@@ -57,7 +60,7 @@ export interface ImageHotspotsData {
  * Displays an image with numbered hotspot markers that reveal tooltips on click.
  */
 const ImageHotspots: BlockRenderer<ImageHotspotsData> = ({ data, className = '' }) => {
-    const imageUrl = safeUrl(data?.imageUrl) ?? '';
+    const image = safeImageProps(data?.image, IMAGE_SIZES.column);
     const alt = data?.alt || '';
     const caption = data?.caption || '';
     const hotspots = data?.hotspots || [];
@@ -108,7 +111,7 @@ const ImageHotspots: BlockRenderer<ImageHotspotsData> = ({ data, className = '' 
         return { objectPosition: positionToCSS(imagePosition) };
     }, [imageFit, imagePosition]);
 
-    if (!imageUrl) return null;
+    if (!image) return null;
 
     const containerClasses = [
         'otta-image-hotspots__container',
@@ -120,13 +123,7 @@ const ImageHotspots: BlockRenderer<ImageHotspotsData> = ({ data, className = '' 
     return (
         <figure className={` otta-image-hotspots not-prose`}>
             <div ref={containerRef} className={containerClasses} style={containerStyle} onClick={handleContainerClick}>
-                <img
-                    src={imageUrl}
-                    alt={alt}
-                    className="otta-image-hotspots__image"
-                    style={imgStyle}
-                    draggable={false}
-                />
+                <img {...image} alt={alt} className="otta-image-hotspots__image" style={imgStyle} draggable={false} />
 
                 {hotspots.map((hs, idx) => (
                     <div

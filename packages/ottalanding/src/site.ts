@@ -28,8 +28,8 @@ export const SITE_FIELDS = defineFields({
         label: 'Theme',
         options: THEMES.map((t) => ({ value: t.id, label: t.label })),
     },
-    logoUrl: { kind: 'image', label: 'Logo', help: 'Shown in the navigation. A wide PNG or SVG works best.' },
-    faviconUrl: { kind: 'image', label: 'Favicon', help: 'The browser-tab icon. A square PNG, 64×64 or larger.' },
+    logo: { kind: 'image', label: 'Logo', help: 'Shown in the navigation. A wide PNG or SVG works best.' },
+    favicon: { kind: 'image', label: 'Favicon', help: 'The browser-tab icon. A square PNG, 64×64 or larger.' },
     logoIncludesName: {
         kind: 'boolean',
         label: 'The logo already shows the site name',

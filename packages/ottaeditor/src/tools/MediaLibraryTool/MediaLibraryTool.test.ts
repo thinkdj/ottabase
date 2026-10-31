@@ -1,6 +1,9 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PRIVATE_FILE_MESSAGE } from '../../ui/kit';
 import MediaLibraryTool from './MediaLibraryTool';
+
+const FILE = { key: 'app/media/0123456789abcdef0123456789abcdef.webp', width: 800, height: 600 };
 
 const insertedBlocks: { type: string; data: Record<string, unknown> }[] = [];
 
@@ -50,12 +53,26 @@ describe('MediaLibraryTool', () => {
     ])('inserts the right block type for %s media', async (_, media, expectedType) => {
         const tool = make();
         await tool.handleMediaSelected({
-            media: { url: 'https://cdn.example.com/file', name: 'file', ...media },
+            media: { url: 'https://cdn.example.com/file', file: FILE, name: 'file', ...media },
             openedVia: 'programmatic',
         });
         expect(insertedBlocks).toHaveLength(1);
         expect(insertedBlocks[0]!.type).toBe(expectedType);
-        expect(insertedBlocks[0]!.data.url).toBe('https://cdn.example.com/file');
+        // The stored file, never the URL the picker showed
+        expect(insertedBlocks[0]!.data[expectedType === 'image' ? 'image' : 'media']).toEqual(FILE);
+        expect(insertedBlocks[0]!.data).not.toHaveProperty('url');
+    });
+
+    it('refuses a private file and keeps the picker', async () => {
+        const tool = make();
+        const element = tool.render();
+        await tool.handleMediaSelected({
+            media: { url: '/api/files/0123456789abcdef0123456789abcdef', file: null, mediaKind: 'image' },
+            openedVia: 'programmatic',
+        });
+        expect(insertedBlocks).toHaveLength(0);
+        expect(element.hidden).toBe(false);
+        expect(element.querySelector('.oe-status')?.textContent).toBe(PRIVATE_FILE_MESSAGE);
     });
 
     it('renders a picker row whose button opens the library without a field token', () => {

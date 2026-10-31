@@ -13,7 +13,8 @@
 // ============================================================
 
 import { User } from '@ottabase/ottaorm';
-import { fileIdFromKey, FilesError } from '@ottabase/ottaupload/server';
+import { FilesError } from '@ottabase/ottaupload/server';
+import { fileIdFromKey } from '@ottabase/utils/media';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { getOttabaseConfig } from '../../ottabase/config.loader';

@@ -49,7 +49,7 @@ export class MenuItem extends BaseModel {
         newTab: { type: 'boolean', editable: true },
         authRequired: { type: 'boolean', editable: true },
         description: { type: 'string', editable: true },
-        image: { type: 'string', editable: true },
+        image: { type: 'json', editable: true },
         tooltip: { type: 'string', editable: true },
         sortOrder: { type: 'number', editable: true },
         createdAt: { type: 'number', editable: false },

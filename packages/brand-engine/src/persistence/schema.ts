@@ -4,6 +4,7 @@
 // When users switch orgs, the app's brand stays the same.
 // ---------------------------------------------------------------------------
 
+import type { FileSource } from '@ottabase/utils/media';
 import { foreignKey, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -228,8 +229,8 @@ export const menuItemsTable = sqliteTable(
         /** Optional description */
         description: text('description'),
 
-        /** Optional image URL or R2 key */
-        image: text('image'),
+        /** Optional icon: a stored file (see @ottabase/utils/media) or an outside address */
+        image: text('image', { mode: 'json' }).$type<FileSource>(),
 
         /** Optional tooltip/hover text */
         tooltip: text('tooltip'),

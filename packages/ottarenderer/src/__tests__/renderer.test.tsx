@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { configureMedia } from '@ottabase/utils/media';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { BlockList, blockRenderers, hasBlocks, HtmlRenderer, OttaRenderer } from '../index';
 
@@ -202,25 +203,68 @@ describe('standard blocks', () => {
         ).toBe(false);
     });
 
-    it('image: intrinsic size, lazy loading, legacy file.url and aspect class', () => {
-        const c = one('image', {
-            url: 'https://x.io/p.jpg',
-            width: 1200,
-            height: 800,
-            caption: 'Cap',
-            aspectRatio: '16:9',
+    describe('stored images', () => {
+        const key = 'app/media/0123456789abcdef0123456789abcdef.png';
+        const stem = 'https://files.test/app/media/0123456789abcdef0123456789abcdef';
+        afterEach(() => configureMedia({ publicUrl: null }));
+
+        it('image: renditions from the configured base, sizes by layout, intrinsic size, aspect class', () => {
+            configureMedia({ publicUrl: 'https://files.test/' });
+            const image = { key, width: 2400, height: 1600, variants: ['thumb', 'card', 'full'] };
+            const c = one('image', { image, caption: 'Cap', aspectRatio: '16:9' });
+            const img = c.querySelector('img')!;
+            expect(img.getAttribute('src')).toBe(`${stem}/full.webp`);
+            expect(img.getAttribute('srcset')).toBe(
+                `${stem}/thumb.webp 160w, ${stem}/card.webp 640w, ${stem}/full.webp 1600w`,
+            );
+            expect(img.getAttribute('sizes')).toBe('(min-width: 34rem) 34rem, 100vw');
+            expect(img.getAttribute('width')).toBe('2400');
+            expect(img.getAttribute('height')).toBe('1600');
+            expect(img.getAttribute('loading')).toBe('lazy');
+            expect(c.querySelector('figure')?.className).toContain('otta-image--aspect-16-9');
+            expect(c.querySelector('figcaption')?.textContent).toBe('Cap');
+            // Featured fills the column, stretched breaks out of it
+            expect(one('image', { image, featuredImage: true }).querySelector('img')?.getAttribute('sizes')).toBe(
+                '(min-width: 48rem) 48rem, 100vw',
+            );
+            expect(one('image', { image, stretched: true }).querySelector('img')?.getAttribute('sizes')).toBe('100vw');
         });
-        const img = c.querySelector('img')!;
-        expect(img.getAttribute('width')).toBe('1200');
-        expect(img.getAttribute('height')).toBe('800');
-        expect(img.getAttribute('loading')).toBe('lazy');
-        expect(c.querySelector('figure')?.className).toContain('otta-image--aspect-16-9');
-        expect(c.querySelector('figcaption')?.textContent).toBe('Cap');
-        expect(
-            one('image', { file: { url: 'https://x.io/legacy.png' } })
-                .querySelector('img')
-                ?.getAttribute('src'),
-        ).toBe('https://x.io/legacy.png');
+
+        it('every image block builds its sources from the stored file', () => {
+            configureMedia({ publicUrl: 'https://files.test' });
+            const image = { key, width: 800, height: 600, variants: ['thumb', 'card'] };
+            const offered = `${stem}/thumb.webp 160w, ${stem}/card.webp 640w, https://files.test/${key} 800w`;
+            for (const c of [
+                one('beforeAfter', { before: image, after: image }),
+                one('imageHotspots', { image, hotspots: [] }),
+                one('review', { title: 'R', image }),
+            ]) {
+                const imgs = [...c.querySelectorAll('img')];
+                expect(imgs.length).toBeGreaterThan(0);
+                for (const img of imgs) {
+                    expect(img.getAttribute('srcset')).toBe(offered);
+                    expect(img.getAttribute('sizes')).toBe('(min-width: 48rem) 48rem, 100vw');
+                }
+            }
+            const t = one('testimonial', { quote: 'q', authorName: 'a', authorAvatar: image, companyLogo: image });
+            expect(t.querySelector('.otta-testimonial-avatar')?.getAttribute('src')).toBe(`${stem}/thumb.webp`);
+            expect(t.querySelector('.otta-testimonial-company-logo')?.getAttribute('sizes')).toBe('7.5rem');
+        });
+
+        it('an outside address is a lone, sanitized src', () => {
+            const img = one('image', { image: '  https://x.io/p.jpg ' }).querySelector('img')!;
+            expect(img.getAttribute('src')).toBe('https://x.io/p.jpg');
+            expect(img.hasAttribute('srcset')).toBe(false);
+            expect(img.hasAttribute('sizes')).toBe(false);
+            expect(img.hasAttribute('width')).toBe(false);
+        });
+
+        it('an object that is not a stored file renders nothing', () => {
+            for (const image of [{ url: 'https://x.io/p.jpg' }, { key: '../secret.png' }, { key, width: -1 }]) {
+                expect(one('image', { image }).querySelector('img')).toBeNull();
+                expect(one('imageHotspots', { image, hotspots: [] }).querySelector('img')).toBeNull();
+            }
+        });
     });
 
     it('steps: textarea content stays text, never markup', () => {
@@ -279,11 +323,12 @@ describe('standard blocks', () => {
     });
 
     it('images: javascript: and data: sources are dropped everywhere', () => {
-        expect(one('image', { url: 'javascript:alert(1)' }).querySelector('img')).toBeNull();
+        expect(one('image', { image: 'javascript:alert(1)' }).querySelector('img')).toBeNull();
         expect(
-            one('beforeAfter', { beforeUrl: 'javascript:x', afterUrl: 'data:text/html,x' }).querySelector('img'),
+            one('beforeAfter', { before: 'javascript:x', after: 'data:text/html,x' }).querySelector('img'),
         ).toBeNull();
-        expect(one('imageHotspots', { imageUrl: '//evil.io/x.png', hotspots: [] }).querySelector('img')).toBeNull();
+        expect(one('imageHotspots', { image: '//evil.io/x.png', hotspots: [] }).querySelector('img')).toBeNull();
+        expect(one('review', { title: 'R', image: 'javascript:x' }).querySelector('img')).toBeNull();
         const t = one('testimonial', {
             quote: 'q',
             authorName: 'a',

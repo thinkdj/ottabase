@@ -123,16 +123,20 @@ describe('social image settings', () => {
     it('validates the card like any other content', () => {
         const ok = {
             ...DEFAULT_SITE,
-            share: { heading: 'Hi', color: '#112233', imageUrl: '/api/files/public/x.png?v=1' },
+            share: {
+                heading: 'Hi',
+                color: '#112233',
+                image: { key: 'otta-web/share-image/0123456789abcdef0123456789abcdef.png', width: 1200, height: 630 },
+            },
         };
         expect(SiteSettingsSchema.safeParse(ok).success).toBe(true);
         expect(SiteSettingsSchema.safeParse({ ...ok, share: { color: 'red' } }).success).toBe(false);
-        expect(SiteSettingsSchema.safeParse({ ...ok, share: { backgroundUrl: 'javascript:x' } }).success).toBe(false);
+        expect(SiteSettingsSchema.safeParse({ ...ok, share: { background: 'javascript:x' } }).success).toBe(false);
     });
 
     it('reads a stored card field by field, so one stale value keeps its siblings', () => {
-        const stored = { ...DEFAULT_SITE, share: { heading: 'Kept', color: 'not-a-color', imageUrl: '/i.png' } };
-        expect(parseLenient(SITE_FIELDS, stored, DEFAULT_SITE).share).toEqual({ heading: 'Kept', imageUrl: '/i.png' });
+        const stored = { ...DEFAULT_SITE, share: { heading: 'Kept', color: 'not-a-color', image: '/i.png' } };
+        expect(parseLenient(SITE_FIELDS, stored, DEFAULT_SITE).share).toEqual({ heading: 'Kept', image: '/i.png' });
         expect(parseLenient(SITE_FIELDS, { ...DEFAULT_SITE, share: 'junk' }, DEFAULT_SITE).share).toBeUndefined();
     });
 });

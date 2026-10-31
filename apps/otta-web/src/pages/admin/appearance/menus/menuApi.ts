@@ -3,36 +3,10 @@
  */
 
 import { api } from '@/lib/api';
+import type { MediaLibraryItemLike } from '@ottabase/medialibrary';
+import type { MenuItemDto, MenuRenderType, MenuWithItemsDto } from '@ottabase/ottamenu';
 
 const BRAND_MENUS = '/api/brand/menus';
-
-export interface MenuItemDto {
-    id: string;
-    menuId: string;
-    parentId?: string | null;
-    name: string;
-    link: string;
-    newTab?: boolean;
-    authRequired?: boolean;
-    description?: string | null;
-    image?: string | null;
-    tooltip?: string | null;
-    sortOrder?: number;
-}
-
-export type MenuRenderType = 'sidebar' | 'flyout' | 'mega' | 'navbar' | 'dropdown' | 'footer';
-
-export interface MenuWithItemsDto {
-    id: string;
-    appId: string | null;
-    name: string;
-    slug: string;
-    type: MenuRenderType;
-    isDefault?: boolean;
-    items: MenuItemDto[];
-    createdAt?: number;
-    updatedAt?: number;
-}
 
 export const menuApi = {
     list: () => api<MenuWithItemsDto[]>(`${BRAND_MENUS}`),
@@ -62,12 +36,12 @@ export const menuApi = {
     deleteItem: (menuId: string, itemId: string) =>
         api<{ success: boolean }>(`${BRAND_MENUS}/${menuId}/items/${itemId}`, { method: 'DELETE' }),
 
-    /** Store an image in the media library (POST /api/files); the item keeps its public URL. */
+    /** Store an image in the media library (POST /api/files); the item keeps `storedFileOf(file)`, never a URL. */
     uploadImage: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('purpose', 'media');
-        return api<{ success: boolean; file: { url: string } }>('/api/files', {
+        return api<{ success: boolean; file: MediaLibraryItemLike }>('/api/files', {
             method: 'POST',
             body: formData,
         });

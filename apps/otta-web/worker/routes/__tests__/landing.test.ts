@@ -50,7 +50,7 @@ const ensureLeadNotifyTask = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/landing-notify', () => ({ ensureLeadNotifyTask }));
 
 // The files service: share images are stored and released through it, never written to R2 here.
-const files = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), remove: vi.fn(), keyOf: vi.fn() }));
+const files = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), remove: vi.fn() }));
 vi.mock('../../../ottabase/files', () => ({ files }));
 
 import {
@@ -173,13 +173,18 @@ describe('/api/landing', () => {
         });
         afterEach(() => vi.unstubAllGlobals());
 
-        const OLD = '/api/files/public/otta-web/share-image/' + 'a'.repeat(32) + '.png';
-        const NEW = '/api/files/public/otta-web/share-image/' + 'b'.repeat(32) + '.png';
+        const OLD = { key: 'otta-web/share-image/' + 'a'.repeat(32) + '.png', width: 1200, height: 630 };
+        const NEW = { key: 'otta-web/share-image/' + 'b'.repeat(32) + '.png', width: 1200, height: 630 };
         beforeEach(() => {
-            files.put.mockResolvedValue({ url: NEW });
-            files.keyOf.mockImplementation((_env: unknown, url: string) =>
-                url.startsWith('/api/files/public/') ? url.slice('/api/files/public/'.length) : null,
-            );
+            // A FileView: the purpose is public and makes no renditions.
+            files.put.mockResolvedValue({
+                storageKey: NEW.key,
+                audience: 'public',
+                width: 1200,
+                height: 630,
+                variants: null,
+                url: `/api/files/public/${NEW.key}`,
+            });
             files.get.mockResolvedValue({ purpose: 'share-image' });
             files.remove.mockResolvedValue(true);
         });
@@ -188,7 +193,8 @@ describe('/api/landing', () => {
             const file = new File([PNG], 'card.bin', { type: 'application/octet-stream' });
             const res = await handleLandingShareImage(formCtx({ target: 'site', file }));
             expect(res.status).toBe(201);
-            expect(await res.json()).toEqual({ url: NEW });
+            // The stored file, never its URL: the landing site builds that on its own files base.
+            expect(await res.json()).toEqual({ file: NEW });
             expect(files.put).toHaveBeenCalledWith(expect.anything(), {
                 purpose: 'share-image',
                 owner: { appId: 'otta-web', userId: null, organizationId: null },
@@ -217,8 +223,8 @@ describe('/api/landing', () => {
         });
 
         it('deletes the previous image once a save points elsewhere, and only its own share images', async () => {
-            const withImage = (url: string | null) => ({
-                toPage: () => ({ id: 'p1', share: url ? { imageUrl: url } : null }),
+            const withImage = (image: object | string | null) => ({
+                toPage: () => ({ id: 'p1', share: image ? { image } : null }),
             });
             models.findForApp.mockResolvedValue(withImage(OLD));
             models.updateFor.mockResolvedValue(withImage(NEW));
@@ -226,6 +232,9 @@ describe('/api/landing', () => {
             expect(files.remove).toHaveBeenCalledWith(expect.anything(), 'a'.repeat(32));
 
             files.remove.mockClear();
+            // The same file saved again (a copy of the object, as JSON gives back) is kept.
+            models.findForApp.mockResolvedValue(withImage({ ...NEW }));
+            await handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1');
             models.findForApp.mockResolvedValue(withImage('https://elsewhere.example/og.png'));
             await handleLandingPageUpdate(ctx('PUT', '/api/landing/pages/p1', {}), 'p1');
             files.get.mockResolvedValue({ purpose: 'media' });
@@ -235,7 +244,7 @@ describe('/api/landing', () => {
         });
 
         it('removes a deleted page’s image too', async () => {
-            models.findForApp.mockResolvedValue({ toPage: () => ({ id: 'p1', share: { imageUrl: OLD } }) });
+            models.findForApp.mockResolvedValue({ toPage: () => ({ id: 'p1', share: { image: OLD } }) });
             models.deleteFor.mockResolvedValue(true);
             expect((await handleLandingPageDelete(ctx('DELETE', '/api/landing/pages/p1'), 'p1')).status).toBe(200);
             expect(files.remove).toHaveBeenCalledWith(expect.anything(), 'a'.repeat(32));

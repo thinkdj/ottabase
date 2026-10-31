@@ -953,11 +953,13 @@
 /* Media input: thumb · url · library */
 .oe-media {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
 }
 .oe-media .oe-input {
-    flex: 1 1 auto;
+    /* Zero basis: the input takes the free space and never pushes the button onto a new line */
+    flex: 1 1 0;
     min-width: 0;
 }
 .oe-media__thumb {
@@ -969,6 +971,13 @@
     box-shadow: inset 0 0 0 1px var(--oe-hairline);
 }
 .oe-media--no-thumb .oe-media__thumb {
+    display: none;
+}
+/* A status line (a refused pick): on its own line inside a row, and no room at all when empty */
+.oe-status {
+    flex-basis: 100%;
+}
+.oe-status:empty {
     display: none;
 }
 .oe-media .oe-icon-btn {

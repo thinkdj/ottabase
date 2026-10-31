@@ -1,11 +1,11 @@
 // @vitest-environment node
+import { fileIdFromKey } from '@ottabase/utils/media';
 import { describe, expect, it, vi } from 'vitest';
 import {
     canChangeFile,
     canModerateFile,
     canReadFile,
     createFiles,
-    fileIdFromKey,
     imageSize,
     servePublicFile,
     signFileToken,
@@ -60,10 +60,10 @@ function jpeg(orientation: number | null): Uint8Array {
 }
 
 const pngChunk = (type: string, data: Uint8Array) => bytes(u32be(data.length), type, data, [0, 0, 0, 0]);
-const png = () =>
+const png = (width = 64, height = 48) =>
     bytes(
         [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
-        pngChunk('IHDR', bytes(u32be(64), u32be(48), [8, 6, 0, 0, 0])),
+        pngChunk('IHDR', bytes(u32be(width), u32be(height), [8, 6, 0, 0, 0])),
         pngChunk('tEXt', bytes(`Author${NUL}Jane`)),
         pngChunk('eXIf', bytes('MM', [0, 0x2a])),
         pngChunk('iTXt', bytes(`XML:com.adobe.xmp${NUL}`)),
@@ -428,21 +428,40 @@ describe('createFiles().put', () => {
         expect(store.rows.size).toBe(2);
     });
 
-    it('renders fixed-width WebP variants through the Images binding, never upscaling', async () => {
+    it('renders fixed-width WebP variants through the Images binding, and offers them in a srcset', async () => {
         const { files, pub, transform } = setup({ images: true });
-        const view = await files.put({}, { purpose: 'media', owner: alice, file: png() });
+        const view = await files.put({}, { purpose: 'media', owner: alice, file: png(2000, 1500) });
         expect(transform.mock.calls.map(([options]) => options)).toEqual([
             { width: 160, fit: 'scale-down' },
             { width: 640, fit: 'scale-down' },
         ]);
         expect(view.variants?.thumb).toMatchObject({
             key: view.storageKey.replace('.png', '/thumb.webp'),
-            width: 64,
-            height: 48,
+            width: 160,
+            height: 120,
         });
-        expect(view.thumbnailUrl).toBe(`/api/files/public/${view.variants!.thumb!.key}`);
-        expect(view.previewUrl).toBe(`/api/files/public/${view.variants!.card!.key}`);
+        const thumb = `/api/files/public/${view.variants!.thumb!.key}`;
+        const card = `/api/files/public/${view.variants!.card!.key}`;
+        expect(view.thumbnailUrl).toBe(thumb);
+        expect(view.previewUrl).toBe(card);
+        // No full variant was asked for, so the original tops the srcset.
+        expect(view.srcSet).toBe(`${thumb} 160w, ${card} 640w, ${view.url} 2000w`);
         expect(pub.objects.get(view.variants!.thumb!.key)!.options.httpMetadata?.contentType).toBe('image/webp');
+    });
+
+    it('makes no variant as wide as the original or wider: that would be the original again', async () => {
+        const { files, transform } = setup({ images: true });
+        const mid = await files.put({}, { purpose: 'media', owner: alice, file: png(500, 300) });
+        expect(transform.mock.calls.map(([options]) => options.width)).toEqual([160]);
+        expect(Object.keys(mid.variants ?? {})).toEqual(['thumb']);
+        expect(mid.previewUrl).toBe(mid.url);
+
+        transform.mockClear();
+        const small = await files.put({}, { purpose: 'media', owner: alice, file: png(160, 120) });
+        expect(transform).not.toHaveBeenCalled();
+        expect(small.variants).toBeNull();
+        expect(small.thumbnailUrl).toBe(small.url);
+        expect(small.srcSet).toBeNull();
     });
 
     it('re-encodes AVIF (whose metadata code cannot strip) to WebP through the binding, and stores only that', async () => {
@@ -625,7 +644,7 @@ describe('createFiles().quarantine', () => {
     it('moves a public file and its variants to the private bucket under the same keys, and purges its URLs', async () => {
         const purge = vi.fn(() => true);
         const { files, pub, priv } = setup({ images: true, purge });
-        const view = await files.put({}, { purpose: 'media', owner: alice, file: png() });
+        const view = await files.put({}, { purpose: 'media', owner: alice, file: png(2000, 1500) });
         const keys = [view.storageKey, view.variants!.thumb!.key, view.variants!.card!.key];
 
         const result = (await files.quarantine({}, view.id, { origin: 'https://app.test' }))!;

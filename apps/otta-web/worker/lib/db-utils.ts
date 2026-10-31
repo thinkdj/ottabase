@@ -22,6 +22,7 @@ import {
     VerificationToken,
 } from '@ottabase/ottaorm/models';
 import { errorResponse } from '@ottabase/utils/http-errors';
+import { configureMedia } from '@ottabase/utils/media';
 import { files } from '../../ottabase/files';
 import { mediaLibraryPolicy } from '../../ottabase/models/mediaLibraryPolicy';
 import { packages } from '../../ottabase/registry';
@@ -37,8 +38,9 @@ export function initAdminCron(env: CloudflareEnv): Response | null {
         });
     }
 
-    // filesPublicUrl: what `User#imageUrl()` builds avatar URLs on (the public files bucket, absolute).
-    configureOttaORM({ maxAllRows: env.OTTAORM_MAX_ALL_ROWS, filesPublicUrl: files.publicBase(env) });
+    configureOttaORM({ maxAllRows: env.OTTAORM_MAX_ALL_ROWS });
+    // The public files base every URL built from a stored key uses (avatars, content images), absolute.
+    configureMedia({ publicUrl: files.publicBase(env) });
     registerConnection('default', createD1Driver(env.OBCF_D1));
     return null;
 }
@@ -111,8 +113,9 @@ function registerAppModels(): void {
 export function ensureDbConnection(env: CloudflareEnv): void {
     if (!env.OBCF_D1) return;
 
-    // filesPublicUrl: what `User#imageUrl()` builds avatar URLs on (the public files bucket, absolute).
-    configureOttaORM({ maxAllRows: env.OTTAORM_MAX_ALL_ROWS, filesPublicUrl: files.publicBase(env) });
+    configureOttaORM({ maxAllRows: env.OTTAORM_MAX_ALL_ROWS });
+    // The public files base every URL built from a stored key uses (avatars, content images), absolute.
+    configureMedia({ publicUrl: files.publicBase(env) });
 
     // Cloudflare bindings are stable object references within an isolate, so
     // reference equality is sufficient to detect whether this isolate has

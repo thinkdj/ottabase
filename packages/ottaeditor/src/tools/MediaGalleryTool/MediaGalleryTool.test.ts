@@ -2,7 +2,11 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { API } from '@editorjs/editorjs';
 import { DEFAULT_PLUGIN_NAMES, defaultPluginsMap } from '../../defaultPlugins';
+import { PRIVATE_FILE_MESSAGE } from '../../ui/kit';
 import MediaGalleryTool, { type MediaGalleryData, type MediaGalleryToolConfig } from './MediaGalleryTool';
+
+/** A stored file as a library pick carries it; `n` makes the 32-hex id unique. */
+const stored = (n: number) => ({ key: `app/media/${String(n).padStart(32, '0')}.jpg`, width: 1200, height: 800 });
 
 const tools: MediaGalleryTool[] = [];
 
@@ -29,19 +33,20 @@ describe('MediaGalleryTool', () => {
     it('adds picker results and saves gallery data', () => {
         const { tool } = mount({ layout: 'masonry', items: [] });
         tool.handleMediaSelected({
-            id: 'm-1',
+            file: stored(1),
             url: 'https://cdn.example.com/one.jpg',
             mediaKind: 'image',
             title: 'First item',
         });
         tool.handleMediaSelected({
-            id: 'm-2',
+            file: stored(2),
             url: 'https://cdn.example.com/two.mp4',
             mediaKind: 'video',
             title: 'Second item',
         });
         const saved = tool.save();
         expect(saved.items).toHaveLength(2);
+        expect(saved.items[0]!.media).toEqual(stored(1));
         expect(saved.layout).toBe('masonry');
         expect(saved.items[0]!.mediaKind).toBe('image');
         expect(saved.items[1]!.mediaKind).toBe('video');
@@ -60,55 +65,53 @@ describe('MediaGalleryTool', () => {
             new CustomEvent('media-library-selected-item', {
                 detail: {
                     field: detail.field,
-                    media: { id: 'x', url: 'https://cdn.example.com/x.jpg', mediaKind: 'image' },
+                    media: { file: stored(7), url: 'https://cdn.example.com/x.jpg', mediaKind: 'image' },
                 },
             }),
         );
         window.dispatchEvent(
             new CustomEvent('media-library-selected-item', {
-                detail: { field: 'someone-else', media: { id: 'y', url: 'https://cdn.example.com/y.jpg' } },
+                detail: { field: 'someone-else', media: { file: stored(8), url: 'https://cdn.example.com/y.jpg' } },
             }),
         );
-        expect(tool.save().items.map((i) => i.id)).toEqual(['x']);
+        expect(tool.save().items.map((i) => i.media)).toEqual([stored(7)]);
         expect(element.querySelector('.oe-block__summary')?.textContent).toBe('1 item · Grid');
     });
 
     it('saves alt text per item and edits reach save()', () => {
         const { tool } = mount({ items: [] });
         tool.handleMediaSelected({
-            id: 'm-1',
+            file: stored(1),
             url: 'https://cdn.example.com/photo.jpg',
             mediaKind: 'image',
             title: 'Mountain view',
-            altText: 'A snow-capped mountain at dawn',
+            alt: 'A snow-capped mountain at dawn',
         });
-        expect(tool.save().items[0]!.altText).toBe('A snow-capped mountain at dawn');
+        expect(tool.save().items[0]!.alt).toBe('A snow-capped mountain at dawn');
         fireEvent.input(screen.getByLabelText('Caption for Mountain view'), { target: { value: ' Dawn ' } });
         expect(tool.save().items[0]!.caption).toBe('Dawn');
     });
 
-    it('prevents duplicate insertion by media id', () => {
+    it('prevents duplicate insertion by file id', () => {
         const { tool } = mount({ items: [] });
-        tool.handleMediaSelected({
-            id: 'm-1',
-            mediaId: 'm-1',
-            url: 'https://cdn.example.com/dup.jpg',
-            mediaKind: 'image',
-        });
-        tool.handleMediaSelected({
-            id: 'm-1',
-            mediaId: 'm-1',
-            url: 'https://cdn.example.com/dup.jpg',
-            mediaKind: 'image',
-        });
+        const pick = { file: stored(1), url: 'https://cdn.example.com/dup.jpg', mediaKind: 'image' };
+        tool.handleMediaSelected(pick);
+        tool.handleMediaSelected({ ...pick, file: { ...stored(1), variants: ['thumb' as const] } });
         expect(tool.save().items).toHaveLength(1);
+    });
+
+    it('refuses a private file with a status line', () => {
+        const { tool, element } = mount({ items: [] });
+        tool.handleMediaSelected({ file: null, url: '/api/files/0123', mediaKind: 'image' });
+        expect(tool.save().items).toHaveLength(0);
+        expect(element.querySelector('.oe-status')?.textContent).toBe(PRIVATE_FILE_MESSAGE);
     });
 
     it('enforces maxItems, disables Add and says so', () => {
         const { tool, element } = mount({ items: [] }, { maxItems: 2 });
-        tool.handleMediaSelected({ id: 'a', url: 'https://cdn.example.com/a.jpg', mediaKind: 'image' });
-        tool.handleMediaSelected({ id: 'b', url: 'https://cdn.example.com/b.jpg', mediaKind: 'image' });
-        tool.handleMediaSelected({ id: 'c', url: 'https://cdn.example.com/c.jpg', mediaKind: 'image' });
+        tool.handleMediaSelected({ file: stored(1), url: 'https://cdn.example.com/a.jpg', mediaKind: 'image' });
+        tool.handleMediaSelected({ file: stored(2), url: 'https://cdn.example.com/b.jpg', mediaKind: 'image' });
+        tool.handleMediaSelected({ file: stored(3), url: 'https://cdn.example.com/c.jpg', mediaKind: 'image' });
         expect(tool.save().items).toHaveLength(2);
         expect((screen.getByRole('button', { name: 'Add media' }) as HTMLButtonElement).disabled).toBe(true);
         expect(element.textContent).toContain('maximum reached');
@@ -117,8 +120,8 @@ describe('MediaGalleryTool', () => {
     it('clears all items after an inline confirmation', async () => {
         const { tool, element } = mount({
             items: [
-                { url: 'https://cdn.example.com/one.jpg', mediaKind: 'image' },
-                { url: 'https://cdn.example.com/two.jpg', mediaKind: 'image' },
+                { media: 'https://cdn.example.com/one.jpg', mediaKind: 'image' },
+                { media: 'https://cdn.example.com/two.jpg', mediaKind: 'image' },
             ],
         });
         fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
@@ -132,8 +135,8 @@ describe('MediaGalleryTool', () => {
     it('switches layout and reorders items through the list controls', () => {
         const { tool } = mount({
             items: [
-                { url: 'https://cdn.example.com/first.jpg', mediaKind: 'image', title: 'First' },
-                { url: 'https://cdn.example.com/second.jpg', mediaKind: 'image', title: 'Second' },
+                { media: 'https://cdn.example.com/first.jpg', mediaKind: 'image', title: 'First' },
+                { media: 'https://cdn.example.com/second.jpg', mediaKind: 'image', title: 'Second' },
             ],
         });
         fireEvent.click(screen.getByRole('radio', { name: 'Mosaic' }));
@@ -145,7 +148,7 @@ describe('MediaGalleryTool', () => {
     it('fails validation when the gallery has no items', () => {
         const { tool } = mount({ items: [] });
         expect(tool.validate({ layout: 'grid-balanced', items: [] })).toBe(false);
-        expect(tool.validate({ layout: 'grid-balanced', items: [{ url: 'https://cdn.example.com/ok.jpg' }] })).toBe(
+        expect(tool.validate({ layout: 'grid-balanced', items: [{ media: 'https://cdn.example.com/ok.jpg' }] })).toBe(
             true,
         );
     });

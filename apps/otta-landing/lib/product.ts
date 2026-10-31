@@ -4,6 +4,7 @@
 
 import { defineProduct, type Plan, type ProductFacts } from '@ottabase/discover';
 import type { LandingPageData, Section, SectionData, SectionType, SiteSettings } from '@ottabase/ottalanding';
+import { fileUrl } from '@ottabase/utils/media';
 import { cache } from 'react';
 import { getPage, getSite, siteOrigin } from './content';
 
@@ -60,8 +61,9 @@ export function productFacts(site: SiteSettings, home: LandingPageData, origin: 
         whatItIs: hero?.subtitle || home.description,
         features: features?.items?.map((i) => `${i.title}: ${i.description}`) ?? [],
         ...(plans.length ? { pricing: { plans } } : {}),
-        logo: abs(site.logoUrl),
-        image: abs(site.share?.imageUrl),
+        // Stored images as their originals: one absolute URL that works everywhere.
+        logo: abs(fileUrl(site.logo)),
+        image: abs(fileUrl(site.share?.image)),
         sameAs: [...new Set(sameAs)],
         ...(hero ? { hero: { line: hero.title, sub: hero.subtitle, button: hero.actions?.[0]?.label } } : {}),
     });

@@ -52,7 +52,8 @@
         "@editorjs/underline": "^1.1.0",
         "@editorjs/warning": "^1.4.0",
         "@ottabase/ottarenderer": "workspace:*",
-        "@ottabase/ottaupload": "workspace:*"
+        "@ottabase/ottaupload": "workspace:*",
+        "@ottabase/utils": "workspace:*"
     },
     "peerDependencies": {
         "react": "catalog:",

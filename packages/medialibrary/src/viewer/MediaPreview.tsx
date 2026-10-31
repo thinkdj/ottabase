@@ -27,6 +27,8 @@ export interface MediaPreviewProps {
     preload?: 'none' | 'metadata' | 'auto';
     /** Mouse gesture that toggles zoom in lightbox / immersive modes. Defaults to 'single'. */
     zoomStart?: ZoomStartGesture;
+    /** How wide the image shows, for `srcSet`; defaults to a guess per mode. Pass it when the layout is known. */
+    sizes?: string;
 }
 
 function getPlaceholderIcon(mediaKind: string) {
@@ -43,6 +45,15 @@ function getPlaceholderIcon(mediaKind: string) {
             return IconPhoto;
     }
 }
+
+/** How wide each mode shows an image, for the browser to pick a rendition from `srcSet`. */
+const IMAGE_SIZES: Record<NonNullable<MediaPreviewProps['mode']>, string> = {
+    thumb: '160px',
+    tile: '(min-width: 640px) 320px, 50vw',
+    detail: '(min-width: 1024px) 60vw, 100vw',
+    lightbox: '100vw',
+    immersive: '100vw',
+};
 
 function getShellClassName(mode: NonNullable<MediaPreviewProps['mode']>, className?: string): string {
     const modeClassName =
@@ -154,6 +165,7 @@ export function MediaPreview({
     interactive = true,
     preload = 'metadata',
     zoomStart = 'single',
+    sizes,
 }: MediaPreviewProps) {
     const mediaKind = item.mediaKind ?? getMediaKindFromMimeType(item.mimeType, item.originalName);
     const previewUrl = item.previewUrl ?? item.url ?? '';
@@ -169,10 +181,13 @@ export function MediaPreview({
     if (mediaKind === 'image' && previewUrl) {
         // Use ZoomableImage in lightbox / immersive modes for zoom + pan support
         if (mode === 'lightbox' || mode === 'immersive') {
+            // The original, or the rendition that fits the screen: never the card a tile shows.
             return (
                 <div className={shellClassName} style={shellStyle}>
                     <ZoomableImage
-                        src={previewUrl}
+                        src={item.url || previewUrl}
+                        srcSet={item.srcSet ?? undefined}
+                        sizes={IMAGE_SIZES[mode]}
                         alt={item.altText || title}
                         className="h-full w-full"
                         mode={mode}
@@ -192,6 +207,8 @@ export function MediaPreview({
             <div className={shellClassName} style={shellStyle}>
                 <img
                     src={previewUrl}
+                    srcSet={item.srcSet ?? undefined}
+                    sizes={item.srcSet ? (sizes ?? IMAGE_SIZES[mode]) : undefined}
                     alt={item.altText || title}
                     className={imgClassName}
                     width={intrinsicWidth}

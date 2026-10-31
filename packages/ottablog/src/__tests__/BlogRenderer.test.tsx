@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import type { BlogPostData } from '../components/blog-renderer-types';
 import { BlogExcerptCard, BlogRenderer, BlurbRenderer } from '../components/BlogRenderer';
 
+/** A stored file's key, as the files service writes it, for the photograph numbered `n`. */
+const storedKey = (n: number) => `app/media/${String(n).repeat(32)}.jpg`;
+const FILES = '/api/files/public';
+
 const createMockPost = (overrides?: Partial<BlogPostData>): BlogPostData => ({
     id: 'test-post-1',
     title: 'Test Post',
@@ -106,7 +110,7 @@ describe('BlogRenderer', () => {
                     post={createMockPost({
                         contentType: 'photo',
                         content: null,
-                        photoAlbum: [{ id: 'p1', url: 'https://images.test/1.jpg' }],
+                        photoAlbum: [{ id: 'p1', image: 'https://images.test/1.jpg' }],
                         crossposts: links,
                     })}
                     disableHooks
@@ -194,7 +198,7 @@ describe('BlogRenderer', () => {
                 photoAlbum: [
                     {
                         id: 'p1',
-                        url: 'https://images.test/kyoto.jpg',
+                        image: 'https://images.test/kyoto.jpg',
                         alt: 'Lanterns reflected in a wet lane',
                         caption: 'After the last train',
                         location: 'Kyoto, Japan',
@@ -214,7 +218,7 @@ describe('BlogRenderer', () => {
             const journal = createMockPost({
                 contentType: 'photo',
                 publishedAt: 1e20,
-                photoAlbum: [{ id: 'p1', url: 'https://images.test/kyoto.jpg', takenAt: 1e20 }],
+                photoAlbum: [{ id: 'p1', image: 'https://images.test/kyoto.jpg', takenAt: 1e20 }],
                 content: null,
             });
 
@@ -229,7 +233,7 @@ describe('BlogRenderer', () => {
                 title: 'Kyoto, in the rain',
                 contentType: 'photo',
                 photoNote: 'A quiet blue hour.',
-                photoAlbum: [{ id: 'p1', url: 'https://images.test/kyoto.jpg' }],
+                photoAlbum: [{ id: 'p1', image: 'https://images.test/kyoto.jpg' }],
                 publishedAt: Date.parse('2024-01-15T00:00:00Z'),
                 content: null,
             });
@@ -257,11 +261,11 @@ describe('BlogRenderer', () => {
             const journal = createMockPost({
                 contentType: 'photo',
                 photoAlbum: [
-                    { id: 'p0', url: 'https://images.test/0.jpg', width: 1800, height: 1200 }, // 3:2 wide
-                    { id: 'p1', url: 'https://images.test/1.jpg', width: 900, height: 1600 }, // portrait
-                    { id: 'p2', url: 'https://images.test/2.jpg', width: 1000, height: 1000 }, // square
-                    { id: 'p3', url: 'https://images.test/3.jpg' }, // no dimensions
-                    { id: 'p4', url: 'https://images.test/4.jpg', width: 1600, height: 1200 }, // 4:3
+                    { id: 'p0', image: { key: storedKey(0), width: 1800, height: 1200 } }, // 3:2 wide
+                    { id: 'p1', image: { key: storedKey(1), width: 900, height: 1600 } }, // portrait
+                    { id: 'p2', image: { key: storedKey(2), width: 1000, height: 1000 } }, // square
+                    { id: 'p3', image: 'https://images.test/3.jpg' }, // no dimensions
+                    { id: 'p4', image: { key: storedKey(4), width: 1600, height: 1200 } }, // 4:3
                 ],
                 content: null,
             });
@@ -285,12 +289,38 @@ describe('BlogRenderer', () => {
             expect(grid?.className).toContain('items-start');
         });
 
+        it('offers journal tiles their renditions sized to the grid cell, and the lightbox the original', () => {
+            const journal = createMockPost({
+                contentType: 'photo',
+                photoAlbum: [
+                    { id: 'p0', image: { key: storedKey(6), width: 2400, variants: ['thumb', 'card', 'full'] } },
+                    { id: 'p1', image: { key: storedKey(7), width: 1200, variants: ['thumb', 'card'] } },
+                ],
+                content: null,
+            });
+            const { container } = render(<BlogRenderer post={journal} disableHooks />);
+            const [first, second] = Array.from(container.querySelectorAll('figure img'));
+            const stem = (n: number) => `${FILES}/${storedKey(n).replace(/\.jpg$/, '')}`;
+
+            expect(first.getAttribute('srcset')).toBe(
+                `${stem(6)}/thumb.webp 160w, ${stem(6)}/card.webp 640w, ${stem(6)}/full.webp 1600w`,
+            );
+            // The wide lead tile: the whole phone row, eight of twelve columns beside it.
+            expect(first.getAttribute('sizes')).toBe('(min-width: 72rem) 48rem, (min-width: 48rem) 67vw, 100vw');
+            // No `full` was made, so the 1200px original is the largest offered.
+            expect(second.getAttribute('src')).toBe(`${FILES}/${storedKey(7)}`);
+            expect(second.getAttribute('srcset')).toBe(
+                `${stem(7)}/thumb.webp 160w, ${stem(7)}/card.webp 640w, ${FILES}/${storedKey(7)} 1200w`,
+            );
+            expect(second.getAttribute('sizes')).toBe('(min-width: 72rem) 24rem, (min-width: 48rem) 33vw, 50vw');
+        });
+
         it('pairs journal column spans so a row fills exactly twelve', () => {
             const journal = createMockPost({
                 contentType: 'photo',
                 photoAlbum: Array.from({ length: 6 }, (_, index) => ({
                     id: `p${index}`,
-                    url: `https://images.test/${index}.jpg`,
+                    image: `https://images.test/${index}.jpg`,
                 })),
                 content: null,
             });
@@ -324,7 +354,7 @@ describe('BlogRenderer', () => {
 
             const journal = createMockPost({
                 contentType: 'photo',
-                photoAlbum: [{ id: 'p1', url: 'https://images.test/one.jpg' }],
+                photoAlbum: [{ id: 'p1', image: 'https://images.test/one.jpg' }],
                 content: { blocks: [{ type: 'paragraph', data: { text: 'The rain emptied the streets.' } }] },
             });
 
@@ -368,7 +398,7 @@ describe('BlogRenderer', () => {
                 createMockPost({
                     id,
                     contentType: 'photo',
-                    photoAlbum: [{ id: `${id}-p1`, url: `https://images.test/${id}.jpg` }],
+                    photoAlbum: [{ id: `${id}-p1`, image: `https://images.test/${id}.jpg` }],
                     content: { blocks: [{ type: 'paragraph', data: { text } }] },
                 });
 
@@ -456,8 +486,8 @@ describe('BlogRenderer', () => {
             const journal = createMockPost({
                 contentType: 'photo',
                 photoAlbum: [
-                    { id: 'p1', url: 'https://images.test/one.jpg' },
-                    { id: 'p2', url: 'https://images.test/two.jpg' },
+                    { id: 'p1', image: 'https://images.test/one.jpg' },
+                    { id: 'p2', image: 'https://images.test/two.jpg' },
                 ],
                 content: null,
             });
@@ -513,7 +543,7 @@ describe('BlogRenderer', () => {
         it('should accept showHeroImage prop', async () => {
             const post = createMockPost({
                 heroImage: {
-                    url: 'https://example.com/image.jpg',
+                    image: 'https://example.com/image.jpg',
                     alt: 'Test image',
                 },
             });
@@ -530,7 +560,7 @@ describe('BlogRenderer', () => {
         it('should render hero image with maxHeight applied', async () => {
             const post = createMockPost({
                 heroImage: {
-                    url: 'https://example.com/image.jpg',
+                    image: 'https://example.com/image.jpg',
                     alt: 'Test image',
                     maxHeight: 400,
                 },
@@ -551,9 +581,61 @@ describe('BlogRenderer', () => {
             );
         });
 
+        it('offers a stored hero as renditions sized to the article column', async () => {
+            const key = storedKey(5);
+            const post = createMockPost({
+                heroImage: {
+                    image: { key, width: 3000, height: 2000, variants: ['thumb', 'card', 'full'] },
+                    alt: 'Rain on the lane',
+                },
+            });
+            const { container } = render(<BlogRenderer post={post} showHeroImage />);
+
+            await waitFor(
+                () => {
+                    const img = container.querySelector('figure img');
+                    const stem = `${FILES}/${key.replace(/\.jpg$/, '')}`;
+                    // The original (3000px) is the unoptimised upload: never offered to the page.
+                    expect(img?.getAttribute('src')).toBe(`${stem}/full.webp`);
+                    expect(img?.getAttribute('srcset')).toBe(
+                        `${stem}/thumb.webp 160w, ${stem}/card.webp 640w, ${stem}/full.webp 1600w`,
+                    );
+                    expect(img?.getAttribute('sizes')).toBe('(min-width: 48rem) 46rem, calc(100vw - 2rem)');
+                    expect(img?.getAttribute('width')).toBe('3000');
+                    expect(img?.getAttribute('alt')).toBe('Rain on the lane');
+                },
+                { timeout: 3000 },
+            );
+        });
+
+        it('renders an outside hero as a lone sanitized src, and nothing for a malformed one', async () => {
+            const outside = render(
+                <BlogRenderer
+                    post={createMockPost({ heroImage: { image: 'https://example.com/image.jpg' } })}
+                    showHeroImage
+                />,
+            );
+            await waitFor(() => {
+                const img = outside.container.querySelector('figure img');
+                expect(img?.getAttribute('src')).toBe('https://example.com/image.jpg');
+                expect(img?.hasAttribute('srcset')).toBe(false);
+                expect(img?.hasAttribute('sizes')).toBe(false);
+            });
+            outside.unmount();
+
+            const broken = render(
+                <BlogRenderer
+                    post={createMockPost({ heroImage: { image: { key: 'https://evil.test/x.jpg' } } })}
+                    showHeroImage
+                />,
+            );
+            await waitFor(() => expect(broken.container.firstChild).toBeTruthy());
+            expect(broken.container.querySelector('figure img')).toBeNull();
+        });
+
         it('reserves hero space with a fixed ratio when the author sets no height', async () => {
             const post = createMockPost({
-                heroImage: { url: 'https://example.com/image.jpg', alt: 'Test image' },
+                heroImage: { image: 'https://example.com/image.jpg', alt: 'Test image' },
             });
             const { container } = render(<BlogRenderer post={post} showHeroImage />);
 
@@ -571,7 +653,7 @@ describe('BlogRenderer', () => {
             const post = createMockPost({
                 title: 'A considered headline',
                 readingTimeMinutes: 6,
-                heroImage: { url: 'https://example.com/image.jpg', alt: 'Test image' },
+                heroImage: { image: 'https://example.com/image.jpg', alt: 'Test image' },
             });
             const { container } = render(<BlogRenderer post={post} showHeroImage showTitle showMetadata />);
 

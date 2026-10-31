@@ -251,8 +251,10 @@ Raw R2 (`createR2Client` from `@ottabase/cf/r2`) is for system data only, in `OB
 ### Images
 
 The Images binding (`OBCF_IMAGES`) renders the fixed-width WebP variants (thumb 160, card 640, full 1600) of uploaded
-images when a purpose asks for them, and optimizes `@ottabase/screenshot` captures. It is bound in every env block of
-`wrangler.jsonc`; without it, uploads keep only their original.
+images when a purpose asks for them, each only when narrower than the original, and optimizes `@ottabase/screenshot`
+captures. The variants are stored in R2 next to the original and served from there; pages pick one through `srcset`
+(`imageSources` in `@ottabase/utils/media`). It is bound in every env block of `wrangler.jsonc`; without it, uploads
+keep only their original.
 
 ### Hyperdrive
 

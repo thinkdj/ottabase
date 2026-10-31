@@ -74,7 +74,7 @@ export function ShareCardEditor({
             <div className="min-w-0">
                 <FieldsForm
                     fields={SHARE_FIELDS}
-                    omit={['imageUrl']}
+                    omit={['image']}
                     value={value ?? {}}
                     onChange={(next) => onChange(next as ShareCard)}
                     errors={errors}

@@ -56,18 +56,20 @@ describe('kitchensink fixture', () => {
         expect(order.indexOf('beforeAfter')).toBeLessThan(order.indexOf('quote'));
     });
 
-    it('points every image at a public URL that survives a fresh install', () => {
-        // A demo deployment has no uploaded media library, so relative
-        // /api/files/public/... paths (fine on the authoring host) would 404 here.
-        const urls = [
-            blockOfType('beforeAfter').data.beforeUrl,
-            blockOfType('beforeAfter').data.afterUrl,
-            blockOfType('imageHotspots').data.imageUrl,
-            ...blockOfType('mediaGallery').data.items.map((item: { url: string }) => item.url),
-            demoBlogPosts.find((post) => post.slug === 'kitchensink-ottablog')!.heroImage!.url,
+    it('points every image at an outside address that survives a fresh install', () => {
+        // A demo deployment has no uploaded media library, so a stored file (or a relative
+        // /api/files/public/... path, fine on the authoring host) would 404 here. Outside
+        // images stay plain strings in the FileSource fields.
+        const sources: unknown[] = [
+            blockOfType('beforeAfter').data.before,
+            blockOfType('beforeAfter').data.after,
+            blockOfType('imageHotspots').data.image,
+            blockOfType('mediaEmbed').data.media,
+            ...blockOfType('mediaGallery').data.items.map((item: { media: unknown }) => item.media),
+            demoBlogPosts.find((post) => post.slug === 'kitchensink-ottablog')!.heroImage!.image,
         ];
 
-        for (const url of urls) expect(url).toMatch(/^https:\/\//);
+        for (const source of sources) expect(source).toMatch(/^https:\/\//);
     });
 
     it('keeps both hotspots inside the image bounds', () => {

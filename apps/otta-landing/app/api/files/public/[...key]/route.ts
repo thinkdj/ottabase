@@ -1,8 +1,8 @@
-// Images picked from otta-web's media library (logos, hero shots, social images) are public
-// files: `<R2_PUBLIC_URL>/<key>`, by default /api/files/public/<key>. Serving that same path
-// from the same PUBLIC bucket makes those URLs work here unchanged and keeps the site's images
-// on its own origin. Only the public bucket is bound: private files and backups live in buckets
-// this app never sees, so no key can reach them.
+// Images picked from otta-web's media library (logos, hero shots, social images) are stored as
+// public files' keys, with their WebP renditions beside them. This app builds their URLs on
+// R2_PUBLIC_URL, by default this route: /api/files/public/<key>, served from the same PUBLIC
+// bucket, which keeps the site's images on its own origin. Only the public bucket is bound:
+// private files and backups live in buckets this app never sees, so no key can reach them.
 
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { servePublicFile } from '@ottabase/ottaupload/server';

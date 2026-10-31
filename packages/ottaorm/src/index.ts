@@ -82,7 +82,6 @@ export type { AutoInitConfig, RuntimeMigrationConfig } from './migrations';
 // Runtime read-safety policy
 export {
     configureOttaORM,
-    publicFileUrl,
     getOttaORMMaxAllRows,
     OTTAORM_ALL_HARD_LIMIT,
     OttaORMAllRowsLimitError,

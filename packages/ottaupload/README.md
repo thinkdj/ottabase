@@ -53,16 +53,26 @@ own.
    inline with the sandbox relaxed is the combination to avoid); `public, max-age=31536000, immutable` for public files,
    `private, no-store` otherwise.
 8. **Variants** through the `OBCF_IMAGES` binding when it is bound: fixed widths thumb 160, card 640, full 1600, WebP,
-   `fit: scale-down` (never upscaled). Without the binding there are no variants and every variant URL is the
-   original's. There are no on-the-fly `/cdn-cgi/image` URLs: nobody can mint new sizes on your bill.
+   each made only when it is narrower than the original (a 500px image gets a thumb and nothing else; one whose width
+   could not be read gets none). Without the binding there are no variants and every variant URL is the original's.
+   There are no on-the-fly `/cdn-cgi/image` URLs: nobody can mint new sizes on your bill.
 9. **Row**: the media record. A failed put deletes what it wrote, so nothing counts against the quota.
 
 ### Views
 
 URLs are never stored. `view(record)` computes them: a public file's `url` is `<R2_PUBLIC_URL>/<key>` (default
 `/api/files/public/<key>`), a private one's is `/api/files/<id>`; `thumbnailUrl` is the thumb variant and `previewUrl`
-the card variant, else the original. Rows that reference a public file store its key; rows that reference a private file
-store its media id.
+the card variant, else the original; `srcSet` (public raster images with variants) offers the variants, and the original
+when no `full` was made, as width descriptors. Rows that reference a public file store its key; rows that reference a
+private file store its media id.
+
+**Content stores a `StoredFile`, never a URL.** A blog post, an editor block, a landing page or a menu item that holds
+an uploaded image keeps `storedFileOf(view)` from `@ottabase/utils/media` (`{ key, width, height, variants }`), or a
+plain string for an address someone typed. It renders through `imageSources(value)` (`src`, `srcSet`, `width`, `height`)
+with a `sizes` for its layout, and `fileUrl(value, variant?)` where one URL is needed (`fileUrl(value)`, the original,
+for og:image, feeds and mail, which do not all take WebP). The key format, the widths and the URL base live in
+`@ottabase/utils/media`; the app calls `configureMedia({ publicUrl })` in the Worker per request and in the browser at
+boot, so every URL follows `R2_PUBLIC_URL`.
 
 **Public URLs are absolute.** A relative `R2_PUBLIC_URL` (the default `/api/files/public`) is resolved against the app's
 public origin (the `origin` option; otta-web passes `AUTH_URL`), so a logo or an image works where the page is not: in
@@ -149,8 +159,9 @@ segments, the object is read with `onlyIf`/`range` from the request headers (ETa
 `Content-Security-Policy: sandbox; default-src 'none'` and a `Content-Disposition` that is `inline` only for raster
 images and video. `applySafeObjectHeaders(headers, filename)` sets those three on any response.
 
-The pure pieces are exported too: `sniff`, `imageSize`, `stripMetadata`, `fileKey`, `variantKey`, `fileIdFromKey`,
-`signFileToken`, `verifyFileToken`, `dispositionFor`.
+The pure pieces are exported too: `sniff`, `imageSize`, `stripMetadata`, `fileKey`, `signFileToken`, `verifyFileToken`,
+`dispositionFor`. Key and URL helpers (`variantKey`, `fileIdFromKey`, `FILE_VARIANT_WIDTHS`, `DEFAULT_PUBLIC_FILES_URL`)
+are in `@ottabase/utils/media`.
 
 ## The routes (otta-web)
 

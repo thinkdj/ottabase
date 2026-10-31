@@ -38,7 +38,6 @@ export type {
 
 export {
     configureOttaORM,
-    publicFileUrl,
     getOttaORMMaxAllRows,
     OTTAORM_ALL_HARD_LIMIT,
     OttaORMAllRowsLimitError,

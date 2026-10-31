@@ -3,8 +3,9 @@
  *
  * Central type definitions for blog-related entities to avoid duplication across pages.
  */
-import type { ContentType, PhotoJournalItem, PostCrosspost, PostStatus } from '@ottabase/ottablog';
+import type { ContentType, HeroImage, PhotoJournalItem, PostCrosspost, PostStatus, SeoMeta } from '@ottabase/ottablog';
 import type { OutputData } from '@ottabase/ottaeditor';
+import type { FileSource } from '@ottabase/utils/media';
 
 /**
  * Author information from User relationship
@@ -33,27 +34,8 @@ export interface BlogPost {
     status: PostStatus;
     seriesId: string | null;
     seriesOrder: number | null;
-    heroImage: {
-        url: string;
-        alt?: string;
-        caption?: string;
-        cfImageId?: string;
-        mediaId?: string;
-        width?: number;
-        height?: number;
-        focalPoint?: { x: number; y: number };
-    } | null;
-    seoMeta: {
-        title?: string;
-        description?: string;
-        keywords?: string[];
-        canonicalUrl?: string;
-        ogImage?: string;
-        ogType?: string;
-        twitterCard?: string;
-        noIndex?: boolean;
-        noFollow?: boolean;
-    } | null;
+    heroImage: HeroImage | null;
+    seoMeta: SeoMeta | null;
     privateNotes: OutputData | null;
     footnotes: OutputData | null;
     // Author from User relationship
@@ -90,7 +72,7 @@ export interface BlogPostListItem {
     photoAlbum: PhotoJournalItem[] | null;
     contentType: ContentType;
     status: PostStatus;
-    heroImage: { url: string; alt?: string; mediaId?: string } | null;
+    heroImage: HeroImage | null;
     // Author from User relationship
     authorId?: string | null;
     author?: PostAuthor | null;
@@ -111,7 +93,7 @@ export interface BlogSeries {
     title: string;
     slug: string;
     description: string | null;
-    coverImage: string | null;
+    coverImage: { image: FileSource; alt?: string } | null;
     isComplete: boolean;
     sortOrder: number | null;
     createdAt: number;

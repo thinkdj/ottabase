@@ -7,6 +7,7 @@
  * Plain DOM, no framework: Editor.js tools are vanilla classes. Each helper returns an element
  * (or a small handle when it needs cleanup) and reports changes through callbacks.
  */
+import { fileUrl, type FileSource, type StoredFile } from '@ottabase/utils/media';
 import { icon, type IconName } from './icons';
 
 let seed = 0;
@@ -450,20 +451,18 @@ export function confirmInline(host: HTMLElement, message: string, confirmLabel =
 
 export type MediaKindFilter = 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other';
 
+/** What the host's picker sends back (`MediaSelectionPayload` from `@ottabase/medialibrary`). */
 export interface MediaSelection {
-    id?: string;
+    /** What content stores. Null for a private file, which content cannot embed. */
+    file?: StoredFile | null;
+    /** For showing the pick, never for storing */
     url: string;
+    name?: string;
     title?: string;
-    originalName?: string;
-    altText?: string;
+    alt?: string;
     caption?: string;
-    mediaId?: string;
     mimeType?: string;
     mediaKind?: string;
-    thumbnailUrl?: string;
-    previewUrl?: string;
-    width?: number;
-    height?: number;
 }
 
 /**
@@ -488,27 +487,32 @@ export function onMediaSelected(field: string, handler: (media: MediaSelection) 
     return () => window.removeEventListener('media-library-selected-item', listener);
 }
 
+/** Said when the picker hands back a file only signed-in people may read. */
+export const PRIVATE_FILE_MESSAGE = 'That file is private. Content can only embed public files.';
+
 /**
  * The one way a block asks for an image or file: a URL input with a "Library" button beside it and
- * a thumbnail once something is chosen. Returns the element and a `destroy` to drop the picker
- * subscription when the block unmounts.
+ * a thumbnail once something is chosen. The value is a `FileSource`: a library pick stores its
+ * `file` (a private pick is refused with a status line), a typed address the trimmed string, an
+ * empty field `undefined`. Returns the element and a `destroy` to drop the picker subscription
+ * when the block unmounts.
  */
 export function mediaInput(opts: {
-    value: string;
+    value: FileSource | undefined;
     placeholder?: string;
     ariaLabel: string;
     accept?: MediaKindFilter[];
     /** Hide the thumbnail strip (for non-image media) */
     noThumb?: boolean;
-    onChange: (url: string, media?: MediaSelection) => void;
-}): { element: HTMLElement; destroy: () => void; setValue: (url: string) => void } {
+    onChange: (value: FileSource | undefined, media?: MediaSelection) => void;
+}): { element: HTMLElement; destroy: () => void; setValue: (value: FileSource | undefined) => void } {
     const field = uid('media');
     const input = textInput({
-        value: opts.value,
+        value: fileUrl(opts.value),
         placeholder: opts.placeholder ?? 'https://…',
         type: 'url',
         ariaLabel: opts.ariaLabel,
-        onInput: (v) => update(v),
+        onInput: (v) => update(v.trim() || undefined),
     });
     const thumb = h('span', { className: 'oe-media__thumb', 'aria-hidden': 'true' });
     const pick = iconButton({
@@ -516,26 +520,40 @@ export function mediaInput(opts: {
         label: `${opts.ariaLabel}: choose from library`,
         onClick: () => openMediaLibrary(field, { accept: opts.accept ?? ['image'] }),
     });
-    const element = h('div', { className: `oe-media${opts.noThumb ? ' oe-media--no-thumb' : ''}` }, thumb, input, pick);
-    const paint = (url: string) => {
+    const status = h('p', { className: 'oe-hint oe-status', role: 'status' });
+    const element = h(
+        'div',
+        { className: `oe-media${opts.noThumb ? ' oe-media--no-thumb' : ''}` },
+        thumb,
+        input,
+        pick,
+        status,
+    );
+    const paint = (value: FileSource | undefined) => {
+        const url = fileUrl(value, 'thumb');
         element.classList.toggle('oe-media--filled', !!url);
         thumb.style.backgroundImage = url && !opts.noThumb ? `url("${url.replace(/"/g, '%22')}")` : '';
     };
-    const update = (url: string, media?: MediaSelection) => {
-        paint(url);
-        opts.onChange(url, media);
+    const update = (value: FileSource | undefined, media?: MediaSelection) => {
+        status.textContent = '';
+        paint(value);
+        opts.onChange(value, media);
     };
     const off = onMediaSelected(field, (media) => {
+        if (!media.file) {
+            status.textContent = PRIVATE_FILE_MESSAGE;
+            return;
+        }
         input.value = media.url;
-        update(media.url, media);
+        update(media.file, media);
     });
     paint(opts.value);
     return {
         element,
         destroy: off,
-        setValue: (url) => {
-            input.value = url;
-            paint(url);
+        setValue: (value) => {
+            input.value = fileUrl(value);
+            paint(value);
         },
     };
 }

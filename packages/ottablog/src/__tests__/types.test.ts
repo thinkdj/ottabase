@@ -22,8 +22,12 @@ import {
     validatePhotoJournalItems,
     validatePhotoJournalNote,
     validateBlurbText,
+    validateHeroImage,
     validatePostWrite,
 } from '../types';
+
+/** A stored file's key, as the files service writes it, for the photograph numbered `n`. */
+const storedKey = (n: number) => `app/media/${n.toString(16).padStart(32, '0')}.jpg`;
 
 describe('ottablog helpers', () => {
     describe('contentTypeLabel', () => {
@@ -104,64 +108,87 @@ describe('ottablog helpers', () => {
     describe('photo journal helpers', () => {
         const photo = {
             id: 'p1',
-            url: 'https://images.test/kyoto.jpg',
+            image: 'https://images.test/kyoto.jpg',
             caption: 'After the last train',
         };
 
-        it('normalizes ordered photographs and preserves media metadata', () => {
-            expect(
-                validatePhotoJournalItems([
-                    { ...photo, mediaId: 'm1', width: 1800, height: 1200, takenAt: 1_700_000_000_000 },
-                ]),
-            ).toEqual([
-                expect.objectContaining({
-                    id: 'p1',
-                    mediaId: 'm1',
-                    url: photo.url,
-                    width: 1800,
-                    height: 1200,
-                    takenAt: 1_700_000_000_000,
-                }),
+        it('normalizes ordered photographs and keeps a stored file with its sizes', () => {
+            const file = { key: storedKey(1), width: 1800, height: 1200, variants: ['thumb', 'card', 'full'] };
+            expect(validatePhotoJournalItems([{ ...photo, image: file, takenAt: 1_700_000_000_000 }])).toEqual([
+                expect.objectContaining({ id: 'p1', image: file, takenAt: 1_700_000_000_000 }),
             ]);
         });
 
+        it('drops the removed URL fields and gives a stored photograph its file id', () => {
+            const [item] = validatePhotoJournalItems([
+                {
+                    image: { key: storedKey(7) },
+                    url: 'https://images.test/old.jpg',
+                    thumbnailUrl: 'https://images.test/t.jpg',
+                    mediaId: 'm1',
+                    width: 10,
+                },
+            ]);
+            expect(item.id).toBe(storedKey(7).slice(10, 42));
+            expect(item).not.toHaveProperty('url');
+            expect(item).not.toHaveProperty('thumbnailUrl');
+            expect(item).not.toHaveProperty('mediaId');
+            expect(item).not.toHaveProperty('width');
+        });
+
+        it('refuses an image that is neither a stored file nor a safe address', () => {
+            expect(() => validatePhotoJournalItems([{ id: 'p1' }])).toThrow('image is required');
+            expect(() => validatePhotoJournalItems([{ id: 'p1', image: { key: 'not/a/stored/key.jpg' } }])).toThrow(
+                'not a valid stored file',
+            );
+            expect(() => validatePhotoJournalItems([{ id: 'p1', image: { key: storedKey(1), width: -5 } }])).toThrow(
+                'not a valid stored file',
+            );
+            expect(() =>
+                validatePhotoJournalItems([{ id: 'p1', image: { url: 'https://images.test/a.jpg' } }]),
+            ).toThrow('not a valid stored file');
+        });
+
         it('rejects the same photograph however it repeats', () => {
-            // Any of the three is enough to break rendering: `id` keys the tile AND the lightbox
+            // Either is enough to break rendering: `id` keys the tile AND the lightbox
             // registration, so a repeat shows one frame that cannot be opened.
             expect(() =>
                 validatePhotoJournalItems([
-                    { id: 'p1', mediaId: 'm1', url: 'https://images.test/a.jpg', caption: 'first' },
-                    { id: 'p1', url: 'https://images.test/b.jpg', caption: 'same id' },
+                    { id: 'p1', image: 'https://images.test/a.jpg', caption: 'first' },
+                    { id: 'p1', image: 'https://images.test/b.jpg', caption: 'same id' },
+                ]),
+            ).toThrow('duplicates');
+            // The same stored file, even with different sizes or renditions recorded.
+            expect(() =>
+                validatePhotoJournalItems([
+                    { id: 'p1', image: { key: storedKey(1) } },
+                    { id: 'p3', image: { key: storedKey(1), width: 800, variants: ['thumb'] } },
                 ]),
             ).toThrow('duplicates');
             expect(() =>
                 validatePhotoJournalItems([
-                    { id: 'p1', mediaId: 'm1', url: 'https://images.test/a.jpg' },
-                    { id: 'p3', mediaId: 'm1', url: 'https://images.test/c.jpg' },
-                ]),
-            ).toThrow('duplicates');
-            expect(() =>
-                validatePhotoJournalItems([
-                    { id: 'p1', url: 'https://images.test/a.jpg' },
-                    { id: 'p4', url: 'https://images.test/a.jpg' },
+                    { id: 'p1', image: 'https://images.test/a.jpg' },
+                    { id: 'p4', image: 'https://images.test/a.jpg' },
                 ]),
             ).toThrow('duplicates');
         });
 
         it('keeps photograph identity namespaces separate', () => {
+            const fileId = storedKey(2).slice(10, 42);
             const album = validatePhotoJournalItems([
-                { id: 'asset-b', mediaId: 'asset-a', url: 'https://images.test/a.jpg' },
-                { id: 'local-b', mediaId: 'asset-b', url: 'https://images.test/b.jpg' },
-                { id: 'https://images.test/b.jpg', mediaId: 'asset-c', url: 'https://images.test/c.jpg' },
+                { id: fileId, image: { key: storedKey(1) } },
+                { id: 'local-b', image: { key: storedKey(2) } },
+                { id: 'https://images.test/c.jpg', image: 'https://images.test/b.jpg' },
+                { id: 'local-d', image: 'https://images.test/c.jpg' },
             ]);
 
-            expect(album).toHaveLength(3);
+            expect(album).toHaveLength(4);
         });
 
         it('rejects dates that JavaScript cannot render', () => {
             expect(() =>
                 validatePhotoJournalItems([
-                    { id: 'p1', url: 'https://images.test/a.jpg', takenAt: MAX_JAVASCRIPT_DATE_TIMESTAMP + 1 },
+                    { id: 'p1', image: 'https://images.test/a.jpg', takenAt: MAX_JAVASCRIPT_DATE_TIMESTAMP + 1 },
                 ]),
             ).toThrow('invalid date');
             expect(() => validatePostWrite({ publishAt: 1e20 })).toThrow('valid positive date');
@@ -170,9 +197,9 @@ describe('ottablog helpers', () => {
         it('counts the payload against the album cap before validating identities', () => {
             // The cap bounds what a caller may SEND, even when the payload is malformed or
             // contains repeated identities.
-            const url = 'https://images.test/one.jpg';
+            const image = 'https://images.test/one.jpg';
             expect(() =>
-                validatePhotoJournalItems(Array.from({ length: PHOTO_JOURNAL_MAX_ITEMS + 1 }, () => ({ url }))),
+                validatePhotoJournalItems(Array.from({ length: PHOTO_JOURNAL_MAX_ITEMS + 1 }, () => ({ image }))),
             ).toThrow(`up to ${PHOTO_JOURNAL_MAX_ITEMS}`);
         });
 
@@ -188,27 +215,73 @@ describe('ottablog helpers', () => {
                 validatePhotoJournalItems(
                     Array.from({ length: PHOTO_JOURNAL_MAX_ITEMS + 1 }, (_, index) => ({
                         id: `p${index}`,
-                        url: `https://images.test/${index}.jpg`,
+                        image: `https://images.test/${index}.jpg`,
                     })),
                 ),
             ).toThrow('up to');
-            expect(() => validatePhotoJournalItems([{ id: 'p1', url: 'javascript:alert(1)' }])).toThrow('HTTP(S)');
-            expect(() => validatePhotoJournalItems([{ id: 'p1', url: '//cdn.example.test/image.jpg' }])).toThrow(
+            expect(() => validatePhotoJournalItems([{ id: 'p1', image: 'javascript:alert(1)' }])).toThrow('HTTP(S)');
+            expect(() => validatePhotoJournalItems([{ id: 'p1', image: '//cdn.example.test/image.jpg' }])).toThrow(
                 'HTTP(S)',
             );
             expect(() =>
-                validatePhotoJournalItems([{ id: 'p1', url: `https://images.test/${'x'.repeat(4096)}.jpg` }]),
+                validatePhotoJournalItems([{ id: 'p1', image: `https://images.test/${'x'.repeat(4096)}.jpg` }]),
             ).toThrow('4096');
+            // A stored key has no length rule of its own, so the serialized album cap is what holds.
             expect(() =>
                 validatePhotoJournalItems(
                     Array.from({ length: PHOTO_JOURNAL_MAX_ITEMS }, (_, index) => ({
                         id: `p${index}`,
-                        url: `https://images.test/${'u'.repeat(4050)}${index}`,
-                        thumbnailUrl: `https://images.test/${'t'.repeat(4050)}${index}`,
-                        previewUrl: `https://images.test/${'p'.repeat(4050)}${index}`,
+                        image: { key: `${'a'.repeat(9000)}/media/${index.toString(16).padStart(32, '0')}.jpg` },
                     })),
                 ),
             ).toThrow('metadata');
+        });
+    });
+
+    describe('validateHeroImage', () => {
+        it('keeps a stored file or a safe address and the display fields, and drops the rest', () => {
+            const file = { key: storedKey(3), width: 2400, height: 1600, variants: ['thumb', 'card', 'full'] };
+            expect(
+                validateHeroImage({
+                    image: file,
+                    alt: '  Rain on the lane ',
+                    maxHeight: 480,
+                    focalPoint: { x: 40, y: 60 },
+                    url: 'https://images.test/old.jpg',
+                    mediaId: 'm1',
+                    width: 2400,
+                }),
+            ).toEqual({ image: file, alt: 'Rain on the lane', maxHeight: 480, focalPoint: { x: 40, y: 60 } });
+            expect(validateHeroImage({ image: ' https://images.test/a.jpg ' })).toEqual({
+                image: 'https://images.test/a.jpg',
+            });
+            expect(validateHeroImage(null)).toBeNull();
+        });
+
+        it('refuses an old shape, a malformed stored file and an unsafe address', () => {
+            expect(() => validateHeroImage({ url: 'https://images.test/a.jpg' })).toThrow('Hero image is required');
+            expect(() => validateHeroImage({ image: { key: 'https://images.test/a.jpg' } })).toThrow(
+                'not a valid stored file',
+            );
+            expect(() => validateHeroImage({ image: 'javascript:alert(1)' })).toThrow('HTTP(S)');
+            expect(() => validateHeroImage('https://images.test/a.jpg')).toThrow('must be an object');
+        });
+
+        it('runs on every post write that carries a hero image or an Open Graph image', () => {
+            expect(() => validatePostWrite({ heroImage: { url: 'https://images.test/a.jpg' } })).toThrow(
+                'Hero image is required',
+            );
+            expect(validatePostWrite({ heroImage: null }).heroImage).toBeNull();
+            const file = { key: storedKey(4), variants: ['card'] };
+            expect(validatePostWrite({ seoMeta: { title: 'T', ogImage: file } }).seoMeta).toEqual({
+                title: 'T',
+                ogImage: file,
+            });
+            expect(validatePostWrite({ seoMeta: { title: 'T', ogImage: '' } }).seoMeta).toEqual({ title: 'T' });
+            expect(() => validatePostWrite({ seoMeta: { ogImage: { key: 'nope' } } })).toThrow(
+                'Open Graph image is not a valid stored file',
+            );
+            expect(() => validatePostWrite({ seoMeta: { ogImage: 'javascript:alert(1)' } })).toThrow('HTTP(S)');
         });
     });
 
@@ -302,7 +375,7 @@ describe('ottablog helpers', () => {
     });
 
     describe('validatePostWrite', () => {
-        const album = [{ id: 'p1', url: 'https://images.test/kyoto.jpg' }];
+        const album = [{ id: 'p1', image: 'https://images.test/kyoto.jpg' }];
 
         it('touches only the columns present in the write', () => {
             // A PATCH of one column must not be read as "clear everything else". This is the rule
@@ -316,19 +389,19 @@ describe('ottablog helpers', () => {
         it('normalizes what it accepts', () => {
             const write = validatePostWrite({
                 contentType: 'photo',
-                photoAlbum: [{ id: 'p1', url: '  https://images.test/kyoto.jpg  ' }],
+                photoAlbum: [{ id: 'p1', image: '  https://images.test/kyoto.jpg  ' }],
                 photoNote: '  Rain and blue hour.  ',
                 crossposts: ['https://www.instagram.com/p/abc'],
             });
 
-            expect(write.photoAlbum[0].url).toBe('https://images.test/kyoto.jpg');
+            expect(write.photoAlbum[0].image).toBe('https://images.test/kyoto.jpg');
             expect(write.photoNote).toBe('Rain and blue hour.');
             expect(write.crossposts).toEqual([{ url: 'https://www.instagram.com/p/abc' }]);
         });
 
         it('rejects an unsafe photograph URL wherever the write came from', () => {
             expect(() =>
-                validatePostWrite({ contentType: 'photo', photoAlbum: [{ url: 'javascript:alert(1)' }] }),
+                validatePostWrite({ contentType: 'photo', photoAlbum: [{ image: 'javascript:alert(1)' }] }),
             ).toThrow('HTTP(S)');
         });
 

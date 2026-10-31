@@ -7,6 +7,7 @@
 import { useMemo } from 'react';
 import { buildItemTree, type MenuItemTreeNode } from '../treeUtils';
 import type { MenuItemDto } from '../types';
+import { MenuItemImage } from './MenuItemImage';
 import { MenuItemLink } from './MenuItemLink';
 
 export interface DropdownMenuRendererProps {
@@ -17,7 +18,6 @@ export interface DropdownMenuRendererProps {
 // ── Single dropdown item with optional image + description ───────────────
 function DropdownItem({ node, depth, pathname }: { node: MenuItemTreeNode; depth: number; pathname: string }) {
     const item = node.item;
-    const hasImage = !!item.image;
     const hasDescription = !!item.description;
 
     return (
@@ -28,7 +28,7 @@ function DropdownItem({ node, depth, pathname }: { node: MenuItemTreeNode; depth
                 className="block w-full"
                 renderChildren={
                     <span className="flex items-center gap-2.5">
-                        {hasImage && <img src={item.image!} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />}
+                        <MenuItemImage image={item.image} className="h-4 w-4 shrink-0 rounded object-cover" />
                         <span className="flex flex-col">
                             <span className="text-sm">{item.name}</span>
                             {hasDescription && (

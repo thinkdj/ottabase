@@ -1,5 +1,6 @@
+import type { StoredFile } from '@ottabase/utils/media';
 import { toolboxEntry } from '../../blocks';
-import { button, h, iconEl } from '../../ui/kit';
+import { button, h, iconEl, PRIVATE_FILE_MESSAGE, type MediaSelection } from '../../ui/kit';
 import './MediaLibraryTool.css';
 
 /** Subset of the Editor.js Block API used by this tool */
@@ -23,21 +24,6 @@ interface EditorJsApi {
 
 interface EditorJsBlock {
     id: string;
-}
-
-interface MediaFilePayload {
-    url: string;
-    name?: string;
-    caption?: string;
-    alt?: string;
-    width?: number;
-    height?: number;
-    mediaId?: string;
-    mimeType?: string;
-    mediaKind?: string;
-    title?: string;
-    thumbnailUrl?: string;
-    previewUrl?: string;
 }
 
 /** Per-editor activation state, keyed by a namespace string (defaults to 'default') */
@@ -74,7 +60,7 @@ function attachSharedListener(ns: string) {
     attachedNamespaces.add(ns);
 
     window.addEventListener('media-library-selected-item', async (e: Event) => {
-        const detail = (e as CustomEvent<{ media: MediaFilePayload; openedVia?: string; field?: string }>).detail;
+        const detail = (e as CustomEvent<{ media: MediaSelection; openedVia?: string; field?: string }>).detail;
         // A `field` token means a block's own media input asked for this one
         if (detail?.field) return;
         const state = getState(ns);
@@ -99,6 +85,7 @@ function attachSharedListener(ns: string) {
 export default class MediaLibraryTool {
     private api: EditorJsApi;
     private wrapper: HTMLElement;
+    private status: HTMLElement;
     private block: EditorJsBlock;
     private namespace: string;
 
@@ -110,6 +97,7 @@ export default class MediaLibraryTool {
         this.api = api;
         this.block = block;
         this.wrapper = h('div', { className: 'oe-picker', dataset: { block: 'mediaLibrary' } });
+        this.status = h('p', { className: 'oe-hint oe-status', role: 'status' });
 
         // Namespace isolates state when multiple editors exist on the same page
         this.namespace = (config?.namespace as string) || 'default';
@@ -118,10 +106,16 @@ export default class MediaLibraryTool {
         attachSharedListener(this.namespace);
     }
 
-    async handleMediaSelected(detail: { media: MediaFilePayload; openedVia?: string }) {
-        const file = detail.media;
+    async handleMediaSelected(detail: { media: MediaSelection; openedVia?: string }) {
+        const media = detail.media;
         const mediaLibOpenedVia = detail.openedVia === 'programmatic';
         const state = getState(this.namespace);
+        // Content keeps the stored file; a private one has none to keep, so the picker stays.
+        if (!media?.file) {
+            this.status.textContent = PRIVATE_FILE_MESSAGE;
+            return;
+        }
+        this.status.textContent = '';
 
         try {
             let currentIndex = this.api.blocks.getCurrentBlockIndex();
@@ -140,9 +134,9 @@ export default class MediaLibraryTool {
             currentIndex =
                 currentIndex < 0 ? (state.activeBlockIndex ?? this.api.blocks.getBlocksCount()) : currentIndex;
 
-            const kind = file.mediaKind || 'image';
-            if (kind === 'image') await this.insertImage(file, currentIndex);
-            else await this.insertMediaEmbed(file, currentIndex);
+            const kind = media.mediaKind || 'image';
+            if (kind === 'image') await this.insertImage(media, media.file, currentIndex);
+            else await this.insertMediaEmbed(media, media.file, currentIndex);
 
             this.wrapper.hidden = true;
             state.activeBlockIndex = null;
@@ -153,19 +147,13 @@ export default class MediaLibraryTool {
         }
     }
 
-    private async insertImage(file: MediaFilePayload, index: number) {
+    private async insertImage(media: MediaSelection, file: StoredFile, index: number) {
         return this.api.blocks.insert(
             'image',
             {
-                success: 1,
-                url: file.url,
-                file: { url: file.url },
-                caption: file.caption || file.name,
-                alt: file.alt || '',
-                width: file.width || undefined,
-                height: file.height || undefined,
-                mediaId: file.mediaId || undefined,
-                mimeType: file.mimeType || undefined,
+                image: file,
+                caption: media.caption || media.name || '',
+                alt: media.alt || '',
                 withBorder: true,
                 withBackground: true,
                 stretched: false,
@@ -176,18 +164,15 @@ export default class MediaLibraryTool {
         );
     }
 
-    private async insertMediaEmbed(file: MediaFilePayload, index: number) {
+    private async insertMediaEmbed(media: MediaSelection, file: StoredFile, index: number) {
         return this.api.blocks.insert(
             'mediaEmbed',
             {
-                url: file.url,
-                title: file.title || file.name || '',
-                caption: file.caption || '',
-                mediaId: file.mediaId || undefined,
-                mimeType: file.mimeType || '',
-                mediaKind: file.mediaKind || 'other',
-                thumbnailUrl: file.thumbnailUrl || undefined,
-                previewUrl: file.previewUrl || undefined,
+                media: file,
+                title: media.title || media.name || '',
+                caption: media.caption || '',
+                mimeType: media.mimeType || '',
+                mediaKind: media.mediaKind || 'other',
             },
             {},
             index,
@@ -218,6 +203,7 @@ export default class MediaLibraryTool {
                 size: 'sm',
                 onClick: () => this.openMediaLib(),
             }),
+            this.status,
         );
         return this.wrapper;
     }

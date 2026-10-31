@@ -2,6 +2,7 @@
  * PostSeries table schema - group related posts into a series
  */
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import type { FileSource } from '@ottabase/utils/media';
 
 export const seriesTable = sqliteTable(
     'series',
@@ -19,9 +20,9 @@ export const seriesTable = sqliteTable(
         // Series description
         description: text('description'),
 
-        // Cover image for the series
+        // Cover image for the series: a stored file or an outside address
         coverImage: text('cover_image', { mode: 'json' }).$type<{
-            url: string;
+            image: FileSource;
             alt?: string;
         }>(),
 
