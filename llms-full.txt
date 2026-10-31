@@ -5874,6 +5874,26 @@ Cache → Custom Purge).
 **Uploads have their own rate limiter**, `OBCF_RATE_LIMITER_UPLOADS` (60 a minute per user, in every env block); a
 production deploy without it refuses uploads.
 
+### Turnstile: the bot check on public forms
+
+Every form a stranger can submit (sign in, register, magic link, password reset, verification resend, protected post
+unlock, anonymous comments, the landing lead form, and Pro's newsletter and status subscribe forms) checks for bots with
+Cloudflare Turnstile. It is free, invisible for most people, and off until you turn it on.
+
+1. Cloudflare dashboard → Turnstile → Add widget: mode **Managed**, hostnames = the app's domains (production and the
+   demo; the landing site too if it is on another domain).
+2. Paste the **site key** into `TURNSTILE_SITE_KEY` in each env block's `vars` in `wrangler.jsonc` (it is public; named
+   envs do not inherit `vars`). Set the **secret key** per env:
+   `wrangler secret put TURNSTILE_SECRET_KEY --env production`.
+3. Do the same in `apps/otta-landing/wrangler.jsonc` if the landing site is deployed.
+
+Checks run only when both keys are set, so a secret alone never locks the forms. Admin → System readiness shows both.
+When Cloudflare cannot be reached, forms that mail an address or create something refuse with a 503, and password
+sign-in goes through (logged) behind its rate limit. Preview and staging can use Cloudflare's test keys (site
+`1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`), which pass on any hostname. Try it at
+`/demo/cloudflare/turnstile`; `packages/cf/README.md` ("Turnstile") has the API for adding it to a new form. If a
+Content-Security-Policy is added later, allow `https://challenges.cloudflare.com` in `script-src` and `frame-src`.
+
 ---
 
 ## Troubleshooting
@@ -5988,6 +6008,8 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 - [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets); it creates all three R2 buckets
 - [ ] Files: a custom domain on the public bucket (a separate registrable domain), `R2_PUBLIC_URL`, the Transform Rule,
       the CSAM Scanning Tool, `FILES_SIGNING_SECRET` (see "Files" above)
+- [ ] Turnstile: a widget, `TURNSTILE_SITE_KEY` in each env's vars, `TURNSTILE_SECRET_KEY` as a secret (see "Turnstile"
+      above)
 - [ ] Validate: `pnpm cf:validate`
 - [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
 - [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)
@@ -9752,6 +9774,28 @@ export async function GET(request: Request) {
 }
 ```
 
+### Turnstile
+
+Cloudflare's bot check on a form a stranger can submit: the page renders `useTurnstile(action)` from
+`@ottabase/ui/turnstile`, the route checks the token it sends. Off until `TURNSTILE_SITE_KEY` (a var) and
+`TURNSTILE_SECRET_KEY` (a secret) are both set; see `docs/CLOUDFLARE_DEPLOY.md` ("Turnstile").
+
+```typescript
+import { requireHuman } from '@ottabase/cf/turnstile';
+
+export async function POST(request: Request) {
+    const { env } = await getCloudflareContext();
+    // After the rate limit above, so a flood never reaches Cloudflare's siteverify.
+    const denied = await requireHuman(request, {
+        secret: env.TURNSTILE_SECRET_KEY,
+        action: 'contact',
+        unreachable: 'refuse',
+    });
+    if (denied) return denied;
+    return Response.json({ success: true });
+}
+```
+
 ### Vectorize
 
 ```typescript
@@ -9934,6 +9978,7 @@ Working examples available at:
 - `/demo/cloudflare/images` - Image Upload
 - `/demo/cloudflare/queues` - Message Queues
 - `/demo/cloudflare/rate-limiting` - Rate Limiting
+- `/demo/cloudflare/turnstile` - Turnstile, with Cloudflare's test keys
 
 ## Resources
 
@@ -11175,6 +11220,40 @@ These routes live in the app and call `hashPassword` / `verifyPassword` / `getSe
 | `/api/auth/config`                 | GET       |
 | `/api/users/me`                    | GET/PATCH |
 
+Register signs the new account in itself when no email verification is required: it checks the CSRF token with
+`requireCsrf(request, env, body.csrfToken)` and finishes with `completeSignIn(user, env, request, options)`, the same
+tail the credentials callback runs (first-user bootstrap, `onSignIn`, the session cookie). `completeSignIn` returns
+`{ cookie, session }`, or null when the account could not be finished; answer 500 and set no cookie then.
+
+```typescript
+import { completeSignIn, requireCsrf } from '@ottabase/auth/backend';
+
+const rejected = await requireCsrf(request, env, body.csrfToken);
+if (rejected) return rejected;
+// ... create the user ...
+const signedIn = await completeSignIn({ id, email, name, image: null, emailVerified: null }, env, request, options);
+if (!signedIn) return errorResponse('Account created, but signing in failed', 500);
+return jsonResponse({ success: true, session: signedIn.session }, 200, { headers: { 'Set-Cookie': signedIn.cookie } });
+```
+
+### Bot checks on the public forms
+
+The package does no bot checking itself; the host app wraps the routes. In otta-web every anonymous form passes
+Cloudflare Turnstile after its rate limit (`apps/otta-web/worker/lib/turnstile.ts`), and the three that mail an address
+answer once per address per minute:
+
+| Form                   | Route                                   | Action           | Cloudflare unreachable | Mail cooldown |
+| ---------------------- | --------------------------------------- | ---------------- | ---------------------- | ------------- |
+| Password sign-in       | `POST /api/auth/callback/credentials`   | `signin`         | let through            |               |
+| Magic link             | `POST /api/auth/signin/email`           | `signin`         | refused                | yes           |
+| Register               | `POST /api/auth/register`               | `register`       | refused                |               |
+| Password reset request | `POST /api/auth/password/reset/request` | `password-reset` | refused                | yes           |
+| Verification resend    | `POST /api/auth/verify-email/resend`    | `verify-resend`  | refused                | yes           |
+
+A signed-in verification resend (the profile page) skips Turnstile. During a cooldown the route answers exactly as if it
+had sent. The browser side is the `headers` option of the client calls and the `botCheck` slot of the components
+(below).
+
 ## First-user provisioning
 
 `bootstrapFirstUser()` runs before credentials, OAuth, or magic-link session issuance. Exactly one user can atomically
@@ -11356,18 +11435,18 @@ const valid = await verifyPassword(password, passwordHash);
 
 CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie (`ottabase.csrf-token`, `__Host-`
 prefixed in production) containing `token.hmac(token)` and returns the plain `token` in the JSON body. State-changing
-endpoints (credentials sign-in, magic-link send, sign-out) require the client to echo that token back in the request
-body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the server also rejects any
-request whose `Origin` header is present but not in the allowlist (same-origin or the configured `AUTH_URL`), so a
-cross-site request is refused even before the token check. The two failures answer 403 with different errors:
-`Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on `127.0.0.1`, which
-the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API handles the token
-automatically:
+endpoints (credentials sign-in, magic-link send, sign-out, and the app's register route) require the client to echo that
+token back in the request body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the
+server also rejects any request whose `Origin` header is present but not in the allowlist (same-origin or the configured
+`AUTH_URL`), so a cross-site request is refused even before the token check. The two failures answer 403 with different
+errors: `Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on
+`127.0.0.1`, which the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API
+handles the token automatically:
 
 ```typescript
 import { getCsrfToken, signInWithCredentials } from '@ottabase/auth/client';
 
-const csrfToken = await getCsrfToken(); // also called internally by signInWithCredentials/sendMagicLink/signOut
+const csrfToken = await getCsrfToken(); // also called internally by signInWithCredentials/sendMagicLink/registerWithCredentials/signOut
 await signInWithCredentials({ email, password });
 ```
 
@@ -11508,8 +11587,9 @@ await signInWithCredentials({ email, password }, { redirect: false });
 await signInWithProvider('github', { redirectTo: '/dashboard' });
 await sendMagicLink(email, { redirectTo: '/dashboard' });
 
-// Requires the host app's /api/auth/register endpoint
-await registerWithCredentials({ name, email, password, referralCode });
+// Requires the host app's /api/auth/register endpoint. Signs the account in unless email
+// verification is required: `session` is set and the cookie is already there.
+const { session, requiresEmailVerification } = await registerWithCredentials({ name, email, password, referralCode });
 
 const result = await getSession(); // SessionFetchResult; retries transient 502/503/504 responses
 if (result.state === 'authenticated') {
@@ -11526,6 +11606,18 @@ await verifyEmail(token, email);
 await requestPasswordReset(email);
 await resetPassword({ email, token, password });
 await changePassword({ currentPassword, newPassword });
+```
+
+The calls behind public forms (`signInWithCredentials`, `sendMagicLink`, `registerWithCredentials`,
+`requestPasswordReset`, `requestEmailVerification`) take `headers` in their options, merged into the request. A form's
+bot check goes there, read once per submit right before the call:
+
+```tsx
+import { useTurnstile } from '@ottabase/ui/turnstile';
+
+const human = useTurnstile('password-reset');
+// ... {human.widget} inside the form, above its submit button ...
+await requestPasswordReset(email, { headers: await human.headers() });
 ```
 
 ## React Hooks
@@ -11632,6 +11724,24 @@ const config = getLoginConfig(process.env);
 
 Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm`, `RegisterForm`, `SocialLoginButtons` +
 `SocialLoginDivider`.
+
+`LoginForm`, `CredentialsForm`, `MagicLinkForm` and `RegisterForm` take a `botCheck` node rendered inside the form,
+above the submit button. `LoginForm` hands its one node to whichever method is showing, so one widget covers password
+and magic link:
+
+```tsx
+const human = useTurnstile('signin'); // from @ottabase/ui/turnstile
+
+<LoginForm
+    botCheck={human.widget}
+    onCredentialsLogin={async ({ email, password }) => {
+        await signInWithCredentials({ email, password }, { headers: await human.headers() });
+    }}
+    onMagicLinkSend={async (email) => {
+        await sendMagicLink(email, { headers: await human.headers() });
+    }}
+/>;
+```
 
 ## Environment Variables
 
@@ -12228,6 +12338,7 @@ Type-safe wrappers for all major Cloudflare Worker bindings:
 - **Browser Rendering**: PDF, screenshot, Markdown, links and structured extraction without puppeteer
 - **Workflows**: start, inspect and steer durable runs
 - **Durable Object alarms**: many named timers over the one alarm
+- **Turnstile**: the server check for Cloudflare's bot check on public forms
 
 ## Installation
 
@@ -12320,6 +12431,32 @@ if (!result.data.success) {
     return new Response('Too many requests', { status: 429 });
 }
 ```
+
+### Turnstile
+
+The server side of Cloudflare's bot check for forms a stranger can submit. The page renders the widget with
+`useTurnstile(action)` from `@ottabase/ui/turnstile`, which sends its token in the `X-Turnstile-Token` header
+(`TURNSTILE_HEADER`); the route checks it before doing any work:
+
+```typescript
+import { requireHuman } from '@ottabase/cf/turnstile';
+
+// Rate limit first: it is cheap and keeps a flood away from Cloudflare's siteverify.
+const denied = await requireHuman(request, {
+    secret: env.TURNSTILE_SECRET_KEY, // unset: every request passes, so tests and local runs need nothing
+    action: 'register', // the widget's action: a token made for another form is refused
+    unreachable: 'refuse', // or 'allow' (logged) where another gate still holds, like password sign-in
+});
+if (denied) return denied; // 403 TURNSTILE_FAILED, or 503 TURNSTILE_UNAVAILABLE
+```
+
+It checks that the token is genuine, unused (tokens work once and expire after five minutes), made for that action and
+made on the request's hostname (pass `hostname` when the form lives on another one). `verifyTurnstile` returns the
+verdict instead of a response (`missing`, `invalid`, `spent`, `action`, `hostname` or `unavailable`).
+`TURNSTILE_TEST_KEYS` holds Cloudflare's test site keys, secrets and dummy token; test secrets skip the action and
+hostname comparison, since their answers carry sample values. In otta-web, `worker/lib/turnstile.ts` binds this to the
+app's env (`guardPublicForm` = the rate limit, then this) and turns checks on only when both `TURNSTILE_SITE_KEY` and
+`TURNSTILE_SECRET_KEY` are set.
 
 ### Cache Keys (Multi-Tenant KV Scoping)
 
@@ -14005,6 +14142,7 @@ Threaded comment system for Ottabase apps with polymorphic targeting, reactions,
 - **Threaded replies** — self-referencing parent/child with depth tracking
 - **Emoji reactions** — normalized per-user rows in `comment_reactions`, enriched back into an aggregated map
 - **Moderation** — flag, hide, soft-delete, and restore actions
+- **Anonymous (guest) comments**: a display name, an optional private email, held for a moderator
 - **OttaORM fat model** — all logic lives in the `Comment` model class
 - **RLS-aware** — supports `organizationId` and `appId` for multi-tenant isolation
 
@@ -14022,20 +14160,22 @@ Use `workspace:*` for internal workspace packages:
 
 ## Schema
 
-| Column           | Type      | Description                                    |
-| ---------------- | --------- | ---------------------------------------------- |
-| `id`             | text (PK) | Auto-generated UUID                            |
-| `body`           | text      | Comment content                                |
-| `targetType`     | text      | Entity type being commented on (e.g. `'post'`) |
-| `targetId`       | text      | ID of the entity being commented on            |
-| `parentId`       | text      | Parent comment ID (null = top-level)           |
-| `userId`         | text      | Author's user ID (nullable for anonymous)      |
-| `status`         | text      | `active` \| `deleted` \| `flagged` \| `hidden` |
-| `depth`          | integer   | Nesting depth (0 = top-level, 1 = reply, etc.) |
-| `appId`          | text      | Multi-app support                              |
-| `organizationId` | text      | Multi-tenant support                           |
-| `createdAt`      | integer   | Unix epoch ms                                  |
-| `updatedAt`      | integer   | Unix epoch ms, auto-updated on save            |
+| Column           | Type      | Description                                                 |
+| ---------------- | --------- | ----------------------------------------------------------- |
+| `id`             | text (PK) | Auto-generated UUID                                         |
+| `body`           | text      | Comment content                                             |
+| `targetType`     | text      | Entity type being commented on (e.g. `'post'`)              |
+| `targetId`       | text      | ID of the entity being commented on                         |
+| `parentId`       | text      | Parent comment ID (null = top-level)                        |
+| `userId`         | text      | Author's user ID (null for an anonymous comment)            |
+| `authorName`     | text      | Guest's display name (null for a signed-in author)          |
+| `authorEmail`    | text      | Guest's optional email: `hidden`, never returned            |
+| `status`         | text      | `active` \| `pending` \| `deleted` \| `flagged` \| `hidden` |
+| `depth`          | integer   | Nesting depth (0 = top-level, 1 = reply, etc.)              |
+| `appId`          | text      | Multi-app support                                           |
+| `organizationId` | text      | Multi-tenant support                                        |
+| `createdAt`      | integer   | Unix epoch ms                                               |
+| `updatedAt`      | integer   | Unix epoch ms, auto-updated on save                         |
 
 Reactions are stored separately in `comment_reactions` with `commentId`, `emoji`, `userId`, and `createdAt`. Comment
 list responses enrich those rows into the familiar `reactions` map (`emoji` → user IDs); `reactions` is not a column on
@@ -14069,6 +14209,28 @@ const reply = await Comment.create({
 // depth is computed by Comment.create() from the parent (parent depth + 1); a supplied depth is ignored.
 ```
 
+### Anonymous comments
+
+A comment without a `userId` is a guest's. `Comment.create()` requires an `authorName` (control characters and runs of
+whitespace collapsed, up to `COMMENT_AUTHOR_NAME_MAX_LENGTH` = 80), accepts an optional `authorEmail`, and starts the
+comment `pending`; a moderator publishes it with `restore()` (status `active`). A missing name or a malformed email
+throws a 422 `DomainValidationError` with field errors. For a signed-in author both guest fields are dropped: the name
+comes from the account.
+
+```typescript
+const guest = await Comment.create({
+    body: 'Lovely write-up.',
+    targetType: 'post',
+    targetId: 'post-abc-123',
+    authorName: 'Ada',
+    authorEmail: 'ada@example.com', // optional; stored for the site owner, never returned by toJson()
+});
+guest.get('status'); // 'pending'
+await guest.restore(); // moderator approves: 'active'
+```
+
+`authorEmail` is in the model's `hidden` list, so no API read returns it.
+
 ### Toggling reactions
 
 ```typescript
@@ -14085,7 +14247,7 @@ await comment.toggleReaction('👍', 'user-xyz');
 await comment.flag(); // status → 'flagged'
 await comment.hide(); // status → 'hidden'
 await comment.softDelete(); // status → 'deleted', body → '[deleted]'
-await comment.restore(); // status → 'active'
+await comment.restore(); // status → 'active' (also publishes a pending comment)
 ```
 
 ### Querying via CRUD API
@@ -14094,18 +14256,48 @@ await comment.restore(); // status → 'active'
 GET /api/ottaorm/comments?where={"targetType":"post","targetId":"post-abc-123"}
 GET /api/ottaorm/comments?where={"targetType":"post","targetId":"post-abc-123","status":"active"}
 GET /api/ottaorm/comments?where={"parentId":"comment-id-123"}
+# A moderator's queue: no target, every pending comment in their scope
+GET /api/ottaorm/comments?where={"status":"pending"}&orderBy=createdAt&orderDirection=asc
 ```
 
-> **Note:** The route handler in `worker/routes/ottaorm-crud.ts` enforces two security rules:
+> **Note:** The route handler in `worker/routes/ottaorm-crud.ts` enforces these rules:
 >
-> 1. **`userId` / `organizationId`** are always overwritten from the session on POST — clients cannot impersonate other
->    users or cross tenants.
+> 1. **`userId` / `organizationId` / `appId`** are always overwritten on POST: the user from the session, the
+>    organization from the target post, the app from server config, so clients cannot impersonate other users or cross
+>    tenants.
 > 2. **Reactions** are not directly writable via PATCH. Send `_reaction: "<emoji>"` instead; the server calls
 >    `comment.toggleReaction(emoji, userId)`, scoping the change to the authenticated user only. Sending a raw
 >    `reactions` map in a PATCH body is silently ignored by the OttaORM sanitizer. The response includes the aggregated
 >    map even though it is not persisted on the comment row.
+> 3. **Anonymous POST** (no session, no API key) is a public form: a per-IP rate limit (`comments:create:<ip>`), then
+>    Turnstile with the action `comment` (header `X-Turnstile-Token`; 403 `TURNSTILE_FAILED` without a valid one, 503
+>    `TURNSTILE_UNAVAILABLE` when Cloudflare cannot be reached). Bot checks run only when the app sets both
+>    `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`. Signed-in commenters skip both.
+> 4. **The post decides**: a post with `allowComments: false` refuses every comment (403 `COMMENTS_CLOSED`). A post that
+>    allows comments accepts them from guests too; there is no separate "signed-in only" switch.
+> 5. **Moderation**: `pending` and `hidden` comments are listed to moderators only (a platform admin, or
+>    `comments:moderate` in the comment's org), whatever `status` the caller asks for, and a single read of one answers
+>    404 to anyone but its author and moderators. Only a moderator may change a status, except an author deleting their
+>    own comment. `authorEmail` cannot be filtered, looked up (`field`) or sorted on (400).
+> 6. **A list names its target** (`targetType` + `targetId`, else 400), except a moderator's queue: a moderator of the
+>    caller's own scope may list without a target and gets every comment in that scope, in the app. The scope is the
+>    ambient one, from the org switcher: the active org (where they hold `comments:moderate`), or for a platform admin
+>    in Platform scope the null org, which is the platform blog's.
+> 7. **A password-protected post** takes comments only from a reader who unlocked it: send the unlock route's
+>    `unlockToken` (see `@ottabase/ottablog`, valid 2 hours) as `X-Post-Unlock`, on top-level comments and replies
+>    alike. Without a valid token for that post the answer is 403 `POST_LOCKED`. The post's author, a comment moderator
+>    and a post manager in its org (`posts:manage` or `org:admin`) read it without the password, so they need no token.
 >
-> RLS uses `TenantScoped` policy to automatically scope reads to the current organization.
+> RLS: the package registers `TenantScoped(true)` for `comments` (`commentsPolicies()`): comments carry their target's
+> organization, which is null for a platform blog post, and the route derives the context's organization from the target
+> row, never from the caller.
+
+### Moderation queue
+
+otta-web's admin page `/admin/content/comments` (Content > Comments, org admins) is the queue: pending comments oldest
+first, a Hidden filter, and Approve (`status: 'active'`), Hide (`'hidden'`) and Delete (`'deleted'`, the soft delete)
+through `PATCH /api/ottaorm/comments/:id`. It lists without a target (rule 6), so it shows whatever scope the org
+switcher selects, and resolves the titles of a page's posts in one `GET /api/ottaorm/posts?where={"id":{"$in":[...]}}`.
 
 ### Client hooks
 
@@ -14176,7 +14368,9 @@ curl -X POST http://localhost:3004/api/ottaorm/init
 The template app includes a demo at `/demo/comments` with two modes:
 
 - **In-memory** (default) — local state with mock users/comments; works offline, no database required
-- **Database** — reads and writes to the actual D1 database via the CRUD API
+- **Database**: reads and writes to the actual D1 database via the CRUD API. Its `demo` target is public, like a
+  platform blog post: one thread for every visitor, in the null org. A signed-out visitor posts as a guest (a name and
+  the `comment` Turnstile check) and is told the comment waits for approval; it then sits in the Platform scope queue.
 
 Both modes use the same `CommentThread` renderer which supports:
 
@@ -14189,18 +14383,20 @@ Both modes use the same `CommentThread` renderer which supports:
 
 ## Types
 
-| Type                       | Description                                      |
-| -------------------------- | ------------------------------------------------ |
-| `CommentRecord`            | Full row type inferred from `commentsTable`      |
-| `NewCommentRecord`         | Insert type for creating new comments            |
-| `CommentReactionRecord`    | Row type inferred from `commentReactionsTable`   |
-| `NewCommentReactionRecord` | Insert type for reaction rows                    |
-| `CommentStatus`            | `'active' \| 'deleted' \| 'flagged' \| 'hidden'` |
-| `ReactionsMap`             | `Record<string, string[]>` — emoji → user IDs    |
-| `DefaultReaction`          | Union of the 6 built-in emoji strings            |
-| `CreateCommentParams`      | Parameters for creating a comment                |
-| `ListCommentsParams`       | Parameters for listing comments on a target      |
-| `DEFAULT_REACTIONS`        | `['👍', '👎', '❤️', '😂', '😮', '😢']`           |
+| Type                             | Description                                                   |
+| -------------------------------- | ------------------------------------------------------------- |
+| `CommentRecord`                  | Full row type inferred from `commentsTable`                   |
+| `NewCommentRecord`               | Insert type for creating new comments                         |
+| `CommentReactionRecord`          | Row type inferred from `commentReactionsTable`                |
+| `NewCommentReactionRecord`       | Insert type for reaction rows                                 |
+| `CommentStatus`                  | `'active' \| 'pending' \| 'deleted' \| 'flagged' \| 'hidden'` |
+| `UNPUBLISHED_COMMENT_STATUSES`   | `['pending', 'hidden']`: listed to moderators only            |
+| `COMMENT_AUTHOR_NAME_MAX_LENGTH` | `80`, the longest guest display name                          |
+| `ReactionsMap`                   | `Record<string, string[]>`: emoji → user IDs                  |
+| `DefaultReaction`                | Union of the 6 built-in emoji strings                         |
+| `CreateCommentParams`            | Parameters for creating a comment                             |
+| `ListCommentsParams`             | Parameters for listing comments on a target                   |
+| `DEFAULT_REACTIONS`              | `['👍', '👎', '❤️', '😂', '😮', '😢']`                        |
 
 
 ---
@@ -19705,7 +19901,16 @@ never "no such field".
 
 For password-protected posts that have not been unlocked, public serializers blank `content`, `footnotes`, `blurbText`,
 `photoNote`, `photoAlbum`, crossposts, and custom/plugin `meta`; `privateNotes` is omitted on every public response.
-Titles and excerpts remain available for the lock screen teaser.
+Titles and excerpts remain available for the lock screen teaser. The unlock call (`POST /api/blog/posts/unlock`) is a
+password guess a stranger can repeat, so the host gates it before this package's handler runs: otta-web rate limits it
+per IP and post and checks Turnstile with the action `post-unlock`.
+
+A right password also returns `unlockToken` (with `unlockExpiresAt`, Unix ms): an HMAC token signed with the
+`previewTokenSecret`, bound to the post's id, app and organization, valid for `UNLOCK_TOKEN_TTL_MS` (2 hours, a reading
+session). It carries `purpose: 'unlock'`, so it is never accepted as a preview token, nor a preview token as an unlock
+token. The reader keeps it in memory for that post and sends it where a write needs the post unlocked: otta-web refuses
+a comment on a protected post without it (header `X-Post-Unlock`). Without a configured secret there is no token. Hosts
+verify it with `verifyUnlockToken(secret, token, { postId, appId, organizationId })`.
 
 ### Post by Slug
 
@@ -20887,11 +21092,13 @@ comes from server configuration, never from the request.
 ## Leads (contact and signup forms)
 
 The `contact` and `signup` sections render `LeadForm` (`@ottabase/ottalanding/react`, a client component each theme
-styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which calls
-`LandingLead.submit(appId, body, { ipHash })` and stores a `landing_leads` row in the shared D1.
+styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which checks
+`LandingLead.overLimit(appId, ipHash)` and the bot check, then calls `LandingLead.submit(appId, body, { ipHash })` and
+stores a `landing_leads` row in the shared D1.
 
 ```ts
-await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored' | 'rate-limited'; field errors throw (422)
+await LandingLead.overLimit(appId, ipHash); // true once this network sent LEAD_RATE_LIMIT.max in the window (429)
+await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored'; field errors throw (422)
 await LandingLead.inbox(appId, { kind, limit, offset }); // { leads, total, unread }, newest first
 await LandingLead.setRead(appId, id, read);
 await LandingLead.deleteFor(appId, id);
@@ -20905,8 +21112,14 @@ leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the not
 **Spam.** Two cheap bot checks: a hidden `website` field people never fill in, and the time spent on the form (under
 `LEAD_MIN_FILL_MS`, a person can't have typed it). Either one makes `submit` return `ignored`. The visitor still sees
 the thank-you, so a bot learns nothing. On top of that, each network (a salted SHA-256 of app + IP, never the IP itself)
-is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
+is limited to `LEAD_RATE_LIMIT` entries per window: `overLimit` turns true and the route answers 429. A repeat signup
 for the same email is accepted but stored once.
+
+**Turnstile.** `LeadForm` renders Cloudflare's widget (`useTurnstile` from `@ottabase/ui/turnstile`, action
+`LEAD_TURNSTILE_ACTION`, `lead`) above its button and sends the token with the submit. It reads the site key from the
+`<meta name="turnstile-site-key">` the host page renders, after mount, so the server render and hydration agree. Without
+that meta tag the widget is absent and no header is sent. The route checks the token after the rate limit
+(`requireHuman` from `@ottabase/cf/turnstile`); a refusal (403 `TURNSTILE_FAILED`) shows as the form's error.
 
 **Notifications** live in otta-web, where the bus and the mail provider are. An every-minute DB-scheduler task
 (`landing:notify-leads`, seeded on install, visible and pausable in Admin › Cron) does two jobs, each on its own marker
@@ -26943,6 +27156,7 @@ Make Tailwind scan the package and load the stylesheet:
 | `@ottabase/ui`                  | Every component except `JsonEditor`, plus `cn`, `toast`, the providers and the brand override hooks |
 | `@ottabase/ui/<component>`      | One component per entry (`button`, `dialog`, `confirm-dialog`, `split-pane`, …)                     |
 | `@ottabase/ui/json-editor`      | `JsonEditor` and its JSON types. Kept off the root entry: it is large and few screens need it       |
+| `@ottabase/ui/turnstile`        | `useTurnstile`, the Cloudflare Turnstile widget for public forms (see below)                        |
 | `@ottabase/ui/providers`        | `UIProviders` and `ThemeProvider` on their own                                                      |
 | `@ottabase/ui/brand-components` | The Tier-2 component override registry on its own                                                   |
 | `@ottabase/ui/lib/utils`        | `cn` on its own                                                                                     |
@@ -27059,6 +27273,33 @@ Props: `value`, `onChange`, `readOnly`, `defaultMode` (`'tree' | 'raw'`), `colla
 `Enter` commits an inline edit and `Escape` cancels; in Raw mode `Ctrl/Cmd+S` formats. `@ottabase/forms` uses it for
 `fieldType: 'json'` fields and the blog editor for its Custom Meta tab: use it rather than adding a JSON editor
 dependency.
+
+## Turnstile
+
+The browser side of Cloudflare's bot check, for forms a stranger can submit. One hook per form:
+
+```tsx
+import { useTurnstile } from '@ottabase/ui/turnstile';
+
+const human = useTurnstile('register'); // the action the route checks
+// in the form, above the submit button (null when bot checks are off):
+{
+    human.widget;
+}
+// on submit, once per request:
+await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { ...(await human.headers()), 'Content-Type': 'application/json' },
+    body,
+});
+```
+
+The widget is invisible for most people and shows a challenge only when Cloudflare wants one (`appearance: 'always'`
+shows it regardless). `headers()` waits for the token, hands it over once (tokens are single use) and readies the next
+one. The script loads once per page; the widget follows the page's `lang` and its `.dark` / `.light` class. The site key
+comes from `configureTurnstile({ siteKey })`, else `<meta name="turnstile-site-key">` (otta-web's Worker adds it to
+every document when the keys are set), else the hook's `siteKey` option. Without one nothing renders and `headers()` is
+empty. The server checks the header with `requireHuman` from `@ottabase/cf/turnstile`.
 
 ## Design System v1 pieces
 

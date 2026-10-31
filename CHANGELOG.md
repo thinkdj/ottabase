@@ -9,6 +9,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Turnstile on every public form.** Cloudflare's bot check, free and invisible for most people, guards password
+  sign-in, the magic link, register, password reset, verification resend, protected post unlock, anonymous comments, the
+  landing lead form and (Pro) the newsletter and status page subscribe forms. `@ottabase/cf/turnstile` is the server
+  check (`requireHuman`, `verifyTurnstile`, `TURNSTILE_TEST_KEYS`): the token in `X-Turnstile-Token`, single use, bound
+  to the form's action and the page's hostname, 403 `TURNSTILE_FAILED`. `@ottabase/ui/turnstile` is the browser side
+  (`useTurnstile(action)`: the widget, shown only when Cloudflare wants a click, and `headers()` for the submit). In
+  otta-web, `guardPublicForm` (the rate limit, then Turnstile) and `TURNSTILE_ACTIONS` (`ottabase/turnstile.ts`); the
+  Worker adds `<meta name="turnstile-site-key">` to every document. Off until `TURNSTILE_SITE_KEY` (a var in every env
+  block) and `TURNSTILE_SECRET_KEY` (a secret) are both set; Admin, System readiness shows both. When Cloudflare is
+  unreachable, forms that mail or create refuse with 503 and password sign-in goes through, logged, behind its rate
+  limit. Demo at `/demo/cloudflare/turnstile` with Cloudflare's test keys; setup in `docs/CLOUDFLARE_DEPLOY.md`.
+- **Anonymous comments.** A signed-out visitor can comment on a post that allows comments, with a name and an optional
+  email (stored for the site owner, hidden from every read and never queryable), after Turnstile and a per-IP limit. A
+  guest comment starts `pending`; Admin, Content, Comments is the moderation queue (approve, hide, delete). Pending and
+  hidden comments are listed to moderators only.
+- **One mail per address per minute** for the magic link, password reset and verification resend; a repeat inside the
+  minute answers as if it had sent.
+- Register signs the new account in itself (Origin and CSRF checked like sign-in) and returns the session, instead of
+  the page making a second sign-in call; `completeSignIn` in `@ottabase/auth/backend` is the shared tail.
+
 - **Images render at the size the screen needs.** Content keeps an uploaded image as a `StoredFile`
   (`{ key, width, height, variants }`) or an outside address as a string (`FileSource`), never a stored URL.
   `@ottabase/utils/media` is the one home for the key format, the variant widths and the URL base: `configureMedia` (the
@@ -289,6 +309,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Rate limiters follow one rule when their binding is missing:** closed in production, open (logged) elsewhere. The
+  secret-gated throttle (bootstrap, platform-owner promote, migrations) used to let requests through everywhere.
+- `/api/ottaorm/init` takes `MIGRATION_SECRET` from a Bearer header or the JSON body only, never `?secret=`, compares it
+  in constant time, and throttles failed attempts per IP. The bootstrap secret is compared in constant time too.
+- Comments: a post with `allowComments: false` refuses comments in the API (403 `COMMENTS_CLOSED`), not only in the UI;
+  an author can delete their comment but only a moderator changes any other status. The comments RLS policy lives in the
+  comments package (it allows a null tenant, so platform blogs take comments).
+- Landing leads: the per-network limit runs before Turnstile (`LandingLead.overLimit`); `submit` no longer counts.
 - **Image fields hold a `FileSource`.** Editor blocks: `advancedImage.image`, `beforeAfter.before`/`after`,
   `imageHotspots.image`, `mediaEmbed.media`, gallery items `media` (with `alt`), `review.image`,
   `testimonial.authorAvatar`/`companyLogo`; the old `url`, `file.url`, `mediaId`, `thumbnailUrl`, `previewUrl`, `width`
@@ -545,6 +573,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- Protected post unlock had no rate limit, so a post's password could be guessed.
+- Comments on platform-mode blog posts failed for everyone (the core policy required an organization).
 - Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
   `alt`/`name`).
 - Saving a post in the admin keeps its `seoMeta.ogImage`.
