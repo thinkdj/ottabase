@@ -73,6 +73,10 @@ const mailer = suppressions.guard(resendMailer, appId, 'newsletter'); // drops s
 
 Hard bounces and complaints from the webhooks are recorded as `*` suppressions automatically.
 
+`email_suppressions` is indexed for both lookups a sender makes: `(app_id, list, address)` (unique) for the send-time
+check of an address against `*` and one list, and `(app_id, address)` for one address across every list (a person's
+timeline).
+
 ## Unsubscribe
 
 ```typescript

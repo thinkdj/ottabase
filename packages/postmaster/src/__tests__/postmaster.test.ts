@@ -1,6 +1,7 @@
 import type { Mailer } from '@ottabase/email';
 import { createPackageRegistry, mountPackages } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
+import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it, vi } from 'vitest';
 import {
     createInboundEmailHandler,
@@ -8,6 +9,7 @@ import {
     createPostmasterPackage,
     createSuppressions,
     createUnsubscribe,
+    emailSuppressionsTable,
     parseRawEmail,
     parseResendEvent,
     parseSesNotification,
@@ -154,6 +156,24 @@ describe('suppressions', () => {
         expect(await suppressions.unsuppress('app', 'tired@example.org', 'newsletter')).toBe(true);
         expect(await suppressions.isSuppressed('app', 'tired@example.org', 'newsletter')).toBe(false);
         expect(await suppressions.list('app')).toHaveLength(1);
+    });
+
+    it('indexes the send-time check (app, list, address) and one address across lists (app, address)', () => {
+        const indexes = Object.fromEntries(
+            getTableConfig(emailSuppressionsTable).indexes.map((index) => [
+                index.config.name,
+                {
+                    unique: index.config.unique,
+                    columns: index.config.columns.map((column) => (column as { name: string }).name),
+                },
+            ]),
+        );
+
+        expect(indexes).toEqual({
+            email_suppressions_address_idx: { unique: true, columns: ['app_id', 'list', 'address'] },
+            email_suppressions_app_address_idx: { unique: false, columns: ['app_id', 'address'] },
+            email_suppressions_app_idx: { unique: false, columns: ['app_id', 'created_at'] },
+        });
     });
 });
 

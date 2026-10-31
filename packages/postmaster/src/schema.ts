@@ -22,7 +22,10 @@ export const emailSuppressionsTable = sqliteTable(
             .$defaultFn(() => Date.now()),
     },
     (table) => ({
+        // Send-time checks: one address (or a batch) against `*` and one list.
         addressIdx: uniqueIndex('email_suppressions_address_idx').on(table.appId, table.list, table.address),
+        // One address across every list (a person's timeline); `list` in the middle above cannot serve it.
+        appAddressIdx: index('email_suppressions_app_address_idx').on(table.appId, table.address),
         appIdx: index('email_suppressions_app_idx').on(table.appId, table.createdAt),
     }),
 );
