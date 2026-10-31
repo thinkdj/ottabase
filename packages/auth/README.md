@@ -88,6 +88,40 @@ These routes live in the app and call `hashPassword` / `verifyPassword` / `getSe
 | `/api/auth/config`                 | GET       |
 | `/api/users/me`                    | GET/PATCH |
 
+Register signs the new account in itself when no email verification is required: it checks the CSRF token with
+`requireCsrf(request, env, body.csrfToken)` and finishes with `completeSignIn(user, env, request, options)`, the same
+tail the credentials callback runs (first-user bootstrap, `onSignIn`, the session cookie). `completeSignIn` returns
+`{ cookie, session }`, or null when the account could not be finished; answer 500 and set no cookie then.
+
+```typescript
+import { completeSignIn, requireCsrf } from '@ottabase/auth/backend';
+
+const rejected = await requireCsrf(request, env, body.csrfToken);
+if (rejected) return rejected;
+// ... create the user ...
+const signedIn = await completeSignIn({ id, email, name, image: null, emailVerified: null }, env, request, options);
+if (!signedIn) return errorResponse('Account created, but signing in failed', 500);
+return jsonResponse({ success: true, session: signedIn.session }, 200, { headers: { 'Set-Cookie': signedIn.cookie } });
+```
+
+### Bot checks on the public forms
+
+The package does no bot checking itself; the host app wraps the routes. In otta-web every anonymous form passes
+Cloudflare Turnstile after its rate limit (`apps/otta-web/worker/lib/turnstile.ts`), and the three that mail an address
+answer once per address per minute:
+
+| Form                   | Route                                   | Action           | Cloudflare unreachable | Mail cooldown |
+| ---------------------- | --------------------------------------- | ---------------- | ---------------------- | ------------- |
+| Password sign-in       | `POST /api/auth/callback/credentials`   | `signin`         | let through            |               |
+| Magic link             | `POST /api/auth/signin/email`           | `signin`         | refused                | yes           |
+| Register               | `POST /api/auth/register`               | `register`       | refused                |               |
+| Password reset request | `POST /api/auth/password/reset/request` | `password-reset` | refused                | yes           |
+| Verification resend    | `POST /api/auth/verify-email/resend`    | `verify-resend`  | refused                | yes           |
+
+A signed-in verification resend (the profile page) skips Turnstile. During a cooldown the route answers exactly as if it
+had sent. The browser side is the `headers` option of the client calls and the `botCheck` slot of the components
+(below).
+
 ## First-user provisioning
 
 `bootstrapFirstUser()` runs before credentials, OAuth, or magic-link session issuance. Exactly one user can atomically
@@ -269,18 +303,18 @@ const valid = await verifyPassword(password, passwordHash);
 
 CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie (`ottabase.csrf-token`, `__Host-`
 prefixed in production) containing `token.hmac(token)` and returns the plain `token` in the JSON body. State-changing
-endpoints (credentials sign-in, magic-link send, sign-out) require the client to echo that token back in the request
-body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the server also rejects any
-request whose `Origin` header is present but not in the allowlist (same-origin or the configured `AUTH_URL`), so a
-cross-site request is refused even before the token check. The two failures answer 403 with different errors:
-`Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on `127.0.0.1`, which
-the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API handles the token
-automatically:
+endpoints (credentials sign-in, magic-link send, sign-out, and the app's register route) require the client to echo that
+token back in the request body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the
+server also rejects any request whose `Origin` header is present but not in the allowlist (same-origin or the configured
+`AUTH_URL`), so a cross-site request is refused even before the token check. The two failures answer 403 with different
+errors: `Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on
+`127.0.0.1`, which the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API
+handles the token automatically:
 
 ```typescript
 import { getCsrfToken, signInWithCredentials } from '@ottabase/auth/client';
 
-const csrfToken = await getCsrfToken(); // also called internally by signInWithCredentials/sendMagicLink/signOut
+const csrfToken = await getCsrfToken(); // also called internally by signInWithCredentials/sendMagicLink/registerWithCredentials/signOut
 await signInWithCredentials({ email, password });
 ```
 
@@ -421,8 +455,9 @@ await signInWithCredentials({ email, password }, { redirect: false });
 await signInWithProvider('github', { redirectTo: '/dashboard' });
 await sendMagicLink(email, { redirectTo: '/dashboard' });
 
-// Requires the host app's /api/auth/register endpoint
-await registerWithCredentials({ name, email, password, referralCode });
+// Requires the host app's /api/auth/register endpoint. Signs the account in unless email
+// verification is required: `session` is set and the cookie is already there.
+const { session, requiresEmailVerification } = await registerWithCredentials({ name, email, password, referralCode });
 
 const result = await getSession(); // SessionFetchResult; retries transient 502/503/504 responses
 if (result.state === 'authenticated') {
@@ -439,6 +474,18 @@ await verifyEmail(token, email);
 await requestPasswordReset(email);
 await resetPassword({ email, token, password });
 await changePassword({ currentPassword, newPassword });
+```
+
+The calls behind public forms (`signInWithCredentials`, `sendMagicLink`, `registerWithCredentials`,
+`requestPasswordReset`, `requestEmailVerification`) take `headers` in their options, merged into the request. A form's
+bot check goes there, read once per submit right before the call:
+
+```tsx
+import { useTurnstile } from '@ottabase/ui/turnstile';
+
+const human = useTurnstile('password-reset');
+// ... {human.widget} inside the form, above its submit button ...
+await requestPasswordReset(email, { headers: await human.headers() });
 ```
 
 ## React Hooks
@@ -545,6 +592,24 @@ const config = getLoginConfig(process.env);
 
 Individual pieces are also exported: `CredentialsForm`, `MagicLinkForm`, `RegisterForm`, `SocialLoginButtons` +
 `SocialLoginDivider`.
+
+`LoginForm`, `CredentialsForm`, `MagicLinkForm` and `RegisterForm` take a `botCheck` node rendered inside the form,
+above the submit button. `LoginForm` hands its one node to whichever method is showing, so one widget covers password
+and magic link:
+
+```tsx
+const human = useTurnstile('signin'); // from @ottabase/ui/turnstile
+
+<LoginForm
+    botCheck={human.widget}
+    onCredentialsLogin={async ({ email, password }) => {
+        await signInWithCredentials({ email, password }, { headers: await human.headers() });
+    }}
+    onMagicLinkSend={async (email) => {
+        await sendMagicLink(email, { headers: await human.headers() });
+    }}
+/>;
+```
 
 ## Environment Variables
 

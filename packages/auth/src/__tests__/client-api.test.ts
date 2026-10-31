@@ -3,6 +3,9 @@ import {
     changePassword,
     getCsrfToken,
     getSession,
+    registerWithCredentials,
+    requestEmailVerification,
+    requestPasswordReset,
     sendMagicLink,
     signInWithCredentials,
     signInWithProvider,
@@ -299,5 +302,50 @@ describe('the sign-in destination', () => {
             .filter(([url]) => String(url).endsWith('/signin/email'))
             .map(([, init]) => JSON.parse(init?.body as string).callbackUrl);
         expect(bodies).toEqual(['/', '/billing']);
+    });
+});
+
+// Public forms send their bot check (`await human.headers()` from useTurnstile) through `headers`.
+describe('per-call request headers', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    const BOT = { 'X-Turnstile-Token': 'token' };
+
+    function stubFetch(body: object = { success: true }) {
+        const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
+            String(url).endsWith('/csrf')
+                ? { ok: true, json: async () => ({ csrfToken: 'csrf' }) }
+                : { ok: true, json: async () => body },
+        );
+        vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+        return fetchMock;
+    }
+
+    it.each([
+        [
+            '/callback/credentials',
+            () => signInWithCredentials({ email: 'a@example.com', password: 'x' }, { headers: BOT }),
+        ],
+        ['/signin/email', () => sendMagicLink('a@example.com', { headers: BOT })],
+        ['/register', () => registerWithCredentials({ email: 'a@example.com', password: 'x' }, { headers: BOT })],
+        ['/password/reset/request', () => requestPasswordReset('a@example.com', { headers: BOT })],
+        ['/verify-email/resend', () => requestEmailVerification('a@example.com', { headers: BOT })],
+    ])('%s merges them after Content-Type', async (path, call) => {
+        const fetchMock = stubFetch();
+        await call();
+
+        const [, init] = fetchMock.mock.calls.find(([url]) => String(url).endsWith(path))!;
+        expect(init?.headers).toEqual({ 'Content-Type': 'application/json', ...BOT });
+    });
+
+    it('register carries the CSRF token and returns the session it signed in', async () => {
+        const session = { user: { id: 'user-1', email: 'a@example.com' }, expires: 123 };
+        const fetchMock = stubFetch({ success: true, user: session.user, session });
+
+        const result = await registerWithCredentials({ email: 'a@example.com', password: 'x' });
+
+        const [, init] = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/register'))!;
+        expect(JSON.parse(init?.body as string)).toMatchObject({ email: 'a@example.com', csrfToken: 'csrf' });
+        expect(result.session).toEqual(session);
     });
 });

@@ -38,6 +38,7 @@ import {
     resolveSessionCookieName,
     resolveSessionMaxAge,
     revokeSession,
+    type CreatedSession,
 } from './session-store';
 import type { AuthEnv, AuthEvents, AuthorizedUser, CreateAuthConfigOptions, SessionTokenPayload } from './types';
 
@@ -288,8 +289,11 @@ async function handleGetSession(request: Request, env: AuthEnv, options: CreateA
     return jsonResponse(session ?? null);
 }
 
-/** The 403 to return when a state-changing request fails the Origin or CSRF check, else null. */
-async function requireCsrf(request: Request, env: AuthEnv, submittedToken: unknown): Promise<Response | null> {
+/**
+ * The 403 to return when a state-changing request fails the Origin or CSRF check, else null.
+ * Exported for the app's own routes that sign people in (register), so they hold the same line.
+ */
+export async function requireCsrf(request: Request, env: AuthEnv, submittedToken: unknown): Promise<Response | null> {
     // Defense in depth: reject a mismatched Origin outright before the token check. Its own message, because
     // the usual cause is opening the app on another loopback name (localhost vs 127.0.0.1), not a bad token.
     if (!isTrustedOrigin(request, env)) {
@@ -339,28 +343,46 @@ async function handleCredentialsCallback(
         return jsonResponse({ error: 'Please verify your email before signing in' }, 401);
     }
 
+    const signedIn = await completeSignIn(user, env, request, options);
+    if (!signedIn) {
+        return jsonResponse(
+            {
+                error: 'Account setup could not be completed. Please try again.',
+                code: 'ACCOUNT_PROVISIONING_FAILED',
+            },
+            500,
+        );
+    }
+
+    return jsonResponse({ success: true, session: signedIn.session }, 200, { 'Set-Cookie': signedIn.cookie });
+}
+
+/** A finished password sign-in: the session cookie to set and the client's copy of the session. */
+export interface CompletedSignIn {
+    cookie: string;
+    session: { user: CreatedSession['user']; expires: number };
+}
+
+/**
+ * The tail of every password sign-in, shared by the credentials callback and the app's register
+ * route (which signs the new account in itself): first-user bootstrap, the app's `onSignIn` hook,
+ * then the session. Null when the account could not be finished (logged here): the caller answers
+ * 500 `ACCOUNT_PROVISIONING_FAILED` and issues no session.
+ */
+export async function completeSignIn(
+    user: AuthorizedUser,
+    env: AuthEnv,
+    request: Request,
+    options: CreateAuthConfigOptions = {},
+): Promise<CompletedSignIn | null> {
     ensureOrmConnection(env);
     try {
         await bootstrapFirstUser(env, user);
     } catch (error) {
-        console.error('First-user account provisioning failed during credentials sign-in:', error);
-        return jsonResponse(
-            {
-                error: 'Account setup could not be completed. Please try again.',
-                code: 'ACCOUNT_PROVISIONING_FAILED',
-            },
-            500,
-        );
+        console.error(JSON.stringify({ event: 'auth_first_user_bootstrap_failed', error: redactErrorForLog(error) }));
+        return null;
     }
-    if (!(await runSignInHook(options, { userId: user.id, email: user.email }))) {
-        return jsonResponse(
-            {
-                error: 'Account setup could not be completed. Please try again.',
-                code: 'ACCOUNT_PROVISIONING_FAILED',
-            },
-            500,
-        );
-    }
+    if (!(await runSignInHook(options, { userId: user.id, email: user.email }))) return null;
 
     const { cookie, session } = await createSessionCookieForUser(
         { id: user.id, email: user.email, name: user.name, image: user.image, emailVerified: user.emailVerified },
@@ -368,10 +390,7 @@ async function handleCredentialsCallback(
         request,
         options,
     );
-
-    return jsonResponse({ success: true, session: { user: session.user, expires: session.expiresAt } }, 200, {
-        'Set-Cookie': cookie,
-    });
+    return { cookie, session: { user: session.user, expires: session.expiresAt } };
 }
 
 async function handleOAuthSignIn(

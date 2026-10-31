@@ -1,6 +1,6 @@
 import { APP_META } from '@/ottabase/config';
 import { useSession } from '@/lib/auth';
-import { registerWithCredentials, requestEmailVerification, signInWithCredentials } from '@/lib/auth-api';
+import { registerWithCredentials, requestEmailVerification } from '@/lib/auth-api';
 import { rememberReturnPath, resolveAuthRedirect } from '@/lib/auth-redirect';
 import {
     clearStoredReferralCode,
@@ -10,9 +10,11 @@ import {
 } from '@/lib/referrals';
 import { RegisterForm, type RegisterFormData } from '@ottabase/auth/components';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ottabase/ui';
+import { useTurnstile } from '@ottabase/ui/turnstile';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { TURNSTILE_ACTIONS } from '../../../ottabase/turnstile';
 
 export function RegisterPage() {
     const navigate = useNavigate();
@@ -27,6 +29,8 @@ export function RegisterPage() {
     const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
     const hasNavigated = useRef(false);
     const redirectTarget = useRef(resolveAuthRedirect());
+    const human = useTurnstile(TURNSTILE_ACTIONS.register);
+    const resendHuman = useTurnstile(TURNSTILE_ACTIONS.verifyResend);
 
     // Check for stored referral code on mount
     useEffect(() => {
@@ -44,13 +48,16 @@ export function RegisterPage() {
 
         try {
             const utm = extractUtmParams();
-            const registerResult = await registerWithCredentials({
-                name: data.name,
-                email: data.email,
-                password: data.password,
-                referralCode: referralCode || undefined,
-                ...utm,
-            });
+            const registerResult = await registerWithCredentials(
+                {
+                    name: data.name,
+                    email: data.email,
+                    password: data.password,
+                    referralCode: referralCode || undefined,
+                    ...utm,
+                },
+                { headers: await human.headers() },
+            );
 
             if (!registerResult.success) {
                 throw new Error(registerResult.error || 'Registration failed');
@@ -66,17 +73,9 @@ export function RegisterPage() {
                 return;
             }
 
-            const signInResult = await signInWithCredentials(
-                { email: data.email, password: data.password },
-                { redirect: false },
-            );
-
-            if (!signInResult.success) {
-                throw new Error(signInResult.error || 'Registration succeeded, but sign in failed');
-            }
-
-            if (signInResult.session) {
-                login(signInResult.session);
+            // Register already signed the account in (the cookie is set); adopt its session.
+            if (registerResult.session) {
+                login(registerResult.session);
             }
 
             clearStoredReferralCode();
@@ -100,7 +99,9 @@ export function RegisterPage() {
         setIsLoading(true);
         setError(undefined);
         try {
-            const result = await requestEmailVerification(registeredEmail);
+            const result = await requestEmailVerification(registeredEmail, {
+                headers: await resendHuman.headers(),
+            });
             if (!result.success) {
                 throw new Error(result.error || 'Failed to resend verification email');
             }
@@ -166,6 +167,7 @@ export function RegisterPage() {
                                         {error}
                                     </div>
                                 )}
+                                {resendHuman.widget}
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -179,6 +181,7 @@ export function RegisterPage() {
                         ) : (
                             <RegisterForm
                                 onSubmit={handleRegister}
+                                botCheck={human.widget}
                                 isLoading={isLoading}
                                 error={error}
                                 success={success}

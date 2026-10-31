@@ -8,7 +8,7 @@ vi.mock('../bootstrap', () => ({
     provisionPlatformOwnerOrganization: vi.fn(),
 }));
 
-const { handleAuthRequest } = await import('../backend-handler');
+const { completeSignIn, handleAuthRequest } = await import('../backend-handler');
 
 function createEnv(): AuthEnv {
     return {
@@ -60,5 +60,23 @@ describe('onSignIn hook', () => {
         await signIn(onSignIn).catch(() => undefined);
 
         expect(onSignIn).toHaveBeenCalledWith({ userId: 'user-1', email: 'new@example.com' });
+    });
+});
+
+// The shared tail the app's register route signs a new account in with.
+describe('completeSignIn', () => {
+    it('is null, issuing no session, when the hook throws', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const result = await completeSignIn(
+            { id: 'user-1', email: 'new@example.com' },
+            createEnv(),
+            request('/api/auth/register', { method: 'POST' }),
+            {
+                onSignIn: async () => {
+                    throw new Error('workspace provisioning failed');
+                },
+            },
+        );
+        expect(result).toBeNull();
     });
 });

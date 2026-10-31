@@ -25,6 +25,8 @@ export interface RegisterFormProps {
     onTermsClick?: () => void;
     /** Override the entire label content with a custom React node (e.g. two separate links) */
     termsContent?: React.ReactNode;
+    /** A bot check (the `useTurnstile` widget) rendered above the submit button. */
+    botCheck?: React.ReactNode;
     className?: string;
 }
 
@@ -43,6 +45,7 @@ export function RegisterForm({
     termsText = 'I agree to the Terms of Service and Privacy Policy',
     onTermsClick,
     termsContent,
+    botCheck,
     className = '',
 }: RegisterFormProps) {
     const [formData, setFormData] = useState<RegisterFormData>({
@@ -232,6 +235,8 @@ export function RegisterForm({
                 </div>
             )}
             {validationErrors.terms && <p className="text-xs text-destructive">{validationErrors.terms}</p>}
+
+            {botCheck}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Spinner className="mr-2 h-4 w-4" />}

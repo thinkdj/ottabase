@@ -1,11 +1,13 @@
 import { getRequestCountry } from '@ottabase/analytics/track'; // otta:only referrals
 import {
+    completeSignIn,
     createSessionCookieForUser,
     getSession,
     handleAuthRequest,
     hashPassword,
     hashToken,
     requestLocaleDefaults,
+    requireCsrf,
     revokeAllUserSessions,
     verifyPassword,
 } from '@ottabase/auth/backend';
@@ -21,6 +23,7 @@ import { canonicalLocale, canonicalTimezone } from '@ottabase/utils/timezone';
 import { withNotice } from '@ottabase/utils/url';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { SUPPORTED_LANGUAGES } from '../../ottabase/locale';
+import { TURNSTILE_ACTIONS } from '../../ottabase/turnstile';
 import { processReferralAttribution } from '../../ottabase/helpers/referral-attribution'; // otta:only referrals
 import { registerAppEmailTemplates } from '../../src/email/templates';
 import {
@@ -33,6 +36,7 @@ import {
     sendDemoWelcomeEmail,
 } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
+import { guardPublicForm, requireHuman } from '../lib/turnstile';
 import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
 import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
 
@@ -50,6 +54,36 @@ function logAuthFailure(event: string, error: unknown): void {
             error: redactErrorForLog(error),
         }),
     );
+}
+
+// One mail per address per minute for the forms that mail whoever is named in them (magic link,
+// password reset, verification resend), checked after Turnstile. During the cooldown the route
+// answers exactly as if it had sent, so a repeat reveals nothing. The key holds a hash, never the
+// address. Without KV there is no cooldown; the per-IP rate limit still holds.
+const MAIL_COOLDOWN_SECONDS = 60; // also KV's shortest expirationTtl
+
+type MailCooldownKind = 'magic-link' | 'password-reset' | 'verify-resend';
+
+async function mailCooldownKey(kind: MailCooldownKind, email: string): Promise<string> {
+    return `auth:cooldown:${kind}:${await hashToken(normalizeEmail(email))}`;
+}
+
+async function isMailCoolingDown(env: CloudflareEnv, kind: MailCooldownKind, email: string): Promise<boolean> {
+    if (!env.OBCF_KV) return false;
+    try {
+        return (await env.OBCF_KV.get(await mailCooldownKey(kind, email))) !== null;
+    } catch {
+        return false; // An optimization, never the gate: a KV failure lets the mail through.
+    }
+}
+
+async function startMailCooldown(env: CloudflareEnv, kind: MailCooldownKind, email: string): Promise<void> {
+    if (!env.OBCF_KV) return;
+    try {
+        await env.OBCF_KV.put(await mailCooldownKey(kind, email), '1', { expirationTtl: MAIL_COOLDOWN_SECONDS });
+    } catch (error) {
+        logAuthFailure('auth_mail_cooldown_write_failed', error);
+    }
 }
 
 export function handleAuthConfig(context: AuthRouteContext): Response {
@@ -71,6 +105,17 @@ export async function handleVerifyEmailResend(context: AuthRouteContext): Promis
     const rateLimit = await enforceRateLimit(request, env, `auth:verify-resend:${ip}`);
     if (rateLimit) return withAuthCors(rateLimit);
 
+    // The profile page resends for a signed-in user and renders no widget: only anonymous callers
+    // (the register page's resend) are checked.
+    const session = await getSession(request, env as any, getAuthOptions(env));
+    if (!session) {
+        const denied = await requireHuman(request, env, {
+            action: TURNSTILE_ACTIONS.verifyResend,
+            unreachable: 'refuse',
+        });
+        if (denied) return withAuthCors(denied);
+    }
+
     if (!env.OBCF_D1) {
         return withAuthCors(
             errorResponse('D1 database binding not configured', 500, {
@@ -90,6 +135,10 @@ export async function handleVerifyEmailResend(context: AuthRouteContext): Promis
                 code: 'VALIDATION_ERROR',
             }),
         );
+    }
+
+    if (await isMailCoolingDown(env, 'verify-resend', email)) {
+        return withAuthCors(jsonResponse({ success: true, sent: true }));
     }
 
     const user = await User.first({ email });
@@ -133,6 +182,7 @@ export async function handleVerifyEmailResend(context: AuthRouteContext): Promis
             footer: `<p>For security, this link expires in 24 hours.</p>`,
         },
     });
+    await startMailCooldown(env, 'verify-resend', email);
 
     return withAuthCors(jsonResponse({ success: true, sent: true }));
 }
@@ -207,8 +257,12 @@ export async function handleVerifyEmail(context: AuthRouteContext): Promise<Resp
 export async function handlePasswordResetRequest(context: AuthRouteContext): Promise<Response> {
     const { request, env, withAuthCors } = context;
     const ip = getClientIpAddress(request);
-    const rateLimit = await enforceRateLimit(request, env, `auth:password-reset:${ip}`);
-    if (rateLimit) return withAuthCors(rateLimit);
+    const denied = await guardPublicForm(request, env, {
+        action: TURNSTILE_ACTIONS.passwordReset,
+        key: `auth:password-reset:${ip}`,
+        unreachable: 'refuse',
+    });
+    if (denied) return withAuthCors(denied);
 
     if (!env.OBCF_D1) {
         return withAuthCors(
@@ -229,6 +283,10 @@ export async function handlePasswordResetRequest(context: AuthRouteContext): Pro
                 code: 'VALIDATION_ERROR',
             }),
         );
+    }
+
+    if (await isMailCoolingDown(env, 'password-reset', email)) {
+        return withAuthCors(jsonResponse({ success: true, sent: true }));
     }
 
     const user = await User.first({ email });
@@ -268,6 +326,7 @@ export async function handlePasswordResetRequest(context: AuthRouteContext): Pro
             footer: `<p>This link expires in 60 minutes.</p>`,
         },
     });
+    await startMailCooldown(env, 'password-reset', email);
 
     return withAuthCors(jsonResponse({ success: true, sent: true }));
 }
@@ -641,12 +700,17 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
     }
 
     const ip = getClientIpAddress(request);
-    const rateLimit = await enforceRateLimit(request, env, `auth:register:${ip}`);
-    if (rateLimit) return withAuthCors(rateLimit);
+    const denied = await guardPublicForm(request, env, {
+        action: TURNSTILE_ACTIONS.register,
+        key: `auth:register:${ip}`,
+        unreachable: 'refuse',
+    });
+    if (denied) return withAuthCors(denied);
 
     registerConnection('default', createD1Driver(env.OBCF_D1));
 
     const body = await readJson<{
+        csrfToken?: string;
         email?: string;
         password?: string;
         name?: string;
@@ -657,6 +721,10 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
         utm_term?: string;
         utm_content?: string;
     }>(request);
+
+    // Register signs the new account in, so it holds the same Origin + CSRF line as sign-in.
+    const csrfRejected = await requireCsrf(request, env as any, body.csrfToken);
+    if (csrfRejected) return withAuthCors(csrfRejected);
 
     const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
     const password = typeof body.password === 'string' ? body.password : '';
@@ -849,16 +917,42 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
             (userJson as any).role = assignedRole;
         }
 
-        const response = jsonResponse({
-            success: true,
-            user: userJson,
-            organizationId,
-            organizationRole,
-            assignedRole,
-            requiresEmailVerification: requireVerified,
-            verificationSent,
-            referralAttribution: attributionResult || null, // otta:only referrals
-        });
+        // No verification required: sign the account in here, through the same tail as the
+        // credentials callback (first-user bootstrap, the sign-in hook, the session cookie).
+        let signedIn: Awaited<ReturnType<typeof completeSignIn>> = null;
+        if (!requireVerified) {
+            signedIn = await completeSignIn(
+                { id: newUserId, email, name: name || null, image: null, emailVerified: null },
+                env as any,
+                request,
+                getAuthOptions(env),
+            );
+            if (!signedIn) {
+                // The account and its workspace stand; only the session is missing, and signing in retries it.
+                return withAuthCors(
+                    errorResponse('Your account was created, but signing you in failed. Please sign in.', 500, {
+                        code: 'ACCOUNT_PROVISIONING_FAILED',
+                        exposure: 'public',
+                    }),
+                );
+            }
+        }
+
+        const response = jsonResponse(
+            {
+                success: true,
+                user: userJson,
+                session: signedIn?.session ?? null,
+                organizationId,
+                organizationRole,
+                assignedRole,
+                requiresEmailVerification: requireVerified,
+                verificationSent,
+                referralAttribution: attributionResult || null, // otta:only referrals
+            },
+            200,
+            signedIn ? { headers: { 'Set-Cookie': signedIn.cookie } } : {},
+        );
         return withAuthCors(response);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Registration failed';
@@ -888,6 +982,29 @@ export async function handleAuthApiRequest(context: AuthRouteContext): Promise<R
         if (bucket) {
             const rateLimit = await enforceRateLimit(request, env, `auth:${bucket}:${ip}`);
             if (rateLimit) return withAuthCors(rateLimit);
+        }
+
+        // Turnstile after the rate limit. The login page's one widget (`signin`) covers both
+        // methods. Password sign-in lets a Cloudflare outage through (the rate limit still holds),
+        // so nobody is locked out; a magic link mails an address, so it refuses.
+        if (bucket === 'signin' || bucket === 'magiclink') {
+            const denied = await requireHuman(request, env, {
+                action: TURNSTILE_ACTIONS.signin,
+                unreachable: bucket === 'signin' ? 'allow' : 'refuse',
+            });
+            if (denied) return withAuthCors(denied);
+        }
+
+        if (bucket === 'magiclink') {
+            const { email } = await readJson<{ email?: unknown }>(request.clone());
+            const address = typeof email === 'string' ? normalizeEmail(email) : '';
+            // The package's own success answer, so a repeat inside the cooldown looks sent.
+            if (address && (await isMailCoolingDown(env, 'magic-link', address))) {
+                return withAuthCors(jsonResponse({ success: true }));
+            }
+            const response = await handleAuthRequest(request, env as any, getAuthOptions(env));
+            if (address && response.ok) await startMailCooldown(env, 'magic-link', address);
+            return withAuthCors(response);
         }
     }
 

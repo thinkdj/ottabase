@@ -21,9 +21,11 @@ import {
     Input,
     Label,
 } from '@ottabase/ui';
+import { useTurnstile } from '@ottabase/ui/turnstile';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { TURNSTILE_ACTIONS } from '../../../ottabase/turnstile';
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -38,6 +40,9 @@ export function LoginPage() {
     const [forgotError, setForgotError] = useState<string | null>(null);
     const hasNavigated = useRef(false);
     const redirectTarget = useRef(resolveAuthRedirect());
+    // One widget for both sign-in methods, and its own for the forgot-password dialog.
+    const human = useTurnstile(TURNSTILE_ACTIONS.signin);
+    const resetHuman = useTurnstile(TURNSTILE_ACTIONS.passwordReset);
 
     // Auto-detect configured providers from env
     // This will check process.env for OAuth provider credentials
@@ -159,7 +164,10 @@ export function LoginPage() {
         setError(undefined);
 
         try {
-            const result = await signInWithCredentials({ email, password }, { redirect: false });
+            const result = await signInWithCredentials(
+                { email, password },
+                { redirect: false, headers: await human.headers() },
+            );
 
             if (!result.success) {
                 setError(result.error || 'Invalid credentials');
@@ -187,6 +195,7 @@ export function LoginPage() {
         try {
             const result = await sendMagicLink(email, {
                 redirectTo: redirectTarget.current,
+                headers: await human.headers(),
             });
 
             if (!result.success) {
@@ -213,7 +222,7 @@ export function LoginPage() {
         setForgotError(null);
 
         try {
-            const result = await requestPasswordReset(forgotEmail.trim());
+            const result = await requestPasswordReset(forgotEmail.trim(), { headers: await resetHuman.headers() });
             if (!result.success) {
                 throw new Error(result.error || 'Failed to send reset email');
             }
@@ -281,6 +290,7 @@ export function LoginPage() {
                     isLoading={isLoading}
                     error={error}
                     magicLinkSuccess={magicLinkSent}
+                    botCheck={human.widget}
                     title="Sign in to your account"
                     description="Choose your preferred login method"
                     showSignUp
@@ -351,6 +361,7 @@ export function LoginPage() {
                             onChange={(e) => setForgotEmail(e.target.value)}
                             placeholder="you@example.com"
                         />
+                        {resetHuman.widget}
                         {forgotError && <p className="text-sm text-destructive">{forgotError}</p>}
                         {forgotStatus === 'sent' && (
                             <p className="text-sm text-success">Reset email sent. Check your inbox.</p>

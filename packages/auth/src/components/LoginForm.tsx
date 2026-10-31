@@ -46,6 +46,11 @@ export interface LoginFormProps {
     showRememberMe?: boolean;
     rememberMeLabel?: string;
     defaultRememberMe?: boolean;
+    /**
+     * A bot check (the `useTurnstile` widget) shared by the credentials and magic-link forms,
+     * rendered above whichever submit button is showing. One widget covers both methods.
+     */
+    botCheck?: React.ReactNode;
 }
 
 export function LoginForm({
@@ -68,6 +73,7 @@ export function LoginForm({
     showRememberMe = true,
     rememberMeLabel = 'Remember me',
     defaultRememberMe = true,
+    botCheck,
 }: LoginFormProps) {
     const [activeTab, setActiveTab] = useState(defaultTab);
 
@@ -117,6 +123,7 @@ export function LoginForm({
                                             showRememberMe={showRememberMe}
                                             rememberMeLabel={rememberMeLabel}
                                             defaultRememberMe={defaultRememberMe}
+                                            botCheck={botCheck}
                                         />
                                     </TabsContent>
                                 )}
@@ -128,6 +135,7 @@ export function LoginForm({
                                             isLoading={isLoading}
                                             error={error}
                                             success={magicLinkSuccess}
+                                            botCheck={botCheck}
                                         />
                                     </TabsContent>
                                 )}
@@ -144,6 +152,7 @@ export function LoginForm({
                                         showRememberMe={showRememberMe}
                                         rememberMeLabel={rememberMeLabel}
                                         defaultRememberMe={defaultRememberMe}
+                                        botCheck={botCheck}
                                     />
                                 )}
 
@@ -153,6 +162,7 @@ export function LoginForm({
                                         isLoading={isLoading}
                                         error={error}
                                         success={magicLinkSuccess}
+                                        botCheck={botCheck}
                                     />
                                 )}
                             </>

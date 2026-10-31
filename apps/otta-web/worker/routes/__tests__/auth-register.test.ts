@@ -13,12 +13,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@ottabase/auth/backend', () => ({
+    completeSignIn: vi.fn(async () => ({ cookie: 'session=jwt', session: {} })),
     createSessionCookieForUser: vi.fn(),
     getSession: vi.fn(),
     handleAuthRequest: vi.fn(),
     hashPassword: vi.fn(async () => 'hashed-password'),
     hashToken: vi.fn(),
     requestLocaleDefaults: vi.fn(() => ({ timezone: null, locale: null })),
+    requireCsrf: vi.fn(async () => null),
     revokeAllUserSessions: vi.fn(),
     verifyPassword: vi.fn(),
 }));

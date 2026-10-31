@@ -5,6 +5,10 @@
 // Framework-agnostic client for the auth backend. Talks JSON end-to-end;
 // both sides of the wire are implemented in this package.
 //
+// The calls behind public forms (sign-in, magic link, register, password reset, verification
+// resend) take `headers` in their options, merged into the request. That is where the bot check
+// goes: `headers: await human.headers()` from `useTurnstile` (`@ottabase/ui/turnstile`).
+//
 // ============================================================
 
 export interface SignInCredentials {
@@ -58,6 +62,8 @@ export interface AuthResponse {
 export interface RegisterResponse {
     success: boolean;
     error?: string;
+    /** The new account's session, already set as a cookie. Absent when email verification is required. */
+    session?: AuthSession;
     user?: {
         id: string;
         email: string;
@@ -147,7 +153,12 @@ export async function getCsrfToken(options?: AuthClientOptions): Promise<string 
 /** Sign in with email and password. */
 export async function signInWithCredentials(
     credentials: SignInCredentials,
-    options?: { redirect?: boolean; redirectTo?: string; clientOptions?: AuthClientOptions },
+    options?: {
+        redirect?: boolean;
+        redirectTo?: string;
+        clientOptions?: AuthClientOptions;
+        headers?: Record<string, string>;
+    },
 ): Promise<AuthResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
@@ -156,7 +167,7 @@ export async function signInWithCredentials(
 
         const response = await fetch(`${baseUrl}/callback/credentials`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
             credentials: 'include',
             body: JSON.stringify({ email: credentials.email, password: credentials.password, csrfToken }),
         });
@@ -201,7 +212,7 @@ export async function signInWithProvider(
 /** Send a magic (passwordless) sign-in link to the given email. */
 export async function sendMagicLink(
     email: string,
-    options?: { redirectTo?: string; clientOptions?: AuthClientOptions },
+    options?: { redirectTo?: string; clientOptions?: AuthClientOptions; headers?: Record<string, string> },
 ): Promise<AuthResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
@@ -210,7 +221,7 @@ export async function sendMagicLink(
 
         const response = await fetch(`${baseUrl}/signin/email`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
             credentials: 'include',
             body: JSON.stringify({ email, csrfToken, callbackUrl: options?.redirectTo ?? '/' }),
         });
@@ -227,19 +238,25 @@ export async function sendMagicLink(
     }
 }
 
-/** Register a new user with credentials (requires the host app's `/api/auth/register` endpoint). */
+/**
+ * Register a new user with credentials (requires the host app's `/api/auth/register` endpoint).
+ * Registration signs the account in when no email verification is required, so it carries the
+ * same CSRF token as `signInWithCredentials` and returns the `session`.
+ */
 export async function registerWithCredentials(
     data: RegisterCredentials,
-    options?: { clientOptions?: AuthClientOptions },
+    options?: { clientOptions?: AuthClientOptions; headers?: Record<string, string> },
 ): Promise<RegisterResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
+        const csrfToken = await getCsrfToken(options?.clientOptions);
+
         const response = await fetch(`${baseUrl}/register`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
             credentials: 'include',
-            body: JSON.stringify(data),
+            body: JSON.stringify({ ...data, csrfToken }),
         });
 
         if (!response.ok) {
@@ -251,6 +268,7 @@ export async function registerWithCredentials(
         return {
             success: true,
             user: payload.user,
+            session: payload.session,
             organizationId: payload.organizationId ?? null,
             organizationRole: payload.organizationRole ?? null,
             assignedRole: payload.assignedRole ?? null,
@@ -370,14 +388,14 @@ export async function signOut(options?: {
 /** Request a verification email be (re)sent. */
 export async function requestEmailVerification(
     email: string,
-    options?: { clientOptions?: AuthClientOptions },
+    options?: { clientOptions?: AuthClientOptions; headers?: Record<string, string> },
 ): Promise<EmailVerificationResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
         const response = await fetch(`${baseUrl}/verify-email/resend`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
             credentials: 'include',
             body: JSON.stringify({ email }),
         });
@@ -422,14 +440,14 @@ export async function verifyEmail(
 /** Request a password reset email. */
 export async function requestPasswordReset(
     email: string,
-    options?: { clientOptions?: AuthClientOptions },
+    options?: { clientOptions?: AuthClientOptions; headers?: Record<string, string> },
 ): Promise<PasswordResetResponse> {
     const baseUrl = options?.clientOptions?.baseUrl ?? defaultOptions.baseUrl;
 
     try {
         const response = await fetch(`${baseUrl}/password/reset/request`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...options?.headers },
             credentials: 'include',
             body: JSON.stringify({ email }),
         });

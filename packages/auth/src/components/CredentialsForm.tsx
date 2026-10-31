@@ -13,6 +13,8 @@ export interface CredentialsFormProps {
     showRememberMe?: boolean;
     rememberMeLabel?: string;
     defaultRememberMe?: boolean;
+    /** A bot check (the `useTurnstile` widget) rendered above the submit button. */
+    botCheck?: React.ReactNode;
     className?: string;
 }
 
@@ -28,6 +30,7 @@ export function CredentialsForm({
     showRememberMe = true,
     rememberMeLabel = 'Remember me',
     defaultRememberMe = true,
+    botCheck,
     className = '',
 }: CredentialsFormProps) {
     const [email, setEmail] = useState('');
@@ -100,6 +103,8 @@ export function CredentialsForm({
                     </Label>
                 </div>
             )}
+
+            {botCheck}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Spinner className="mr-2 h-4 w-4" />}

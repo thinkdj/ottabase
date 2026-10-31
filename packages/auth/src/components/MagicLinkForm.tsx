@@ -10,6 +10,8 @@ export interface MagicLinkFormProps {
     emailLabel?: string;
     submitButtonText?: string;
     successMessage?: string;
+    /** A bot check (the `useTurnstile` widget) rendered above the submit button. */
+    botCheck?: React.ReactNode;
     className?: string;
 }
 
@@ -21,6 +23,7 @@ export function MagicLinkForm({
     emailLabel = 'Email',
     submitButtonText = 'Send magic link',
     successMessage = 'Check your email for a login link!',
+    botCheck,
     className = '',
 }: MagicLinkFormProps) {
     const [email, setEmail] = useState('');
@@ -79,6 +82,8 @@ export function MagicLinkForm({
                 </div>
                 <p className="text-xs text-muted-foreground">We'll send you a login link</p>
             </div>
+
+            {botCheck}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Spinner className="mr-2 h-4 w-4" />}
