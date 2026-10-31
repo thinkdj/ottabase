@@ -9,6 +9,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **One files system.** Three buckets by who may read: `OBCF_R2` (public: every object in it is public, served from
+  `R2_PUBLIC_URL`, a custom domain in production and `/api/files/public` otherwise), `OBCF_R2_PRIVATE` (members and
+  owner files, system artifacts) and `OBCF_R2_VAULT` (backups). `createFiles` in `@ottabase/ottaupload/server` is the
+  only writer of user files. Purposes are declared in manifests (`files`: audience, a sniffed type allow-list, size cap,
+  variants, `svg`, `server`). The real type is read from magic bytes, metadata is stripped in code before anything is
+  stored (JPEG orientation kept; AVIF re-encoded to WebP through `OBCF_IMAGES`, refused without it), thumb, card and
+  full WebP variants are made at upload, keys are `<appId>/<purpose>/<id>.<ext>` and never overwritten. Quotas per
+  organization (`FILES_QUOTA_MB`), signed private links (`FILES_SIGNING_SECRET`), and public URLs always absolute
+  (`AUTH_URL` when `R2_PUBLIC_URL` is relative). Routes: `POST /api/files`; `GET|HEAD /api/files/public/*` (ETag and
+  304, Range, immutable caching); `GET|HEAD /api/files/:id[/:variant]` (an audience check or a signed token);
+  `PATCH|DELETE /api/files/:id`; `POST|DELETE /api/files/:id/quarantine` (a public file leaves the public bucket and its
+  URLs are purged when `CLOUDFLARE_FILES_ZONE_ID` and `CLOUDFLARE_PURGE_API_TOKEN` are set; audit-logged);
+  `PUT|DELETE /api/users/me/avatar`. Uploads have their own limiter, `OBCF_RATE_LIMITER_UPLOADS` (60 a minute). Raster
+  images and video are served inline, everything else as an attachment, all with `nosniff` and a sandbox CSP.
+  `docs/CLOUDFLARE_DEPLOY.md` covers the buckets, the custom domain, the Transform Rule, Cloudflare's CSAM Scanning Tool
+  and a separate domain for user content.
+- **Account and lead events on the bus.** `user.created` (credentials, OAuth, magic link, the bootstrap owner; sent once
+  the account is complete), `user.verified` (only when `emailVerified` goes from null to a time) and `lead.created`
+  (from `landing:notify-leads`, once per lead, with its own `announcedAt` marker so a failing digest never holds an
+  event back). `@ottabase/auth` takes an `emit` option: packages never import the app bus (ADR-6).
+- **`rel="ugc nofollow noopener"` on user content.** `markUgcLinks` in `@ottabase/utils/sanitize` and a `ugc` mode on
+  the renderers; organization blog posts use it.
 - **CrudHub, the generic admin data screens.** A model joins with
   `static admin = { enabled, scope, readOnly, permissions, listFields, searchField, titleField, routes, relations }` and
   appears at `/admin/crudhub`: a directory grouped Core / packages / App with lazy row counts, a server-paged list
@@ -255,6 +277,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Every due cron task runs in its own invocation.** With `OBCF_QUEUE` bound, the minute tick enqueues one `cron:run`
+  message per due task, so each job has a whole invocation's D1 query budget, CPU and wall time; without a queue they
+  run inline. "Run now" goes the same way (202 `{ queued: true }`), and
+  `acquireExecutionLock(id, startedAt, requestedAt)` makes a repeated delivery a no-op. The queue consumer takes one
+  message per batch (`max_batch_size: 1`), so jobs never share an invocation again (ADR-7).
+- **Media rows are records, not URLs.** `media` drops `provider`, `url`, `thumbnailUrl`, `previewUrl`, `isPublic` and
+  `deletedAt` (deletes are real) and gains `purpose`, `audience` and `status`; views compute the URLs. `users.avatarKey`
+  holds the uploaded avatar and `users.image` only a provider's picture; `User.imageUrl()` resolves them. Brand logos
+  and landing share images go through the files service, belong to the app rather than the uploader, and are deleted
+  when replaced. Removed with the old path: `/api/upload`, `/api/upload/file/*`, `/api/cloudflare/images`,
+  `/api/medialibrary/:id/purge`, ottaupload's `uploadFileToR2` and the other bucket helpers, and `@ottabase/cf/images`
+  (a second image store).
+- **Vault backs up to its own bucket** (`OBCF_R2_VAULT`) and snapshots several named buckets (`objects.buckets`).
+- `OBCF_IMAGES` is bound in every env: bindings are not inherited, so production had no image variants and no screenshot
+  optimisation.
+- The landing notification cron is seeded on install, so leads are announced whether or not a lead email is set.
+- Postmaster suppressions gain an `(app_id, address)` index for lookups across lists.
 - **Notices replace the ad-hoc redirect parameters.** `?verified=1` is `?notice=email-verified`, `?passwordChanged=1` is
   `?notice=password-changed`, and auth failures are `?notice=auth.<code>` (`auth.oauth-signin`,
   `auth.account-provisioning`, …) instead of `?error=<Code>`.
@@ -479,6 +518,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- **The shared rate limiter ignored the Workers binding.** A real rate-limit binding answers only `{ success }`;
+  `getRateLimitData` discarded that answer and let the KV counter decide. The binding's verdict decides now.
 - Deploy: the placeholder substitution (`.github/scripts/substitute-wrangler-secrets.py`, and `otta deploy`) replaces a
   placeholder in value position only. `"CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID"` used to come out as
   `"<id>": "<id>"`, so production had a var named after the account id and `env.CLOUDFLARE_ACCOUNT_ID` was unset.
@@ -780,6 +821,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security (Unreleased)
 
+- **Backups and private files could be downloaded by anyone.** `GET /api/upload/file/*` served any key in the one
+  bucket, including Vault's nightly NDJSON backups of every table under guessable names (a timestamp and four hex
+  characters), and `media.isPublic` was never enforced. Backups now live in a bucket no route reads, private files in a
+  bucket served only after an audience check or a signed token, and the public route reads only the public bucket.
+- Uploads are typed by their content, never by the browser's claim, and photos lose their EXIF and XMP (phone GPS)
+  before they are stored.
 - `@ottabase/ottaorm` RLS: an org-scoped operation whose `SecurityContext` has no resolved `memberOrganizationIds` is
   now **denied** (it used to skip the cross-tenant check as "membership unknown"). The `organizations` policy likewise
   drops its `ownerId` fallback for an unresolved list. A context builder that forgets to resolve membership fails loudly
