@@ -124,11 +124,13 @@ comes from server configuration, never from the request.
 ## Leads (contact and signup forms)
 
 The `contact` and `signup` sections render `LeadForm` (`@ottabase/ottalanding/react`, a client component each theme
-styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which calls
-`LandingLead.submit(appId, body, { ipHash })` and stores a `landing_leads` row in the shared D1.
+styles). It posts JSON to `LEAD_ENDPOINT` (`/api/leads`, served by the landing app), which checks
+`LandingLead.overLimit(appId, ipHash)` and the bot check, then calls `LandingLead.submit(appId, body, { ipHash })` and
+stores a `landing_leads` row in the shared D1.
 
 ```ts
-await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored' | 'rate-limited'; field errors throw (422)
+await LandingLead.overLimit(appId, ipHash); // true once this network sent LEAD_RATE_LIMIT.max in the window (429)
+await LandingLead.submit(appId, input, { ipHash }); // 'stored' | 'ignored'; field errors throw (422)
 await LandingLead.inbox(appId, { kind, limit, offset }); // { leads, total, unread }, newest first
 await LandingLead.setRead(appId, id, read);
 await LandingLead.deleteFor(appId, id);
@@ -142,8 +144,14 @@ leadDigest(siteName, leads, inboxUrl?); // { subject, header, body } for the not
 **Spam.** Two cheap bot checks: a hidden `website` field people never fill in, and the time spent on the form (under
 `LEAD_MIN_FILL_MS`, a person can't have typed it). Either one makes `submit` return `ignored`. The visitor still sees
 the thank-you, so a bot learns nothing. On top of that, each network (a salted SHA-256 of app + IP, never the IP itself)
-is limited to `LEAD_RATE_LIMIT` entries per window, after which `submit` returns `rate-limited` (429). A repeat signup
+is limited to `LEAD_RATE_LIMIT` entries per window: `overLimit` turns true and the route answers 429. A repeat signup
 for the same email is accepted but stored once.
+
+**Turnstile.** `LeadForm` renders Cloudflare's widget (`useTurnstile` from `@ottabase/ui/turnstile`, action
+`LEAD_TURNSTILE_ACTION`, `lead`) above its button and sends the token with the submit. It reads the site key from the
+`<meta name="turnstile-site-key">` the host page renders, after mount, so the server render and hydration agree. Without
+that meta tag the widget is absent and no header is sent. The route checks the token after the rate limit
+(`requireHuman` from `@ottabase/cf/turnstile`); a refusal (403 `TURNSTILE_FAILED`) shows as the form's error.
 
 **Notifications** live in otta-web, where the bus and the mail provider are. An every-minute DB-scheduler task
 (`landing:notify-leads`, seeded on install, visible and pausable in Admin › Cron) does two jobs, each on its own marker

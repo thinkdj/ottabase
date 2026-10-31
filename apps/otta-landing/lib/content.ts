@@ -79,6 +79,17 @@ export async function isProduction(): Promise<boolean> {
     return env.ENVIRONMENT === 'production';
 }
 
+/**
+ * Turnstile's keys, or null when the bot check is off. On only when BOTH are set: a secret alone
+ * would refuse every form, since no page would render a widget to answer it.
+ */
+export async function turnstileKeys(): Promise<{ siteKey: string; secret: string } | null> {
+    const { env } = await getCloudflareContext({ async: true });
+    const siteKey = env.TURNSTILE_SITE_KEY?.trim();
+    const secret = env.TURNSTILE_SECRET_KEY?.trim();
+    return siteKey && secret ? { siteKey, secret } : null;
+}
+
 /** Every published page's path and last change, for the sitemap. */
 export async function getPublishedPaths(): Promise<{ path: string; updatedAt?: Date }[]> {
     const appId = await connect();

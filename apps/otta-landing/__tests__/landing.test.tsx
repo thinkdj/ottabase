@@ -5,7 +5,7 @@
  */
 import { DEFAULT_PAGES, DEFAULT_SITE, parseSections } from '@ottabase/ottalanding';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const env = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 vi.mock('@opennextjs/cloudflare', () => ({ getCloudflareContext: async () => ({ env: env.value }) }));
@@ -24,6 +24,7 @@ const store = vi.hoisted(() => ({
     findPreview: vi.fn(),
     publishedPaths: vi.fn(),
     submitLead: vi.fn(),
+    overLimit: vi.fn(),
 }));
 vi.mock('@ottabase/ottalanding', async (importOriginal) => {
     const real = await importOriginal<typeof import('@ottabase/ottalanding')>();
@@ -35,7 +36,7 @@ vi.mock('@ottabase/ottalanding', async (importOriginal) => {
             findForPreview: store.findPreview,
             publishedPaths: store.publishedPaths,
         },
-        LandingLead: { submit: store.submitLead },
+        LandingLead: { submit: store.submitLead, overLimit: store.overLimit },
     };
 });
 // React's per-request cache() is a no-op outside a server render; keep it transparent here.
@@ -49,6 +50,7 @@ import robots from '../app/robots';
 import sitemap from '../app/sitemap';
 import { GET as ottaJson } from '../app/.well-known/otta.json/route';
 import { DomainValidationError } from '@ottabase/ottaorm';
+import { TURNSTILE_HEADER, TURNSTILE_SITEVERIFY_URL } from '@ottabase/cf/turnstile';
 import { getSite, toPath } from '../lib/content';
 import { money } from '../lib/product';
 
@@ -74,6 +76,7 @@ beforeEach(() => {
     env.value = { OBCF_D1: {}, APP_ID: 'acme' };
     store.findSite.mockResolvedValue(site);
     store.findPage.mockResolvedValue(null);
+    store.overLimit.mockResolvedValue(false);
 });
 
 describe('content', () => {
@@ -401,6 +404,16 @@ describe('layout', () => {
         expect(out.indexOf('<script>try{var s=localStorage.getItem("ottalanding.scheme")')).toBeGreaterThan(-1);
         expect(out.indexOf('<script>')).toBeLessThan(out.indexOf('<style id="landing-theme">'));
     });
+
+    it('hands the lead form its Turnstile site key only when both keys are set', async () => {
+        expect(html(await RootLayout({ children: null }))).not.toContain('turnstile-site-key');
+        env.value = { ...env.value, TURNSTILE_SITE_KEY: 'site-key' };
+        expect(html(await RootLayout({ children: null }))).not.toContain('turnstile-site-key');
+        env.value = { ...env.value, TURNSTILE_SECRET_KEY: 'secret-key' };
+        expect(html(await RootLayout({ children: null }))).toContain(
+            '<meta name="turnstile-site-key" content="site-key"/>',
+        );
+    });
 });
 
 describe('POST /api/leads', () => {
@@ -435,8 +448,9 @@ describe('POST /api/leads', () => {
         expect(invalid.status).toBe(422);
         expect(await invalid.json()).toMatchObject({ fieldErrors: { email: ['Enter an email'] } });
 
-        store.submitLead.mockResolvedValueOnce('rate-limited');
+        store.overLimit.mockResolvedValueOnce(true);
         expect((await post(entry)).status).toBe(429);
+        expect(store.submitLead).toHaveBeenCalledTimes(1);
     });
 
     it('accepts JSON only, of a sane size, and never reaches the database otherwise', async () => {
@@ -444,5 +458,54 @@ describe('POST /api/leads', () => {
         expect((await post('{nope')).status).toBe(400);
         expect((await post(JSON.stringify({ message: 'x'.repeat(40_000) }))).status).toBe(413);
         expect(store.submitLead).not.toHaveBeenCalled();
+    });
+
+    describe('with Turnstile keys set', () => {
+        const siteverify = vi.fn();
+        beforeEach(() => {
+            env.value = { ...env.value, TURNSTILE_SITE_KEY: 'site-key', TURNSTILE_SECRET_KEY: 'secret-key' };
+            siteverify.mockReset();
+            vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+                expect(url).toBe(TURNSTILE_SITEVERIFY_URL);
+                return Response.json(siteverify(Object.fromEntries(init.body as URLSearchParams)));
+            });
+            store.submitLead.mockResolvedValue('stored');
+        });
+        afterEach(() => vi.unstubAllGlobals());
+        const json = { 'content-type': 'application/json' };
+
+        it('refuses a submission without a token, before storing anything', async () => {
+            const res = await post(entry);
+            expect(res.status).toBe(403);
+            expect(await res.json()).toMatchObject({ code: 'TURNSTILE_FAILED' });
+            expect(siteverify).not.toHaveBeenCalled();
+            expect(store.submitLead).not.toHaveBeenCalled();
+        });
+
+        it('stores a submission whose token Cloudflare accepts for the lead form on this host', async () => {
+            siteverify.mockReturnValue({ success: true, action: 'lead', hostname: 'localhost' });
+            const res = await post(entry, { ...json, [TURNSTILE_HEADER]: 'tok' });
+            expect(res.status).toBe(200);
+            expect(siteverify).toHaveBeenCalledWith(expect.objectContaining({ secret: 'secret-key', response: 'tok' }));
+            expect(store.submitLead).toHaveBeenCalledTimes(1);
+        });
+
+        it('refuses a token minted for another form', async () => {
+            siteverify.mockReturnValue({ success: true, action: 'subscribe', hostname: 'localhost' });
+            expect((await post(entry, { ...json, [TURNSTILE_HEADER]: 'tok' })).status).toBe(403);
+            expect(store.submitLead).not.toHaveBeenCalled();
+        });
+
+        it('keeps the per-network limit first, so a flood never reaches Cloudflare', async () => {
+            store.overLimit.mockResolvedValueOnce(true);
+            expect((await post(entry, { ...json, [TURNSTILE_HEADER]: 'tok' })).status).toBe(429);
+            expect(siteverify).not.toHaveBeenCalled();
+        });
+
+        it('stays off with only the secret set', async () => {
+            env.value = { ...env.value, TURNSTILE_SITE_KEY: '' };
+            expect((await post(entry)).status).toBe(200);
+            expect(siteverify).not.toHaveBeenCalled();
+        });
     });
 });

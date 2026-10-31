@@ -4,8 +4,9 @@
 // app's LEAD_ENDPOINT. Themes pass their own class names; behaviour is shared.
 
 import { api, getErrorMessage, isApiError } from '@ottabase/api';
+import { turnstileSiteKey, useTurnstile } from '@ottabase/ui/turnstile';
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { LEAD_ENDPOINT, type LeadKind } from '../leads';
+import { LEAD_ENDPOINT, LEAD_TURNSTILE_ACTION, type LeadKind } from '../leads';
 
 export type LeadFormClasses = {
     input: string;
@@ -32,13 +33,20 @@ export function LeadForm({ kind, buttonLabel, successMessage, classes }: LeadFor
     const id = useId();
     const startedAt = useRef(0);
     const thanks = useRef<HTMLParagraphElement>(null);
+    const form = useRef<HTMLFormElement>(null);
     const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [failure, setFailure] = useState<string>();
+    // The site key is the `<meta name="turnstile-site-key">` the landing app's layout renders when
+    // Turnstile is on. Read after mount, where the form can see whether it sits in one of the admin's
+    // inert previews, which get no widget.
+    const [siteKey, setSiteKey] = useState<string | null>(null);
+    const human = useTurnstile(LEAD_TURNSTILE_ACTION, { siteKey });
 
     // Time spent on the form is one of the bot checks (see LEAD_MIN_FILL_MS).
     useEffect(() => {
         startedAt.current = Date.now();
+        if (!form.current?.closest('[inert]')) setSiteKey(turnstileSiteKey());
     }, []);
     useEffect(() => {
         if (state === 'sent') thanks.current?.focus();
@@ -53,6 +61,7 @@ export function LeadForm({ kind, buttonLabel, successMessage, classes }: LeadFor
         try {
             await api(LEAD_ENDPOINT, {
                 method: 'POST',
+                headers: await human.headers(),
                 body: { ...fields, kind, pagePath: location.pathname, elapsedMs: Date.now() - startedAt.current },
             });
             setState('sent');
@@ -101,6 +110,7 @@ export function LeadForm({ kind, buttonLabel, successMessage, classes }: LeadFor
 
     return (
         <form
+            ref={form}
             onSubmit={submit}
             className={kind === 'signup' ? 'flex flex-col gap-3 sm:flex-row sm:items-start' : 'grid gap-5'}
         >
@@ -117,6 +127,7 @@ export function LeadForm({ kind, buttonLabel, successMessage, classes }: LeadFor
                     <input type="text" name="website" tabIndex={-1} autoComplete="off" />
                 </label>
             </div>
+            {human.widget}
             <button type="submit" disabled={state === 'sending'} className={`${classes.button} shrink-0`}>
                 {state === 'sending' ? 'Sending…' : buttonLabel || BUTTON[kind]}
             </button>

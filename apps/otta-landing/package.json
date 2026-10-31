@@ -40,6 +40,7 @@
         "localflare": "localflare"
     },
     "dependencies": {
+        "@ottabase/cf": "workspace:*",
         "@ottabase/config": "workspace:*",
         "@ottabase/db": "workspace:*",
         "@ottabase/discover": "workspace:*",

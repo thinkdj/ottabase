@@ -270,10 +270,13 @@ describe('LandingLead', () => {
     });
 
     it('limits how often one network can post, without affecting others', async () => {
-        for (let i = 0; i < 5; i++)
+        for (let i = 0; i < 5; i++) {
+            expect(await LandingLead.overLimit('app-flood', 'net-x')).toBe(false);
             expect(await LandingLead.submit('app-flood', contact, { ipHash: 'net-x' })).toBe('stored');
-        expect(await LandingLead.submit('app-flood', contact, { ipHash: 'net-x' })).toBe('rate-limited');
-        expect(await LandingLead.submit('app-flood', contact, { ipHash: 'net-y' })).toBe('stored');
+        }
+        expect(await LandingLead.overLimit('app-flood', 'net-x')).toBe(true);
+        expect(await LandingLead.overLimit('app-flood', 'net-y')).toBe(false);
+        expect(await LandingLead.overLimit('app-flood', undefined)).toBe(false);
     });
 
     it('keeps one signup per email', async () => {

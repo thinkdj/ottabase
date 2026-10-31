@@ -12,9 +12,9 @@ import { landingLeadsTable } from './landing.schema';
 
 /**
  * What `submit` did. `ignored` (a likely bot, or a repeat signup) looks like success to the
- * visitor, so bots learn nothing; `rate-limited` should be answered with a 429.
+ * visitor, so bots learn nothing.
  */
-export type LeadOutcome = 'stored' | 'ignored' | 'rate-limited';
+export type LeadOutcome = 'stored' | 'ignored';
 
 export class LandingLead extends BaseModel {
     static entity = 'landing_leads';
@@ -49,7 +49,18 @@ export class LandingLead extends BaseModel {
     };
 
     /**
-     * Take an entry from the public site. Validation errors throw per field (422). Likely bots (the hidden `website` field filled in, or a form sent
+     * True when this network (`ipHash`) has sent `LEAD_RATE_LIMIT.max` entries within the window.
+     * The route asks before the Turnstile check, so a flood never reaches Cloudflare's siteverify.
+     */
+    static async overLimit(appId: string, ipHash: string | undefined): Promise<boolean> {
+        if (!ipHash) return false;
+        const since = Date.now() - LEAD_RATE_LIMIT.windowMs;
+        return (await this.count({ appId, ipHash, createdAt: { $gte: since } })) >= LEAD_RATE_LIMIT.max;
+    }
+
+    /**
+     * Take an entry from the public site, after `overLimit` and the bot check. Validation errors
+     * throw per field (422). Likely bots (the hidden `website` field filled in, or a form sent
      * faster than `LEAD_MIN_FILL_MS`) and repeat signups are accepted but not stored.
      */
     static async submit(appId: string, input: unknown, { ipHash }: { ipHash?: string } = {}): Promise<LeadOutcome> {
@@ -57,12 +68,6 @@ export class LandingLead extends BaseModel {
         if (spam?.website || typeof spam?.elapsedMs !== 'number' || spam.elapsedMs < LEAD_MIN_FILL_MS) return 'ignored';
         const lead = validated(LeadInputSchema, input);
 
-        if (ipHash) {
-            const since = Date.now() - LEAD_RATE_LIMIT.windowMs;
-            if ((await this.count({ appId, ipHash, createdAt: { $gte: since } })) >= LEAD_RATE_LIMIT.max) {
-                return 'rate-limited';
-            }
-        }
         // Someone signing up twice is still on the list once.
         if (lead.kind === 'signup' && (await this.first({ appId, kind: 'signup', email: lead.email })))
             return 'ignored';

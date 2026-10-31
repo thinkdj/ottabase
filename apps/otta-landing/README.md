@@ -101,6 +101,16 @@ visitor's network is passed as a salted SHA-256 hash (from `cf-connecting-ip`), 
 Answers are `{ ok: true }` (stored, or quietly dropped as a likely bot), per-field 422 errors, or 429 when one network
 sends too much. otta-web reads the entries in its admin inbox and emails the digest. See the package README, "Leads".
 
+**Bot check (Cloudflare Turnstile).** Off until both keys are set: `TURNSTILE_SITE_KEY` in `wrangler.jsonc` `vars` (each
+env has its own, empty by default) and `TURNSTILE_SECRET_KEY` as a secret
+(`wrangler secret put TURNSTILE_SECRET_KEY --env production`; for `next dev`, a `.dev.vars` line, which
+`getPlatformProxy` reads). A secret alone stays off, since no page would render a widget to answer it. With both set,
+the root layout renders `<meta name="turnstile-site-key">`, the form's widget reads it, and the route checks the token
+after the per-network limit (action `lead`, refused with 503 `TURNSTILE_UNAVAILABLE` when Cloudflare cannot be reached,
+since the form creates an entry). A missing or wrong token is a 403 `TURNSTILE_FAILED`, shown as the form's error. The
+honeypot and the minimum fill time stay as they are. Cloudflare's test keys (`1x00000000000000000000AA`, secret
+`1x0000000000000000000000000000000AA`) pass on localhost.
+
 ## Scripts
 
 | Command              | Description                          |

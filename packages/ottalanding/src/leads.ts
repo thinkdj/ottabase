@@ -15,6 +15,12 @@ export type LeadKind = (typeof LEAD_KINDS)[number];
 /** Where the public site's forms post (a route of the landing app). */
 export const LEAD_ENDPOINT = '/api/leads';
 
+/**
+ * The Turnstile action the lead form's widget renders with and `/api/leads` checks, so a token
+ * minted on another form is refused here.
+ */
+export const LEAD_TURNSTILE_ACTION = 'lead';
+
 /** Per network (hashed IP): at most this many entries in the window, then 429. */
 export const LEAD_RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 } as const;
 

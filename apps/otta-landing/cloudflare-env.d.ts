@@ -22,6 +22,10 @@ declare global {
          * Unset: this app's own /api/files/public route.
          */
         R2_PUBLIC_URL?: string;
+        /** Cloudflare Turnstile's site key for the lead form (a var). Empty: no bot check. */
+        TURNSTILE_SITE_KEY?: string;
+        /** Its secret (`wrangler secret put TURNSTILE_SECRET_KEY`). The check runs only when both are set. */
+        TURNSTILE_SECRET_KEY?: string;
         OBCF_ASSETS?: Fetcher;
         /** Cloudflare Images, required by the OpenNext worker bundle. */
         IMAGES?: ImagesBinding;

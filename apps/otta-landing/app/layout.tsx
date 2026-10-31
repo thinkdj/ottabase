@@ -2,7 +2,7 @@ import { getTheme, schemeInitScript, themeStyles } from '@ottabase/ottalanding';
 import { fileUrl } from '@ottabase/utils/media';
 import { sanitizeCssForStyleTag } from '@ottabase/utils/sanitize';
 import type { Metadata } from 'next';
-import { getSite, isProduction, siteOrigin } from '../lib/content';
+import { getSite, isProduction, siteOrigin, turnstileKeys } from '../lib/content';
 import './globals.css';
 
 // Content is edited live in otta-web's admin, so every request reads the current site.
@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-    const site = await getSite();
+    const [site, turnstile] = await Promise.all([getSite(), turnstileKeys()]);
     // The theme's design tokens on :root, rendered server-side so the first paint is already on-brand.
     const theme = getTheme(site?.theme ?? 'launch');
     const { css, fonts } = themeStyles(theme.id, ':root', site?.brandColor);
@@ -46,6 +46,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {fonts.map((href) => (
                     <link key={href} rel="stylesheet" href={href} />
                 ))}
+                {/* The lead form's Turnstile widget reads its site key here (@ottabase/ui/turnstile); absent: no bot check. */}
+                {turnstile && <meta name="turnstile-site-key" content={turnstile.siteKey} />}
             </head>
             <body className="bg-background text-foreground">{children}</body>
         </html>

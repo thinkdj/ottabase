@@ -1,11 +1,12 @@
 // POST /api/leads — the contact and signup forms (LeadForm). Stores the entry in the shared D1;
 // otta-web shows it in the admin inbox and emails the digest.
 
-import { LandingLead } from '@ottabase/ottalanding';
+import { requireHuman } from '@ottabase/cf/turnstile';
+import { LEAD_TURNSTILE_ACTION, LandingLead } from '@ottabase/ottalanding';
 import { DomainValidationError } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { connect } from '../../../lib/content';
+import { connect, turnstileKeys } from '../../../lib/content';
 
 /** Far above any real entry (a 4,000-character message), far below anything abusive. */
 const MAX_BODY_BYTES = 32 * 1024;
@@ -26,13 +27,21 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const appId = await connect();
+    const ipHash = await networkHash(appId, request);
+    // The per-network limit first (a flood never reaches Cloudflare), then Turnstile when its keys are set.
+    if (await LandingLead.overLimit(appId, ipHash)) {
+        return errorResponse('Too many messages from your network. Please try again in a few minutes.', 429, {
+            code: 'RATE_LIMITED',
+        });
+    }
+    const refused = await requireHuman(request, {
+        secret: (await turnstileKeys())?.secret,
+        action: LEAD_TURNSTILE_ACTION,
+        unreachable: 'refuse',
+    });
+    if (refused) return refused;
     try {
-        const outcome = await LandingLead.submit(appId, body, { ipHash: await networkHash(appId, request) });
-        if (outcome === 'rate-limited') {
-            return errorResponse('Too many messages from your network. Please try again in a few minutes.', 429, {
-                code: 'RATE_LIMITED',
-            });
-        }
+        await LandingLead.submit(appId, body, { ipHash });
         return jsonResponse({ ok: true });
     } catch (error) {
         if (error instanceof DomainValidationError) {
