@@ -95,6 +95,7 @@ import { handleBrandApi } from './brand';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from './cloudflare-d1'; // otta:only demo
 import { handleCloudflareQueue } from './cloudflare-queue'; // otta:only demo
 import { handleRateLimiting } from './cloudflare-rate'; // otta:only demo
+import { handleTurnstileDemo } from './cloudflare-turnstile'; // otta:only demo
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from './cloudflare-realtime'; // otta:only demo
 import { handleCloudflareKV, handleCloudflareR2 } from './cloudflare-storage'; // otta:only demo
 import { handleCoreAnalytics } from './core-analytics';
@@ -346,6 +347,7 @@ apiRouter.on(['PATCH', 'DELETE'], '/api/cloudflare/d1/todos/*', (c) =>
 apiRouter.all('/api/cloudflare/kv', h(handleCloudflareKV));
 apiRouter.all('/api/cloudflare/r2', h(handleCloudflareR2));
 apiRouter.post('/api/cloudflare/rate-limiting', h(handleRateLimiting));
+apiRouter.post('/api/cloudflare/turnstile', h(handleTurnstileDemo));
 apiRouter.get('/api/cloudflare/realtime/stats', h(handleRealtimeStats));
 apiRouter.post('/api/cloudflare/realtime/broadcast', h(handleRealtimeBroadcast));
 apiRouter.all('/api/cloudflare/realtime/ws', h(handleRealtimeWebsocket));

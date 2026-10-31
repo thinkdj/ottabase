@@ -154,6 +154,10 @@ vi.mock('../cloudflare-rate', () => ({
     handleRateLimiting: handlerMock('handleRateLimiting'),
 }));
 
+vi.mock('../cloudflare-turnstile', () => ({
+    handleTurnstileDemo: handlerMock('handleTurnstileDemo'),
+}));
+
 vi.mock('../cloudflare-realtime', () => ({
     handleRealtimeBroadcast: handlerMock('handleRealtimeBroadcast'),
     handleRealtimeStats: handlerMock('handleRealtimeStats'),
@@ -332,6 +336,7 @@ import { handleBrandApi } from '../brand';
 import { handleD1Init, handleD1TodoById, handleD1Todos } from '../cloudflare-d1';
 import { handleCloudflareQueue } from '../cloudflare-queue';
 import { handleRateLimiting } from '../cloudflare-rate';
+import { handleTurnstileDemo } from '../cloudflare-turnstile';
 import { handleRealtimeBroadcast, handleRealtimeStats, handleRealtimeWebsocket } from '../cloudflare-realtime';
 // otta:end demo
 import { handleCloudflareKV, handleCloudflareR2 } from '../cloudflare-storage'; // otta:only demo
@@ -471,6 +476,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     handleD1Todos,
     handleCloudflareQueue,
     handleRateLimiting,
+    handleTurnstileDemo,
     handleRealtimeBroadcast,
     handleRealtimeStats,
     handleRealtimeWebsocket,

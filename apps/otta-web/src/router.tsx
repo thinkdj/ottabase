@@ -768,6 +768,11 @@ const demoChildren = [
         'CloudflareQueuesDemoPage',
     ),
     demoChild(
+        'cloudflare/turnstile',
+        () => import('@/pages/demo/cloudflare/CloudflareTurnstileDemoPage'),
+        'CloudflareTurnstileDemoPage',
+    ),
+    demoChild(
         'cloudflare/rate-limiting',
         () => import('@/pages/demo/cloudflare/CloudflareRateLimitingDemoPage'),
         'CloudflareRateLimitingDemoPage',

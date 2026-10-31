@@ -428,6 +428,28 @@ export async function GET(request: Request) {
 }
 ```
 
+### Turnstile
+
+Cloudflare's bot check on a form a stranger can submit: the page renders `useTurnstile(action)` from
+`@ottabase/ui/turnstile`, the route checks the token it sends. Off until `TURNSTILE_SITE_KEY` (a var) and
+`TURNSTILE_SECRET_KEY` (a secret) are both set; see `docs/CLOUDFLARE_DEPLOY.md` ("Turnstile").
+
+```typescript
+import { requireHuman } from '@ottabase/cf/turnstile';
+
+export async function POST(request: Request) {
+    const { env } = await getCloudflareContext();
+    // After the rate limit above, so a flood never reaches Cloudflare's siteverify.
+    const denied = await requireHuman(request, {
+        secret: env.TURNSTILE_SECRET_KEY,
+        action: 'contact',
+        unreachable: 'refuse',
+    });
+    if (denied) return denied;
+    return Response.json({ success: true });
+}
+```
+
 ### Vectorize
 
 ```typescript
@@ -610,6 +632,7 @@ Working examples available at:
 - `/demo/cloudflare/images` - Image Upload
 - `/demo/cloudflare/queues` - Message Queues
 - `/demo/cloudflare/rate-limiting` - Rate Limiting
+- `/demo/cloudflare/turnstile` - Turnstile, with Cloudflare's test keys
 
 ## Resources
 

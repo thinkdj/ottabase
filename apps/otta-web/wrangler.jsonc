@@ -298,6 +298,12 @@
         // registrable domain for user content: https://files.example-usercontent.com
         // Unset (as in the named envs below) means the same fallback.
         "R2_PUBLIC_URL": "/api/files/public",
+        // Cloudflare Turnstile, the bot check on public forms: the widget's site key (public, so it
+        // lives here) with TURNSTILE_SECRET_KEY set as a secret. Checks run only when both are set;
+        // empty is off. Each env below has its own, so a deploy never inherits the local one.
+        // Cloudflare's test keys (always pass: 1x00000000000000000000AA and secret
+        // 1x0000000000000000000000000000000AA) work on localhost.
+        "TURNSTILE_SITE_KEY": "",
         // CLOUDFLARE_ACCOUNT_ID: // Set in env.production/env.preview vars (substituted from GitHub Secret)
     },
 
@@ -315,6 +321,7 @@
                 "ENVIRONMENT": "production",
                 "NODE_ENV": "production",
                 "OTTAORM_MAX_ALL_ROWS": "5000",
+                "TURNSTILE_SITE_KEY": "", // Paste the widget's site key; TURNSTILE_SECRET_KEY is a secret
                 // For Analytics (Workers Analytics Engine): Substituted from GitHub Secret at deploy; add CLOUDFLARE_ANALYTICS_API_TOKEN via wrangler secret put or CF Dash > Worker > Settings > Secrets
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },
@@ -434,6 +441,7 @@
                 "ENVIRONMENT": "demo",
                 "NODE_ENV": "production",
                 "OTTAORM_MAX_ALL_ROWS": "5000",
+                "TURNSTILE_SITE_KEY": "", // Paste the widget's site key; TURNSTILE_SECRET_KEY is a secret
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
                 "DEMO_MODE": "true",
                 // The banner's and the welcome mail's call to action. Point them at your own page.
@@ -545,6 +553,7 @@
                 "ENVIRONMENT": "staging",
                 "NODE_ENV": "production",
                 "OTTAORM_MAX_ALL_ROWS": "5000",
+                "TURNSTILE_SITE_KEY": "", // Paste the widget's site key; TURNSTILE_SECRET_KEY is a secret
             },
             "unsafe": {
                 "bindings": [
@@ -647,6 +656,7 @@
                 "ENVIRONMENT": "preview",
                 "NODE_ENV": "production",
                 "OTTAORM_MAX_ALL_ROWS": "5000",
+                "TURNSTILE_SITE_KEY": "", // Paste the widget's site key; TURNSTILE_SECRET_KEY is a secret
                 // For Analytics (WAE): substituted from GitHub Secret at deploy
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },

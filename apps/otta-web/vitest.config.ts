@@ -79,6 +79,7 @@ export default defineConfig({
             ),
             '@ottabase/ui/lib/utils': path.resolve(__dirname, '../../packages/ui/src/lib/utils.ts'),
             '@ottabase/ui/json-editor': path.resolve(__dirname, '../../packages/ui/components/ui/json-editor.tsx'),
+            '@ottabase/ui/turnstile': path.resolve(__dirname, '../../packages/ui/components/ui/turnstile.tsx'),
             '@ottabase/ui/brand-components': path.resolve(
                 __dirname,
                 '../../packages/ui/providers/brand-components.tsx',

@@ -15,6 +15,7 @@
             "worker/routes/cloudflare-d1.ts",
             "worker/routes/cloudflare-queue.ts",
             "worker/routes/cloudflare-rate.ts",
+            "worker/routes/cloudflare-turnstile.ts",
             "worker/routes/cloudflare-realtime.ts",
             "worker/routes/__tests__/demo-mode.test.ts",
             "worker/routes/__tests__/cloudflare-realtime.test.ts",

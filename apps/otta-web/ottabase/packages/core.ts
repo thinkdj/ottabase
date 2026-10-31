@@ -121,6 +121,16 @@ export const corePackage = definePackage<CloudflareEnv>({
                 description: 'Storage per organization (or user), MB. Default 1024.',
             },
             {
+                key: 'TURNSTILE_SITE_KEY',
+                secret: false,
+                description: 'Turnstile site key: the bot check on public forms. Needs the secret too.',
+            },
+            {
+                key: 'TURNSTILE_SECRET_KEY',
+                kind: 'secret',
+                description: 'Turnstile secret key. Both keys set: public forms check for bots.',
+            },
+            {
                 key: 'OBCF_RATE_LIMITER_UPLOADS',
                 kind: 'binding',
                 description: 'Upload rate limit, 60 a minute per user. Required in production.',

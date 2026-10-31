@@ -47,6 +47,11 @@ export function CloudflareDemoIndexPage() {
             href: '/demo/cloudflare/rate-limiting',
         },
         {
+            name: 'Turnstile',
+            description: 'The bot check on public forms, verified on the server',
+            href: '/demo/cloudflare/turnstile',
+        },
+        {
             name: 'Realtime Pub/Sub',
             description: 'WebSocket-based real-time messaging with offline support',
             href: '/demo/cloudflare/realtime',

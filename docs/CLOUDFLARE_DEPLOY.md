@@ -249,6 +249,26 @@ Cache → Custom Purge).
 **Uploads have their own rate limiter**, `OBCF_RATE_LIMITER_UPLOADS` (60 a minute per user, in every env block); a
 production deploy without it refuses uploads.
 
+### Turnstile: the bot check on public forms
+
+Every form a stranger can submit (sign in, register, magic link, password reset, verification resend, protected post
+unlock, anonymous comments, the landing lead form, and Pro's newsletter and status subscribe forms) checks for bots with
+Cloudflare Turnstile. It is free, invisible for most people, and off until you turn it on.
+
+1. Cloudflare dashboard → Turnstile → Add widget: mode **Managed**, hostnames = the app's domains (production and the
+   demo; the landing site too if it is on another domain).
+2. Paste the **site key** into `TURNSTILE_SITE_KEY` in each env block's `vars` in `wrangler.jsonc` (it is public; named
+   envs do not inherit `vars`). Set the **secret key** per env:
+   `wrangler secret put TURNSTILE_SECRET_KEY --env production`.
+3. Do the same in `apps/otta-landing/wrangler.jsonc` if the landing site is deployed.
+
+Checks run only when both keys are set, so a secret alone never locks the forms. Admin → System readiness shows both.
+When Cloudflare cannot be reached, forms that mail an address or create something refuse with a 503, and password
+sign-in goes through (logged) behind its rate limit. Preview and staging can use Cloudflare's test keys (site
+`1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`), which pass on any hostname. Try it at
+`/demo/cloudflare/turnstile`; `packages/cf/README.md` ("Turnstile") has the API for adding it to a new form. If a
+Content-Security-Policy is added later, allow `https://challenges.cloudflare.com` in `script-src` and `frame-src`.
+
 ---
 
 ## Troubleshooting
@@ -363,6 +383,8 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 - [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets); it creates all three R2 buckets
 - [ ] Files: a custom domain on the public bucket (a separate registrable domain), `R2_PUBLIC_URL`, the Transform Rule,
       the CSAM Scanning Tool, `FILES_SIGNING_SECRET` (see "Files" above)
+- [ ] Turnstile: a widget, `TURNSTILE_SITE_KEY` in each env's vars, `TURNSTILE_SECRET_KEY` as a secret (see "Turnstile"
+      above)
 - [ ] Validate: `pnpm cf:validate`
 - [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
 - [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)

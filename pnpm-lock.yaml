@@ -389,6 +389,9 @@ importers:
 
   apps/otta-landing:
     dependencies:
+      '@ottabase/cf':
+        specifier: workspace:*
+        version: link:../../packages/cf
       '@ottabase/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -1119,6 +1122,9 @@ importers:
       '@ottabase/config':
         specifier: workspace:*
         version: link:../config
+      '@ottabase/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
@@ -2161,6 +2167,9 @@ importers:
       '@ottabase/ottaorm':
         specifier: workspace:*
         version: link:../ottaorm
+      '@ottabase/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@ottabase/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2171,6 +2180,9 @@ importers:
       '@ottabase/db':
         specifier: workspace:*
         version: link:../db
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.7
@@ -2180,6 +2192,9 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)
+      jsdom:
+        specifier: 'catalog:'
+        version: 27.4.0(@noble/hashes@1.8.0)
       react:
         specifier: 'catalog:'
         version: 19.2.4
@@ -2191,7 +2206,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 'catalog:'
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.7.0)(jsdom@29.0.2(@noble/hashes@1.8.0))(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.31))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.1.0)(@vitest/ui@4.0.18)(happy-dom@20.4.0)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.32.0)(sugarss@5.0.1(postcss@8.5.31))(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/ottalayout:
     devDependencies:
@@ -2765,6 +2780,9 @@ importers:
       '@hookform/resolvers':
         specifier: 'catalog:'
         version: 3.10.0(react-hook-form@7.70.0(react@19.2.4))
+      '@ottabase/cf':
+        specifier: workspace:*
+        version: link:../cf
       '@radix-ui/react-accordion':
         specifier: ^1.2.2
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -16976,7 +16994,7 @@ snapshots:
       jiti: 2.7.0
       lightningcss: 1.32.0
       magic-string: 0.30.21
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
       tailwindcss: 4.3.3
 
   '@tailwindcss/oxide-android-arm64@4.1.18':
@@ -20157,7 +20175,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   postcss@8.5.31:
     dependencies:

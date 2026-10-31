@@ -18,6 +18,7 @@ Type-safe wrappers for all major Cloudflare Worker bindings:
 - **Browser Rendering**: PDF, screenshot, Markdown, links and structured extraction without puppeteer
 - **Workflows**: start, inspect and steer durable runs
 - **Durable Object alarms**: many named timers over the one alarm
+- **Turnstile**: the server check for Cloudflare's bot check on public forms
 
 ## Installation
 
@@ -110,6 +111,32 @@ if (!result.data.success) {
     return new Response('Too many requests', { status: 429 });
 }
 ```
+
+### Turnstile
+
+The server side of Cloudflare's bot check for forms a stranger can submit. The page renders the widget with
+`useTurnstile(action)` from `@ottabase/ui/turnstile`, which sends its token in the `X-Turnstile-Token` header
+(`TURNSTILE_HEADER`); the route checks it before doing any work:
+
+```typescript
+import { requireHuman } from '@ottabase/cf/turnstile';
+
+// Rate limit first: it is cheap and keeps a flood away from Cloudflare's siteverify.
+const denied = await requireHuman(request, {
+    secret: env.TURNSTILE_SECRET_KEY, // unset: every request passes, so tests and local runs need nothing
+    action: 'register', // the widget's action: a token made for another form is refused
+    unreachable: 'refuse', // or 'allow' (logged) where another gate still holds, like password sign-in
+});
+if (denied) return denied; // 403 TURNSTILE_FAILED, or 503 TURNSTILE_UNAVAILABLE
+```
+
+It checks that the token is genuine, unused (tokens work once and expire after five minutes), made for that action and
+made on the request's hostname (pass `hostname` when the form lives on another one). `verifyTurnstile` returns the
+verdict instead of a response (`missing`, `invalid`, `spent`, `action`, `hostname` or `unavailable`).
+`TURNSTILE_TEST_KEYS` holds Cloudflare's test site keys, secrets and dummy token; test secrets skip the action and
+hostname comparison, since their answers carry sample values. In otta-web, `worker/lib/turnstile.ts` binds this to the
+app's env (`guardPublicForm` = the rate limit, then this) and turns checks on only when both `TURNSTILE_SITE_KEY` and
+`TURNSTILE_SECRET_KEY` are set.
 
 ### Cache Keys (Multi-Tenant KV Scoping)
 

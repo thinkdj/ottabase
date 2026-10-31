@@ -328,6 +328,11 @@
             "import": "./dist/tree-view.mjs",
             "require": "./dist/tree-view.js"
         },
+        "./turnstile": {
+            "types": "./dist/turnstile.d.ts",
+            "import": "./dist/turnstile.mjs",
+            "require": "./dist/turnstile.js"
+        },
         "./visually-hidden": {
             "types": "./dist/visually-hidden.d.ts",
             "import": "./dist/visually-hidden.mjs",
@@ -397,6 +402,7 @@
     "homepage": "https://github.com/thinkdj/ottabase/tree/main/packages/ui#readme",
     "dependencies": {
         "@hookform/resolvers": "catalog:",
+        "@ottabase/cf": "workspace:*",
         "@radix-ui/react-accordion": "^1.2.2",
         "@radix-ui/react-alert-dialog": "^1.1.4",
         "@radix-ui/react-aspect-ratio": "^1.1.1",

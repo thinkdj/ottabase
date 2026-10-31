@@ -46,6 +46,7 @@ const componentEntries = [
     'components/ui/rating.tsx',
     'components/ui/timeline.tsx',
     'components/ui/tree-view.tsx',
+    'components/ui/turnstile.tsx',
     'components/ui/visually-hidden.tsx',
     'components/ui/label.tsx',
     'components/ui/menubar.tsx',

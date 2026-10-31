@@ -70,6 +70,7 @@ Make Tailwind scan the package and load the stylesheet:
 | `@ottabase/ui`                  | Every component except `JsonEditor`, plus `cn`, `toast`, the providers and the brand override hooks |
 | `@ottabase/ui/<component>`      | One component per entry (`button`, `dialog`, `confirm-dialog`, `split-pane`, …)                     |
 | `@ottabase/ui/json-editor`      | `JsonEditor` and its JSON types. Kept off the root entry: it is large and few screens need it       |
+| `@ottabase/ui/turnstile`        | `useTurnstile`, the Cloudflare Turnstile widget for public forms (see below)                        |
 | `@ottabase/ui/providers`        | `UIProviders` and `ThemeProvider` on their own                                                      |
 | `@ottabase/ui/brand-components` | The Tier-2 component override registry on its own                                                   |
 | `@ottabase/ui/lib/utils`        | `cn` on its own                                                                                     |
@@ -186,6 +187,33 @@ Props: `value`, `onChange`, `readOnly`, `defaultMode` (`'tree' | 'raw'`), `colla
 `Enter` commits an inline edit and `Escape` cancels; in Raw mode `Ctrl/Cmd+S` formats. `@ottabase/forms` uses it for
 `fieldType: 'json'` fields and the blog editor for its Custom Meta tab: use it rather than adding a JSON editor
 dependency.
+
+## Turnstile
+
+The browser side of Cloudflare's bot check, for forms a stranger can submit. One hook per form:
+
+```tsx
+import { useTurnstile } from '@ottabase/ui/turnstile';
+
+const human = useTurnstile('register'); // the action the route checks
+// in the form, above the submit button (null when bot checks are off):
+{
+    human.widget;
+}
+// on submit, once per request:
+await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { ...(await human.headers()), 'Content-Type': 'application/json' },
+    body,
+});
+```
+
+The widget is invisible for most people and shows a challenge only when Cloudflare wants one (`appearance: 'always'`
+shows it regardless). `headers()` waits for the token, hands it over once (tokens are single use) and readies the next
+one. The script loads once per page; the widget follows the page's `lang` and its `.dark` / `.light` class. The site key
+comes from `configureTurnstile({ siteKey })`, else `<meta name="turnstile-site-key">` (otta-web's Worker adds it to
+every document when the keys are set), else the hook's `siteKey` option. Without one nothing renders and `headers()` is
+empty. The server checks the header with `requireHuman` from `@ottabase/cf/turnstile`.
 
 ## Design System v1 pieces
 

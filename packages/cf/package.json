@@ -1,7 +1,7 @@
 {
     "name": "@ottabase/cf",
     "version": "1.0.0",
-    "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows and Durable Object alarms",
+    "description": "Framework-agnostic Cloudflare bindings wrapper for D1, KV, R2, Images, Hyperdrive, Queues, Secret Store, Rate Limiting, Vectorize, Workers AI, Browser Rendering, Workflows, Durable Object alarms and Turnstile",
     "keywords": [
         "cloudflare",
         "workers",
@@ -105,19 +105,25 @@
             "types": "./dist/kv-cache.d.ts",
             "import": "./dist/kv-cache.mjs",
             "require": "./dist/kv-cache.js"
+        },
+        "./turnstile": {
+            "types": "./dist/turnstile.d.ts",
+            "import": "./dist/turnstile.mjs",
+            "require": "./dist/turnstile.js"
         }
     },
     "sideEffects": false,
     "scripts": {
-        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts src/turnstile.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/d1.ts src/kv.ts src/r2.ts src/hyperdrive.ts src/queues.ts src/secrets.ts src/rate-limiting.ts src/cache-keys.ts src/kv-cache.ts src/vectorize.ts src/ai.ts src/browser.ts src/workflows.ts src/durable-alarms.ts src/turnstile.ts --format cjs,esm --dts --watch",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
-        "@ottabase/config": "workspace:*"
+        "@ottabase/config": "workspace:*",
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",

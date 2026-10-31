@@ -200,7 +200,7 @@ export const DEMO_ITEMS: DemoItem[] = [
         label: 'Cloudflare Services',
         title: 'Cloudflare Services',
         description:
-            'Type-safe wrappers for Cloudflare infrastructure: KV, D1, R2, Queues, Images, PubSub, and Rate Limiting',
+            'Type-safe wrappers for Cloudflare infrastructure: KV, D1, R2, Queues, Images, PubSub, Rate Limiting and Turnstile',
         buttonVariant: 'outline',
     },
     {

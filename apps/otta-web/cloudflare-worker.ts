@@ -14,6 +14,7 @@ import {
 import { injectBlogPostSeo } from './worker/lib/blog-seo-inject'; // otta:only ottablog
 import { injectBlogThemeCss } from './worker/lib/blog-theme-inject'; // otta:only ottablog
 import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
+import { injectTurnstileSiteKey } from './worker/lib/turnstile';
 import { ensureDbConnection } from './worker/lib/db-utils';
 import { handleUnhandledRequestError } from './worker/lib/http-error-boundary';
 import { checkKillSwitches } from './worker/lib/killswitch';
@@ -138,6 +139,8 @@ export default {
 
             if (isHtmlRequest(request) && response.ok) {
                 response = await injectBrandCriticalCSS(response, request, env);
+                // The Turnstile site key, for the bot check on public forms (off without keys).
+                response = await injectTurnstileSiteKey(response, env);
                 // otta:begin ottablog
                 if (packages.has('ottablog')) {
                     // Blog detail navigations additionally get per-post SEO meta
