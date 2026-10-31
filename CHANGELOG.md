@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Images render at the size the screen needs.** Content keeps an uploaded image as a `StoredFile`
+  (`{ key, width, height, variants }`) or an outside address as a string (`FileSource`), never a stored URL.
+  `@ottabase/utils/media` is the one home for the key format, the variant widths and the URL base: `configureMedia` (the
+  Worker per request, the SPA at boot, otta-landing before it reads), `imageSources` (`src`, `srcSet`, `width`,
+  `height`), `fileUrl`, `storedFileOf`, `isStoredFile`. Editor blocks, the blog (hero, og image, photo journal, series
+  cover), landing pages, menu items, the media library and its lightbox all render through it with a `sizes` for their
+  layout, so a reader gets the 640px or 1600px WebP instead of the upload, and changing `R2_PUBLIC_URL` moves every
+  image at once. og:image, JSON-LD, feeds, the favicon and blog exports use the original's absolute URL (not every
+  client takes WebP).
+- File views carry `srcSet`; a media library pick carries `file`, the `StoredFile` content stores (null for a private
+  file, which content refuses).
+
 - **One files system.** Three buckets by who may read: `OBCF_R2` (public: every object in it is public, served from
   `R2_PUBLIC_URL`, a custom domain in production and `/api/files/public` otherwise), `OBCF_R2_PRIVATE` (members and
   owner files, system artifacts) and `OBCF_R2_VAULT` (backups). `createFiles` in `@ottabase/ottaupload/server` is the
@@ -277,6 +289,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **Image fields hold a `FileSource`.** Editor blocks: `advancedImage.image`, `beforeAfter.before`/`after`,
+  `imageHotspots.image`, `mediaEmbed.media`, gallery items `media` (with `alt`), `review.image`,
+  `testimonial.authorAvatar`/`companyLogo`; the old `url`, `file.url`, `mediaId`, `thumbnailUrl`, `previewUrl`, `width`
+  and `height` fields are gone. Blog: `heroImage.image`, `seoMeta.ogImage`, photo journal items `image`, series
+  `coverImage.image`, all validated on write. Landing fields drop the `Url` suffix (`image`, `logo`, `avatar`,
+  `favicon`, share card `background`/`image`) and `POST /api/landing/share-image` answers `{ file }`. Menu items store
+  `image` as JSON, validated by the brand menus API and shown as the thumb rendition. Blog exports write each stored
+  file as its original's absolute URL.
+- **Variants are made only when narrower than the original**, and only when its width is known: a 500px upload costs one
+  transformation (thumb), a 160px one none.
+- The media library lightbox shows the original or the rendition that fits the screen, no longer the 640px card.
+- `configureOttaORM` no longer takes `filesPublicUrl`; `User.imageUrl` builds on `configureMedia`'s base. `variantKey`,
+  `fileIdFromKey`, `FILE_VARIANT_WIDTHS` and `DEFAULT_PUBLIC_FILES_URL` moved from `@ottabase/ottaupload/server` to
+  `@ottabase/utils/media`. The app's menu admin uses `@ottabase/ottamenu`'s menu types instead of its own copy.
+
 - **Every due cron task runs in its own invocation.** With `OBCF_QUEUE` bound, the minute tick enqueues one `cron:run`
   message per due task, so each job has a whole invocation's D1 query budget, CPU and wall time; without a queue they
   run inline. "Run now" goes the same way (202 `{ queued: true }`), and
@@ -517,6 +544,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   just the (non-privileged) template preview; the privileged test-send/provider status moved to the admin console.
 
 ### Fixed (Unreleased)
+
+- Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
+  `alt`/`name`).
+- Saving a post in the admin keeps its `seoMeta.ogImage`.
+- Menu item images go through `sanitizeUrl` before `src`.
 
 - **The shared rate limiter ignored the Workers binding.** A real rate-limit binding answers only `{ success }`;
   `getRateLimitData` discarded that answer and let the KV counter decide. The binding's verdict decides now.
