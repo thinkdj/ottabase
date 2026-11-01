@@ -9,17 +9,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
-- **`otta deploy` in CI, and per app.** `otta deploy <app> --ci` is the build and deploy only, for Cloudflare Workers
-  Builds or any CI: no login, nothing created, no secret touched, placeholder values from build variables (and `--set`),
-  `CLOUDFLARE_ACCOUNT_ID` included; a missing one stops the run and names itself. How an app builds now comes from its
+- **One deploy, wherever it runs: `otta deploy` in Cloudflare Workers Builds, GitHub Actions and a terminal.**
+  `otta deploy <app> --ci` is the build and deploy only (no login, nothing created, no secret touched), and both GitHub
+  workflows now run it instead of keeping their own copy of the rules. How an app builds comes from its
   `cloudflare-config.json` for every deploy: `buildCommand`, then `workerBuildCommand` (OpenNext, so a Next.js app such
-  as otta-landing deploys with `otta deploy` too), `verifyPaths` checked before wrangler runs, `wranglerEnv` as the
-  default env and `healthCheckPath` for the check. Only the workspace packages the app depends on are built
-  (`turbo run build --filter=<app>^...`), not all of them. `--build-only` and `--skip-build` split it into Workers
-  Builds' build and deploy commands. `--watch-paths` prints what the app's deploy depends on (the app, every workspace
-  package it reaches, the root build files): the include list for Workers Builds' build watch paths.
-  `--changed-since <ref>` deploys only when one of those changed, and `--all` deploys every app with a
-  `cloudflare-config.json` that is not `"deployable": false`, reporting each and failing at the end if one failed.
+  as otta-landing deploys with `otta deploy` too), `verifyPaths` checked before wrangler runs (with a hint by `appType`
+  and what the folder holds when the output is missing), `wranglerEnv` as the default env and `healthCheckPath` for the
+  check, four tries of ten seconds each, any answer below 400 passing. Only the workspace packages the app depends on
+  are built; `--all` builds every app's in one turbo run, deploys each, reports each (in GitHub, in the job summary) and
+  fails at the end if one failed. `--plan` prints that decision as JSON, the GitHub matrix. `--changed-since <ref>`
+  deploys only apps a file under their watch paths changed for (the app, every workspace package it reaches, the root
+  build files; `--watch-paths` prints them for Workers Builds), and deploys when git cannot tell. `#skipdeploy` in the
+  commit message skips `--ci` and `--plan` runs in Workers Builds and GitHub alike; `--force` overrides.
+  `--preview <id>` deploys env.preview as its own Worker `<name>-<id>` and `--delete-preview <id>` removes it. In CI,
+  values come from `--set`, `OTTA_DEPLOY_VALUES` (one JSON object: GitHub's `toJson(secrets)`, taken out of the
+  environment by the launcher before anything loads, so no build or dependency sees it) and the environment; every
+  missing name, the manifest's `requiresSecrets` included, is listed at once before anything builds. `requiresSecrets`
+  are the build's own values (blackbox's `BLACKBOX_UPLOAD_TOKEN` for its `postbuild` source map upload): exactly those
+  reach the build scripts. Placeholders are read from wrangler.jsonc's syntax tree (a commented-out line is never one; a
+  value with a quote or a backslash is written escaped). `otta start --env` reads the manifest the same strict way.
   Versions are tagged with the CI commit (`WORKERS_CI_COMMIT_SHA`, `GITHUB_SHA`) when git cannot tell.
 - **Turnstile on every public form.** Cloudflare's bot check, free and invisible for most people, guards password
   sign-in, the magic link, register, password reset, verification resend, protected post unlock, anonymous comments, the
@@ -321,6 +329,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **`cloudflare-config.json` is the app's whole deploy manifest, read strictly.** Every app Cloudflare deploys has one;
+  an unknown key or a wrong value stops the deploy and names itself, and the schema (`additionalProperties: false`) and
+  the CLI's defaults are held together by a test, as is every app in the repository. Gone: `workerName` (wrangler's
+  `name` is the Worker name), `outputDirectory`, `assetsDirectory`, `customBuildSteps`, and the `react`/`remix` app
+  types. The default `healthCheckPath` is `/api/health` (otta-web's too). `deployable` alone decides what CI ships: the
+  `APPS_TO_DEPLOY` secret is gone, otta-cache and the otta-worker template ship `false`, and `otta new` turns a
+  template's `false` into `true` for the app it makes. `CF_WORKER_SUBDOMAIN` is gone too: the URL comes from wrangler's
+  output (or the env's custom domain route). **Breaking, for an app repo:** remove those four keys from every
+  `apps/*/cloudflare-config.json` (`otta deploy` names any left, and what replaced it); give every app it deploys a
+  manifest; set `"deployable": false` on any app `APPS_TO_DEPLOY` used to leave out, or CI deploys it now; and delete
+  the `APPS_TO_DEPLOY` and `CF_WORKER_SUBDOMAIN` secrets.
+- **Preview URLs are off by default.** Every app's `wrangler.jsonc` sets `"preview_urls": false` at the top level
+  (inherited by each env block). Left unset, Cloudflare turned them on with `workers.dev`, so every uploaded version
+  answered publicly at `<version>-<name>.<subdomain>.workers.dev`, beside the custom domain and whatever guards it. PR
+  previews do not use them (each is its own Worker). Set `"preview_urls": true` in an env block to have them there; a
+  test holds the templates, and so every app `otta new` makes, to `false`.
+- **An app's `deploy` script is `otta deploy`.** `pnpm run deploy` in an app folder runs `pnpm -w otta deploy <app>`;
+  the old scripts ran a bare `wrangler deploy` on the template config, placeholders unfilled. The docs said
+  `pnpm deploy`, which is pnpm's own command (it copies a package to a folder) and never ran the script: they say
+  `pnpm otta deploy <app>` now. The placeholder comments and guides say what is true for every deployer: the placeholder
+  names a value that `otta deploy` fills in (from `cf:setup` in a terminal, from a Workers Builds build variable or a
+  GitHub secret in CI), and `cf:setup` prints its ids for both.
+- **GitHub's `deploy.yml` is manual** (a commented `push:` turns it back on). Cloudflare Workers Builds is the
+  recommended automatic deployer, and a Worker should have one. `deploy.yml` and `pr-preview.yml` are a plan job, the
+  shared package build and one `otta deploy` per app; `.github/scripts/substitute-wrangler-secrets.py` and
+  `discover-deployable-apps.mjs` are deleted. `--skip-build` builds nothing (the packages neither); `--build-only` and
+  `--preview` need `--ci`. `.github/DEPLOYMENT.md` is the reference for all of it.
 - **Rate limiters follow one rule when their binding is missing:** closed in production, open (logged) elsewhere. The
   secret-gated throttle (bootstrap, platform-owner promote, migrations) used to let requests through everywhere.
 - `/api/ottaorm/init` takes `MIGRATION_SECRET` from a Bearer header or the JSON body only, never `?secret=`, compares it
@@ -586,8 +621,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed (Unreleased)
 
 - `otta deploy` took a binding name (`"binding": "CACHE_R2"` in otta-cache) or a Durable Object class for a placeholder
-  and refused to deploy without a value for it. Values of `binding`, `class_name`, `name`, `service`, `entrypoint` and
-  `script_name` are names, never ids to fill.
+  and refused to deploy without a value for it (GitHub's deploy too, through its own copy of the rule, which is gone).
+  Values of `binding`, `class_name`, `name`, `service`, `entrypoint` and `script_name` are names, never ids to fill.
+- GitHub's package cache left out `packages/pro/*/dist`, so a repository with Pro built its apps without Pro's packages
+  in the deploy jobs.
+- `otta deploy --all --url`/`--owner-email` would have set the same `AUTH_URL` and owner on every app; refused now.
+- `--changed-since` compared with HEAD, so locally an uncommitted edit counted as no change; it compares the working
+  tree, relative to the workspace root, and deploys when a package is its own git checkout (Pro cloned into
+  `packages/pro`) that the diff cannot see. It reads the diff NUL-separated (a path with a space or an accent was quoted
+  by git and matched nothing) and without rename detection (a file moved out of an app did not count for it).
+- `otta start --env` read `cloudflare-config.json` with its own lax rules; it uses the deploy's strict reader now.
 - Protected post unlock had no rate limit, so a post's password could be guessed.
 - Comments on platform-mode blog posts failed for everyone (the core policy required an organization).
 - Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
