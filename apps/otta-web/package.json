@@ -38,7 +38,7 @@
         "gen:screenshots": "node scripts/gen-screenshots.mjs",
         "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build",
         "preview": "pnpm build && wrangler dev --assets dist",
-        "deploy": "pnpm build && wrangler deploy --env production",
+        "deploy": "pnpm -w otta deploy otta-web",
         "lint": "eslint src worker ottabase cloudflare-worker.ts",
         "type-check": "pnpm run --parallel \"/type-check:.*/\"",
         "type-check:app": "tsc -p tsconfig.json --noEmit",

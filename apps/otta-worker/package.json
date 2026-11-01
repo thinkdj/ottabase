@@ -29,7 +29,7 @@
         "dev": "wrangler dev --local --port 3005",
         "build": "wrangler deploy --dry-run --outdir dist",
         "preview": "wrangler dev --local --port 3005",
-        "deploy": "wrangler deploy --env production",
+        "deploy": "pnpm -w otta deploy otta-worker",
         "lint": "eslint worker ottabase",
         "type-check": "pnpm run --parallel \"/type-check:.*/\"",
         "type-check:worker": "tsc -p tsconfig.json --noEmit",

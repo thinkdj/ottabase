@@ -34,7 +34,7 @@
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
         "preview": "pnpm build && pnpm build:worker && wrangler dev",
-        "deploy": "pnpm build && pnpm build:worker && wrangler deploy",
+        "deploy": "pnpm -w otta deploy otta-landing",
         "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
         "wrangler": "wrangler",
         "localflare": "localflare"
