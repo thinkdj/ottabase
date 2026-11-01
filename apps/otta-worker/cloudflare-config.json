@@ -1,15 +1,15 @@
 {
     "$schema": "../../schemas/cloudflare-config.schema.json",
     "deployable": false,
+    "previewDeployable": false,
     "appType": "custom",
-    "workerName": "otta-worker",
     "buildCommand": "build",
-    "workerBuildCommand": "",
-    "outputDirectory": "dist",
+    "workerBuildCommand": null,
     "verifyPaths": ["dist/index.js"],
     "wranglerConfig": "wrangler.jsonc",
     "wranglerEnv": "production",
     "healthCheckPath": "/api/health",
     "requiresSecrets": [],
-    "requiresPreviewSecrets": []
+    "requiresPreviewSecrets": [],
+    "$comment": "A template (otta new worker): it stays out of CI, and the app made from it gets deployable: true."
 }

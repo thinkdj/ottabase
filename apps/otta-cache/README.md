@@ -61,10 +61,11 @@ pnpm exec wrangler r2 bucket lifecycle add ottabase-turbo-cache-preview expire-3
 pnpm exec wrangler secret put TURBO_CACHE_TOKENS --env production   # paste the JSON above
 ```
 
-Then in GitHub: add `otta-cache` to the `APPS_TO_DEPLOY` secret, and set `TURBO_API`
-(`https://otta-cache-production.<CF_WORKER_SUBDOMAIN>.workers.dev`), `TURBO_TOKEN` (the rw token) and
-`TURBO_REMOTE_CACHE_SIGNATURE_KEY` (any 32+ byte random string). `deploy.yml` deploys the worker like any other app; PR
-previews skip it (`previewDeployable: false`).
+Then set `"deployable": true` in `apps/otta-cache/cloudflare-config.json` (it ships `false`, so a repository that does
+not run its own cache never deploys one) and deploy it: `pnpm otta deploy otta-cache`, or let CI do it like any other
+app. In GitHub, set `TURBO_API` (`https://otta-cache-production.<your-subdomain>.workers.dev`), `TURBO_TOKEN` (the rw
+token) and `TURBO_REMOTE_CACHE_SIGNATURE_KEY` (any 32+ byte random string). PR previews skip it
+(`previewDeployable: false`).
 
 Smoke test:
 

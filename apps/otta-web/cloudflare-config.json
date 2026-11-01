@@ -1,16 +1,15 @@
 {
     "$schema": "../../schemas/cloudflare-config.schema.json",
     "deployable": true,
+    "previewDeployable": true,
     "appType": "vite",
-    "workerName": "otta-web",
     "buildCommand": "build",
-    "workerBuildCommand": "",
-    "outputDirectory": "dist",
+    "workerBuildCommand": null,
     "verifyPaths": ["dist", "cloudflare-worker.ts"],
     "wranglerConfig": "wrangler.jsonc",
     "wranglerEnv": "production",
-    "healthCheckPath": "/",
+    "healthCheckPath": "/api/health",
     "requiresSecrets": [],
     "requiresPreviewSecrets": [],
-    "$comment": "requiresSecrets/requiresPreviewSecrets are optional — wrangler.jsonc placeholders are auto-detected. Add here only for non-wrangler secrets (e.g. build-time)."
+    "$comment": "The app's deploy manifest, read by otta deploy wherever it runs (terminal, Workers Builds, GitHub Actions). Placeholders in wrangler.jsonc are found on their own; requiresSecrets lists only names CI must have beyond them."
 }

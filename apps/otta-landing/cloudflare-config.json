@@ -1,16 +1,15 @@
 {
     "$schema": "../../schemas/cloudflare-config.schema.json",
     "deployable": true,
+    "previewDeployable": true,
     "appType": "nextjs",
-    "workerName": "otta-landing",
     "buildCommand": "build",
     "workerBuildCommand": "build:worker",
-    "outputDirectory": ".open-next",
     "verifyPaths": [".open-next"],
     "wranglerConfig": "wrangler.jsonc",
     "wranglerEnv": "production",
     "healthCheckPath": "/",
     "requiresSecrets": [],
     "requiresPreviewSecrets": [],
-    "$comment": "requiresSecrets/requiresPreviewSecrets are optional — wrangler.jsonc placeholders are auto-detected. Add here only for non-wrangler secrets (e.g. build-time)."
+    "$comment": "The app's deploy manifest, read by otta deploy wherever it runs. build runs next build, then build:worker turns it into the Worker bundle (OpenNext)."
 }
