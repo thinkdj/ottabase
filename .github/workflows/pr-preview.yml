@@ -1,24 +1,39 @@
 name: PR Preview Deployments
 
-# A PR preview is `otta deploy <app> --ci --preview pr-<N>`: the app's env.preview block deployed as its
-# own Worker, <name>-pr-<N>, removed again by `otta deploy --all --delete-preview pr-<N>` when the PR
-# closes. Which apps get previews is each cloudflare-config.json's previewDeployable; nothing here
-# repeats it. Opt-in: #deploy or #preview in the PR title or description, or a manual run.
+# A preview is `otta deploy <app> --ci --preview <id>`: the app's env.preview block deployed as its own
+# Worker, <name>-<id>, and removed again with `otta deploy --all --delete-preview <id>`. Which apps get
+# previews is each cloudflare-config.json's previewDeployable; nothing here repeats it.
 #
-# Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, and the placeholder values of each app's
-# env.preview block (D1_PREVIEW_DATABASE_ID, ...). PRs from forks get no secrets, so they get no preview.
+# - A PR, opt-in with #deploy or #preview in its title or description: <id> is pr-<N>, removed when the PR
+#   closes (merged or not).
+# - A manual run: pr-<pr_number> when given, else br-<branch>-<hash> (one per branch, each run replaces it),
+#   removed when the branch is deleted, or by a manual run with `cleanup` ticked.
+#
+# The deploy job runs in the `preview` GitHub Environment: add required reviewers there (Settings →
+# Environments) and a PR's code gets the secrets only once someone approves the run.
+#
+# Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, and the placeholder values of each app's env.preview
+# block (D1_PREVIEW_DATABASE_ID, ...). PRs from forks get no secrets, so they get a notice, not a preview.
 on:
     workflow_dispatch:
         inputs:
             pr_number:
-                description: "PR number for preview naming/cleanup alignment (optional)"
+                description:
+                    "Name the preview after this PR (pr-<N>), so the PR's close removes it. Empty: after the branch"
                 required: false
                 type: string
+            cleanup:
+                description: "Delete this run's preview instead of deploying it"
+                required: false
+                default: false
+                type: boolean
     pull_request:
         types: [opened, synchronize, reopened, closed]
+    # A deleted branch takes its manual preview (br-<branch>-<hash>) with it.
+    delete:
 
 concurrency:
-    group: pr-preview-${{ github.event.pull_request.number || github.run_id }}
+    group: pr-preview-${{ github.event.pull_request.number || inputs.pr_number || github.event.ref || github.ref_name }}
     cancel-in-progress: true
 
 # cancel-in-progress (concurrency block above) is handled by the Actions runner
@@ -27,15 +42,14 @@ permissions:
     contents: read
 
 jobs:
-    # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview.
-    # The preview id is decided here once: pr-<N>, or manual-<run> for a manual run without a PR number.
+    # What this run does (deploy, cleanup or nothing) and for which preview id, decided once, with no secrets.
     check-preview-requested:
         runs-on: ubuntu-24.04
         outputs:
-            preview_requested: ${{ steps.check.outputs.preview_requested }}
+            action: ${{ steps.check.outputs.action }}
             preview_id: ${{ steps.check.outputs.preview_id }}
         steps:
-            - name: Check preview trigger markers
+            - name: Decide the preview and what to do with it
               id: check
               env:
                   EVENT_NAME: ${{ github.event_name }}
@@ -44,53 +58,67 @@ jobs:
                   PR_BODY: ${{ github.event_name == 'pull_request' && github.event.pull_request.body || '' }}
                   PR_NUMBER: ${{ github.event.pull_request.number || '' }}
                   PR_NUMBER_INPUT: ${{ inputs.pr_number }} # free text: validated, never interpolated
-                  RUN_NUMBER: ${{ github.run_number }}
+                  CLEANUP: ${{ inputs.cleanup }}
+                  BRANCH: ${{ github.ref_name }} # free text: slugged, never interpolated
+                  DELETED_REF: ${{ github.event_name == 'delete' && github.event.ref || '' }}
+                  DELETED_REF_TYPE: ${{ github.event_name == 'delete' && github.event.ref_type || '' }}
                   # A PR from a fork gets no secrets, so it cannot get a preview: say so instead of failing.
                   FROM_FORK:
                       ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name !=
                       github.repository }}
               run: |
-                  if [ -n "$PR_NUMBER" ]; then
-                    echo "preview_id=pr-${PR_NUMBER}" >> $GITHUB_OUTPUT
-                  elif [ -n "$PR_NUMBER_INPUT" ]; then
-                    [[ "$PR_NUMBER_INPUT" =~ ^[0-9]+$ ]] || { echo "❌ pr_number must be numeric"; exit 1; }
-                    echo "preview_id=pr-${PR_NUMBER_INPUT}" >> $GITHUB_OUTPUT
-                  else
-                    echo "preview_id=manual-${RUN_NUMBER}" >> $GITHUB_OUTPUT
-                  fi
+                  # br-<up to 20 slug characters>-<6 hex of the full name>: a valid Worker name suffix, stable
+                  # per branch, and two branches with the same slug still get two previews.
+                  branch_id() {
+                    local base hash
+                    base=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed -e 's/^-*//' | cut -c1-20 | sed -e 's/-*$//')
+                    hash=$(printf '%s' "$1" | sha256sum | cut -c1-6)
+                    printf 'br-%s%s' "${base:+$base-}" "$hash"
+                  }
+                  decide() { echo "preview_id=$1" >> "$GITHUB_OUTPUT"; echo "action=$2" >> "$GITHUB_OUTPUT"; echo "$3"; }
 
-                  # Closed PR events are cleanup-only; no preview deploy needed.
-                  if [ "$EVENT_NAME" = "pull_request" ] && [ "$PR_ACTION" = "closed" ]; then
-                    echo "preview_requested=false" >> $GITHUB_OUTPUT
-                    echo "🧹 PR closed: the cleanup job removes its preview Workers"
-                    exit 0
-                  fi
-
-                  # Manual workflow runs are explicitly opt-in.
-                  if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-                    echo "preview_requested=true" >> $GITHUB_OUTPUT
-                    echo "✅ Manual preview requested via workflow_dispatch"
-                    exit 0
-                  fi
-
-                  if [ "$FROM_FORK" = "true" ]; then
-                    echo "preview_requested=false" >> $GITHUB_OUTPUT
-                    echo "::notice::No preview for a PR from a fork: it gets no secrets. To preview it, push the branch to this repository."
-                    exit 0
-                  fi
-
-                  if printf '%s\n' "$PR_TITLE" "$PR_BODY" | grep -qiE '#deploy|#preview'; then
-                    echo "preview_requested=true" >> $GITHUB_OUTPUT
-                    echo "✅ Preview requested: found #deploy or #preview in PR title/description"
-                  else
-                    echo "preview_requested=false" >> $GITHUB_OUTPUT
-                    echo "⏭️  Skipping PR preview: add #deploy or #preview to PR title/description, or run manually"
-                  fi
+                  case "$EVENT_NAME" in
+                    pull_request)
+                      ID="pr-${PR_NUMBER}"
+                      if [ "$FROM_FORK" = "true" ]; then
+                        decide "$ID" none "::notice::No preview for a PR from a fork: it gets no secrets. To preview it, push the branch to this repository."
+                      elif [ "$PR_ACTION" = "closed" ]; then
+                        decide "$ID" cleanup "🧹 PR closed: its preview Workers go"
+                      elif printf '%s\n' "$PR_TITLE" "$PR_BODY" | grep -qiE '#deploy|#preview'; then
+                        decide "$ID" deploy "✅ Preview requested: #deploy or #preview in the PR title or description"
+                      else
+                        decide "$ID" none "⏭️  No preview: add #deploy or #preview to the PR title or description, or run this workflow by hand"
+                      fi
+                      ;;
+                    workflow_dispatch)
+                      if [ -n "$PR_NUMBER_INPUT" ]; then
+                        [[ "$PR_NUMBER_INPUT" =~ ^[0-9]+$ ]] || { echo "::error::pr_number must be numeric"; exit 1; }
+                        ID="pr-${PR_NUMBER_INPUT}"
+                      else
+                        ID=$(branch_id "$BRANCH")
+                      fi
+                      if [ "$CLEANUP" = "true" ]; then
+                        decide "$ID" cleanup "🧹 Manual cleanup of ${ID}"
+                      else
+                        decide "$ID" deploy "✅ Manual preview ${ID} (branch ${BRANCH})"
+                      fi
+                      ;;
+                    delete)
+                      if [ "$DELETED_REF_TYPE" = "branch" ]; then
+                        decide "$(branch_id "$DELETED_REF")" cleanup "🧹 Branch ${DELETED_REF} deleted: its manual preview goes, if it had one"
+                      else
+                        decide "" none "A tag was deleted: nothing to do"
+                      fi
+                      ;;
+                    *)
+                      decide "" none "Nothing to do for ${EVENT_NAME}"
+                      ;;
+                  esac
 
     # Which apps get a preview: `otta deploy --all --plan --preview`, from previewDeployable.
     plan:
         needs: check-preview-requested
-        if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
+        if: needs.check-preview-requested.outputs.action == 'deploy'
         runs-on: ubuntu-24.04
         timeout-minutes: 10
         name: Plan previews
@@ -137,10 +165,15 @@ jobs:
 
     deploy-preview:
         needs: [check-preview-requested, plan, build-packages]
-        if: needs.plan.outputs.has-apps == 'true' && github.event.action != 'closed'
+        if: needs.plan.outputs.has-apps == 'true'
         runs-on: ubuntu-24.04
         timeout-minutes: 25
         name: Preview ${{ matrix.app }}
+        # Required reviewers on this environment gate every preview before its code sees a secret; the link
+        # is the preview's URL.
+        environment:
+            name: preview
+            url: ${{ steps.deploy.outputs.url }}
         strategy:
             matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
             fail-fast: false
@@ -171,7 +204,9 @@ jobs:
                   key: ${{ needs.build-packages.outputs.cache-key }}
                   fail-on-cache-miss: true
 
+            # Next.js's incremental cache, for the apps the plan says are Next.js.
             - name: Cache Next.js builds
+              if: matrix.appType == 'nextjs'
               uses: actions/cache@v6
               with:
                   path: apps/${{ matrix.app }}/.next/cache
@@ -184,6 +219,7 @@ jobs:
             # node runs the CLI directly: OTTA_DEPLOY_VALUES is read and removed from the environment before
             # anything else loads (packages/cli/bin/otta.mjs).
             - name: Deploy preview
+              id: deploy
               env:
                   APP: ${{ matrix.app }}
                   PREVIEW_ID: ${{ needs.check-preview-requested.outputs.preview_id }}
@@ -193,32 +229,56 @@ jobs:
                   NODE_ENV: production
               run: node packages/cli/bin/otta.mjs deploy "$APP" --ci --preview "$PREVIEW_ID" --skip-packages --force
 
-    # Remove the PR's preview Workers when it closes (merged or not). An absent Worker is not an error.
+    # Remove a preview's Workers (a closed PR, a deleted branch, a manual cleanup). One API call first: a PR or a
+    # branch that never had a preview costs no install. An absent Worker is not an error.
     cleanup-preview:
         needs: check-preview-requested
-        # A fork's PR never had a preview (and gets no secrets to delete one with).
-        if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+        if: needs.check-preview-requested.outputs.action == 'cleanup'
         runs-on: ubuntu-24.04
+        timeout-minutes: 10
         name: Cleanup preview workers
+        env:
+            PREVIEW_ID: ${{ needs.check-preview-requested.outputs.preview_id }}
+            CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         steps:
+            - name: Is there a preview to delete?
+              id: probe
+              run: |
+                  # Preview Workers are named <name>-<id>. When the API cannot answer, clean up anyway.
+                  if RESP=$(curl -fsS -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+                      "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts"); then
+                    FOUND=$(echo "$RESP" | jq -r --arg suffix "-${PREVIEW_ID}" '[.result[]?.id | select(endswith($suffix))] | join(" ")')
+                    if [ -z "$FOUND" ]; then
+                      echo "found=false" >> "$GITHUB_OUTPUT"
+                      echo "No Worker ends in -${PREVIEW_ID}: nothing to delete."
+                      exit 0
+                    fi
+                    echo "Preview Workers: ${FOUND}"
+                  else
+                    echo "::warning::Could not list the account's Workers; cleaning up anyway."
+                  fi
+                  echo "found=true" >> "$GITHUB_OUTPUT"
+
             - name: Checkout
+              if: steps.probe.outputs.found == 'true'
               uses: actions/checkout@v7
 
             - name: Setup pnpm
+              if: steps.probe.outputs.found == 'true'
               uses: pnpm/action-setup@v6
 
             - name: Setup Node.js
+              if: steps.probe.outputs.found == 'true'
               uses: actions/setup-node@v7
               with:
                   node-version: "24"
                   cache: "pnpm"
 
             - name: Install dependencies
+              if: steps.probe.outputs.found == 'true'
               run: pnpm install --frozen-lockfile --ignore-scripts=false
 
             - name: Delete preview workers
-              env:
-                  PREVIEW_ID: ${{ needs.check-preview-requested.outputs.preview_id }}
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+              if: steps.probe.outputs.found == 'true'
               run: node packages/cli/bin/otta.mjs deploy --all --delete-preview "$PREVIEW_ID"

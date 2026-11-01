@@ -115,6 +115,11 @@ jobs:
         runs-on: ubuntu-24.04
         timeout-minutes: 20
         name: Deploy ${{ matrix.app }}
+        # The `production` GitHub Environment: restrict it to main and add required reviewers under Settings →
+        # Environments to gate every production deploy; its link is the deployed URL.
+        environment:
+            name: production
+            url: ${{ steps.deploy.outputs.url }}
         strategy:
             matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
             fail-fast: false # one app failing does not stop the others
@@ -146,8 +151,9 @@ jobs:
                   key: ${{ needs.build-packages.outputs.cache-key }}
                   fail-on-cache-miss: true
 
-            # Next.js's incremental cache; an app without .next/cache simply has nothing to restore.
+            # Next.js's incremental cache, for the apps the plan says are Next.js.
             - name: Cache Next.js builds
+              if: matrix.appType == 'nextjs'
               uses: actions/cache@v6
               with:
                   path: apps/${{ matrix.app }}/.next/cache
@@ -160,6 +166,7 @@ jobs:
             # The plan already decided, hence --force. node runs the CLI directly: OTTA_DEPLOY_VALUES is read
             # and removed from the environment before anything else loads (packages/cli/bin/otta.mjs).
             - name: Deploy
+              id: deploy
               env:
                   APP: ${{ matrix.app }}
                   OTTA_DEPLOY_VALUES: ${{ toJson(secrets) }}
