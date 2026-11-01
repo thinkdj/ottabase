@@ -1,10 +1,17 @@
 name: PR Preview Deployments
 
+# A PR preview is `otta deploy <app> --ci --preview pr-<N>`: the app's env.preview block deployed as its
+# own Worker, <name>-pr-<N>, removed again by `otta deploy --all --delete-preview pr-<N>` when the PR
+# closes. Which apps get previews is each cloudflare-config.json's previewDeployable; nothing here
+# repeats it. Opt-in: #deploy or #preview in the PR title or description, or a manual run.
+#
+# Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, and the placeholder values of each app's
+# env.preview block (D1_PREVIEW_DATABASE_ID, ...). PRs from forks get no secrets, so they get no preview.
 on:
     workflow_dispatch:
         inputs:
             pr_number:
-                description: "PR number for manual preview naming/cleanup alignment (optional)"
+                description: "PR number for preview naming/cleanup alignment (optional)"
                 required: false
                 type: string
     pull_request:
@@ -20,11 +27,13 @@ permissions:
     contents: read
 
 jobs:
-    # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview
+    # Preview deploy is opt-in: run on manual dispatch or when PR title/body contains #deploy/#preview.
+    # The preview id is decided here once: pr-<N>, or manual-<run> for a manual run without a PR number.
     check-preview-requested:
         runs-on: ubuntu-24.04
         outputs:
             preview_requested: ${{ steps.check.outputs.preview_requested }}
+            preview_id: ${{ steps.check.outputs.preview_id }}
         steps:
             - name: Check preview trigger markers
               id: check
@@ -33,11 +42,27 @@ jobs:
                   PR_ACTION: ${{ github.event.action || '' }}
                   PR_TITLE: ${{ github.event_name == 'pull_request' && github.event.pull_request.title || '' }}
                   PR_BODY: ${{ github.event_name == 'pull_request' && github.event.pull_request.body || '' }}
+                  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+                  PR_NUMBER_INPUT: ${{ inputs.pr_number }} # free text: validated, never interpolated
+                  RUN_NUMBER: ${{ github.run_number }}
+                  # A PR from a fork gets no secrets, so it cannot get a preview: say so instead of failing.
+                  FROM_FORK:
+                      ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name !=
+                      github.repository }}
               run: |
+                  if [ -n "$PR_NUMBER" ]; then
+                    echo "preview_id=pr-${PR_NUMBER}" >> $GITHUB_OUTPUT
+                  elif [ -n "$PR_NUMBER_INPUT" ]; then
+                    [[ "$PR_NUMBER_INPUT" =~ ^[0-9]+$ ]] || { echo "❌ pr_number must be numeric"; exit 1; }
+                    echo "preview_id=pr-${PR_NUMBER_INPUT}" >> $GITHUB_OUTPUT
+                  else
+                    echo "preview_id=manual-${RUN_NUMBER}" >> $GITHUB_OUTPUT
+                  fi
+
                   # Closed PR events are cleanup-only; no preview deploy needed.
                   if [ "$EVENT_NAME" = "pull_request" ] && [ "$PR_ACTION" = "closed" ]; then
                     echo "preview_requested=false" >> $GITHUB_OUTPUT
-                    echo "🧹 PR closed event detected — deploy jobs disabled; cleanup job will handle teardown"
+                    echo "🧹 PR closed: the cleanup job removes its preview Workers"
                     exit 0
                   fi
 
@@ -45,6 +70,12 @@ jobs:
                   if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
                     echo "preview_requested=true" >> $GITHUB_OUTPUT
                     echo "✅ Manual preview requested via workflow_dispatch"
+                    exit 0
+                  fi
+
+                  if [ "$FROM_FORK" = "true" ]; then
+                    echo "preview_requested=false" >> $GITHUB_OUTPUT
+                    echo "::notice::No preview for a PR from a fork: it gets no secrets. To preview it, push the branch to this repository."
                     exit 0
                   fi
 
@@ -56,10 +87,47 @@ jobs:
                     echo "⏭️  Skipping PR preview: add #deploy or #preview to PR title/description, or run manually"
                   fi
 
-    # Build and cache packages (reusable workflow) — only when the preview matrix has something to deploy
+    # Which apps get a preview: `otta deploy --all --plan --preview`, from previewDeployable.
+    plan:
+        needs: check-preview-requested
+        if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 10
+        name: Plan previews
+        outputs:
+            matrix: ${{ steps.plan.outputs.matrix }}
+            has-apps: ${{ steps.plan.outputs.has-apps }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v7
+              with:
+                  node-version: "24"
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile --ignore-scripts=false
+
+            - name: Plan
+              id: plan
+              env:
+                  PREVIEW_ID: ${{ needs.check-preview-requested.outputs.preview_id }}
+              run: |
+                  # --force: a preview is asked for explicitly, a #skipdeploy commit does not cancel it.
+                  MATRIX=$(node packages/cli/bin/otta.mjs deploy --all --plan --preview "$PREVIEW_ID" --force)
+                  echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+                  COUNT=$(echo "$MATRIX" | jq '.include | length')
+                  echo "has-apps=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+    # The workspace packages, built once and cached for every app's job.
     build-packages:
-        needs: prepare-deployment
-        if: needs.prepare-deployment.outputs.has-apps == 'true'
+        needs: plan
+        if: needs.plan.outputs.has-apps == 'true'
         uses: ./.github/workflows/build-packages.yml
         # Only the remote-cache secrets; absent (fork PRs) => turbo runs local-only.
         secrets:
@@ -67,266 +135,20 @@ jobs:
             TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
             TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
-    # Prepare deployment matrix for preview environments (runs only when preview is requested)
-    prepare-deployment:
-        needs: check-preview-requested
-        if: github.event.action != 'closed' && needs.check-preview-requested.outputs.preview_requested == 'true'
-        runs-on: ubuntu-24.04
-        timeout-minutes: 5
-        name: Prepare preview deployment
-        outputs:
-            matrix: ${{ steps.build-matrix.outputs.matrix }}
-            has-apps: ${{ steps.build-matrix.outputs.has-apps }}
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v7
-              with:
-                  fetch-depth: 2
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v7
-              with:
-                  node-version: "24"
-
-            - name: Find target apps / Build preview matrix
-              id: build-matrix
-              run: |
-                  echo "🔍 Preparing preview deployment matrix..."
-
-                  # Always deploy previews for the configured apps.
-                  # APPS_TO_DEPLOY is a comma-separated list of app *folder* names under apps/.
-                  # Each app must have a cloudflare-config.json that drives its build + deploy.
-                  # When you rename/copy an app, update cloudflare-config.json + wrangler.jsonc
-                  # inside that app, then set the APPS_TO_DEPLOY secret - no yml editing needed.
-                  APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
-                  if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="otta-web,otta-landing"
-                    echo "📋 Using default apps: ${APPS_TO_DEPLOY}"
-                  else
-                    echo "📋 Apps from secret: ${APPS_TO_DEPLOY}"
-                  fi
-
-                  IFS=',' read -ra TARGET_APPS <<< "$APPS_TO_DEPLOY"
-                  echo "🎯 Target apps: ${TARGET_APPS[*]}"
-
-                  # Detect changes (informational only for previews)
-                  CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD 2>/dev/null || true)
-                  if [ -z "$CHANGED_FILES" ]; then
-                    echo "ℹ️ No change information available (shallow clone or initial commit)"
-                  else
-                    echo "📝 Changed files:"
-                    echo "$CHANGED_FILES"
-                  fi
-                  echo ""
-
-                  MATRIX_JSON='{"include":['
-                  FIRST=true
-
-                  for target_app in "${TARGET_APPS[@]}"; do
-                    target_app=$(echo "$target_app" | xargs)
-
-                    APP_FOLDER=""
-                    if [ -d "apps/${target_app}" ]; then
-                      APP_FOLDER="${target_app}"
-                    else
-                      for dir in apps/*/; do
-                        if [ -f "${dir}package.json" ]; then
-                          PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
-                          if [ "$PKG_NAME" == "$target_app" ]; then
-                            APP_FOLDER=$(basename "$dir")
-                            break
-                          fi
-                        fi
-                      done
-                    fi
-
-                    if [ -z "$APP_FOLDER" ]; then
-                      echo "⚠️  Warning: Could not find app '${target_app}', skipping"
-                      continue
-                    fi
-
-                    APP_PATH="apps/${APP_FOLDER}"
-                    PKG_JSON="${APP_PATH}/package.json"
-                    CONFIG_JSON="${APP_PATH}/cloudflare-config.json"
-
-                    if [ ! -f "$PKG_JSON" ]; then
-                      echo "⚠️  Warning: No package.json for ${APP_FOLDER}, skipping"
-                      continue
-                    fi
-
-                    PKG_NAME=$(jq -r '.name // empty' "$PKG_JSON")
-
-                    if [ -f "$CONFIG_JSON" ]; then
-                      CONFIG=$(cat "$CONFIG_JSON")
-                    else
-                      if [ ! -f "${APP_PATH}/wrangler.jsonc" ]; then
-                        echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${APP_FOLDER}, skipping"
-                        continue
-                      fi
-                      CONFIG='{"deployable":true,"appType":"vite","buildCommand":"build","workerBuildCommand":null,"outputDirectory":"dist","verifyPaths":["dist","cloudflare-worker.ts"],"wranglerConfig":"wrangler.jsonc","wranglerEnv":"production","healthCheckPath":"/"}'
-                    fi
-
-                    DEPLOYABLE=$(echo "$CONFIG" | jq -r '.deployable // true')
-                    if [ "$DEPLOYABLE" == "false" ]; then
-                      echo "⏭️  Skipping ${APP_FOLDER}: deployable=false"
-                      continue
-                    fi
-                    PREVIEW_DEPLOYABLE=$(echo "$CONFIG" | jq -r '.previewDeployable // true')
-                    if [ "$PREVIEW_DEPLOYABLE" == "false" ]; then
-                      echo "⏭️  Skipping ${APP_FOLDER}: previewDeployable=false"
-                      continue
-                    fi
-
-                    if [ "$FIRST" == "true" ]; then
-                      FIRST=false
-                    else
-                      MATRIX_JSON="${MATRIX_JSON},"
-                    fi
-
-                    ENTRY=$(jq -c -n \
-                      --arg name "$PKG_NAME" \
-                      --arg folder "$APP_FOLDER" \
-                      --argjson config "$CONFIG" \
-                      '{name: $name, folder: $folder, config: $config}')
-
-                    MATRIX_JSON="${MATRIX_JSON}${ENTRY}"
-                    echo "✅ Added ${APP_FOLDER} to preview matrix"
-                  done
-
-                  MATRIX_JSON="${MATRIX_JSON}]}"
-                  echo "matrix=${MATRIX_JSON}" >> $GITHUB_OUTPUT
-
-                  APP_COUNT=$(echo "${MATRIX_JSON}" | jq '.include | length')
-                  if [ "$APP_COUNT" -gt 0 ]; then
-                    echo "has-apps=true" >> $GITHUB_OUTPUT
-                    echo ""
-                    echo "✅ Will deploy ${APP_COUNT} preview app(s)"
-                  else
-                    echo "has-apps=false" >> $GITHUB_OUTPUT
-                    echo ""
-                    echo "⏭️  No apps to deploy"
-                  fi
-
-    # Deploy preview for each app
     deploy-preview:
-        needs: [build-packages, prepare-deployment]
-        if: needs.prepare-deployment.outputs.has-apps == 'true' && github.event.action != 'closed'
+        needs: [check-preview-requested, plan, build-packages]
+        if: needs.plan.outputs.has-apps == 'true' && github.event.action != 'closed'
         runs-on: ubuntu-24.04
         timeout-minutes: 25
-        name: Preview ${{ matrix.name }}
+        name: Preview ${{ matrix.app }}
         strategy:
-            matrix: ${{ fromJson(needs.prepare-deployment.outputs.matrix) }}
+            matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
             fail-fast: false
 
         steps:
             - name: Checkout
               uses: actions/checkout@v7
 
-            - name: Compute preview worker name
-              id: preview-name
-              env:
-                  PR_NUMBER_INPUT: ${{ inputs.pr_number }} # free text: never interpolate into the script
-              run: |
-                  BASE_NAME="${{ matrix.config.workerName || matrix.folder }}"
-
-                  if [ "${{ github.event_name }}" = "pull_request" ]; then
-                    SUFFIX="pr-${{ github.event.pull_request.number }}"
-                  elif [ -n "$PR_NUMBER_INPUT" ]; then
-                    [[ "$PR_NUMBER_INPUT" =~ ^[0-9]+$ ]] || { echo "❌ pr_number must be numeric"; exit 1; }
-                    SUFFIX="pr-${PR_NUMBER_INPUT}"
-                  else
-                    SUFFIX="manual-${{ github.run_number }}"
-                  fi
-
-                  echo "preview-name=${BASE_NAME}-${SUFFIX}" >> $GITHUB_OUTPUT
-
-            - name: Load app configuration
-              id: config
-              run: |
-                  CONFIG='${{ toJson(matrix.config) }}'
-
-                  echo "app-type=$(echo "${CONFIG}" | jq -r '.appType')" >> $GITHUB_OUTPUT
-                  echo "build-cmd=$(echo "${CONFIG}" | jq -r '.buildCommand')" >> $GITHUB_OUTPUT
-                  echo "worker-build-cmd=$(echo "${CONFIG}" | jq -r '.workerBuildCommand // empty')" >> $GITHUB_OUTPUT
-                  echo "output-dir=$(echo "${CONFIG}" | jq -r '.outputDirectory')" >> $GITHUB_OUTPUT
-                  echo "assets-dir=$(echo "${CONFIG}" | jq -r '.assetsDirectory // empty')" >> $GITHUB_OUTPUT
-                  echo "wrangler-config=$(echo "${CONFIG}" | jq -r '.wranglerConfig')" >> $GITHUB_OUTPUT
-                  echo "wrangler-env=$(echo "${CONFIG}" | jq -r '.wranglerEnv')" >> $GITHUB_OUTPUT
-                  echo "health-check=$(echo "${CONFIG}" | jq -r '.healthCheckPath // "/"')" >> $GITHUB_OUTPUT
-
-                  WORKER_SUBDOMAIN="${{ secrets.CF_WORKER_SUBDOMAIN }}"
-                  if [ -z "$WORKER_SUBDOMAIN" ]; then
-                    WORKER_SUBDOMAIN="apiary"
-                  fi
-                  echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
-
-                  VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?' 2>/dev/null || true)
-                  echo "verify-paths<<EOF" >> $GITHUB_OUTPUT
-                  echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
-
-                  # Optional: extra secrets from config (merged with derived placeholders in Verify step)
-                  EXTRA=$(echo "${CONFIG}" | jq -r '.requiresPreviewSecrets[]?' | tr '\n' ' ')
-                  echo "extra-secrets=${EXTRA}" >> $GITHUB_OUTPUT
-
-                  echo "📋 Configuration loaded for ${{ matrix.name }} (preview)"
-
-            # Secrets derived from wrangler.jsonc env.preview + base + optional extra (single source of truth; no drift)
-            - name: Verify required secrets
-              working-directory: apps/${{ matrix.folder }}
-              env:
-                  SECRETS_JSON: ${{ toJson(secrets) }}
-                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  TARGET_ENV: preview
-              run: |
-                  echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
-
-                  # Base secrets (wrangler-action needs these)
-                  BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
-
-                  # Derive placeholders from wrangler.jsonc env.preview (single source of truth; no drift)
-                  PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
-
-                  # Optional extra from cloudflare-config.json requiresPreviewSecrets
-                  EXTRA="${{ steps.config.outputs.extra-secrets }}"
-
-                  # Merge: base + placeholders + extra, deduplicate, drop empty
-                  REQUIRED=$(echo "$BASE $PLACEHOLDERS $EXTRA" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
-
-                  MISSING_SECRETS=()
-                  for SECRET_NAME in $REQUIRED; do
-                    VAL=$(echo "$SECRETS_JSON" | jq -r --arg k "$SECRET_NAME" '.[$k] // empty')
-                    if [ -z "$VAL" ]; then
-                      MISSING_SECRETS+=("$SECRET_NAME")
-                      echo "  ❌ $SECRET_NAME is not set (run pnpm cf:setup, add to GitHub Secrets)"
-                    else
-                      echo "  ✅ $SECRET_NAME is configured"
-                    fi
-                  done
-
-                  if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
-                    echo ""
-                    echo "❌ ERROR: Missing required GitHub secrets for preview deployment"
-                    printf '  • %s\n' "${MISSING_SECRETS[@]}"
-                    exit 1
-                  fi
-
-                  echo ""
-                  echo "✅ All required secrets are configured"
-
-            # Runs before install/build on purpose: SECRETS_JSON is the whole secrets bag, so it must
-            # only reach the repo's own script, before any dependency or build code can touch the tree.
-            - name: Generate preview wrangler config
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🔧 Generating preview wrangler config..."
-                  python ../../.github/scripts/substitute-wrangler-secrets.py
-              env:
-                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  OUTPUT_FILE: wrangler.preview.jsonc
-                  TARGET_ENV: preview
-                  SECRETS_JSON: ${{ toJson(secrets) }}
-
             - name: Setup pnpm
               uses: pnpm/action-setup@v6
 
@@ -339,210 +161,45 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile --ignore-scripts=false
 
-            - name: Cache Turborepo
-              uses: actions/cache@v6
-              with:
-                  path: .turbo
-                  key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-                  restore-keys: |
-                      ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-turbo-
-
-            - name: Cache Next.js builds
-              if: steps.config.outputs.app-type == 'nextjs'
-              uses: actions/cache@v6
-              with:
-                  path: |
-                      apps/${{ matrix.folder }}/.next/cache
-                      apps/${{ matrix.folder }}/.next/standalone
-                  key:
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
-                      hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
-                      matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/open-next.config.ts', 'apps/${{
-                      matrix.folder }}/next.config.js') }}
-                  restore-keys: |
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-
-
-            - name: Verify build tools
-              run: |
-                  echo "🔍 Verifying build tool installation..."
-                  echo "  - tsup: $(pnpm exec tsup --version 2>&1 || echo 'installed')"
-                  echo "  - rimraf: $(pnpm exec rimraf --version 2>&1 || echo 'installed')"
-
-                  if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                    echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
-                  fi
-
-                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
-                    echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
-                  fi
-
-                  echo "✅ Build tools verified"
-
-            # Same key build-packages saved under (as deploy.yml does) — no recomputation to drift.
-            - name: Restore cached packages
+            - name: Restore built packages
               uses: actions/cache/restore@v6
               with:
                   path: |
                       packages/*/dist
+                      packages/pro/*/dist
                       .turbo
                   key: ${{ needs.build-packages.outputs.cache-key }}
                   fail-on-cache-miss: true
 
-            - name: Build application
-              run: |
-                  export PATH="${GITHUB_WORKSPACE}/node_modules/.bin:$PATH"
-                  BUILD_CMD="${{ steps.config.outputs.build-cmd }}"
-                  echo "⏳ Building ${{ matrix.name }} using '${BUILD_CMD}'..."
-
-                  pnpm --filter=${{ matrix.name }} run ${BUILD_CMD}
-                  BUILD_EXIT=$?
-
-                  if [ $BUILD_EXIT -ne 0 ]; then
-                    echo ""
-                    echo "❌ ERROR: Application build failed"
-                    exit 1
-                  fi
-
-                  if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                    if [ ! -d "apps/${{ matrix.folder }}/.next" ]; then
-                      echo "❌ ERROR: Next.js build output not found"
-                      exit 1
-                    fi
-                    echo "✅ Next.js build output verified (.next directory exists)"
-                  fi
-
-                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
-                    if [ ! -d "apps/${{ matrix.folder }}/dist" ]; then
-                      echo "❌ ERROR: Vite build output not found"
-                      exit 1
-                    fi
-                    echo "✅ Vite build output verified (dist directory exists)"
-                  fi
-
-                  echo "✅ Application build completed successfully"
-              env:
-                  NODE_ENV: production
-
-            - name: Build Cloudflare Worker
-              if: steps.config.outputs.worker-build-cmd != ''
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  WORKER_BUILD_CMD="${{ steps.config.outputs.worker-build-cmd }}"
-                  echo "⏳ Building Cloudflare Worker bundle using '${WORKER_BUILD_CMD}'..."
-
-                  if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                    if [ ! -d ".next" ]; then
-                      echo "❌ ERROR: .next directory not found in $(pwd)"
-                      exit 1
-                    fi
-                    echo "✅ .next directory found, proceeding with worker build..."
-                  fi
-
-                  pnpm run ${WORKER_BUILD_CMD}
-                  BUILD_EXIT_CODE=$?
-
-                  if [ $BUILD_EXIT_CODE -ne 0 ]; then
-                    echo "❌ ERROR: Cloudflare Worker build failed (exit code: ${BUILD_EXIT_CODE})"
-                    exit 1
-                  fi
-
-                  echo "✅ Cloudflare Worker bundle built successfully"
-
-            - name: Verify worker bundle
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🔍 Verifying Cloudflare Worker bundle structure..."
-
-                  VERIFY_PATHS="${{ steps.config.outputs.verify-paths }}"
-
-                  if [ -z "$VERIFY_PATHS" ]; then
-                    echo "⚠️  No verification paths specified in config, skipping verification"
-                    exit 0
-                  fi
-
-                  MISSING_PATHS=()
-                  while IFS= read -r path; do
-                    if [ -n "$path" ]; then
-                      if [ ! -e "$path" ]; then
-                        MISSING_PATHS+=("$path")
-                      else
-                        echo "  ✅ $path"
-                      fi
-                    fi
-                  done <<< "$VERIFY_PATHS"
-
-                  if [ ${#MISSING_PATHS[@]} -ne 0 ]; then
-                    echo "❌ ERROR: Required paths not found after build"
-                    printf '  • %s\n' "${MISSING_PATHS[@]}"
-                    exit 1
-                  fi
-
-                  echo "✅ Worker bundle structure verified - all required paths exist"
-
-            - name: Verify preview wrangler config
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  if [ ! -f "wrangler.preview.jsonc" ]; then
-                    echo "❌ ERROR: wrangler.preview.jsonc not found - Generate step must run first"
-                    exit 1
-                  fi
-                  echo "✅ wrangler.preview.jsonc ready for deploy"
-
-            - name: Deploy preview to Cloudflare Workers
-              uses: cloudflare/wrangler-action@v4
+            - name: Cache Next.js builds
+              uses: actions/cache@v6
               with:
-                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  workingDirectory: apps/${{ matrix.folder }}
-                  command:
-                      # --env preview  → use env.preview bindings/vars from wrangler.preview.jsonc
-                      # --name <name>  → explicitly sets the deployed worker name; overrides the default
-                      #                  <name>-preview suffix that Wrangler would otherwise append.
-                      #                  The resulting worker is named exactly <base>-pr-<N>, not <base>-pr-<N>-preview.
-                      # This is intentional: cleanup uses wrangler delete --name <base>-pr-<N> to match.
-                      deploy --env preview --name ${{ steps.preview-name.outputs.preview-name }} --config
-                      wrangler.preview.jsonc
-              continue-on-error: false
+                  path: apps/${{ matrix.app }}/.next/cache
+                  key: ${{ runner.os }}-nextjs-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+                  restore-keys: |
+                      ${{ runner.os }}-nextjs-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml') }}-
+                      ${{ runner.os }}-nextjs-${{ matrix.app }}-
 
-            - name: Preview deployment summary
-              if: success()
-              run: |
-                  PREVIEW_URL="https://${{ steps.preview-name.outputs.preview-name }}.${{ steps.config.outputs.worker-subdomain }}.workers.dev/"
-                  echo "✅ Preview deployed: ${PREVIEW_URL}"
-
-            - name: Verify deployed worker name via Cloudflare API
-              # Confirms the worker was registered under the exact --name we passed (not <name>-preview).
-              # Wrangler docs: explicit --name overrides any env-derived suffix; this step makes that visible.
-              # Soft check only — a failed API call does not fail the deployment.
-              if: success()
+            # env.preview deployed as the Worker <name>-<id>; the URL, health and summary come from otta deploy.
+            # node runs the CLI directly: OTTA_DEPLOY_VALUES is read and removed from the environment before
+            # anything else loads (packages/cli/bin/otta.mjs).
+            - name: Deploy preview
               env:
+                  APP: ${{ matrix.app }}
+                  PREVIEW_ID: ${{ needs.check-preview-requested.outputs.preview_id }}
+                  OTTA_DEPLOY_VALUES: ${{ toJson(secrets) }}
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-              run: |
-                  PREVIEW_NAME="${{ steps.preview-name.outputs.preview-name }}"
-                  HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
-                    -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-                    "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${PREVIEW_NAME}")
-                  if [ "$HTTP" = "200" ]; then
-                    echo "✅ Worker '${PREVIEW_NAME}' confirmed in Cloudflare (HTTP 200) — no -preview suffix appended"
-                  else
-                    echo "::warning::Worker '${PREVIEW_NAME}' not found via API (HTTP ${HTTP}) — verify manually in Cloudflare dashboard"
-                  fi
+                  NODE_ENV: production
+              run: node packages/cli/bin/otta.mjs deploy "$APP" --ci --preview "$PREVIEW_ID" --skip-packages --force
 
-            - name: Preview deployment failure summary
-              if: failure()
-              run: |
-                  PREVIEW_URL="https://${{ steps.preview-name.outputs.preview-name }}.${{ steps.config.outputs.worker-subdomain }}.workers.dev/"
-                  echo "❌ Preview deployment failed: ${PREVIEW_URL}"
-
-    # Cleanup preview when PR closes
+    # Remove the PR's preview Workers when it closes (merged or not). An absent Worker is not an error.
     cleanup-preview:
-        if: github.event.action == 'closed'
+        needs: check-preview-requested
+        # A fork's PR never had a preview (and gets no secrets to delete one with).
+        if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
         runs-on: ubuntu-24.04
-        name: Cleanup preview worker
+        name: Cleanup preview workers
         steps:
             - name: Checkout
               uses: actions/checkout@v7
@@ -559,88 +216,9 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile --ignore-scripts=false
 
-            - name: Install wrangler CLI
-              run: pnpm add -w wrangler@4 --save-dev
-
-            - name: Determine worker subdomain
-              id: cleanup-config
-              run: |
-                  WORKER_SUBDOMAIN="${{ secrets.CF_WORKER_SUBDOMAIN }}"
-                  if [ -z "$WORKER_SUBDOMAIN" ]; then
-                    WORKER_SUBDOMAIN="apiary"
-                  fi
-                  echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
-
-            - name: Delete preview workers for all apps
-              id: delete-previews
-              # Loop over every configured app and delete its preview worker.
-              # Preview workers are deployed with an explicit --name override (not via --env),
-              # so wrangler delete must use --name to target the correct worker.
-              run: |
-                  APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
-                  if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="otta-web,otta-landing"
-                  fi
-
-                  WORKER_SUBDOMAIN="${{ steps.cleanup-config.outputs.worker-subdomain }}"
-                  PR_NUMBER="${{ github.event.pull_request.number }}"
-
-                  IFS=',' read -ra TARGET_APPS <<< "$APPS_TO_DEPLOY"
-
-                  for app in "${TARGET_APPS[@]}"; do
-                    app=$(echo "$app" | xargs) # trim whitespace
-
-                    # Resolve folder name (supports both folder name and package name)
-                    APP_FOLDER=""
-                    if [ -d "apps/${app}" ]; then
-                      APP_FOLDER="${app}"
-                    else
-                      for dir in apps/*/; do
-                        if [ -f "${dir}package.json" ]; then
-                          PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
-                          if [ "$PKG_NAME" == "$app" ]; then
-                            APP_FOLDER=$(basename "$dir")
-                            break
-                          fi
-                        fi
-                      done
-                    fi
-
-                    if [ -z "$APP_FOLDER" ]; then
-                      echo "⚠️ Could not find folder for '${app}', skipping cleanup"
-                      continue
-                    fi
-
-                    # Determine base worker name from cloudflare-config.json
-                    CONFIG_JSON="apps/${APP_FOLDER}/cloudflare-config.json"
-                    BASE_NAME="${APP_FOLDER}"
-                    if [ -f "$CONFIG_JSON" ]; then
-                      CANDIDATE=$(jq -r '.workerName // empty' "$CONFIG_JSON")
-                      if [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "null" ]; then
-                        BASE_NAME="$CANDIDATE"
-                      fi
-                    fi
-
-                    PREVIEW_NAME="${BASE_NAME}-pr-${PR_NUMBER}"
-                    PREVIEW_URL="https://${PREVIEW_NAME}.${WORKER_SUBDOMAIN}.workers.dev/"
-
-                    echo "🧹 Deleting preview worker: ${PREVIEW_NAME}"
-                    # Use --name because previews are deployed with an explicit name override,
-                    # not via a named wrangler environment. --env would target a different worker.
-                    pnpm exec wrangler delete --name "${PREVIEW_NAME}" || echo "⚠️ Delete failed or worker already absent: ${PREVIEW_NAME}"
-                    echo "   ${PREVIEW_URL}"
-                  done
+            - name: Delete preview workers
               env:
+                  PREVIEW_ID: ${{ needs.check-preview-requested.outputs.preview_id }}
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-              continue-on-error: true
-
-            - name: Cleanup summary
-              if: always() && steps.delete-previews.outcome == 'success'
-              run: |
-                  echo "🧹 Preview worker cleanup complete for PR #${{ github.event.pull_request.number }}"
-
-            - name: Cleanup failure summary
-              if: always() && steps.delete-previews.outcome == 'failure'
-              run: |
-                  echo "⚠️ One or more preview worker cleanups may have failed for PR #${{ github.event.pull_request.number }}"
+              run: node packages/cli/bin/otta.mjs deploy --all --delete-preview "$PREVIEW_ID"

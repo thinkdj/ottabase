@@ -1,6 +1,7 @@
 name: Build and Cache Packages
 
-# This workflow builds all packages and caches them for reuse by deployment workflows
+# This workflow builds all packages (Pro included, under packages/pro) and caches them for reuse by
+# deployment workflows, which then run otta deploy --skip-packages
 # It runs when:
 # 1. Any code in packages/ changes
 # 2. Dependencies (pnpm-lock.yaml) change
@@ -75,6 +76,7 @@ jobs:
               with:
                   path: |
                       packages/*/dist
+                      packages/pro/*/dist
                       .turbo
                   key: ${{ steps.cache-info.outputs.cache-key }}
 
@@ -103,6 +105,7 @@ jobs:
               with:
                   path: |
                       packages/*/dist
+                      packages/pro/*/dist
                       .turbo
                   key: ${{ steps.cache-info.outputs.cache-key }}
 

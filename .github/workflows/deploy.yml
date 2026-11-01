@@ -1,13 +1,27 @@
 name: Deploy to Cloudflare Workers
 
+# The same deploy as everywhere else: this workflow runs `otta deploy`, as Cloudflare Workers Builds and
+# a terminal do. Which apps deploy, how they build, what the build must leave, the env and the health
+# path all come from each app's cloudflare-config.json; nothing here repeats them.
+#
+# Manual by default. Cloudflare Workers Builds is the recommended automatic deployer, and a Worker
+# should have exactly one (two would deploy every push twice, possibly out of order). To deploy from
+# GitHub on every push to main instead, uncomment `push:` below and leave Workers Builds disconnected.
+#
+# Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, and the placeholder values of each app's
+# env.production block (D1_DATABASE_ID, KV_NAMESPACE_ID, ...). `otta deploy` takes only the names it
+# needs from the secrets, and no build step or dependency ever sees the rest.
 on:
-    push:
-        branches:
-            - main
-    workflow_dispatch: # Allow manual triggers
+    # push:
+    #     branches: [main]
+    workflow_dispatch:
         inputs:
-            FORCE_DEPLOY:
-                description: "Force deploy all apps regardless of change-detection"
+            app:
+                description: "An app folder (otta-web). Empty: every app whose cloudflare-config.json is deployable"
+                required: false
+                type: string
+            force:
+                description: "Deploy even when the commit message says #skipdeploy"
                 required: false
                 default: true
                 type: boolean
@@ -15,402 +29,32 @@ on:
 permissions:
     contents: read
 
-# Prevent overlapping production deploys: queue rather than cancel a mid-flight deploy
+# Production deploys queue; a deploy in flight is never cancelled.
 concurrency:
     group: production-deploy-${{ github.ref }}
     cancel-in-progress: false
 
 jobs:
-    # Check commit message for #skipdeploy first (skip build-packages + deploy when set)
-    check-skip-deploy:
+    # What to deploy and why: `otta deploy --plan`, the same decision Workers Builds and --all make.
+    plan:
         runs-on: ubuntu-24.04
+        timeout-minutes: 10
         outputs:
-            skip_deploy: ${{ steps.check.outputs.skip_deploy }}
+            matrix: ${{ steps.plan.outputs.matrix }}
+            has-apps: ${{ steps.plan.outputs.has-apps }}
         steps:
-            - name: Check for #skipdeploy
-              id: check
-              env:
-                  COMMIT_MSG: ${{ github.event_name == 'push' && github.event.head_commit.message || '' }}
+            # Production comes from main only, whoever starts the run. A run on another branch fails and
+            # says so: a skipped run would look green.
+            - name: Production deploys come from main
+              if: github.ref != 'refs/heads/main'
               run: |
-                  if printf '%s\n' "$COMMIT_MSG" | grep -qiE '#skipdeploy'; then
-                    echo "skip_deploy=true" >> $GITHUB_OUTPUT
-                    echo "⏭️  Skipping deployment: #skipdeploy found in commit message"
-                  else
-                    echo "skip_deploy=false" >> $GITHUB_OUTPUT
-                    echo "✅ No #skipdeploy – deployment will run"
-                  fi
+                  echo "::error::Production deploys run from main; this run is on ${GITHUB_REF}. PR previews: pr-preview.yml."
+                  exit 1
 
-    # Build and cache packages (reusable workflow) — only when the matrix has something to deploy,
-    # so docs-only / #skipdeploy pushes don't spend a runner on a build nobody consumes.
-    build-packages:
-        needs: prepare-deployment
-        if: needs.prepare-deployment.outputs.has-apps == 'true'
-        name: Build Packages
-        uses: ./.github/workflows/build-packages.yml
-        # Only the remote-cache secrets; absent (fork PRs) => turbo runs local-only.
-        secrets:
-            TURBO_API: ${{ secrets.TURBO_API }}
-            TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-            TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
-
-    # Prepare deployment matrix based on target apps and code changes
-    prepare-deployment:
-        needs: check-skip-deploy
-        runs-on: ubuntu-24.04
-        timeout-minutes: 5
-        name: Prepare deployment
-        outputs:
-            matrix: ${{ steps.build-matrix.outputs.matrix }}
-            has-apps: ${{ steps.build-matrix.outputs.has-apps }}
-        steps:
             - name: Checkout
               uses: actions/checkout@v7
               with:
-                  fetch-depth: 0 # Full history needed for push-range diff (github.event.before..github.sha)
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v7
-              with:
-                  node-version: "24"
-
-            - name: Find target apps and changes / Build deployment matrix
-              id: build-matrix
-              env:
-                  SKIP_DEPLOY: ${{ needs.check-skip-deploy.outputs.skip_deploy }}
-              run: |
-                  echo "🔍 Preparing deployment matrix..."
-
-                  # Skip when #skipdeploy was detected in check-skip-deploy (build-packages was skipped)
-                  if [ "$SKIP_DEPLOY" = "true" ]; then
-                    echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
-                    echo "has-apps=false" >> $GITHUB_OUTPUT
-                    echo "⏭️  Skipping deployment: #skipdeploy (checked early)"
-                    exit 0
-                  fi
-
-                  # Step 1: Get target apps from secret or use default.
-                  # APPS_TO_DEPLOY is a comma-separated list of app *folder* names under apps/.
-                  # Each app must have a cloudflare-config.json that drives its build + deploy.
-                  # When you rename/copy an app, update cloudflare-config.json + wrangler.jsonc
-                  # inside that app, then set the APPS_TO_DEPLOY secret - no yml editing needed.
-                  APPS_TO_DEPLOY="${{ secrets.APPS_TO_DEPLOY }}"
-                  if [ -z "$APPS_TO_DEPLOY" ]; then
-                    APPS_TO_DEPLOY="otta-web,otta-landing"
-                    echo "📋 Using default apps: ${APPS_TO_DEPLOY}"
-                  else
-                    echo "📋 Apps from secret: ${APPS_TO_DEPLOY}"
-                  fi
-
-                  # Convert comma-separated string to array
-                  IFS=',' read -ra TARGET_APPS <<< "$APPS_TO_DEPLOY"
-                  echo "🎯 Target apps: ${TARGET_APPS[*]}"
-
-                  # Step 2: Detect file changes
-                  echo ""
-                  echo "🔍 Detecting file changes..."
-
-                  # Initialize before the push-range check so the value is never reset accidentally
-                  PACKAGES_CHANGED="false"
-
-                  # Diff the full push range so squash-merges and multi-commit pushes are covered.
-                  # github.event.before = SHA before the push; github.sha = SHA after.
-                  # Falls back gracefully on workflow_dispatch (no event.before) or first push (000...0).
-                  BEFORE="${{ github.event.before }}"
-                  AFTER="${{ github.sha }}"
-
-                  if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-                    echo "⚠️  First push or force push — no before SHA; treating all apps as changed"
-                    PACKAGES_CHANGED="true"
-                    CHANGED_FILES=""
-                  else
-                    CHANGED_FILES=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
-                  fi
-
-                  echo "📝 Changed files:"
-                  echo "$CHANGED_FILES"
-                  echo ""
-
-                  # Only run these checks when we have a file list (skip when already true from above)
-                  if [ "$PACKAGES_CHANGED" != "true" ]; then
-                    if echo "$CHANGED_FILES" | grep -q "^packages/"; then
-                      PACKAGES_CHANGED="true"
-                      echo "📦 Packages changed - will deploy all target apps"
-                    fi
-
-                    # Root-level files that affect all app builds (lock file, workspace config, turbo, etc.)
-                    if echo "$CHANGED_FILES" | grep -qE "^(pnpm-lock\.yaml|package\.json|pnpm-workspace\.yaml|turbo\.json|tsconfig\.json|vitest\.config\.ts)"; then
-                      PACKAGES_CHANGED="true"
-                      echo "🔧 Root-level config/lockfile changed - will deploy all target apps"
-                    fi
-                  fi
-
-                  # For FORCE_DEPLOY, treat as if packages changed (deploy all)
-                  if [ "${{ inputs.FORCE_DEPLOY }}" == "true" ]; then
-                    PACKAGES_CHANGED="true"
-                    echo "🔄 Manual trigger with FORCE_DEPLOY - will deploy all target apps"
-                  fi
-
-                  # Find which apps have code changes
-                  CHANGED_APP_FOLDERS=""
-                  while IFS= read -r file; do
-                    if [[ "$file" =~ ^apps/([^/]+)/ ]]; then
-                      APP_FOLDER="${BASH_REMATCH[1]}"
-                      if [[ ! "$CHANGED_APP_FOLDERS" =~ (^|,)$APP_FOLDER(,|$) ]]; then
-                        if [ -n "$CHANGED_APP_FOLDERS" ]; then
-                          CHANGED_APP_FOLDERS="${CHANGED_APP_FOLDERS},${APP_FOLDER}"
-                        else
-                          CHANGED_APP_FOLDERS="${APP_FOLDER}"
-                        fi
-                      fi
-                    fi
-                  done <<< "$CHANGED_FILES"
-
-                  if [ -n "$CHANGED_APP_FOLDERS" ]; then
-                    echo "🎯 Apps with changes: ${CHANGED_APP_FOLDERS}"
-                  fi
-
-                  # Step 3: Determine which target apps to deploy
-                  APPS_TO_BUILD=()
-
-                  for target_app in "${TARGET_APPS[@]}"; do
-                    # Trim whitespace
-                    target_app=$(echo "$target_app" | xargs)
-
-                    # Check if this is a folder name or package name
-                    # Try to find the app folder
-                    APP_FOLDER=""
-                    if [ -d "apps/${target_app}" ]; then
-                      APP_FOLDER="${target_app}"
-                    else
-                      # Search for package name in apps
-                      for dir in apps/*/; do
-                        if [ -f "${dir}package.json" ]; then
-                          PKG_NAME=$(jq -r '.name // empty' "${dir}package.json")
-                          if [ "$PKG_NAME" == "$target_app" ]; then
-                            APP_FOLDER=$(basename "$dir")
-                            break
-                          fi
-                        fi
-                      done
-                    fi
-
-                    if [ -z "$APP_FOLDER" ]; then
-                      echo "⚠️  Warning: Could not find app '${target_app}', skipping"
-                      continue
-                    fi
-
-                    # Check if we should deploy this app
-                    SHOULD_DEPLOY="false"
-                    if [ "$PACKAGES_CHANGED" == "true" ]; then
-                      SHOULD_DEPLOY="true"
-                    elif [[ ",$CHANGED_APP_FOLDERS," == *",$APP_FOLDER,"* ]]; then
-                      SHOULD_DEPLOY="true"
-                    fi
-
-                    if [ "$SHOULD_DEPLOY" == "true" ]; then
-                      APPS_TO_BUILD+=("$APP_FOLDER")
-                      echo "✅ Will deploy: ${APP_FOLDER}"
-                    else
-                      echo "⏭️  No changes in: ${APP_FOLDER}"
-                    fi
-                  done
-
-                  # Step 4: Build the matrix JSON
-                  echo ""
-                  echo "📦 Building deployment matrix..."
-
-                  MATRIX_JSON='{"include":['
-                  FIRST=true
-
-                  for app_folder in "${APPS_TO_BUILD[@]}"; do
-                    APP_PATH="apps/${app_folder}"
-                    PKG_JSON="${APP_PATH}/package.json"
-                    CONFIG_JSON="${APP_PATH}/cloudflare-config.json"
-
-                    if [ ! -f "$PKG_JSON" ]; then
-                      echo "⚠️  Warning: No package.json for ${app_folder}, skipping"
-                      continue
-                    fi
-
-                    # Get package name
-                    PKG_NAME=$(jq -r '.name // empty' "$PKG_JSON")
-
-                    # Get config (use defaults if no config file)
-                    if [ -f "$CONFIG_JSON" ]; then
-                      CONFIG=$(cat "$CONFIG_JSON")
-                    else
-                      # Check for wrangler.jsonc as fallback
-                      if [ ! -f "${APP_PATH}/wrangler.jsonc" ]; then
-                        echo "⚠️  Warning: No cloudflare-config.json or wrangler.jsonc for ${app_folder}, skipping"
-                        continue
-                      fi
-                      # Use Vite defaults (default template app uses Vite build output)
-                      CONFIG='{
-                        "deployable": true,
-                        "appType": "vite",
-                        "buildCommand": "build",
-                        "workerBuildCommand": null,
-                        "outputDirectory": "dist",
-                        "verifyPaths": ["dist", "cloudflare-worker.ts"],
-                        "wranglerConfig": "wrangler.jsonc",
-                        "wranglerEnv": "production",
-                        "healthCheckPath": "/"
-                      }'
-                    fi
-
-                    # Check if deployable
-                    DEPLOYABLE=$(echo "$CONFIG" | jq -r '.deployable // true')
-                    if [ "$DEPLOYABLE" == "false" ]; then
-                      echo "⏭️  Skipping ${app_folder}: deployable=false"
-                      continue
-                    fi
-
-                    # Add to matrix
-                    if [ "$FIRST" == "true" ]; then
-                      FIRST=false
-                    else
-                      MATRIX_JSON="${MATRIX_JSON},"
-                    fi
-
-                    # Build matrix entry (compact JSON)
-                    ENTRY=$(jq -c -n \
-                      --arg name "$PKG_NAME" \
-                      --arg folder "$app_folder" \
-                      --argjson config "$CONFIG" \
-                      '{name: $name, folder: $folder, config: $config}')
-
-                    MATRIX_JSON="${MATRIX_JSON}${ENTRY}"
-                  done
-
-                  MATRIX_JSON="${MATRIX_JSON}]}"
-
-                  echo "matrix=${MATRIX_JSON}" >> $GITHUB_OUTPUT
-
-                  # Check if we have any apps
-                  APP_COUNT=$(echo "${MATRIX_JSON}" | jq '.include | length')
-                  if [ "$APP_COUNT" -gt 0 ]; then
-                    echo "has-apps=true" >> $GITHUB_OUTPUT
-                    echo ""
-                    echo "✅ Will deploy ${APP_COUNT} app(s)"
-                  else
-                    echo "has-apps=false" >> $GITHUB_OUTPUT
-                    echo ""
-                    echo "⏭️  No apps to deploy"
-                  fi
-
-    # Deploy each app
-    deploy:
-        needs: [build-packages, prepare-deployment]
-        if: needs.prepare-deployment.outputs.has-apps == 'true'
-        runs-on: ubuntu-24.04
-        timeout-minutes: 20
-        name: Deploy ${{ matrix.name }}
-        strategy:
-            matrix: ${{ fromJson(needs.prepare-deployment.outputs.matrix) }}
-            fail-fast: false # Continue deploying other apps even if one fails
-
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v7
-
-            - name: Load app configuration
-              id: config
-              run: |
-                  # Load configuration from matrix (already parsed by discovery script)
-                  CONFIG='${{ toJson(matrix.config) }}'
-
-                  # Extract key config values for easy access in later steps
-                  echo "app-type=$(echo "${CONFIG}" | jq -r '.appType')" >> $GITHUB_OUTPUT
-                  echo "build-cmd=$(echo "${CONFIG}" | jq -r '.buildCommand')" >> $GITHUB_OUTPUT
-                  echo "worker-build-cmd=$(echo "${CONFIG}" | jq -r '.workerBuildCommand // empty')" >> $GITHUB_OUTPUT
-                  echo "output-dir=$(echo "${CONFIG}" | jq -r '.outputDirectory')" >> $GITHUB_OUTPUT
-                  echo "assets-dir=$(echo "${CONFIG}" | jq -r '.assetsDirectory // empty')" >> $GITHUB_OUTPUT
-                  echo "wrangler-config=$(echo "${CONFIG}" | jq -r '.wranglerConfig')" >> $GITHUB_OUTPUT
-                  echo "wrangler-env=$(echo "${CONFIG}" | jq -r '.wranglerEnv')" >> $GITHUB_OUTPUT
-                  echo "health-check=$(echo "${CONFIG}" | jq -r '.healthCheckPath // "/"')" >> $GITHUB_OUTPUT
-
-                  # Get Cloudflare workers.dev subdomain (use secret or default to 'apiary')
-                  # This is the subdomain portion of *.workers.dev URLs (e.g., 'apiary' in apiary.workers.dev)
-                  WORKER_SUBDOMAIN="${{ secrets.CF_WORKER_SUBDOMAIN }}"
-                  if [ -z "$WORKER_SUBDOMAIN" ]; then
-                    WORKER_SUBDOMAIN="apiary"
-                  fi
-                  echo "worker-subdomain=${WORKER_SUBDOMAIN}" >> $GITHUB_OUTPUT
-
-                  # Store verify paths as multiline output
-                  VERIFY_PATHS=$(echo "${CONFIG}" | jq -r '.verifyPaths[]?' || echo "")
-                  echo "verify-paths<<EOF" >> $GITHUB_OUTPUT
-                  echo "${VERIFY_PATHS}" >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
-
-                  # Optional: extra secrets from config (merged with derived placeholders in Verify step)
-                  EXTRA_SECRETS=$(echo "${CONFIG}" | jq -r '.requiresSecrets[]?' | tr '\n' ' ')
-                  echo "extra-secrets=${EXTRA_SECRETS}" >> $GITHUB_OUTPUT
-
-                  echo "📋 Configuration loaded for ${{ matrix.name }} (${{ matrix.config.appType }})"
-
-            - name: Verify required secrets
-              if: github.ref == 'refs/heads/main'
-              working-directory: apps/${{ matrix.folder }}
-              env:
-                  SECRETS_JSON: ${{ toJson(secrets) }}
-                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  TARGET_ENV: production
-              run: |
-                  echo "🔍 Verifying required secrets for ${{ matrix.name }}..."
-
-                  # Base secrets (wrangler-action needs these; not in wrangler.jsonc)
-                  BASE="CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID"
-
-                  # Derive placeholders from wrangler.jsonc env.production (single source of truth; no drift)
-                  PLACEHOLDERS=$(python ../../.github/scripts/substitute-wrangler-secrets.py --list-only)
-
-                  # Optional extra from cloudflare-config.json requiresSecrets
-                  EXTRA="${{ steps.config.outputs.extra-secrets }}"
-
-                  # Merge: base + placeholders + extra, deduplicate, drop empty
-                  REQUIRED=$(echo "$BASE $PLACEHOLDERS $EXTRA" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')
-
-                  MISSING_SECRETS=()
-                  for SECRET_NAME in $REQUIRED; do
-                    VAL=$(echo "$SECRETS_JSON" | jq -r --arg k "$SECRET_NAME" '.[$k] // empty')
-                    if [ -z "$VAL" ]; then
-                      MISSING_SECRETS+=("$SECRET_NAME")
-                      echo "  ❌ $SECRET_NAME is not set"
-                    else
-                      echo "  ✅ $SECRET_NAME is configured"
-                    fi
-                  done
-
-                  if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
-                    echo ""
-                    echo "❌ ERROR: Missing required GitHub secrets for deployment"
-                    echo ""
-                    printf '  • %s\n' "${MISSING_SECRETS[@]}"
-                    echo ""
-                    echo "Add the missing secrets in GitHub repository settings:"
-                    echo "  Settings → Secrets and variables → Actions → New repository secret"
-                    echo ""
-                    exit 1
-                  fi
-
-                  echo ""
-                  echo "✅ All required secrets are configured"
-
-            # Generate production wrangler config: substitutes env.production placeholders from GitHub Secrets.
-            # Runs before install/build on purpose: SECRETS_JSON is the whole secrets bag, so it must
-            # only reach the repo's own script, before any dependency or build code can touch the tree.
-            - name: Generate production wrangler config
-              if: github.ref == 'refs/heads/main'
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🔧 Generating production wrangler configuration..."
-                  python ../../.github/scripts/substitute-wrangler-secrets.py
-              env:
-                  WRANGLER_CONFIG: ${{ steps.config.outputs.wrangler-config }}
-                  OUTPUT_FILE: wrangler.production.jsonc
-                  TARGET_ENV: production
-                  SECRETS_JSON: ${{ toJson(secrets) }}
+                  fetch-depth: 0 # the push range is diffed (github.event.before..HEAD)
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v6
@@ -424,349 +68,102 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile --ignore-scripts=false
 
-            # Cache Turborepo outputs for faster builds
-            - name: Cache Turborepo
-              uses: actions/cache@v6
-              with:
-                  path: .turbo
-                  key: ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-                  restore-keys: |
-                      ${{ runner.os }}-turbo-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-turbo-
-
-            # Next.js incremental build cache (vite build always empties dist, so it has no equivalent)
-            - name: Cache Next.js builds
-              if: steps.config.outputs.app-type == 'nextjs'
-              uses: actions/cache@v6
-              with:
-                  path: |
-                      apps/${{ matrix.folder }}/.next/cache
-                      apps/${{ matrix.folder }}/.next/standalone
-                  key:
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{
-                      hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-${{ hashFiles('apps/${{
-                      matrix.folder }}/wrangler.jsonc', 'apps/${{ matrix.folder }}/open-next.config.ts', 'apps/${{
-                      matrix.folder }}/next.config.js') }}
-                  restore-keys: |
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/${{ matrix.folder }}/**/*.{ts,tsx,js,jsx}') }}-
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-${{ hashFiles('pnpm-lock.yaml') }}-
-                      ${{ runner.os }}-nextjs-${{ matrix.folder }}-
-
-            # Verify build tools are accessible
-            - name: Verify build tools
+            - name: Plan
+              id: plan
+              env:
+                  APP: ${{ inputs.app }} # free text: validated below, never interpolated into the script
+                  FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+                  BEFORE: ${{ github.event.before }}
               run: |
-                  echo "🔍 Verifying build tool installation..."
-
-                  # Test critical build tools (with fallback checks)
-                  echo "  - tsup: $(pnpm exec tsup --version 2>&1 || echo 'installed')"
-                  echo "  - rimraf: $(pnpm exec rimraf --version 2>&1 || echo 'installed')"
-
-                  # App-type specific tools
-                  if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                    echo "  - next: $(pnpm exec next --version 2>&1 || echo 'installed')"
+                  ARGS=(deploy --plan)
+                  if [ -n "$APP" ]; then
+                    [[ "$APP" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "::error::app must be an apps/ folder name"; exit 1; }
+                    ARGS+=("$APP")
+                  else
+                    ARGS+=(--all)
                   fi
-
-                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
-                    echo "  - vite: $(pnpm exec vite --version 2>&1 || echo 'installed')"
+                  # A push deploys what its commits changed (a first push's all-zero "before" deploys
+                  # everything); a manual run deploys what it is asked to.
+                  if [ "$FORCE" = "true" ]; then
+                    ARGS+=(--force)
+                  elif [ -n "$BEFORE" ]; then
+                    ARGS+=(--changed-since "$BEFORE")
                   fi
+                  MATRIX=$(node packages/cli/bin/otta.mjs "${ARGS[@]}")
+                  echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+                  COUNT=$(echo "$MATRIX" | jq '.include | length')
+                  echo "has-apps=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+                  echo "### Deploy plan" >> "$GITHUB_STEP_SUMMARY"
+                  echo "$MATRIX" | jq -r '.include[] | "- **\(.app)**: \(.reason)"' >> "$GITHUB_STEP_SUMMARY"
+                  [ "$COUNT" -gt 0 ] || echo "Nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
 
-                  echo "✅ Build tools verified"
+    # The workspace packages, built once and cached for every app's job.
+    build-packages:
+        needs: plan
+        if: needs.plan.outputs.has-apps == 'true'
+        name: Build Packages
+        uses: ./.github/workflows/build-packages.yml
+        # Only the remote-cache secrets; absent => turbo runs local-only.
+        secrets:
+            TURBO_API: ${{ secrets.TURBO_API }}
+            TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+            TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
 
-            # Restore pre-built packages from cache (built by build-packages job).
-            # Uses the key emitted by build-packages directly — no hash recomputation here.
-            # This is the single source of truth: same key that was saved = guaranteed hit.
-            - name: Restore cached packages
+    deploy:
+        needs: [plan, build-packages]
+        if: needs.plan.outputs.has-apps == 'true'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        name: Deploy ${{ matrix.app }}
+        strategy:
+            matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+            fail-fast: false # one app failing does not stop the others
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v7
+              with:
+                  node-version: "24"
+                  cache: "pnpm"
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile --ignore-scripts=false
+
+            # The packages the build-packages job built: the same key it saved under.
+            - name: Restore built packages
               uses: actions/cache/restore@v6
               with:
                   path: |
                       packages/*/dist
+                      packages/pro/*/dist
                       .turbo
                   key: ${{ needs.build-packages.outputs.cache-key }}
-                  fail-on-cache-miss: true # Fail if cache not found (should always exist from build-packages job)
+                  fail-on-cache-miss: true
 
-            # Build the app and all its dependencies
-            - name: Build application
-              run: |
-                  export PATH="${GITHUB_WORKSPACE}/node_modules/.bin:$PATH"
-                  BUILD_CMD="${{ steps.config.outputs.build-cmd }}"
-                  echo "⏳ Building ${{ matrix.name }} using '${BUILD_CMD}'..."
-
-                  # Run the build
-                  pnpm --filter=${{ matrix.name }} run ${BUILD_CMD}
-                  BUILD_EXIT=$?
-
-                  # Verify build succeeded
-                  if [ $BUILD_EXIT -ne 0 ]; then
-                    echo ""
-                    echo "❌ ERROR: Application build failed"
-                    echo ""
-                    echo "The '${BUILD_CMD}' command failed for ${{ matrix.name }}"
-                    echo "Check the build output above for specific error messages."
-                    echo ""
-                    exit 1
-                  fi
-
-                  # For Next.js apps, verify .next directory was created
-                  if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                    echo "Checking for .next directory at: apps/${{ matrix.folder }}/.next"
-                    echo "Current working directory: $(pwd)"
-                    echo "Directory listing of apps/${{ matrix.folder }}:"
-                    ls -la "apps/${{ matrix.folder }}" | head -20
-
-                    if [ ! -d "apps/${{ matrix.folder }}/.next" ]; then
-                      echo ""
-                      echo "❌ ERROR: Next.js build output not found"
-                      echo ""
-                      echo "Expected directory 'apps/${{ matrix.folder }}/.next' was not created."
-                      echo "This indicates the Next.js build did not complete successfully."
-                      echo ""
-                      exit 1
-                    fi
-                    echo "✅ Next.js build output verified (.next directory exists)"
-                  fi
-
-                  # For Vite apps, verify dist directory was created
-                  if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
-                    echo "Checking for dist directory at: apps/${{ matrix.folder }}/dist"
-                    echo "Current working directory: $(pwd)"
-                    echo "Directory listing of apps/${{ matrix.folder }}:"
-                    ls -la "apps/${{ matrix.folder }}" | head -20
-
-                    if [ ! -d "apps/${{ matrix.folder }}/dist" ]; then
-                      echo ""
-                      echo "❌ ERROR: Vite build output not found"
-                      echo ""
-                      echo "Expected directory 'apps/${{ matrix.folder }}/dist' was not created."
-                      echo "This indicates the Vite build did not complete successfully."
-                      echo ""
-                      exit 1
-                    fi
-                    echo "✅ Vite build output verified (dist directory exists)"
-                  fi
-
-                  echo "✅ Application build completed successfully"
-              env:
-                  NODE_ENV: production
-
-            # Build Cloudflare Worker bundle (if configured)
-            # For Next.js apps, this runs OpenNext to convert Next.js build to Cloudflare Worker format
-            - name: Build Cloudflare Worker
-              if: steps.config.outputs.worker-build-cmd != ''
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  WORKER_BUILD_CMD="${{ steps.config.outputs.worker-build-cmd }}"
-                  echo "⏳ Building Cloudflare Worker bundle using '${WORKER_BUILD_CMD}'..."
-
-                  # For Next.js apps, explain what's happening and verify .next exists
-                  if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                    echo "📦 Converting Next.js build to Cloudflare Worker using OpenNext..."
-
-                    # Verify .next directory exists
-                    if [ ! -d ".next" ]; then
-                      echo ""
-                      echo "❌ ERROR: .next directory not found in $(pwd)"
-                      echo ""
-                      echo "OpenNext requires the .next directory to be present."
-                      echo "The Next.js build should have created it in the previous step."
-                      echo ""
-                      echo "Current directory contents:"
-                      ls -la
-                      echo ""
-                      exit 1
-                    fi
-                    echo "✅ .next directory found, proceeding with worker build..."
-                  fi
-
-                  # Run worker build command
-                  echo "Running: pnpm run ${WORKER_BUILD_CMD}"
-                  pnpm run ${WORKER_BUILD_CMD}
-                  BUILD_EXIT_CODE=$?
-
-
-                  # Verify worker build succeeded
-                  if [ $BUILD_EXIT_CODE -ne 0 ]; then
-                    echo ""
-                    echo "❌ ERROR: Cloudflare Worker build failed (exit code: ${BUILD_EXIT_CODE})"
-                    echo ""
-                    echo "The '${WORKER_BUILD_CMD}' command failed."
-                    if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                      echo "This command converts the Next.js build to a Cloudflare Worker using OpenNext."
-                      echo "Common issues:"
-                      echo "  • Missing @opennextjs/cloudflare package"
-                      echo "  • Invalid open-next.config.ts configuration"
-                      echo "  • Missing .next directory (Next.js build must run first)"
-                    fi
-                    echo ""
-                    exit 1
-                  fi
-
-                  echo "✅ Cloudflare Worker bundle built successfully (exit code: 0)"
-
-            # Verify worker bundle was created
-            - name: Verify worker bundle
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🔍 Verifying Cloudflare Worker bundle structure..."
-
-                  # Read verify paths from config
-                  VERIFY_PATHS="${{ steps.config.outputs.verify-paths }}"
-
-                  if [ -z "$VERIFY_PATHS" ]; then
-                    echo "⚠️  No verification paths specified in config, skipping verification"
-                    exit 0
-                  fi
-
-                  # Check each path
-                  MISSING_PATHS=()
-                  while IFS= read -r path; do
-                    if [ -n "$path" ]; then
-                      if [ ! -e "$path" ]; then
-                        MISSING_PATHS+=("$path")
-                      else
-                        echo "  ✅ $path"
-                      fi
-                    fi
-                  done <<< "$VERIFY_PATHS"
-
-                  if [ ${#MISSING_PATHS[@]} -ne 0 ]; then
-                    echo ""
-                    echo "❌ ERROR: Required paths not found after build"
-                    echo ""
-                    echo "The following paths were expected but are missing:"
-                    printf '  • %s\n' "${MISSING_PATHS[@]}"
-                    echo ""
-                    if [ "${{ steps.config.outputs.app-type }}" == "nextjs" ]; then
-                      echo "For Next.js apps using OpenNext, the expected structure is:"
-                      echo "  • .open-next/ - Main worker output directory"
-                      echo "  • .open-next/assets/ - Static assets directory"
-                      echo ""
-                      echo "This error usually means:"
-                      echo "  1. The 'build:worker' command didn't complete successfully"
-                      echo "  2. OpenNext configuration (open-next.config.ts) is incorrect"
-                      echo "  3. The Next.js build (.next directory) is missing"
-                      echo ""
-                    fi
-                    if [ "${{ steps.config.outputs.app-type }}" == "vite" ]; then
-                      echo "For Vite apps, the expected structure is:"
-                      echo "  • dist/ - Vite build output directory"
-                      echo "  • cloudflare-worker.ts - Cloudflare Worker entry point"
-                      echo ""
-                      echo "This error usually means:"
-                      echo "  1. The 'build' command didn't complete successfully"
-                      echo "  2. Vite configuration (vite.config.ts) is incorrect"
-                      echo "  3. The worker entry point is missing or misnamed"
-                      echo ""
-                    fi
-                    echo "Current directory contents:"
-                    ls -la
-                    echo ""
-                    if [ -d ".open-next" ]; then
-                      echo ".open-next directory contents:"
-                      ls -la .open-next
-                    fi
-                    if [ -d "dist" ]; then
-                      echo "dist directory contents:"
-                      ls -la dist | head -20
-                    fi
-                    echo ""
-                    exit 1
-                  fi
-
-                  echo "✅ Worker bundle structure verified - all required paths exist"
-
-            # Verify generated config exists (substitution runs before deploy)
-            - name: Verify production wrangler config
-              if: github.ref == 'refs/heads/main'
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  if [ ! -f "wrangler.production.jsonc" ]; then
-                    echo "❌ ERROR: wrangler.production.jsonc not found - Generate step must run first"
-                    exit 1
-                  fi
-                  echo "✅ wrangler.production.jsonc ready for deploy"
-
-            # The version tag is the short commit: the Worker reads it back through its version
-            # metadata binding (OBCF_VERSION), so /admin readiness and the Fleet report name the build.
-            - name: Version tag
-              id: version
-              if: github.ref == 'refs/heads/main'
-              run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-
-            # Deploy to Cloudflare Workers (NOT Cloudflare Pages)
-            # Uses wrangler.production.jsonc - secrets substituted by Generate step above
-            - name: Deploy to Cloudflare Workers
-              if: github.ref == 'refs/heads/main'
-              uses: cloudflare/wrangler-action@v4
+            # Next.js's incremental cache; an app without .next/cache simply has nothing to restore.
+            - name: Cache Next.js builds
+              uses: actions/cache@v6
               with:
-                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  workingDirectory: apps/${{ matrix.folder }}
-                  command:
-                      deploy --env ${{ steps.config.outputs.wrangler-env }} --config wrangler.production.jsonc --tag ${{
-                      steps.version.outputs.tag }}
-              continue-on-error: false # Fail the workflow if deployment fails
+                  path: apps/${{ matrix.app }}/.next/cache
+                  key: ${{ runner.os }}-nextjs-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+                  restore-keys: |
+                      ${{ runner.os }}-nextjs-${{ matrix.app }}-${{ hashFiles('pnpm-lock.yaml') }}-
+                      ${{ runner.os }}-nextjs-${{ matrix.app }}-
 
-            # Health check deployed worker
-            - name: Health check deployment
-              if: success() && github.ref == 'refs/heads/main'
-              working-directory: apps/${{ matrix.folder }}
-              run: |
-                  echo "🏥 Running health check for ${{ matrix.name }}..."
-
-                  # Get worker name and configuration
-                  WORKER_NAME="${{ matrix.config.workerName || matrix.folder }}"
-                  HEALTH_PATH="${{ steps.config.outputs.health-check }}"
-                  WRANGLER_ENV="${{ steps.config.outputs.wrangler-env }}"
-                  WORKER_SUBDOMAIN="${{ steps.config.outputs.worker-subdomain }}"
-
-                  # Construct worker URL (Cloudflare workers.dev domain)
-                  # Format: https://{worker-name}-{environment}.{subdomain}.workers.dev
-                  WORKER_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${WORKER_SUBDOMAIN}.workers.dev${HEALTH_PATH}"
-
-                  echo "📍 Checking: ${WORKER_URL}"
-
-                  # Wait a few seconds for deployment to propagate
-                  sleep 5
-
-                  # Perform health check with retries
-                  MAX_RETRIES=3
-                  RETRY_DELAY=5
-
-                  for i in $(seq 1 $MAX_RETRIES); do
-                    if curl -f -s -o /dev/null -w "%{http_code}" "$WORKER_URL" | grep -q "^[23]"; then
-                      echo "✅ Health check passed (attempt $i/$MAX_RETRIES)"
-                      echo "🌐 Deployed URL: ${WORKER_URL}"
-                      exit 0
-                    else
-                      echo "⚠️  Health check failed (attempt $i/$MAX_RETRIES)"
-                      if [ $i -lt $MAX_RETRIES ]; then
-                        echo "   Retrying in ${RETRY_DELAY}s..."
-                        sleep $RETRY_DELAY
-                      fi
-                    fi
-                  done
-
-                  echo "⚠️  Warning: Health check failed after $MAX_RETRIES attempts"
-                  echo "   The deployment may still be propagating. Check manually: ${WORKER_URL}"
-                  echo "🌐 Deployed URL: ${WORKER_URL}"
-                  # Don't fail the deployment on health check failure
-                  exit 0
-
-            # Report deployment status
-            - name: Deployment summary
-              if: always() && github.ref == 'refs/heads/main'
-              run: |
-                  # Get worker name and configuration
-                  WORKER_NAME="${{ matrix.config.workerName || matrix.folder }}"
-                  WRANGLER_ENV="${{ steps.config.outputs.wrangler-env }}"
-                  WORKER_SUBDOMAIN="${{ steps.config.outputs.worker-subdomain }}"
-                  DEPLOYMENT_URL="https://${WORKER_NAME}-${WRANGLER_ENV}.${WORKER_SUBDOMAIN}.workers.dev"
-
-                  if [ "${{ job.status }}" == "success" ]; then
-                    echo "✅ Deployment of ${{ matrix.name }} completed successfully"
-                    echo "🌐 URL: ${DEPLOYMENT_URL}"
-                    echo "🔧 Type: ${{ steps.config.outputs.app-type }}"
-                  else
-                    echo "❌ Deployment of ${{ matrix.name }} failed"
-                    exit 1
-                  fi
+            # Build, check the output, fill the config, deploy, tag with the commit, health check, summary.
+            # The plan already decided, hence --force. node runs the CLI directly: OTTA_DEPLOY_VALUES is read
+            # and removed from the environment before anything else loads (packages/cli/bin/otta.mjs).
+            - name: Deploy
+              env:
+                  APP: ${{ matrix.app }}
+                  OTTA_DEPLOY_VALUES: ${{ toJson(secrets) }}
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  NODE_ENV: production
+              run: node packages/cli/bin/otta.mjs deploy "$APP" --ci --skip-packages --force
