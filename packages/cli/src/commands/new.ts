@@ -174,6 +174,19 @@ function transformFiles(targetDir: string, appName: string, sourceName: string):
         // Cloudflare resources get the app's name, so two apps in one account never share a database.
         if (file === 'wrangler.jsonc') content = content.replace(RESOURCE_PREFIX, `${appName}-$1`);
 
+        // A template may stay out of CI (`deployable: false`, otta-worker); an app made from it is meant to ship.
+        if (file === 'cloudflare-config.json') {
+            try {
+                const config = JSON.parse(content) as Record<string, unknown>;
+                if (config.deployable === false) {
+                    config.deployable = true;
+                    content = JSON.stringify(config, null, 4) + '\n';
+                }
+            } catch {
+                // Not JSON: leave it to otta deploy, which names the error.
+            }
+        }
+
         // For package.json, also update other fields
         if (file === 'package.json') {
             try {

@@ -148,7 +148,7 @@ pnpm otta deploy my-app --url https://my-app.example.com   # after a custom doma
 pnpm otta deploy my-app --dry-run
 ```
 
-What the deploy workflow does in CI, from one terminal and without a GitHub repository:
+The whole first deploy, from one terminal and without a GitHub repository:
 
 1. **Resources.** `pnpm cf:setup --json --env <env>` creates the D1, KV, R2 and queue the env block of `wrangler.jsonc`
    names (named after the app by `otta new`), or finds them, and returns their ids.
@@ -157,43 +157,61 @@ What the deploy workflow does in CI, from one terminal and without a GitHub repo
    else from `--set KEY=VALUE` or the environment; a placeholder with no value stops the deploy and names itself.
 3. **Build and deploy.** The workspace packages the app depends on, and only those
    (`turbo run build --filter=<app>^...`; skip with `--skip-packages`), the app's build as its `cloudflare-config.json`
-   says (`buildCommand`, then `workerBuildCommand` for an OpenNext app; `--skip-build` reuses the output), a check that
-   the build left its `verifyPaths`, then `wrangler deploy --env <env>`. The env defaults to the app's `wranglerEnv`.
+   says (`buildCommand`, then `workerBuildCommand` for an OpenNext app; `--skip-build` reuses the output and builds
+   nothing), a check that the build left its `verifyPaths` (with a hint by `appType` when it did not), then
+   `wrangler deploy --env <env>`, tagged with the short commit. The env defaults to the app's `wranglerEnv`.
 4. **Secrets.** The generated secrets the app declares in `.env.example` (`AUTH_SECRET`, `MIGRATION_SECRET`,
    `BOOTSTRAP_OWNER_SECRET`, `CRON_SECRET`, …) and `AUTH_URL` are set where they are not set yet, and never changed
    afterwards. Your own secrets (OAuth clients, mail) stay `wrangler secret put`.
 5. **Bootstrap.** With `--owner-email` and `--owner-password` (or `OTTA_OWNER_PASSWORD`), the fresh database gets its
    tables, roles and owner and is marked READY through `/__bootstrap__/api`. Without them the command prints the wizard
    URL with the bootstrap secret, once.
-6. **Health.** `GET` the app's `healthCheckPath` (`/api/health` for an app without a `cloudflare-config.json`).
+6. **Health.** `GET` the app's `healthCheckPath` (default `/api/health`), four tries over fifteen seconds while the
+   deploy propagates, ten seconds each; any answer below 400 passes, a failure is reported and never fails the deploy.
 
 Run it again after a change: it finds what exists and redeploys.
 
-### Deploying from CI (Cloudflare Workers Builds)
+Every app Cloudflare deploys has a `cloudflare-config.json`, its deploy manifest: how it builds, what the build must
+leave, its env, health path, previews, and whether CI deploys it (`deployable`). It is read strictly (an unknown key or
+a wrong value stops the deploy and names itself); schema: `schemas/cloudflare-config.schema.json`.
+
+### Deploying from CI (Cloudflare Workers Builds, GitHub Actions)
 
 ```bash
 pnpm otta deploy my-app --ci                              # build and deploy, nothing else
 pnpm otta deploy my-app --ci --build-only                 # Workers Builds' build command …
-pnpm otta deploy my-app --ci --skip-build --skip-packages # … and its deploy command
+pnpm otta deploy my-app --ci --skip-build                 # … and its deploy command
 pnpm otta deploy my-app --watch-paths                     # the include list for its build watch paths
-pnpm otta deploy --all --ci --changed-since HEAD~1        # every deployable app something changed for
+pnpm otta deploy --all --ci --changed-since "$BEFORE_SHA" # every deployable app the push changed
+pnpm otta deploy --all --plan --changed-since "$BEFORE_SHA"   # the same decision, as JSON (GitHub's matrix)
+pnpm otta deploy my-app --ci --preview pr-12              # env.preview as the Worker <name>-pr-12
+pnpm otta deploy --all --delete-preview pr-12             # and gone again
 ```
 
 `--ci` is the build and deploy of the steps above and nothing else: no login (wrangler authenticates with
-`CLOUDFLARE_API_TOKEN`, which Workers Builds provides), no resource created, no secret generated or set, no bootstrap.
-Placeholder values come from build variables, the same names as the placeholders (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`,
-`CLOUDFLARE_ACCOUNT_ID`, …), or `--set`; a missing one stops the run before anything builds. Set the Worker's secrets
-once, with a first `otta deploy` from a terminal or `wrangler secret put`.
+`CLOUDFLARE_API_TOKEN`, which Workers Builds provides), no resource created, no secret generated or set, no bootstrap. A
+value is looked up in `--set`, then `OTTA_DEPLOY_VALUES` (one JSON object, e.g. GitHub's `toJson(secrets)`; only the
+names the env block uses are read, and the launcher removes it from the environment before anything loads, so no build
+or dependency sees it), then the environment (Workers Builds' build variables). Every missing name, placeholders and the
+manifest's `requiresSecrets` together, stops the run before anything builds. `requiresSecrets` are the build's own
+values (blackbox's `BLACKBOX_UPLOAD_TOKEN` for its `postbuild` upload): they, and no other value, are handed to the
+build scripts. Set the Worker's secrets once, with a first `otta deploy` from a terminal or `wrangler secret put`.
+
+`#skipdeploy` in the commit message makes `--ci` and `--plan` deploy nothing; `--force` deploys anyway (and ignores
+`--changed-since`). `--changed-since <ref>` deploys an app only when a file under its watch paths (the app, every
+workspace package it reaches, the root build files; a file moved out of the app counts) changed since `<ref>`; when git
+cannot answer (a shallow clone, the all-zero "before" of a first push), it deploys. Pass the commit before the push,
+never `HEAD~1`, which sees only the last commit of a push. With `--all` every app whose manifest is `"deployable": true`
+goes in turn, their packages built in one turbo run; the run reports each (and in GitHub, in the job summary) and fails
+at the end when one failed. `--all --delete-preview <id>` cleans up every app whose manifest allows previews, deployable
+or not.
 
 In Workers Builds, one Worker per app: connect the repository, root directory `/`, deploy command
-`pnpm otta deploy <app> --ci` (or the build-only and skip-build pair above), and paste the output of
-`otta deploy <app> --watch-paths` into Build watch paths, so a push rebuilds only the apps it can change. The Worker
-name must match the env's (`<name>-<env>`, `otta-web-production`).
-
-Outside Workers Builds, `--changed-since <ref>` does the same selection: the app deploys only when a file under its
-watch paths changed between `<ref>` and HEAD (a ref git cannot diff against, in a shallow clone, deploys). With `--all`
-every app with a `cloudflare-config.json` that is not `"deployable": false` goes in turn; the run reports each and fails
-at the end when one failed.
+`pnpm otta deploy <app> --ci`, the env block's placeholders as build variables, and build watch paths from
+`otta deploy <app> --watch-paths` (they live in the dashboard: re-paste them when the app gains a workspace dependency,
+or use the broad `apps/<app>/*`, `packages/*`). The Worker name must match the env's (`<name>-<env>`,
+`otta-web-production`). Use Workers Builds or GitHub's `deploy.yml` as the automatic deployer of a Worker, never both.
+The full setup: `.github/DEPLOYMENT.md`.
 
 ### Updating Ottabase Pro
 

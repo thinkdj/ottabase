@@ -196,7 +196,7 @@ function fixture(): string {
     write(`${app}/worker/routes/blog.ts`, 'export const blog = 1;\n');
     write(`${app}/public/ottabase-demo/shot.png`, 'png');
     write(`${app}/wrangler.jsonc`, '{ "name": "otta-web", "d1_databases": [{ "database_name": "ottabase-db" }] }\n');
-    write(`${app}/cloudflare-config.json`, '{ "workerName": "otta-web" }\n');
+    write(`${app}/cloudflare-config.json`, '{ "deployable": false, "healthCheckPath": "/api/health" }\n');
     write(`${app}/.env.example`, 'AUTH_SECRET=\n');
     write(`${app}/.env.local`, 'AUTH_SECRET=secret\n');
     write(`${app}/README.md`, '# otta-web\n');
@@ -385,7 +385,11 @@ describe('scaffoldApp', () => {
         expect(fs.readJsonSync(path.join(root, 'apps/shop/package.json')).name).toBe('@ottabase/shop');
         expect(read(root, 'apps/shop/wrangler.jsonc')).toContain('"name": "shop"');
         expect(read(root, 'apps/shop/wrangler.jsonc')).toContain('"database_name": "shop-db"');
-        expect(read(root, 'apps/shop/cloudflare-config.json')).toContain('"workerName": "shop"');
+        // The template stays out of CI; the app made from it ships.
+        expect(fs.readJsonSync(path.join(root, 'apps/shop/cloudflare-config.json'))).toEqual({
+            deployable: true,
+            healthCheckPath: '/api/health',
+        });
         expect(read(root, 'apps/shop/README.md')).toBe('# shop\n');
     });
 

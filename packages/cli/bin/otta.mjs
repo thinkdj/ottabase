@@ -5,6 +5,12 @@ import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+// CI hands `otta deploy` its placeholder values as one JSON object (GitHub's whole secrets bag). Take
+// it out of the environment first, before the CLI's dependencies load and before any child process
+// (the build below, pnpm, turbo, vite, wrangler) starts: only `otta deploy` itself ever reads it.
+const deployValues = process.env.OTTA_DEPLOY_VALUES;
+delete process.env.OTTA_DEPLOY_VALUES;
+
 const binDir = dirname(fileURLToPath(import.meta.url));
 const packageDir = resolve(binDir, '..');
 const sourceDir = resolve(packageDir, 'src');
@@ -54,4 +60,4 @@ if (!existsSync(distEntry)) {
 
 const { run } = await import(pathToFileURL(distEntry).href);
 
-run();
+run(process.argv, { deployValues });

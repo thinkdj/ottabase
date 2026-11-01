@@ -5,18 +5,13 @@ import https from 'node:https';
 import path from 'node:path';
 import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser';
 import { getPnpmInvocation, log, resolveApp, type AppDevelopmentProcess, type AppInfo } from '../utils/index.js';
+import { DEPLOY_CONFIG_DEFAULTS, DEPLOY_CONFIG_FILE, readDeployConfig, type AppDeployConfig } from './deploy-plan.js';
 
 const DEVELOPMENT_ENVIRONMENTS = new Set(['dev', 'development', 'local']);
 const ENVIRONMENT_ALIASES: Record<string, string> = {
     prod: 'production',
     stage: 'staging',
 };
-
-interface CloudflareAppConfig {
-    buildCommand?: string;
-    workerBuildCommand?: string | null;
-    wranglerConfig?: string;
-}
 
 interface WranglerConfig {
     env?: Record<string, unknown>;
@@ -98,15 +93,9 @@ function withPort(value: string | undefined, port: number | undefined): string |
     return url.toString().replace(/\/$/, value.endsWith('/') ? '/' : '');
 }
 
-function readCloudflareConfig(app: AppInfo): CloudflareAppConfig {
-    const configPath = path.join(app.path, 'cloudflare-config.json');
-    if (!fs.existsSync(configPath)) return {};
-
-    try {
-        return JSON.parse(fs.readFileSync(configPath, 'utf8')) as CloudflareAppConfig;
-    } catch (error) {
-        throw new Error(`Could not parse ${configPath}: ${error instanceof Error ? error.message : String(error)}`);
-    }
+/** The app's deploy manifest, read the way `otta deploy` reads it; an app without one builds the default way. */
+function readCloudflareConfig(app: AppInfo): Readonly<AppDeployConfig> {
+    return fs.existsSync(path.join(app.path, DEPLOY_CONFIG_FILE)) ? readDeployConfig(app.path) : DEPLOY_CONFIG_DEFAULTS;
 }
 
 function assertWranglerEnvironment(configPath: string, environment: string): void {
@@ -243,7 +232,7 @@ function createWorkerPlan(app: AppInfo, environment: string, options: StartOptio
     }
 
     const config = readCloudflareConfig(app);
-    const buildScripts = [config.buildCommand || 'build', config.workerBuildCommand].filter(
+    const buildScripts = [config.buildCommand, config.workerBuildCommand].filter(
         (script): script is string => typeof script === 'string' && script.length > 0,
     );
 
@@ -253,7 +242,7 @@ function createWorkerPlan(app: AppInfo, environment: string, options: StartOptio
         }
     }
 
-    const wranglerConfig = config.wranglerConfig || 'wrangler.jsonc';
+    const wranglerConfig = config.wranglerConfig;
     const resolvedWranglerConfig = path.resolve(app.path, wranglerConfig);
     const relativeWranglerConfig = path.relative(app.path, resolvedWranglerConfig);
     if (relativeWranglerConfig.startsWith('..') || path.isAbsolute(relativeWranglerConfig)) {

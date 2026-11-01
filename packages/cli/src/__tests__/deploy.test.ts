@@ -109,6 +109,7 @@ function fixture(): string {
     write('pnpm-workspace.yaml', 'packages:\n  - apps/*\n');
     write('apps/shop/package.json', JSON.stringify({ name: '@ottabase/shop', scripts: { build: 'vite build' } }));
     write('apps/shop/wrangler.jsonc', WRANGLER);
+    write('apps/shop/cloudflare-config.json', JSON.stringify({ verifyPaths: [] }));
     write(
         'apps/shop/.env.example',
         'AUTH_SECRET=\nAUTH_URL=\nMIGRATION_SECRET=\nBOOTSTRAP_OWNER_SECRET=\nCRON_SECRET=\n',
@@ -247,6 +248,8 @@ describe('deployApp', () => {
         await expect(deployApp(root, 'shop', {}, loggedOut)).rejects.toThrow(/pnpm cf:login/);
         await expect(deployApp(root, 'nope', {})).rejects.toThrow(/apps\/nope has no package\.json/);
         fs.outputJsonSync(path.join(root, 'apps/bare/package.json'), { name: '@ottabase/bare' });
+        await expect(deployApp(root, 'bare', {})).rejects.toThrow(/apps\/bare\/cloudflare-config\.json is missing/);
+        fs.outputJsonSync(path.join(root, 'apps/bare/cloudflare-config.json'), {});
         await expect(deployApp(root, 'bare', {})).rejects.toThrow(/no wrangler\.jsonc/);
     });
 

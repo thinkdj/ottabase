@@ -9,6 +9,7 @@ import {
     lintApp,
     listAllApps,
     newApp,
+    parseDeployValues,
     presetNames,
     proUpdateCommand,
     showAppInfo,
@@ -273,26 +274,30 @@ addStartOptions(
 
 program
     .command('deploy [app]')
-    .description('Build and deploy an app to Cloudflare, from a terminal (the whole first deploy) or from CI (--ci)')
+    .description('Build and deploy an app to Cloudflare: from a terminal (the whole first deploy) or from CI (--ci)')
     .option(
         '-e, --env <environment>',
-        "The env block of wrangler.jsonc to deploy (default: the app's wranglerEnv in cloudflare-config.json, else production)",
+        "The env block of wrangler.jsonc to deploy (default: the app's wranglerEnv in cloudflare-config.json)",
     )
     .option('--set <KEY=VALUE>', 'A value for a placeholder the resources do not provide', collect, [])
     .option(
         '--ci',
-        'Build and deploy only: no login, no resources created, no secrets, no bootstrap (Workers Builds, CI)',
+        'Build and deploy only: no login, no resources created, no secrets, no bootstrap (Workers Builds, GitHub)',
     )
-    .option('--build-only', "Stop after the build (Workers Builds' build command; deploy then runs with --skip-build)")
+    .option('--build-only', "With --ci: stop after the build (Workers Builds' build command; deploy with --skip-build)")
     .option('--changed-since <ref>', 'Deploy only when a file the app depends on changed since this git ref')
-    .option('--all', 'Every app with a cloudflare-config.json that is not "deployable": false')
-    .option('--watch-paths', "Print what the app's deploy depends on (Workers Builds watch paths), deploy nothing")
+    .option('--force', 'Deploy even with #skipdeploy in the commit message or nothing changed')
+    .option('--all', 'Every app whose cloudflare-config.json does not say "deployable": false')
+    .option('--plan', 'Print what this run would deploy and why, as JSON (the GitHub matrix); deploy nothing')
+    .option('--preview <id>', 'With --ci: deploy env.preview as its own Worker <name>-<id> (PR previews: pr-12)')
+    .option('--delete-preview <id>', 'Delete the preview Worker <name>-<id>')
+    .option('--watch-paths', "Print what the app's deploy depends on (Workers Builds watch paths); deploy nothing")
     .option('--url <url>', 'The public URL (AUTH_URL) when a custom domain fronts the Worker')
     .option('--owner-email <email>', 'With --owner-password: bootstrap the empty database and create this owner')
     .option('--owner-password <password>', 'The owner password (or OTTA_OWNER_PASSWORD in the environment)')
     .option('--owner-name <name>', 'The owner display name')
-    .option('--skip-build', 'Reuse the app build output')
-    .option('--skip-packages', 'Do not rebuild the workspace packages first')
+    .option('--skip-build', 'Reuse the last build output (the packages are not rebuilt either)')
+    .option('--skip-packages', 'Build the app but not the workspace packages')
     .option('--dry-run', 'Print the plan, deploy nothing')
     .addHelpText(
         'after',
@@ -302,21 +307,24 @@ Examples:
   $ otta deploy my-app --owner-email me@example.com --owner-password 'correct horse'
   $ otta deploy my-app --env demo --set DEMO_URL=https://demo.example.com
   $ otta deploy my-app --url https://my-app.example.com     # after pointing a custom domain at it
-  $ otta deploy my-app --ci                                  # Workers Builds deploy command, or any CI
+  $ otta deploy my-app --ci                                  # Workers Builds' deploy command, or any CI
   $ otta deploy my-app --watch-paths                         # the include list for Workers Builds
-  $ otta deploy --all --ci --changed-since HEAD~1            # every deployable app that changed
+  $ otta deploy --all --ci --changed-since "$BEFORE_SHA"     # every deployable app the push changed
+  $ otta deploy --all --plan --changed-since "$BEFORE_SHA"   # the same decision, as JSON
+  $ otta deploy my-app --ci --preview pr-12                  # a PR preview; --delete-preview pr-12 removes it
 
 From a terminal: needs a Cloudflare login (pnpm cf:login). Creates the D1, KV, R2 and queue the env block
 names, writes wrangler.<env>.jsonc with their ids, builds, deploys, generates and sets the framework
 secrets that are not set yet (AUTH_SECRET, MIGRATION_SECRET, BOOTSTRAP_OWNER_SECRET, …, AUTH_URL), and
 bootstraps the database when an owner is given. Safe to run again: it finds what exists and redeploys.
 
-With --ci: placeholder values come from build variables (and --set), CLOUDFLARE_ACCOUNT_ID included, and
-wrangler authenticates with CLOUDFLARE_API_TOKEN. Nothing is created, no secret is touched.
+With --ci: placeholder values come from --set, the environment (Workers Builds' build variables) and
+OTTA_DEPLOY_VALUES (a JSON object, e.g. GitHub's secrets; only the placeholder names are read, and it
+never reaches a build). Wrangler authenticates with CLOUDFLARE_API_TOKEN. Nothing is created, no
+secret is touched; #skipdeploy in the commit message deploys nothing.
 
-Either way the app's cloudflare-config.json says how it builds (buildCommand, workerBuildCommand), what
-the build must leave (verifyPaths), its default env and its health path; only the workspace packages the
-app depends on are built.
+The app's cloudflare-config.json is its deploy manifest, the one file to edit: how it builds, what the
+build must leave, its env, health path, previews and the names CI must provide.
 `,
     )
     .action(
@@ -335,13 +343,22 @@ app depends on are built.
                 ci?: boolean;
                 buildOnly?: boolean;
                 changedSince?: string;
+                force?: boolean;
                 all?: boolean;
+                plan?: boolean;
+                preview?: string;
+                deletePreview?: string;
                 watchPaths?: boolean;
             },
         ) => {
             try {
+                // The values bag: handed over by bin/otta.mjs, which took it out of the environment before
+                // anything else loaded, so no dependency and no child process ever sees it.
+                const bag = runContext.deployValues ?? process.env.OTTA_DEPLOY_VALUES;
+                delete process.env.OTTA_DEPLOY_VALUES;
                 await deployCommand(app, {
                     ...options,
+                    values: parseDeployValues(bag),
                     ownerPassword: options.ownerPassword ?? process.env.OTTA_OWNER_PASSWORD,
                 });
             } catch (error) {
@@ -484,7 +501,16 @@ program
  *   Defaults to `process.argv`. Pass `['node', 'otta', ...yourArgs]` when
  *   calling programmatically.
  */
-export function run(args: string[] = process.argv): void {
+/** What the launcher hands over: values it took out of the environment before any module loaded. */
+export interface RunContext {
+    /** `OTTA_DEPLOY_VALUES`, the JSON object of deploy placeholder values (GitHub's secrets bag). */
+    deployValues?: string;
+}
+
+let runContext: RunContext = {};
+
+export function run(args: string[] = process.argv, context: RunContext = {}): void {
+    runContext = context;
     program.parse(args);
 }
 

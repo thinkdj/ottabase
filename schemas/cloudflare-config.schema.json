@@ -1,103 +1,75 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Cloudflare Deployment Configuration",
-    "description": "Configuration for deploying apps to Cloudflare Workers",
+    "title": "Ottabase app deploy manifest",
+    "description": "apps/<app>/cloudflare-config.json: how otta deploy builds, checks and ships the app, wherever it runs (a terminal, Cloudflare Workers Builds, GitHub Actions). The one deploy file to edit besides Cloudflare's own wrangler.jsonc, which keeps the Worker name and the bindings. otta deploy reads it strictly: an unknown key or a wrong value stops the deploy and names itself. The defaults below live once in packages/cli/src/commands/deploy-plan.ts; a test holds the two together.",
     "type": "object",
+    "additionalProperties": false,
     "properties": {
+        "$schema": { "type": "string" },
+        "$comment": { "type": "string" },
         "deployable": {
             "type": "boolean",
-            "description": "Whether this app is deployed to Cloudflare (deploy.yml, and `otta deploy --all`)",
+            "description": "Whether CI deploys the app: otta deploy --all, so Workers Builds and deploy.yml. otta deploy <app> deploys it either way.",
             "default": true
         },
         "previewDeployable": {
             "type": "boolean",
-            "description": "Whether pr-preview.yml deploys a per-PR copy of this app. deploy.yml ignores it.",
+            "description": "Whether PR previews (otta deploy --preview, pr-preview.yml) deploy a copy of the app from its env.preview block.",
             "default": true
         },
         "appType": {
             "type": "string",
-            "enum": ["vite", "nextjs", "react", "remix", "custom"],
-            "description": "Type of application framework",
+            "enum": ["vite", "nextjs", "custom"],
+            "description": "The app's shape; only the hints shown when a build leaves the wrong output depend on it.",
             "default": "vite"
-        },
-        "workerName": {
-            "type": "string",
-            "description": "Name of the Cloudflare Worker (defaults to package name)"
         },
         "buildCommand": {
             "type": "string",
-            "description": "pnpm script to build the application",
+            "pattern": "^[a-zA-Z0-9:_.-]+$",
+            "description": "The app's package.json script that builds it.",
             "default": "build"
         },
         "workerBuildCommand": {
             "type": ["string", "null"],
-            "description": "pnpm script to build the Cloudflare Worker bundle",
-            "default": null
-        },
-        "outputDirectory": {
-            "type": "string",
-            "description": "Directory containing worker build output",
-            "default": "dist"
-        },
-        "assetsDirectory": {
-            "type": ["string", "null"],
-            "description": "Directory containing static assets for the worker",
+            "pattern": "^([a-zA-Z0-9:_.-]+)?$",
+            "description": "A second package.json script that turns the build into the Worker bundle (OpenNext for a Next.js app). Null or empty: none.",
             "default": null
         },
         "verifyPaths": {
             "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "description": "Paths under the app that must exist after the build; `otta deploy` stops before wrangler when one is missing",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Paths inside the app that must exist after the build; otta deploy stops before wrangler when one is missing.",
             "default": ["dist", "cloudflare-worker.ts"]
         },
         "wranglerConfig": {
             "type": "string",
-            "description": "Path to wrangler config file",
+            "pattern": "^[\\w.-]+\\.jsonc?$",
+            "description": "The wrangler config file in the app folder.",
             "default": "wrangler.jsonc"
         },
         "wranglerEnv": {
             "type": "string",
-            "description": "Wrangler environment to deploy to; `otta deploy` uses it when --env is not given",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "The env block deployed when --env is not given.",
             "default": "production"
         },
         "healthCheckPath": {
             "type": "string",
-            "description": "Path requested after the deploy (`otta deploy`, deploy.yml); a failure is reported, never fatal",
-            "default": "/"
+            "pattern": "^/",
+            "description": "Requested after the deploy: four tries over fifteen seconds, ten seconds each; any answer below 400 passes. A failure is reported, never fatal.",
+            "default": "/api/health"
         },
         "requiresSecrets": {
             "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "description": "Optional, additive. Extra secrets for production verify. Placeholders are auto-derived from wrangler.jsonc; add here only secrets not in wrangler (e.g. build-time). Base CLOUDFLARE_* always included.",
+            "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+            "description": "Build-time values beyond the wrangler.jsonc placeholders (which are found on their own): a source map upload token, a Sentry token. In CI each is checked before the build and handed to the build scripts, and no other value from a CI's secrets is. CLOUDFLARE_API_TOKEN is always checked outside Workers Builds.",
             "default": []
         },
         "requiresPreviewSecrets": {
             "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "description": "Optional, additive. Extra secrets for PR preview verify. Placeholders from wrangler.jsonc env.preview are auto-derived; add here only extras."
-        },
-        "customBuildSteps": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "run": {
-                        "type": "string"
-                    }
-                },
-                "required": ["name", "run"]
-            },
-            "description": "Additional custom build steps to run"
+            "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+            "description": "The same, for PR previews (env.preview).",
+            "default": []
         }
-    },
-    "required": ["deployable", "appType"]
+    }
 }
