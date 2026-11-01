@@ -19,9 +19,10 @@ const TRANSFORM_FILES = ['package.json', 'wrangler.jsonc', 'cloudflare-config.js
 
 /**
  * Cloudflare resources the templates name after the framework (`ottabase-db`, `ottabase-bucket-preview`,
- * `ottabase-queue-demo`). A second app in the same account would share them, so they take the app's name.
+ * `ottabase-files-private`, `ottabase-vault-staging`, `ottabase-queue-demo`). A second app in the same account would
+ * share them (its private files and backups too), so they take the app's name.
  */
-const RESOURCE_PREFIX = /(?<![a-z0-9-])ottabase-(db|bucket|queue)(?![a-z0-9])/g;
+const RESOURCE_PREFIX = /(?<![a-z0-9-])ottabase-(db|bucket|files-private|vault|queue)(?![a-z0-9])/g;
 
 export interface ScaffoldOptions {
     /** A preset name: strip the demo and every package the preset does not keep. */

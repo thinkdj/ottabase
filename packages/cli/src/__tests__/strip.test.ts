@@ -195,7 +195,23 @@ function fixture(): string {
     write(`${app}/src/hooks/commentHooks.ts`, 'export const useComments = 1;\n');
     write(`${app}/worker/routes/blog.ts`, 'export const blog = 1;\n');
     write(`${app}/public/ottabase-demo/shot.png`, 'png');
-    write(`${app}/wrangler.jsonc`, '{ "name": "otta-web", "d1_databases": [{ "database_name": "ottabase-db" }] }\n');
+    write(
+        `${app}/wrangler.jsonc`,
+        JSON.stringify(
+            {
+                name: 'otta-web',
+                d1_databases: [{ database_name: 'ottabase-db' }],
+                r2_buckets: [
+                    { binding: 'OBCF_R2', bucket_name: 'ottabase-bucket' },
+                    { binding: 'OBCF_R2_PRIVATE', bucket_name: 'ottabase-files-private-preview' },
+                    { binding: 'OBCF_R2_VAULT', bucket_name: 'ottabase-vault' },
+                ],
+                queues: { producers: [{ binding: 'OBCF_QUEUE', queue: 'ottabase-queue-demo' }] },
+            },
+            null,
+            4,
+        ) + '\n',
+    );
     write(`${app}/cloudflare-config.json`, '{ "deployable": false, "healthCheckPath": "/api/health" }\n');
     write(`${app}/.env.example`, 'AUTH_SECRET=\n');
     write(`${app}/.env.local`, 'AUTH_SECRET=secret\n');
@@ -384,7 +400,13 @@ describe('scaffoldApp', () => {
         expect(fs.existsSync(path.join(root, 'apps/shop/.env.local'))).toBe(false);
         expect(fs.readJsonSync(path.join(root, 'apps/shop/package.json')).name).toBe('@ottabase/shop');
         expect(read(root, 'apps/shop/wrangler.jsonc')).toContain('"name": "shop"');
-        expect(read(root, 'apps/shop/wrangler.jsonc')).toContain('"database_name": "shop-db"');
+        // Every resource the template names after the framework takes the app's name: a second app in the
+        // account shares no database, no bucket (private files and backups included) and no queue.
+        const wrangler = read(root, 'apps/shop/wrangler.jsonc');
+        for (const name of ['shop-db', 'shop-bucket', 'shop-files-private-preview', 'shop-vault', 'shop-queue-demo']) {
+            expect(wrangler).toContain(`"${name}"`);
+        }
+        expect(wrangler).not.toContain('ottabase-');
         // The template stays out of CI; the app made from it ships.
         expect(fs.readJsonSync(path.join(root, 'apps/shop/cloudflare-config.json'))).toEqual({
             deployable: true,
