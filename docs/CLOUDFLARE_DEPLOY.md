@@ -24,15 +24,21 @@ framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`,
 redeploy. Details and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight
 to Cloudflare". The rest of this guide is the CI/CD setup for a team.
 
-### From Cloudflare Workers Builds
+### After that: one deploy, wherever it runs
 
-Cloudflare can build and deploy on every push, with no GitHub Actions: Workers & Pages, Create, Import a repository, one
-Worker per app (named as the env names it: `otta-web-production`). Root directory `/`, deploy command
-`pnpm otta deploy otta-web --ci`, the placeholder values of the env block (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`,
-`CLOUDFLARE_ACCOUNT_ID`, …) as build variables, and Build watch paths from `pnpm otta deploy otta-web --watch-paths`
-(the app, the workspace packages it uses, the root build files), so a push rebuilds only the apps it can change. `--ci`
-creates nothing and sets no secret: run the first deploy from a terminal, or set the secrets by hand. Every flag:
-`packages/cli/README.md`, "Deploying from CI".
+The terminal, Cloudflare Workers Builds and GitHub Actions all run the same `otta deploy`; how each app builds and ships
+is its `cloudflare-config.json`. The recommended setup:
+
+- **Workers Builds deploys production on every push**, one connection per app: Workers & Pages, Create, Import a
+  repository; Worker named as the env names it (`otta-web-production`), root directory `/`, deploy command
+  `pnpm otta deploy otta-web --ci`, the env block's placeholder values (`CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`,
+  `KV_NAMESPACE_ID`) as build variables, and build watch paths from `pnpm otta deploy otta-web --watch-paths`.
+- **GitHub runs the tests** (`ci.yml`) as required checks on `main`, so Workers Builds deploys only tested code.
+- **GitHub's `deploy.yml` is manual**: the fallback. `pr-preview.yml` makes PR previews on request.
+
+One automatic deployer per Worker, never both. `--ci` creates nothing and sets no secret: run the first deploy from a
+terminal, or set the secrets by hand. The whole setup, every flag and every failure message:
+[`.github/DEPLOYMENT.md`](../.github/DEPLOYMENT.md).
 
 Both `otta deploy` and the CI workflow tag each deploy with the short commit (`wrangler deploy --tag abc1234`). The
 Worker reads it back through its version metadata binding (`OBCF_VERSION` in `wrangler.jsonc`), so the `/admin`
@@ -69,19 +75,20 @@ pnpm cf:validate
   / `-staging` ones.
 - Queue: `ottabase-queue` (+ preview)
 - D1 preview database: `ottabase-db-preview`
-- **Does NOT modify wrangler.jsonc** (it's a template). Copy the output IDs for GitHub Secrets below.
+- **Does NOT modify wrangler.jsonc** (it's a template). Its output IDs are the CI values below (`otta deploy` from a
+  terminal runs it and fills them in itself).
 
 **Resource overview (prod vs preview):**
 
-| Resource | cf:setup creates (prod)                                 | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)     | GitHub Secrets                           |
+| Resource | cf:setup creates (prod)                                 | cf:setup creates (preview) | wrangler placeholder (prod) | wrangler placeholder (preview)     | CI values                                |
 | -------- | ------------------------------------------------------- | -------------------------- | --------------------------- | ---------------------------------- | ---------------------------------------- |
 | D1       | ottabase-db                                             | ottabase-db-preview        | `D1_DATABASE_ID`            | `D1_PREVIEW_DATABASE_ID`           | D1_DATABASE_ID, D1_PREVIEW_DATABASE_ID   |
 | KV       | OBCF_KV                                                 | OBCF_KV_preview            | `KV_NAMESPACE_ID`           | `KV_PREVIEW_NAMESPACE_ID`          | KV_NAMESPACE_ID, KV_PREVIEW_NAMESPACE_ID |
 | R2       | ottabase-bucket, ottabase-files-private, ottabase-vault | the same with `-preview`   | the names (literal)         | the `-preview` names (literal)     | none                                     |
 | Queue    | ottabase-queue                                          | ottabase-queue-preview     | `ottabase-queue` (literal)  | `ottabase-queue-preview` (literal) | none                                     |
 
-D1 and KV placeholder values = GitHub Secret names (auto-detected and substituted by CI). R2 and Queue use literal names
-(no substitution needed).
+D1 and KV placeholder values name the CI values (`otta deploy` finds them and fills in the ids). R2 and Queue use
+literal names (nothing to fill).
 
 ---
 
@@ -112,35 +119,38 @@ wrangler d1 list              # Get D1_DATABASE_ID
 wrangler kv namespace list    # Get KV_NAMESPACE_ID
 ```
 
-Note: `wrangler.jsonc` contains `ALL_CAPS_SNAKE_CASE` placeholder values that are auto-detected and substituted from
-GitHub Secrets at deploy time. No explicit key list needed.
+Note: `wrangler.jsonc` contains `ALL_CAPS_SNAKE_CASE` placeholder values that `otta deploy` finds and fills at deploy
+time from the values of the same names. No explicit key list needed.
 
 ---
 
-## Step 3: Configure GitHub Secrets
+## Step 3: Give CI the values
 
-Go to: GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+The same names go where the deploy runs: **Workers Builds** (the recommended production deployer) takes the placeholders
+as build variables (Worker → Settings → Build → Variables and secrets) and brings its own API token; **GitHub**
+(`deploy.yml`, PR previews) takes them as repository secrets: Settings → **Secrets and variables** → **Actions** → **New
+repository secret**.
 
-**Production (main deploy):**
+**Production:**
 
 | Secret Name             | Description                | Where to Get                                    |
 | ----------------------- | -------------------------- | ----------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | API token for deployments  | Step 2 above                                    |
+| `CLOUDFLARE_API_TOKEN`  | API token (GitHub only)    | Step 2 above                                    |
 | `CLOUDFLARE_ACCOUNT_ID` | Your account ID            | `wrangler whoami`                               |
 | `D1_DATABASE_ID`        | Production D1 database ID  | cf:setup output or `wrangler d1 list`           |
 | `KV_NAMESPACE_ID`       | Production KV namespace ID | cf:setup output or `wrangler kv namespace list` |
 
-**PR preview (uses isolated preview D1/KV/R2):**
+**PR preview (GitHub secrets; uses isolated preview D1/KV/R2):**
 
 | Secret Name               | Description                      | Where to Get    |
 | ------------------------- | -------------------------------- | --------------- |
 | `D1_PREVIEW_DATABASE_ID`  | Preview D1 (ottabase-db-preview) | cf:setup output |
 | `KV_PREVIEW_NAMESPACE_ID` | Preview KV (OBCF_KV_preview)     | cf:setup output |
 
-> **Multi-app:** Same placeholder name across apps → same GitHub Secret → shared resource. Different names → isolated.
-> Prefixing (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement. Only 2 steps: set the
-> placeholder in `wrangler.jsonc`, add the matching GitHub Secret. CI auto-detects the rest. See
-> [.github/DEPLOYMENT.md](../.github/DEPLOYMENT.md#extending-the-system) for a walkthrough.
+> **Multi-app:** Same placeholder name across apps → same value → shared resource. Different names → isolated. Prefixing
+> (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement. Only 2 steps: set the placeholder in
+> `wrangler.jsonc`, give CI a value of that name; `otta deploy` finds the rest. See
+> [.github/DEPLOYMENT.md](../.github/DEPLOYMENT.md#values-placeholders-and-secrets) for a walkthrough.
 
 ---
 
@@ -165,27 +175,23 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md#migrat
 
 ### Trigger Deployment
 
-**Option A - Push to main:**
+**Option A - Workers Builds (recommended):** connect the app once (see "After that" at the top), then every push to
+`main` deploys it. The build log is in Cloudflare → the Worker → Deployments.
 
-```bash
-git push origin main
-```
-
-**Option B - Manual trigger:**
+**Option B - GitHub, manual:**
 
 1. Go to GitHub → **Actions** tab
 2. Select **"Deploy to Cloudflare Workers"**
-3. Click **"Run workflow"**
+3. Click **"Run workflow"** (`app` empty: every deployable app)
+
+To deploy from GitHub on every push instead, uncomment `push:` in `.github/workflows/deploy.yml` (and leave Workers
+Builds disconnected for that app).
 
 ### Monitor Deployment
 
-Watch in GitHub Actions:
-
-- ✓ Build packages
-- ✓ Build application & worker bundle
-- ✓ Generate `wrangler.production.jsonc` from GitHub Secrets
-- ✓ Deploy to Cloudflare
-- ✓ Health check
+Each run does, per app: the plan (what changed, `#skipdeploy`), the workspace packages, the app and its Worker bundle,
+the `verifyPaths` check, `wrangler.production.jsonc` with the values filled in, the deploy (tagged with the commit), the
+health check, and a summary (GitHub's job summary, or the log's last lines).
 
 ---
 
@@ -290,7 +296,7 @@ pnpm cf:setup
 pnpm cf:validate
 ```
 
-Then update GitHub secrets with new IDs.
+Then update the CI values (Workers Builds build variables, GitHub secrets) with the new IDs.
 
 ### "Unauthorized" or "Invalid API token"
 
@@ -323,10 +329,9 @@ pnpm install
 # Local development
 pnpm dev
 
-# Manual deployment (bypass CI). env.production holds ALL_CAPS placeholders, so first generate a
-# config with real IDs (CI does this with .github/scripts/substitute-wrangler-secrets.py)
-cd apps/otta-web
-pnpm build && pnpm wrangler deploy --env production --config wrangler.production.jsonc
+# Deploy from your machine: the same deploy CI runs (fills the placeholders, builds, deploys)
+pnpm otta deploy otta-web
+pnpm otta deploy otta-web --ci --dry-run      # what CI would do, and which values it would miss
 
 # View logs
 wrangler tail otta-web
@@ -343,12 +348,13 @@ wrangler queues list
 
 ### CI/CD Workflow
 
-Defined in `.github/workflows/deploy.yml` - triggers on push to `main`:
+Every deploy is `otta deploy`, wherever it runs: Workers Builds on push (`--ci`), `.github/workflows/deploy.yml` on
+demand (`--all --plan`, then `--ci` per app), `pr-preview.yml` for previews (`--preview pr-<N>`):
 
-1. Build packages & app
-2. Build Cloudflare Worker bundle
-3. Generate `wrangler.production.jsonc` (placeholders → GitHub Secrets)
-4. Deploy to Cloudflare Workers and health-check
+1. Plan: which apps, and why (changed files, `#skipdeploy`, `deployable`)
+2. Build the workspace packages the apps use, then each app and its Worker bundle
+3. Check `verifyPaths`; fill `wrangler.production.jsonc` from the values
+4. Deploy, tagged with the commit; health check; summary
 
 Migrations are not part of CI — see Step 4.
 
@@ -359,14 +365,16 @@ Migrations are not part of CI — see Step 4.
 silently runs local-only. One-time setup, token format, rotation, and local use are in
 [`apps/otta-cache/README.md`](../apps/otta-cache/README.md). Required GitHub Secrets: `TURBO_API`
 (`https://otta-cache-production.<subdomain>.workers.dev`), `TURBO_TOKEN` (a read-write token),
-`TURBO_REMOTE_CACHE_SIGNATURE_KEY` (any 32+ byte random string). Add `otta-cache` to `APPS_TO_DEPLOY`.
+`TURBO_REMOTE_CACHE_SIGNATURE_KEY` (any 32+ byte random string). Set `"deployable": true` in
+`apps/otta-cache/cloudflare-config.json` so CI deploys it.
 
 ### Important Files
 
-- `.github/workflows/deploy.yml` - CI/CD workflow (auto-detects placeholders in wrangler.jsonc and substitutes from
-  GitHub Secrets via substitute-wrangler-secrets.py)
-- `apps/otta-web/wrangler.jsonc` - Cloudflare config (template with `ALL_CAPS` placeholder values; CI generates
-  wrangler.production.jsonc)
+- `apps/otta-web/cloudflare-config.json` - the app's deploy manifest: how it builds, what the build must leave, its env,
+  health path and previews (schema: `schemas/cloudflare-config.schema.json`)
+- `apps/otta-web/wrangler.jsonc` - Cloudflare config (template with `ALL_CAPS` placeholder values; `otta deploy` writes
+  wrangler.production.jsonc with them filled)
+- `.github/DEPLOYMENT.md` - the deploy reference: Workers Builds, GitHub Actions, values, previews, markers, failures
 
 ### Cloudflare Bindings
 
@@ -390,14 +398,18 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 
 - [ ] Install wrangler: `npm install -g wrangler`
 - [ ] Login: `wrangler login` or `pnpm cf:login`
-- [ ] Create resources: `pnpm cf:setup` (copy output IDs for GitHub Secrets); it creates all three R2 buckets
+- [ ] Create resources: `pnpm cf:setup` (its output IDs are the CI values); it creates all three R2 buckets
 - [ ] Files: a custom domain on the public bucket (a separate registrable domain), `R2_PUBLIC_URL`, the Transform Rule,
       the CSAM Scanning Tool, `FILES_SIGNING_SECRET` (see "Files" above)
 - [ ] Turnstile: a widget, `TURNSTILE_SITE_KEY` in each env's vars, `TURNSTILE_SECRET_KEY` as a secret (see "Turnstile"
       above)
 - [ ] Validate: `pnpm cf:validate`
-- [ ] Add production secrets (D1_DATABASE_ID, KV_NAMESPACE_ID)
-- [ ] Add PR preview secrets (D1_PREVIEW_DATABASE_ID, KV_PREVIEW_NAMESPACE_ID)
+- [ ] First deploy from a terminal: `pnpm otta deploy otta-web --owner-email … --owner-password …`
+- [ ] Workers Builds: connect the app, deploy command `pnpm otta deploy otta-web --ci`, build variables
+      (CLOUDFLARE_ACCOUNT_ID, D1_DATABASE_ID, KV_NAMESPACE_ID), watch paths (`--watch-paths`)
+- [ ] GitHub: protect `main` with the `ci.yml` checks required
+- [ ] GitHub secrets for the manual deploy and previews (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, the production and
+      preview placeholders)
 - [ ] Push to main branch
 - [ ] Verify deployment
 

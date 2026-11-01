@@ -109,7 +109,8 @@ CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
 ```
 
 The Wrangler CLI (`wrangler deploy`, `pnpm cf:setup`) reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from your
-shell or `wrangler login`; CI reads the GitHub secrets of the same names.
+shell or `wrangler login`. In CI, Workers Builds brings its own token; GitHub's workflows pass the repository secrets of
+those names.
 
 ### Production Secrets (Cloudflare Dashboard)
 
@@ -132,8 +133,8 @@ wrangler secret put MIGRATION_SECRET
 wrangler secret put CLOUDFLARE_ANALYTICS_API_TOKEN
 ```
 
-`CLOUDFLARE_ACCOUNT_ID` is not a secret: in `env.production` / `env.preview` it is a `vars` placeholder that CI fills
-from the GitHub secret of the same name.
+`CLOUDFLARE_ACCOUNT_ID` is not a secret: in `env.production` / `env.preview` it is a `vars` placeholder that
+`otta deploy` fills (from `wrangler whoami` in a terminal; in CI from the build variable or secret of the same name).
 
 ---
 
@@ -144,10 +145,13 @@ from the GitHub secret of the same name.
 **Status:** ✅ Template (do not modify programmatically)
 
 `wrangler.jsonc` is a shared template. cf:setup does **not** modify it. `ALL_CAPS_SNAKE_CASE` placeholder values in
-`env.production` and `env.preview` are **auto-detected** by `.github/scripts/substitute-wrangler-secrets.py` at deploy
-time and substituted from GitHub Secrets, generating `wrangler.production.jsonc` or `wrangler.preview.jsonc`. The source
-file is never modified. For local dev, `YOUR_*` top-level values are ignored (miniflare uses local simulators). For
-multi-app: same placeholder name = shared resource; different names = isolated (prefixing is a convention).
+`env.production` and `env.preview` are **auto-detected** by `otta deploy` at deploy time and filled from the values it
+is given (Workers Builds' build variables, GitHub Secrets, `--set`), generating `wrangler.production.jsonc` or
+`wrangler.preview.jsonc`. The source file is never modified. For local dev, `YOUR_*` top-level values are ignored
+(miniflare uses local simulators). For multi-app: same placeholder name = shared resource; different names = isolated
+(prefixing is a convention). Every app's template sets `"preview_urls": false` at the top level (inherited by each env
+block): left unset, Cloudflare turns Preview URLs on with workers.dev, and every uploaded version would answer publicly
+at `<version>-<name>.<subdomain>.workers.dev`. Set it `true` in an env block to have them there.
 
 **Key Bindings:**
 
@@ -314,8 +318,10 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
     - [ ] Queue exists: `wrangler queues list`
 
 - [ ] **Configuration Files Updated**
-    - [ ] GitHub Secrets set for production: `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
-    - [ ] GitHub Secrets set for PR preview: `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
+    - [ ] The app's `cloudflare-config.json` says how it builds and ships (`.github/DEPLOYMENT.md`)
+    - [ ] CI values for production: `D1_DATABASE_ID`, `KV_NAMESPACE_ID` (Workers Builds build variables, or GitHub
+          secrets for `deploy.yml`)
+    - [ ] CI values for PR previews: `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID` (GitHub secrets)
     - [ ] `cloudflare-env.d.ts` includes all OBCF\_\* bindings
 
 - [ ] **Environment Variables Set**
@@ -329,7 +335,7 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
     - [ ] Local build works: `pnpm build`
     - [ ] Worker build works: `pnpm build` (TanStack) or `pnpm build:worker` (Next.js)
     - [ ] Preview works: `pnpm preview`
-    - [ ] Deploy successful: `pnpm deploy`
+    - [ ] Deploy successful: `pnpm otta deploy otta-web`
 
 ### Post-Deployment Verification
 
@@ -396,7 +402,7 @@ pnpm cf:login   # or wrangler login
 
 ```bash
 wrangler d1 create ottabase-db
-# Copy database_id → GitHub Secret D1_DATABASE_ID (for CI) or replace YOUR_D1_DATABASE_ID in wrangler.jsonc (local)
+# Copy database_id → the CI value D1_DATABASE_ID (build variable or GitHub secret); local dev needs none
 ```
 
 ### 3. Create KV Namespace
@@ -404,7 +410,7 @@ wrangler d1 create ottabase-db
 ```bash
 wrangler kv namespace create OBCF_KV
 wrangler kv namespace create OBCF_KV --preview
-# Copy IDs → GitHub Secret KV_NAMESPACE_ID (for CI) or replace in wrangler.jsonc (local)
+# Copy IDs → the CI value KV_NAMESPACE_ID (build variable or GitHub secret); local dev needs none
 ```
 
 ### 4. Create R2 Bucket
@@ -428,18 +434,22 @@ wrangler d1 create ottabase-db-preview
 wrangler r2 bucket create ottabase-bucket-preview
 ```
 
-### 7. Configure GitHub Secrets
+### 7. Give CI the values
 
-**Production** (main deploy — placeholder values in env.production are auto-detected):
+Steps 2 to 6 are what `pnpm otta deploy <app>` does by itself from a terminal (it creates what is missing and fills the
+ids in). For CI, each placeholder of the env block needs a value of the same name: Workers Builds build variables for
+the production deploy, GitHub secrets for `deploy.yml` and the PR previews (`.github/DEPLOYMENT.md`).
 
-- `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
+**Production** (placeholders in env.production, found on their own):
 
-**Preview** (PR deploy — placeholder values in env.preview are auto-detected):
+- `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
 
-- `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
+**Preview** (PR previews, placeholders in env.preview):
 
-Local dev does not need these — `wrangler dev` uses local simulators regardless of placeholder values. To add a new
-secret: set the placeholder in `wrangler.jsonc`, add the secret to GitHub. CI auto-detects the rest.
+- `CLOUDFLARE_ACCOUNT_ID`, `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
+
+Local dev does not need these — `wrangler dev` uses local simulators regardless of placeholder values. To add a
+resource: set the placeholder in `wrangler.jsonc` and give CI a value of that name; `otta deploy` finds the rest.
 
 ---
 
@@ -513,8 +523,10 @@ pnpm --filter @ottabase/otta-web cf-typegen
 
 ### Required Configuration Files
 
-- ✅ `wrangler.jsonc` - Cloudflare bindings (OBCF\_\* names); `ALL_CAPS` placeholder values are auto-detected and
-  substituted from GitHub Secrets via `substitute-wrangler-secrets.py`
+- ✅ `wrangler.jsonc` - Cloudflare bindings (OBCF\_\* names); `ALL_CAPS` placeholder values are auto-detected and filled
+  by `otta deploy` from the CI's variables or secrets
+- ✅ `cloudflare-config.json` - the app's deploy manifest: build, `verifyPaths`, env, health path, previews
+  (`.github/DEPLOYMENT.md`)
 - ✅ `cloudflare-env.d.ts` - TypeScript definitions, generated from `wrangler.jsonc` by `cf-typegen`
 - ✅ `cloudflare-worker.ts` - Durable Object exports
 - ✅ `.env.local` - Local environment variables (optional)
@@ -535,14 +547,14 @@ pnpm --filter @ottabase/otta-web cf-typegen
 
 ### Key Environment Variables
 
-| Variable                         | Required      | Purpose                                          |
-| -------------------------------- | ------------- | ------------------------------------------------ |
-| `D1_DATABASE_ID`                 | Yes (deploy)  | D1 database UUID (wrangler placeholder)          |
-| `CLOUDFLARE_API_TOKEN`           | Yes (deploy)  | Wrangler CLI / CI deploys (GitHub secret)        |
-| `CLOUDFLARE_ACCOUNT_ID`          | Yes (deploy)  | Wrangler CLI / CI; worker var for analytics & AI |
-| `AUTH_SECRET`                    | If using auth | Session signing secret                           |
-| `MIGRATION_SECRET`               | Recommended   | Authorizes `/api/ottaorm/init` outside dev       |
-| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | Analytics dashboard                              |
+| Variable                         | Required      | Purpose                                                 |
+| -------------------------------- | ------------- | ------------------------------------------------------- |
+| `D1_DATABASE_ID`                 | Yes (deploy)  | D1 database UUID (wrangler placeholder)                 |
+| `CLOUDFLARE_API_TOKEN`           | Yes (deploy)  | Wrangler CLI / GitHub deploys (Workers Builds: its own) |
+| `CLOUDFLARE_ACCOUNT_ID`          | Yes (deploy)  | Wrangler CLI / CI; worker var for analytics & AI        |
+| `AUTH_SECRET`                    | If using auth | Session signing secret                                  |
+| `MIGRATION_SECRET`               | Recommended   | Authorizes `/api/ottaorm/init` outside dev              |
+| `CLOUDFLARE_ANALYTICS_API_TOKEN` | Optional      | Analytics dashboard                                     |
 
 ---
 

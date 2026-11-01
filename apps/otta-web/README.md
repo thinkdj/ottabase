@@ -383,16 +383,16 @@ See [@ottabase/brand-engine](../../packages/brand-engine/README.md) for detailed
 
 ## Scripts
 
-| Command                 | Description                                             |
-| ----------------------- | ------------------------------------------------------- |
-| `pnpm dev`              | Vite dev server (fast local DX)                         |
-| `pnpm dev:worker`       | Wrangler dev with local Cloudflare binding simulations  |
-| `pnpm build`            | Build for production                                    |
-| `pnpm preview`          | Build + run on `workerd` via Wrangler (Cloudflare-like) |
-| `pnpm deploy`           | Build + deploy Worker + assets to Cloudflare            |
-| `pnpm type-check`       | Type-check browser, Worker, and Node tooling separately |
-| `pnpm cf-typegen`       | Generate the committed Cloudflare binding declaration   |
-| `pnpm cf-typegen:check` | Verify the declaration matches `wrangler.jsonc` in CI   |
+| Command                 | Description                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`              | Vite dev server (fast local DX)                                     |
+| `pnpm dev:worker`       | Wrangler dev with local Cloudflare binding simulations              |
+| `pnpm build`            | Build for production                                                |
+| `pnpm preview`          | Build + run on `workerd` via Wrangler (Cloudflare-like)             |
+| `pnpm run deploy`       | `otta deploy otta-web` (`run`: `pnpm deploy` is pnpm's own command) |
+| `pnpm type-check`       | Type-check browser, Worker, and Node tooling separately             |
+| `pnpm cf-typegen`       | Generate the committed Cloudflare binding declaration               |
+| `pnpm cf-typegen:check` | Verify the declaration matches `wrangler.jsonc` in CI               |
 
 The package scripts are framework-level building blocks. From the repo root, prefer
 `pnpm otta start otta-web [--env <name>]`; it reads the app's declared process topology, starts Vite and Wrangler
@@ -424,7 +424,8 @@ apps/otta-web/
 ├── index.html             # HTML template
 ├── vite.config.ts         # Vite configuration
 ├── postcss.config.cjs     # Tailwind 4 PostCSS plugin (the Tailwind setup is CSS: src/styles/globals.css)
-└── wrangler.jsonc         # Cloudflare Workers config (template; CI substitutes placeholders)
+├── cloudflare-config.json # Deploy manifest: how otta deploy builds and ships this app
+└── wrangler.jsonc         # Cloudflare Workers config (template; otta deploy fills the env placeholders)
 ```
 
 ## Routes
@@ -562,13 +563,17 @@ pnpm otta start otta-web --env staging
 
 ### Production Deployment
 
+The short way is one command: `pnpm otta deploy otta-web --owner-email … --owner-password …` creates the resources,
+fills the ids, builds, deploys, sets the generated secrets and bootstraps the database (`packages/cli/README.md`). After
+that, Cloudflare Workers Builds deploys every push (`.github/DEPLOYMENT.md`). The steps below are the same by hand.
+
 #### 1. Create Cloudflare Resources
 
 Use the automated setup script (recommended):
 
 ```bash
 pnpm cf:login   # authenticate
-pnpm cf:setup   # creates D1, KV, R2, Queue — prints IDs for GitHub Secrets
+pnpm cf:setup   # creates D1, KV, R2, Queue — prints the IDs CI needs
 pnpm cf:validate
 ```
 
@@ -582,25 +587,28 @@ pnpm wrangler r2 bucket create ottabase-bucket
 pnpm wrangler queues create ottabase-queue
 ```
 
-#### 2. Set GitHub Secrets
+#### 2. Give CI the values
 
 `wrangler.jsonc` uses a **two-tier placeholder system**:
 
-| Tier                             | Pattern               | Example               | Substituted by CI?                                                                         |
-| -------------------------------- | --------------------- | --------------------- | ------------------------------------------------------------------------------------------ |
-| Top-level                        | `YOUR_*`              | `YOUR_D1_DATABASE_ID` | **No** — local dev only; Wrangler ignores the value and uses local simulators              |
-| `env.production` / `env.preview` | `ALL_CAPS_SNAKE_CASE` | `D1_DATABASE_ID`      | **Yes** — the value is the GitHub Secret name; CI substitutes the real UUID at deploy time |
+| Tier                             | Pattern               | Example               | Filled by `otta deploy`?                                                         |
+| -------------------------------- | --------------------- | --------------------- | -------------------------------------------------------------------------------- |
+| Top-level                        | `YOUR_*`              | `YOUR_D1_DATABASE_ID` | **No** — local dev only; Wrangler ignores the value and uses local simulators    |
+| `env.production` / `env.preview` | `ALL_CAPS_SNAKE_CASE` | `D1_DATABASE_ID`      | **Yes** — the value names the real UUID, filled in at deploy time from that name |
 
-Set these in your repository → Settings → Secrets → Actions:
+Give CI a value for each name: Workers Builds build variables for the production deploy (it brings its own API token),
+GitHub repository secrets for `deploy.yml` and the PR previews:
 
-- `D1_DATABASE_ID`, `KV_NAMESPACE_ID` (production)
+- `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`, `KV_NAMESPACE_ID` (production)
 - `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID` (PR previews)
-- `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN` (GitHub only)
 
-To add a new secret: add an `ALL_CAPS` placeholder in `env.production`/`env.preview` → add the matching GitHub Secret.
-CI auto-detects it. No other changes needed.
+To add a resource: add an `ALL_CAPS` placeholder in `env.production`/`env.preview` → give CI a value of that name.
+`otta deploy` finds it. How this app builds and ships is `cloudflare-config.json`; Preview URLs are off
+(`"preview_urls": false` in `wrangler.jsonc`).
 
-See [CLOUDFLARE_DEPLOY.md](../../docs/CLOUDFLARE_DEPLOY.md) for the full setup guide.
+See [.github/DEPLOYMENT.md](../../.github/DEPLOYMENT.md) for the CI setup and
+[CLOUDFLARE_DEPLOY.md](../../docs/CLOUDFLARE_DEPLOY.md) for the full guide.
 
 #### 3. Analytics (optional)
 
@@ -620,8 +628,8 @@ unified analytics page at `/admin/growth/analytics` requires:
 #### 4. Deploy
 
 ```bash
-# Deploy to Cloudflare Workers
-pnpm deploy
+# Deploy to Cloudflare Workers (from the repo root; the first run also creates resources and secrets)
+pnpm otta deploy otta-web
 
 # Run migrations
 curl -X POST https://your-app.workers.dev/api/ottaorm/init \
@@ -630,9 +638,9 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 
 ## Public demo (`DEMO_MODE`)
 
-Run the app as a public demo by deploying the `demo` environment: `wrangler deploy --env demo` (worker `otta-web-demo`,
-with its own D1, KV, R2, queue and rate-limit namespace). Its `vars` set `DEMO_MODE=true` and the call to action,
-`DEMO_CTA_LABEL` and `DEMO_CTA_URL`. Set `DEMO_MODE=true` in `.env.local` to try it locally.
+Run the app as a public demo by deploying the `demo` environment: `pnpm otta deploy otta-web --env demo` (worker
+`otta-web-demo`, with its own D1, KV, R2, queue and rate-limit namespace). Its `vars` set `DEMO_MODE=true` and the call
+to action, `DEMO_CTA_LABEL` and `DEMO_CTA_URL`. Set `DEMO_MODE=true` in `.env.local` to try it locally.
 
 | With `DEMO_MODE`                                                                                              | Where                                       |
 | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |

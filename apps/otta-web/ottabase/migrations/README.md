@@ -243,10 +243,10 @@ curl -X POST https://your-app.workers.dev/api/ottaorm/init \
 
 ### Deployment Workflow
 
-1. **Deploy your app**:
+1. **Deploy your app** (from the repo root):
 
 ```bash
-pnpm deploy
+pnpm otta deploy otta-web
 ```
 
 2. **Run migrations** (after deployment):

@@ -168,12 +168,13 @@ pnpm preview
 ### Production Deploy
 
 ```bash
-pnpm deploy
+pnpm otta deploy otta-web
 ```
 
 - Deploys to Cloudflare Workers
 - Uses real Cloudflare resources
-- Configured bindings from `wrangler.jsonc`
+- Configured bindings from `wrangler.jsonc`, the env block's placeholders filled with their ids
+- How it builds and ships: the app's `cloudflare-config.json` ([.github/DEPLOYMENT.md](../.github/DEPLOYMENT.md))
 
 ## Usage
 

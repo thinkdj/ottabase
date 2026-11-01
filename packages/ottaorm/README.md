@@ -234,8 +234,8 @@ Replace `database_id` with your production ID:
 #### 3. Deploy & Run Migrations
 
 ```bash
-# Deploy your app
-pnpm deploy
+# Deploy your app (from the repo root)
+pnpm otta deploy <app>
 
 # Run migrations via deployed API
 curl -X POST https://your-app.workers.dev/api/ottaorm/init \

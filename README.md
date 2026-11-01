@@ -574,14 +574,14 @@ pnpm storybook        # Component docs
 ## Cloudflare Deployment
 
 ```bash
-cd apps/otta-web
-pnpm wrangler login
-pnpm deploy
-
-# Run migrations
-curl -X POST https://your-app.workers.dev/api/ottaorm/init \
-  -H "Authorization: Bearer ${MIGRATION_SECRET}"
+pnpm cf:login
+pnpm otta deploy otta-web --owner-email me@example.com --owner-password '…'   # resources, build, deploy, secrets, bootstrap
 ```
+
+After the first deploy, Cloudflare Workers Builds deploys every push to `main` with the same command
+(`pnpm otta deploy otta-web --ci`); GitHub runs the tests and keeps a manual deploy. Setup:
+[`.github/DEPLOYMENT.md`](./.github/DEPLOYMENT.md). Later schema changes: `POST /api/ottaorm/init` with
+`MIGRATION_SECRET`.
 
 ## OSS vs Pro
 

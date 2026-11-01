@@ -237,9 +237,9 @@ Deploy to a subdomain like `go.yourdomain.com`:
     }
     ```
 
-3. Deploy:
+3. Deploy (from the repo root):
     ```bash
-    pnpm deploy
+    pnpm otta deploy <app>
     ```
 
 Now your shortlinks work at `go.yourdomain.com/gh`

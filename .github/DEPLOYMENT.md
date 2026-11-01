@@ -1,570 +1,266 @@
-# Cloudflare Workers Deployment
+# Deploying to Cloudflare Workers
 
-This is the complete reference for the deployment system: workflow behavior, quick start, secrets, configuration,
-deployment internals, troubleshooting, nuances and extension points.
+The complete reference: the one deploy command, the app's deploy manifest, the three places it runs (a terminal,
+Cloudflare Workers Builds, GitHub Actions), values and secrets, previews, markers and what each failure means.
 
-## Workflows
+## One deploy, three places it runs
 
-| Workflow               | Trigger                                               | Purpose                                               |
-| ---------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
-| **deploy.yml**         | Push to `main`; `workflow_dispatch`                   | Build & deploy to production (change-based or forced) |
-| **pr-preview.yml**     | Pull request (open/sync/reopen/close)                 | Build & deploy preview worker; cleanup on PR close    |
-| **build-packages.yml** | Called by deploy + pr-preview                         | Build shared packages and cache for downstream jobs   |
-| **ci.yml**             | Pull request to `main`/`develop`; `workflow_dispatch` | Lint, type-check, test, build (no deploy)             |
+Every deploy is `otta deploy` (`packages/cli`). A terminal, Workers Builds and GitHub Actions all run it, and differ
+only in where values come from and what starts the run. Which apps deploy, how they build, what the build must leave,
+the env and the health path come from each app's `cloudflare-config.json`; no workflow repeats any of it.
 
-**Target:** Cloudflare Workers only (not Pages). Production URLs: `https://<worker>.<subdomain>.workers.dev`. Preview
-URLs use an explicit `--name` override (for example `my-app-pr-1234`) so no `-preview` suffix is appended.
+| Where                               | Starts on                       | Command                                       | Values come from                   |
+| ----------------------------------- | ------------------------------- | --------------------------------------------- | ---------------------------------- |
+| **Terminal**                        | You                             | `pnpm otta deploy <app>`                      | Your Cloudflare login (`cf:login`) |
+| **Workers Builds** (Cloudflare)     | Push to the production branch   | `pnpm otta deploy <app> --ci`                 | Build variables                    |
+| **GitHub Actions** `deploy.yml`     | Run workflow (manual)           | `otta deploy --all --plan`, then `<app> --ci` | Repository secrets                 |
+| **GitHub Actions** `pr-preview.yml` | A PR with `#preview`, or manual | `otta deploy <app> --ci --preview pr-<N>`     | Repository secrets                 |
+| **GitHub Actions** `ci.yml`         | Every PR                        | Lint, type-check, test, build; never deploys  | -                                  |
 
-## Quick Start
+`build-packages.yml` is the shared package build GitHub's deploy jobs restore from (`--skip-packages`).
 
-### Add a deployable app
+### The recommended setup
 
-1. In your app folder (for example `apps/my-app/`), add `cloudflare-config.json`:
+1. **Workers Builds deploys production automatically**, one connection per app. Cloudflare brings its own API token, the
+   build log sits next to the Worker, and GitHub holds no Cloudflare credentials for production.
+2. **GitHub runs the tests**: protect `main` (Settings → Branches → require a pull request and the `ci.yml` checks), so
+   whatever reaches `main`, and so whatever Workers Builds deploys, has passed.
+3. **`deploy.yml` stays manual**: the fallback, and the button that deploys everything now.
+4. **`pr-preview.yml` makes PR previews**, opt-in.
 
-```json
-{
-    "deployable": true,
-    "appType": "vite"
-}
+**One automatic deployer per Worker, never two.** Both would deploy every push twice, possibly out of order. To deploy
+from GitHub on every push instead, uncomment `push:` in `deploy.yml` and leave Workers Builds disconnected.
+
+## The first deploy, from a terminal
+
+```bash
+pnpm cf:login
+pnpm otta deploy otta-web --owner-email you@example.com --owner-password '…'
 ```
 
-1. Ensure `package.json` has a `build` script and the app has a `cloudflare-config.json` (apps without one are not
-   deployed).
-1. Push to `main` and the production deploy runs when that app or `packages/` changes. Open a PR and preview deploy runs
-   unless skipped.
+Creates the D1, KV, R2 and queue the env block names, fills `wrangler.production.jsonc` with their ids, builds, deploys,
+generates and sets the framework secrets that are not set yet (`AUTH_SECRET`, `MIGRATION_SECRET`,
+`BOOTSTRAP_OWNER_SECRET`, …, `AUTH_URL`) and bootstraps the database. Safe to run again. CI (`--ci`) creates nothing and
+sets no secret, so this first run, or setting the secrets by hand, comes before any CI deploy. The ids it prints are the
+values CI needs.
 
-### Existing apps
+## The deploy manifest: `apps/<app>/cloudflare-config.json`
 
-Already configured; push to `main` or open PRs as usual.
+The one deploy file to edit, besides Cloudflare's own `wrangler.jsonc` (which keeps the Worker name and the bindings).
+Every app Cloudflare deploys has one. It is read strictly: an unknown key or a wrong value stops the deploy and names
+itself. Schema: `schemas/cloudflare-config.schema.json` (editors validate as you type).
 
-## Secrets
+| Key                      | Default                            | What it does                                                                                              |
+| ------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `deployable`             | `true`                             | Whether CI deploys it (`--all`: Workers Builds, `deploy.yml`). `otta deploy <app>` deploys it either way. |
+| `previewDeployable`      | `true`                             | Whether PR previews deploy a copy from its `env.preview` block                                            |
+| `appType`                | `"vite"`                           | `vite`, `nextjs` or `custom`; only shapes the hints when a build leaves the wrong output                  |
+| `buildCommand`           | `"build"`                          | The package.json script that builds the app                                                               |
+| `workerBuildCommand`     | `null`                             | A second script that makes the Worker bundle (OpenNext's `build:worker`); null or `""`: none              |
+| `verifyPaths`            | `["dist", "cloudflare-worker.ts"]` | Paths inside the app that must exist after the build; checked before wrangler runs                        |
+| `wranglerConfig`         | `"wrangler.jsonc"`                 | The wrangler config in the app folder                                                                     |
+| `wranglerEnv`            | `"production"`                     | The env block deployed when `--env` is not given                                                          |
+| `healthCheckPath`        | `"/api/health"`                    | Requested after the deploy, four tries (10 s each); below 400 passes; a failure is reported, never fatal  |
+| `requiresSecrets`        | `[]`                               | Build-time values beyond the placeholders (an upload token): checked before the build, handed to it       |
+| `requiresPreviewSecrets` | `[]`                               | The same, for previews                                                                                    |
 
-### Where to add secrets
+In this repository: `otta-web` and `otta-landing` are deployable; `otta-worker` (a template: `otta new worker` makes
+apps from it, and they get `deployable: true`) and `otta-cache` (optional infrastructure) are not.
 
-Settings → Secrets and variables → Actions
+### Examples
 
-### Required for production deploy
-
-| Secret                  | Where to get it                      |
-| ----------------------- | ------------------------------------ |
-| `CLOUDFLARE_API_TOKEN`  | Cloudflare → My Profile → API Tokens |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → Workers & Pages         |
-| `D1_DATABASE_ID`        | `pnpm cf:setup` output (ottabase-db) |
-| `KV_NAMESPACE_ID`       | `pnpm cf:setup` output (OBCF_KV)     |
-
-### Required for PR preview deploy
-
-| Secret                    | Where to get it                              |
-| ------------------------- | -------------------------------------------- |
-| `D1_PREVIEW_DATABASE_ID`  | `pnpm cf:setup` output (ottabase-db-preview) |
-| `KV_PREVIEW_NAMESPACE_ID` | `pnpm cf:setup` output (OBCF_KV_preview)     |
-
-PR preview uses isolated preview D1/KV/R2 so production data is never touched.
-
-### Optional
-
-| Secret                | Default                 | Purpose                                                                              |
-| --------------------- | ----------------------- | ------------------------------------------------------------------------------------ |
-| `APPS_TO_DEPLOY`      | `otta-web,otta-landing` | Comma-separated app names or folder names to deploy (production and PR preview)      |
-| `CF_WORKER_SUBDOMAIN` | `apiary`                | Subdomain in `*.workers.dev` (for example `apiary` → `my-worker.apiary.workers.dev`) |
-
-## Production Deploy
-
-- **Triggers:** Push to `main`; or **Run workflow** with optional `FORCE_DEPLOY` (default `true` = deploy all target
-  apps).
-- **Change detection:** Only apps with changes in that app or under `packages/` are deployed unless `FORCE_DEPLOY` is
-  true.
-- **Skip:** If the commit message on `main` contains `#skipdeploy`, it is checked first (`check-skip-deploy` job); then
-  `build-packages` and deploy are skipped, and `prepare-deployment` outputs an empty matrix. See
-  [Skip Deployment](#skip-deployment).
-
-## PR Preview
-
-- **Triggers:** PR opened, synchronized, reopened, closed, or manual **Run workflow**.
-- **Open/sync/reopen:** Builds packages, builds app(s), deploys preview worker(s) named for example `my-app-pr-123`
-  using **env.preview** bindings. Preview URL: `https://<preview-name>.<CF_WORKER_SUBDOMAIN>.workers.dev`.
-- **Closed:** Deletes the preview worker. Preview D1/KV persist and can be shared across PRs.
-- **Opt-in:** Preview deploy runs only when PR title or description contains `#deploy` or `#preview`, or when manually
-  dispatched from Actions. If `pr_number` is provided on manual run, worker naming and cleanup align with that PR.
-
-## Skip Deployment
-
-Use markers so PR preview or production deploy do not run when not needed, such as docs-only changes.
-
-| Marker        | Where                                               | Effect                              |
-| ------------- | --------------------------------------------------- | ----------------------------------- |
-| `#deploy`     | PR title or description                             | Enables PR preview build and deploy |
-| `#preview`    | PR title or description                             | Enables PR preview build and deploy |
-| `#skipdeploy` | Commit message on `main` (for example merge commit) | Skips production deploy             |
-
-**Examples:**
-
-- PR title: `Feature: blog editor #preview` → preview deploy runs.
-- PR title: `Fix: auth callback #deploy` → preview deploy runs.
-- PR title: `Docs: typo fix` → no preview deploy unless manually dispatched.
-- Merge commit message on `main`: `Release patch #skipdeploy` → production deploy is skipped.
-
-## Configuration Properties
-
-| Property             | Type     | Default                            | Description                                                        |
-| -------------------- | -------- | ---------------------------------- | ------------------------------------------------------------------ |
-| `deployable`         | boolean  | `true`                             | Whether to deploy this app                                         |
-| `appType`            | string   | `"vite"`                           | App framework (`vite`, `nextjs`, `react`, `remix`, `custom`)       |
-| `workerName`         | string   | package name                       | Cloudflare Worker name                                             |
-| `buildCommand`       | string   | `"build"`                          | pnpm script to build app                                           |
-| `workerBuildCommand` | string   | `null`                             | pnpm script to build Worker bundle (null for Vite)                 |
-| `outputDirectory`    | string   | `"dist"`                           | Worker output directory                                            |
-| `assetsDirectory`    | string   | -                                  | Static assets directory                                            |
-| `verifyPaths`        | string[] | `["dist", "cloudflare-worker.ts"]` | Paths to verify after build                                        |
-| `wranglerConfig`     | string   | `"wrangler.jsonc"`                 | Wrangler config file path                                          |
-| `wranglerEnv`        | string   | `"production"`                     | Wrangler environment                                               |
-| `healthCheckPath`    | string   | `"/"`                              | Path for health check                                              |
-| `requiresSecrets`    | string[] | `[]`                               | _(Optional)_ Extra secrets not in wrangler.jsonc (e.g. build-time) |
-
-> **SSOT:** `wrangler.jsonc` is the single source of truth for resource secrets. Placeholders in `env.production` /
-> `env.preview` are auto-detected by the substitution script. `requiresSecrets` is optional and additive — only needed
-> for secrets that don't appear in wrangler (e.g. build-time env vars). Base secrets (`CLOUDFLARE_API_TOKEN`,
-> `CLOUDFLARE_ACCOUNT_ID`) are always verified automatically.
-
-## Framework Examples
-
-### Vite (Default)
-
-**package.json:**
+**Vite** (otta-web): the defaults, plus its health path.
 
 ```json
 {
-    "scripts": {
-        "build": "vite build"
-    }
-}
-```
-
-**cloudflare-config.json:**
-
-```json
-{
+    "$schema": "../../schemas/cloudflare-config.schema.json",
     "deployable": true,
     "appType": "vite",
-    "workerName": "my-neo-app",
-    "buildCommand": "build",
-    "workerBuildCommand": null,
-    "outputDirectory": "dist",
-    "verifyPaths": ["dist", "cloudflare-worker.ts"]
+    "healthCheckPath": "/api/health"
 }
 ```
 
-### Next.js with OpenNext
-
-**package.json:**
+**Next.js with OpenNext** (otta-landing):
 
 ```json
 {
-    "scripts": {
-        "build": "next build",
-        "build:worker": "node ./scripts/ensure-opennext-dirs.mjs && opennextjs-cloudflare build --skipBuild"
-    }
-}
-```
-
-**cloudflare-config.json:**
-
-```json
-{
+    "$schema": "../../schemas/cloudflare-config.schema.json",
     "deployable": true,
     "appType": "nextjs",
     "buildCommand": "build",
     "workerBuildCommand": "build:worker",
-    "outputDirectory": ".open-next",
-    "verifyPaths": [".open-next"]
+    "verifyPaths": [".open-next"],
+    "healthCheckPath": "/"
 }
 ```
 
-### React/Vite
-
-**package.json:**
+**A plain Worker** (otta-worker, otta-cache): `wrangler deploy --dry-run --outdir dist` as its build.
 
 ```json
 {
-    "scripts": {
-        "build": "vite build"
-    }
+    "$schema": "../../schemas/cloudflare-config.schema.json",
+    "appType": "custom",
+    "verifyPaths": ["dist/index.js"],
+    "previewDeployable": false
 }
 ```
 
-**cloudflare-config.json:**
+## Values, placeholders and secrets
+
+`wrangler.jsonc` names its resources with placeholders: an `ALL_CAPS_SNAKE_CASE` string where an id goes, in each env
+block (`"database_id": "D1_DATABASE_ID"`). `otta deploy` finds them by itself and writes `wrangler.<env>.jsonc`
+(gitignored) with the values filled in. It reads the file's syntax tree, so a commented-out line is never a placeholder,
+and writes each value as a JSON string, so a quote or a backslash in a value cannot break the file. Names of things
+(`binding`, `class_name`, `name`, `service`, `entrypoint`, `script_name`) are never placeholders.
+
+| Placeholder (env.production) | Placeholder (env.preview) | Where the value comes from                    |
+| ---------------------------- | ------------------------- | --------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`      | `CLOUDFLARE_ACCOUNT_ID`   | Cloudflare → Workers & Pages                  |
+| `D1_DATABASE_ID`             | `D1_PREVIEW_DATABASE_ID`  | The first terminal deploy, or `pnpm cf:setup` |
+| `KV_NAMESPACE_ID`            | `KV_PREVIEW_NAMESPACE_ID` | The same                                      |
+
+In CI, a value is looked up in this order: `--set NAME=value`, `OTTA_DEPLOY_VALUES` (one JSON object), the environment.
+Every missing name, placeholders and `requiresSecrets` together, is listed at once before anything builds:
+
+```text
+✗ No value for D1_DATABASE_ID, KV_NAMESPACE_ID (env.production of apps/otta-web). Set them in the CI's variables or secrets (or --set D1_DATABASE_ID=<value>).
+```
+
+**Same name, same resource.** Two apps using `D1_DATABASE_ID` share a database; give one `APP_1_D1_DATABASE_ID` and add
+that value, and it has its own. Adding a resource is: the placeholder in `wrangler.jsonc`, the value in the CI. Nothing
+else.
+
+**GitHub's secrets bag never reaches a build.** The workflows hand `otta deploy` all repository secrets as
+`OTTA_DEPLOY_VALUES: ${{ toJson(secrets) }}`. The launcher (`packages/cli/bin/otta.mjs`) takes it out of the environment
+before any module loads, `otta deploy` keeps only the placeholder names it needs, and no child process (pnpm, turbo,
+vite, wrangler, any dependency's code) ever sees it. Wrangler gets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`,
+passed on their own (wrangler reads the token from the environment only, so that is where it is checked).
+
+**Build-time values: `requiresSecrets`.** A build that needs a value of its own (blackbox's source map upload in a
+`postbuild` script needs `BLACKBOX_UPLOAD_TOKEN`; a Sentry release needs its token) names it in the manifest:
 
 ```json
-{
-    "deployable": true,
-    "appType": "vite",
-    "outputDirectory": "dist",
-    "verifyPaths": ["dist"],
-    "workerBuildCommand": ""
-}
+{ "requiresSecrets": ["BLACKBOX_UPLOAD_TOKEN"] }
 ```
 
-### Remix
+CI then checks it is there before anything builds, and hands exactly those names to the build scripts; no other value of
+the secrets bag ever reaches them. In Workers Builds, set them as build variables (or secrets) like the placeholders.
 
-**package.json:**
+## Cloudflare Workers Builds
 
-```json
-{
-    "scripts": {
-        "build": "remix build"
-    }
-}
-```
+Per app, in the Cloudflare dashboard: Workers & Pages → Create → Import a repository → this repository.
 
-**cloudflare-config.json:**
+| Setting                 | Value                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Worker name             | The name the env deploys: `otta-web-production` (wrangler's `name` plus `-<env>`)                                                     |
+| Root directory          | `/`                                                                                                                                   |
+| Build command           | empty                                                                                                                                 |
+| Deploy command          | `pnpm otta deploy otta-web --ci`                                                                                                      |
+| Non-production branches | off: PR previews come from `pr-preview.yml`                                                                                           |
+| Build variables         | The env block's placeholders: `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`, `KV_NAMESPACE_ID`                                            |
+| Build watch paths       | Include: the output of `pnpm otta deploy otta-web --watch-paths`, or broadly `apps/otta-web/*`, `packages/*` and the root build files |
 
-```json
-{
-    "deployable": true,
-    "appType": "remix",
-    "outputDirectory": "build/client",
-    "verifyPaths": ["build/client", "build/server"]
-}
-```
+Workers Builds installs the dependencies (pnpm, from `packageManager`; Node from `.nvmrc`), then the deploy command
+builds the packages the app uses, the app, and deploys. Its own API token is used, so there is no `CLOUDFLARE_API_TOKEN`
+to set.
 
-## Discovery Script
+**Watch paths live in the dashboard, not in git.** The precise list from `--watch-paths` goes stale when the app gains a
+workspace dependency: a change to that package would then not rebuild the app. The broad list never misses a change, at
+the cost of an occasional build nothing needed. Re-paste the precise one when dependencies change, or use the broad one.
 
-**Location:** `.github/scripts/discover-deployable-apps.mjs`
+**Split build and deploy** (optional): build command `pnpm otta deploy otta-web --ci --build-only`, deploy command
+`pnpm otta deploy otta-web --ci --skip-build`.
 
-**How it works:**
+## Preview URLs: off
 
-1. Scans all directories in `apps/`
-2. Checks for `package.json`
-3. Looks for `cloudflare-config.json`:
-    - Found: Uses custom config merged with defaults
-    - Not found: Skips the app
-4. Verifies required build scripts exist
-5. Skips if `deployable: false`
-6. Outputs GitHub Actions matrix JSON
+Every app's `wrangler.jsonc` sets `"preview_urls": false` at the top level, which each env block inherits. Left unset,
+Cloudflare turns Preview URLs on with `workers.dev`, and every uploaded version answers publicly at
+`<version>-<name>.<subdomain>.workers.dev`, next to the custom domain and whatever guards it (Access, WAF rules, rate
+limits on the route). Nothing here needs them: PR previews are their own Workers on their own `workers.dev` URL, and
+non-production Workers Builds branches stay off. To have them in one env, set `"preview_urls": true` in that env block.
+A test holds every app in this repository (and so every template `otta new` copies) to `false`.
 
-**Run locally:**
+## GitHub Actions
 
-```bash
-node .github/scripts/discover-deployable-apps.mjs
-```
+### Secrets
 
-**Output format:**
+Settings → Secrets and variables → Actions: `CLOUDFLARE_API_TOKEN` (Cloudflare → My Profile → API Tokens, with Workers
+edit rights), `CLOUDFLARE_ACCOUNT_ID`, and the placeholder values of each app's `env.production` (and `env.preview` for
+previews). Optional: `TURBO_API`, `TURBO_TOKEN`, `TURBO_REMOTE_CACHE_SIGNATURE_KEY` for the remote build cache
+(`apps/otta-cache`).
 
-```json
-{
-    "include": [
-        {
-            "name": "@ottabase/my-app",
-            "folder": "my-app",
-            "config": {
-                /* full config */
-            }
-        }
-    ]
-}
-```
+### `deploy.yml`
 
-## Deployment Workflow Steps
+1. **plan**: `otta deploy --all --plan` (or one app) prints `{"include":[{"app","reason"}]}`; the reasons go to the job
+   summary. On a push (when enabled) it diffs the push range (`--changed-since <before>`); a manual run deploys what it
+   is asked to (`--force`, the default). Production comes from `main` only: a run on another branch fails and says so.
+2. **build-packages**: every workspace package, Pro included, built once and cached.
+3. **deploy**, one job per app, in parallel, one failure not stopping the others:
+   `otta deploy <app> --ci --skip-packages --force` builds the app, checks `verifyPaths`, fills the config, deploys with
+   the short commit as the version tag (the Worker reads it through `OBCF_VERSION`), checks health and writes the job
+   summary.
 
-### Job 1: Prepare deployment (5 min timeout)
+Run workflow → `app` (empty: every deployable app), `force`.
 
-1. Checkout code (full history — needed for `github.event.before..github.sha` push-range diff)
-2. Setup Node.js
-3. Read `APPS_TO_DEPLOY` secret (or use default)
-4. Detect changed files using the full push range; `PACKAGES_CHANGED=true` if `packages/`, root config files
-   (`pnpm-lock.yaml`, `turbo.json`, etc.), first push, or `FORCE_DEPLOY`
-5. Resolve each app’s folder + load its `cloudflare-config.json`
+### `pr-preview.yml`
 
-    > **Manual deploy (`workflow_dispatch`) note:** `FORCE_DEPLOY` defaults to `true`, so a manual run always deploys
-    > all apps in `APPS_TO_DEPLOY`. This is intentional — manual triggers are typically used when you need everything
-    > out now. To deploy a single app manually, set `FORCE_DEPLOY` to `false` and ensure only that app is listed in
-    > `APPS_TO_DEPLOY` (or pass a scoped override via the input field).
+- **Opt-in**: `#deploy` or `#preview` in the PR title or description, or a manual run (`pr_number` names the preview
+  after that PR, so its cleanup finds it).
+- **Deploy**: `otta deploy <app> --ci --preview pr-<N>` deploys `env.preview` as its own Worker, `<name>-pr-<N>`
+  (`--name`, so wrangler adds no `-preview` suffix), for each app with `previewDeployable` true. Previews share the
+  preview D1/KV/R2; production data is never touched.
+- **Close**: `otta deploy --all --delete-preview pr-<N>` removes them from every app whose manifest allows previews,
+  deployable or not (a preview made before an app left CI is still removed); an absent one is not an error.
+- **Forks**: a PR from a fork gets no secrets, so it gets a notice instead of a preview (and no cleanup run). To preview
+  it, push the branch to this repository.
+- **A manual run without `pr_number`** names its previews `manual-<run>`; delete them with
+  `otta deploy --all --delete-preview manual-<run>`.
 
-6. Build and output matrix JSON for the deploy job
+## Markers
 
-### Job 2: Deploy (20 min timeout, per app matrix entry)
+| Marker        | Where                               | Effect                                                                                    |
+| ------------- | ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| `#deploy`     | PR title or description             | Enables the PR preview                                                                    |
+| `#preview`    | PR title or description             | Enables the PR preview                                                                    |
+| `#skipdeploy` | The commit message (a merge commit) | `--ci` and `--plan` deploy nothing: Workers Builds and GitHub alike. `--force` overrides. |
 
-1. **Load Configuration** - Parse app config from matrix
-2. **Verify Secrets** - Check all required secrets exist
-3. **Setup Environment** - Install pnpm, Node.js, dependencies
-4. **Restore Caches** - Restore pre-built packages (from `build-packages` job) + Turborepo + framework caches
-5. **Build App** - `pnpm --filter=<app> run <buildCommand>`
-6. **Verify App Build** - Check expected outputs exist
-7. **Build Worker** - `pnpm run <workerBuildCommand>`
-8. **Verify Worker Bundle** - Check all `verifyPaths` exist
-9. **Generate Wrangler Config** - Substitute production secrets
-10. **Deploy** - `wrangler deploy --env production --tag <short sha>` (the tag reaches the Worker through its
-    `OBCF_VERSION` version metadata binding)
-11. **Health Check** - Verify deployment accessible (3 retries)
-12. **Summary** - Report status
+## `otta deploy` flags for CI
 
-## Wrangler Configuration
+| Flag                                              | Does                                                                                                                                                                                                                           |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--ci`                                            | Build and deploy only: no login, nothing created, no secret touched                                                                                                                                                            |
+| `--all`                                           | Every deployable app; their packages built in one turbo run; one failure does not stop the others                                                                                                                              |
+| `--plan`                                          | Print what the run would deploy and why, as JSON; deploy nothing                                                                                                                                                               |
+| `--changed-since <ref>`                           | Deploy only apps a file changed for since the ref (the app, every workspace package it reaches, root build files; a file moved out of an app counts for it). If git cannot answer (a shallow clone, a first push), it deploys. |
+| `--force`                                         | Ignore `#skipdeploy` and `--changed-since`                                                                                                                                                                                     |
+| `--preview <id>`                                  | Deploy `env.preview` as the Worker `<name>-<id>`                                                                                                                                                                               |
+| `--delete-preview <id>`                           | Delete that Worker                                                                                                                                                                                                             |
+| `--watch-paths`                                   | Print the app's watch paths                                                                                                                                                                                                    |
+| `--build-only`, `--skip-build`, `--skip-packages` | Split or reuse the build                                                                                                                                                                                                       |
 
-The workflow generates `wrangler.production.jsonc` (or `wrangler.preview.jsonc` for PR preview) by running
-`.github/scripts/substitute-wrangler-secrets.py` **before** any wrangler deploy command. Order: Build → Generate config
-(substitute secrets) → Verify → Deploy. The `cloudflare/wrangler-action` deploy step uses
-`--config wrangler.production.jsonc` (or `wrangler.preview.jsonc`). Build steps do not use wrangler config.
+## What a failure says
 
-**Convention:** Placeholder values in `wrangler.jsonc` are `ALL_CAPS_SNAKE_CASE` strings (e.g. `D1_DATABASE_ID`). The
-substitution script **auto-detects** these from the target `env.production` or `env.preview` section and substitutes
-each from the full GitHub Secrets bag (`${{ toJson(secrets) }}`). No key list, no per-secret env wiring, no mapping
-table.
+| Message                                                                  | Means                                                                                                 |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `apps/x/cloudflare-config.json is missing` / `unknown key` / `must be …` | The manifest; the message names the key and what it expects                                           |
+| `"workerName" is no longer a setting (…): remove it`                     | A manifest from before this format; the message says what replaced the key                            |
+| `The wrangler config does not parse: … at character N`                   | `wrangler.jsonc` itself is not valid JSONC                                                            |
+| `No value for A, B (env.production of apps/x)`                           | Set those names in the CI's variables or secrets                                                      |
+| `apps/x/package.json has no "build:worker" script`                       | The manifest names a script the app does not have                                                     |
+| `The build left no .open-next in apps/x (…): an OpenNext app needs …`    | The build ran but did not produce `verifyPaths`; the hint is by `appType`, with what the folder holds |
+| `health check: … answered HTTP 503 after 4 attempt(s)`                   | Deployed; the Worker did not answer well yet. Never fails the deploy; see `wrangler tail`             |
+| `apps/x: not deployed (#skipdeploy in the commit message)`               | As asked; `--force` deploys anyway                                                                    |
 
-**Source (wrangler.jsonc env.production):**
-
-```jsonc
-{
-    "d1_databases": [
-        {
-            "database_id": "D1_DATABASE_ID", // placeholder = GitHub Secret name
-        },
-    ],
-}
-```
-
-**Generated (wrangler.production.jsonc):**
-
-```jsonc
-{
-    "d1_databases": [
-        {
-            "database_id": "abc123...", // ← substituted from GitHub Secret
-        },
-    ],
-}
-```
-
-**Default placeholders:**
-
-- env.production: `D1_DATABASE_ID`, `KV_NAMESPACE_ID`
-- env.preview: `D1_PREVIEW_DATABASE_ID`, `KV_PREVIEW_NAMESPACE_ID`
-
-**Multi-app:** Same placeholder name across apps → same GitHub Secret → shared resource. Different names → isolated.
-Prefixing (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement.
-
-To add a new resource placeholder: set the GitHub Secret name as the value in `wrangler.jsonc` env section, add the
-secret to GitHub. That's it — the script auto-detects and substitutes.
-
-`requiresSecrets` / `requiresPreviewSecrets` in `cloudflare-config.json` are **optional** and **additive** — used only
-for early fail-fast verification. The Verify step **derives** placeholders from `wrangler.jsonc` (single source of
-truth), then merges with base secrets (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID) and any extra from
-`requiresSecrets`. No drift: wrangler placeholders are always correct. Add `requiresSecrets` only for secrets not in
-wrangler (e.g. build-time).
-
-## Error Messages Reference
-
-### Missing Secrets
+## Files
 
 ```text
-❌ ERROR: Missing required GitHub secrets for deployment
-
-The following secrets are required but not configured:
-  • CLOUDFLARE_API_TOKEN
-  • D1_DATABASE_ID
-
-To fix this, add the missing secrets in GitHub repository settings:
-  Settings → Secrets and variables → Actions → New repository secret
-
-Required secret locations:
-  • CLOUDFLARE_API_TOKEN: Get from Cloudflare dashboard → My Profile → API Tokens
-  • CLOUDFLARE_ACCOUNT_ID: Get from Cloudflare dashboard → Workers & Pages → Account ID
-  • D1_DATABASE_ID: Run 'wrangler d1 create <name>' to create database
-  • KV_NAMESPACE_ID: Run 'wrangler kv:namespace create <name>' to create namespace
+.github/workflows/deploy.yml          # production, manual (plan → build-packages → deploy per app)
+.github/workflows/pr-preview.yml      # PR previews and their cleanup
+.github/workflows/build-packages.yml  # the shared package build and cache
+.github/workflows/ci.yml              # lint, type-check, test, build
+schemas/cloudflare-config.schema.json # the manifest's schema
+packages/cli/src/commands/deploy.ts       # otta deploy
+packages/cli/src/commands/deploy-plan.ts  # the manifest reader and the plan
+apps/<app>/cloudflare-config.json     # the app's deploy manifest
+apps/<app>/wrangler.jsonc             # Cloudflare's config: name, bindings, placeholders
 ```
-
-### Build Failure
-
-```text
-❌ ERROR: Application build failed
-
-The 'build' command failed for @ottabase/my-app
-Check the build output above for specific error messages.
-```
-
-### Next.js Build Missing
-
-```text
-❌ ERROR: Next.js build output not found
-
-Expected directory 'apps/my-app/.next' was not created.
-This indicates the Next.js build did not complete successfully.
-```
-
-### Worker Build Failure
-
-```text
-❌ ERROR: Cloudflare Worker build failed
-
-The 'build:worker' command failed.
-This command converts the Next.js build to a Cloudflare Worker using OpenNext.
-Common issues:
-  • Missing @opennextjs/cloudflare package
-  • Invalid open-next.config.ts configuration
-  • Missing .next directory (Next.js build must run first)
-```
-
-### Missing Worker Output
-
-```text
-❌ ERROR: Required paths not found after Worker build
-
-The following paths were expected but are missing:
-  • .open-next/
-
-For Next.js apps using OpenNext, the expected output is:
-  • .open-next/ - Main worker output directory (produced by opennextjs-cloudflare)
-
-This error usually means:
-  1. The 'build:worker' command didn't complete successfully
-  2. OpenNext configuration (open-next.config.ts) is incorrect
-  3. The Next.js build (.next directory) is missing
-
-Current directory contents:
-[listing shown]
-```
-
-### Wrangler Config Missing
-
-```text
-❌ ERROR: Wrangler configuration file not found
-
-Expected file: wrangler.jsonc
-Current directory: /home/runner/work/ottabase/ottabase/apps/my-app
-
-Wrangler config is required for Cloudflare Workers deployment.
-Make sure your app has a wrangler.jsonc file in its root directory.
-```
-
-### Secret Substitution Failed
-
-From `.github/scripts/substitute-wrangler-secrets.py`:
-
-```text
-❌ ERROR: Secret substitution incomplete
-
-  Placeholders detected in env.production but no matching GitHub Secret:
-    • D1_DATABASE_ID
-
-  Add the missing secrets in GitHub repository settings:
-  Settings → Secrets and variables → Actions → New repository secret
-```
-
-## Deployment Targets
-
-- ✅ **Cloudflare Workers** - Uses `wrangler deploy`
-- ❌ **Cloudflare Pages** - NOT supported
-
-Worker deployment indicators:
-
-- Uses `main` entry point in wrangler.jsonc
-- Uses Worker bindings (D1, KV, Durable Objects, etc.)
-- Deploys to `https://<worker>.<account>.workers.dev`
-- NOT `wrangler pages deploy`
-
-## File Structure
-
-```text
-ottabase/
-├── .github/
-│   ├── scripts/
-│   │   ├── discover-deployable-apps.mjs  # Local utility (not used by workflows)
-│   │   └── substitute-wrangler-secrets.py  # Substitutes secrets into wrangler config
-│   ├── workflows/
-│   │   ├── deploy.yml           # Production deploy (main / manual)
-│   │   ├── pr-preview.yml       # PR preview deploy + cleanup
-│   │   ├── build-packages.yml   # Shared package build + cache
-│   │   └── ci.yml               # Lint, type-check, test, build (on PR)
-│   └── DEPLOYMENT.md                  # This file
-│
-├── schemas/
-│   └── cloudflare-config.schema.json  # JSON schema
-│
-└── apps/
-    └── my-app/
-        ├── cloudflare-config.json     # Deployment config
-        ├── wrangler.jsonc             # Cloudflare config
-        ├── package.json               # Build scripts
-        └── open-next.config.ts        # OpenNext config (Next.js only)
-```
-
-## Extending the System
-
-### Add Custom Secrets or a Second App
-
-The substitution script auto-detects `ALL_CAPS_SNAKE_CASE` placeholder values from the target `env` section in
-`wrangler.jsonc` and substitutes them from GitHub Secrets. You never edit the Python script or the workflow files. There
-are only **2 places** to update:
-
-#### Example: Adding `APP_1` with its own isolated D1 database
-
-**1. `wrangler.jsonc`** — use the secret name as the placeholder value:
-
-```jsonc
-// apps/app-1/wrangler.jsonc → env.production
-"d1_databases": [{
-    "binding": "OBCF_D1",
-    "database_name": "app1-db",
-    "database_id": "APP_1_D1_DATABASE_ID"  // ← auto-detected as placeholder
-}]
-```
-
-**2. GitHub repo → Settings → Secrets** — add `APP_1_D1_DATABASE_ID` with the actual D1 UUID.
-
-Done. No workflow edits, no `cloudflare-config.json` edits, no Python script edits.
-
-> **Sharing rule:** If two apps both use `D1_DATABASE_ID` as their placeholder, they resolve to the same GitHub Secret →
-> same database. If App 1 uses `APP_1_D1_DATABASE_ID`, it gets its own isolated resource. Just naming.
-
-#### Optional: Early verification
-
-Add secret names to `requiresSecrets` in `cloudflare-config.json` for fail-fast checking **before** the build runs. This
-is optional — if omitted, missing secrets are caught later at substitution time.
-
-### Add New App Type
-
-**1. Create config:**
-
-```json
-{
-    "appType": "svelte",
-    "buildCommand": "build",
-    "outputDirectory": "build",
-    "verifyPaths": ["build"]
-}
-```
-
-**2. Add framework-specific caching (optional):**
-
-Edit workflow's cache step to add framework-specific cache paths.
-
-### Disable Deployment Temporarily
-
-```json
-{
-    "deployable": false,
-    "appType": "nextjs"
-}
-```
-
-App will be skipped during discovery.
-
-## CI/CD Best Practices
-
-1. **Test locally first** - Always test builds locally before pushing
-2. **Use the schema** - Let VSCode validate your config
-3. **Check the logs** - GitHub Actions logs show detailed error messages
-4. **Verify secrets** - Ensure all required secrets are configured
-5. **Health checks** - Deployment succeeds even if health check warns (allows propagation time)
-6. **Small changes** - Test with small changes before big deployments
-7. **Monitor first deploy** - Watch the full workflow run for new apps
-
-## Comparison: Before vs After
-
-| Feature           | Before                  | After                 |
-| ----------------- | ----------------------- | --------------------- |
-| App discovery     | Manual list in workflow | Automatic             |
-| Configuration     | Hardcoded               | Per-app with defaults |
-| Adding apps       | Edit workflow file      | Add config file       |
-| Framework support | Next.js only            | Multi-framework       |
-| Error messages    | Generic                 | Detailed with fixes   |
-| Deployment target | Workers                 | Workers (explicit)    |

@@ -311,13 +311,14 @@ Avoid Node.js APIs like `fs`, `child_process`, `os`. Use Cloudflare bindings ins
 
 When you open `wrangler.jsonc` you'll see two kinds of placeholder values — they mean different things:
 
-| Pattern                                                         | Example                            | What it means                                                                                        |
-| --------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `YOUR_*` (top-level)                                            | `YOUR_D1_DATABASE_ID`              | Local dev only — Wrangler ignores it and uses local simulators. **Never substituted by CI.**         |
-| `ALL_CAPS_SNAKE_CASE` (inside `env.production` / `env.preview`) | `D1_DATABASE_ID`,`KV_NAMESPACE_ID` | **This is the GitHub Secret name.** CI auto-detects it and substitutes the real UUID at deploy time. |
+| Pattern                                                         | Example                            | What it means                                                                                      |
+| --------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `YOUR_*` (top-level)                                            | `YOUR_D1_DATABASE_ID`              | Local dev only — Wrangler ignores it and uses local simulators. **Never filled by `otta deploy`.** |
+| `ALL_CAPS_SNAKE_CASE` (inside `env.production` / `env.preview`) | `D1_DATABASE_ID`,`KV_NAMESPACE_ID` | **The name of the real id.** `otta deploy` finds it and fills in the real UUID at deploy time.     |
 
-For local dev, leave the `YOUR_*` values as-is. For deployment, the `ALL_CAPS` values must have matching GitHub Secrets
-set.
+For local dev, leave the `YOUR_*` values as-is. To deploy, `pnpm otta deploy <app>` from a terminal creates the
+resources and fills the ids itself; in CI each `ALL_CAPS` name needs a value of the same name (a Workers Builds build
+variable or a GitHub secret). How each app builds and ships is its `cloudflare-config.json`: `.github/DEPLOYMENT.md`.
 
 ### 4. **Monorepo Structure**
 

@@ -41,7 +41,7 @@ Both apps bind `OBCF_D1` to the same database. Keep the `d1_databases` blocks in
   uses `preview_database_id: "preview"` (the id wrangler keys local D1 files by). `next dev` here and `wrangler dev` in
   otta-web therefore open the same SQLite file.
 - **Deployed:** each environment uses the same database-id placeholder as otta-web (`D1_DATABASE_ID`,
-  `D1_PREVIEW_DATABASE_ID`, …), so CI substitutes the same real database.
+  `D1_PREVIEW_DATABASE_ID`, …), so `otta deploy` fills in the same real database.
 - **`APP_ID`** (a wrangler var, default `otta-web`) selects whose landing content to show. It must match otta-web's
   `config.appId`.
 
@@ -113,18 +113,18 @@ honeypot and the minimum fill time stay as they are. Cloudflare's test keys (`1x
 
 ## Scripts
 
-| Command              | Description                          |
-| -------------------- | ------------------------------------ |
-| `pnpm dev`           | Dev server                           |
-| `pnpm build`         | Production Next.js build             |
-| `pnpm build:worker`  | Build OpenNext Cloudflare worker     |
-| `pnpm start`         | Start production server locally      |
-| `pnpm preview`       | Build + run on local `workerd`       |
-| `pnpm deploy`        | Build + deploy to Cloudflare Workers |
-| `pnpm lint`          | ESLint                               |
-| `pnpm type-check`    | TypeScript validation                |
-| `pnpm test`          | Run tests                            |
-| `pnpm test:coverage` | Run tests with coverage              |
+| Command              | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `pnpm dev`           | Dev server                                                              |
+| `pnpm build`         | Production Next.js build                                                |
+| `pnpm build:worker`  | Build OpenNext Cloudflare worker                                        |
+| `pnpm start`         | Start production server locally                                         |
+| `pnpm preview`       | Build + run on local `workerd`                                          |
+| `pnpm run deploy`    | `otta deploy otta-landing` (`run`: `pnpm deploy` is pnpm's own command) |
+| `pnpm lint`          | ESLint                                                                  |
+| `pnpm type-check`    | TypeScript validation                                                   |
+| `pnpm test`          | Run tests                                                               |
+| `pnpm test:coverage` | Run tests with coverage                                                 |
 
 From the repo root, `pnpm otta start otta-landing` is the canonical development entry point. Use `--env preview`,
 `--env staging` or `--env production` to build OpenNext and start that Wrangler environment locally, and `--skip-build`
@@ -136,17 +136,13 @@ for the Cloudflare-shaped `preview`, `staging` and `production` starts. CI alrea
 ## Deployment
 
 ```bash
-pnpm deploy
+pnpm otta deploy otta-landing   # from the repo root: build, check .open-next, deploy (or `pnpm run deploy` here)
 ```
 
-CI/CD is handled by the shared `.github/workflows/deploy.yml` — deploys on push to `main` with smart change detection
-(only re-deploys when this app or shared packages change).
+CI/CD runs the same `otta deploy otta-landing --ci` wherever it runs: Cloudflare Workers Builds on push (recommended),
+or GitHub's manual `deploy.yml`. `cloudflare-config.json` is this app's deploy manifest: `next build`, then
+`build:worker` (OpenNext), `.open-next` checked before wrangler runs. Setup:
+[`.github/DEPLOYMENT.md`](../../.github/DEPLOYMENT.md).
 
-**Config-driven - no yml editing needed when renaming the app:**
-
-1. Update `cloudflare-config.json` `workerName` and `wrangler.jsonc` `name` to match your new app name.
-2. Set the `APPS_TO_DEPLOY` GitHub secret to a comma-separated list of app folder names, e.g. `main-app,homepage-app`.
-3. Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` GitHub secrets.
-
-The workflow reads `cloudflare-config.json` from each app folder to determine app type (`nextjs`), build commands,
-output paths and wrangler config — no hardcoded names in yml.
+**Renaming the app:** change `wrangler.jsonc` `name` (the Worker name); `cloudflare-config.json` names no app. CI
+deploys every app whose `cloudflare-config.json` says `"deployable": true`; no workflow edits.

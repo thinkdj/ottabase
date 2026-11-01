@@ -636,7 +636,8 @@ const human = useTurnstile('signin'); // from @ottabase/ui/turnstile
 (`development`/`dev`/`test`/`local`) **and** `AUTH_ALLOW_INSECURE_DEV_SECRET=true` are set, in which case a built-in
 insecure default is used with a warning. An unset or unknown `ENVIRONMENT` is treated as production, so a real deploy
 that forgets `AUTH_SECRET` throws instead of silently signing every token with a publicly-known constant. (Deploy with
-the production wrangler environment, e.g. `wrangler deploy --env production`, so dev vars never reach production.)
+the production wrangler environment, so dev vars never reach production: `otta deploy` does, `env.production` unless the
+app's `cloudflare-config.json` or `--env` says otherwise.)
 
 ## Accessibility, SSR & performance
 
