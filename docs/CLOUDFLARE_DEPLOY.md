@@ -32,7 +32,8 @@ is its `cloudflare-config.json`. The recommended setup:
 - **Workers Builds deploys production on every push**, one connection per app: Workers & Pages, Create, Import a
   repository; Worker named as the env names it (`otta-web-production`), root directory `/`, deploy command
   `pnpm otta deploy otta-web --ci`, the env block's placeholder values (`CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`,
-  `KV_NAMESPACE_ID`) as build variables, and build watch paths from `pnpm otta deploy otta-web --watch-paths`.
+  `KV_NAMESPACE_ID`) as build variables, build watch paths from `pnpm otta deploy otta-web --watch-paths`, and **Enable
+  Preview Builds** unticked (their default command runs wrangler on the unfilled template).
 - **GitHub runs the tests** (`ci.yml`) as required checks on `main`, so Workers Builds deploys only tested code.
 - **GitHub's `deploy.yml` is manual**: the fallback. `pr-preview.yml` makes PR previews on request.
 
@@ -406,8 +407,9 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 - [ ] Validate: `pnpm cf:validate`
 - [ ] First deploy from a terminal: `pnpm otta deploy otta-web --owner-email … --owner-password …`
 - [ ] Workers Builds: connect the app, deploy command `pnpm otta deploy otta-web --ci`, build variables
-      (CLOUDFLARE_ACCOUNT_ID, D1_DATABASE_ID, KV_NAMESPACE_ID), watch paths (`--watch-paths`)
+      (CLOUDFLARE_ACCOUNT_ID, D1_DATABASE_ID, KV_NAMESPACE_ID), watch paths (`--watch-paths`), preview builds off
 - [ ] GitHub: protect `main` with the `ci.yml` checks required
+- [ ] GitHub Environments: `production` limited to `main` (reviewers optional), `preview` with required reviewers
 - [ ] GitHub secrets for the manual deploy and previews (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, the production and
       preview placeholders)
 - [ ] Push to main branch

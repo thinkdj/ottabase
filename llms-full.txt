@@ -5219,8 +5219,9 @@ is given (Workers Builds' build variables, GitHub Secrets, `--set`), generating 
 `wrangler.preview.jsonc`. The source file is never modified. For local dev, `YOUR_*` top-level values are ignored
 (miniflare uses local simulators). For multi-app: same placeholder name = shared resource; different names = isolated
 (prefixing is a convention). Every app's template sets `"preview_urls": false` at the top level (inherited by each env
-block): left unset, Cloudflare turns Preview URLs on with workers.dev, and every uploaded version would answer publicly
-at `<version>-<name>.<subdomain>.workers.dev`. Set it `true` in an env block to have them there.
+block): Version URLs (formerly Preview URLs) follow workers.dev when it is unset, and every uploaded version would
+answer publicly at `<version>-<name>.<subdomain>.workers.dev` (Cloudflare makes none for a Worker with Durable Objects).
+Set it `true` in an env block to have them there.
 
 **Key Bindings:**
 
@@ -5670,7 +5671,8 @@ is its `cloudflare-config.json`. The recommended setup:
 - **Workers Builds deploys production on every push**, one connection per app: Workers & Pages, Create, Import a
   repository; Worker named as the env names it (`otta-web-production`), root directory `/`, deploy command
   `pnpm otta deploy otta-web --ci`, the env block's placeholder values (`CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`,
-  `KV_NAMESPACE_ID`) as build variables, and build watch paths from `pnpm otta deploy otta-web --watch-paths`.
+  `KV_NAMESPACE_ID`) as build variables, build watch paths from `pnpm otta deploy otta-web --watch-paths`, and **Enable
+  Preview Builds** unticked (their default command runs wrangler on the unfilled template).
 - **GitHub runs the tests** (`ci.yml`) as required checks on `main`, so Workers Builds deploys only tested code.
 - **GitHub's `deploy.yml` is manual**: the fallback. `pr-preview.yml` makes PR previews on request.
 
@@ -6044,8 +6046,9 @@ See [CLOUDFLARE_CONFIGURATION_GUIDE.md](CLOUDFLARE_CONFIGURATION_GUIDE.md) for u
 - [ ] Validate: `pnpm cf:validate`
 - [ ] First deploy from a terminal: `pnpm otta deploy otta-web --owner-email … --owner-password …`
 - [ ] Workers Builds: connect the app, deploy command `pnpm otta deploy otta-web --ci`, build variables
-      (CLOUDFLARE_ACCOUNT_ID, D1_DATABASE_ID, KV_NAMESPACE_ID), watch paths (`--watch-paths`)
+      (CLOUDFLARE_ACCOUNT_ID, D1_DATABASE_ID, KV_NAMESPACE_ID), watch paths (`--watch-paths`), preview builds off
 - [ ] GitHub: protect `main` with the `ci.yml` checks required
+- [ ] GitHub Environments: `production` limited to `main` (reviewers optional), `preview` with required reviewers
 - [ ] GitHub secrets for the manual deploy and previews (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, the production and
       preview placeholders)
 - [ ] Push to main branch
@@ -13909,6 +13912,7 @@ pnpm otta deploy --all --ci --changed-since "$BEFORE_SHA" # every deployable app
 pnpm otta deploy --all --plan --changed-since "$BEFORE_SHA"   # the same decision, as JSON (GitHub's matrix)
 pnpm otta deploy my-app --ci --preview pr-12              # env.preview as the Worker <name>-pr-12
 pnpm otta deploy --all --delete-preview pr-12             # and gone again
+pnpm otta deploy my-app --ci --env demo --config-only     # only wrangler.demo.jsonc, for a pipeline of its own
 ```
 
 `--ci` is the build and deploy of the steps above and nothing else: no login (wrangler authenticates with

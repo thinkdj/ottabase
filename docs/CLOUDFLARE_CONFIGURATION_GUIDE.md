@@ -150,8 +150,9 @@ is given (Workers Builds' build variables, GitHub Secrets, `--set`), generating 
 `wrangler.preview.jsonc`. The source file is never modified. For local dev, `YOUR_*` top-level values are ignored
 (miniflare uses local simulators). For multi-app: same placeholder name = shared resource; different names = isolated
 (prefixing is a convention). Every app's template sets `"preview_urls": false` at the top level (inherited by each env
-block): left unset, Cloudflare turns Preview URLs on with workers.dev, and every uploaded version would answer publicly
-at `<version>-<name>.<subdomain>.workers.dev`. Set it `true` in an env block to have them there.
+block): Version URLs (formerly Preview URLs) follow workers.dev when it is unset, and every uploaded version would
+answer publicly at `<version>-<name>.<subdomain>.workers.dev` (Cloudflare makes none for a Worker with Durable Objects).
+Set it `true` in an env block to have them there.
 
 **Key Bindings:**
 

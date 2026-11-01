@@ -604,8 +604,8 @@ GitHub repository secrets for `deploy.yml` and the PR previews:
 - `CLOUDFLARE_API_TOKEN` (GitHub only)
 
 To add a resource: add an `ALL_CAPS` placeholder in `env.production`/`env.preview` → give CI a value of that name.
-`otta deploy` finds it. How this app builds and ships is `cloudflare-config.json`; Preview URLs are off
-(`"preview_urls": false` in `wrangler.jsonc`).
+`otta deploy` finds it. How this app builds and ships is `cloudflare-config.json`; Version URLs (formerly Preview URLs)
+are off (`"preview_urls": false` in `wrangler.jsonc`).
 
 See [.github/DEPLOYMENT.md](../../.github/DEPLOYMENT.md) for the CI setup and
 [CLOUDFLARE_DEPLOY.md](../../docs/CLOUDFLARE_DEPLOY.md) for the full guide.

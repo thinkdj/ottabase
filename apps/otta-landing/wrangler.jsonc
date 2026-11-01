@@ -5,7 +5,7 @@
 
     "name": "otta-landing",
     "compatibility_date": "2024-12-30",
-    // No Preview URLs (<version>-<name>.<subdomain>.workers.dev): left unset, Cloudflare turns them on with
+    // No Version URLs (formerly Preview URLs: <version>-<name>.<subdomain>.workers.dev). Left unset, they follow
     // workers.dev and every uploaded version answers publicly. Inherited by every env block; set it true in
     // one to have them there. PR previews are their own Workers and do not need them.
     "preview_urls": false,
