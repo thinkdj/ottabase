@@ -247,6 +247,12 @@ describe('the deploy manifest', () => {
                 expect([app, script, Boolean(scripts?.[script])]).toEqual([app, script, true]);
             }
             expect([app, fs.existsSync(path.join(dir, config.wranglerConfig))]).toEqual([app, true]);
+            // Preview URLs stay off unless an app turns them on: every template (and so every app
+            // `otta new` makes) says so at the top level, which each env block inherits.
+            const wrangler = parseJsonc(fs.readFileSync(path.join(dir, config.wranglerConfig), 'utf8')) as {
+                preview_urls?: boolean;
+            };
+            expect([app, 'preview_urls', wrangler.preview_urls]).toEqual([app, 'preview_urls', false]);
         }
         // What CI ships from this repository: the two product apps, not the templates or the cache.
         expect(listDeployableApps(REPO)).toEqual(['otta-landing', 'otta-web']);

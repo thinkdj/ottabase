@@ -3,18 +3,19 @@
     //
     // ┌─ Tier 1: YOUR_* (top-level, e.g. "YOUR_D1_DATABASE_ID")
     // │   • Local dev ONLY: Wrangler ignores the value and uses local simulators (.wrangler/state/v3/*)
-    // │   • Never substituted by CI. Safe to leave as-is.
+    // │   • Never filled by otta deploy. Safe to leave as-is.
     // │
     // └─ Tier 2: ALL_CAPS_SNAKE_CASE (env.production / env.preview, e.g. "D1_DATABASE_ID")
-    //     • The value IS the GitHub Secret name. CI auto-detects and substitutes the real UUID at deploy time.
-    //     • Missing GitHub Secret → CI fails early with a clear error before any deployment.
-    //     • Substituted into wrangler.production.jsonc / wrangler.preview.jsonc by substitute-wrangler-secrets.py
+    //     • The value is the NAME of the real id. `otta deploy` finds it and writes wrangler.<env>.jsonc
+    //       (gitignored) with the id filled in: from `pnpm cf:setup` in a terminal; in CI from the value
+    //       of the same name (a Workers Builds build variable, a GitHub secret, or --set).
+    //     • A missing value stops the deploy before anything builds, naming every missing one.
     //
-    // To add a new secret:   set an ALL_CAPS placeholder in env.production/env.preview → add matching GitHub Secret → done.
-    // To share a resource:   use the same placeholder value across apps → same GitHub Secret → same real ID injected.
+    // To add a resource:     set an ALL_CAPS placeholder in the env block → give CI a value of that name → done.
+    // To share a resource:   use the same placeholder value across apps → same value → same real ID.
     // To isolate per-app:    use different placeholder values (e.g. APP_1_D1_DATABASE_ID); prefixing is a convention, not required.
     //
-    // See CLOUDFLARE_DEPLOY.md for full walkthrough.
+    // How the app builds and deploys: cloudflare-config.json; the full walkthrough: .github/DEPLOYMENT.md.
 
     "$schema": "node_modules/wrangler/config-schema.json",
 
@@ -24,6 +25,12 @@
     "name": "otta-web",
     "compatibility_date": "2024-12-30",
     "compatibility_flags": ["nodejs_compat"],
+
+    // No Preview URLs (<version>-<name>.<subdomain>.workers.dev): left unset, Cloudflare turns them on with
+    // workers.dev, and every uploaded version would answer publicly beside the custom domain and whatever
+    // guards it. Inherited by every env block; set "preview_urls": true in one to have them there.
+    // PR previews do not need them: each is its own Worker on its own workers.dev URL.
+    "preview_urls": false,
 
     // Main worker configuration
     // TanStack Router creates a single worker entry point
@@ -82,29 +89,29 @@
 
     // TOP LEVEL BINDINGS (available in all environments unless overridden in env.*)
     // This is required for local development to define the shape of bindings and enable Wrangler features (e.g. `wrangler dev` with real D1/KV/R2/Queue emulation).
-    // Preview and prod would use env.production/env.preview overrides to substitute real Cloudflare resource IDs from GitHub Secrets
-    // This replacement would be automatically done by CI/CD during deployment, so placeholders are intentional and should not be edited.
+    // Preview and prod use the env.production/env.preview overrides, whose placeholders `otta deploy` fills with the
+    // real Cloudflare resource ids at deploy time, so the placeholders are intentional and should not be edited.
 
     // D1 Database bindings
     // Local dev: Uses local SQLite file (.wrangler/state/v3/d1)
-    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
+    // Preview/Prod: the env blocks' placeholders, filled by otta deploy – do not edit placeholder values
     "d1_databases": [
         {
             "binding": "OBCF_D1",
             "database_name": "ottabase-db",
-            "database_id": "YOUR_D1_DATABASE_ID", // YOUR_* = local dev only, NOT substituted by CI; Wrangler uses local simulator regardless of this value
+            "database_id": "YOUR_D1_DATABASE_ID", // YOUR_* = local dev only, never filled by otta deploy; Wrangler uses local simulator regardless of this value
             "preview_database_id": "preview", // Uses preview DB for `wrangler dev --remote`
         },
     ],
 
     // KV Namespace bindings
     // Local dev: Uses local KV storage (.wrangler/state/v3/kv)
-    // Preview/Prod: CI substitutes from GitHub Secrets – do not edit placeholder values
+    // Preview/Prod: the env blocks' placeholders, filled by otta deploy – do not edit placeholder values
     "kv_namespaces": [
         {
             "binding": "OBCF_KV",
-            "id": "YOUR_KV_NAMESPACE_ID", // YOUR_* = local dev only, NOT substituted by CI; Wrangler uses local simulator regardless of this value
-            "preview_id": "YOUR_KV_PREVIEW_ID", // YOUR_* = local dev only, NOT substituted by CI
+            "id": "YOUR_KV_NAMESPACE_ID", // YOUR_* = local dev only, never filled by otta deploy; Wrangler uses local simulator regardless of this value
+            "preview_id": "YOUR_KV_PREVIEW_ID", // YOUR_* = local dev only, never filled by otta deploy
         },
     ],
 
@@ -304,7 +311,7 @@
         // Cloudflare's test keys (always pass: 1x00000000000000000000AA and secret
         // 1x0000000000000000000000000000000AA) work on localhost.
         "TURNSTILE_SITE_KEY": "",
-        // CLOUDFLARE_ACCOUNT_ID: // Set in env.production/env.preview vars (substituted from GitHub Secret)
+        // CLOUDFLARE_ACCOUNT_ID: // Set in env.production/env.preview vars (a placeholder otta deploy fills)
     },
 
     // Local development settings
@@ -322,7 +329,7 @@
                 "NODE_ENV": "production",
                 "OTTAORM_MAX_ALL_ROWS": "5000",
                 "TURNSTILE_SITE_KEY": "", // Paste the widget's site key; TURNSTILE_SECRET_KEY is a secret
-                // For Analytics (Workers Analytics Engine): Substituted from GitHub Secret at deploy; add CLOUDFLARE_ANALYTICS_API_TOKEN via wrangler secret put or CF Dash > Worker > Settings > Secrets
+                // For Analytics (Workers Analytics Engine): a placeholder otta deploy fills at deploy; add CLOUDFLARE_ANALYTICS_API_TOKEN via wrangler secret put or CF Dash > Worker > Settings > Secrets
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },
             "unsafe": {
@@ -360,8 +367,8 @@
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
             },
-            // Production D1 – placeholder value = GitHub Secret name; CI substitutes the real UUID at deploy time
-            // Any value works (e.g. "MY_DB_ID") — just add a matching GitHub Secret with the real UUID
+            // Production D1 – the placeholder names the value; otta deploy fills in the real UUID at deploy time
+            // Any name works (e.g. "MY_DB_ID") — give CI a value of that name (build variable or secret)
             // Two apps using the same value → same secret → same real ID → shared DB; different values → isolated
             "d1_databases": [
                 {
@@ -370,7 +377,7 @@
                     "database_id": "D1_DATABASE_ID",
                 },
             ],
-            // Production KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            // Production KV – the placeholder names the value; otta deploy fills it at deploy time
             "version_metadata": { "binding": "OBCF_VERSION" },
             "images": { "binding": "OBCF_IMAGES" },
             "ai": { "binding": "OBCF_AI" },
@@ -434,8 +441,8 @@
         // Public demo (worker `otta-web-demo`): `wrangler deploy --env demo`. Its own D1, KV, R2,
         // queue and rate-limit namespace, so a demo never shares rows with production.
         // DEMO_MODE holds mail to strangers, rate-limits uploads, welcomes sign-ups and shows the
-        // demo banner (apps/otta-web/README.md "Public demo"). Placeholders = GitHub Secret names
-        // of the repository that deploys it; set the auth/mail secrets with `wrangler secret put --env demo`.
+        // demo banner (apps/otta-web/README.md "Public demo"). Placeholders name the values the deploy is
+        // given (otta deploy --env demo); set the auth/mail secrets with `wrangler secret put --env demo`.
         "demo": {
             "vars": {
                 "ENVIRONMENT": "demo",
@@ -650,14 +657,14 @@
                 },
             ],
         },
-        // PR preview – placeholders = GitHub Secret names; CI substitutes at deploy time
+        // PR preview (otta deploy --preview pr-<N>: its own Worker <name>-pr-<N>) – placeholders filled at deploy time
         "preview": {
             "vars": {
                 "ENVIRONMENT": "preview",
                 "NODE_ENV": "production",
                 "OTTAORM_MAX_ALL_ROWS": "5000",
                 "TURNSTILE_SITE_KEY": "", // Paste the widget's site key; TURNSTILE_SECRET_KEY is a secret
-                // For Analytics (WAE): substituted from GitHub Secret at deploy
+                // For Analytics (WAE): a placeholder otta deploy fills at deploy
                 "CLOUDFLARE_ACCOUNT_ID": "CLOUDFLARE_ACCOUNT_ID",
             },
             "unsafe": {
@@ -694,7 +701,7 @@
                 "binding": "OBCF_ASSETS",
                 "directory": "dist",
             },
-            // Preview D1 – placeholder = GitHub Secret name; CI substitutes at deploy time
+            // Preview D1 – the placeholder names the value; otta deploy fills it at deploy time
             "d1_databases": [
                 {
                     "binding": "OBCF_D1",
@@ -702,7 +709,7 @@
                     "database_id": "D1_PREVIEW_DATABASE_ID",
                 },
             ],
-            // Preview KV – placeholder = GitHub Secret name; CI substitutes at deploy time
+            // Preview KV – the placeholder names the value; otta deploy fills it at deploy time
             "version_metadata": { "binding": "OBCF_VERSION" },
             "images": { "binding": "OBCF_IMAGES" },
             "ai": { "binding": "OBCF_AI" },

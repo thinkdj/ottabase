@@ -1,12 +1,16 @@
 {
     // One Worker, no static assets, no SPA. Placeholders follow apps/otta-web/wrangler.jsonc:
-    // YOUR_* values are local-only (Wrangler uses its simulators), ALL_CAPS values under env.*
-    // name the GitHub Secret CI substitutes at deploy time. See CLOUDFLARE_DEPLOY.md.
+    // YOUR_* values are local-only (Wrangler uses its simulators), ALL_CAPS values under env.* name the
+    // values `otta deploy` fills in at deploy time (cf:setup's ids from a terminal; in CI a build variable
+    // or secret of the same name). See .github/DEPLOYMENT.md.
     "$schema": "node_modules/wrangler/config-schema.json",
     "name": "otta-worker",
     "main": "worker/index.ts",
     "compatibility_date": "2024-12-30",
     "compatibility_flags": ["nodejs_compat"],
+    // No Preview URLs (<version>-<name>.<subdomain>.workers.dev): left unset, Cloudflare turns them on with
+    // workers.dev and every uploaded version answers publicly. Inherited by every env block.
+    "preview_urls": false,
 
     // The DB-driven scheduler evaluates task expressions itself; Cloudflare wakes the Worker once a minute.
     "triggers": {

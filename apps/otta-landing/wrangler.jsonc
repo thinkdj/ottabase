@@ -5,6 +5,10 @@
 
     "name": "otta-landing",
     "compatibility_date": "2024-12-30",
+    // No Preview URLs (<version>-<name>.<subdomain>.workers.dev): left unset, Cloudflare turns them on with
+    // workers.dev and every uploaded version answers publicly. Inherited by every env block; set it true in
+    // one to have them there. PR previews are their own Workers and do not need them.
+    "preview_urls": false,
     // Main worker configuration
     // OpenNext for Cloudflare creates .open-next/worker.js as the entry point
     "main": ".open-next/worker.js",

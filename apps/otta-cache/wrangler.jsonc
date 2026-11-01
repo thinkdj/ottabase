@@ -11,6 +11,9 @@
     "main": "worker/index.ts",
     "compatibility_date": "2024-12-30",
     "compatibility_flags": ["nodejs_compat"],
+    // No Preview URLs (<version>-<name>.<subdomain>.workers.dev): left unset, Cloudflare turns them on with
+    // workers.dev and every uploaded version answers publicly. The cache answers at its workers.dev URL only.
+    "preview_urls": false,
 
     "observability": {
         "enabled": true,
