@@ -6,7 +6,7 @@
     "properties": {
         "deployable": {
             "type": "boolean",
-            "description": "Whether this app should be deployed to Cloudflare",
+            "description": "Whether this app is deployed to Cloudflare (deploy.yml, and `otta deploy --all`)",
             "default": true
         },
         "previewDeployable": {
@@ -49,7 +49,7 @@
             "items": {
                 "type": "string"
             },
-            "description": "Paths to verify exist after build",
+            "description": "Paths under the app that must exist after the build; `otta deploy` stops before wrangler when one is missing",
             "default": ["dist", "cloudflare-worker.ts"]
         },
         "wranglerConfig": {
@@ -59,12 +59,12 @@
         },
         "wranglerEnv": {
             "type": "string",
-            "description": "Wrangler environment to deploy to",
+            "description": "Wrangler environment to deploy to; `otta deploy` uses it when --env is not given",
             "default": "production"
         },
         "healthCheckPath": {
             "type": "string",
-            "description": "Path to check after deployment",
+            "description": "Path requested after the deploy (`otta deploy`, deploy.yml); a failure is reported, never fatal",
             "default": "/"
         },
         "requiresSecrets": {

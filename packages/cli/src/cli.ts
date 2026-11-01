@@ -273,9 +273,20 @@ addStartOptions(
 
 program
     .command('deploy [app]')
-    .description('Deploy an app straight to Cloudflare: resources, config, build, deploy, secrets, bootstrap')
-    .option('-e, --env <environment>', 'The env block of wrangler.jsonc to deploy', 'production')
+    .description('Build and deploy an app to Cloudflare, from a terminal (the whole first deploy) or from CI (--ci)')
+    .option(
+        '-e, --env <environment>',
+        "The env block of wrangler.jsonc to deploy (default: the app's wranglerEnv in cloudflare-config.json, else production)",
+    )
     .option('--set <KEY=VALUE>', 'A value for a placeholder the resources do not provide', collect, [])
+    .option(
+        '--ci',
+        'Build and deploy only: no login, no resources created, no secrets, no bootstrap (Workers Builds, CI)',
+    )
+    .option('--build-only', "Stop after the build (Workers Builds' build command; deploy then runs with --skip-build)")
+    .option('--changed-since <ref>', 'Deploy only when a file the app depends on changed since this git ref')
+    .option('--all', 'Every app with a cloudflare-config.json that is not "deployable": false')
+    .option('--watch-paths', "Print what the app's deploy depends on (Workers Builds watch paths), deploy nothing")
     .option('--url <url>', 'The public URL (AUTH_URL) when a custom domain fronts the Worker')
     .option('--owner-email <email>', 'With --owner-password: bootstrap the empty database and create this owner')
     .option('--owner-password <password>', 'The owner password (or OTTA_OWNER_PASSWORD in the environment)')
@@ -291,11 +302,21 @@ Examples:
   $ otta deploy my-app --owner-email me@example.com --owner-password 'correct horse'
   $ otta deploy my-app --env demo --set DEMO_URL=https://demo.example.com
   $ otta deploy my-app --url https://my-app.example.com     # after pointing a custom domain at it
+  $ otta deploy my-app --ci                                  # Workers Builds deploy command, or any CI
+  $ otta deploy my-app --watch-paths                         # the include list for Workers Builds
+  $ otta deploy --all --ci --changed-since HEAD~1            # every deployable app that changed
 
-Needs a Cloudflare login (pnpm cf:login). Creates the D1, KV, R2 and queue the env block names, writes
-wrangler.<env>.jsonc with their ids, builds, deploys, generates and sets the framework secrets that are
-not set yet (AUTH_SECRET, MIGRATION_SECRET, BOOTSTRAP_OWNER_SECRET, …, AUTH_URL), and bootstraps the
-database when an owner is given. Safe to run again: it finds what exists and redeploys.
+From a terminal: needs a Cloudflare login (pnpm cf:login). Creates the D1, KV, R2 and queue the env block
+names, writes wrangler.<env>.jsonc with their ids, builds, deploys, generates and sets the framework
+secrets that are not set yet (AUTH_SECRET, MIGRATION_SECRET, BOOTSTRAP_OWNER_SECRET, …, AUTH_URL), and
+bootstraps the database when an owner is given. Safe to run again: it finds what exists and redeploys.
+
+With --ci: placeholder values come from build variables (and --set), CLOUDFLARE_ACCOUNT_ID included, and
+wrangler authenticates with CLOUDFLARE_API_TOKEN. Nothing is created, no secret is touched.
+
+Either way the app's cloudflare-config.json says how it builds (buildCommand, workerBuildCommand), what
+the build must leave (verifyPaths), its default env and its health path; only the workspace packages the
+app depends on are built.
 `,
     )
     .action(
@@ -311,6 +332,11 @@ database when an owner is given. Safe to run again: it finds what exists and red
                 skipBuild?: boolean;
                 skipPackages?: boolean;
                 dryRun?: boolean;
+                ci?: boolean;
+                buildOnly?: boolean;
+                changedSince?: string;
+                all?: boolean;
+                watchPaths?: boolean;
             },
         ) => {
             try {

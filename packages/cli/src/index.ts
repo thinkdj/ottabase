@@ -17,10 +17,12 @@ export {
     deployApp,
     deployCommand,
     substitutePlaceholders,
+    type DeployCommandOptions,
     type DeployOptions,
     type DeployResult,
     type Exec,
 } from './commands/deploy.js';
+export { listDeployableApps, readDeployConfig, watchPaths, type AppDeployConfig } from './commands/deploy-plan.js';
 export {
     FOOTPRINTS_FILE,
     readFootprints,

@@ -11,6 +11,9 @@ export {
 } from './add.js';
 export {
     bootstrap,
+    changedFiles,
+    ciCommit,
+    deployAll,
     deployApp,
     deployCommand,
     envSection,
@@ -20,10 +23,19 @@ export {
     parseDeployedUrl,
     parseSetOptions,
     substitutePlaceholders,
+    type DeployCommandOptions,
     type DeployOptions,
     type DeployResult,
     type Exec,
 } from './deploy.js';
+export {
+    isAffected,
+    listDeployableApps,
+    readDeployConfig,
+    watchPaths,
+    workspaceDependencyDirs,
+    type AppDeployConfig,
+} from './deploy-plan.js';
 export { FOOTPRINTS_FILE, readFootprints, stripClosure, type Footprint, type Footprints } from './footprints.js';
 export { newApp, scaffoldApp, type ScaffoldOptions, type ScaffoldResult } from './new.js';
 export { checkPreset, checkPresets, type PresetCheckResult } from './preset-check.js';

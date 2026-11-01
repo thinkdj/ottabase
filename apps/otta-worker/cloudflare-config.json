@@ -1,0 +1,15 @@
+{
+    "$schema": "../../schemas/cloudflare-config.schema.json",
+    "deployable": false,
+    "appType": "custom",
+    "workerName": "otta-worker",
+    "buildCommand": "build",
+    "workerBuildCommand": "",
+    "outputDirectory": "dist",
+    "verifyPaths": ["dist/index.js"],
+    "wranglerConfig": "wrangler.jsonc",
+    "wranglerEnv": "production",
+    "healthCheckPath": "/api/health",
+    "requiresSecrets": [],
+    "requiresPreviewSecrets": []
+}

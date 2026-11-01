@@ -155,18 +155,45 @@ What the deploy workflow does in CI, from one terminal and without a GitHub repo
 2. **Config.** The placeholders of the env block (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`, `CLOUDFLARE_ACCOUNT_ID`, …) are
    filled into `wrangler.<env>.jsonc`, gitignored. Ids come from step 1, the account id from `wrangler whoami`, anything
    else from `--set KEY=VALUE` or the environment; a placeholder with no value stops the deploy and names itself.
-3. **Build and deploy.** `pnpm build:pkg` (skip with `--skip-packages`), the app's build (`--skip-build` reuses it),
-   `wrangler deploy --env <env>`.
+3. **Build and deploy.** The workspace packages the app depends on, and only those
+   (`turbo run build --filter=<app>^...`; skip with `--skip-packages`), the app's build as its `cloudflare-config.json`
+   says (`buildCommand`, then `workerBuildCommand` for an OpenNext app; `--skip-build` reuses the output), a check that
+   the build left its `verifyPaths`, then `wrangler deploy --env <env>`. The env defaults to the app's `wranglerEnv`.
 4. **Secrets.** The generated secrets the app declares in `.env.example` (`AUTH_SECRET`, `MIGRATION_SECRET`,
    `BOOTSTRAP_OWNER_SECRET`, `CRON_SECRET`, …) and `AUTH_URL` are set where they are not set yet, and never changed
    afterwards. Your own secrets (OAuth clients, mail) stay `wrangler secret put`.
 5. **Bootstrap.** With `--owner-email` and `--owner-password` (or `OTTA_OWNER_PASSWORD`), the fresh database gets its
    tables, roles and owner and is marked READY through `/__bootstrap__/api`. Without them the command prints the wizard
    URL with the bootstrap secret, once.
-6. **Health.** `GET /api/health` on the Worker.
+6. **Health.** `GET` the app's `healthCheckPath` (`/api/health` for an app without a `cloudflare-config.json`).
 
-Run it again after a change: it finds what exists and redeploys. CI stays the better place for a team; this is the first
-deploy, and the solo one.
+Run it again after a change: it finds what exists and redeploys.
+
+### Deploying from CI (Cloudflare Workers Builds)
+
+```bash
+pnpm otta deploy my-app --ci                              # build and deploy, nothing else
+pnpm otta deploy my-app --ci --build-only                 # Workers Builds' build command …
+pnpm otta deploy my-app --ci --skip-build --skip-packages # … and its deploy command
+pnpm otta deploy my-app --watch-paths                     # the include list for its build watch paths
+pnpm otta deploy --all --ci --changed-since HEAD~1        # every deployable app something changed for
+```
+
+`--ci` is the build and deploy of the steps above and nothing else: no login (wrangler authenticates with
+`CLOUDFLARE_API_TOKEN`, which Workers Builds provides), no resource created, no secret generated or set, no bootstrap.
+Placeholder values come from build variables, the same names as the placeholders (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`,
+`CLOUDFLARE_ACCOUNT_ID`, …), or `--set`; a missing one stops the run before anything builds. Set the Worker's secrets
+once, with a first `otta deploy` from a terminal or `wrangler secret put`.
+
+In Workers Builds, one Worker per app: connect the repository, root directory `/`, deploy command
+`pnpm otta deploy <app> --ci` (or the build-only and skip-build pair above), and paste the output of
+`otta deploy <app> --watch-paths` into Build watch paths, so a push rebuilds only the apps it can change. The Worker
+name must match the env's (`<name>-<env>`, `otta-web-production`).
+
+Outside Workers Builds, `--changed-since <ref>` does the same selection: the app deploys only when a file under its
+watch paths changed between `<ref>` and HEAD (a ref git cannot diff against, in a shallow clone, deploys). With `--all`
+every app with a `cloudflare-config.json` that is not `"deployable": false` goes in turn; the run reports each and fails
+at the end when one failed.
 
 ### Updating Ottabase Pro
 
@@ -349,25 +376,25 @@ pnpm otta info my-app
 `otta` is the command name the published binary installs. Inside this monorepo the root package does not link its own
 bin, so invoke it through the workspace script: `pnpm otta <command>`.
 
-| Command                      | Description                                                                                     |
-| ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for the web template)          |
-| `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`) |
-| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)             |
-| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                            |
-| `otta deploy [app]`          | Deploy straight to Cloudflare: resources, config, build, deploy, secrets, bootstrap (`--env`)   |
-| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)      |
-| `otta start [app]`           | Start development or a named local Wrangler environment                                         |
-| `otta dev [app]`             | Start the hot-reload development topology                                                       |
-| `otta preview [app]`         | Build and start the preview Wrangler environment locally                                        |
-| `otta build <app>`           | Build an app for production                                                                     |
-| `otta test <app>`            | Run tests for an app                                                                            |
-| `otta lint <app>`            | Lint an app                                                                                     |
-| `otta type-check <app>`      | Type check an app                                                                               |
-| `otta clean <app>`           | Clean build artifacts                                                                           |
-| `otta list`                  | List all apps in the monorepo                                                                   |
-| `otta info <app>`            | Show detailed info about an app                                                                 |
-| `otta templates`             | Show available templates                                                                        |
+| Command                      | Description                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for the web template)           |
+| `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`)  |
+| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)              |
+| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                             |
+| `otta deploy [app]`          | Deploy to Cloudflare: the whole first deploy, or build and deploy only from CI (`--ci`, `--all`) |
+| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)       |
+| `otta start [app]`           | Start development or a named local Wrangler environment                                          |
+| `otta dev [app]`             | Start the hot-reload development topology                                                        |
+| `otta preview [app]`         | Build and start the preview Wrangler environment locally                                         |
+| `otta build <app>`           | Build an app for production                                                                      |
+| `otta test <app>`            | Run tests for an app                                                                             |
+| `otta lint <app>`            | Lint an app                                                                                      |
+| `otta type-check <app>`      | Type check an app                                                                                |
+| `otta clean <app>`           | Clean build artifacts                                                                            |
+| `otta list`                  | List all apps in the monorepo                                                                    |
+| `otta info <app>`            | Show detailed info about an app                                                                  |
+| `otta templates`             | Show available templates                                                                         |
 
 ## Templates
 

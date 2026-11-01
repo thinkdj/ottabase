@@ -24,6 +24,16 @@ framework secrets are generated and set once (`AUTH_SECRET`, `MIGRATION_SECRET`,
 redeploy. Details and flags (`--env`, `--set`, `--url`, `--skip-build`): `packages/cli/README.md`, "Deploying straight
 to Cloudflare". The rest of this guide is the CI/CD setup for a team.
 
+### From Cloudflare Workers Builds
+
+Cloudflare can build and deploy on every push, with no GitHub Actions: Workers & Pages, Create, Import a repository, one
+Worker per app (named as the env names it: `otta-web-production`). Root directory `/`, deploy command
+`pnpm otta deploy otta-web --ci`, the placeholder values of the env block (`D1_DATABASE_ID`, `KV_NAMESPACE_ID`,
+`CLOUDFLARE_ACCOUNT_ID`, …) as build variables, and Build watch paths from `pnpm otta deploy otta-web --watch-paths`
+(the app, the workspace packages it uses, the root build files), so a push rebuilds only the apps it can change. `--ci`
+creates nothing and sets no secret: run the first deploy from a terminal, or set the secrets by hand. Every flag:
+`packages/cli/README.md`, "Deploying from CI".
+
 Both `otta deploy` and the CI workflow tag each deploy with the short commit (`wrangler deploy --tag abc1234`). The
 Worker reads it back through its version metadata binding (`OBCF_VERSION` in `wrangler.jsonc`), so the `/admin`
 readiness line and the Fleet report say which build is running. Outside a git checkout `otta deploy` deploys untagged.

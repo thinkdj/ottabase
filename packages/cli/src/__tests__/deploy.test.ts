@@ -57,6 +57,15 @@ describe('wrangler.jsonc placeholders', () => {
         expect(findPlaceholders(WRANGLER)[0]).toBe('YOUR_D1_DATABASE_ID');
     });
 
+    it('never takes a name the config gives (a binding, a class) for a placeholder', () => {
+        const block = `{
+            "r2_buckets": [{ "binding": "CACHE_R2", "bucket_name": "turbo-cache" }],
+            "durable_objects": { "bindings": [{ "name": "ROOM_STATE", "class_name": "ROOM_ACTOR" }] },
+            "kv_namespaces": [{ "binding": "SESSION_KV", "id": "SESSION_KV_ID" }],
+        }`;
+        expect(findPlaceholders(block)).toEqual(['SESSION_KV_ID']);
+    });
+
     it('substitutes inside the chosen env block only and reports what is missing', () => {
         const { content, placeholders, missing } = substitutePlaceholders(WRANGLER, 'production', {
             D1_DATABASE_ID: 'd1-prod',
@@ -98,7 +107,7 @@ function fixture(): string {
     roots.push(root);
     const write = (file: string, content: string) => fs.outputFileSync(path.join(root, file), content);
     write('pnpm-workspace.yaml', 'packages:\n  - apps/*\n');
-    write('apps/shop/package.json', JSON.stringify({ name: '@ottabase/shop' }));
+    write('apps/shop/package.json', JSON.stringify({ name: '@ottabase/shop', scripts: { build: 'vite build' } }));
     write('apps/shop/wrangler.jsonc', WRANGLER);
     write(
         'apps/shop/.env.example',
@@ -236,7 +245,9 @@ describe('deployApp', () => {
             throw new Error('not authenticated');
         };
         await expect(deployApp(root, 'shop', {}, loggedOut)).rejects.toThrow(/pnpm cf:login/);
-        await expect(deployApp(root, 'nope', {})).rejects.toThrow(/no wrangler\.jsonc/);
+        await expect(deployApp(root, 'nope', {})).rejects.toThrow(/apps\/nope has no package\.json/);
+        fs.outputJsonSync(path.join(root, 'apps/bare/package.json'), { name: '@ottabase/bare' });
+        await expect(deployApp(root, 'bare', {})).rejects.toThrow(/no wrangler\.jsonc/);
     });
 
     it('a dry run writes nothing and runs nothing but whoami', async () => {

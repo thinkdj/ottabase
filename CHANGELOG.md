@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **`otta deploy` in CI, and per app.** `otta deploy <app> --ci` is the build and deploy only, for Cloudflare Workers
+  Builds or any CI: no login, nothing created, no secret touched, placeholder values from build variables (and `--set`),
+  `CLOUDFLARE_ACCOUNT_ID` included; a missing one stops the run and names itself. How an app builds now comes from its
+  `cloudflare-config.json` for every deploy: `buildCommand`, then `workerBuildCommand` (OpenNext, so a Next.js app such
+  as otta-landing deploys with `otta deploy` too), `verifyPaths` checked before wrangler runs, `wranglerEnv` as the
+  default env and `healthCheckPath` for the check. Only the workspace packages the app depends on are built
+  (`turbo run build --filter=<app>^...`), not all of them. `--build-only` and `--skip-build` split it into Workers
+  Builds' build and deploy commands. `--watch-paths` prints what the app's deploy depends on (the app, every workspace
+  package it reaches, the root build files): the include list for Workers Builds' build watch paths.
+  `--changed-since <ref>` deploys only when one of those changed, and `--all` deploys every app with a
+  `cloudflare-config.json` that is not `"deployable": false`, reporting each and failing at the end if one failed.
+  Versions are tagged with the CI commit (`WORKERS_CI_COMMIT_SHA`, `GITHUB_SHA`) when git cannot tell.
 - **Turnstile on every public form.** Cloudflare's bot check, free and invisible for most people, guards password
   sign-in, the magic link, register, password reset, verification resend, protected post unlock, anonymous comments, the
   landing lead form and (Pro) the newsletter and status page subscribe forms. `@ottabase/cf/turnstile` is the server
@@ -573,6 +585,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- `otta deploy` took a binding name (`"binding": "CACHE_R2"` in otta-cache) or a Durable Object class for a placeholder
+  and refused to deploy without a value for it. Values of `binding`, `class_name`, `name`, `service`, `entrypoint` and
+  `script_name` are names, never ids to fill.
 - Protected post unlock had no rate limit, so a post's password could be guessed.
 - Comments on platform-mode blog posts failed for everyone (the core policy required an organization).
 - Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
