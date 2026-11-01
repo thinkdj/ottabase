@@ -57,7 +57,7 @@ describe('resolveCfApp', () => {
         expect(ctx.resources.queue.name).toBe('ottabase-queue');
         expect(ctx.resources.queue.previewName).toBe('ottabase-queue-preview');
 
-        // GitHub Secret names come from the env.production / env.preview placeholders.
+        // The CI value names come from the env.production / env.preview placeholders.
         expect(ctx.resources.secrets.d1Id).toBe('D1_DATABASE_ID');
         expect(ctx.resources.secrets.kvPreviewId).toBe('KV_PREVIEW_NAMESPACE_ID');
     });

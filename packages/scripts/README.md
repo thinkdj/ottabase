@@ -66,8 +66,9 @@ pnpm cf:login
 
 ### `pnpm cf:setup`
 
-Interactive wizard that creates all required Cloudflare resources (D1, KV, R2, Queue) and prints the resource IDs for
-use as GitHub Secrets. Does **not** modify `wrangler.jsonc`.
+Interactive wizard that creates all required Cloudflare resources (D1, KV, R2, Queue) and prints the resource IDs CI
+needs (Workers Builds build variables, GitHub secrets). Does **not** modify `wrangler.jsonc`. `pnpm otta deploy` runs it
+with `--json` and fills the ids in itself.
 
 Pass script flags after `--` so pnpm forwards them to the script:
 
@@ -77,7 +78,7 @@ pnpm cf:setup -- --force          # Create all resources without prompts
 pnpm cf:setup -- --app=<name>     # Target a specific app (see "Targeting an app")
 ```
 
-**Output includes IDs for** (the GitHub Secret names are read from `wrangler.jsonc` `env.production` / `env.preview`):
+**Output includes IDs for** (the names are the placeholders of `wrangler.jsonc` `env.production` / `env.preview`):
 
 - `D1_DATABASE_ID` — Production D1 database
 - `D1_PREVIEW_DATABASE_ID` — Preview D1 database

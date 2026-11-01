@@ -361,15 +361,16 @@ async function main() {
     log('  - For /analytics page, set `CLOUDFLARE_ACCOUNT_ID` (vars) and', NC);
     log('    `CLOUDFLARE_ANALYTICS_API_TOKEN` (secret) with `Account Analytics` Read permission.', NC);
 
-    // Output resource IDs for GitHub Secrets (secret names come from wrangler.jsonc env.* placeholders)
+    // Output the resource IDs CI needs (the names are wrangler.jsonc's env.* placeholders): Workers Builds
+    // build variables for the production deploy, GitHub secrets for deploy.yml and the PR previews.
     log('', NC);
     log('Setup Complete!', GREEN);
     log('', NC);
-    log('Production (GitHub Secrets for main deploy):', YELLOW);
+    log('Production (Workers Builds build variables, or GitHub secrets for deploy.yml):', YELLOW);
     if (d1Id) log(`  ${res.secrets.d1Id}=${d1Id}`);
     if (kvId) log(`  ${res.secrets.kvId}=${kvId}`);
     log('', NC);
-    log('Preview (GitHub Secrets for PR preview deploy):', YELLOW);
+    log('Preview (GitHub secrets for the PR previews):', YELLOW);
     if (d1PreviewId) log(`  ${res.secrets.d1PreviewId}=${d1PreviewId}`);
     if (kvPreviewId) log(`  ${res.secrets.kvPreviewId}=${kvPreviewId}`);
 

@@ -28,7 +28,7 @@ export interface CfResourceNames {
     /** Every R2 bucket the target binds (files, private files, backups...), in wrangler.jsonc order. */
     r2: Array<{ binding: string; name: string; previewName: string }>;
     queue: { name: string; previewName: string };
-    /** GitHub Secret names CI substitutes at deploy time (read from env.production / env.preview). */
+    /** The placeholder names `otta deploy` fills at deploy time (read from env.production / env.preview): CI's value names. */
     secrets: { d1Id: string; kvId: string; d1PreviewId: string; kvPreviewId: string };
 }
 
