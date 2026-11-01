@@ -21,14 +21,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   deploys only apps a file under their watch paths changed for (the app, every workspace package it reaches, the root
   build files; `--watch-paths` prints them for Workers Builds), and deploys when git cannot tell. `#skipdeploy` in the
   commit message skips `--ci` and `--plan` runs in Workers Builds and GitHub alike; `--force` overrides.
-  `--preview <id>` deploys env.preview as its own Worker `<name>-<id>` and `--delete-preview <id>` removes it. In CI,
-  values come from `--set`, `OTTA_DEPLOY_VALUES` (one JSON object: GitHub's `toJson(secrets)`, taken out of the
-  environment by the launcher before anything loads, so no build or dependency sees it) and the environment; every
-  missing name, the manifest's `requiresSecrets` included, is listed at once before anything builds. `requiresSecrets`
-  are the build's own values (blackbox's `BLACKBOX_UPLOAD_TOKEN` for its `postbuild` source map upload): exactly those
-  reach the build scripts. Placeholders are read from wrangler.jsonc's syntax tree (a commented-out line is never one; a
-  value with a quote or a backslash is written escaped). `otta start --env` reads the manifest the same strict way.
-  Versions are tagged with the CI commit (`WORKERS_CI_COMMIT_SHA`, `GITHUB_SHA`) when git cannot tell.
+  `--preview <id>` deploys env.preview as its own Worker `<name>-<id>` and `--delete-preview <id>` removes it.
+  `--config-only` writes `wrangler.<env>.jsonc`, every value filled and checked, and stops, for a pipeline that builds
+  and deploys its own way. In CI, values come from `--set`, `OTTA_DEPLOY_VALUES` (one JSON object: GitHub's
+  `toJson(secrets)`, taken out of the environment by the launcher before anything loads, so no build or dependency sees
+  it) and the environment; every missing name, the manifest's `requiresSecrets` included, is listed at once before
+  anything builds. `requiresSecrets` are the build's own values (blackbox's `BLACKBOX_UPLOAD_TOKEN` for its `postbuild`
+  source map upload): exactly those reach the build scripts. Placeholders are read from wrangler.jsonc's syntax tree (a
+  commented-out line is never one; a value with a quote or a backslash is written escaped). `otta start --env` reads the
+  manifest the same strict way. Versions are tagged with the CI commit (`WORKERS_CI_COMMIT_SHA`, `GITHUB_SHA`) when git
+  cannot tell.
 - **Turnstile on every public form.** Cloudflare's bot check, free and invisible for most people, guards password
   sign-in, the magic link, register, password reset, verification resend, protected post unlock, anonymous comments, the
   landing lead form and (Pro) the newsletter and status page subscribe forms. `@ottabase/cf/turnstile` is the server
@@ -340,11 +342,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `apps/*/cloudflare-config.json` (`otta deploy` names any left, and what replaced it); give every app it deploys a
   manifest; set `"deployable": false` on any app `APPS_TO_DEPLOY` used to leave out, or CI deploys it now; and delete
   the `APPS_TO_DEPLOY` and `CF_WORKER_SUBDOMAIN` secrets.
-- **Preview URLs are off by default.** Every app's `wrangler.jsonc` sets `"preview_urls": false` at the top level
-  (inherited by each env block). Left unset, Cloudflare turned them on with `workers.dev`, so every uploaded version
-  answered publicly at `<version>-<name>.<subdomain>.workers.dev`, beside the custom domain and whatever guards it. PR
-  previews do not use them (each is its own Worker). Set `"preview_urls": true` in an env block to have them there; a
-  test holds the templates, and so every app `otta new` makes, to `false`.
+- **Version URLs (formerly Preview URLs) are off by default.** Every app's `wrangler.jsonc` sets `"preview_urls": false`
+  at the top level (inherited by each env block). Left unset, they followed `workers.dev`, so every uploaded version of
+  an app without Durable Objects answered publicly at `<version>-<name>.<subdomain>.workers.dev`, beside the custom
+  domain and whatever guards it. PR previews do not use them (each is its own Worker). Set `"preview_urls": true` in an
+  env block to have them there; a test holds the templates, and so every app `otta new` makes, to `false`.
 - **An app's `deploy` script is `otta deploy`.** `pnpm run deploy` in an app folder runs `pnpm -w otta deploy <app>`;
   the old scripts ran a bare `wrangler deploy` on the template config, placeholders unfilled. The docs said
   `pnpm deploy`, which is pnpm's own command (it copies a package to a folder) and never ran the script: they say
@@ -356,6 +358,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   shared package build and one `otta deploy` per app; `.github/scripts/substitute-wrangler-secrets.py` and
   `discover-deployable-apps.mjs` are deleted. `--skip-build` builds nothing (the packages neither); `--build-only` and
   `--preview` need `--ci`. `.github/DEPLOYMENT.md` is the reference for all of it.
+- **Previews from manual runs are one per branch, and go with it.** A manual `pr-preview.yml` run without a PR number
+  names its preview `br-<branch>-<hash>` (each run replaces it; two branches never share one) instead of a new
+  `manual-<run>` Worker every time, and deleting the branch removes it, as does a manual run with `cleanup` ticked.
+  Cleanup lists the account's Workers first (one API call), so a PR or a branch that never had a preview costs no
+  install.
+- **Deploys run in GitHub Environments.** `deploy.yml`'s jobs run in `production`, `pr-preview.yml`'s in `preview`, each
+  linked to the deployed URL (`otta deploy` writes it to the step's outputs). Limit `production` to `main`, and give
+  `preview` required reviewers so a PR's code sees no secret before someone approves it.
+- **`otta deploy --plan` gives each app's `appType`**, so the workflows restore the Next.js build cache only for Next.js
+  apps.
 - **Rate limiters follow one rule when their binding is missing:** closed in production, open (logged) elsewhere. The
   secret-gated throttle (bootstrap, platform-owner promote, migrations) used to let requests through everywhere.
 - `/api/ottaorm/init` takes `MIGRATION_SECRET` from a Bearer header or the JSON body only, never `?secret=`, compares it
@@ -631,6 +643,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `packages/pro`) that the diff cannot see. It reads the diff NUL-separated (a path with a space or an accent was quoted
   by git and matched nothing) and without rename detection (a file moved out of an app did not count for it).
 - `otta start --env` read `cloudflare-config.json` with its own lax rules; it uses the deploy's strict reader now.
+- `otta deploy --watch-paths` printed `apps/<app>/**`, a form Workers Builds' build watch paths do not document; it
+  prints their `apps/<app>/*` (one `*` matches nested paths too).
+- The pre-commit hook still carried the two lines husky 9 deprecates (and husky 10 fails on).
 - Protected post unlock had no rate limit, so a post's password could be guessed.
 - Comments on platform-mode blog posts failed for everyone (the core policy required an organization).
 - Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
