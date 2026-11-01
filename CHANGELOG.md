@@ -646,6 +646,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `otta deploy --watch-paths` printed `apps/<app>/**`, a form Workers Builds' build watch paths do not document; it
   prints their `apps/<app>/*` (one `*` matches nested paths too).
 - The pre-commit hook still carried the two lines husky 9 deprecates (and husky 10 fails on).
+- `otta new` named a new app's database, public bucket and queue after it, but not its private files and backups buckets
+  (`ottabase-files-private`, `ottabase-vault`, in every env), so a second app in the account shared them with the first.
+  Every resource the template names after the framework takes the app's name now.
 - Protected post unlock had no rate limit, so a post's password could be guessed.
 - Comments on platform-mode blog posts failed for everyone (the core policy required an organization).
 - Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
