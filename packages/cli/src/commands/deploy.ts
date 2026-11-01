@@ -74,6 +74,11 @@ export interface DeployOptions {
     ci?: boolean;
     /** Stop after the build: Workers Builds' build command. Its deploy command then runs with `--skip-build`. */
     buildOnly?: boolean;
+    /**
+     * Write `wrangler.<env>.jsonc` (every value found and checked) and stop: for a pipeline that builds and
+     * deploys its own way, so it still fills the placeholders with this one engine.
+     */
+    configOnly?: boolean;
     /** Deploy only when a file the app depends on (`watchPaths`) changed since this git ref. */
     changedSince?: string;
     /** Deploy even when `#skipdeploy` is in the commit message or nothing changed. */
@@ -105,7 +110,7 @@ export interface DeployResult {
     bootstrapped: boolean;
     healthy: boolean | null;
     /** Why nothing was deployed (`built`: --build-only). Null after a deploy. */
-    skipped: 'unchanged' | 'skipdeploy' | 'built' | null;
+    skipped: 'unchanged' | 'skipdeploy' | 'built' | 'configured' | null;
 }
 
 /** The secrets the framework generates for a deployment, when the app's `.env.example` declares them. */
@@ -442,7 +447,7 @@ export async function deployApp(
     };
     const packageName = pkg.name ?? `@ottabase/${appName}`;
     for (const script of [config.buildCommand, config.workerBuildCommand]) {
-        if (script && !options.skipBuild && !pkg.scripts?.[script]) {
+        if (script && !options.skipBuild && !options.configOnly && !pkg.scripts?.[script]) {
             throw new Error(
                 `apps/${appName}/package.json has no "${script}" script (cloudflare-config.json names it).`,
             );
@@ -545,17 +550,17 @@ export async function deployApp(
         );
     }
     log.step(`${configName}: ${placeholders.length - missing.length} of ${placeholders.length} placeholder(s) filled`);
-    const buildPackages = !options.skipPackages && !options.skipBuild;
+    const buildPackages = !options.skipPackages && !options.skipBuild && !options.configOnly;
     const buildSteps = [
         ...(buildPackages ? [`the workspace packages ${appName} uses`] : []),
-        ...(options.skipBuild
+        ...(options.skipBuild || options.configOnly
             ? []
             : [`${appName} (${[config.buildCommand, config.workerBuildCommand].filter(Boolean).join(', then ')})`]),
     ];
     if (options.dryRun) {
         log.dim(`  would write apps/${appName}/${configName}${absent.length ? `; missing ${absent.join(', ')}` : ''}`);
         if (buildSteps.length) log.dim(`  would build ${buildSteps.join(', then ')}`);
-        if (!options.buildOnly) {
+        if (!options.buildOnly && !options.configOnly) {
             log.dim(
                 `  would deploy env.${env}${previewName ? ` as ${previewName}` : ''}${options.ci ? '' : ', set the missing secrets'}`,
             );
@@ -563,6 +568,11 @@ export async function deployApp(
         return result;
     }
     fs.writeFileSync(configFile, content);
+    if (options.configOnly) {
+        log.success(`apps/${appName}/${configName} written; nothing built or deployed`);
+        result.skipped = 'configured';
+        return result;
+    }
 
     // 4. Build: the app's workspace packages (only those), the app, its Worker bundle.
     if (buildPackages) {
@@ -805,7 +815,7 @@ export interface DeployCommandOptions extends DeployOptions {
     all?: boolean;
     /** Print the app's watch paths (what its deploy depends on), one per line, and deploy nothing. */
     watchPaths?: boolean;
-    /** Print what this run would deploy and why, as JSON (`{ "include": [{ app, reason }] }`), and deploy nothing. */
+    /** Print what this run would deploy and why, as JSON (`{ "include": [{ app, reason, appType }] }`), and deploy nothing. */
     plan?: boolean;
     /** Delete the preview Worker `<name>-<id>` (of the app, or with --all of every app). */
     deletePreview?: string;
@@ -883,12 +893,35 @@ function reportRow(result: DeployResult, options: DeployOptions): ReportRow {
     const outcome =
         result.skipped === 'built'
             ? 'built'
-            : result.skipped
-              ? `skipped: ${result.skipped}`
-              : options.dryRun
-                ? 'planned (dry run)'
-                : `deployed env.${result.env}${result.workerName ? ` as ${result.workerName}` : ''}${result.healthy === false ? ', health check failed' : ''}`;
+            : result.skipped === 'configured'
+              ? `configured: ${path.basename(result.configFile)}`
+              : result.skipped
+                ? `skipped: ${result.skipped}`
+                : options.dryRun
+                  ? 'planned (dry run)'
+                  : `deployed env.${result.env}${result.workerName ? ` as ${result.workerName}` : ''}${result.healthy === false ? ', health check failed' : ''}`;
     return { app: result.app, outcome, url: result.workerUrl };
+}
+
+/**
+ * Hand values to the next GitHub Actions steps (`steps.<id>.outputs.<name>`) when there is a GITHUB_OUTPUT:
+ * the deployed URL becomes the environment's link on the run and the PR. Never fails the run.
+ */
+export function writeStepOutputs(values: Record<string, string | null | undefined>): void {
+    const file = process.env.GITHUB_OUTPUT;
+    if (!file) return;
+    const lines = Object.entries(values)
+        .filter(
+            (pair): pair is [string, string] =>
+                typeof pair[1] === 'string' && pair[1] !== '' && !/[\r\n]/.test(pair[1]),
+        )
+        .map(([name, value]) => `${name}=${value}`);
+    if (!lines.length) return;
+    try {
+        fs.appendFileSync(file, `${lines.join('\n')}\n`);
+    } catch {
+        // An output is a convenience.
+    }
 }
 
 /** Append the run's report to GitHub's job summary when there is one. Never fails the run. */
@@ -924,6 +957,9 @@ function checkCombination(appName: string | undefined, options: DeployCommandOpt
         refuse("--build-only is for CI (Workers Builds' build command): add --ci, or run otta deploy alone.");
     }
     if (options.buildOnly && options.skipBuild) refuse('--build-only with --skip-build would build nothing.');
+    if (options.configOnly && (options.buildOnly || options.skipBuild || options.plan || options.deletePreview)) {
+        refuse('--config-only writes the config and stops: it takes no build, plan or cleanup flag.');
+    }
 }
 
 /** `otta deploy [app]`. */
@@ -944,7 +980,9 @@ export async function deployCommand(
             : [planApp(root, resolveApp(appName).name, input)];
         for (const entry of entries)
             console.error(`${entry.app}: ${entry.deploy ? 'deploy' : 'skip'} (${entry.reason})`);
-        const include = entries.filter((entry) => entry.deploy).map(({ app, reason }) => ({ app, reason }));
+        const include = entries
+            .filter((entry) => entry.deploy)
+            .map(({ app, reason, appType }) => ({ app, reason, ...(appType ? { appType } : {}) }));
         process.stdout.write(`${JSON.stringify({ include })}\n`);
         return [];
     }
@@ -982,6 +1020,7 @@ export async function deployCommand(
         throw error;
     }
     writeStepSummary([reportRow(result, options)]);
+    if (!options.dryRun && !result.skipped) writeStepOutputs({ url: result.workerUrl, worker: result.workerName });
     console.log('');
     if (options.dryRun) {
         log.done(`dry run for ${app.name}, env.${result.env}; nothing deployed.`);
@@ -993,6 +1032,10 @@ export async function deployCommand(
     }
     if (result.skipped === 'built') {
         log.done(`${app.name} built for env.${result.env}.`);
+        return [result];
+    }
+    if (result.skipped === 'configured') {
+        log.done(`${app.name}: apps/${app.name}/${path.basename(result.configFile)} is ready for env.${result.env}.`);
         return [result];
     }
     log.done(

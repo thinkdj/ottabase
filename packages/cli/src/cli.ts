@@ -285,6 +285,10 @@ program
         'Build and deploy only: no login, no resources created, no secrets, no bootstrap (Workers Builds, GitHub)',
     )
     .option('--build-only', "With --ci: stop after the build (Workers Builds' build command; deploy with --skip-build)")
+    .option(
+        '--config-only',
+        'Write wrangler.<env>.jsonc with every value filled and checked, then stop (a pipeline that builds its own way)',
+    )
     .option('--changed-since <ref>', 'Deploy only when a file the app depends on changed since this git ref')
     .option('--force', 'Deploy even with #skipdeploy in the commit message or nothing changed')
     .option('--all', 'Every app whose cloudflare-config.json does not say "deployable": false')
@@ -342,6 +346,7 @@ build must leave, its env, health path, previews and the names CI must provide.
                 dryRun?: boolean;
                 ci?: boolean;
                 buildOnly?: boolean;
+                configOnly?: boolean;
                 changedSince?: string;
                 force?: boolean;
                 all?: boolean;

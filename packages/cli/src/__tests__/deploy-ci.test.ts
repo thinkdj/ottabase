@@ -28,6 +28,7 @@ import {
     parseDeployValues,
     findPlaceholders,
     previewWorkerName,
+    writeStepOutputs,
     substitutePlaceholders,
     type Exec,
 } from '../commands/deploy.js';
@@ -303,10 +304,11 @@ describe('the deploy plan', () => {
     it('turns the graph into watch paths, and a diff into deploy or not', () => {
         const root = workspace();
         const web = watchPaths(root, 'web');
+        // Workers Builds' syntax: one `*`, which matches nested paths too (its docs never mention `**`).
         expect(web).toEqual([
-            'apps/web/**',
-            'packages/ui/**',
-            'packages/utils/**',
+            'apps/web/*',
+            'packages/ui/*',
+            'packages/utils/*',
             '.nvmrc',
             'package.json',
             'pnpm-lock.yaml',
@@ -316,6 +318,7 @@ describe('the deploy plan', () => {
             'turbo.json',
         ]);
         expect(isAffected(['packages/utils/src/date.ts'], web)).toBe(true);
+        expect(isAffected(['apps/web/src/deep/er/page.tsx'], web)).toBe(true);
         expect(isAffected(['pnpm-lock.yaml'], web)).toBe(true);
         expect(isAffected(['packages/unused/src/a.ts', 'README.md', 'docs/x.md'], web)).toBe(false);
         // A sibling whose name starts like a watched folder is not inside it.
@@ -769,6 +772,62 @@ describe('edge cases a tester finds', () => {
             reason: 'wrangler.jsonc has no env.preview block',
         });
         expect(planDeploys(root, {}).find((e) => e.app === 'noprev')).toMatchObject({ deploy: true });
+    });
+
+    it('gives each planned app its appType, so CI caches by it', () => {
+        const root = workspace();
+        const plan = planDeploys(root, {});
+        expect(plan.find((e) => e.app === 'landing')).toMatchObject({ deploy: true, appType: 'nextjs' });
+        expect(plan.find((e) => e.app === 'web')).toMatchObject({ deploy: true, appType: 'vite' });
+        // A manifest that does not read has no appType to give.
+        fs.outputFileSync(path.join(root, 'apps/web/cloudflare-config.json'), '{ broken');
+        expect(planDeploys(root, {}).find((e) => e.app === 'web')?.appType).toBeUndefined();
+    });
+
+    it('hands the deployed URL to the next GitHub step, and nothing that could break the file', () => {
+        const root = workspace();
+        const outputs = path.join(root, 'outputs.txt');
+        vi.stubEnv('GITHUB_OUTPUT', outputs);
+        writeStepOutputs({ url: 'https://web-pr-1.me.workers.dev', worker: 'web-pr-1', empty: '', none: null });
+        writeStepOutputs({ forged: 'x\nurl=https://evil.example' });
+        expect(fs.readFileSync(outputs, 'utf8')).toBe('url=https://web-pr-1.me.workers.dev\nworker=web-pr-1\n');
+        vi.stubEnv('GITHUB_OUTPUT', '');
+        writeStepOutputs({ url: 'https://x' }); // no file: nothing to do, nothing thrown
+    });
+
+    it('--config-only writes the filled config and stops, for a pipeline that builds its own way', async () => {
+        const root = workspace();
+        // The env a pipeline deploys by hand (the demo's env.demo), with a binding that is a name, not a value.
+        const demo = WRANGLER.replace(
+            '"preview": {',
+            '"demo": { "d1_databases": [{ "binding": "OBCF_D1", "database_id": "DEMO_D1_ID" }, { "binding": "DEMO_DB", "database_id": "DEMO_DB_ID" }] },\n        "preview": {',
+        );
+        fs.outputFileSync(path.join(root, 'apps/web/wrangler.jsonc'), demo);
+        vi.stubEnv('DEMO_D1_ID', 'd1-demo');
+        vi.stubEnv('DEMO_DB_ID', 'db-demo');
+        const calls: string[] = [];
+        const result = await deployApp(
+            root,
+            'web',
+            { ci: true, env: 'demo', configOnly: true, force: true },
+            fakeExec(root, calls),
+        );
+        expect(result.skipped).toBe('configured');
+        expect(calls).toEqual([]); // no git, no build, no wrangler
+        const written = parseJsonc(fs.readFileSync(path.join(root, 'apps/web/wrangler.demo.jsonc'), 'utf8')) as {
+            env: { demo: { d1_databases: { binding: string; database_id: string }[] } };
+        };
+        expect(written.env.demo.d1_databases).toEqual([
+            { binding: 'OBCF_D1', database_id: 'd1-demo' },
+            { binding: 'DEMO_DB', database_id: 'db-demo' },
+        ]);
+        vi.stubEnv('DEMO_DB_ID', '');
+        await expect(
+            deployApp(root, 'web', { ci: true, env: 'demo', configOnly: true, force: true }, fakeExec(root, [])),
+        ).rejects.toThrow(/No value for DEMO_DB_ID/);
+        await expect(deployCommand('web', { configOnly: true, buildOnly: true, ci: true })).rejects.toThrow(
+            /takes no build, plan or cleanup flag/,
+        );
     });
 
     it('refuses an id that is no DNS label, and flags that build nothing', async () => {

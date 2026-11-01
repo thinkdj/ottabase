@@ -186,6 +186,7 @@ pnpm otta deploy --all --ci --changed-since "$BEFORE_SHA" # every deployable app
 pnpm otta deploy --all --plan --changed-since "$BEFORE_SHA"   # the same decision, as JSON (GitHub's matrix)
 pnpm otta deploy my-app --ci --preview pr-12              # env.preview as the Worker <name>-pr-12
 pnpm otta deploy --all --delete-preview pr-12             # and gone again
+pnpm otta deploy my-app --ci --env demo --config-only     # only wrangler.demo.jsonc, for a pipeline of its own
 ```
 
 `--ci` is the build and deploy of the steps above and nothing else: no login (wrangler authenticates with

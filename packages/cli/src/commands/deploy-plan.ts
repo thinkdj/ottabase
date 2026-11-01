@@ -212,6 +212,8 @@ export interface PlanEntry {
     reason: string;
     /** When it does not deploy, the kind of reason. */
     skip?: SkipKind;
+    /** The manifest's appType (absent when the manifest does not read): CI caches by it (Next.js's .next/cache). */
+    appType?: AppDeployConfig['appType'];
 }
 
 export type SkipKind = 'unchanged' | 'skipdeploy' | 'no-preview' | 'not-deployable';
@@ -247,8 +249,9 @@ export function planApp(
     } catch (error) {
         return { app, deploy: true, reason: error instanceof Error ? error.message : String(error) };
     }
-    const go = (reason: string): PlanEntry => ({ app, deploy: true, reason });
-    const skip = (kind: SkipKind, reason: string): PlanEntry => ({ app, deploy: false, reason, skip: kind });
+    const { appType } = config;
+    const go = (reason: string): PlanEntry => ({ app, deploy: true, reason, appType });
+    const skip = (kind: SkipKind, reason: string): PlanEntry => ({ app, deploy: false, reason, skip: kind, appType });
     if (scope === 'all' && !config.deployable) return skip('not-deployable', 'deployable: false');
     if (input.preview && !config.previewDeployable) return skip('no-preview', 'previewDeployable: false');
     if (input.preview && !hasEnvBlock(path.join(root, 'apps', app), config, 'preview')) {
@@ -376,9 +379,10 @@ const ROOT_FILES = [
 ];
 
 /**
- * What the app's deploy depends on, as watch-path globs: the app, every workspace package it reaches,
- * and the root build files. The include list for Workers Builds' build watch paths, and what
- * `--changed-since` compares a diff against.
+ * What the app's deploy depends on, as watch paths: the app, every workspace package it reaches, and the
+ * root build files. Written in Workers Builds' own syntax (a folder is `dir/*`, its `*` matching any
+ * characters, nested paths included), so the list pastes as is into its build watch paths; it is also
+ * what `--changed-since` compares a diff against.
  */
 export function watchPaths(root: string, appName: string, packages?: Map<string, string>): string[] {
     const appDir = path.join(root, 'apps', appName);
@@ -389,17 +393,17 @@ export function watchPaths(root: string, appName: string, packages?: Map<string,
               .sort()
         : [];
     return [
-        `apps/${appName}/**`,
-        ...workspaceDependencyDirs(root, appDir, packages).map((dir) => `${dir}/**`),
-        ...(fs.existsSync(path.join(root, 'patches')) ? ['patches/**'] : []),
+        `apps/${appName}/*`,
+        ...workspaceDependencyDirs(root, appDir, packages).map((dir) => `${dir}/*`),
+        ...(fs.existsSync(path.join(root, 'patches')) ? ['patches/*'] : []),
         ...rootFiles,
     ];
 }
 
-/** Whether any changed file (repository-relative, posix) falls under the globs `watchPaths` returns. */
+/** Whether any changed file (repository-relative, posix) falls under the paths `watchPaths` returns. */
 export function isAffected(changedFiles: string[], globs: string[]): boolean {
     return changedFiles.some((file) =>
-        globs.some((glob) => (glob.endsWith('/**') ? file.startsWith(glob.slice(0, -2)) : file === glob)),
+        globs.some((glob) => (glob.endsWith('/*') ? file.startsWith(glob.slice(0, -1)) : file === glob)),
     );
 }
 
@@ -410,8 +414,8 @@ export function isAffected(changedFiles: string[], globs: string[]): boolean {
 export function nestedCheckouts(root: string, globs: string[]): string[] {
     const found = new Set<string>();
     for (const glob of globs) {
-        if (!glob.endsWith('/**')) continue;
-        const parts = glob.slice(0, -3).split('/');
+        if (!glob.endsWith('/*')) continue;
+        const parts = glob.slice(0, -2).split('/');
         for (let i = 1; i <= parts.length; i++) {
             const dir = parts.slice(0, i).join('/');
             if (fs.existsSync(path.join(root, dir, '.git'))) {
