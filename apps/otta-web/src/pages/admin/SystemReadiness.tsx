@@ -1,15 +1,19 @@
 /**
- * "System readiness" at the top of /admin, platform admins only.
+ * System readiness, platform admins only, in two sizes:
  *
- * One collapsed line when everything is fine; expanded with a red banner when a required setting
- * is missing or a probe fails. Details: counts, search, "Missing only" / "Required only" filters,
- * a table grouped by package (key, kind chip, optional pill, description, value or Set / Not set)
- * and the health checks under their package. A missing secret offers its wrangler command.
+ * - `SystemReadiness`: one line at the top of /admin. What is wrong, by name (the missing required
+ *   keys and failing checks, the first few), or "All systems ready", and a link to the full page.
+ *   Never more than that: the overview is for getting somewhere, not for reading a table.
+ * - `SystemReadinessPage` (/admin/infrastructure/readiness): counts, search, "Missing only" /
+ *   "Required only" filters, a table grouped by package (key, kind chip, optional pill, description,
+ *   value or Set / Not set) and the health checks under their package. A missing secret offers its
+ *   wrangler command.
  */
 import type { DeploymentVersion, ReadinessReport } from '@ottabase/kernel';
 import { useApiQuery } from '@ottabase/ottaorm/client';
-import { Button, EnvName, Input, StatusChip, toast } from '@ottabase/ui';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Copy, Search, X } from 'lucide-react';
+import { Button, EnvName, Input, PageHeader, StatusChip, toast } from '@ottabase/ui';
+import { Link } from '@tanstack/react-router';
+import { AlertTriangle, ArrowRight, Check, Copy, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface ReadinessResponse extends ReadinessReport {
@@ -55,21 +59,92 @@ export function wranglerCommand(setting: {
     return `wrangler secret put ${setting.key}`;
 }
 
-export function SystemReadiness() {
-    const [open, setOpen] = useState<boolean | null>(null);
-    const [query, setQuery] = useState('');
-    const [missingOnly, setMissingOnly] = useState(false);
-    const [requiredOnly, setRequiredOnly] = useState(false);
+/** Where the full readiness table lives. */
+export const READINESS_PATH = '/admin/infrastructure/readiness';
 
-    const readiness = useApiQuery<ReadinessResponse>({
+/** "A, B, C +2 more": the first `max` names, then how many are left. */
+export function nameList(names: string[], max = 3): string {
+    const shown = names.slice(0, max).join(', ');
+    return names.length > max ? `${shown} +${names.length - max} more` : shown;
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function useReadiness() {
+    return useApiQuery<ReadinessResponse>({
         queryKey: ['admin', 'system', 'readiness'],
         endpoint: '/api/admin/system/readiness',
         queryOptions: { staleTime: 30_000, meta: { errorPresentation: 'local' } },
     });
+}
+
+/** The /admin line: what is wrong, by name, and a link to the full page. */
+export function SystemReadiness() {
+    const readiness = useReadiness();
+    const data = readiness.data;
+    if (readiness.isPending) {
+        return <div className="h-10 animate-pulse rounded-lg bg-muted/40" aria-busy="true" />;
+    }
+
+    // By name, once: several packages can require the same key (AUTH_SECRET).
+    const missing = data ? [...new Set(data.settings.filter((s) => s.required && !s.set).map((s) => s.key))] : [];
+    const failed = data ? [...new Set(data.checks.filter((c) => !c.ok).map((c) => c.name))] : [];
+    const problems = !data || missing.length + failed.length > 0;
+    const parts = [
+        missing.length ? `${plural(missing.length, 'required setting')} missing: ${nameList(missing)}` : null,
+        failed.length ? `${plural(failed.length, 'check')} failing: ${nameList(failed)}` : null,
+    ].filter(Boolean);
+
+    return (
+        <Link
+            to={READINESS_PATH}
+            className="group flex items-center gap-3 rounded-lg border border-border/60 bg-card px-4 py-2.5 text-sm outline-hidden transition duration-fast ease-theme hover:border-input focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+            <span className={`h-2 w-2 shrink-0 rounded-full ${problems ? 'bg-destructive' : 'bg-success'}`} />
+            <span className="min-w-0 truncate">
+                {!data ? (
+                    <span className="text-destructive">Could not load system readiness.</span>
+                ) : parts.length ? (
+                    <span className="text-foreground">{parts.join(' · ')}</span>
+                ) : (
+                    <>
+                        <span className="font-medium text-foreground">All systems ready</span>
+                        <span className="text-muted-foreground">
+                            {' '}
+                            · {data.app.environment}
+                            {data.app.version && ` · ${versionLabel(data.app.version)}`}
+                        </span>
+                    </>
+                )}
+            </span>
+            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground transition duration-fast ease-theme group-hover:text-foreground">
+                Full details <ArrowRight className="h-4 w-4" />
+            </span>
+        </Link>
+    );
+}
+
+/** /admin/infrastructure/readiness: every setting, binding and health check, filterable. */
+export function SystemReadinessPage() {
+    return (
+        <div className="flex flex-col gap-6 pb-20">
+            <PageHeader
+                title="System readiness"
+                description="Every setting, binding and health check this deployment reads, and what is missing."
+            />
+            <ReadinessDetails />
+        </div>
+    );
+}
+
+function ReadinessDetails() {
+    const [query, setQuery] = useState('');
+    const [missingOnly, setMissingOnly] = useState(false);
+    const [requiredOnly, setRequiredOnly] = useState(false);
+
+    const readiness = useReadiness();
     const data = readiness.data;
     const problems = data ? data.summary.missingRequired + data.summary.failedChecks : 0;
-    // Collapsed by default when fine, expanded automatically when something is wrong.
-    const expanded = open ?? problems > 0;
 
     const groups = useMemo(() => {
         if (!data) return [];
@@ -124,12 +199,7 @@ export function SystemReadiness() {
     return (
         <section className="rounded-xl border border-border/60 bg-card">
             {/* Summary line */}
-            <button
-                type="button"
-                onClick={() => setOpen(!expanded)}
-                aria-expanded={expanded}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm"
-            >
+            <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
                 <span
                     className={`h-2.5 w-2.5 shrink-0 rounded-full ${problems > 0 ? 'bg-destructive' : 'bg-success'}`}
                 />
@@ -142,124 +212,114 @@ export function SystemReadiness() {
                     · {data.summary.total} settings · {data.checks.length} health checks · {data.app.environment}
                     {data.app.version && ` · ${versionLabel(data.app.version)}`}
                 </span>
-                <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground">
-                    Details {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </span>
-            </button>
+            </div>
 
-            {expanded && (
-                <div className="space-y-4 border-t border-border/60 p-4">
-                    {missing.length > 0 && (
-                        <div
-                            role="alert"
-                            className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm"
-                        >
-                            <p className="flex items-center gap-2 font-medium text-destructive">
-                                <AlertTriangle className="h-4 w-4" /> {missing.length} required setting
-                                {missing.length === 1 ? '' : 's'} missing
-                            </p>
-                            <ul className="mt-2 space-y-1">
-                                {missing.map((s) => (
-                                    <li key={`${s.package}:${s.key}`} className="flex flex-wrap items-center gap-2">
-                                        <EnvName>{s.key}</EnvName>
-                                        <span className="text-muted-foreground">{s.package}</span>
-                                        {s.description && (
-                                            <span className="text-muted-foreground">{s.description}</span>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+            <div className="space-y-4 border-t border-border/60 p-4">
+                {missing.length > 0 && (
+                    <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+                        <p className="flex items-center gap-2 font-medium text-destructive">
+                            <AlertTriangle className="h-4 w-4" /> {missing.length} required setting
+                            {missing.length === 1 ? '' : 's'} missing
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                            {missing.map((s) => (
+                                <li key={`${s.package}:${s.key}`} className="flex flex-wrap items-center gap-2">
+                                    <EnvName>{s.key}</EnvName>
+                                    <span className="text-muted-foreground">{s.package}</span>
+                                    {s.description && <span className="text-muted-foreground">{s.description}</span>}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
-                    {/* Counts */}
-                    <div className="grid gap-3 sm:grid-cols-4">
-                        {[
-                            ['Total', data.summary.total],
-                            ['Set', data.summary.set],
-                            ['Missing (required)', data.summary.missingRequired],
-                            ['Optional unset', data.summary.optionalUnset],
-                        ].map(([label, value]) => (
-                            <div key={String(label)} className="rounded-lg bg-muted/40 px-3 py-2">
-                                <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {label}
-                                </div>
-                                <div className="text-lg font-semibold tabular-nums">{value}</div>
+                {/* Counts */}
+                <div className="grid gap-3 sm:grid-cols-4">
+                    {[
+                        ['Total', data.summary.total],
+                        ['Set', data.summary.set],
+                        ['Missing (required)', data.summary.missingRequired],
+                        ['Optional unset', data.summary.optionalUnset],
+                    ].map(([label, value]) => (
+                        <div key={String(label)} className="rounded-lg bg-muted/40 px-3 py-2">
+                            <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                                {label}
                             </div>
-                        ))}
-                    </div>
-
-                    {/* Filters */}
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative w-64">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                placeholder="Filter by key name..."
-                                className="pl-9"
-                            />
-                            {query && (
-                                <button
-                                    type="button"
-                                    aria-label="Clear"
-                                    onClick={() => setQuery('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            )}
+                            <div className="text-lg font-semibold tabular-nums">{value}</div>
                         </div>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={missingOnly}
-                                onChange={(e) => setMissingOnly(e.target.checked)}
-                                className="h-4 w-4 rounded border-input"
-                            />
-                            Missing only
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={requiredOnly}
-                                onChange={(e) => setRequiredOnly(e.target.checked)}
-                                className="h-4 w-4 rounded border-input"
-                            />
-                            Required only
-                        </label>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                            {data.app.appId} · {data.app.packages.length} packages
-                            {data.app.premiumInstalled ? ' · premium installed' : ''}
-                        </span>
-                    </div>
-
-                    {/* Table grouped by package */}
-                    <div className="overflow-x-auto rounded-lg border border-border/60">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/40 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
-                                <tr>
-                                    <th className="w-10 px-3 py-2 text-left">Status</th>
-                                    <th className="px-3 py-2 text-left">Key</th>
-                                    <th className="px-3 py-2 text-left">Value</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border/60">
-                                {groups.map((group) => (
-                                    <GroupRows key={group.pkg} group={group} onCopy={copy} />
-                                ))}
-                                {groups.length === 0 && (
-                                    <tr>
-                                        <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
-                                            Nothing matches.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    ))}
                 </div>
-            )}
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative w-64">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Filter by key name..."
+                            className="pl-9"
+                        />
+                        {query && (
+                            <button
+                                type="button"
+                                aria-label="Clear"
+                                onClick={() => setQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={missingOnly}
+                            onChange={(e) => setMissingOnly(e.target.checked)}
+                            className="h-4 w-4 rounded border-input"
+                        />
+                        Missing only
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={requiredOnly}
+                            onChange={(e) => setRequiredOnly(e.target.checked)}
+                            className="h-4 w-4 rounded border-input"
+                        />
+                        Required only
+                    </label>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                        {data.app.appId} · {data.app.packages.length} packages
+                        {data.app.premiumInstalled ? ' · premium installed' : ''}
+                    </span>
+                </div>
+
+                {/* Table grouped by package */}
+                <div className="overflow-x-auto rounded-lg border border-border/60">
+                    <table className="w-full text-sm">
+                        <thead className="bg-muted/40 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                                <th className="w-10 px-3 py-2 text-left">Status</th>
+                                <th className="px-3 py-2 text-left">Key</th>
+                                <th className="px-3 py-2 text-left">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                            {groups.map((group) => (
+                                <GroupRows key={group.pkg} group={group} onCopy={copy} />
+                            ))}
+                            {groups.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
+                                        Nothing matches.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     );
 }

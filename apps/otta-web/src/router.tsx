@@ -626,6 +626,12 @@ const adminCronRoute = makeAdminRoute(
     () => import('@/pages/admin/infrastructure/CronPage'),
     'AdminCronPage',
 );
+// The full readiness table; /admin shows one line of it.
+const adminReadinessRoute = makeAdminRoute(
+    '/admin/infrastructure/readiness',
+    () => import('@/pages/admin/SystemReadiness'),
+    'SystemReadinessPage',
+);
 const adminDevMailRoute = makeAdminRoute(
     '/admin/infrastructure/dev-mail',
     () => import('@/pages/admin/infrastructure/DevMailPage'),
@@ -873,6 +879,7 @@ const coreRoutes = [
     adminMigrationsRoute,
     adminQueuesRoute,
     adminCronRoute,
+    adminReadinessRoute,
     adminDevMailRoute,
     adminEmailRoute,
     adminPremiumRoute,

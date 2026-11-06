@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { versionLabel, wranglerCommand } from '../SystemReadiness';
+import { nameList, versionLabel, wranglerCommand } from '../SystemReadiness';
 
 describe('System readiness helpers', () => {
     it('names the running build by its tag (the commit) and its age, else a short version id', () => {
@@ -16,5 +16,11 @@ describe('System readiness helpers', () => {
         );
         expect(wranglerCommand({ key: 'AUTH_URL', kind: 'var', secret: false })).toBeNull();
         expect(wranglerCommand({ key: 'OBCF_KV', kind: 'binding', secret: true })).toBeNull();
+    });
+
+    it('names the first few problems on /admin and counts the rest', () => {
+        expect(nameList(['AUTH_SECRET'])).toBe('AUTH_SECRET');
+        expect(nameList(['A', 'B', 'C'])).toBe('A, B, C');
+        expect(nameList(['A', 'B', 'C', 'D', 'E'])).toBe('A, B, C +2 more');
     });
 });

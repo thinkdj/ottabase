@@ -297,11 +297,10 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
             },
             // otta:end ottaai
             {
-                title: 'System Health',
-                description: 'View system health metrics and API status.',
-                href: '/api/health',
+                title: 'System Readiness',
+                description: 'Every setting, binding and health check this deployment reads, and what is missing.',
+                href: '/admin/infrastructure/readiness',
                 icon: Activity,
-                external: true,
             },
         ],
     },
