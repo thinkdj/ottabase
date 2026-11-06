@@ -226,8 +226,8 @@ The package will:
 - Auto-configure UI components (`getLoginConfig`) to show only what's enabled
 - Work with zero configuration (credentials only)
 
-Other env vars: `AUTH_COOKIE_NAME` (default `ottabase.session-token`), `AUTH_DISABLE_CREDENTIALS`,
-`AUTH_REQUIRE_EMAIL_VERIFIED`, `AUTH_SESSION_MAX_AGE`.
+Other env vars: `AUTH_COOKIE_NAME` (default `ottabase.<APP_ID>.session-token`, so two apps on one host keep their own
+sessions), `AUTH_DISABLE_CREDENTIALS`, `AUTH_REQUIRE_EMAIL_VERIFIED`, `AUTH_SESSION_MAX_AGE`.
 
 ### App-Specific Overrides
 

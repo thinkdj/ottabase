@@ -74,13 +74,23 @@ export function resolveSecureCookie(env: AuthEnv, request: Request): boolean {
     return isProductionCookieEnv(env) || isHttpsRequest(request);
 }
 
+/**
+ * An auth cookie's name before any `__Host-`/`__Secure-` prefix: `ottabase.<APP_ID>.<kind>` when APP_ID is set,
+ * else `ottabase.<kind>`. Cookies ignore the port, so two apps on one host (every app on 127.0.0.1 in dev) would
+ * otherwise overwrite each other's session, CSRF and OAuth-state cookies.
+ */
+export function authCookieBase(env: AuthEnv, kind: 'session-token' | 'csrf-token' | 'oauth-state'): string {
+    const appId = env.APP_ID?.trim();
+    return appId && /^[a-z0-9][a-z0-9-]*$/i.test(appId) ? `ottabase.${appId}.${kind}` : `ottabase.${kind}`;
+}
+
 export function resolveSessionCookieName(env: AuthEnv): string {
     const configured = env.AUTH_COOKIE_NAME;
     if (configured) return configured;
     // __Host- pins the cookie to the exact host over HTTPS with Path=/ and no Domain,
     // preventing subdomain cookie-tossing / fixation. Only valid with Secure, so only
     // applied when we know we are production (always-Secure) to avoid breaking dev HTTP.
-    return `${isProductionCookieEnv(env) ? '__Host-' : ''}${SESSION_COOKIE_BASE}`;
+    return `${isProductionCookieEnv(env) ? '__Host-' : ''}${authCookieBase(env, 'session-token')}`;
 }
 
 export function resolveSessionMaxAge(env: AuthEnv, options?: CreateAuthConfigOptions): number {

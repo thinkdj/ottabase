@@ -29,6 +29,7 @@ import {
 import { getConfiguredProvider } from './providers/presets';
 import { resolveMagicLinkSender } from './providers';
 import {
+    authCookieBase,
     buildClearSessionCookie,
     createSessionCookieForUser,
     getSession,
@@ -59,6 +60,7 @@ export {
     revokeAllUserSessions,
     revokeSession,
     createSessionCookieForUser,
+    authCookieBase,
     buildClearSessionCookie,
     listUserSessions,
     readSessionIdentity,
@@ -75,19 +77,17 @@ export type { SessionDevice } from './device';
 export { pickLocaleFromAcceptLanguage, requestLocaleDefaults } from './request-locale';
 export type { RequestLocaleDefaults } from './request-locale';
 
-const CSRF_COOKIE_BASE = 'ottabase.csrf-token';
 const CSRF_COOKIE_MAX_AGE = 60 * 60; // 1 hour
-const OAUTH_STATE_COOKIE_BASE = 'ottabase.oauth-state';
 const OAUTH_STATE_MAX_AGE = 10 * 60; // 10 minutes
 const MAGIC_LINK_MAX_AGE_SECONDS = 15 * 60; // 15 minutes -- short-lived, unlike the app's own 24h email-verification links
 
 // __Host- pins to the exact host with Path=/ (used for the root-scoped CSRF cookie);
 // the OAuth-state cookie is scoped to Path=/api/auth so it can only use __Secure-.
 function csrfCookieName(env: AuthEnv): string {
-    return `${isProductionCookieEnv(env) ? '__Host-' : ''}${CSRF_COOKIE_BASE}`;
+    return `${isProductionCookieEnv(env) ? '__Host-' : ''}${authCookieBase(env, 'csrf-token')}`;
 }
 function oauthStateCookieName(env: AuthEnv): string {
-    return `${isProductionCookieEnv(env) ? '__Secure-' : ''}${OAUTH_STATE_COOKIE_BASE}`;
+    return `${isProductionCookieEnv(env) ? '__Secure-' : ''}${authCookieBase(env, 'oauth-state')}`;
 }
 
 /**

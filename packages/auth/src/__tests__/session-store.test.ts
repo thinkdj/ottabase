@@ -12,6 +12,7 @@ import {
     revokeAllUserSessions,
     revokeSession,
     SESSION_COOKIE_BASE,
+    authCookieBase,
 } from '../session-store';
 import type { AuthEnv } from '../types';
 
@@ -150,6 +151,19 @@ describe('resolveSessionMaxAge', () => {
 describe('cookie name hardening', () => {
     it('uses no prefix in a dev/test environment', () => {
         expect(resolveSessionCookieName(createEnv({ ENVIRONMENT: 'test' }))).toBe(SESSION_COOKIE_BASE);
+    });
+
+    it('scopes the name by APP_ID, so two apps on one host (127.0.0.1 in dev) keep their own session', () => {
+        expect(resolveSessionCookieName(createEnv({ ENVIRONMENT: 'test', APP_ID: 'shop' }))).toBe(
+            'ottabase.shop.session-token',
+        );
+        expect(resolveSessionCookieName(createEnv({ ENVIRONMENT: 'production', APP_ID: 'shop' }))).toBe(
+            '__Host-ottabase.shop.session-token',
+        );
+        // Not a name a cookie can carry: the unscoped default, never a malformed cookie.
+        expect(resolveSessionCookieName(createEnv({ ENVIRONMENT: 'test', APP_ID: 'a b;c' }))).toBe(SESSION_COOKIE_BASE);
+        expect(authCookieBase(createEnv({ APP_ID: 'shop' }), 'csrf-token')).toBe('ottabase.shop.csrf-token');
+        expect(authCookieBase(createEnv({}), 'oauth-state')).toBe('ottabase.oauth-state');
     });
 
     it('applies the __Host- prefix in production', () => {

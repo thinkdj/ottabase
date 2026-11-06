@@ -180,13 +180,13 @@ event's actor and swallows a bus failure.
 
 ## Session Model
 
-The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained
-JWT carrying only **identity** claims — `sub`, `jti`, `email`, `name`, `image`, `emailVerified`, `organizationId`,
-`createdAt`, `cms` (creation time in ms), `profileVersion`, `iat`, `exp`. The potentially large / frequently-changing
-**authorization snapshot** (`roles`, `permissions`) is deliberately kept **out of the cookie** and stored in the
-per-session KV registry record instead, so the cookie can never approach the ~4KB browser limit no matter how many
-permissions a user has, and revoked roles don't linger in a signed token for the session's whole lifetime.
-`getSession()` merges the identity claims with the snapshot into the returned `user`.
+The session cookie (`ottabase.<APP_ID>.session-token` by default, `ottabase.session-token` without `APP_ID`, overridable
+via `AUTH_COOKIE_NAME`) is a signed, self-contained JWT carrying only **identity** claims — `sub`, `jti`, `email`,
+`name`, `image`, `emailVerified`, `organizationId`, `createdAt`, `cms` (creation time in ms), `profileVersion`, `iat`,
+`exp`. The potentially large / frequently-changing **authorization snapshot** (`roles`, `permissions`) is deliberately
+kept **out of the cookie** and stored in the per-session KV registry record instead, so the cookie can never approach
+the ~4KB browser limit no matter how many permissions a user has, and revoked roles don't linger in a signed token for
+the session's whole lifetime. `getSession()` merges the identity claims with the snapshot into the returned `user`.
 
 In production the cookie is `Secure` and uses the `__Host-` name prefix (pinned to the host, `Path=/`, no `Domain`) so
 it can't be tossed/shadowed by a sibling subdomain; in an explicit dev environment over plain HTTP the prefix and
@@ -301,15 +301,15 @@ const valid = await verifyPassword(password, passwordHash);
 
 ## CSRF Protection
 
-CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie (`ottabase.csrf-token`, `__Host-`
-prefixed in production) containing `token.hmac(token)` and returns the plain `token` in the JSON body. State-changing
-endpoints (credentials sign-in, magic-link send, sign-out, and the app's register route) require the client to echo that
-token back in the request body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the
-server also rejects any request whose `Origin` header is present but not in the allowlist (same-origin or the configured
-`AUTH_URL`), so a cross-site request is refused even before the token check. The two failures answer 403 with different
-errors: `Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on
-`127.0.0.1`, which the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API
-handles the token automatically:
+CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie (`ottabase.<APP_ID>.csrf-token`,
+`__Host-` prefixed in production) containing `token.hmac(token)` and returns the plain `token` in the JSON body.
+State-changing endpoints (credentials sign-in, magic-link send, sign-out, and the app's register route) require the
+client to echo that token back in the request body; the server re-derives the HMAC from the cookie and compares. As
+defense-in-depth the server also rejects any request whose `Origin` header is present but not in the allowlist
+(same-origin or the configured `AUTH_URL`), so a cross-site request is refused even before the token check. The two
+failures answer 403 with different errors: `Untrusted origin <origin>: …` for the Origin (locally, usually `localhost`
+against an `AUTH_URL` on `127.0.0.1`, which the browser treats as another site) and `Invalid or missing CSRF token` for
+the token. The client API handles the token automatically:
 
 ```typescript
 import { getCsrfToken, signInWithCredentials } from '@ottabase/auth/client';
@@ -619,7 +619,7 @@ const human = useTurnstile('signin'); // from @ottabase/ui/turnstile
 | `AUTH_ALLOW_INSECURE_DEV_SECRET`                        | No (local dev only)                           | `"true"` permits the built-in insecure dev secret — only honored when `ENVIRONMENT` is a dev value    |
 | `CORS_ALLOWED_ORIGINS`                                  | No                                            | Comma-separated extra origins allowed for credentialed CORS (same-origin + `AUTH_URL` always allowed) |
 | `AUTH_URL`                                              | No                                            | Frontend origin used for redirects + OAuth `redirect_uri` (defaults to `http://127.0.0.1:3003`)       |
-| `AUTH_COOKIE_NAME`                                      | No                                            | Overrides the session cookie name (default `ottabase.session-token`)                                  |
+| `AUTH_COOKIE_NAME`                                      | No                                            | Overrides the session cookie name (default `ottabase.<APP_ID>.session-token`)                         |
 | `AUTH_DISABLE_CREDENTIALS`                              | No                                            | `"true"`/`"1"` disables `POST /api/auth/callback/credentials`                                         |
 | `AUTH_REQUIRE_EMAIL_VERIFIED`                           | No                                            | `"true"`/`"1"` rejects credentials sign-in for unverified users                                       |
 | `AUTH_SESSION_MAX_AGE`                                  | No                                            | Session lifetime in seconds (default 30 days)                                                         |
