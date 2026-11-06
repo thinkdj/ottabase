@@ -840,14 +840,17 @@ pnpm install
 
 ### Otta CLI (Recommended)
 
-The `otta` CLI provides a streamlined interface for common monorepo tasks:
+The `otta` CLI provides a streamlined interface for common monorepo tasks. A new app is always `otta new`, never a
+copied folder (a copy keeps the template's database, buckets, CI values, ports and `appId`): the walkthrough is
+[`docs/NEW_APP.md`](docs/NEW_APP.md), the agent skill `ottabase-new-app`.
 
 ```bash
 # Scaffolding
 otta new web my-app              # Create a new web app (Vite + TanStack Router + Workers)
 otta new web my-app --minimal    # The same, stripped to auth, orgs, RBAC, the admin shell and Brand Engine
 otta new web my-app --preset saas  # Presets keep part of the template: minimal, blog, saas (otta presets lists them)
-otta new landing my-site         # Create a new landing page (Next.js + Workers)
+otta new landing my-site         # A landing page (Next.js + Workers) reading the only web app's content
+otta new landing my-site --web my-app  # ...or the web app named (it shares that app's database and bucket)
 otta new worker my-tool          # Create a single-Worker app (server-rendered + API, no SPA)
 otta templates                   # Show available templates
 otta add postmaster my-app       # Wire a workspace package into an app (--dry-run to preview)

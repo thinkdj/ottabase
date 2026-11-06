@@ -126,9 +126,10 @@ Every missing name, placeholders and `requiresSecrets` together, is listed at on
 ✗ No value for D1_DATABASE_ID, KV_NAMESPACE_ID (env.production of apps/otta-web). Set them in the CI's variables or secrets (or --set D1_DATABASE_ID=<value>).
 ```
 
-**Same name, same resource.** Two apps using `D1_DATABASE_ID` share a database; give one `APP_1_D1_DATABASE_ID` and add
-that value, and it has its own. Adding a resource is: the placeholder in `wrangler.jsonc`, the value in the CI. Nothing
-else.
+**Same name, same resource.** CI's values are one bag for every app, so two apps using `D1_DATABASE_ID` deploy against
+one database. `otta new` prefixes a new app's placeholders (`OTTABASE_MY_APP_D1_DATABASE_ID`, every one but
+`CLOUDFLARE_ACCOUNT_ID`) and prints them; a landing app takes its web app's, on purpose. Adding a resource is: the
+placeholder in `wrangler.jsonc`, the value in the CI. Nothing else.
 
 **GitHub's secrets bag never reaches a build.** The workflows hand `otta deploy` all repository secrets as
 `OTTA_DEPLOY_VALUES: ${{ toJson(secrets) }}`. The launcher (`packages/cli/bin/otta.mjs`) takes it out of the environment

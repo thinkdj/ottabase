@@ -58,6 +58,11 @@ only a fallback. Only server components draw images, so the browser needs no bas
 
 Schema changes go through otta-web's migrations (`/api/ottaorm/init`). This app never migrates.
 
+**A landing app of your own** pairs the same way with a web app of yours: `pnpm otta new landing my-site --web my-app`
+(`--web` may be left out when `apps/` has one web app). `otta new` writes that app's database and bucket names,
+database-id placeholders and `appId` into every env block, points the dev state at `../my-app/.wrangler`, and the ports
+in this README at that app's. See [`docs/NEW_APP.md`](../../docs/NEW_APP.md).
+
 Bindings are typed in `cloudflare-env.d.ts` (the file `pnpm cf-typegen` writes). Keep it in step with `wrangler.jsonc`.
 
 ## SEO

@@ -203,11 +203,11 @@ pnpm otta start otta-web --env preview  # Built Worker locally with env.preview
 pnpm otta start otta-web --env prod     # Built Worker locally with env.production
 pnpm otta dev otta-web --process worker # One process from the dev topology
 
-# Scaffold a new app
+# Scaffold a new app: its own resources, CI values, ports and appId (walkthrough: docs/NEW_APP.md)
 pnpm otta new web my-app                # Vite + TanStack Router + Workers, the whole template
 pnpm otta new web my-app --minimal      # Stripped to auth, orgs, RBAC, the admin shell and Brand Engine
 pnpm otta new web my-app --preset saas  # Presets: minimal, blog, saas (pnpm otta presets)
-pnpm otta new landing my-site           # Next.js landing page
+pnpm otta new landing my-site           # Next.js landing page, reading a web app's content (--web <app>)
 pnpm otta new worker my-tool            # Single Worker, server-rendered + API, no SPA
 
 # Install a package into an app (dependency, composition, list entry, client key, tables)

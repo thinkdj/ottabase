@@ -148,8 +148,9 @@ repository secret**.
 | `D1_PREVIEW_DATABASE_ID`  | Preview D1 (ottabase-db-preview) | cf:setup output |
 | `KV_PREVIEW_NAMESPACE_ID` | Preview KV (OBCF_KV_preview)     | cf:setup output |
 
-> **Multi-app:** Same placeholder name across apps → same value → shared resource. Different names → isolated. Prefixing
-> (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement. Only 2 steps: set the placeholder in
+> **Multi-app:** Same placeholder name across apps → same value → shared resource. Different names → isolated.
+> `otta new` gives a new app its own (`OTTABASE_<APP>_D1_DATABASE_ID`, …; a landing app keeps its web app's, on purpose)
+> and prints them ([docs/NEW_APP.md](NEW_APP.md)). Adding one by hand is 2 steps: set the placeholder in
 > `wrangler.jsonc`, give CI a value of that name; `otta deploy` finds the rest. See
 > [.github/DEPLOYMENT.md](../.github/DEPLOYMENT.md#values-placeholders-and-secrets) for a walkthrough.
 

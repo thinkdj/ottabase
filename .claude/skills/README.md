@@ -11,7 +11,8 @@ dump — the API lives in the docs they link to.
 
 ## Available
 
-All 14 skills from design principle #26 are authored, plus `ottabase-update` for apps built on the repo.
+All 14 skills from design principle #26 are authored, plus `ottabase-update` for apps built on the repo and
+`ottabase-new-app` for scaffolding one.
 
 | Skill                   | Covers                                                                                                      |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -30,6 +31,7 @@ All 14 skills from design principle #26 are authored, plus `ottabase-update` for
 | `ottabase-testing`      | Vitest conventions, per-package `--filter`, rebuild-before-test, CF-binding mocks                           |
 | `ottabase-cloudflare`   | Edge-runtime rules, bindings + parity, `getOttabaseConfig`, multi-tenant cache keys                         |
 | `ottabase-update`       | Update an app repo to the latest public Ottabase and Pro: three-way from its last sync, template carry-over |
+| `ottabase-new-app`      | `otta new`: template choice, presets, landing↔web pairing, what the scaffolder owns, first deploy and CI    |
 
 ## Keeping them honest
 
