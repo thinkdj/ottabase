@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Fleet reports an app's users and its icon.** `users: { total, last24h }` (the sign-ups in the 24 hours before the
+  report) and `icon` (`sources.icon`; otta-web passes its home brand kit's, through the new `homeBrandKit` brand helper
+  Campaigns reads too). `GET /api/fleet/report?users=0` leaves the counts out, for a poller that asks every few minutes.
+  `users.created_at` is indexed, so the 24-hour count reads a range.
 - **One deploy, wherever it runs: `otta deploy` in Cloudflare Workers Builds, GitHub Actions and a terminal.**
   `otta deploy <app> --ci` is the build and deploy only (no login, nothing created, no secret touched), and both GitHub
   workflows now run it instead of keeping their own copy of the rules. How an app builds comes from its
@@ -331,6 +335,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **/admin shows one line of system readiness.** The missing required keys and failing checks by name (the first few),
+  or "All systems ready", with a link to the full table, which is a page of its own now
+  (`/admin/infrastructure/readiness`, the Infrastructure nav's System Readiness, where the raw `/api/health` link was).
 - **`cloudflare-config.json` is the app's whole deploy manifest, read strictly.** Every app Cloudflare deploys has one;
   an unknown key or a wrong value stops the deploy and names itself, and the schema (`additionalProperties: false`) and
   the CLI's defaults are held together by a test, as is every app in the repository. Gone: `workerName` (wrangler's
@@ -632,6 +639,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed (Unreleased)
 
+- `@ottabase/ui-cropper` did not type-check in a program that also loads the Workers types (their HTMLRewriter
+  `Element.append` hides the DOM's multi-node one); it appends one node at a time.
 - `otta deploy` took a binding name (`"binding": "CACHE_R2"` in otta-cache) or a Durable Object class for a placeholder
   and refused to deploy without a value for it (GitHub's deploy too, through its own copy of the rule, which is gone).
   Values of `binding`, `class_name`, `name`, `service`, `entrypoint` and `script_name` are names, never ids to fill.

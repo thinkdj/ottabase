@@ -212,11 +212,11 @@ pnpm otta start otta-web --env preview  # Built Worker locally with env.preview
 pnpm otta start otta-web --env prod     # Built Worker locally with env.production
 pnpm otta dev otta-web --process worker # One process from the dev topology
 
-# Scaffold a new app
+# Scaffold a new app: its own resources, CI values, ports and appId (walkthrough: docs/NEW_APP.md)
 pnpm otta new web my-app                # Vite + TanStack Router + Workers, the whole template
 pnpm otta new web my-app --minimal      # Stripped to auth, orgs, RBAC, the admin shell and Brand Engine
 pnpm otta new web my-app --preset saas  # Presets: minimal, blog, saas (pnpm otta presets)
-pnpm otta new landing my-site           # Next.js landing page
+pnpm otta new landing my-site           # Next.js landing page, reading a web app's content (--web <app>)
 pnpm otta new worker my-tool            # Single Worker, server-rendered + API, no SPA
 
 # Install a package into an app (dependency, composition, list entry, client key, tables)
@@ -2562,14 +2562,17 @@ pnpm install
 
 ### Otta CLI (Recommended)
 
-The `otta` CLI provides a streamlined interface for common monorepo tasks:
+The `otta` CLI provides a streamlined interface for common monorepo tasks. A new app is always `otta new`, never a
+copied folder (a copy keeps the template's database, buckets, CI values, ports and `appId`): the walkthrough is
+[`docs/NEW_APP.md`](docs/NEW_APP.md), the agent skill `ottabase-new-app`.
 
 ```bash
 # Scaffolding
 otta new web my-app              # Create a new web app (Vite + TanStack Router + Workers)
 otta new web my-app --minimal    # The same, stripped to auth, orgs, RBAC, the admin shell and Brand Engine
 otta new web my-app --preset saas  # Presets keep part of the template: minimal, blog, saas (otta presets lists them)
-otta new landing my-site         # Create a new landing page (Next.js + Workers)
+otta new landing my-site         # A landing page (Next.js + Workers) reading the only web app's content
+otta new landing my-site --web my-app  # ...or the web app named (it shares that app's database and bucket)
 otta new worker my-tool          # Create a single-Worker app (server-rendered + API, no SPA)
 otta templates                   # Show available templates
 otta add postmaster my-app       # Wire a workspace package into an app (--dry-run to preview)
@@ -5787,8 +5790,9 @@ repository secret**.
 | `D1_PREVIEW_DATABASE_ID`  | Preview D1 (ottabase-db-preview) | cf:setup output |
 | `KV_PREVIEW_NAMESPACE_ID` | Preview KV (OBCF_KV_preview)     | cf:setup output |
 
-> **Multi-app:** Same placeholder name across apps → same value → shared resource. Different names → isolated. Prefixing
-> (e.g. `APP_1_D1_DATABASE_ID`) is a convention for clarity, not a requirement. Only 2 steps: set the placeholder in
+> **Multi-app:** Same placeholder name across apps → same value → shared resource. Different names → isolated.
+> `otta new` gives a new app its own (`OTTABASE_<APP>_D1_DATABASE_ID`, …; a landing app keeps its web app's, on purpose)
+> and prints them ([docs/NEW_APP.md](NEW_APP.md)). Adding one by hand is 2 steps: set the placeholder in
 > `wrangler.jsonc`, give CI a value of that name; `otta deploy` finds the rest. See
 > [.github/DEPLOYMENT.md](../.github/DEPLOYMENT.md#values-placeholders-and-secrets) for a walkthrough.
 
@@ -6144,6 +6148,121 @@ Every piece stamps `data-slot`; a theme restyles it through `[data-slot=…]` CS
 4. Numbers before narrative: the top 300px answer "is anything wrong, and how much?".
 5. Colour never works alone: every state carries a label or an icon; view in greyscale.
 6. Installed is not licensed: lapse the license; the nav entry, the route and the free tier all survive.
+
+
+---
+
+# docs/NEW_APP.md
+
+# A new app
+
+`otta new` copies a template into `apps/<name>` and makes everything in it the new app's own: its name, its Cloudflare
+resources, the values CI deploys it with, its dev ports and its identity. This page is the whole path, from choosing a
+template to a deploy from CI.
+
+## 1. Choose the template
+
+| You need                                                      | Command                                         |
+| ------------------------------------------------------------- | ----------------------------------------------- |
+| Signed-in users, an admin, a client app: the full stack       | `pnpm otta new web my-app`                      |
+| The same, without the demo and the packages you do not use    | `pnpm otta new web my-app --minimal` (or below) |
+| A public site whose content a web app's admin edits (Next.js) | `pnpm otta new landing my-site`                 |
+| One Worker: server-rendered HTML and an API, no SPA           | `pnpm otta new worker my-tool`                  |
+
+Presets keep part of the web template: `--minimal` (auth, organizations, RBAC, the admin shell, Brand Engine),
+`--preset blog`, `--preset saas`; `pnpm otta presets` lists them. Add a package back later with
+`pnpm otta add <package> my-app`; take one out with `pnpm otta strip <package> my-app`.
+
+The name is a lowercase DNS label (`my-app`): it becomes the Worker's name, so its `workers.dev` hostname. Keep it to 32
+characters, or `ottabase-<name>-files-private-preview` passes Cloudflare's 63 for a bucket name (`otta new` refuses it).
+
+**A landing app belongs to a web app.** It reads the content that web app's admin writes, so it binds that app's
+database and public bucket. With one web app in `apps/` it pairs with it; with several, name it:
+`pnpm otta new landing my-site --web my-app`.
+
+**A different UI.** The web template carries an admin chassis built on `@ottabase/ui`. For an app whose UI is its own,
+start from `--minimal` (the smallest web app) and put an `apps/<name>/AGENTS.md` beside it that says which UI rules of
+the root `AGENTS.MD` it does not follow, so agents working in it do not pull it back.
+
+## 2. What `otta new` sets for you
+
+| What                       | Template (otta-web)                     | New app `my-app`                                        |
+| -------------------------- | --------------------------------------- | ------------------------------------------------------- |
+| Worker and package         | `otta-web`, `@ottabase/otta-web`        | `my-app`, `@ottabase/my-app`                            |
+| D1, R2, queues             | `ottabase-db`, `ottabase-vault-staging` | `ottabase-my-app-db`, `ottabase-my-app-vault-staging`   |
+| CI values (placeholders)   | `D1_DATABASE_ID`, `KV_NAMESPACE_ID`     | `OTTABASE_MY_APP_D1_DATABASE_ID`, …                     |
+| Rate limiter ids           | `1001`, `2001`, …                       | the next ids no app in `apps/` holds                    |
+| Dev ports                  | 3003 (Vite), 3004 (Worker)              | the first free ones above them (`otta new` prints them) |
+| `appId`, `appName`         | `otta-web`, `Ottabase Template App`     | `my-app`, `My App` (`ottabase/ottabase.config.ts`)      |
+| `APP_ID` in `.env.example` | `otta-web`                              | `my-app`                                                |
+| Auth cookies in dev        | `ottabase.otta-web.session-token`       | `ottabase.my-app.session-token` (from `APP_ID`)         |
+
+Why each matters: two apps on one D1 or bucket share data; two apps on one CI value deploy against one database (CI's
+values are one bag of secrets for every app); two apps on one rate limiter id share its counters (the id is unique to
+the Cloudflare account); two apps on one port cannot run side by side; and `appId` scopes the rows apps may share in a
+database (alerts) and, through `APP_ID`, the auth cookies (a browser keeps one cookie per name for every port of
+`127.0.0.1`; a deployed app has a host of its own).
+
+`CLOUDFLARE_ACCOUNT_ID` stays as it is: every app in the account fills it with the same value.
+
+What stays the template's: comments, docs and test fixtures that mention `otta-web`, the demo content, and the tagline
+and keywords in `ottabase.config.ts` (the company becomes the app's name, the author and description are left for you to
+write).
+
+## 3. Run it
+
+```bash
+pnpm install
+pnpm env:secrets --app=my-app      # .env.local with development secrets (web template)
+pnpm otta dev my-app               # Vite + a local Worker on the ports otta new printed
+```
+
+The first run of a web app opens its bootstrap wizard (`/__bootstrap__`), which creates the tables and the owner
+account. Name, metadata and brand: `apps/my-app/ottabase/ottabase.config.ts`.
+
+`pnpm dev`, `dev:fe`, `dev:be`, `build`, `build:app`, the `cf:*` scripts and `otta start`/`dev`/`build`/`test`/`lint`/
+`type-check`/`clean` without an app act on `ottabase.defaultApp` in the root `package.json` (`otta-web` as shipped).
+Pass the app (`pnpm otta dev my-app`), set `OTTABASE_APP=my-app`, or change `defaultApp` when this is the app you work
+on.
+
+## 4. Deploy it
+
+**From a terminal**, the first deploy is one command: it creates the app's Cloudflare resources (by the names in its
+`wrangler.jsonc`), fills its config, builds, deploys, sets the secrets it cannot run without, and bootstraps the
+database when an owner is given.
+
+```bash
+pnpm cf:login
+pnpm otta deploy my-app --owner-email me@example.com --owner-password '…'
+```
+
+`OTTA_OWNER_PASSWORD` in the environment works in place of `--owner-password` and keeps the password out of shell
+history.
+
+**From CI**, a deploy creates nothing: it fills the app's placeholders with values it is given. `otta new` prints the
+names (`OTTABASE_MY_APP_D1_DATABASE_ID`, `OTTABASE_MY_APP_KV_NAMESPACE_ID`, and the preview ones), and
+`pnpm cf:setup --app=my-app` (or the first terminal deploy) prints their values.
+
+- **Workers Builds**: connect the repository to the `my-app` Worker, deploy command `pnpm otta deploy my-app --ci`, the
+  values as build variables, and the watch paths `pnpm otta deploy my-app --watch-paths` prints.
+  [`.github/DEPLOYMENT.md`](../.github/DEPLOYMENT.md#cloudflare-workers-builds) has every field.
+- **GitHub Actions**: add the values as repository secrets. `deploy.yml` and `pr-preview.yml` find the app on their own
+  (`cloudflare-config.json`: `deployable`, `previewDeployable`).
+
+A landing app's CI values are its web app's: the same names, so the same database.
+
+## 5. Checklist
+
+- [ ] `pnpm otta dev my-app` starts and `/api/health` answers with `"name": "my-app"`
+- [ ] `ottabase/ottabase.config.ts`: description, author, tagline, keywords written for this app
+- [ ] The packages it does not use stripped (`pnpm otta strip <package> my-app`)
+- [ ] `pnpm otta lint my-app`, `pnpm otta type-check my-app`, `pnpm otta test my-app` green
+- [ ] First deploy from a terminal, then the CI values set where CI runs
+- [ ] `defaultApp` in the root `package.json` set to it, if it is the app you work on
+
+See also: [`packages/cli/README.md`](../packages/cli/README.md) (every command),
+[`.github/DEPLOYMENT.md`](../.github/DEPLOYMENT.md) (deploys), [`CLOUDFLARE_DEPLOY.md`](CLOUDFLARE_DEPLOY.md) (resources
+and secrets), `AGENTS.MD` (the rules agents follow).
 
 
 ---
@@ -11351,13 +11470,13 @@ event's actor and swallows a bus failure.
 
 ## Session Model
 
-The session cookie (`ottabase.session-token` by default, overridable via `AUTH_COOKIE_NAME`) is a signed, self-contained
-JWT carrying only **identity** claims — `sub`, `jti`, `email`, `name`, `image`, `emailVerified`, `organizationId`,
-`createdAt`, `cms` (creation time in ms), `profileVersion`, `iat`, `exp`. The potentially large / frequently-changing
-**authorization snapshot** (`roles`, `permissions`) is deliberately kept **out of the cookie** and stored in the
-per-session KV registry record instead, so the cookie can never approach the ~4KB browser limit no matter how many
-permissions a user has, and revoked roles don't linger in a signed token for the session's whole lifetime.
-`getSession()` merges the identity claims with the snapshot into the returned `user`.
+The session cookie (`ottabase.<APP_ID>.session-token` by default, `ottabase.session-token` without `APP_ID`, overridable
+via `AUTH_COOKIE_NAME`) is a signed, self-contained JWT carrying only **identity** claims — `sub`, `jti`, `email`,
+`name`, `image`, `emailVerified`, `organizationId`, `createdAt`, `cms` (creation time in ms), `profileVersion`, `iat`,
+`exp`. The potentially large / frequently-changing **authorization snapshot** (`roles`, `permissions`) is deliberately
+kept **out of the cookie** and stored in the per-session KV registry record instead, so the cookie can never approach
+the ~4KB browser limit no matter how many permissions a user has, and revoked roles don't linger in a signed token for
+the session's whole lifetime. `getSession()` merges the identity claims with the snapshot into the returned `user`.
 
 In production the cookie is `Secure` and uses the `__Host-` name prefix (pinned to the host, `Path=/`, no `Domain`) so
 it can't be tossed/shadowed by a sibling subdomain; in an explicit dev environment over plain HTTP the prefix and
@@ -11472,15 +11591,15 @@ const valid = await verifyPassword(password, passwordHash);
 
 ## CSRF Protection
 
-CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie (`ottabase.csrf-token`, `__Host-`
-prefixed in production) containing `token.hmac(token)` and returns the plain `token` in the JSON body. State-changing
-endpoints (credentials sign-in, magic-link send, sign-out, and the app's register route) require the client to echo that
-token back in the request body; the server re-derives the HMAC from the cookie and compares. As defense-in-depth the
-server also rejects any request whose `Origin` header is present but not in the allowlist (same-origin or the configured
-`AUTH_URL`), so a cross-site request is refused even before the token check. The two failures answer 403 with different
-errors: `Untrusted origin <origin>: …` for the Origin (locally, usually `localhost` against an `AUTH_URL` on
-`127.0.0.1`, which the browser treats as another site) and `Invalid or missing CSRF token` for the token. The client API
-handles the token automatically:
+CSRF uses a double-submit cookie. `GET /api/auth/csrf` sets an HttpOnly cookie (`ottabase.<APP_ID>.csrf-token`,
+`__Host-` prefixed in production) containing `token.hmac(token)` and returns the plain `token` in the JSON body.
+State-changing endpoints (credentials sign-in, magic-link send, sign-out, and the app's register route) require the
+client to echo that token back in the request body; the server re-derives the HMAC from the cookie and compares. As
+defense-in-depth the server also rejects any request whose `Origin` header is present but not in the allowlist
+(same-origin or the configured `AUTH_URL`), so a cross-site request is refused even before the token check. The two
+failures answer 403 with different errors: `Untrusted origin <origin>: …` for the Origin (locally, usually `localhost`
+against an `AUTH_URL` on `127.0.0.1`, which the browser treats as another site) and `Invalid or missing CSRF token` for
+the token. The client API handles the token automatically:
 
 ```typescript
 import { getCsrfToken, signInWithCredentials } from '@ottabase/auth/client';
@@ -11790,7 +11909,7 @@ const human = useTurnstile('signin'); // from @ottabase/ui/turnstile
 | `AUTH_ALLOW_INSECURE_DEV_SECRET`                        | No (local dev only)                           | `"true"` permits the built-in insecure dev secret — only honored when `ENVIRONMENT` is a dev value    |
 | `CORS_ALLOWED_ORIGINS`                                  | No                                            | Comma-separated extra origins allowed for credentialed CORS (same-origin + `AUTH_URL` always allowed) |
 | `AUTH_URL`                                              | No                                            | Frontend origin used for redirects + OAuth `redirect_uri` (defaults to `http://127.0.0.1:3003`)       |
-| `AUTH_COOKIE_NAME`                                      | No                                            | Overrides the session cookie name (default `ottabase.session-token`)                                  |
+| `AUTH_COOKIE_NAME`                                      | No                                            | Overrides the session cookie name (default `ottabase.<APP_ID>.session-token`)                         |
 | `AUTH_DISABLE_CREDENTIALS`                              | No                                            | `"true"`/`"1"` disables `POST /api/auth/callback/credentials`                                         |
 | `AUTH_REQUIRE_EMAIL_VERIFIED`                           | No                                            | `"true"`/`"1"` rejects credentials sign-in for unverified users                                       |
 | `AUTH_SESSION_MAX_AGE`                                  | No                                            | Session lifetime in seconds (default 30 days)                                                         |
@@ -13758,7 +13877,7 @@ pnpm otta new web my-app --preset blog     # minimal plus the blog, comments and
 pnpm otta new web my-app --preset saas     # minimal plus alerts, API keys, flags, meter, postmaster, legal, referrals, vault, webhooks
 
 # Create a landing page (Next.js + Cloudflare Workers), or a single Worker (API-first, no SPA)
-pnpm otta new landing my-site
+pnpm otta new landing my-site               # reads the web app's content; --web <app> when there are several
 pnpm otta new worker my-tool
 
 # Show available templates and presets
@@ -13766,8 +13885,13 @@ pnpm otta templates
 pnpm otta presets
 ```
 
-A new app gets its own Cloudflare resource names (`my-app-db`, `my-app-bucket`, `my-app-queue`), its own Worker name,
-and the `.env.example` that `pnpm env:secrets --app=my-app` fills. With a preset, the demo gallery and every package the
+The new app owns everything a second app in the account must not share: `ottabase-<app>-…` databases, buckets and
+queues, `OTTABASE_<APP>_…` placeholders for CI's values, its own rate limiter ids and dev ports, and its `appId` (in
+`ottabase.config.ts` and `.env.example`). `otta new` prints the ports, the CI value names and the next steps; the
+walkthrough is [`docs/NEW_APP.md`](../../docs/NEW_APP.md).
+
+A new app gets its own Cloudflare resource names (`ottabase-my-app-db`, `ottabase-my-app-bucket`,
+`ottabase-my-app-queue`), its own Worker name, and the `.env.example` that `pnpm env:secrets --app=my-app` fills. With a preset, the demo gallery and every package the
 preset does not keep are stripped (see below), and a short README replaces otta-web's. Grow the app afterwards with
 `otta add`; ship it with `otta deploy`.
 
@@ -14121,25 +14245,25 @@ pnpm otta info my-app
 `otta` is the command name the published binary installs. Inside this monorepo the root package does not link its own
 bin, so invoke it through the workspace script: `pnpm otta <command>`.
 
-| Command                      | Description                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for the web template)           |
-| `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`)  |
-| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)              |
-| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                             |
-| `otta deploy [app]`          | Deploy to Cloudflare: the whole first deploy, or build and deploy only from CI (`--ci`, `--all`) |
-| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)       |
-| `otta start [app]`           | Start development or a named local Wrangler environment                                          |
-| `otta dev [app]`             | Start the hot-reload development topology                                                        |
-| `otta preview [app]`         | Build and start the preview Wrangler environment locally                                         |
-| `otta build <app>`           | Build an app for production                                                                      |
-| `otta test <app>`            | Run tests for an app                                                                             |
-| `otta lint <app>`            | Lint an app                                                                                      |
-| `otta type-check <app>`      | Type check an app                                                                                |
-| `otta clean <app>`           | Clean build artifacts                                                                            |
-| `otta list`                  | List all apps in the monorepo                                                                    |
-| `otta info <app>`            | Show detailed info about an app                                                                  |
-| `otta templates`             | Show available templates                                                                         |
+| Command                      | Description                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `otta new <template> <name>` | Create a new app from a template (`--minimal`, `--preset <name>` for web; `--web <app>` for landing) |
+| `otta add <package> [app]`   | Wire a workspace package, or every package of a bundle such as `pro`, into an app (`--dry-run`)      |
+| `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)                  |
+| `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                                 |
+| `otta deploy [app]`          | Deploy to Cloudflare: the whole first deploy, or build and deploy only from CI (`--ci`, `--all`)     |
+| `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)           |
+| `otta start [app]`           | Start development or a named local Wrangler environment                                              |
+| `otta dev [app]`             | Start the hot-reload development topology                                                            |
+| `otta preview [app]`         | Build and start the preview Wrangler environment locally                                             |
+| `otta build [app]`           | Build an app for production (default: `ottabase.defaultApp`)                                         |
+| `otta test [app]`            | Run tests for an app                                                                                 |
+| `otta lint [app]`            | Lint an app                                                                                          |
+| `otta type-check [app]`      | Type check an app                                                                                    |
+| `otta clean [app]`           | Clean build artifacts                                                                                |
+| `otta list`                  | List all apps in the monorepo                                                                        |
+| `otta info <app>`            | Show detailed info about an app                                                                      |
+| `otta templates`             | Show available templates                                                                             |
 
 ## Templates
 
@@ -16081,8 +16205,9 @@ what happens.
 
 The package that makes an Ottabase app watchable. List it, set one secret, and the app answers `GET /api/fleet/report`
 with one JSON document: its packages and versions, each Premium Package's license state, the kernel health report, its
-scheduled tasks with their last status, and its newest backup. `POST /api/fleet/init` relays whatever init the host
-wired (the Worker template passes its database init).
+scheduled tasks with their last status, its newest backup, its user count with the sign-ups of the last 24 hours, and
+its icon (`sources.icon`, e.g. the brand kit's, which a cockpit copies to show the app). `POST /api/fleet/init` relays
+whatever init the host wired (the Worker template passes its database init).
 
 This is deliberately the free half. A cockpit that watches all your apps needs every app on the board to carry Fleet,
 including apps run by people who never bought anything; a Fleet behind a paywall would have nothing to report to. The
@@ -16147,11 +16272,16 @@ curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/ap
             },
         ],
         "backup": { "id": "20261016T022300Z", "createdAt": "2026-10-16T02:23:00.000Z" },
+        "users": { "total": 1280, "last24h": 12 },
+        "icon": "https://cdn.example.com/brand/icon.png",
         "canInit": false,
         "errors": [],
     },
 }
 ```
+
+`users` counts the app's users table, so `GET /api/fleet/report?users=0` leaves it out (`null`): a cockpit polling every
+few minutes asks for it now and then (Tower: once an hour) instead of on every poll.
 
 A source that throws (no bucket, no D1) is named in `errors`; the rest of the report stands. `summarize(report)` is the
 shared verdict a board applies: any failing health check, or an active scheduled task whose last run failed, makes the
