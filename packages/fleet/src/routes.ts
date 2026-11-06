@@ -1,23 +1,25 @@
 import { Router } from '@ottabase/ottarouter';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { authorizeFleet } from './report';
+import { authorizeFleet, type ReportScope } from './report';
 import type { Awaitable, FleetReport } from './types';
 
 export interface FleetRouterOptions<Env> {
-    report: (env: Env) => Promise<FleetReport>;
+    report: (env: Env, scope?: ReportScope) => Promise<FleetReport>;
     token: (env: Env) => string | null | undefined;
     init?: (env: Env) => Awaitable<unknown>;
 }
 
-/** `GET /report` and `POST /init`, both behind the bearer token. */
+/** `GET /report[?users=0]` and `POST /init`, both behind the bearer token. */
 export function createFleetRouter<Env>(options: FleetRouterOptions<Env>): Router<Env> {
     const router = new Router<Env>();
 
     router.get('/report', async (c) => {
         const denied = authorizeFleet(c.req, options.token(c.env));
         if (denied) return denied;
-        return jsonResponse({ data: await options.report(c.env) });
+        // `?users=0`: a frequent poller skips the user counts and asks for them now and then.
+        const users = c.url.searchParams.get('users') !== '0';
+        return jsonResponse({ data: await options.report(c.env, { users }) });
     });
 
     router.post('/init', async (c) => {

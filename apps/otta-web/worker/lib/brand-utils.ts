@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { BrandApiEnv } from '@ottabase/brand-engine/handlers';
-import type { BrandAssetClient } from '@ottabase/brand-engine/persistence';
+import { resolveFullBrandConfig, type BrandAssetClient } from '@ottabase/brand-engine/persistence';
 import { FilesError } from '@ottabase/ottaupload/server';
 import { fileIdFromKey } from '@ottabase/utils/media';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
@@ -58,4 +58,17 @@ export function brandAssets(env: CloudflareEnv, uploaderId: string | null): Bran
 /** Brand rows are scoped by the server-configured app, never by browser input. */
 export function getAppId(env: CloudflareEnv): string {
     return getOttabaseConfig(env).appId;
+}
+
+/**
+ * The brand kit the home path resolves to: how the app looks at `/`. Mail (Campaigns) and the
+ * Fleet report (its icon) read this one, so every outside view shows the same identity.
+ */
+export async function homeBrandKit(env: CloudflareEnv) {
+    const config = await resolveFullBrandConfig(brandEnv(env), { appId: getAppId(env) });
+    if (!config) return null;
+    const home = [...config.routeMappings]
+        .sort((a, b) => b.priority - a.priority)
+        .find((mapping) => mapping.pathPattern === '/' || mapping.pathPattern === '/*');
+    return (home && config.brandKitsMap[home.brandKitId]) ?? Object.values(config.brandKitsMap)[0] ?? null;
 }

@@ -40,6 +40,8 @@ function app(input: { init?: 'ok' | 'throws'; licenses?: boolean } = {}) {
                 ];
             },
             backup: async () => ({ id: 'b1', createdAt: '2026-10-16T02:23:00.000Z' }),
+            users: async () => ({ total: 42, last24h: 3 }),
+            icon: () => 'https://cdn.test/tool.png',
         },
         ...(input.init === 'ok' ? { init: async () => ({ created: 3 }) } : {}),
         ...(input.init === 'throws'
@@ -114,12 +116,25 @@ describe('the fleet package', () => {
             },
             tasks: [task()],
             backup: { id: 'b1', createdAt: '2026-10-16T02:23:00.000Z' },
+            users: { total: 42, last24h: 3 },
+            icon: 'https://cdn.test/tool.png',
             canInit: false,
             errors: [],
         });
 
         const broken = await data<FleetReport>(await call('/report', bearer('tok'), { ...TOKEN, broken: true }));
         expect(broken.health.ok).toBe(false);
+    });
+
+    it('skips the user counts on ?users=0, so a frequent poller does not scan users every time', async () => {
+        const { call } = app();
+        const skipped = await data<FleetReport>(await call('/report?users=0', bearer('tok'), TOKEN));
+        expect(skipped.users).toBeNull();
+        expect(skipped.errors).toEqual([]);
+        expect((await data<FleetReport>(await call('/report', bearer('tok'), TOKEN))).users).toEqual({
+            total: 42,
+            last24h: 3,
+        });
     });
 
     it('names a source that threw and keeps the rest of the report', async () => {
@@ -154,6 +169,8 @@ describe('summarize', () => {
         health: { ok: true, checks: [] },
         tasks: [],
         backup: null,
+        users: null,
+        icon: null,
         canInit: false,
         errors: [],
         ...over,

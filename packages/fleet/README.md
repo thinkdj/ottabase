@@ -2,8 +2,9 @@
 
 The package that makes an Ottabase app watchable. List it, set one secret, and the app answers `GET /api/fleet/report`
 with one JSON document: its packages and versions, each Premium Package's license state, the kernel health report, its
-scheduled tasks with their last status, and its newest backup. `POST /api/fleet/init` relays whatever init the host
-wired (the Worker template passes its database init).
+scheduled tasks with their last status, its newest backup, its user count with the sign-ups of the last 24 hours, and
+its icon (`sources.icon`, e.g. the brand kit's, which a cockpit copies to show the app). `POST /api/fleet/init` relays
+whatever init the host wired (the Worker template passes its database init).
 
 This is deliberately the free half. A cockpit that watches all your apps needs every app on the board to carry Fleet,
 including apps run by people who never bought anything; a Fleet behind a paywall would have nothing to report to. The
@@ -68,11 +69,16 @@ curl -H "Authorization: Bearer $FLEET_TOKEN" https://tool.example.workers.dev/ap
             },
         ],
         "backup": { "id": "20261016T022300Z", "createdAt": "2026-10-16T02:23:00.000Z" },
+        "users": { "total": 1280, "last24h": 12 },
+        "icon": "https://cdn.example.com/brand/icon.png",
         "canInit": false,
         "errors": [],
     },
 }
 ```
+
+`users` counts the app's users table, so `GET /api/fleet/report?users=0` leaves it out (`null`): a cockpit polling every
+few minutes asks for it now and then (Tower: once an hour) instead of on every poll.
 
 A source that throws (no bucket, no D1) is named in `errors`; the rest of the report stands. `summarize(report)` is the
 shared verdict a board applies: any failing health check, or an active scheduled task whose last run failed, makes the

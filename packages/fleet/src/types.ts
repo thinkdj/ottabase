@@ -29,6 +29,12 @@ export interface FleetReportTask {
     failCount: number;
 }
 
+/** Users in this app (soft-deleted excluded): all of them, and the sign-ups in the 24 hours before `takenAt`. */
+export interface FleetReportUsers {
+    total: number;
+    last24h: number;
+}
+
 /** What `GET /api/fleet/report` returns. Serialisable: a cockpit stores it as is. */
 export interface FleetReport {
     app: string;
@@ -41,6 +47,10 @@ export interface FleetReport {
     tasks: FleetReportTask[];
     /** The newest backup, when the host wired `sources.backup`. */
     backup: { id: string; createdAt: string } | null;
+    /** The user count; null when the read failed. */
+    users: FleetReportUsers | null;
+    /** The app's square icon (its brand kit's), absolute or relative to the app's origin. Null when not wired. */
+    icon: string | null;
     /** Whether `POST /api/fleet/init` does anything here. */
     canInit: boolean;
     /** Sources that threw while the report was assembled. The report still stands. */
@@ -56,6 +66,10 @@ export interface FleetSources<Env> {
     backup?: (env: Env) => Awaitable<{ id: string; createdAt: string } | null>;
     /** Replace the default scheduled-task read (`ScheduledTask.where({ appId })`). */
     tasks?: (env: Env) => Awaitable<FleetReportTask[]>;
+    /** Replace the default user count (`User.count()`); `now` is the report's `takenAt`. */
+    users?: (env: Env, now: number) => Awaitable<FleetReportUsers | null>;
+    /** The app's square icon URL, e.g. the brand kit's `icon`. A cockpit copies it to show the app. */
+    icon?: (env: Env) => Awaitable<string | null>;
 }
 
 export interface FleetOptions<Env> {

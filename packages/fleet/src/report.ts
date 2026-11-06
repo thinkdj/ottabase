@@ -8,10 +8,12 @@
 // ============================================================
 
 import { runHealth, type PackageRegistry } from '@ottabase/kernel';
-import { ScheduledTask } from '@ottabase/ottaorm';
+import { ScheduledTask, User } from '@ottabase/ottaorm';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { timingSafeEqual } from '@ottabase/utils/hmac-signature';
-import type { FleetOptions, FleetReport, FleetReportTask, FleetStatus } from './types';
+import type { FleetOptions, FleetReport, FleetReportTask, FleetReportUsers, FleetStatus } from './types';
+
+const DAY_MS = 86_400_000;
 
 /** Null when the request carries this app's Fleet token. Never passes when no token is configured. */
 export function authorizeFleet(request: Request, expected: string | null | undefined): Response | null {
@@ -42,14 +44,26 @@ async function defaultTasks(appId: string): Promise<FleetReportTask[]> {
     }));
 }
 
+/** Every user, and those who signed up in the day before `now` (soft-deleted excluded). */
+async function defaultUsers(now: number): Promise<FleetReportUsers> {
+    const [total, last24h] = await Promise.all([User.count(), User.count({ createdAt: { $gte: now - DAY_MS } })]);
+    return { total, last24h };
+}
+
+/** What a reader may leave out. `users: false` skips the user counts (two queries on `users`). */
+export interface ReportScope {
+    users?: boolean;
+}
+
 /** Build this app's report. A source that throws is named in `errors`; the rest of the report stands. */
 export function createReporter<Env>(
     packages: PackageRegistry<Env>,
     options: FleetOptions<Env>,
-): (env: Env) => Promise<FleetReport> {
+): (env: Env, scope?: ReportScope) => Promise<FleetReport> {
     const now = options.now ?? Date.now;
-    return async (env) => {
+    return async (env, scope = {}) => {
         const appId = options.appId(env);
+        const takenAt = now();
         const errors: string[] = [];
         const guard = async <T>(label: string, run: () => Promise<T> | T, fallback: T): Promise<T> => {
             try {
@@ -59,18 +73,26 @@ export function createReporter<Env>(
                 return fallback;
             }
         };
-        const [health, statuses, tasks, backup] = await Promise.all([
+        const [health, statuses, tasks, backup, users, icon] = await Promise.all([
             runHealth(packages, env),
             guard('licenses', () => options.licenses?.(env) ?? [], []),
             guard('tasks', () => (options.sources?.tasks ? options.sources.tasks(env) : defaultTasks(appId)), []),
             guard('backup', () => options.sources?.backup?.(env) ?? null, null),
+            scope.users === false
+                ? null
+                : guard(
+                      'users',
+                      () => (options.sources?.users ? options.sources.users(env, takenAt) : defaultUsers(takenAt)),
+                      null,
+                  ),
+            guard('icon', () => options.sources?.icon?.(env) ?? null, null),
         ]);
         const licenses = new Map(statuses.map((status) => [status.key, status]));
         return {
             app: appId,
             environment: options.environment?.(env) ?? 'unknown',
             version: options.version?.(env) ?? null,
-            takenAt: now(),
+            takenAt,
             packages: packages.packages.map((pkg) => {
                 const status = licenses.get(pkg.key);
                 return {
@@ -91,6 +113,8 @@ export function createReporter<Env>(
             health,
             tasks,
             backup,
+            users,
+            icon,
             canInit: Boolean(options.init),
             errors,
         };

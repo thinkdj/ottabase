@@ -2,42 +2,47 @@
 // @ottabase/ottaorm - User table schema
 // ============================================================
 
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * User table schema
  */
-export const usersTable = sqliteTable('users', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    name: text('name'),
-    email: text('email').notNull().unique(),
-    emailVerified: integer('email_verified'),
-    // An external picture from an OAuth provider only. An uploaded avatar is `avatarKey`.
-    image: text('image'),
-    // Public storage key of the uploaded avatar (its thumb variant when one was made); see User#imageUrl.
-    avatarKey: text('avatar_key'),
-    // IANA zone and BCP 47 tag the person formats dates and numbers with (null = not set yet)
-    timezone: text('timezone'),
-    locale: text('locale'),
-    passwordHash: text('password_hash'),
-    // Referral fields
-    referralUsername: text('referral_username').unique(),
-    referredById: text('referred_by_id'),
-    // App identifier for multi-app database sharing (nullable, opt-in)
-    appId: text('app_id'),
-    // The user's currently-selected organization (persisted across sessions/devices).
-    // This is a pointer only — membership is always re-validated server-side before use.
-    activeOrganizationId: text('active_organization_id'),
-    createdAt: integer('created_at')
-        .$defaultFn(() => Date.now())
-        .notNull(),
-    updatedAt: integer('updated_at')
-        .$defaultFn(() => Date.now())
-        .$onUpdateFn(() => Date.now())
-        .notNull(),
-});
+export const usersTable = sqliteTable(
+    'users',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        name: text('name'),
+        email: text('email').notNull().unique(),
+        emailVerified: integer('email_verified'),
+        // An external picture from an OAuth provider only. An uploaded avatar is `avatarKey`.
+        image: text('image'),
+        // Public storage key of the uploaded avatar (its thumb variant when one was made); see User#imageUrl.
+        avatarKey: text('avatar_key'),
+        // IANA zone and BCP 47 tag the person formats dates and numbers with (null = not set yet)
+        timezone: text('timezone'),
+        locale: text('locale'),
+        passwordHash: text('password_hash'),
+        // Referral fields
+        referralUsername: text('referral_username').unique(),
+        referredById: text('referred_by_id'),
+        // App identifier for multi-app database sharing (nullable, opt-in)
+        appId: text('app_id'),
+        // The user's currently-selected organization (persisted across sessions/devices).
+        // This is a pointer only — membership is always re-validated server-side before use.
+        activeOrganizationId: text('active_organization_id'),
+        createdAt: integer('created_at')
+            .$defaultFn(() => Date.now())
+            .notNull(),
+        updatedAt: integer('updated_at')
+            .$defaultFn(() => Date.now())
+            .$onUpdateFn(() => Date.now())
+            .notNull(),
+    },
+    // Recent sign-ups (Fleet's `users.last24h`, admin lists by newest) read a range, not the table.
+    (table) => [index('users_created_idx').on(table.createdAt)],
+);
 
 /**
  * User model type
