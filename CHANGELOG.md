@@ -648,7 +648,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The pre-commit hook still carried the two lines husky 9 deprecates (and husky 10 fails on).
 - `otta new` named a new app's database, public bucket and queue after it, but not its private files and backups buckets
   (`ottabase-files-private`, `ottabase-vault`, in every env), so a second app in the account shared them with the first.
-  Every resource the template names after the framework takes the app's name now.
+  Every resource the template names after the framework is the app's own now, as `ottabase-<app>-…`
+  (`ottabase-my-app-db`, `ottabase-my-app-vault-staging`), the worker template's too (it named them after itself).
+- `otta new` left more of a new app shared with its template:
+    - **CI values.** Its placeholders kept the template's names (`D1_DATABASE_ID`), and CI's values are one bag for
+      every app, so a CI deploy of the new app ran against the template's database. Each becomes `OTTABASE_<APP>_<NAME>`
+      (`CLOUDFLARE_ACCOUNT_ID`, the account's, stays), and `otta new` prints the ones CI must have.
+    - **Identity.** A new web app kept `appId: 'otta-web'`, which scopes rows such as alerts in a database apps may
+      share, and `APP_ID=otta-web` in `.env.example`, which outranks it in dev. Both take the app's name, `appName` and
+      the company its title; the health route, the logs and the app package read them instead of their own `'otta-web'`.
+    - **Rate limiters.** Its `namespace_id`s, unique to the Cloudflare account, were otta-web's, so the two apps shared
+      counters. Each distinct id gets the next one no app in `apps/` holds.
+    - **Dev ports.** It listened on otta-web's 3003/3004. Each port moves to the first one no app declares, wherever the
+      app writes it (start URLs, wrangler's `dev.port`, the Vite config, scripts, docs).
+    - **Landing apps.** A new one was given `<name>-db` and `<name>-bucket`, which `otta deploy` would have created
+      empty, while it reads what a web app's admin writes. It pairs with a web app now (`--web <app>`, or the only one
+      there is): that app's database and bucket names, database-id placeholders and `appId` in every env, its dev state,
+      and its ports in the README.
+    - A name long enough to push `ottabase-<app>-files-private-preview` past Cloudflare's 63 characters is refused.
+- Two apps on one host (every app on `127.0.0.1` in dev: cookies ignore the port) overwrote each other's session, CSRF
+  and OAuth-state cookies. With `APP_ID` set they are `ottabase.<APP_ID>.<kind>`.
+- `pnpm dev:fe`, `dev:be`, `build` and `build:app` ran otta-web whatever `ottabase.defaultApp` said; they follow it now,
+  as `otta build`/`test`/`lint`/`type-check`/`clean` do without an app. CI checks the generated Cloudflare types of
+  every app that declares `cf-typegen:check`, not otta-web's alone.
+- Creating an app had no walkthrough: `docs/NEW_APP.md` covers template, presets, pairing, what `otta new` sets, dev,
+  deploy and CI, and the agent skill `ottabase-new-app` the same for agents.
 - Protected post unlock had no rate limit, so a post's password could be guessed.
 - Comments on platform-mode blog posts failed for everyone (the core policy required an organization).
 - Alt text picked from the media library reaches editor blocks (the kit read `altText`/`originalName`, the picker sends
