@@ -187,7 +187,9 @@ export class Cropper {
         this.emptyEl.onclick = () => this.openFilePicker();
         this.setEmptyHint();
 
-        this.stage.append(this.imageEl, this.frameEl, this.emptyEl);
+        // appendChild, not append(...nodes): a program that also loads the Workers types (they
+        // declare HTMLRewriter's Element.append(content, options)) cannot type multi-node append.
+        for (const node of [this.imageEl, this.frameEl, this.emptyEl]) this.stage.appendChild(node);
 
         // Toolbar
         const toolbar = el('div', 'ottacropper-toolbar');
@@ -251,7 +253,7 @@ export class Cropper {
             this.straightenRange.ondblclick = () => this.setStraighten(0);
             this.straightenLabel = el('span', 'ottacropper-degrees');
             this.straightenLabel.textContent = '0°';
-            wrap.append(this.straightenRange, this.straightenLabel);
+            for (const node of [this.straightenRange, this.straightenLabel]) wrap.appendChild(node);
             this.needsImage.push(this.straightenRange);
             toolbar.appendChild(wrap);
         }
@@ -278,7 +280,7 @@ export class Cropper {
         actions.appendChild(this.replaceBtn);
         toolbar.appendChild(actions);
 
-        root.append(this.fileInput, this.stage, toolbar);
+        for (const node of [this.fileInput, this.stage, toolbar]) root.appendChild(node);
         for (const c of this.needsImage) c.disabled = true;
 
         this.stage.addEventListener('pointerdown', this.onPointerDown);
