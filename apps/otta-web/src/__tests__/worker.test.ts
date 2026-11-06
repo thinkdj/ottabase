@@ -2,6 +2,7 @@ import { getSession } from '@ottabase/auth/backend';
 import { Account, User } from '@ottabase/ottaorm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import workerHandler from '../../cloudflare-worker';
+import { APP_ID } from '../../ottabase/config.loader';
 
 const worker = {
     fetch(request: Request, env: CloudflareEnv) {
@@ -66,7 +67,7 @@ describe('Cloudflare Worker API', () => {
             const data = (await resp.json()) as any;
             expect(resp.status).toBe(200);
             expect(data.ok).toBe(true);
-            expect(data.name).toBe('otta-web');
+            expect(data.name).toBe(APP_ID);
         });
     });
 

@@ -23,7 +23,7 @@ import { Router } from '@ottabase/ottarouter';
 import { createPremiumAdminRouter, mountPremiumPackages } from '@ottabase/premium/server';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
-import { getOttabaseConfig } from '../../ottabase/config.loader';
+import { APP_ID, getOttabaseConfig } from '../../ottabase/config.loader';
 import { packages } from '../../ottabase/packages';
 import { requireAdminAccess } from '../lib/admin-guard';
 import { buildCorsHeaders, ctxOf, h, makeApiRouteContext, type ApiRouteContext } from '../lib/api-context';
@@ -140,7 +140,7 @@ apiRouter.use('/api', (c, next) => {
 apiRouter.get('/api/health', () =>
     jsonResponse({
         ok: true,
-        name: 'otta-web',
+        name: APP_ID,
         timestamp: Date.now(),
     }),
 );

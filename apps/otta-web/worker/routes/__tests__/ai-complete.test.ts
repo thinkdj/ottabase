@@ -30,6 +30,7 @@ vi.mock('../../lib/auth-utils', () => ({
 
 import { clearConnection, registerConnection } from '@ottabase/ottaorm';
 import { resetCredentialWrites } from '@ottabase/ottaai/ottaorm';
+import { APP_ID } from '../../../ottabase/config.loader';
 import { handleAiComplete, handleAiEmbed, handleAiVision } from '../ai';
 
 // ---------------------------------------------------------------------------
@@ -279,7 +280,7 @@ describe('the app composes the package into a correctly addressed gateway call',
     it('tags every call with trusted provenance the caller cannot forge', async () => {
         await handleAiComplete(post({ prompt: 'hi' }));
         const metadata = JSON.parse(outbound[0]!.headers['cf-aig-metadata']!) as Record<string, string>;
-        expect(metadata).toMatchObject({ source: 'platform', task: 'assist', app: 'otta-web' });
+        expect(metadata).toMatchObject({ source: 'platform', task: 'assist', app: APP_ID });
     });
 
     it('returns the REDACTED projection — never the merged config that carries a key', async () => {
@@ -322,7 +323,7 @@ describe('/api/ai/embed', () => {
         expect(JSON.parse(outbound[0]!.headers['cf-aig-metadata']!)).toMatchObject({
             source: 'platform',
             task: 'embed',
-            app: 'otta-web',
+            app: APP_ID,
         });
         expect(await res.json()).toMatchObject({
             vectors: [[0.125, -0.25, 0.5]],

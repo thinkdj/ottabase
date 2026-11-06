@@ -14,6 +14,7 @@ import { definePackage, type CronContribution } from '@ottabase/kernel';
 import { Router } from '@ottabase/ottarouter';
 import { dispatch } from '@ottabase/queue';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { APP_NAME } from '../config.loader';
 import { Todo, todosTable } from '../models/Todo'; // otta:only demo
 import { incrementDispatchStats } from '../queue';
 import {
@@ -202,7 +203,7 @@ const queueBridge: Record<string, CronContribution<CloudflareEnv>> = {
 
 export const appPackage = definePackage<CloudflareEnv>({
     key: 'app',
-    name: 'otta-web',
+    name: APP_NAME,
     version: '1.0.0',
     description: "This app's own tables, routes and jobs.",
 

@@ -234,6 +234,8 @@ vi.mock('../shortlinks', () => ({
 // otta:end shortlinks
 
 vi.mock('../../../ottabase/config.loader', () => ({
+    APP_ID: 'otta-web',
+    APP_NAME: 'Ottabase Template App',
     getOttabaseConfig: vi.fn(() => ({
         appId: 'otta-web',
         storage: { prefix: 'ottabase' },
