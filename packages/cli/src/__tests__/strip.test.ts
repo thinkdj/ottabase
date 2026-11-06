@@ -64,6 +64,16 @@ function fixture(): string {
         JSON.stringify(
             {
                 name: '@ottabase/otta-web',
+                ottabase: {
+                    start: {
+                        development: {
+                            processes: [
+                                { name: 'web', url: 'http://127.0.0.1:3003' },
+                                { name: 'worker', url: 'http://127.0.0.1:3004' },
+                            ],
+                        },
+                    },
+                },
                 dependencies: {
                     '@ottabase/comments': 'workspace:*',
                     '@ottabase/kernel': 'workspace:*',
@@ -200,22 +210,141 @@ function fixture(): string {
         JSON.stringify(
             {
                 name: 'otta-web',
-                d1_databases: [{ database_name: 'ottabase-db' }],
+                d1_databases: [
+                    {
+                        binding: 'OBCF_D1',
+                        database_name: 'ottabase-db',
+                        database_id: 'YOUR_D1_DATABASE_ID',
+                        preview_database_id: 'preview',
+                    },
+                ],
                 r2_buckets: [
-                    { binding: 'OBCF_R2', bucket_name: 'ottabase-bucket' },
+                    {
+                        binding: 'OBCF_R2',
+                        bucket_name: 'ottabase-bucket',
+                        preview_bucket_name: 'ottabase-bucket-preview',
+                    },
                     { binding: 'OBCF_R2_PRIVATE', bucket_name: 'ottabase-files-private-preview' },
                     { binding: 'OBCF_R2_VAULT', bucket_name: 'ottabase-vault' },
                 ],
                 queues: { producers: [{ binding: 'OBCF_QUEUE', queue: 'ottabase-queue-demo' }] },
+                // Local dev and production share their ids, as in the real template.
+                unsafe: { bindings: [{ namespace_id: '1001' }, { namespace_id: '2001' }] },
+                dev: { port: 3004 },
+                env: {
+                    production: {
+                        d1_databases: [
+                            { binding: 'OBCF_D1', database_name: 'ottabase-db', database_id: 'D1_DATABASE_ID' },
+                        ],
+                        r2_buckets: [{ binding: 'OBCF_R2', bucket_name: 'ottabase-bucket' }],
+                        kv_namespaces: [{ binding: 'OBCF_KV', id: 'KV_NAMESPACE_ID' }],
+                        unsafe: { bindings: [{ namespace_id: '1001' }, { namespace_id: '2001' }] },
+                        vars: { CLOUDFLARE_ACCOUNT_ID: 'CLOUDFLARE_ACCOUNT_ID' },
+                    },
+                    preview: {
+                        d1_databases: [
+                            {
+                                binding: 'OBCF_D1',
+                                database_name: 'ottabase-db-preview',
+                                database_id: 'D1_PREVIEW_DATABASE_ID',
+                            },
+                        ],
+                        r2_buckets: [{ binding: 'OBCF_R2', bucket_name: 'ottabase-bucket-preview' }],
+                        unsafe: { bindings: [{ namespace_id: '1002' }] },
+                    },
+                },
             },
             null,
             4,
         ) + '\n',
     );
     write(`${app}/cloudflare-config.json`, '{ "deployable": false, "healthCheckPath": "/api/health" }\n');
-    write(`${app}/.env.example`, 'AUTH_SECRET=\n');
+    write(`${app}/.env.example`, 'AUTH_SECRET=\nAPP_ID=otta-web\n');
     write(`${app}/.env.local`, 'AUTH_SECRET=secret\n');
     write(`${app}/README.md`, '# otta-web\n');
+    write(
+        `${app}/ottabase/ottabase.config.ts`,
+        [
+            'export default defineOttabaseConfig({',
+            "    appId: 'otta-web',",
+            "    appName: 'Ottabase Template App',",
+            "    meta: { description: 'A template app', author: '@thinkdj', companyName: 'Ottabase' },",
+            '});',
+            '',
+        ].join('\n'),
+    );
+    // Ports where the template writes them; a size in pixels is not a port.
+    write(
+        `${app}/vite.config.ts`,
+        [
+            "export default { server: { port: parseInt(process.env.PORT_FE || '3003'),",
+            '    proxy: { target: `http://127.0.0.1:${process.env.PORT_BE || 3004}` } }, maxHeight: 3004 };',
+            '',
+        ].join('\n'),
+    );
+
+    // The landing template: it reads otta-web's database and public bucket.
+    const landing = 'apps/otta-landing';
+    write(
+        `${landing}/package.json`,
+        JSON.stringify({
+            name: '@ottabase/otta-landing',
+            ottabase: { start: { development: { processes: [{ name: 'web', url: 'http://127.0.0.1:3000' }] } } },
+        }),
+    );
+    write(
+        `${landing}/README.md`,
+        "# otta-landing\n\nShows what otta-web's admin writes: edit it at http://localhost:3003/admin.\nThe site runs on :3000, at 10:30 or any time.\n",
+    );
+    write(
+        `${landing}/next.config.js`,
+        "initOpenNextCloudflareForDev({ persist: { path: path.resolve(__dirname, '../otta-web/.wrangler/state/v3') } });\n",
+    );
+    write(
+        `${landing}/wrangler.jsonc`,
+        [
+            '{',
+            '    "name": "otta-landing",',
+            '    // The SAME D1 database as apps/otta-web.',
+            '    "d1_databases": [',
+            '        { "binding": "OBCF_D1", "database_name": "ottabase-db", "database_id": "YOUR_D1_DATABASE_ID", "preview_database_id": "preview" },',
+            '    ],',
+            '    "r2_buckets": [',
+            '        { "binding": "OBCF_R2", "bucket_name": "ottabase-bucket", "preview_bucket_name": "ottabase-bucket-preview" },',
+            '    ],',
+            '    "vars": { "APP_ID": "otta-web" },',
+            '    "dev": { "port": 8788 },',
+            '    "env": {',
+            '        "production": {',
+            '            "d1_databases": [{ "binding": "OBCF_D1", "database_name": "ottabase-db", "database_id": "D1_DATABASE_ID" }],',
+            '            "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "ottabase-bucket" }],',
+            '            "vars": { "ENVIRONMENT": "production", "APP_ID": "otta-web" },',
+            '        },',
+            '        "preview": {',
+            '            "d1_databases": [{ "binding": "OBCF_D1", "database_name": "ottabase-db-preview", "database_id": "D1_PREVIEW_DATABASE_ID" }],',
+            '            "r2_buckets": [{ "binding": "OBCF_R2", "bucket_name": "ottabase-bucket-preview" }],',
+            '            "vars": { "APP_ID": "otta-web" },',
+            '        },',
+            '    },',
+            '}',
+            '',
+        ].join('\n'),
+    );
+
+    // The worker template names its resources after itself.
+    write('apps/otta-worker/package.json', JSON.stringify({ name: '@ottabase/otta-worker' }));
+    write(
+        'apps/otta-worker/wrangler.jsonc',
+        JSON.stringify({
+            name: 'otta-worker',
+            d1_databases: [{ binding: 'OBCF_D1', database_name: 'otta-worker', database_id: 'D1_DATABASE_ID' }],
+            r2_buckets: [{ binding: 'OBCF_R2', bucket_name: 'otta-worker' }],
+            vars: { APP_ID: 'otta-worker' },
+        }),
+    );
+
+    // Another app in the account, holding a rate limiter id of its own.
+    write('apps/otta-cache/wrangler.jsonc', '{ "unsafe": { "bindings": [{ "namespace_id": "3000" }] } }\n');
     return root;
 }
 
@@ -400,19 +529,164 @@ describe('scaffoldApp', () => {
         expect(fs.existsSync(path.join(root, 'apps/shop/.env.local'))).toBe(false);
         expect(fs.readJsonSync(path.join(root, 'apps/shop/package.json')).name).toBe('@ottabase/shop');
         expect(read(root, 'apps/shop/wrangler.jsonc')).toContain('"name": "shop"');
-        // Every resource the template names after the framework takes the app's name: a second app in the
+        // Every resource the template names after the framework becomes ottabase-<app>-…: a second app in the
         // account shares no database, no bucket (private files and backups included) and no queue.
         const wrangler = read(root, 'apps/shop/wrangler.jsonc');
-        for (const name of ['shop-db', 'shop-bucket', 'shop-files-private-preview', 'shop-vault', 'shop-queue-demo']) {
-            expect(wrangler).toContain(`"${name}"`);
+        for (const name of ['db', 'bucket', 'files-private-preview', 'vault', 'queue-demo']) {
+            expect(wrangler).toContain(`"ottabase-shop-${name}"`);
         }
-        expect(wrangler).not.toContain('ottabase-');
+        expect(wrangler).not.toMatch(/"ottabase-(db|bucket|files|vault|queue)/);
         // The template stays out of CI; the app made from it ships.
         expect(fs.readJsonSync(path.join(root, 'apps/shop/cloudflare-config.json'))).toEqual({
             deployable: true,
             healthCheckPath: '/api/health',
         });
         expect(read(root, 'apps/shop/README.md')).toBe('# shop\n');
+        // Its identity is its own too: appId scopes rows in a database apps may share, and the auth cookies.
+        const config = read(root, 'apps/shop/ottabase/ottabase.config.ts');
+        expect(config).toContain("appId: 'shop',");
+        expect(config).toContain("appName: 'Shop',");
+        expect(config).toContain("meta: { description: 'Shop', author: '', companyName: 'Shop' }");
+        // .env.example's APP_ID outranks the file in dev (pnpm env:secrets copies it to .env.local).
+        expect(read(root, 'apps/shop/.env.example')).toBe('AUTH_SECRET=\nAPP_ID=shop\n');
+    });
+
+    it("prefixes every placeholder but the account's, so CI's one bag of values never crosses two apps", () => {
+        const root = fixture();
+        const result = scaffoldApp(root, 'web', 'my-shop');
+        const config = JSON.parse(read(root, 'apps/my-shop/wrangler.jsonc'));
+        expect(config.d1_databases[0].database_id).toBe('OTTABASE_MY_SHOP_YOUR_D1_DATABASE_ID');
+        expect(config.env.production.d1_databases[0].database_id).toBe('OTTABASE_MY_SHOP_D1_DATABASE_ID');
+        expect(config.env.production.kv_namespaces[0].id).toBe('OTTABASE_MY_SHOP_KV_NAMESPACE_ID');
+        expect(config.env.production.vars.CLOUDFLARE_ACCOUNT_ID).toBe('CLOUDFLARE_ACCOUNT_ID');
+        expect(result.ciValues).toEqual({
+            production: [
+                'OTTABASE_MY_SHOP_D1_DATABASE_ID',
+                'OTTABASE_MY_SHOP_KV_NAMESPACE_ID',
+                'CLOUDFLARE_ACCOUNT_ID',
+            ],
+            preview: ['OTTABASE_MY_SHOP_D1_PREVIEW_DATABASE_ID'],
+        });
+        // The template keeps its own names.
+        expect(read(root, 'apps/otta-web/wrangler.jsonc')).toContain('"database_id": "D1_DATABASE_ID"');
+    });
+
+    it('moves the dev ports off every other app, wherever the template writes them', () => {
+        const root = fixture();
+        // otta-web holds 3003/3004, otta-landing 3000/8788: the first free ones at or above each.
+        expect(scaffoldApp(root, 'web', 'shop').ports).toEqual([3005, 3006]);
+        const pkg = fs.readJsonSync(path.join(root, 'apps/shop/package.json'));
+        expect(pkg.ottabase.start.development.processes.map((p: { url: string }) => p.url)).toEqual([
+            'http://127.0.0.1:3005',
+            'http://127.0.0.1:3006',
+        ]);
+        expect(JSON.parse(read(root, 'apps/shop/wrangler.jsonc')).dev.port).toBe(3006);
+        const vite = read(root, 'apps/shop/vite.config.ts');
+        expect(vite).toContain("PORT_FE || '3005'");
+        expect(vite).toContain('PORT_BE || 3006}');
+        expect(vite).toContain('maxHeight: 3004'); // a number, not a port
+        expect(scaffoldApp(root, 'web', 'shop-two').ports).toEqual([3007, 3008]);
+    });
+
+    it("names a worker app's resources ottabase-<app>-… where the template named them after itself", () => {
+        const root = fixture();
+        scaffoldApp(root, 'worker', 'tool');
+        const config = JSON.parse(read(root, 'apps/tool/wrangler.jsonc'));
+        expect(config.name).toBe('tool');
+        expect(config.d1_databases[0].database_name).toBe('ottabase-tool-db');
+        expect(config.d1_databases[0].database_id).toBe('OTTABASE_TOOL_D1_DATABASE_ID');
+        expect(config.r2_buckets[0].bucket_name).toBe('ottabase-tool-bucket');
+        expect(config.vars.APP_ID).toBe('tool');
+    });
+
+    it('refuses an app name that makes a bucket name longer than Cloudflare allows', () => {
+        const root = fixture();
+        expect(() => scaffoldApp(root, 'web', 'a'.repeat(40))).toThrow(/63 characters in a bucket or queue name/);
+        expect(fs.existsSync(path.join(root, 'apps', 'a'.repeat(40)))).toBe(false);
+    });
+
+    it('gives each app rate limiter ids no other app holds, keeping the ids the template keeps equal', () => {
+        const root = fixture();
+        const ids = (app: string) => {
+            const config = JSON.parse(read(root, `apps/${app}/wrangler.jsonc`));
+            const of = (block: { unsafe: { bindings: { namespace_id: string }[] } }) =>
+                block.unsafe.bindings.map((binding) => binding.namespace_id);
+            return { top: of(config), production: of(config.env.production), preview: of(config.env.preview) };
+        };
+        scaffoldApp(root, 'web', 'shop');
+        // After 3000, the highest id in apps/: one fresh id per distinct template id.
+        expect(ids('shop')).toEqual({ top: ['3001', '3002'], production: ['3001', '3002'], preview: ['3003'] });
+        scaffoldApp(root, 'web', 'my-shop');
+        expect(ids('my-shop')).toEqual({ top: ['3004', '3005'], production: ['3004', '3005'], preview: ['3006'] });
+        expect(read(root, 'apps/my-shop/ottabase/ottabase.config.ts')).toContain("appName: 'My Shop',");
+        // The template keeps its own.
+        expect(ids('otta-web').top).toEqual(['1001', '2001']);
+    });
+
+    it('pairs a landing app with the only web app: its database, public bucket, appId and dev state', () => {
+        const root = fixture();
+        const result = scaffoldApp(root, 'landing', 'site');
+        expect(result.pairedWith).toBe('otta-web');
+        const wrangler = read(root, 'apps/site/wrangler.jsonc');
+        expect(wrangler).toContain('"name": "site"');
+        // Not ottabase-site-db: otta deploy would create that, and it would be empty.
+        expect(wrangler).not.toMatch(/site-|SITE/);
+        expect(wrangler).toContain('"database_name": "ottabase-db-preview"');
+        expect(wrangler).toContain('"database_id": "D1_PREVIEW_DATABASE_ID"');
+        expect(wrangler).toContain('"APP_ID": "otta-web"');
+        expect(read(root, 'apps/site/next.config.js')).toContain("'../otta-web/.wrangler/state/v3'");
+        // Its own ports move; the ones it names for otta-web stay otta-web's.
+        expect(result.ports).toEqual([3001, 8789]);
+        expect(read(root, 'apps/site/README.md')).toContain('http://localhost:3003/admin');
+        // A port in prose moves too; a time of day is not a port.
+        expect(read(root, 'apps/site/README.md')).toContain('The site runs on :3001, at 10:30 or any time.');
+        expect(result.ciValues).toEqual({ production: ['D1_DATABASE_ID'], preview: ['D1_PREVIEW_DATABASE_ID'] });
+    });
+
+    it('pairs a landing app with the web app --web names, by the names that app gives its resources', () => {
+        const root = fixture();
+        scaffoldApp(root, 'web', 'shop');
+        expect(() => scaffoldApp(root, 'landing', 'site')).toThrow(/pass --web with one of: otta-web, shop/);
+        expect(() => scaffoldApp(root, 'landing', 'site', { web: 'nope' })).toThrow(/no web app by that name/);
+        expect(() => scaffoldApp(root, 'web', 'other', { web: 'shop' })).toThrow(/landing template only/);
+
+        expect(scaffoldApp(root, 'landing', 'site', { web: 'shop' }).pairedWith).toBe('shop');
+        const wrangler = read(root, 'apps/site/wrangler.jsonc');
+        const config = JSON.parse(wrangler.replace(/\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1'));
+        expect(config.d1_databases[0]).toEqual({
+            binding: 'OBCF_D1',
+            database_name: 'ottabase-shop-db',
+            database_id: 'OTTABASE_SHOP_YOUR_D1_DATABASE_ID',
+            preview_database_id: 'preview',
+        });
+        expect(config.r2_buckets[0]).toEqual({
+            binding: 'OBCF_R2',
+            bucket_name: 'ottabase-shop-bucket',
+            preview_bucket_name: 'ottabase-shop-bucket-preview',
+        });
+        expect(config.env.production.d1_databases[0].database_name).toBe('ottabase-shop-db');
+        // The placeholder CI fills for shop's database: the same value, so the same database.
+        expect(config.env.production.d1_databases[0].database_id).toBe('OTTABASE_SHOP_D1_DATABASE_ID');
+        expect(config.env.preview.d1_databases[0].database_id).toBe('OTTABASE_SHOP_D1_PREVIEW_DATABASE_ID');
+        expect(config.env.preview.r2_buckets[0].bucket_name).toBe('ottabase-shop-bucket-preview');
+        for (const vars of [config.vars, config.env.production.vars, config.env.preview.vars]) {
+            expect(vars.APP_ID).toBe('shop');
+        }
+        expect(config.env.production.vars.ENVIRONMENT).toBe('production');
+        expect(wrangler).toContain('// The SAME D1 database as apps/shop.');
+        expect(read(root, 'apps/site/next.config.js')).toContain("'../shop/.wrangler/state/v3'");
+        // shop's admin is on shop's port, not otta-web's.
+        expect(read(root, 'apps/site/README.md')).toContain(
+            "Shows what shop's admin writes: edit it at http://localhost:3005/admin.",
+        );
+        expect(fs.existsSync(path.join(root, 'apps/site'))).toBe(true);
+    });
+
+    it('refuses a landing app with no web app to read', () => {
+        const root = fixture();
+        fs.removeSync(path.join(root, 'apps/otta-web/ottabase/ottabase.config.ts'));
+        expect(() => scaffoldApp(root, 'landing', 'site')).toThrow(/there is no web app/);
+        expect(fs.existsSync(path.join(root, 'apps/site'))).toBe(false);
     });
 
     it('applies a preset: strips the demo and every package it does not keep, writes a starter README', () => {

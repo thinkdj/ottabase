@@ -148,7 +148,7 @@ const defaultExec: Exec = (command, args, options) =>
     });
 
 /** A wrangler config's syntax tree; a config that does not parse is an error naming where. */
-function parseWrangler(text: string): Node {
+export function parseWrangler(text: string): Node {
     const errors: ParseError[] = [];
     const tree = parseTree(text, errors, { allowTrailingComma: true });
     if (!tree || errors.length) {

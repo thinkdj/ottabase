@@ -46,6 +46,10 @@ program
     .description('Create a new app from a template')
     .option('--preset <preset>', `Keep only part of the web template: ${presetNames().join(', ')}`)
     .option('--minimal', 'Shorthand for --preset minimal')
+    .option(
+        '--web <app>',
+        'Landing only: the web app whose database and public bucket it reads (default: the only one)',
+    )
     .addHelpText(
         'after',
         `
@@ -64,12 +68,16 @@ Examples:
   $ otta new web my-app --minimal
   $ otta new web my-app --preset saas
   $ otta new landing my-site
+  $ otta new landing my-site --web my-app
   $ otta new worker my-tool
 `,
     )
-    .action(async (template: string, name: string, options: { preset?: string; minimal?: boolean }) => {
+    .action(async (template: string, name: string, options: { preset?: string; minimal?: boolean; web?: string }) => {
         try {
-            await newApp(template as AppTemplate, name, { preset: options.minimal ? 'minimal' : options.preset });
+            await newApp(template as AppTemplate, name, {
+                preset: options.minimal ? 'minimal' : options.preset,
+                web: options.web,
+            });
         } catch (error) {
             log.error(error instanceof Error ? error.message : String(error));
             process.exit(1);
