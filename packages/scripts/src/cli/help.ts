@@ -67,9 +67,13 @@ interface CommandDoc {
 
 const COMMAND_REGISTRY: CommandDoc[] = [
     // Development
-    { name: 'dev', group: 'Development', desc: 'Start the default app topology (Vite + Wrangler for otta-web)' },
-    { name: 'dev:fe', group: 'Development', desc: 'Vite dev server only (3003)' },
-    { name: 'dev:be', group: 'Development', desc: 'Wrangler worker only (3004)' },
+    {
+        name: 'dev',
+        group: 'Development',
+        desc: 'Start the default app, Vite + Wrangler for a web app (ottabase.defaultApp in package.json)',
+    },
+    { name: 'dev:fe', group: 'Development', desc: 'Vite dev server of the default app only' },
+    { name: 'dev:be', group: 'Development', desc: 'Wrangler worker of the default app only' },
     { name: 'dev:landing', group: 'Development', desc: 'Dev server for the otta-landing app' },
     {
         name: 'dev:kill',
@@ -82,8 +86,8 @@ const COMMAND_REGISTRY: CommandDoc[] = [
     { name: 'dev:full', group: 'Development', desc: 'Install, build packages, test, then start dev' },
 
     // Build
-    { name: 'build', group: 'Build', desc: 'Build all packages + otta-web' },
-    { name: 'build:app', group: 'Build', desc: 'Build otta-web only' },
+    { name: 'build', group: 'Build', desc: 'Build all packages, then the default app' },
+    { name: 'build:app', group: 'Build', desc: 'Build the default app only (packages already built)' },
     { name: 'build:pkg', group: 'Build', desc: 'Build shared packages (required before first dev)' },
 
     // Quality

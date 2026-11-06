@@ -410,9 +410,9 @@ the migrations in each environment, and a commit.
 // =====================================================
 
 program
-    .command('build <app>')
+    .command('build [app]')
     .description('Build an app for production')
-    .action(async (app: string) => {
+    .action(async (app: string | undefined) => {
         try {
             await buildApp(app);
         } catch (error) {
@@ -422,11 +422,11 @@ program
     });
 
 program
-    .command('test <app>')
+    .command('test [app]')
     .description('Run tests for an app')
     .option('-w, --watch', 'Run tests in watch mode')
     .option('-c, --coverage', 'Generate coverage report')
-    .action(async (app: string, options: { watch?: boolean; coverage?: boolean }) => {
+    .action(async (app: string | undefined, options: { watch?: boolean; coverage?: boolean }) => {
         try {
             await testApp(app, options);
         } catch (error) {
@@ -436,10 +436,10 @@ program
     });
 
 program
-    .command('lint <app>')
+    .command('lint [app]')
     .description('Lint an app')
     .option('-f, --fix', 'Automatically fix problems')
-    .action(async (app: string, options: { fix?: boolean }) => {
+    .action(async (app: string | undefined, options: { fix?: boolean }) => {
         try {
             await lintApp(app, options);
         } catch (error) {
@@ -449,10 +449,10 @@ program
     });
 
 program
-    .command('type-check <app>')
+    .command('type-check [app]')
     .alias('types')
     .description('Type check an app')
-    .action(async (app: string) => {
+    .action(async (app: string | undefined) => {
         try {
             await typeCheckApp(app);
         } catch (error) {
@@ -462,9 +462,9 @@ program
     });
 
 program
-    .command('clean <app>')
+    .command('clean [app]')
     .description('Clean build artifacts for an app')
-    .action(async (app: string) => {
+    .action(async (app: string | undefined) => {
         try {
             await cleanApp(app);
         } catch (error) {

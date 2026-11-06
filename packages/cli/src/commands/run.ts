@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { getAppInfo, getMonorepoRoot, getPnpmInvocation, log } from '../utils/index.js';
+import { getMonorepoRoot, getPnpmInvocation, log, resolveApp } from '../utils/index.js';
 import { startApp } from './start.js';
 
 /**
@@ -25,16 +25,12 @@ export async function devApp(appName: string, options: { port?: number } = {}): 
 /**
  * Builds an app
  */
-export async function buildApp(appName: string): Promise<void> {
+export async function buildApp(appName?: string): Promise<void> {
     const root = getMonorepoRoot();
-    const app = getAppInfo(appName);
-
-    if (!app) {
-        throw new Error(`App "${appName}" not found. Run "otta list" to see available apps.`);
-    }
+    const app = resolveApp(appName);
 
     if (!app.scripts.build) {
-        throw new Error(`App "${appName}" does not have a build script defined.`);
+        throw new Error(`App "${app.name}" does not have a build script defined.`);
     }
 
     log.info(`Building ${app.name}...`);
@@ -65,16 +61,12 @@ export async function buildApp(appName: string): Promise<void> {
 /**
  * Tests an app
  */
-export async function testApp(appName: string, options: { watch?: boolean; coverage?: boolean } = {}): Promise<void> {
+export async function testApp(appName?: string, options: { watch?: boolean; coverage?: boolean } = {}): Promise<void> {
     const root = getMonorepoRoot();
-    const app = getAppInfo(appName);
-
-    if (!app) {
-        throw new Error(`App "${appName}" not found. Run "otta list" to see available apps.`);
-    }
+    const app = resolveApp(appName);
 
     if (!app.scripts.test) {
-        throw new Error(`App "${appName}" does not have a test script defined.`);
+        throw new Error(`App "${app.name}" does not have a test script defined.`);
     }
 
     log.info(`Testing ${app.name}...`);
@@ -115,16 +107,12 @@ export async function testApp(appName: string, options: { watch?: boolean; cover
 /**
  * Lints an app
  */
-export async function lintApp(appName: string, options: { fix?: boolean } = {}): Promise<void> {
+export async function lintApp(appName?: string, options: { fix?: boolean } = {}): Promise<void> {
     const root = getMonorepoRoot();
-    const app = getAppInfo(appName);
-
-    if (!app) {
-        throw new Error(`App "${appName}" not found. Run "otta list" to see available apps.`);
-    }
+    const app = resolveApp(appName);
 
     if (!app.scripts.lint) {
-        throw new Error(`App "${appName}" does not have a lint script defined.`);
+        throw new Error(`App "${app.name}" does not have a lint script defined.`);
     }
 
     log.info(`Linting ${app.name}...`);
@@ -160,13 +148,9 @@ export async function lintApp(appName: string, options: { fix?: boolean } = {}):
 /**
  * Cleans build artifacts for an app
  */
-export async function cleanApp(appName: string): Promise<void> {
+export async function cleanApp(appName?: string): Promise<void> {
     const root = getMonorepoRoot();
-    const app = getAppInfo(appName);
-
-    if (!app) {
-        throw new Error(`App "${appName}" not found. Run "otta list" to see available apps.`);
-    }
+    const app = resolveApp(appName);
 
     // Gracefully skip apps that don't define a clean script
     if (!app.scripts.clean) {
@@ -202,16 +186,12 @@ export async function cleanApp(appName: string): Promise<void> {
 /**
  * Type checks an app
  */
-export async function typeCheckApp(appName: string): Promise<void> {
+export async function typeCheckApp(appName?: string): Promise<void> {
     const root = getMonorepoRoot();
-    const app = getAppInfo(appName);
-
-    if (!app) {
-        throw new Error(`App "${appName}" not found. Run "otta list" to see available apps.`);
-    }
+    const app = resolveApp(appName);
 
     if (!app.scripts['type-check']) {
-        throw new Error(`App "${appName}" does not have a type-check script defined.`);
+        throw new Error(`App "${app.name}" does not have a type-check script defined.`);
     }
 
     log.info(`Type checking ${app.name}...`);

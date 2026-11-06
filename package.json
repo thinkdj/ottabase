@@ -34,7 +34,7 @@
         "packages/*"
     ],
     "ottabase": {
-        "//": "Default app for app lifecycle and cf:* scripts. Override with an app argument or OTTABASE_APP.",
+        "//": "The app pnpm dev, dev:fe, dev:be, build, build:app and the cf:* scripts act on, and otta start/dev/build/test/lint/type-check/clean without an app. Override with an app argument or OTTABASE_APP.",
         "defaultApp": "otta-web"
     },
     "bin": {
@@ -45,16 +45,16 @@
         "commands": "node packages/scripts/bin/help.cjs",
         "otta": "node packages/cli/bin/otta.mjs",
         "dev": "pnpm otta start",
-        "dev:fe": "pnpm --filter @ottabase/otta-web dev",
-        "dev:be": "pnpm --filter @ottabase/otta-web dev:worker",
+        "dev:fe": "pnpm otta dev --process web",
+        "dev:be": "pnpm otta dev --process worker",
         "dev:landing": "pnpm otta dev otta-landing",
         "dev:kill": "node packages/scripts/bin/kill-ports.cjs",
         "dev:kill:web": "node packages/scripts/bin/kill-ports.cjs --app=otta-web",
         "dev:ui": "turbo dev --filter=@ottabase/otta-web --filter=@ottabase/ui --filter=@ottabase/ui-*",
         "dev:pkg": "turbo dev --filter=@ottabase/*",
         "dev:full": "pnpm i && pnpm build:pkg && pnpm test && pnpm dev",
-        "build": "turbo build --filter=./packages/**... --filter=@ottabase/otta-web...",
-        "build:app": "turbo build --filter=@ottabase/otta-web...",
+        "build": "pnpm build:pkg && pnpm otta build",
+        "build:app": "pnpm otta build",
         "build:pkg": "turbo build --filter=./packages/**...",
         "lint": "turbo lint",
         "ci:check": "turbo run lint type-check test build",

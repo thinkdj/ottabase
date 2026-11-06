@@ -42,8 +42,9 @@ jobs:
             - name: Verify toolchain binaries
               run: pnpm exec tsc --version && pnpm exec tsup --version && pnpm exec turbo --version
 
+            # Every app that declares the check: the web template and each app made from it.
             - name: Verify generated Cloudflare bindings
-              run: pnpm --filter @ottabase/otta-web cf-typegen:check
+              run: pnpm -r --if-present run cf-typegen:check
 
             # Cache Turborepo build outputs
             - name: Setup Turborepo cache
