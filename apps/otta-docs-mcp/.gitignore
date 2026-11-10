@@ -1,0 +1,3 @@
+# Written by scripts/build-corpus.mjs before every build, dev and deploy.
+worker/corpus.generated.json
+.wrangler/

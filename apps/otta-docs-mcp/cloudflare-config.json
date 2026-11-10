@@ -1,0 +1,15 @@
+{
+    "$schema": "../../schemas/cloudflare-config.schema.json",
+    "deployable": false,
+    "previewDeployable": false,
+    "appType": "custom",
+    "buildCommand": "build",
+    "workerBuildCommand": null,
+    "verifyPaths": ["dist/index.js"],
+    "wranglerConfig": "wrangler.jsonc",
+    "wranglerEnv": "production",
+    "healthCheckPath": "/health",
+    "requiresSecrets": [],
+    "requiresPreviewSecrets": [],
+    "$comment": "Ottabase's own docs server at mcp.ottabase.com, deployed by hand with `pnpm --filter @ottabase/otta-docs-mcp run deploy`. deployable=false so a fork's CI never tries to claim that domain; an app built on Ottabase does not need this Worker."
+}

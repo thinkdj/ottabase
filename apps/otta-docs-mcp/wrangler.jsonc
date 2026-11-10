@@ -1,0 +1,37 @@
+{
+    // The Ottabase documentation as a remote MCP server. See README.md.
+    //
+    // No bindings and no secrets: the docs are bundled into the Worker at build time
+    // (scripts/build-corpus.mjs) and every tool only reads them.
+
+    "$schema": "node_modules/wrangler/config-schema.json",
+
+    "name": "ottabase-docs-mcp",
+    "main": "worker/index.ts",
+    "compatibility_date": "2026-04-01",
+    "compatibility_flags": ["nodejs_compat"],
+    // No Version URLs: every uploaded version would otherwise answer publicly beside the real endpoint.
+    "preview_urls": false,
+
+    "observability": {
+        "enabled": true,
+        "logs": {
+            "enabled": true,
+        },
+    },
+
+    "env": {
+        "production": {
+            // The connector directory expects the server on the service's own domain.
+            "routes": [{ "pattern": "mcp.ottabase.com", "custom_domain": true }],
+            // One public address: the listing names the custom domain, not a workers.dev twin.
+            "workers_dev": false,
+            "observability": {
+                "enabled": true,
+                "logs": {
+                    "enabled": true,
+                },
+            },
+        },
+    },
+}

@@ -1,0 +1,55 @@
+{
+    "name": "@ottabase/otta-docs-mcp",
+    "version": "1.0.0",
+    "private": true,
+    "description": "The Ottabase documentation as a remote MCP server (search, read, list) on Cloudflare Workers",
+    "type": "module",
+    "ottabase": {
+        "start": {
+            "development": {
+                "processes": [
+                    {
+                        "name": "worker",
+                        "script": "dev",
+                        "url": "http://127.0.0.1:8790",
+                        "portArg": "--port",
+                        "primary": true
+                    }
+                ]
+            }
+        }
+    },
+    "scripts": {
+        "corpus": "node scripts/build-corpus.mjs",
+        "build": "node scripts/build-corpus.mjs && wrangler deploy --dry-run --outdir dist --env production",
+        "dev": "node scripts/build-corpus.mjs && wrangler dev --port 8790",
+        "deploy": "node scripts/build-corpus.mjs && wrangler deploy --env production",
+        "clean": "rimraf dist .wrangler worker/corpus.generated.json",
+        "lint": "eslint worker scripts __tests__",
+        "type-check": "tsc --noEmit",
+        "test": "vitest run",
+        "smoke": "node scripts/smoke.mjs",
+        "wrangler": "wrangler"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/server": "2.4.0",
+        "@ottabase/utils": "workspace:*",
+        "zod": "^4.2.0"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "catalog:",
+        "@modelcontextprotocol/client": "2.4.0",
+        "@ottabase/scripts": "workspace:*",
+        "eslint": "catalog:",
+        "rimraf": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+        "wrangler": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "directory": "apps/otta-docs-mcp"
+    },
+    "license": "MIT"
+}
