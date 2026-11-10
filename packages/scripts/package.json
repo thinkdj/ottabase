@@ -10,6 +10,11 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.mjs",
             "require": "./dist/index.js"
+        },
+        "./gen-llms": {
+            "types": "./dist/cli/gen-llms.d.ts",
+            "import": "./dist/cli/gen-llms.mjs",
+            "require": "./dist/cli/gen-llms.js"
         }
     },
     "bin": {
