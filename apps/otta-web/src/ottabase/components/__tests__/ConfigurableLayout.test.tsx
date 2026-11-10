@@ -101,6 +101,12 @@ vi.mock('@ottabase/ui', () => ({
     DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
     DropdownMenuSeparator: () => <hr />,
 }));
+vi.mock('@/lib/report-problem', () => ({
+    canReportProblem: () => false,
+    isReportable: () => false,
+    reportProblem: () => undefined,
+}));
+
 vi.mock('lucide-react', () => ({
     ChevronsUpDown: () => null,
     Images: () => null,

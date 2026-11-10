@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { isApiError, type ApiError } from '@ottabase/api';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@ottabase/ui';
+import { canReportProblem, isReportable, reportProblem } from '@/lib/report-problem';
 
 interface ErrorBoundaryProps {
     children: ReactNode;
@@ -118,6 +119,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                                 <Button onClick={this.handleReload} variant="default">
                                     Reload page
                                 </Button>
+                                {canReportProblem() && (
+                                    <Button onClick={() => reportProblem(error)} variant="ghost">
+                                        Report this problem
+                                    </Button>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -161,6 +167,7 @@ export function ApiErrorDisplay({
     const isWarning = apiError?.status === 501 || apiError?.code === 'NOT_IMPLEMENTED';
     const colorClasses = isWarning ? 'border-amber-500/30 bg-amber-500/10' : 'border-destructive/30 bg-destructive/10';
     const textClasses = isWarning ? 'text-amber-700 dark:text-amber-400' : 'text-destructive';
+    const reportable = isReportable(error);
 
     return (
         <div className={`rounded-lg border p-4 ${colorClasses} ${className}`}>
@@ -197,7 +204,7 @@ export function ApiErrorDisplay({
                 )}
             </div>
 
-            {(onRetry || onDismiss) && (
+            {(onRetry || onDismiss || reportable) && (
                 <div className="mt-3 flex gap-2">
                     {onRetry && (
                         <Button size="sm" variant="outline" onClick={onRetry}>
@@ -207,6 +214,11 @@ export function ApiErrorDisplay({
                     {onDismiss && (
                         <Button size="sm" variant="ghost" onClick={onDismiss}>
                             Dismiss
+                        </Button>
+                    )}
+                    {reportable && (
+                        <Button size="sm" variant="ghost" onClick={() => reportProblem(error, { newTab: true })}>
+                            Report this problem
                         </Button>
                     )}
                 </div>

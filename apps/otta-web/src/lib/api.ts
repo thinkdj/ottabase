@@ -10,6 +10,7 @@ import { ApiError, createApiClient } from '@ottabase/api';
 import { AUTH_STORAGE_KEY, invalidateAuthSession } from '@ottabase/auth/react';
 import { withNotice } from '@ottabase/utils/url';
 import { toast } from 'sonner';
+import { isReportable, reportProblem } from './report-problem';
 
 const CURRENT_ORG_KEY = 'ottabase.current-org-id';
 let authInvalidationStarted = false;
@@ -80,7 +81,7 @@ export function reportApiError(error: unknown): void {
 
     if (!(error instanceof ApiError)) {
         console.error('Unexpected query error:', error);
-        toast.error('Something went wrong');
+        toast.error('Something went wrong', reportAction(error));
         return;
     }
 
@@ -147,6 +148,7 @@ export function reportApiError(error: unknown): void {
                     : (typeof error.details === 'string' ? error.details : undefined) ||
                       error.hint ||
                       'Something went wrong',
+            ...reportAction(error),
         });
         return;
     }
@@ -158,6 +160,13 @@ export function reportApiError(error: unknown): void {
                 ? error.messages.join(' • ')
                 : (typeof error.details === 'string' ? error.details : undefined) || error.hint,
     });
+}
+
+/** A "Report" button on the toast of a failure that is ours to hear about, when the app has somewhere to report to. */
+function reportAction(error: unknown) {
+    return isReportable(error)
+        ? { action: { label: 'Report', onClick: () => reportProblem(error, { newTab: true }) } }
+        : {};
 }
 
 /**
