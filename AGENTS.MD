@@ -18,6 +18,11 @@ The repo also includes `apps/otta-cache`, an optional self-hosted Turborepo remo
 build/deployment infrastructure outside the product runtime: it does not use OttaORM, D1, KV, sessions, or RBAC. See
 [`apps/otta-cache/README.md`](apps/otta-cache/README.md) for setup, tokens, deployment, and local usage.
 
+`apps/otta-docs-mcp` is the same kind of thing: Ottabase's own documentation served as a read-only MCP server at
+`https://mcp.ottabase.com/mcp` (`search_docs`, `get_doc`, `list_docs`), built from the pages `pnpm docs:llms` indexes
+plus `.claude/skills`. It is not part of an app built on Ottabase, and CI does not deploy it. A new package README or
+doc reaches it on its next deploy. See [`apps/otta-docs-mcp/README.md`](apps/otta-docs-mcp/README.md).
+
 ## AI Guidelines (MUST FOLLOW)
 
 1. **OttaORM First**: All data models MUST inherit from `BaseModel`. Do not write raw SQL or vanilla Drizzle queries

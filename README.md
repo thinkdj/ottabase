@@ -48,6 +48,8 @@ Workers.
 
 - Docs: [Quick Start](./QUICKSTART.md), [README](./README.md), [Architecture](./ARCHITECTURE.md),
   [Changelog](./CHANGELOG.md), [Releases](./docs/RELEASES.md)
+- For AI assistants: [`llms.txt`](./llms.txt), the [agent skills](./.claude/skills/README.md), and the docs as an MCP
+  server at `https://mcp.ottabase.com/mcp` ([source](./apps/otta-docs-mcp/README.md))
 - Build infrastructure: [Self-hosted Turborepo remote cache](./apps/otta-cache/README.md),
   [Cloudflare deployment](./docs/CLOUDFLARE_DEPLOY.md)
 - Project health: [Contributing](./.github/CONTRIBUTING.md), [Code of Conduct](./.github/CODE_OF_CONDUCT.md),
@@ -110,7 +112,8 @@ ottabase/
 │   ├── otta-web/       # TanStack Router + Vite + Workers (primary)
 │   ├── otta-landing/   # Next.js + OpenNext public landing site (content edited in otta-web admin)
 │   ├── otta-worker/    # Single Worker: server-rendered + API, same package contract, no SPA
-│   └── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
+│   ├── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
+│   └── otta-docs-mcp/  # These docs as a read-only MCP server (mcp.ottabase.com)
 ├── packages/
 │   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
 │   ├── ottarouter/        # Cloudflare Workers router (order-free precedence, middleware)

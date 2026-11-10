@@ -65,7 +65,8 @@ itself. Schema: `schemas/cloudflare-config.schema.json` (editors validate as you
 | `requiresPreviewSecrets` | `[]`                               | The same, for previews                                                                                    |
 
 In this repository: `otta-web` and `otta-landing` are deployable; `otta-worker` (a template: `otta new worker` makes
-apps from it, and they get `deployable: true`) and `otta-cache` (optional infrastructure) are not.
+apps from it, and they get `deployable: true`), `otta-cache` (optional infrastructure) and `otta-docs-mcp` (Ottabase's
+own docs server, deployed by hand to its own domain) are not.
 
 ### Examples
 
