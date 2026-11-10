@@ -91,6 +91,9 @@ the corpus is a snapshot taken at build time, and `/health` says which commit it
 
 ## Decisions
 
+- **Tool arguments are plain JSON Schema, not zod.** The SDK depends on zod 4 while the rest of the workspace is on
+  zod 3. A second zod as a direct dependency of an app changes which one pnpm hoists for packages that import zod
+  without declaring it, which broke `zodResolver` in otta-web. The SDK's `fromJsonSchema` needs no zod here.
 - **No rate limit.** A call is an in-memory lookup, and all of Claude's traffic arrives from one address range, so a
   per-address limit would throttle every Claude user together. Add a Cloudflare WAF rate rule on the zone if needed.
 - **No Origin or Host check, open CORS.** The docs are public and nothing can be written. A strict Origin check rejects

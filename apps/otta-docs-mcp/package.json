@@ -33,8 +33,7 @@
     },
     "dependencies": {
         "@modelcontextprotocol/server": "2.4.0",
-        "@ottabase/utils": "workspace:*",
-        "zod": "^4.2.0"
+        "@ottabase/utils": "workspace:*"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "catalog:",

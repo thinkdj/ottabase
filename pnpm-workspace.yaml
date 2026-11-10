@@ -86,3 +86,14 @@ catalog:
     "@vitest/coverage-v8": 4.0.18
     wrangler: ^4.144.0
     zod: ^3.24.1
+
+# @hookform/resolvers imports zod's types without declaring zod, so it used whichever zod pnpm
+# hoisted. Once a second zod is in the workspace (the MCP SDK brings zod 4) that can be the
+# wrong one, and `zodResolver(schema)` stops type-checking. Declared here, it uses its dependent's.
+packageExtensions:
+    "@hookform/resolvers@3":
+        peerDependencies:
+            zod: "*"
+        peerDependenciesMeta:
+            zod:
+                optional: true

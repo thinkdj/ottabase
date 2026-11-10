@@ -11,8 +11,7 @@
 // argument that fails its schema is an error, and the SDK reports that one itself.
 // ============================================================
 
-import { McpServer } from '@modelcontextprotocol/server';
-import { z } from 'zod';
+import { fromJsonSchema, McpServer } from '@modelcontextprotocol/server';
 import { DOC_KINDS, KIND_LABEL, sourceUrl, type CorpusDoc, type DocKind } from './corpus';
 import { nearestDocs, resolveDoc, search, type DocsIndex, type Section } from './search';
 
@@ -27,9 +26,15 @@ const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: 
 
 const text = (value: string) => ({ content: [{ type: 'text' as const, text: value }] });
 
-const kindSchema = z
-    .enum(DOC_KINDS)
-    .describe('start: getting-started pages. guide: topic guides. package: package READMEs. skill: agent skills.');
+// The arguments are plain JSON Schema, which is what a client is shown anyway. No zod here on
+// purpose: the SDK needs zod 4 while the rest of the workspace is on zod 3, and a second zod
+// as a direct dependency changes which one pnpm hoists for packages that import it undeclared.
+const KINDS = 'start: getting-started pages. guide: topic guides. package: package READMEs. skill: agent skills.';
+const kindSchema = (description: string) => ({
+    type: 'string' as const,
+    enum: [...DOC_KINDS],
+    description: `${description} ${KINDS}`,
+});
 
 function line(doc: CorpusDoc, withSummary: boolean): string {
     return withSummary && doc.summary ? `- ${doc.id}: ${doc.title}. ${doc.summary}` : `- ${doc.id}: ${doc.title}`;
@@ -120,14 +125,25 @@ export function createDocsServer(index: DocsIndex): McpServer {
             title: 'Search Ottabase docs',
             description:
                 'Search the Ottabase framework documentation by keyword: package READMEs, guides, the quickstart and architecture pages, and agent skills. Returns the best-matching sections, each with its document id, section heading, a short excerpt and a source link. Use it to find how an Ottabase package, API, CLI command or convention works.',
-            inputSchema: z.object({
-                query: z
-                    .string()
-                    .min(2)
-                    .max(200)
-                    .describe('Keywords, for example "row level security" or "queue retry".'),
-                kind: kindSchema.optional().describe('Search one group of pages only.'),
-                limit: z.number().int().min(1).max(10).optional().describe('How many sections to return. Default 5.'),
+            inputSchema: fromJsonSchema<{ query: string; kind?: DocKind; limit?: number }>({
+                type: 'object',
+                properties: {
+                    query: {
+                        type: 'string',
+                        minLength: 2,
+                        maxLength: 200,
+                        description: 'Keywords, for example "row level security" or "queue retry".',
+                    },
+                    kind: kindSchema('Search one group of pages only.'),
+                    limit: {
+                        type: 'integer',
+                        minimum: 1,
+                        maximum: 10,
+                        description: 'How many sections to return. Default 5.',
+                    },
+                },
+                required: ['query'],
+                additionalProperties: false,
             }),
             annotations: { title: 'Search Ottabase docs', ...READ_ONLY },
         },
@@ -152,18 +168,24 @@ export function createDocsServer(index: DocsIndex): McpServer {
             title: 'Read an Ottabase doc',
             description:
                 'Read one Ottabase documentation page as Markdown, by its document id (a repository path such as packages/ottaorm/README.md, as returned by search_docs and list_docs). A package name such as "ottaorm" is accepted too. A long page returns an outline and its first part; pass `section` with a heading from the outline to read that part.',
-            inputSchema: z.object({
-                id: z
-                    .string()
-                    .min(1)
-                    .max(200)
-                    .describe('Document id, for example packages/ottaorm/README.md or docs/TESTING.md.'),
-                section: z
-                    .string()
-                    .min(1)
-                    .max(200)
-                    .optional()
-                    .describe('A section heading, to read only that part of the page.'),
+            inputSchema: fromJsonSchema<{ id: string; section?: string }>({
+                type: 'object',
+                properties: {
+                    id: {
+                        type: 'string',
+                        minLength: 1,
+                        maxLength: 200,
+                        description: 'Document id, for example packages/ottaorm/README.md or docs/TESTING.md.',
+                    },
+                    section: {
+                        type: 'string',
+                        minLength: 1,
+                        maxLength: 200,
+                        description: 'A section heading, to read only that part of the page.',
+                    },
+                },
+                required: ['id'],
+                additionalProperties: false,
             }),
             annotations: { title: 'Read an Ottabase doc', ...READ_ONLY },
         },
@@ -186,8 +208,12 @@ export function createDocsServer(index: DocsIndex): McpServer {
             title: 'List Ottabase docs',
             description:
                 'List the Ottabase documentation pages by group: getting-started pages, guides, package READMEs and agent skills, each with its document id and title. Pass `kind` to list one group with a one-line summary of every page in it.',
-            inputSchema: z.object({
-                kind: kindSchema.optional().describe('List one group, with summaries. Omit for every id and title.'),
+            inputSchema: fromJsonSchema<{ kind?: DocKind }>({
+                type: 'object',
+                properties: {
+                    kind: kindSchema('List one group, with summaries. Omit for every id and title.'),
+                },
+                additionalProperties: false,
             }),
             annotations: { title: 'List Ottabase docs', ...READ_ONLY },
         },
