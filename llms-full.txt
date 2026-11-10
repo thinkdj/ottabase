@@ -57,6 +57,8 @@ Workers.
 
 - Docs: [Quick Start](./QUICKSTART.md), [README](./README.md), [Architecture](./ARCHITECTURE.md),
   [Changelog](./CHANGELOG.md), [Releases](./docs/RELEASES.md)
+- For AI assistants: [`llms.txt`](./llms.txt), the [agent skills](./.claude/skills/README.md), and the docs as an MCP
+  server at `https://mcp.ottabase.com/mcp` ([source](./apps/otta-docs-mcp/README.md))
 - Build infrastructure: [Self-hosted Turborepo remote cache](./apps/otta-cache/README.md),
   [Cloudflare deployment](./docs/CLOUDFLARE_DEPLOY.md)
 - Project health: [Contributing](./.github/CONTRIBUTING.md), [Code of Conduct](./.github/CODE_OF_CONDUCT.md),
@@ -119,7 +121,8 @@ ottabase/
 │   ├── otta-web/       # TanStack Router + Vite + Workers (primary)
 │   ├── otta-landing/   # Next.js + OpenNext public landing site (content edited in otta-web admin)
 │   ├── otta-worker/    # Single Worker: server-rendered + API, same package contract, no SPA
-│   └── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
+│   ├── otta-cache/     # Self-hosted Turborepo remote cache on Workers + R2
+│   └── otta-docs-mcp/  # These docs as a read-only MCP server (mcp.ottabase.com)
 ├── packages/
 │   ├── ottaorm/          # Fat models, auto-migrations, CRUD, RLS
 │   ├── ottarouter/        # Cloudflare Workers router (order-free precedence, middleware)
@@ -1739,6 +1742,11 @@ Monorepo using **pnpm workspaces** + **Turborepo**. Vite app with Cloudflare Wor
 The repo also includes `apps/otta-cache`, an optional self-hosted Turborepo remote-cache Worker backed by R2. It is
 build/deployment infrastructure outside the product runtime: it does not use OttaORM, D1, KV, sessions, or RBAC. See
 [`apps/otta-cache/README.md`](apps/otta-cache/README.md) for setup, tokens, deployment, and local usage.
+
+`apps/otta-docs-mcp` is the same kind of thing: Ottabase's own documentation served as a read-only MCP server at
+`https://mcp.ottabase.com/mcp` (`search_docs`, `get_doc`, `list_docs`), built from the pages `pnpm docs:llms` indexes
+plus `.claude/skills`. It is not part of an app built on Ottabase, and CI does not deploy it. A new package README or
+doc reaches it on its next deploy. See [`apps/otta-docs-mcp/README.md`](apps/otta-docs-mcp/README.md).
 
 ## AI Guidelines (MUST FOLLOW)
 
@@ -13891,9 +13899,9 @@ queues, `OTTABASE_<APP>_…` placeholders for CI's values, its own rate limiter 
 walkthrough is [`docs/NEW_APP.md`](../../docs/NEW_APP.md).
 
 A new app gets its own Cloudflare resource names (`ottabase-my-app-db`, `ottabase-my-app-bucket`,
-`ottabase-my-app-queue`), its own Worker name, and the `.env.example` that `pnpm env:secrets --app=my-app` fills. With a preset, the demo gallery and every package the
-preset does not keep are stripped (see below), and a short README replaces otta-web's. Grow the app afterwards with
-`otta add`; ship it with `otta deploy`.
+`ottabase-my-app-queue`), its own Worker name, and the `.env.example` that `pnpm env:secrets --app=my-app` fills. With a
+preset, the demo gallery and every package the preset does not keep are stripped (see below), and a short README
+replaces otta-web's. Grow the app afterwards with `otta add`; ship it with `otta deploy`.
 
 ### Stripping the demo or a package
 

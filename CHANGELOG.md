@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **The docs as an MCP server.** `apps/otta-docs-mcp` serves this documentation to AI assistants at
+  `https://mcp.ottabase.com/mcp`: `search_docs`, `get_doc` and `list_docs`, read-only, no account. The corpus is the
+  pages `llms.txt` indexes plus the agent skills, cut into sections and indexed by word at build time, so a request
+  reads postings and takes about a millisecond of CPU. Stateless on the official MCP SDK (the 2026-07-28 revision, and
+  2025-era clients through its fallback); a page for people at `/`. Ottabase's own server, not part of an app:
+  `deployable: false`, so CI and forks leave it alone. `@ottabase/scripts` exports its `gen-llms` collectors
+  (`@ottabase/scripts/gen-llms`) for it.
+- **Report this problem, from the error itself.** With Helpdesk (Ottabase Pro) installed, otta-web's crash screen, an
+  inline API error and a server-error toast offer to report it: `/support` opens with a request already filled in (what
+  failed, the status, the page, the time, the request id). A crash or a 5xx gets the button; a 4xx, a network failure, a
+  501 and a 503 do not. Without Helpdesk nothing shows.
 - **Fleet reports an app's users and its icon.** `users: { total, last24h }` (the sign-ups in the 24 hours before the
   report) and `icon` (`sources.icon`; otta-web passes its home brand kit's, through the new `homeBrandKit` brand helper
   Campaigns reads too). `GET /api/fleet/report?users=0` leaves the counts out, for a poller that asks every few minutes.
