@@ -24,7 +24,7 @@ vi.mock('../../../ottabase/registry', () => ({
 }));
 
 import { requireAdminAccess } from '../../lib/admin-guard';
-import { handleAdminSystemReadiness } from '../admin-system';
+import { handleAdminSetupUrls, handleAdminSystemReadiness } from '../admin-system';
 
 function context(env: Record<string, unknown>) {
     const request = new Request('http://localhost/api/admin/system/readiness');
@@ -75,5 +75,37 @@ describe('GET /api/admin/system/readiness', () => {
             key: 'AUTH_SECRET',
             package: 'core',
         });
+    });
+});
+
+describe('GET /api/admin/system/setup-urls', () => {
+    it('is platform-admin only', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue(new Response('no', { status: 403 }) as never);
+        expect((await handleAdminSetupUrls(context({}))).status).toBe(403);
+        expect(requireAdminAccess).toHaveBeenCalledWith(expect.anything(), { scope: 'system' });
+    });
+
+    it('reports AUTH_URL, installed packages and missing key names, never a secret value', async () => {
+        vi.mocked(requireAdminAccess).mockResolvedValue({ user: { id: 'owner' } } as never);
+        const response = await handleAdminSetupUrls(
+            context({
+                AUTH_URL: 'https://app.example.com',
+                GOOGLE_CLIENT_ID: 'google-id-value',
+                GOOGLE_CLIENT_SECRET: 'google-secret-value',
+                GITHUB_CLIENT_ID: 'github-id-value',
+            }),
+        );
+        const body = (await response.json()) as {
+            authUrl: string | null;
+            packages: string[];
+            providers: Array<{ id: string; missing: string[] }>;
+        };
+        expect(response.status).toBe(200);
+        expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+        expect(body.authUrl).toBe('https://app.example.com');
+        expect(body.packages).toEqual(['core']);
+        expect(body.providers.find((p) => p.id === 'google')?.missing).toEqual([]);
+        expect(body.providers.find((p) => p.id === 'github')?.missing).toEqual(['GITHUB_CLIENT_SECRET']);
+        expect(JSON.stringify(body)).not.toMatch(/google-secret-value|google-id-value|github-id-value/);
     });
 });

@@ -12,6 +12,7 @@ import {
     parseDeployValues,
     presetNames,
     proUpdateCommand,
+    setupUrlsCommand,
     showAppInfo,
     showPresets,
     showTemplates,
@@ -380,6 +381,38 @@ build must leave, its env, health path, previews and the names CI must provide.
             }
         },
     );
+
+// =====================================================
+// SETUP URLS
+// =====================================================
+
+program
+    .command('setup-urls [app]')
+    .description('Print the URLs to paste into provider consoles: OAuth redirect URIs, webhook endpoints')
+    .option('--url <origin>', 'The app origin, e.g. https://app.example.com (default: local, preview and production)')
+    .option('--json', 'Print JSON instead of text')
+    .addHelpText(
+        'after',
+        `
+Examples:
+  $ otta setup-urls                                   Local, preview and production, origins from config
+  $ otta setup-urls my-app --url https://app.example.com
+  $ otta setup-urls --url app.example.com --json
+
+Without --url: local is AUTH_URL in .env.local or .dev.vars, else the primary dev URL in package.json;
+preview and production are the custom domain route of that env block in wrangler.jsonc. The paths come
+from the route map in @ottabase/utils/setup-urls, the one the handlers serve, and the admin page
+/admin/infrastructure/setup-urls shows the same URLs plus which provider secrets are set.
+`,
+    )
+    .action((app: string | undefined, options: { url?: string; json?: boolean }) => {
+        try {
+            setupUrlsCommand(app, options);
+        } catch (error) {
+            log.error(error instanceof Error ? error.message : String(error));
+            process.exit(1);
+        }
+    });
 
 // =====================================================
 // OTTABASE PRO

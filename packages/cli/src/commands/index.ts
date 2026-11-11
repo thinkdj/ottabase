@@ -68,6 +68,17 @@ export {
     type ProUpdateResult,
 } from './pro.js';
 export { devApp, buildApp, testApp, lintApp, cleanApp, typeCheckApp } from './run.js';
+export {
+    buildSetupUrlsReport,
+    envFileValue,
+    formatSetupUrls,
+    installedPackageKeys,
+    localOrigin,
+    setupTargets,
+    setupUrlsCommand,
+    type SetupTarget,
+    type SetupUrlsReport,
+} from './setup-urls.js';
 export { createStartPlan, formatStartPlan, runStartPlan, startApp, type StartOptions } from './start.js';
 export { listAllApps, showAppInfo, showTemplates } from './info.js';
 export {

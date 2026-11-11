@@ -7,6 +7,7 @@ import { readDeploymentVersion, runReadiness } from '@ottabase/kernel';
 import { isPremiumPackage } from '@ottabase/premium';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { missingSetupEnv, SETUP_PROVIDERS } from '@ottabase/utils/setup-urls';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { packages } from '../../ottabase/registry';
 import { requireAdminAccess } from '../lib/admin-guard';
@@ -43,4 +44,27 @@ export async function handleAdminSystemReadiness(context: ApiRouteContext): Prom
         console.error(JSON.stringify({ event: 'admin.system.readiness', error: redactErrorForLog(error) }));
         return errorResponse('Failed to compute readiness', 500, { code: 'READINESS_FAILED' });
     }
+}
+
+/**
+ * `GET /api/admin/system/setup-urls` (platform admins only): what the Setup URLs page needs beyond
+ * the pure route map. AUTH_URL (the origin OAuth redirect URIs are built from), the installed
+ * package keys, and per provider the env key NAMES still missing. Never a value.
+ */
+export async function handleAdminSetupUrls(context: ApiRouteContext): Promise<Response> {
+    const auth = await requireAdminAccess(context, { scope: 'system' });
+    if (auth instanceof Response) return auth;
+    const { env } = context;
+    return jsonResponse(
+        {
+            authUrl: env.AUTH_URL || null,
+            packages: packages.keys(),
+            providers: SETUP_PROVIDERS.map((provider) => ({
+                id: provider.id,
+                missing: missingSetupEnv(provider, env),
+            })),
+        },
+        200,
+        { headers: { 'Cache-Control': 'private, no-store' } },
+    );
 }

@@ -13,6 +13,7 @@ import { createD1Driver } from '@ottabase/db/drizzle-d1';
 import { registerConnection } from '@ottabase/ottaorm';
 import { Account, User, VerificationToken } from '@ottabase/ottaorm/models';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { authCallbackPath } from '@ottabase/utils/setup-urls';
 import { withNotice } from '@ottabase/utils/url';
 import { bootstrapFirstUser } from './bootstrap';
 import { requestLocaleDefaults } from './request-locale';
@@ -129,6 +130,14 @@ function resolveFrontendUrl(env: AuthEnv): string {
     // redirect_uri never produce a double slash (which would fail an exact redirect-uri
     // match at the provider and break OAuth).
     return (env.AUTH_URL || 'http://127.0.0.1:3003').replace(/\/+$/, '');
+}
+
+/**
+ * The OAuth `redirect_uri`, identical at sign-in and at the code exchange. Its path comes from the
+ * setup-URLs route map, so `otta setup-urls` and the admin page show exactly this value.
+ */
+function oauthRedirectUri(env: AuthEnv, providerId: string): string {
+    return `${resolveFrontendUrl(env)}${authCallbackPath(providerId)}`;
 }
 
 /** Only relative, single-leading-slash paths are accepted; anything else falls back, blocking open redirects. */
@@ -419,7 +428,7 @@ async function handleOAuthSignIn(
         path: '/api/auth',
     });
 
-    const redirectUri = `${resolveFrontendUrl(env)}/api/auth/callback/${providerId}`;
+    const redirectUri = oauthRedirectUri(env, providerId);
     const authorizationUrl = buildAuthorizationUrl(provider, { redirectUri, state, codeChallenge });
 
     return new Response(null, { status: 302, headers: { Location: authorizationUrl, 'Set-Cookie': stateCookie } });
@@ -496,7 +505,7 @@ async function handleOAuthCallback(
     let emailVerifiedAt: number | null = null;
 
     try {
-        const redirectUri = `${resolveFrontendUrl(env)}/api/auth/callback/${providerId}`;
+        const redirectUri = oauthRedirectUri(env, providerId);
         const tokens = await exchangeCodeForTokens(provider, {
             code,
             redirectUri,
@@ -671,7 +680,7 @@ async function handleMagicLinkSend(
     const callbackUrl = sanitizeCallbackPath(body.callbackUrl);
     // Derive the link origin from the configured frontend URL, NOT the incoming Host
     // header, so a spoofed/forwarded Host cannot poison the emailed link.
-    const verifyUrl = new URL('/api/auth/callback/email', resolveFrontendUrl(env));
+    const verifyUrl = new URL(authCallbackPath('email'), resolveFrontendUrl(env));
     verifyUrl.searchParams.set('token', token);
     verifyUrl.searchParams.set('email', email);
     verifyUrl.searchParams.set('callbackUrl', callbackUrl);

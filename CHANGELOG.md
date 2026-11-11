@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Setup URLs: every URL a provider console asks for, ready to copy.** `otta setup-urls [app] --url <origin>` prints
+  the OAuth redirect URIs (Google, GitHub, Discord, Microsoft, Auth0, with Google's JavaScript origin and GitHub's
+  homepage URL) and the postmaster webhooks (Resend, SES), grouped by provider; without `--url` it prints local, preview
+  and production from config. Platform admins get the same at `/admin/infrastructure/setup-urls`, with a copy button per
+  value and which provider env keys are set (names only). One route map, `@ottabase/utils/setup-urls`, feeds both and
+  the handlers: `@ottabase/auth` builds `redirect_uri` from it and decides which presets are configured from its env
+  lists, and `@ottabase/postmaster` mounts its hooks from it, so a shown URL is a served one.
+
 - **The docs as an MCP server.** `apps/otta-docs-mcp` serves this documentation to AI assistants at
   `https://mcp.ottabase.com/mcp`: `search_docs`, `get_doc` and `list_docs`, read-only, no account. The corpus is the
   pages `llms.txt` indexes plus the agent skills, cut into sections and indexed by word at build time, so a request

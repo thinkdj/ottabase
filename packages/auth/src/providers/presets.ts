@@ -8,6 +8,7 @@
 //
 // ============================================================
 
+import { findSetupProvider, missingSetupEnv } from '@ottabase/utils/setup-urls';
 import type { OAuthProfile, OAuthProviderConfig, ProviderEnv, ProviderOptions } from './types';
 
 function scopeList(defaults: string[], extra?: string[]): string {
@@ -173,22 +174,10 @@ const PROVIDER_FACTORIES: Record<string, (env: ProviderEnv, options?: ProviderOp
     auth0: createAuth0Provider,
 };
 
-/** Whether a preset has the required env vars configured. */
+/** Whether a preset has every env var the setup-URLs route map lists for it. */
 function isProviderConfigured(id: string, env: ProviderEnv): boolean {
-    switch (id) {
-        case 'google':
-            return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
-        case 'github':
-            return !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
-        case 'discord':
-            return !!(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET);
-        case 'azure-ad':
-            return !!(env.AZURE_AD_CLIENT_ID && env.AZURE_AD_CLIENT_SECRET && env.AZURE_AD_TENANT_ID);
-        case 'auth0':
-            return !!(env.AUTH0_CLIENT_ID && env.AUTH0_CLIENT_SECRET && env.AUTH0_ISSUER);
-        default:
-            return false;
-    }
+    const entry = findSetupProvider(id);
+    return !!entry && entry.group === 'auth' && missingSetupEnv(entry, env).length === 0;
 }
 
 /** Build the list of OAuth providers that have credentials configured in `env`. */

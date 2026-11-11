@@ -19,6 +19,7 @@ export default defineConfig({
             '@ottabase/utils/http-errors': path.resolve(__dirname, '../utils/src/http-errors.ts'),
             '@ottabase/utils/hmac-signature': path.resolve(__dirname, '../utils/src/hmac-signature.ts'),
             '@ottabase/utils/http-response': path.resolve(__dirname, '../utils/src/http-response.ts'),
+            '@ottabase/utils/setup-urls': path.resolve(__dirname, '../utils/src/setup-urls.ts'),
             '@ottabase/ottarouter': path.resolve(__dirname, '../ottarouter/src/index.ts'),
             '@ottabase/ottaorm': path.resolve(__dirname, '../ottaorm/src/index.ts'),
             '@ottabase/email': path.resolve(__dirname, '../email/src/index.ts'),

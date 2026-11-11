@@ -338,6 +338,8 @@ credentials are present (`getLoginConfig` / `GET /api/auth/config` detect them).
     https://your-domain.com/api/auth/callback/google     # or /github, /discord, /azure-ad, /auth0
     ```
     Also set `AUTH_URL` (your public origin, used to build this redirect URI) and `AUTH_SECRET`.
+    `pnpm otta setup-urls --url https://your-domain.com` (or Admin, Infrastructure, Setup URLs) prints every provider's
+    exact values, from the same route map (`@ottabase/utils/setup-urls`) this package builds them with.
 3. **Set the credential env vars** (Cloudflare secrets / `.dev.vars`) — the button then appears automatically:
     ```
     GOOGLE_CLIENT_ID=...      GOOGLE_CLIENT_SECRET=...

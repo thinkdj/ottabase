@@ -1,11 +1,13 @@
 import { definePackage, type OttaPackage, type PackageExtras } from '@ottabase/kernel';
 import { RLSPolicies, type ModelRLSConfig } from '@ottabase/ottaorm';
+import { EMAIL_HOOKS_BASE_PATH } from '@ottabase/utils/setup-urls';
 import { EmailSuppression } from './ottaorm-models/EmailSuppression';
 import { createPostmasterRouter, type PostmasterRouterOptions } from './routes';
 import { emailSuppressionsTable } from './schema';
 
 export const POSTMASTER_PACKAGE_KEY = 'postmaster';
-export const POSTMASTER_BASE_PATH = '/api/email/hooks';
+/** Default mount path, from the setup-URLs route map so `otta setup-urls` shows what is served. */
+export const POSTMASTER_BASE_PATH = EMAIL_HOOKS_BASE_PATH;
 
 /** The suppression list is an operator table: app-scoped, platform admins only, writes audited. */
 export const postmasterPolicies: ModelRLSConfig[] = [

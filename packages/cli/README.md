@@ -219,6 +219,27 @@ or use the broad `apps/<app>/*`, `packages/*`). The Worker name must match the e
 `otta-web-production`). Use Workers Builds or GitHub's `deploy.yml` as the automatic deployer of a Worker, never both.
 The full setup: `.github/DEPLOYMENT.md`.
 
+### Setup URLs for provider consoles
+
+Every URL a provider's console asks for (OAuth redirect URIs, webhook endpoints), grouped by provider:
+
+```bash
+pnpm otta setup-urls                                   # local, preview and production, origins from config
+pnpm otta setup-urls my-app --url https://app.example.com
+pnpm otta setup-urls --url app.example.com --json      # for a script
+```
+
+`--url` takes an origin: `https` is added to a bare host and forced on a public one, `http` stays only for loopback, and
+a path is an error. Without it, local is `AUTH_URL` in `.env.local` / `.dev.vars` (else the primary dev URL in
+`package.json`), and preview and production are the custom domain route of that env block in `wrangler.jsonc`; an env
+without one says to pass `--url` (the workers.dev URL is what `otta deploy` printed). Providers of a package the app
+does not depend on (the Resend and SES webhooks need `@ottabase/postmaster`) are left out.
+
+Platform admins see the same URLs at `/admin/infrastructure/setup-urls` (Admin, Infrastructure, Setup URLs): one copy
+button per value, a base URL field defaulting to `AUTH_URL`, and per provider whether its env keys are set (names only,
+never values). Both read `getSetupUrls` from `@ottabase/utils/setup-urls`, the route map the auth and postmaster
+handlers take their paths from, so neither can drift from what the app serves.
+
 ### Updating Ottabase Pro
 
 ```bash
@@ -407,6 +428,7 @@ bin, so invoke it through the workspace script: `pnpm otta <command>`.
 | `otta strip <keys> [app]`    | Take the demo, or a package, out of an app: the inverse of `otta add` (`--dry-run`)                  |
 | `otta presets [check …]`     | Show the presets of `otta new web`; `check` scaffolds and gates them                                 |
 | `otta deploy [app]`          | Deploy to Cloudflare: the whole first deploy, or build and deploy only from CI (`--ci`, `--all`)     |
+| `otta setup-urls [app]`      | Print OAuth redirect URIs and webhook URLs to paste into provider consoles (`--url`, `--json`)       |
 | `otta pro update [app]`      | Pull a Pro release into `packages/pro`, wire what is new, show its release notes (`--tag`)           |
 | `otta start [app]`           | Start development or a named local Wrangler environment                                              |
 | `otta dev [app]`             | Start the hot-reload development topology                                                            |

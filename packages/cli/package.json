@@ -41,6 +41,7 @@
         "node": ">=24.0.0"
     },
     "dependencies": {
+        "@ottabase/utils": "workspace:*",
         "commander": "^12.1.0",
         "fs-extra": "^11.2.0",
         "jsonc-parser": "^3.3.1",

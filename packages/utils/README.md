@@ -213,6 +213,29 @@ Use `exposure: 'public'` only when the 5xx message is deliberately authored as s
 JSON-safe machine-readable context on 4xx responses; `details` remains human-readable text. A typed `ServiceError` may
 carry `internalCause` for the server error boundary to redact and log once; it is never part of `toApiResponse()`.
 
+### Setup URLs (`@ottabase/utils/setup-urls`)
+
+The one route map for every URL a third-party console asks for, and the helper that renders it for an origin. Pure and
+edge-safe. `@ottabase/auth` builds its OAuth `redirect_uri` with `authCallbackPath`, `@ottabase/postmaster` mounts
+`EMAIL_HOOKS_BASE_PATH` + `EMAIL_HOOK_PATHS`, and `otta setup-urls` and the admin Setup URLs page print `getSetupUrls`,
+so the shown URLs are the served ones.
+
+```typescript
+import { getSetupUrls, missingSetupEnv, normalizeOrigin } from '@ottabase/utils/setup-urls';
+
+normalizeOrigin('App.Example.com/'); // 'https://app.example.com'
+
+const { origin, providers } = getSetupUrls('https://app.example.com', { packages: ['postmaster'] });
+// providers[0]: { id: 'google', name: 'Google', group: 'auth', consoleUrl, env: ['GOOGLE_CLIENT_ID', ...],
+//   urls: [{ label: 'Authorized JavaScript origin', value: 'https://app.example.com' },
+//          { label: 'Authorized redirect URI', value: 'https://app.example.com/api/auth/callback/google' }] }
+
+missingSetupEnv(providers[0], env); // ['GOOGLE_CLIENT_SECRET']: names of unset keys, never values
+```
+
+A new provider is one entry in `SETUP_PROVIDERS` (`id`, `name`, `group`, `consoleUrl`, `env`, `urls`, and `package` when
+its routes belong to an optional package). Its handler imports the path from this module.
+
 ### Environment Utilities (`@ottabase/utils/env`) - Server-side
 
 - **`isDev: boolean`** - Check if running in development environment

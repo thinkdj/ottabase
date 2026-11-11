@@ -30,6 +30,7 @@ import {
     LayoutTemplate, // otta:only ottalanding
     Layers,
     Layout,
+    Link,
     Link2, // otta:only shortlinks
     Mail,
     Megaphone, // otta:only ottablog
@@ -301,6 +302,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
                 description: 'Every setting, binding and health check this deployment reads, and what is missing.',
                 href: '/admin/infrastructure/readiness',
                 icon: Activity,
+            },
+            {
+                title: 'Setup URLs',
+                description: 'OAuth redirect URIs and webhook endpoints to paste into provider consoles.',
+                href: '/admin/infrastructure/setup-urls',
+                icon: Link,
             },
         ],
     },

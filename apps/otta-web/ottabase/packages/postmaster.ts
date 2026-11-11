@@ -16,6 +16,7 @@ import {
     type Unsubscribe,
 } from '@ottabase/postmaster';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
+import { emailHookPath } from '@ottabase/utils/setup-urls';
 import { getOttabaseConfig } from '../config.loader';
 import { events } from '../events';
 import { ensureDbConnection } from '../../worker/lib/db-utils';
@@ -29,7 +30,7 @@ const unsubscribers = new Map<string, Unsubscribe>();
 export function unsubscribeFor(env: CloudflareEnv): Unsubscribe | null {
     const secret = env.EMAIL_UNSUBSCRIBE_SECRET;
     if (!secret) return null;
-    const url = new URL('/api/email/hooks/unsubscribe', env.AUTH_URL || 'http://localhost:5173').toString();
+    const url = new URL(emailHookPath('unsubscribe'), env.AUTH_URL || 'http://localhost:5173').toString();
     const key = `${secret}|${url}`;
     let minter = unsubscribers.get(key);
     if (!minter) {

@@ -632,6 +632,12 @@ const adminReadinessRoute = makeAdminRoute(
     () => import('@/pages/admin/SystemReadiness'),
     'SystemReadinessPage',
 );
+// OAuth redirect URIs and webhook endpoints to paste into provider consoles (same as otta setup-urls).
+const adminSetupUrlsRoute = makeAdminRoute(
+    '/admin/infrastructure/setup-urls',
+    () => import('@/pages/admin/infrastructure/SetupUrlsPage'),
+    'SetupUrlsPage',
+);
 const adminDevMailRoute = makeAdminRoute(
     '/admin/infrastructure/dev-mail',
     () => import('@/pages/admin/infrastructure/DevMailPage'),
@@ -880,6 +886,7 @@ const coreRoutes = [
     adminQueuesRoute,
     adminCronRoute,
     adminReadinessRoute,
+    adminSetupUrlsRoute,
     adminDevMailRoute,
     adminEmailRoute,
     adminPremiumRoute,

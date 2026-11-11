@@ -106,6 +106,11 @@
             "types": "./dist/hmac-signature.d.ts",
             "import": "./dist/hmac-signature.mjs",
             "require": "./dist/hmac-signature.js"
+        },
+        "./setup-urls": {
+            "types": "./dist/setup-urls.d.ts",
+            "import": "./dist/setup-urls.mjs",
+            "require": "./dist/setup-urls.js"
         }
     },
     "files": [
@@ -113,8 +118,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts src/outbound-url.ts src/media.ts src/hmac-signature.ts --format cjs,esm --dts --clean",
-        "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts src/outbound-url.ts src/hmac-signature.ts --format cjs,esm --dts --watch",
+        "build": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts src/outbound-url.ts src/media.ts src/hmac-signature.ts src/setup-urls.ts --format cjs,esm --dts --clean",
+        "dev": "tsup src/index.ts src/file.ts src/string.ts src/url.ts src/env.ts src/currency.ts src/email.ts src/email-gmail.ts src/json.ts src/git.ts src/browser.ts src/timezone.ts src/http-errors.ts src/http-response.ts src/pagination.ts src/permissions.ts src/sanitize.ts src/outbound-url.ts src/hmac-signature.ts src/setup-urls.ts --format cjs,esm --dts --watch",
         "clean": "rimraf dist",
         "lint": "eslint src",
         "type-check": "tsc --noEmit",

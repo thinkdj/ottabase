@@ -863,6 +863,7 @@ otta strip demo my-app           # Take the demo (or a package: otta strip ottab
 otta presets check minimal       # Scaffold a preset and run its gates: proves footprints.json and the markers
 otta deploy my-app               # First deploy straight to Cloudflare: resources, config, build, secrets, bootstrap
 otta pro update my-app           # Pull an Ottabase Pro release into packages/pro and wire what is new
+otta setup-urls --url https://app.example.com  # OAuth redirect URIs + webhook URLs for provider consoles
 
 # Development
 otta dev otta-web                # Start dev server for an app

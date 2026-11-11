@@ -1,6 +1,7 @@
 import { Router } from '@ottabase/ottarouter';
 import { errorResponse } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
+import { EMAIL_HOOK_PATHS } from '@ottabase/utils/setup-urls';
 import type { Suppressions } from './suppression';
 import type { Awaitable, ProviderEvent, SuppressionEntry } from './types';
 import type { Unsubscribe } from './unsubscribe';
@@ -34,6 +35,7 @@ export interface PostmasterRouterOptions<Env> extends PostmasterHooks<Env> {
 }
 
 /**
+ * Paths come from the setup-URLs route map (`EMAIL_HOOK_PATHS` in `@ottabase/utils/setup-urls`).
  * `POST /resend` and `POST /ses/:secret?` record hard bounces and complaints as `*`
  * suppressions and hand every event to the host. `GET|POST /unsubscribe?token=` records an
  * unsubscribe for the token's list; POST is what one-click clients send.
@@ -60,7 +62,7 @@ export function createPostmasterRouter<Env>(options: PostmasterRouterOptions<Env
     }
 
     if (options.resend) {
-        router.post('/resend', async (c) => {
+        router.post(EMAIL_HOOK_PATHS.resend, async (c) => {
             const secret = options.resend!.webhookSecret(c.env);
             if (!secret) return errorResponse('Resend webhooks are not configured', 503, { code: 'NOT_CONFIGURED' });
             const body = await c.req.text();
@@ -102,8 +104,8 @@ export function createPostmasterRouter<Env>(options: PostmasterRouterOptions<Env
             await record(c.env, parsed.event);
             return jsonResponse({ data: { received: parsed.event.raw, addresses: parsed.event.addresses.length } });
         };
-        router.post('/ses', (c) => handleSes({ req: c.req, env: c.env, params: {} }));
-        router.post('/ses/:secret', (c) => handleSes({ req: c.req, env: c.env, params: c.params }));
+        router.post(EMAIL_HOOK_PATHS.ses, (c) => handleSes({ req: c.req, env: c.env, params: {} }));
+        router.post(`${EMAIL_HOOK_PATHS.ses}/:secret`, (c) => handleSes({ req: c.req, env: c.env, params: c.params }));
     }
 
     if (options.unsubscribe) {
@@ -125,8 +127,8 @@ export function createPostmasterRouter<Env>(options: PostmasterRouterOptions<Env
                 headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
             });
         };
-        router.get('/unsubscribe', (c) => unsubscribe({ url: c.url, env: c.env }));
-        router.post('/unsubscribe', (c) => unsubscribe({ url: c.url, env: c.env }));
+        router.get(EMAIL_HOOK_PATHS.unsubscribe, (c) => unsubscribe({ url: c.url, env: c.env }));
+        router.post(EMAIL_HOOK_PATHS.unsubscribe, (c) => unsubscribe({ url: c.url, env: c.env }));
     }
 
     return router;

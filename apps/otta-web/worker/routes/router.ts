@@ -39,7 +39,7 @@ import { handleAvatarRemove, handleAvatarUpload } from './me-avatar';
 import { getKillSwitchStatus } from '../lib/killswitch';
 import { handleAdminCronCreate, handleAdminCronList, handleCronTask } from './admin-cron';
 import { handleCrudHubAction, handleCrudHubCrud, handleCrudHubModel, handleCrudHubModels } from './admin-crudhub';
-import { handleAdminSystemReadiness } from './admin-system';
+import { handleAdminSetupUrls, handleAdminSystemReadiness } from './admin-system';
 import {
     handleAdminDbRowDelete,
     handleAdminDbTableData,
@@ -147,6 +147,8 @@ apiRouter.get('/api/health', () =>
 // System readiness for the /admin overview: declared settings, bindings and probes with the
 // package that asked for each. Platform admins only; no secret value ever appears.
 apiRouter.get('/api/admin/system/readiness', h(handleAdminSystemReadiness));
+// Setup URLs page: AUTH_URL, installed packages and which provider env keys are missing (names only).
+apiRouter.get('/api/admin/system/setup-urls', h(handleAdminSetupUrls));
 // Readiness: every package's required env and its own probe, for platform admins. The
 // per-check detail names bindings, so it is not public.
 apiRouter.get(
