@@ -17,7 +17,7 @@ import { injectBrandCriticalCSS } from './worker/lib/brand-html-inject';
 import { injectTurnstileSiteKey } from './worker/lib/turnstile';
 import { ensureDbConnection } from './worker/lib/db-utils';
 import { handleUnhandledRequestError } from './worker/lib/http-error-boundary';
-import { checkKillSwitches } from './worker/lib/killswitch';
+import { checkKillSwitches, rejectScannerProbe } from './worker/lib/killswitch';
 import { handleApiRequest } from './worker/routes/router';
 import { handleShortlinkFallback } from './worker/routes/shortlinks'; // otta:only shortlinks
 
@@ -58,6 +58,9 @@ export default {
         try {
             const url = new URL(request.url);
             const normalizedPathname = normalizePath(url.pathname);
+
+            const probe = rejectScannerProbe(normalizedPathname);
+            if (probe) return probe;
 
             // -------------------------------------------------------
             // Global kill switches

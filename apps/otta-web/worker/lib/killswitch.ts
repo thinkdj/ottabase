@@ -15,6 +15,19 @@ export function getKillSwitchStatus(env: Record<string, any>) {
     };
 }
 
+/**
+ * Paths only vulnerability scanners ask for (WordPress, PHP, leaked dotfiles). Nothing here can
+ * exist in this app, so they get a bare 404 before the platform-state read, the shortlink D1
+ * lookup and the SPA-shell render. A WAF rule on the zone is cheaper still: it stops them before
+ * the Worker runs at all.
+ */
+const SCANNER_PROBE =
+    /\.(php\d?|aspx?|jsp|cgi)$|^\/(wp-|wordpress\b|xmlrpc|phpmyadmin|cgi-bin)|(^|\/)\.(env|git|aws|ssh)\b/i;
+
+export function rejectScannerProbe(pathname: string): Response | null {
+    return SCANNER_PROBE.test(pathname) ? new Response(null, { status: 404 }) : null;
+}
+
 export function checkKillSwitches(request: Request, env: Record<string, any>): Response | null {
     const { readonly, lockdown } = getKillSwitchStatus(env);
     if (lockdown) {
