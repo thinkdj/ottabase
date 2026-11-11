@@ -60,7 +60,7 @@ export function createOgPackage<Env = unknown>(options: OgPackageOptions<Env>): 
         version: '0.1.0',
         description:
             'Open Graph images drawn from an HTML card through Browser Rendering, cached in R2, served from signed URLs.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/og#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/og#readme',
         routes: {
             basePath,
             build: () =>

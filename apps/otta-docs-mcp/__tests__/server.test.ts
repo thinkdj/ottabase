@@ -52,7 +52,7 @@ describe('search_docs', () => {
         const text = textOf(result);
         expect(text).toContain('@ottabase/ottaorm > Row level security');
         expect(text).toContain('id: packages/ottaorm/README.md');
-        expect(text).toContain('source: https://github.com/thinkdj/ottabase/blob/main/packages/ottaorm/README.md');
+        expect(text).toContain('source: https://github.com/ottabase/ottabase/blob/main/packages/ottaorm/README.md');
     });
 
     it('says what to try when nothing matches, and refuses a bad argument with a reason', async () => {

@@ -346,6 +346,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed (Unreleased)
 
+- **The repository moved to `ottabase/ottabase`.** It was `thinkdj/ottabase`. GitHub redirects the old address for the
+  web, `git clone`, `git pull` and the API, so existing clones keep working; to point one at the new home, run
+  `git remote set-url origin https://github.com/ottabase/ottabase.git`. Package `repository`, `bugs` and `homepage`
+  fields, the docs and the docs connector's source links follow it.
 - **/admin shows one line of system readiness.** The missing required keys and failing checks by name (the first few),
   or "All systems ready", with a link to the full table, which is a page of its own now
   (`/admin/infrastructure/readiness`, the Infrastructure nav's System Readiness, where the raw `/api/health` link was).

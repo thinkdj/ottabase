@@ -8,7 +8,7 @@ import { checklist, code, doc, h, image, on, p, table, ul, warning } from './dem
  * so it resolves on any deployment without uploads.
  */
 
-const REPO = 'https://github.com/thinkdj/ottabase';
+const REPO = 'https://github.com/ottabase/ottabase';
 
 const cta = (text: string, url: string) => ({
     type: 'cta',

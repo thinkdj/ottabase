@@ -47,7 +47,7 @@ export function createDiscoverPackage<Env = unknown>(options: DiscoverOptions<En
         version: '1.0.0',
         description:
             'robots.txt naming the AI search crawlers, /.well-known/otta.json with the product facts, and a sitemap.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/discover#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/discover#readme',
         routes: {
             basePath: '/',
             build: () => {

@@ -14,7 +14,7 @@ Thank you for your interest in contributing to Ottabase! This guide will help yo
 
 ```bash
 # 1. Fork and clone the repo
-git clone https://github.com/thinkdj/ottabase.git
+git clone https://github.com/ottabase/ottabase.git
 cd ottabase
 
 # 2. Install dependencies
@@ -43,13 +43,13 @@ See [AGENTS.MD](./AGENTS.MD) for full architecture details.
 
 ### Reporting Bugs
 
-- Use the [Bug Report form](https://github.com/thinkdj/ottabase/issues/new/choose)
+- Use the [Bug Report form](https://github.com/ottabase/ottabase/issues/new/choose)
 - Include steps to reproduce, expected behavior, and actual behavior
 - Include your environment details (OS, Node.js version, pnpm version)
 
 ### Suggesting Features
 
-- Use the [Feature Request form](https://github.com/thinkdj/ottabase/issues/new/choose)
+- Use the [Feature Request form](https://github.com/ottabase/ottabase/issues/new/choose)
 - Explain the use case and why existing features don't solve it
 - Check existing issues to avoid duplicates
 
@@ -73,9 +73,9 @@ See [AGENTS.MD](./AGENTS.MD) for full architecture details.
 
 Look for issues labeled:
 
-- [`good first issue`](https://github.com/thinkdj/ottabase/labels/good%20first%20issue) — small, well-scoped tasks for
+- [`good first issue`](https://github.com/ottabase/ottabase/labels/good%20first%20issue) — small, well-scoped tasks for
   newcomers
-- [`help wanted`](https://github.com/thinkdj/ottabase/labels/help%20wanted) — areas where we need community help
+- [`help wanted`](https://github.com/ottabase/ottabase/labels/help%20wanted) — areas where we need community help
 
 ## Coding Standards
 
@@ -148,7 +148,7 @@ expected to uphold this code. Please report unacceptable behavior to the maintai
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/thinkdj/ottabase/discussions) on GitHub
+- Open a [Discussion](https://github.com/ottabase/ottabase/discussions) on GitHub
 - Tag `@thinkdj` for architecture-related questions
 
 ## License

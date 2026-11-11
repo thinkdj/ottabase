@@ -13,7 +13,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node-%3E%3D24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10.27.0-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![CI - Build & Test](https://github.com/thinkdj/ottabase/actions/workflows/ci.yml/badge.svg)](https://github.com/thinkdj/ottabase/actions/workflows/ci.yml)
+[![CI - Build & Test](https://github.com/ottabase/ottabase/actions/workflows/ci.yml/badge.svg)](https://github.com/ottabase/ottabase/actions/workflows/ci.yml)
 
 > **[Get started in five minutes →](./QUICKSTART.md)** - Clone, configure, bootstrap, and ship.
 
@@ -64,7 +64,7 @@ Workers.
 - Project health: [Contributing](./.github/CONTRIBUTING.md), [Code of Conduct](./.github/CODE_OF_CONDUCT.md),
   [Security](./.github/SECURITY.md), [Support](./.github/SUPPORT.md), [Maintainers](./.github/MAINTAINERS.md)
 - Demo: demo.ottabase.com
-- Community: [GitHub Discussions](https://github.com/thinkdj/ottabase/discussions)
+- Community: [GitHub Discussions](https://github.com/ottabase/ottabase/discussions)
 
 ## Comparison
 
@@ -670,7 +670,7 @@ pnpm --version    # Should be >= 10.27.0
 
 ```bash
 # Clone the repo
-git clone https://github.com/thinkdj/ottabase.git
+git clone https://github.com/ottabase/ottabase.git
 cd ottabase
 
 # Install dependencies (one-time, ~2–3 minutes)
@@ -1100,8 +1100,8 @@ pnpm clean:all              # Local state + build caches + packages/*/dist
 
 ## Need Help?
 
-- **Issues**: [GitHub Issues](https://github.com/thinkdj/ottabase/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/thinkdj/ottabase/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ottabase/ottabase/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ottabase/ottabase/discussions)
 - **Security**: [SECURITY.md](./.github/SECURITY.md)
 - **Maintainers**: [MAINTAINERS.md](./.github/MAINTAINERS.md)
 
@@ -2811,7 +2811,7 @@ only database layer.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/thinkdj/ottabase.git
+git clone https://github.com/ottabase/ottabase.git
 cd ottabase
 
 # 2. Install dependencies and build the shared packages
@@ -3775,7 +3775,7 @@ console.log('User permissions:', userPerms);
 
 **Need help?**
 
-- GitHub Issues: https://github.com/thinkdj/ottabase/issues
+- GitHub Issues: https://github.com/ottabase/ottabase/issues
 - Documentation: ./docs
 - Architecture & conventions: ./AGENTS.MD
 
@@ -24347,7 +24347,7 @@ documented around, that's what this package is for.
 
 ## Development
 
-This package is developed inside the [ottabase](https://github.com/thinkdj/ottabase) monorepo (`packages/ottarouter`).
+This package is developed inside the [ottabase](https://github.com/ottabase/ottabase) monorepo (`packages/ottarouter`).
 See [PUBLISHING.md](./PUBLISHING.md) for local development setup, the release checklist, and npm publishing steps.
 Issues and pull requests are welcome against that repository.
 

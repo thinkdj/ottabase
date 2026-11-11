@@ -19,7 +19,7 @@ export function createScreenshotPackage<Env = unknown>(
         version: '0.1.0',
         description:
             'Screenshots this app’s pages as png, jpeg or webp through Browser Rendering, with an optimization pass.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/screenshot#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/screenshot#readme',
         routes: { basePath, build: () => createScreenshotRouter<Env>(routerOptions) },
         health: (env) => {
             const bound = Boolean(options.getBrowserBinding(env));

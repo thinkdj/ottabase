@@ -497,7 +497,7 @@ documented around, that's what this package is for.
 
 ## Development
 
-This package is developed inside the [ottabase](https://github.com/thinkdj/ottabase) monorepo (`packages/ottarouter`).
+This package is developed inside the [ottabase](https://github.com/ottabase/ottabase) monorepo (`packages/ottarouter`).
 See [PUBLISHING.md](./PUBLISHING.md) for local development setup, the release checklist, and npm publishing steps.
 Issues and pull requests are welcome against that repository.
 

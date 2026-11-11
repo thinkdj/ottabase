@@ -79,7 +79,7 @@ export function createVaultPackage<Env = unknown>(options: VaultPackageOptions<E
         version: '1.0.0',
         description:
             'D1 backups to R2 as NDJSON with one-transaction restore, a nightly schedule with retention, and tenant export.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/vault#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/vault#readme',
 
         routes: {
             basePath,

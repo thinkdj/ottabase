@@ -61,13 +61,13 @@ th, td { text-align: left; vertical-align: top; padding: .4rem .75rem .4rem 0; b
 
 <h2>What it serves</h2>
 <ul>${counts}</ul>
-<p>The same Markdown that is in the <a href="https://github.com/thinkdj/ottabase">public repository</a>${corpus.revision ? ` at commit <code>${escape(corpus.revision)}</code>` : ''}, built ${escape(corpus.generatedAt.slice(0, 10))}.</p>
+<p>The same Markdown that is in the <a href="https://github.com/ottabase/ottabase">public repository</a>${corpus.revision ? ` at commit <code>${escape(corpus.revision)}</code>` : ''}, built ${escape(corpus.generatedAt.slice(0, 10))}.</p>
 
 <h2>Privacy</h2>
 <p>The server holds no accounts and sets no cookies. A request carries the tool arguments your assistant sends (a search query, a document id); the server uses them to answer and does not store them. It never sees your conversation. Cloudflare, which hosts it, keeps standard request logs (time, path, status), not request bodies. See the <a href="https://ottabase.com/privacy">privacy policy</a>.</p>
 
 <h2>Help</h2>
-<p>Something wrong or missing? <a href="https://github.com/thinkdj/ottabase/issues">Open an issue</a>. The server's source is in the repository under <code>apps/otta-docs-mcp</code>.</p>
+<p>Something wrong or missing? <a href="https://github.com/ottabase/ottabase/issues">Open an issue</a>. The server's source is in the repository under <code>apps/otta-docs-mcp</code>.</p>
 </body>
 </html>
 `;

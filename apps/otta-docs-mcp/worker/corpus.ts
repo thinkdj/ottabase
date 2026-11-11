@@ -46,7 +46,7 @@ export interface Corpus extends CorpusIndex {
     docs: CorpusDoc[];
 }
 
-const REPO_URL = 'https://github.com/thinkdj/ottabase/blob/main/';
+const REPO_URL = 'https://github.com/ottabase/ottabase/blob/main/';
 
 /** Where a person reads the same page. */
 export const sourceUrl = (id: string): string => `${REPO_URL}${id.split('/').map(encodeURIComponent).join('/')}`;

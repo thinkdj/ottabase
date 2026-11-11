@@ -39,7 +39,7 @@ pnpm --version    # Should be >= 10.27.0
 
 ```bash
 # Clone the repo
-git clone https://github.com/thinkdj/ottabase.git
+git clone https://github.com/ottabase/ottabase.git
 cd ottabase
 
 # Install dependencies (one-time, ~2–3 minutes)
@@ -469,8 +469,8 @@ pnpm clean:all              # Local state + build caches + packages/*/dist
 
 ## Need Help?
 
-- **Issues**: [GitHub Issues](https://github.com/thinkdj/ottabase/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/thinkdj/ottabase/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ottabase/ottabase/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ottabase/ottabase/discussions)
 - **Security**: [SECURITY.md](./.github/SECURITY.md)
 - **Maintainers**: [MAINTAINERS.md](./.github/MAINTAINERS.md)
 

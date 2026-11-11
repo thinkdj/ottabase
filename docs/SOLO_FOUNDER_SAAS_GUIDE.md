@@ -28,7 +28,7 @@ only database layer.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/thinkdj/ottabase.git
+git clone https://github.com/ottabase/ottabase.git
 cd ottabase
 
 # 2. Install dependencies and build the shared packages
@@ -992,7 +992,7 @@ console.log('User permissions:', userPerms);
 
 **Need help?**
 
-- GitHub Issues: https://github.com/thinkdj/ottabase/issues
+- GitHub Issues: https://github.com/ottabase/ottabase/issues
 - Documentation: ./docs
 - Architecture & conventions: ./AGENTS.MD
 

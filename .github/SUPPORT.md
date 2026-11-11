@@ -2,8 +2,8 @@
 
 ## Where to Ask for Help
 
-- **Usage questions:** [GitHub Discussions](https://github.com/thinkdj/ottabase/discussions)
-- **Bug reports:** [GitHub Issues](https://github.com/thinkdj/ottabase/issues/new/choose)
+- **Usage questions:** [GitHub Discussions](https://github.com/ottabase/ottabase/discussions)
+- **Bug reports:** [GitHub Issues](https://github.com/ottabase/ottabase/issues/new/choose)
 - **Security issues:** see [`SECURITY.md`](./SECURITY.md) and report privately
 
 ## What to Include

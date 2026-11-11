@@ -44,7 +44,7 @@ export function createWebhooksPackage<Env>(options: WebhooksPackageOptions<Env>)
         version: '1.0.0',
         description:
             'Let customers subscribe to your events. HMAC-signed deliveries, per-endpoint health, and a searchable delivery log.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/webhooks#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/webhooks#readme',
 
         tables: { webhookEndpointsTable, webhookDeliveriesTable },
         models: [WebhookEndpoint, WebhookDelivery],

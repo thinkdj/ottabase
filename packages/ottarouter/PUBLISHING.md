@@ -155,6 +155,6 @@ files to the package directory, check whether they belong in `files` or should s
 
 ## Getting Help / Filing Issues
 
-This package is developed inside the [ottabase](https://github.com/thinkdj/ottabase) monorepo. File issues and PRs
+This package is developed inside the [ottabase](https://github.com/ottabase/ottabase) monorepo. File issues and PRs
 against that repository; there is no separate repo for `ottarouter`. Use the `directory` field in `package.json`
 (`packages/ottarouter`) as the canonical location when linking to source from an issue.

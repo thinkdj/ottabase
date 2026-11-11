@@ -401,7 +401,7 @@
             "type": "cta",
             "data": {
                 "text": "Get started with OttaEditor",
-                "url": "https://github.com/thinkdj/ottabase",
+                "url": "https://github.com/ottabase/ottabase",
                 "style": "secondary",
                 "alignment": "center",
                 "openInNewTab": true,

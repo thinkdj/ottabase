@@ -6,7 +6,7 @@
 import type { Section, SectionData, SectionType } from './sections';
 import type { PageInput, SiteSettings } from './site';
 
-const GITHUB = 'https://github.com/thinkdj/ottabase';
+const GITHUB = 'https://github.com/ottabase/ottabase';
 
 export const DEFAULT_SITE: SiteSettings = {
     name: 'Ottabase',

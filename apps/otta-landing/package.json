@@ -70,11 +70,11 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/thinkdj/ottabase.git",
+        "url": "git+https://github.com/ottabase/ottabase.git",
         "directory": "apps/otta-landing"
     },
     "bugs": {
-        "url": "https://github.com/thinkdj/ottabase/issues"
+        "url": "https://github.com/ottabase/ottabase/issues"
     },
-    "homepage": "https://github.com/thinkdj/ottabase/tree/main/apps/otta-landing#readme"
+    "homepage": "https://github.com/ottabase/ottabase/tree/main/apps/otta-landing#readme"
 }

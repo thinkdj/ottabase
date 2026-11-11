@@ -25,7 +25,7 @@ no `init` against a remote database, no secret changes. Those go in the report a
 ## 0. Preflight
 
 1. `git status --porcelain` must be empty. If not, stop and ask: commit or stash is the owner's call.
-2. Stop if `origin` is the public repo itself (`github.com/thinkdj/ottabase`) or `packages/pro/.git` exists (the Pro
+2. Stop if `origin` is the public repo itself (`github.com/ottabase/ottabase`) or `packages/pro/.git` exists (the Pro
    maintainer layout). This skill is for app repos.
 3. `.repos.upstream/` must be in `.gitignore` (add the line if missing) and in `.prettierignore` if the repo has one.
 4. Find the apps: every `apps/*/ottabase/packages.ts`; each list is that app's installed packages.
@@ -37,7 +37,7 @@ Full clones: no `--depth`, no `--filter`. The base commit and its file contents 
 has nothing to compare against.
 
 ```bash
-[ -d .repos.upstream/ottabase ] || git clone https://github.com/thinkdj/ottabase.git .repos.upstream/ottabase
+[ -d .repos.upstream/ottabase ] || git clone https://github.com/ottabase/ottabase.git .repos.upstream/ottabase
 git -C .repos.upstream/ottabase fetch origin --prune
 NEW=$(git -C .repos.upstream/ottabase rev-parse origin/main)
 
@@ -53,7 +53,7 @@ PRO_NEW=$(git -C .repos.upstream/pro tag --list 'v*' --sort=-v:refname | head -1
 
 ```json
 {
-    "public": { "url": "https://github.com/thinkdj/ottabase.git", "commit": "<sha>", "syncedAt": "2026-10-25" },
+    "public": { "url": "https://github.com/ottabase/ottabase.git", "commit": "<sha>", "syncedAt": "2026-10-25" },
     "pro": { "url": "https://github.com/ottabase/pro.git", "tag": "v1.1.1", "syncedAt": "2026-10-25" }
 }
 ```

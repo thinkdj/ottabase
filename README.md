@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node-%3E%3D24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10.27.0-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![CI - Build & Test](https://github.com/thinkdj/ottabase/actions/workflows/ci.yml/badge.svg)](https://github.com/thinkdj/ottabase/actions/workflows/ci.yml)
+[![CI - Build & Test](https://github.com/ottabase/ottabase/actions/workflows/ci.yml/badge.svg)](https://github.com/ottabase/ottabase/actions/workflows/ci.yml)
 
 > **[Get started in five minutes →](./QUICKSTART.md)** - Clone, configure, bootstrap, and ship.
 
@@ -55,7 +55,7 @@ Workers.
 - Project health: [Contributing](./.github/CONTRIBUTING.md), [Code of Conduct](./.github/CODE_OF_CONDUCT.md),
   [Security](./.github/SECURITY.md), [Support](./.github/SUPPORT.md), [Maintainers](./.github/MAINTAINERS.md)
 - Demo: demo.ottabase.com
-- Community: [GitHub Discussions](https://github.com/thinkdj/ottabase/discussions)
+- Community: [GitHub Discussions](https://github.com/ottabase/ottabase/discussions)
 
 ## Comparison
 

@@ -35,7 +35,7 @@ export function createFleetPackage<Env = unknown>(options: FleetOptions<Env>): O
         version: '1.0.0',
         description:
             'Answers GET /api/fleet/report to FLEET_TOKEN with this app’s packages, license states, health, scheduled tasks and newest backup, so a cockpit can watch it.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/fleet#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/fleet#readme',
 
         routes: {
             basePath,

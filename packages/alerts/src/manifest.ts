@@ -117,7 +117,7 @@ export function createAlertsPackage<Env = unknown>(options: AlertsPackageOptions
         version: '0.1.0',
         description:
             'Operator alerts from every package to email, Slack, Discord, Telegram, PagerDuty or a signed webhook: de-duplicated, capped per channel, batched into digests, retried.',
-        docsUrl: 'https://github.com/thinkdj/ottabase/tree/main/packages/alerts#readme',
+        docsUrl: 'https://github.com/ottabase/ottabase/tree/main/packages/alerts#readme',
 
         tables: { alertChannelsTable, alertEventsTable, alertDeliveriesTable, alertKeysTable },
         models: [AlertChannel, AlertEvent, AlertDelivery, AlertKey],
