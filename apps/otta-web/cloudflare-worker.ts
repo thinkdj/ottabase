@@ -7,8 +7,10 @@ import { handleInboundEmail } from './ottabase/packages/postmaster'; // otta:onl
 import { queueHandler } from './ottabase/queue';
 import {
     handleBootstrapRoute,
+    hasBootstrapAccess,
     interceptIfNotReady,
     invalidatePlatformStateCache,
+    isDevEnvironment,
     resolvePlatformState,
 } from './worker/bootstrap';
 import { injectBlogPostSeo } from './worker/lib/blog-seo-inject'; // otta:only ottablog
@@ -72,13 +74,17 @@ export default {
             // Bootstrap gate – resolve platform state before anything
             // -------------------------------------------------------
 
-            // /__bootstrap__/* routes always drop the isolate READY memo and
-            // resolve fresh. The finally-invalidate matters: the pre-handler
+            // A /__bootstrap__ request that holds the secret drops the isolate READY memo
+            // and resolves fresh. The finally-invalidate matters: the pre-handler
             // resolve re-arms the memo (KV may still say READY), and the route
             // may then mutate platform state — never leave that memo armed
             // across the transition. (State writers also invalidate directly.)
+            // One without the secret only ever gets a 401, so it reads the memo like
+            // any other request: a bot looping here cannot force KV reads on real traffic.
+            // (Explicit dev serves the wizard page without the secret, so there it is fresh too.)
             if (normalizedPathname.startsWith('/__bootstrap__')) {
-                invalidatePlatformStateCache();
+                const trusted = hasBootstrapAccess({ request, env, url }) || isDevEnvironment(env);
+                if (trusted) invalidatePlatformStateCache();
                 try {
                     return await handleBootstrapRoute({
                         request,
@@ -87,7 +93,7 @@ export default {
                         platformState: await resolvePlatformState(env),
                     });
                 } finally {
-                    invalidatePlatformStateCache();
+                    if (trusted) invalidatePlatformStateCache();
                 }
             }
 

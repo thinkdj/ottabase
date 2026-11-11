@@ -94,7 +94,7 @@ function ensureOrmConnection(env: CloudflareEnv): void {
  * For API requests, only X-Bootstrap-Secret header is accepted.
  * For the main wizard page (GET), the ?secret= query parameter is also allowed.
  */
-function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
+function isValidSecret(context: Pick<BootstrapContext, 'env' | 'request' | 'url'>, allowQuery = false): boolean {
     const { env, request, url } = context;
     const expectedSecret = (env as any).BOOTSTRAP_OWNER_SECRET;
 
@@ -114,6 +114,17 @@ function isValidSecret(context: BootstrapContext, allowQuery = false): boolean {
     }
 
     return false;
+}
+
+/**
+ * True when the request carries the bootstrap secret (or runs in explicit dev with none set).
+ * Pure: no throttle, no I/O. The worker entry asks this before deciding whether a
+ * /__bootstrap__ request may drop the isolate READY memo — an anonymous one may not.
+ */
+export function hasBootstrapAccess(context: Pick<BootstrapContext, 'env' | 'request' | 'url'>): boolean {
+    // Only the GET wizard page may carry the secret in the query string.
+    const isApiRequest = context.url.pathname.startsWith('/__bootstrap__/api/');
+    return isValidSecret(context, !isApiRequest && context.request.method === 'GET');
 }
 
 /**
@@ -141,9 +152,7 @@ export async function handleBootstrapRoute(context: BootstrapContext): Promise<R
     }
 
     // 2. Security Check for API and Wizard (POST/GET)
-    // Only allow query param for the GET wizard page
-    const allowQuery = !isApiRequest && context.request.method === 'GET';
-    if (!isValidSecret(context, allowQuery)) {
+    if (!hasBootstrapAccess(context)) {
         // Throttle brute-forcing of BOOTSTRAP_OWNER_SECRET. EVERY bootstrap endpoint is a
         // 401-vs-200 oracle for the secret (esp. the read-only GET /api/status), so without this an
         // attacker could guess it unthrottled here and then make a single valid promote/create-owner

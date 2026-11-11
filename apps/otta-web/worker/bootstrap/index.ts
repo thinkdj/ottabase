@@ -10,6 +10,6 @@ export {
     writeKVState,
     ensureMetaTable,
 } from './state-resolver';
-export { handleBootstrapRoute, interceptIfNotReady } from './routes';
+export { handleBootstrapRoute, hasBootstrapAccess, interceptIfNotReady } from './routes';
 export type { PlatformState, PlatformStateResult, BindingProbe, BootstrapStep } from './types';
-export { BOOTSTRAP_PATH, META_TABLE, KV_PLATFORM_STATE_KEY } from './types';
+export { BOOTSTRAP_PATH, META_TABLE, KV_PLATFORM_STATE_KEY, isDevEnvironment } from './types';

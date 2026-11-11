@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { handleBootstrapRoute, interceptIfNotReady } from '../routes';
+import { handleBootstrapRoute, hasBootstrapAccess, interceptIfNotReady } from '../routes';
 import type { PlatformStateResult } from '../types';
 
 function platformState(overrides: Partial<PlatformStateResult> = {}): PlatformStateResult {
@@ -28,6 +28,32 @@ function context(path: string, init: RequestInit = {}, env: Record<string, unkno
         platformState: platformState(),
     };
 }
+
+describe('hasBootstrapAccess (who may drop the READY memo)', () => {
+    const anon = (path: string, init: RequestInit = {}, env: Record<string, unknown> = {}) => {
+        const request = new Request(`https://app.test${path}`, init);
+        return { request, url: new URL(request.url), env: { BOOTSTRAP_OWNER_SECRET: 'fixture-secret', ...env } as any };
+    };
+
+    it('is true only with the secret', () => {
+        expect(hasBootstrapAccess(context('/__bootstrap__/api/status'))).toBe(true);
+        expect(hasBootstrapAccess(anon('/__bootstrap__/api/status'))).toBe(false);
+        expect(hasBootstrapAccess(anon('/__bootstrap__/anything'))).toBe(false);
+    });
+
+    it('takes the query secret on the GET wizard page only', () => {
+        expect(hasBootstrapAccess(anon('/__bootstrap__?secret=fixture-secret'))).toBe(true);
+        expect(hasBootstrapAccess(anon('/__bootstrap__/api/status?secret=fixture-secret'))).toBe(false);
+        expect(hasBootstrapAccess(anon('/__bootstrap__?secret=fixture-secret', { method: 'POST' }))).toBe(false);
+    });
+
+    it('with no secret configured, is true only in explicit dev', () => {
+        expect(hasBootstrapAccess(anon('/__bootstrap__', {}, { BOOTSTRAP_OWNER_SECRET: '' }))).toBe(false);
+        expect(
+            hasBootstrapAccess(anon('/__bootstrap__', {}, { BOOTSTRAP_OWNER_SECRET: '', ENVIRONMENT: 'development' })),
+        ).toBe(true);
+    });
+});
 
 describe('bootstrap API response contract', () => {
     it('keeps 5xx responses opaque and non-cacheable', async () => {
