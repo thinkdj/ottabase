@@ -5,7 +5,7 @@
 import { BaseModel, DomainValidationError, ModelFields, PackageType } from '@ottabase/ottaorm';
 import { renderExpiredShortlinkPage } from '../pages/expired';
 import { renderShortlinkInterstitialPage } from '../pages/interstitial';
-import { ShortlinkTypes } from '../types';
+import { SHORT_CODE, ShortlinkTypes } from '../types';
 import { shortlinksTable } from './Shortlink.schema';
 
 export { shortlinksTable, type NewShortlinkRecord, type ShortlinkRecord } from './Shortlink.schema';
@@ -48,6 +48,17 @@ export class Shortlink extends BaseModel {
         interstitialSeconds: 10,
     };
 
+    private static normalizeShortCode(value: unknown): string {
+        const code = typeof value === 'string' ? value.trim() : '';
+        if (!SHORT_CODE.test(code)) {
+            throw new DomainValidationError('Short code must be 2 to 50 letters, numbers, dashes or underscores', {
+                code: 'INVALID_SHORT_CODE',
+                fieldErrors: { shortCode: ['Use 2 to 50 letters, numbers, dashes or underscores'] },
+            });
+        }
+        return code;
+    }
+
     private static normalizeDestination(value: unknown): string {
         const destination = typeof value === 'string' ? value.trim() : '';
         if (!destination || new TextEncoder().encode(destination).byteLength > 2048) {
@@ -79,15 +90,21 @@ export class Shortlink extends BaseModel {
             {
                 ...data,
                 fullUrl: Shortlink.normalizeDestination(data.fullUrl),
+                shortCode: Shortlink.normalizeShortCode(data.shortCode),
             },
             driver,
         )) as InstanceType<T>;
     }
 
     protected static async prepareUpdateMutation(data: Record<string, any>): Promise<Record<string, any>> {
-        return Object.prototype.hasOwnProperty.call(data, 'fullUrl')
-            ? { ...data, fullUrl: Shortlink.normalizeDestination(data.fullUrl) }
-            : data;
+        const next = { ...data };
+        if (Object.prototype.hasOwnProperty.call(data, 'fullUrl')) {
+            next.fullUrl = Shortlink.normalizeDestination(data.fullUrl);
+        }
+        if (Object.prototype.hasOwnProperty.call(data, 'shortCode')) {
+            next.shortCode = Shortlink.normalizeShortCode(data.shortCode);
+        }
+        return next;
     }
 
     protected static fields: ModelFields = {

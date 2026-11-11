@@ -6,14 +6,18 @@ export type ExpiredPageOptions = {
     themeStorageKey?: string;
 };
 
-export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Response {
+/** The one page both dead ends share: an expired link (410) and a code that was never a link (404). */
+function renderUnavailablePage(
+    page: { status: 404 | 410; title: string; heading: string; message: string },
+    options?: ExpiredPageOptions,
+): Response {
     const css = getShortlinkPageCss();
     const html = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Link Expired</title>
+    <title>${page.title}</title>
     <script>
       (function () {
         try {
@@ -47,18 +51,43 @@ export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Respon
             <path d="M12 16h.01" />
           </svg>
         </div>
-        <h1>Link expired</h1>
-        <p>This shortlink is no longer available. Please request a new link from the sender.</p>
+        <h1>${page.heading}</h1>
+        <p>${page.message}</p>
       </div>
     </div>
   </body>
 </html>`;
 
     return new Response(html, {
-        status: 410,
+        status: page.status,
         headers: {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',
         },
     });
+}
+
+export function renderExpiredShortlinkPage(options?: ExpiredPageOptions): Response {
+    return renderUnavailablePage(
+        {
+            status: 410,
+            title: 'Link Expired',
+            heading: 'Link expired',
+            message: 'This shortlink is no longer available. Please request a new link from the sender.',
+        },
+        options,
+    );
+}
+
+/** For a code no shortlink has: the same page as an expired link, as a 404. */
+export function renderShortlinkNotFoundPage(options?: ExpiredPageOptions): Response {
+    return renderUnavailablePage(
+        {
+            status: 404,
+            title: 'Link Not Found',
+            heading: 'Link not found',
+            message: 'There is no shortlink at this address. Check the link, or ask the sender for a new one.',
+        },
+        options,
+    );
 }

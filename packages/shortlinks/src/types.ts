@@ -3,6 +3,13 @@ import type { NewShortlinkRecord, ShortlinkRecord } from './ottaorm-models/Short
 export type { NewShortlinkRecord, ShortlinkRecord };
 
 /**
+ * What a short code may be: 2 to 50 letters, numbers, dashes or underscores. The model refuses
+ * anything else on create and update, so a redirect handler can turn away a path that cannot be
+ * a code (`/a/b`, `/favicon.ico`) without asking the database.
+ */
+export const SHORT_CODE = /^[A-Za-z0-9_-]{2,50}$/;
+
+/**
  * Shortlink type enum for categorization
  */
 export const ShortlinkTypes = {

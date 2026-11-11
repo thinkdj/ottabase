@@ -1,8 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { renderExpiredShortlinkPage, renderShortlinkInterstitialPage } from '../index.js';
+import { renderExpiredShortlinkPage, renderShortlinkInterstitialPage, renderShortlinkNotFoundPage } from '../index.js';
 import { sanitizeJsonForScript } from '@ottabase/utils/sanitize';
 
 describe('Shortlink Page Renderers', () => {
+    describe('renderShortlinkNotFoundPage', () => {
+        it('is the expired page as a 404, never cached', async () => {
+            const response = renderShortlinkNotFoundPage();
+            expect(response.status).toBe(404);
+            expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+            expect(response.headers.get('Cache-Control')).toBe('no-store');
+            const html = await response.text();
+            expect(html).toContain('<title>Link Not Found</title>');
+            expect(html).toContain('Link not found');
+            expect(html).not.toContain('Link expired');
+        });
+    });
+
     describe('renderExpiredShortlinkPage', () => {
         it('should return a Response object', () => {
             const response = renderExpiredShortlinkPage();

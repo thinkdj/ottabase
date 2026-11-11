@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Shortlink, buildRedirectResponse } from '../ottaorm-models/Shortlink';
+import { SHORT_CODE } from '../types';
 
 const createShortlinkStub = (fields: Record<string, unknown> = {}) =>
     ({
@@ -49,5 +50,30 @@ describe('Shortlink model helpers', () => {
         const response = buildRedirectResponse(shortlink);
         expect(response.status).toBe(302);
         expect(response.headers.get('Location')).toBe(new URL('https://example.com').toString());
+    });
+});
+
+describe('short code rule', () => {
+    it('accepts 2 to 50 letters, numbers, dashes and underscores', () => {
+        for (const code of ['gh', 'my-link', 'Launch_2026', 'x'.repeat(50)])
+            expect(SHORT_CODE.test(code), code).toBe(true);
+    });
+
+    it('refuses anything a URL path would mangle or a route would shadow', () => {
+        for (const code of ['', 'a', 'a/b', 'a b', 'a.b', 'a?b', 'a%20b', 'é', 'x'.repeat(51)]) {
+            expect(SHORT_CODE.test(code), code).toBe(false);
+        }
+    });
+
+    it('is enforced on create and on update, before the database is touched', async () => {
+        await expect(
+            Shortlink.create({ fullUrl: 'https://example.com', shortCode: 'api/health' }),
+        ).rejects.toMatchObject({
+            code: 'INVALID_SHORT_CODE',
+        });
+        const prepare = (Shortlink as any).prepareUpdateMutation.bind(Shortlink);
+        await expect(prepare({ shortCode: 'a.b' })).rejects.toMatchObject({ code: 'INVALID_SHORT_CODE' });
+        await expect(prepare({ shortCode: ' ok-code ' })).resolves.toEqual({ shortCode: 'ok-code' });
+        await expect(prepare({ type: 'redirect' })).resolves.toEqual({ type: 'redirect' });
     });
 });
