@@ -4,7 +4,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { DEFAULT_APP_ID } from '@ottabase/config';
 import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { LandingPage, LandingSite, type LandingPageData, type SiteSettings } from '@ottabase/ottalanding';
+import { LandingPage, LandingSite, PAGE_PATH, type LandingPageData, type SiteSettings } from '@ottabase/ottalanding';
 import { registerConnection } from '@ottabase/ottaorm';
 import { configureMedia } from '@ottabase/utils/media';
 import { headers } from 'next/headers';
@@ -54,6 +54,9 @@ export const getSite = cache(async (): Promise<SiteSettings | null> => {
  * "Share preview" link — its saved draft. A wrong token on a draft is a plain 404.
  */
 export const getPage = cache(async (path: string, previewToken?: string): Promise<LandingPageData | null> => {
+    // No page can have a path outside PAGE_PATH (the editor refuses it), so the scanner traffic
+    // every public site gets (/wp-login.php, /.env) is a 404 without a database read for the page.
+    if (!PAGE_PATH.test(path)) return null;
     const appId = await connect();
     try {
         // A stale token on a page that has since been published still shows the public page.

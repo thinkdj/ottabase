@@ -433,7 +433,7 @@ import { Button } from '@ottabase/ui';
 import { Link } from '@tanstack/react-router';
 
 // The starter home page: replace it with your own. The admin is at /admin, your pages live in src/pages.
-// (A block comment cannot nest here: this whole starter sits inside the otta:unless comment until stripped.)
+// (A block comment cannot nest here: this whole starter sits inside the unless-demo comment until stripped.)
 export function HomePage() {
     return (
         <div className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
