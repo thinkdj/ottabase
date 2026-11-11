@@ -1,13 +1,12 @@
 import { AnalyticsQueryError, queryEvents, validateAnalyticsConfig } from '@ottabase/analytics/query';
 import { getRequestCountry, trackEvent } from '@ottabase/analytics/track';
-import { createD1Driver } from '@ottabase/db/drizzle-d1';
-import { registerConnection } from '@ottabase/ottaorm';
-import { Shortlink, buildRedirectResponse } from '@ottabase/shortlinks';
+import { SHORT_CODE, Shortlink, buildRedirectResponse, renderShortlinkNotFoundPage } from '@ottabase/shortlinks';
 import { errorResponse, redactErrorForLog } from '@ottabase/utils/http-errors';
 import { jsonResponse } from '@ottabase/utils/http-response';
 import { paginatedJsonResponse, parseBoundedInteger, parsePaginationParams } from '@ottabase/utils/pagination';
 import { getOttabaseConfig } from '../../ottabase/config.loader';
 import { requireAdminAccess } from '../lib/admin-guard';
+import { ensureDbConnection } from '../lib/db-utils';
 import { readJson } from '../lib/utils';
 import type { ApiRouteContext } from './router';
 
@@ -60,8 +59,14 @@ export async function handleShortlinksList(context: ApiRouteContext): Promise<Re
         { orderBy, orderDirection: order },
     );
 
+    // With a redirect-only domain, each row carries its address there; without one the admin
+    // page builds /s/<code> on its own origin (the API's origin is the wrong one behind a dev proxy).
+    const host = shortlinksHost(env);
     return paginatedJsonResponse({
-        data: paginationResult.data.map((s) => s.toJson()),
+        data: paginationResult.data.map((s) => ({
+            ...s.toJson(),
+            ...(host ? { shortUrl: `https://${host}/${s.get('shortCode')}` } : {}),
+        })),
         total: paginationResult.total,
         page: paginationResult.page,
         perPage: paginationResult.perPage,
@@ -204,31 +209,50 @@ export async function handleShortlinkById(
     });
 }
 
-export async function handleShortlinkExplicitGo(context: ShortlinkContext): Promise<Response> {
-    const { request, env, url } = context;
+/** A dead link: the package's page for a browser, JSON for anything else. */
+function linkNotFound(request: Request): Response {
+    return request.headers.get('Accept')?.includes('text/html')
+        ? renderShortlinkNotFoundPage()
+        : errorResponse('Shortlink not found', 404, { code: 'LINK_NOT_FOUND' });
+}
+
+/** `go.example.com` from whatever the var holds: a scheme, a port or a path is dropped. */
+function hostOf(value: string | undefined): string {
+    return (value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/^[a-z]+:\/\//, '')
+        .replace(/[/:].*$/, '');
+}
+
+/**
+ * The redirect-only domain (`SHORTLINKS_HOST`), or '' when there is none. A value naming the
+ * app's own domain (`AUTH_URL`) is ignored: taken at its word it would 404 the whole app.
+ */
+function shortlinksHost(env: CloudflareEnv): string {
+    const vars = env as { SHORTLINKS_HOST?: string; AUTH_URL?: string };
+    const host = hostOf(vars.SHORTLINKS_HOST);
+    return host && host !== hostOf(vars.AUTH_URL) ? host : '';
+}
+
+/**
+ * GET|HEAD /s/<code>: the redirect for one short code (or its interstitial / expired page), else
+ * a 404. A path that cannot be a code (SHORT_CODE) is turned away without a database read.
+ */
+export async function handleShortlinkRedirect(context: ShortlinkContext, path: string): Promise<Response> {
+    const { request, env } = context;
+    const code = path.replace(/\/$/, ''); // `/s/abc/` is the same link as `/s/abc`
+    if (!SHORT_CODE.test(code)) return linkNotFound(request);
     if (!env.OBCF_D1) {
         return errorResponse('D1 database binding not configured', 500, {
             code: 'CONFIG_ERROR',
         });
     }
 
-    const code = url.searchParams.get('code') || url.searchParams.get('s') || url.searchParams.get('id');
-    if (!code) {
-        return errorResponse('Missing shortlink code', 400, {
-            hint: 'Use /shortlinks/go?code=... or ?s=...',
-        });
-    }
-
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-
     try {
+        ensureDbConnection(env);
         const shortlink = await Shortlink.findByCode(code);
-
-        if (!shortlink) {
-            return errorResponse('Shortlink not found', 404, {
-                code: 'LINK_NOT_FOUND',
-            });
-        }
+        if (!shortlink) return linkNotFound(request);
 
         pushShortlinkClick(env, request, shortlink.get('shortCode') ?? 'unknown', shortlink.get('fullUrl') ?? '');
         return buildRedirectResponse(shortlink);
@@ -243,29 +267,18 @@ export async function handleShortlinkExplicitGo(context: ShortlinkContext): Prom
     }
 }
 
-export async function handleShortlinkFallback(context: ShortlinkContext): Promise<Response | null> {
-    const { env, request, url } = context;
-
-    if (
-        !env.OBCF_D1 ||
-        url.pathname.startsWith('/api/') ||
-        url.pathname.startsWith('/@') ||
-        url.pathname === '/' ||
-        /\.[a-zA-Z0-9]+$/.test(url.pathname)
-    ) {
-        return null;
+/**
+ * The redirect-only domain (`SHORTLINKS_HOST`, e.g. `go.example.com`): there a bare `/<code>`
+ * resolves and everything else is a 404 — the app, its API and its cookies are never served from
+ * it. Null on any other host (and when the var is unset), at no I/O cost.
+ */
+export async function handleShortlinkHost(context: ShortlinkContext): Promise<Response | null> {
+    const host = shortlinksHost(context.env);
+    if (!host || context.url.hostname !== host) return null;
+    if (context.request.method !== 'GET' && context.request.method !== 'HEAD') {
+        return errorResponse('Method not allowed', 405, { headers: { Allow: 'GET, HEAD' } });
     }
-
-    registerConnection('default', createD1Driver(env.OBCF_D1));
-
-    const shortCode = url.pathname.substring(1);
-    const shortlink = await Shortlink.findByCode(shortCode);
-    if (!shortlink) {
-        return null;
-    }
-
-    pushShortlinkClick(env, request, shortlink.get('shortCode') ?? 'unknown', shortlink.get('fullUrl') ?? '');
-    return buildRedirectResponse(shortlink);
+    return handleShortlinkRedirect(context, context.url.pathname.slice(1));
 }
 
 /**

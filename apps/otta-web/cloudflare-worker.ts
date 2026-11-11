@@ -19,7 +19,7 @@ import { ensureDbConnection } from './worker/lib/db-utils';
 import { handleUnhandledRequestError } from './worker/lib/http-error-boundary';
 import { checkKillSwitches, rejectScannerProbe } from './worker/lib/killswitch';
 import { handleApiRequest } from './worker/routes/router';
-import { handleShortlinkFallback } from './worker/routes/shortlinks'; // otta:only shortlinks
+import { handleShortlinkHost } from './worker/routes/shortlinks'; // otta:only shortlinks
 
 export { RealtimeActor };
 
@@ -107,22 +107,21 @@ export default {
                 ensureDbConnection(env);
             }
 
+            // otta:begin shortlinks
+            // On the redirect-only domain (SHORTLINKS_HOST) a bare /<code> resolves and nothing
+            // else is served. Everywhere else short codes live at /s/<code>, a package route.
+            if (packages.has('shortlinks')) {
+                const shortHostResponse = await handleShortlinkHost({ request, env, url });
+                if (shortHostResponse) return shortHostResponse;
+            }
+            // otta:end shortlinks
+
             // API routes (core routes, then every package's) — null falls through
             const apiResponse = await handleApiRequest(request, env, ctx);
 
             if (apiResponse) {
                 return apiResponse;
             }
-
-            // otta:begin shortlinks
-            // Bare short codes (/abc) resolve only when the shortlinks package is installed.
-            if (packages.has('shortlinks')) {
-                const shortlinkFallbackResponse = await handleShortlinkFallback({ request, env, url });
-                if (shortlinkFallbackResponse) {
-                    return shortlinkFallbackResponse;
-                }
-            }
-            // otta:end shortlinks
 
             if (!env.OBCF_ASSETS) {
                 return errorResponse('Assets binding not configured', 500, {

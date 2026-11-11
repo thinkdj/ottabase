@@ -1,5 +1,6 @@
 import { getSession } from '@ottabase/auth/backend';
 import { Account, User } from '@ottabase/ottaorm';
+import { Shortlink } from '@ottabase/shortlinks'; // otta:only shortlinks
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import workerHandler from '../../cloudflare-worker';
 import { APP_ID } from '../../ottabase/config.loader';
@@ -199,6 +200,55 @@ describe('Cloudflare Worker API', () => {
 
             const resp = await worker.fetch(createRequest('/api/shortlinks'), env);
             expect(resp.status).toBe(401);
+        });
+    });
+
+    describe('short links', () => {
+        const stored = {
+            isExpired: () => false,
+            get: (key: string) => ({ shortCode: 'gh', fullUrl: 'https://github.com/ottabase' })[key],
+        };
+
+        it('GET and HEAD /s/<code> redirect to the destination', async () => {
+            const find = vi.spyOn(Shortlink, 'findByCode').mockResolvedValue(stored as any);
+            try {
+                for (const method of ['GET', 'HEAD']) {
+                    const resp = await worker.fetch(createRequest('/s/gh', method), env);
+                    expect(resp.status, method).toBe(302);
+                    expect(resp.headers.get('Location')).toBe('https://github.com/ottabase');
+                }
+                expect(find).toHaveBeenCalledWith('gh');
+            } finally {
+                find.mockRestore();
+            }
+        });
+
+        it('a bare /<code> on the app domain is not a shortlink lookup', async () => {
+            const find = vi.spyOn(Shortlink, 'findByCode').mockResolvedValue(stored as any);
+            env.OBCF_ASSETS = { fetch: vi.fn(async () => new Response('missing', { status: 404 })) };
+            try {
+                const resp = await worker.fetch(createRequest('/gh'), env);
+                expect(resp.status).toBe(404);
+                expect(find).not.toHaveBeenCalled();
+            } finally {
+                find.mockRestore();
+            }
+        });
+
+        it('on SHORTLINKS_HOST a bare /<code> redirects and the API is not served', async () => {
+            const find = vi.spyOn(Shortlink, 'findByCode').mockResolvedValue(stored as any);
+            env.SHORTLINKS_HOST = 'go.test';
+            const onShortHost = (path: string) =>
+                workerHandler.fetch!(new Request(`https://go.test${path}`) as any, env, {
+                    waitUntil: vi.fn(),
+                    passThroughOnException: vi.fn(),
+                } as unknown as ExecutionContext);
+            try {
+                expect((await onShortHost('/gh')).status).toBe(302);
+                expect((await onShortHost('/api/health')).status).toBe(404);
+            } finally {
+                find.mockRestore();
+            }
         });
     });
     // otta:end shortlinks

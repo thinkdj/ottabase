@@ -7,7 +7,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 // Resolve __dirname in ESM
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const BYPASS_PATHS = ['/api', '/shortlinks/go', '/__bootstrap__'];
+const BYPASS_PATHS = ['/api', '/s/', '/__bootstrap__'];
 
 /**
  * SPA fallback plugin – ensures that any non‑API request that expects HTML

@@ -67,7 +67,12 @@
     },
     "shortlinks": {
         "description": "Short URLs with edge click tracking: the admin page and the worker routes.",
-        "paths": ["src/pages/shortlinks", "worker/routes/shortlinks.ts", "src/__tests__/Shortlink.test.ts"]
+        "paths": [
+            "src/pages/shortlinks",
+            "worker/routes/shortlinks.ts",
+            "worker/routes/__tests__/shortlink-host.test.ts",
+            "src/__tests__/Shortlink.test.ts"
+        ]
     },
     "referrals": {
         "description": "Referral links and attribution: the dashboard, the tracker, the page, the worker routes.",

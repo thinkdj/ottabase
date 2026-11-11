@@ -46,7 +46,9 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ShortlinkForm } from './components/ShortlinkForm';
 
-type ShortlinksResponse = PaginatedResponse<ShortlinkRecord>;
+/** `shortUrl` is set by the API when the app has a redirect-only domain (SHORTLINKS_HOST). */
+type ShortlinkRow = ShortlinkRecord & { shortUrl?: string };
+type ShortlinksResponse = PaginatedResponse<ShortlinkRow>;
 
 export function ShortlinksPage() {
     const queryClient = useQueryClient();
@@ -127,9 +129,7 @@ export function ShortlinksPage() {
         }
     };
 
-    const getExplicitUrl = (shortCode: string) => {
-        return `${window.location.origin}/shortlinks/go?code=${shortCode}`;
-    };
+    const getShortUrl = (link: ShortlinkRow) => link.shortUrl ?? `${window.location.origin}/s/${link.shortCode}`;
 
     const formatDate = (date: DateInput | null) => {
         if (date === null) return 'Never';
@@ -375,13 +375,13 @@ export function ShortlinksPage() {
                                                 <TableCell className="max-w-[180px]">
                                                     <div className="flex items-center gap-1">
                                                         <a
-                                                            href={getExplicitUrl(link.shortCode)}
+                                                            href={getShortUrl(link)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="truncate text-sm text-primary hover:underline"
-                                                            title={getExplicitUrl(link.shortCode)}
+                                                            title={getShortUrl(link)}
                                                         >
-                                                            {getExplicitUrl(link.shortCode)}
+                                                            {getShortUrl(link)}
                                                         </a>
                                                         <Button
                                                             variant="ghost"
@@ -389,10 +389,7 @@ export function ShortlinksPage() {
                                                             className="h-6 w-6 p-0 flex-shrink-0"
                                                             title="Copy Redirect URL"
                                                             onClick={() =>
-                                                                copyToClipboard(
-                                                                    getExplicitUrl(link.shortCode),
-                                                                    `${link.id}-link`,
-                                                                )
+                                                                copyToClipboard(getShortUrl(link), `${link.id}-link`)
                                                             }
                                                         >
                                                             {copiedId === `${link.id}-link` ? (

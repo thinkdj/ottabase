@@ -226,7 +226,7 @@ vi.mock('../referrals', () => ({
 // otta:begin shortlinks
 vi.mock('../shortlinks', () => ({
     handleShortlinkById: handlerMock('handleShortlinkById'),
-    handleShortlinkExplicitGo: handlerMock('handleShortlinkExplicitGo'),
+    handleShortlinkRedirect: handlerMock('handleShortlinkRedirect'),
     handleShortlinksAnalytics: handlerMock('handleShortlinksAnalytics'),
     handleShortlinksCreate: handlerMock('handleShortlinksCreate'),
     handleShortlinksList: handlerMock('handleShortlinksList'),
@@ -372,7 +372,7 @@ import { apiRouter, handleApiRequest, makeApiRouteContext } from '../router';
 // otta:begin shortlinks
 import {
     handleShortlinkById,
-    handleShortlinkExplicitGo,
+    handleShortlinkRedirect,
     handleShortlinksAnalytics,
     handleShortlinksCreate,
     handleShortlinksList,
@@ -515,7 +515,7 @@ const ALL_HANDLER_MOCKS: Record<string, ReturnType<typeof vi.fn>> = {
     // otta:end referrals
     // otta:begin shortlinks
     handleShortlinkById,
-    handleShortlinkExplicitGo,
+    handleShortlinkRedirect,
     handleShortlinksAnalytics,
     handleShortlinksCreate,
     handleShortlinksList,
@@ -812,10 +812,16 @@ describe('router dispatch parity', () => {
             expect(await response!.text()).toBe('handleShortlinkById');
         });
 
-        it('GET /shortlinks/go (outside /api) dispatches to the explicit-go handler', async () => {
-            const { response } = await dispatch('GET', '/shortlinks/go?code=x');
-            expect(handleShortlinkExplicitGo).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }));
-            expect(await response!.text()).toBe('handleShortlinkExplicitGo');
+        it('GET /s/<code> (outside /api) dispatches to the redirect handler with the code', async () => {
+            const { response } = await dispatch('GET', '/s/abc');
+            expect(handleShortlinkRedirect).toHaveBeenCalledWith(expect.objectContaining({ method: 'GET' }), 'abc');
+            expect(await response!.text()).toBe('handleShortlinkRedirect');
+        });
+
+        it('HEAD /s/<code> reaches the redirect handler too (link checkers and unfurlers ask with HEAD)', async () => {
+            const { response } = await dispatch('HEAD', '/s/abc');
+            expect(handleShortlinkRedirect).toHaveBeenCalledWith(expect.objectContaining({ method: 'HEAD' }), 'abc');
+            expect(response).not.toBeNull();
         });
     });
     // otta:end shortlinks

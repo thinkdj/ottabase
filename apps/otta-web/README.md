@@ -485,6 +485,8 @@ apps/otta-web/
 - `/api/auth/register` - Credentials registration
 - `/api/auth/config` - Auth UI configuration
 - `/api/ottaorm/*` - OttaORM CRUD endpoints
+- `/s/<code>` - Shortlink redirect (interstitial, expired and not-found pages included). With the `SHORTLINKS_HOST` var
+  set to a redirect-only domain (e.g. `go.example.com`), a bare `/<code>` resolves there and nothing else is served
 - `/api/analytics/core`, `/api/shortlinks/analytics`, `/api/referrals/analytics` - Core events, shortlink clicks and
   referral clicks for the analytics tabs. System-admin only: Analytics Engine rows carry no organization, so the totals
   are platform-wide

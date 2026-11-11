@@ -8,7 +8,7 @@
 //
 // A handler returns a Response, or null to decline and keep matching. When no
 // route claims a request, handleApiRequest() resolves null so the worker can
-// fall through to shortlinks and static assets.
+// fall through to static assets.
 //
 // Core routes (auth, admin, ORM, brand, platform demos) are registered here.
 // Everything a PACKAGE contributes — blog, landing, shortlinks, referrals, AI,
@@ -439,7 +439,7 @@ apiRouter.onError((err, c) => {
 
 /**
  * Resolve an API request. Resolves null when nothing claimed the request, so the worker
- * can fall through to shortlinks and static assets.
+ * can fall through to static assets.
  */
 export async function handleApiRequest(
     request: Request,

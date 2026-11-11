@@ -75,6 +75,20 @@ if (!shortlink) {
 return buildRedirectResponse(shortlink);
 ```
 
+In `otta-web` short codes resolve at `/s/<code>` (GET and HEAD), an ordinary package route, so no other request pays a
+lookup. Set the `SHORTLINKS_HOST` var (for example `go.example.com`) to add a redirect-only domain: on that host a bare
+`/<code>` resolves and everything else is a 404. Point the domain at the same Worker; the admin page then shows each
+link at its short-domain address. A value that names the app's own domain (`AUTH_URL`) is ignored.
+
+A short code is 2 to 50 letters, numbers, dashes or underscores (`SHORT_CODE`). The model refuses anything else on
+create and update, so a handler can turn away a path that cannot be a code without a database read:
+
+```typescript
+import { SHORT_CODE, renderShortlinkNotFoundPage } from '@ottabase/shortlinks';
+
+if (!SHORT_CODE.test(code)) return renderShortlinkNotFoundPage(); // 404, same look as the expired page
+```
+
 `buildRedirectResponse` checks `expiryDate` and `interstitialEnabled` internally. If you need custom pages:
 
 ```typescript

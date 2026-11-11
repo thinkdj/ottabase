@@ -125,7 +125,9 @@ export function ShortlinkForm({ shortlink, onSuccess, onCancel }: ShortlinkFormP
                         disabled={loading}
                         className="flex-1"
                         pattern="[a-zA-Z0-9_\-]+"
-                        title="Only letters, numbers, hyphens, and underscores"
+                        minLength={2}
+                        maxLength={50}
+                        title="2 to 50 letters, numbers, hyphens, and underscores"
                     />
                     <Button type="button" variant="outline" onClick={generateRandomCode} disabled={loading}>
                         Random

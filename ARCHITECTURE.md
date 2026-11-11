@@ -127,7 +127,7 @@ flowchart LR
 
     Worker --> Router["API Router (@ottabase/ottarouter)<br/>worker/routes/router.ts"]
     Worker --> Assets["OBCF_ASSETS<br/>static assets"]
-    Worker --> ShortlinkFallback[Shortlink fallback resolver]
+    Worker --> ShortlinkHost["Redirect-only short domain<br/>SHORTLINKS_HOST"]
 
     Router --> Auth[Auth handlers]
     Router --> CRUD["Generic OttaORM CRUD<br/>/api/ottaorm/:entity"]
@@ -201,13 +201,8 @@ sequenceDiagram
             R-->>W: API response
             W-->>U: JSON response
         else No API route
-            W->>W: Shortlink fallback attempt
-            alt shortlink hit
-                W-->>U: Redirect/Interstitial
-            else static asset
                 W->>W: Fetch OBCF_ASSETS
                 W-->>U: HTML/asset response
-            end
         end
     end
 ```
