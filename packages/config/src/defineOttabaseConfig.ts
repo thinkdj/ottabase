@@ -48,6 +48,8 @@ const DEFAULT_AUTH_BEHAVIOR: AuthBehaviorConfig = {
     requireEmailVerified: false,
     disableCredentials: false,
     verbose: false,
+    signupRole: 'owner',
+    oauthClaimsUnclaimedUsers: false,
 };
 
 const DEFAULT_OTTABLOG: OttablogFeatureConfig = {

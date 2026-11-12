@@ -125,6 +125,18 @@ function useAppConfig(): AppConfig {
 const framework: SupportedUIFramework = 'mantine';
 ```
 
+### Account policy (`features.authBehavior` in `defineOttabaseConfig`)
+
+Next to `sessionMaxAge`, `requireEmailVerified`, `disableCredentials` and `verbose` (each overridable by an env var),
+`features.authBehavior` holds two account-policy settings that only the config file decides:
+
+| Setting                     | Default   | What it does                                                                                                                                                                                                                                              |
+| --------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signupRole`                | `'owner'` | The RBAC role a self-registered user gets in their own new organization. `'member'` gives the `member` role (`viewer` where no `member` role exists): they use their workspace but get no admin area. The first user (bootstrap) is always owner.         |
+| `oauthClaimsUnclaimedUsers` | `false`   | Lets an OAuth sign-in take over an existing user with the same email, but only an unclaimed one (no password, no linked sign-in) and only when the provider verified the email. For apps that create users ahead of an email invite. See the auth README. |
+
+These are how an app changes an Ottabase default without editing package code (see `docs/BUILDING_ON_OTTABASE.md`).
+
 ## Configuration Structure
 
 ```typescript

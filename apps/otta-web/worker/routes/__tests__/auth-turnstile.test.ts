@@ -64,6 +64,7 @@ vi.mock('../../lib/auth-utils', () => ({
 vi.mock('../../lib/rate-limiting', () => ({ enforceRateLimit: mocks.enforceRateLimit }));
 vi.mock('../../lib/user-provisioning', () => ({
     provisionDefaultOrganizationForUser: mocks.provisionOrganization,
+    signupRoleFallbacks: () => ['member', 'viewer'],
 }));
 
 const KEYS = { TURNSTILE_SITE_KEY: '0x4AAAAAAA-site_key', TURNSTILE_SECRET_KEY: 'real-secret' };

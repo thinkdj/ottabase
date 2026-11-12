@@ -3,8 +3,19 @@ import { BrandKit, LayoutRouteMapping } from '@ottabase/brand-engine/persistence
 import { Organization, OrganizationMember, Role, User } from '@ottabase/ottaorm/models';
 import { redactErrorForLog } from '@ottabase/utils/http-errors';
 import { makeSlug } from '@ottabase/utils/url';
+import { getOttabaseConfig } from '../../ottabase/config.loader';
 
 type ProvisionRoleName = 'owner' | 'admin' | 'member' | 'viewer';
+
+/**
+ * RBAC roles a self-registered user gets in their own new organization, from
+ * `features.authBehavior.signupRole`: `owner`, or `member` (`viewer` where no `member` role exists), with no
+ * admin area. The first of the listed roles that exists is assigned.
+ * The first user (bootstrap) is always owner and does not use this.
+ */
+export function signupRoleFallbacks(): ProvisionRoleName[] {
+    return getOttabaseConfig().features.authBehavior.signupRole === 'member' ? ['member', 'viewer'] : ['owner'];
+}
 type UserLike = {
     get: (key: string) => unknown;
     assignRole: (roleId: string, assignedBy: string | undefined, organizationId: string) => Promise<void>;
@@ -259,7 +270,7 @@ export async function ensurePersonalOrganization(params: {
         email,
         name: (user.get('name') as string | null) ?? null,
         organizationRole: 'owner',
-        roleFallbacks: ['owner'],
+        roleFallbacks: signupRoleFallbacks(),
         appId,
     });
     return provisioned.organizationId;

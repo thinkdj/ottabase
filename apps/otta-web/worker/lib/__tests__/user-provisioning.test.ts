@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensurePersonalOrganization, provisionDefaultOrganizationForUser } from '../user-provisioning';
+import {
+    ensurePersonalOrganization,
+    provisionDefaultOrganizationForUser,
+    signupRoleFallbacks,
+} from '../user-provisioning';
 
 const mocks = vi.hoisted(() => ({
     organizationFindBySlug: vi.fn(),
@@ -218,5 +222,11 @@ describe('ensurePersonalOrganization', () => {
         await expect(ensurePersonalOrganization({ userId: 'ghost', email: null, appId: null })).rejects.toThrow(
             'User not found',
         );
+    });
+});
+
+describe('signupRoleFallbacks', () => {
+    it('makes a sign-up owner of its own workspace by default (features.authBehavior.signupRole)', () => {
+        expect(signupRoleFallbacks()).toEqual(['owner']);
     });
 });

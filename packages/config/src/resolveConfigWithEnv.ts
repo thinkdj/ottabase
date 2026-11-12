@@ -92,6 +92,9 @@ export function resolveConfigWithEnv(config: OttabaseConfig, env?: EnvLike): Ott
                 disableCredentials:
                     bool(env, 'AUTH_DISABLE_CREDENTIALS') ?? config.features.authBehavior.disableCredentials,
                 verbose: bool(env, 'AUTH_VERBOSE') ?? config.features.authBehavior.verbose,
+                // Account policy: the config FILE decides, never an env var.
+                signupRole: config.features.authBehavior.signupRole,
+                oauthClaimsUnclaimedUsers: config.features.authBehavior.oauthClaimsUnclaimedUsers,
             },
             // Structural (migrations, policies): the config FILE decides, never an env var.
             ottablog: config.features.ottablog,

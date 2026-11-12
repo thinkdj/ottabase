@@ -81,6 +81,7 @@ vi.mock('../../lib/rate-limiting', () => ({
 
 vi.mock('../../lib/user-provisioning', () => ({
     provisionDefaultOrganizationForUser: mocks.provisionOrganization,
+    signupRoleFallbacks: () => ['member', 'viewer'],
 }));
 
 function createUserModel() {
@@ -157,6 +158,10 @@ describe('handleAuthRegister provisioning boundary', () => {
 
         expect(response.status).toBe(200);
         expect(mocks.sendDemoWelcomeEmail).toHaveBeenCalledWith(expect.anything(), 'founder@example.com');
+        // The workspace RBAC roles are signupRoleFallbacks(), from features.authBehavior.signupRole.
+        expect(mocks.provisionOrganization).toHaveBeenCalledWith(
+            expect.objectContaining({ organizationRole: 'owner', roleFallbacks: ['member', 'viewer'] }),
+        );
     });
 });
 

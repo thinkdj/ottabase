@@ -108,6 +108,10 @@ export function getAuthOptions(env: CloudflareEnv): CreateAuthConfigOptions {
         options.disableCredentials = true;
     }
 
+    // An app that creates users ahead of an email invite lets Google/GitHub sign them in to that row
+    // (`features.authBehavior.oauthClaimsUnclaimedUsers`; off by default).
+    options.oauthClaimsUnclaimedUsers = getOttabaseConfig(env).features.authBehavior.oauthClaimsUnclaimedUsers;
+
     // Clear RBAC cache when user signs out so stale permissions aren't served
     options.onSignOut = async (_userId: string) => {
         if (!env.OBCF_KV) return;

@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Account policy settings: `signupRole` and `oauthClaimsUnclaimedUsers`.** `features.authBehavior.signupRole`
+  (`'owner'` by default) is the RBAC role a self-registered user gets in their own organization; `'member'` gives the
+  `member` role (`viewer` where an app has no `member` role), so ordinary sign-ups have no admin area.
+  `features.authBehavior.oauthClaimsUnclaimedUsers` (`false` by default; the `@ottabase/auth` option of the same name)
+  lets an OAuth sign-in take over an existing user only when nobody has claimed it (no password, no linked sign-in) and
+  the provider verified the email, for apps that create users ahead of an email invite; anything else still gets
+  `OAuthAccountNotLinked`. Both are config-file only (no env override). otta-web reads the role through
+  `signupRoleFallbacks()` for password sign-up and first OAuth or magic-link sign-in; the first user stays owner.
+
 - **The docs as an MCP server.** `apps/otta-docs-mcp` serves this documentation to AI assistants at
   `https://mcp.ottabase.com/mcp`: `search_docs`, `get_doc` and `list_docs`, read-only, no account. The corpus is the
   pages `llms.txt` indexes plus the agent skills, cut into sections and indexed by word at build time, so a request

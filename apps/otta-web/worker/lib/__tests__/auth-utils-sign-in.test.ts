@@ -23,7 +23,11 @@ vi.mock('@ottabase/ottaorm/models', () => ({
     VerificationToken: {},
 }));
 vi.mock('../../../ottabase/config.loader', () => ({
-    getOttabaseConfig: vi.fn(() => ({ appId: 'test-app', appName: 'Demo App' })),
+    getOttabaseConfig: vi.fn(() => ({
+        appId: 'test-app',
+        appName: 'Demo App',
+        features: { authBehavior: { oauthClaimsUnclaimedUsers: true } },
+    })),
 }));
 vi.mock('../../../ottabase/events', () => ({ events: { emit: mocks.emit } }));
 
@@ -32,6 +36,12 @@ import { getAuthOptions } from '../auth-utils';
 function env(overrides: Record<string, unknown> = {}) {
     return { OBCF_D1: {}, AUTH_URL: 'https://demo.example.com', ...overrides } as any;
 }
+
+describe('getAuthOptions', () => {
+    it('passes features.authBehavior.oauthClaimsUnclaimedUsers to @ottabase/auth', () => {
+        expect(getAuthOptions(env()).oauthClaimsUnclaimedUsers).toBe(true);
+    });
+});
 
 describe('onSignIn: every account gets a workspace', () => {
     beforeEach(() => {

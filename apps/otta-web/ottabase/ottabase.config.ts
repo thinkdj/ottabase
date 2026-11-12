@@ -115,6 +115,11 @@ export default defineOttabaseConfig({
             requireEmailVerified: false,
             disableCredentials: false,
             verbose: false,
+            // Account policy (config file only). 'member': sign-ups use their workspace without an admin area.
+            signupRole: 'owner',
+            // true: Google/GitHub may sign in to a user created ahead of an email invite (verified email,
+            // no password, no linked sign-in yet).
+            oauthClaimsUnclaimedUsers: false,
         },
     },
 

@@ -532,52 +532,74 @@ async function handleOAuthCallback(
                 // provider before. Do not silently link -- that would let anyone able to
                 // register an OAuth identity with a matching (possibly unverified) email
                 // hijack an existing account. Require the user to sign in with their
-                // existing method first and link providers explicitly.
-                return oauthErrorRedirect(env, options, 'OAuthAccountNotLinked', request);
-            }
+                // existing method first and link providers explicitly. The one opt-in exception
+                // (`oauthClaimsUnclaimedUsers`): a row nobody has claimed yet (no password, no
+                // linked sign-in, e.g. created for an email invite) whose email the provider verified.
+                const existingUserId = String(existingUser.get('id'));
+                const claimable =
+                    options.oauthClaimsUnclaimedUsers === true &&
+                    profile.emailVerified === true &&
+                    !existingUser.get('passwordHash') &&
+                    !(await Account.first({ userId: existingUserId }));
+                if (!claimable) {
+                    return oauthErrorRedirect(env, options, 'OAuthAccountNotLinked', request);
+                }
 
-            emailVerifiedAt = profile.emailVerified ? Date.now() : null;
-            const newUser = await User.create({
-                email: normalizedEmail,
-                name: profile.name,
-                image: profile.image,
-                emailVerified: emailVerifiedAt,
-                ...requestLocaleDefaults(request, options?.supportedLanguages),
-            });
-
-            userId = String(newUser.get('id'));
-            userEmail = normalizedEmail;
-            userName = profile.name;
-            userImage = profile.image;
-
-            try {
-                // Identity link only. The provider tokens were used above to fetch the profile and
-                // are dropped here on purpose: nothing reads them back, so storing them would be a
-                // plaintext credential column with no consumer (see Account.schema.ts).
+                userId = existingUserId;
+                userEmail = String(existingUser.get('email'));
+                userName = (existingUser.get('name') as string | null) ?? profile.name;
+                userImage = existingUser.imageUrl() ?? profile.image;
+                // emailVerifiedAt stays null so the verified-email step below marks and announces it.
                 await Account.create({
                     userId,
                     type: 'oauth',
                     provider: providerId,
                     providerAccountId: profile.providerAccountId,
                 });
-            } catch (accountError) {
-                // Roll back the just-created user so a failed Account insert does not leave an
-                // orphan user row -- which would otherwise trip the "existingUser but no account"
-                // branch above and lock this email into OAuthAccountNotLinked forever.
+            } else {
+                emailVerifiedAt = profile.emailVerified ? Date.now() : null;
+                const newUser = await User.create({
+                    email: normalizedEmail,
+                    name: profile.name,
+                    image: profile.image,
+                    emailVerified: emailVerifiedAt,
+                    ...requestLocaleDefaults(request, options?.supportedLanguages),
+                });
+
+                userId = String(newUser.get('id'));
+                userEmail = normalizedEmail;
+                userName = profile.name;
+                userImage = profile.image;
+
                 try {
-                    await User.delete(userId);
-                } catch (cleanupError) {
-                    console.error('Failed to roll back orphaned OAuth user:', cleanupError);
+                    // Identity link only. The provider tokens were used above to fetch the profile and
+                    // are dropped here on purpose: nothing reads them back, so storing them would be a
+                    // plaintext credential column with no consumer (see Account.schema.ts).
+                    await Account.create({
+                        userId,
+                        type: 'oauth',
+                        provider: providerId,
+                        providerAccountId: profile.providerAccountId,
+                    });
+                } catch (accountError) {
+                    // Roll back the just-created user so a failed Account insert does not leave an
+                    // orphan user row -- which would otherwise trip the "existingUser but no account"
+                    // branch above and lock this email into OAuthAccountNotLinked forever.
+                    try {
+                        await User.delete(userId);
+                    } catch (cleanupError) {
+                        console.error('Failed to roll back orphaned OAuth user:', cleanupError);
+                    }
+                    throw accountError;
                 }
-                throw accountError;
+                // Announced once the identity link holds: a rolled-back user never existed.
+                await announceNewUser(
+                    env,
+                    options,
+                    { id: userId, email: userEmail, name: userName, emailVerified: emailVerifiedAt },
+                    'oauth',
+                );
             }
-            // Announced once the identity link holds: a rolled-back user never existed.
-            await announceNewUser(
-                env,
-                options,
-                { id: userId, email: userEmail, name: userName, emailVerified: emailVerifiedAt },
-                'oauth',
-            );
         }
 
         // OAuth identity providers are trusted to have verified the user's email themselves --

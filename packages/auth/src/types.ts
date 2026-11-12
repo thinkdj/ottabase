@@ -121,6 +121,13 @@ export interface CredentialsAuthorizeOptions {
 export interface CreateAuthConfigOptions extends CredentialsAuthorizeOptions {
     sessionMaxAge?: number;
     disableCredentials?: boolean;
+    /**
+     * Let an OAuth sign-in take over an existing user with the same email, but only an unclaimed one
+     * (no password, no linked sign-in) and only when the provider says the email is verified. For apps
+     * that create users ahead of an email invite. Default false: an existing email gets
+     * `OAuthAccountNotLinked`.
+     */
+    oauthClaimsUnclaimedUsers?: boolean;
     /** App path OAuth/magic-link failures redirect to, with `?notice=auth.<code>` appended (default: `/login`). */
     errorPage?: string;
     /**

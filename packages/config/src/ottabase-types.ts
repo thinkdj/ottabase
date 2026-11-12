@@ -73,6 +73,17 @@ export interface AuthBehaviorConfig {
     requireEmailVerified: boolean;
     disableCredentials: boolean;
     verbose: boolean;
+    /**
+     * RBAC role a self-registered user holds in their own new organization: `owner` (default; can
+     * administer it) or `member` (`viewer` where no `member` role exists; no admin area). The first user is always owner.
+     */
+    signupRole?: 'owner' | 'member';
+    /**
+     * Let an OAuth sign-in take over an existing user with the same email, but only an unclaimed one
+     * (no password, no linked sign-in) and only when the provider says the email is verified. For apps
+     * that create users ahead of an email invite. Default false: any existing email is refused.
+     */
+    oauthClaimsUnclaimedUsers?: boolean;
 }
 
 /**

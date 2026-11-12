@@ -390,6 +390,11 @@ provider before; if the email matches an existing account that has never used th
 `OAuthAccountNotLinked` rather than silently linking (this would otherwise let anyone claim an OAuth identity with a
 matching email hijack an existing account).
 
+The one opt-in exception is `oauthClaimsUnclaimedUsers: true` (in `CreateAuthConfigOptions`; apps set it from
+`features.authBehavior.oauthClaimsUnclaimedUsers`). It is for apps that create a user row ahead of an email invite: an
+OAuth sign-in may take over that row when nobody has claimed it yet (no password, no linked sign-in) **and** the
+provider says the email is verified. Anything else still gets `OAuthAccountNotLinked`.
+
 The `accounts` row created on first sign-in is an **identity link only** (`provider` + `providerAccountId` → `userId`).
 The provider's access, refresh and id tokens are used once, to fetch the profile during the callback, and are **not
 persisted** — nothing in the framework reads them back, so storing them would be a plaintext credential column with no

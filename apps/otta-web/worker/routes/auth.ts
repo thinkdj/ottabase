@@ -37,7 +37,7 @@ import {
 } from '../lib/auth-utils';
 import { enforceRateLimit } from '../lib/rate-limiting';
 import { guardPublicForm, requireHuman } from '../lib/turnstile';
-import { provisionDefaultOrganizationForUser } from '../lib/user-provisioning';
+import { provisionDefaultOrganizationForUser, signupRoleFallbacks } from '../lib/user-provisioning';
 import { getClientIpAddress, isStrongPassword, normalizeEmail, readJson } from '../lib/utils';
 
 export interface AuthRouteContext {
@@ -792,10 +792,10 @@ export async function handleAuthRegister(context: AuthRouteContext): Promise<Res
                 email,
                 name,
                 organizationRole: 'owner',
-                // The new user owns this brand-new org (organizationRole: 'owner') — their RBAC
-                // role must match so they can actually administer it (invite teammates, manage
-                // settings) via /admin/*, not just read it. Mirrors bootstrap/routes.ts's first-user flow.
-                roleFallbacks: ['owner'],
+                // The new user owns this brand-new org (organizationRole: 'owner'). Their RBAC role
+                // comes from `features.authBehavior.signupRole`: `owner` administers it via /admin/*,
+                // `member` only uses it.
+                roleFallbacks: signupRoleFallbacks(),
                 appId: getOttabaseConfig(env).appId,
             });
 
