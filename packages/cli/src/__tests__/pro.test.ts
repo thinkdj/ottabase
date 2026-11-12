@@ -2,7 +2,14 @@ import fs from 'fs-extra';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { changelogEntry, latestProTag, proUpdate, requiredPublicVersion, type Git } from '../commands/pro.js';
+import {
+    changelogEntry,
+    latestProTag,
+    proUpdate,
+    recordProRelease,
+    requiredPublicVersion,
+    type Git,
+} from '../commands/pro.js';
 
 const LS_REMOTE = [
     'abc\trefs/tags/v1.2.0',
@@ -64,6 +71,36 @@ function fixture(options: { nested?: boolean; dirty?: boolean } = {}): string {
     write('apps/shop/package.json', JSON.stringify({ name: '@ottabase/shop' }));
     return root;
 }
+
+describe('recordProRelease', () => {
+    it('sets pro in an existing .ottabase-upstream.json and keeps the rest', () => {
+        const root = fixture();
+        const file = path.join(root, '.ottabase-upstream.json');
+        fs.writeJsonSync(file, {
+            public: { url: 'https://example.com/ottabase.git', commit: 'abc', syncedAt: '2026-10-25' },
+            pro: { url: 'https://example.com/pro.git', tag: 'v1.9.3', syncedAt: '2026-10-25' },
+            apps: { 'otta-web': 'shop' },
+        });
+        const release = {
+            url: 'https://example.com/pro.git',
+            tag: 'v1.10.0',
+            committedAt: '2026-11-02T10:00:00+00:00',
+        };
+
+        expect(recordProRelease(root, release, '2026-11-13')).toBe(true);
+        expect(fs.readJsonSync(file)).toEqual({
+            public: { url: 'https://example.com/ottabase.git', commit: 'abc', syncedAt: '2026-10-25' },
+            pro: { ...release, syncedAt: '2026-11-13' },
+            apps: { 'otta-web': 'shop' },
+        });
+    });
+
+    it('does not start the record in a repo that has none', () => {
+        const root = fixture();
+        expect(recordProRelease(root, { url: 'https://example.com/pro.git', tag: 'v1.10.0' })).toBe(false);
+        expect(fs.existsSync(path.join(root, '.ottabase-upstream.json'))).toBe(false);
+    });
+});
 
 describe('proUpdate', () => {
     it('refuses a dirty tree, a nested repository, and a missing subtree', async () => {

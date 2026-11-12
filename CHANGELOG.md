@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added (Unreleased)
 
+- **Building your app on Ottabase: local changes that survive updates.** `docs/BUILDING_ON_OTTABASE.md` is the model for
+  an app repo that keeps pulling Ottabase forward: who owns which paths, the order to try when changing behavior
+  (config, your own files, extension points, the package last), and how a change to Ottabase's own code is recorded: a
+  row in `OTTABASE_LOCAL.md` (`patch`, or `owned` for a whole file you keep or delete) and an `ottabase-local: <id>`
+  comment at the code. AGENTS.MD gains the matching rules for agents.
+- **`ottabase-update` ships its scripts, keeps recorded changes and maps what an update lost.** In the skill's
+  `scripts/`, plain Node and git: `apply.mjs` (file-by-file three-way apply; lands changes in apps renamed in
+  `.ottabase-upstream.json` `apps`; leaves `owned` paths alone; cleans the index the three-way fallback leaves pointing
+  at the clone), `check.mjs` (fails when a recorded patch has no marker left in the code, or a marker has no row; a repo
+  with neither passes) and `regression-map.mjs` (every line the app had added since the old base that is gone after the
+  update, by file and area). The runbook runs the check before and after, reviews the map before the report, and records
+  the upstream commit's date (`committedAt`) next to its id in `.ottabase-upstream.json`.
+- **`otta pro update` records the release it pulled.** In a repo that keeps `.ottabase-upstream.json` (the
+  `ottabase-update` skill's record), the command sets `pro` to the new tag with its commit date, so the skill does not
+  start a later Pro update from a tag the command already moved past. A repo without the file is left without one.
 - **Account policy settings: `signupRole` and `oauthClaimsUnclaimedUsers`.** `features.authBehavior.signupRole`
   (`'owner'` by default) is the RBAC role a self-registered user gets in their own organization; `'member'` gives the
   `member` role (`viewer` where an app has no `member` role), so ordinary sign-ups have no admin area.
@@ -228,8 +243,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   export (CSV cells that would run as spreadsheet formulas are defused). AGENTS.MD now points chart work here instead of
   Tremor.
 - `ottabase-update` skill: updates an app repo built on Ottabase (and Ottabase Pro, when the app has `packages/pro`) to
-  the latest release while keeping every local change. Upstream is cloned into the git-ignored `.repos.upstream/`, and
-  only what upstream changed since the app's last sync is applied; nothing is pushed or deployed.
+  the latest release while keeping every local change. Upstream is cloned into the git-ignored `.upstream/`, and only
+  what upstream changed since the app's last sync is applied; nothing is pushed or deployed.
 - `@ottabase/ui` data display: `Timeline` (the Design System's event rail, dots or icon discs on one straight rail),
   `TreeView` (the WAI-ARIA tree pattern, flat, with roving focus, type-ahead and indent guides), `AvatarGroup` (overlap,
   "+N" past `max`, `total`, three sizes), `Rating` (the WAI-ARIA rating slider, half steps, fractional read-only

@@ -45,7 +45,9 @@ Workers.
 >
 > Ottabase is a **monorepo you clone and modify**, not an npm package. When you fork it, you own:
 >
-> - **Upstream changes** - merge or rebase updates and resolve any conflicts yourself.
+> - **Upstream changes** - pull them in with the `ottabase-update` agent skill (never `git merge`), and note what you
+>   change in Ottabase's own code in `OTTABASE_LOCAL.md` so each update keeps it:
+>   [docs/BUILDING_ON_OTTABASE.md](./docs/BUILDING_ON_OTTABASE.md).
 > - **Schema and data migrations** - reconcile upstream changes with your production data; back up first.
 > - **Infrastructure, security, and costs** - deploy to and operate your own Cloudflare account.
 > - **Breaking changes** - adapt your customizations when an upstream API or tool changes.
@@ -1243,7 +1245,7 @@ flowchart LR
 
     Worker --> Router["API Router (@ottabase/ottarouter)<br/>worker/routes/router.ts"]
     Worker --> Assets["OBCF_ASSETS<br/>static assets"]
-    Worker --> ShortlinkFallback[Shortlink fallback resolver]
+    Worker --> ShortlinkHost["Redirect-only short domain<br/>SHORTLINKS_HOST"]
 
     Router --> Auth[Auth handlers]
     Router --> CRUD["Generic OttaORM CRUD<br/>/api/ottaorm/:entity"]
@@ -1317,13 +1319,8 @@ sequenceDiagram
             R-->>W: API response
             W-->>U: JSON response
         else No API route
-            W->>W: Shortlink fallback attempt
-            alt shortlink hit
-                W-->>U: Redirect/Interstitial
-            else static asset
                 W->>W: Fetch OBCF_ASSETS
                 W-->>U: HTML/asset response
-            end
         end
     end
 ```
@@ -1801,6 +1798,9 @@ doc reaches it on its next deploy. See [`apps/otta-docs-mcp/README.md`](apps/ott
   files and URLs, never by shared logins or shared databases.
 - **Type-safe only**: use TypeScript; do not invent APIs or rely on implicit behavior.
 - **Ask when uncertain**: if architecture or behavior is unclear, ask rather than guessing.
+- **In an app repo built on Ottabase, the framework is upstream's code**: change anything under `packages/` only as "If
+  working in an app built on Ottabase" below says, and never `git merge` upstream (updates go through the
+  `ottabase-update` skill).
 
 ## Enforced by Lint (do not work around)
 
@@ -1930,6 +1930,25 @@ entitlements and lifecycle, and mounts its routes behind the license gate.
 6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
 Full guide: `docs/PREMIUM_PACKAGES.md`. Every package in this repository is free; the framework is for add-ons you sell.
+
+### If working in an app built on Ottabase
+
+An app repo is a copy of this monorepo that keeps pulling Ottabase forward (`.ottabase-upstream.json` records the
+upstream commit it is on). `apps/<app>` is the app's own code. `packages/**`, root tooling and these skills are
+upstream's: every update brings upstream's version of them. Full model:
+[`docs/BUILDING_ON_OTTABASE.md`](docs/BUILDING_ON_OTTABASE.md).
+
+1. **Keep what is marked.** Code under an `ottabase-local: <id>` comment is a deliberate local change; its reason is the
+   row with that id in `OTTABASE_LOCAL.md`. Do not remove it, undo it, or build the same thing again elsewhere.
+2. **Before changing upstream code, take the first step that works:** config (`ottabase.config.ts`, env) → the app's own
+   files → extension points (brand override registry, auth hooks, package manifests, the event bus) → only then the
+   package itself, preferably as a new option whose default is upstream's behavior.
+3. **A change to upstream code is recorded in the same commit:** a row in `OTTABASE_LOCAL.md`
+   (``| `<id>` | patch | `<paths>` | why |``) and an `ottabase-local: <id>` comment at each site. A whole file the app
+   takes over or deletes is an `owned` row and needs no comment. `node .claude/skills/ottabase-update/scripts/check.mjs`
+   confirms rows and markers agree.
+4. **Updating Ottabase is the `ottabase-update` skill.** Never `git merge` upstream, and never edit the repo to match
+   the latest upstream: both revert the app's own work.
 
 ### Quick examples
 
@@ -4638,6 +4657,136 @@ home/demo/PDF/premium work and a new `packages/cf-pdf` package. No existing file
 Preserve all pre-existing changes and run `git status --short` before implementation.
 
 This handoff document is the only file intentionally added for the blog-separation exploration.
+
+
+---
+
+# docs/BUILDING_ON_OTTABASE.md
+
+# Building your app on Ottabase
+
+Ottabase is a monorepo you copy and make your own, not a package you install. Your app lives in `apps/<your-app>`, the
+framework in `packages/`, and you keep pulling Ottabase forward as it improves. That stays cheap if you change
+Ottabase's own code rarely, and write down each change where the next update will find it. This page is the whole model.
+The `ottabase-update` agent skill (`.claude/skills/ottabase-update/SKILL.md`) is the runbook for the update itself.
+
+These rules are for an app repo: your copy of Ottabase. Ottabase's own repositories follow their maintainers' process.
+
+## Who owns what
+
+| Path                                             | Owner    | In an update                                                                    |
+| ------------------------------------------------ | -------- | ------------------------------------------------------------------------------- |
+| `apps/<your-app>/**`                             | you      | Yours stays. Upstream's changes to its template app are merged in, by intent.   |
+| `packages/**`, root tooling, `.claude/skills/**` | upstream | Upstream's version wins. The changes you recorded are kept on top of it.        |
+| `OTTABASE_LOCAL.md`, `.ottabase-upstream.json`   | you      | Your record: how your copy differs, and which upstream commit it is on.         |
+| `README.md`, `CHANGELOG.md`, docs                | both     | Both sides kept, unless you mark the file `owned` (your product's README, say). |
+
+## Changing how Ottabase behaves
+
+Take the first step that works:
+
+1. **Config.** `ottabase/ottabase.config.ts` and env vars. Most product decisions are settings: for example
+   `features.authBehavior.signupRole: 'member'` keeps sign-ups out of the admin area.
+2. **Your own files.** Anything under `apps/<your-app>`, including the `ottabase/packages/<key>.ts` files `otta add`
+   copied in, which hold your settings for each package.
+3. **Extension points.** The brand override registry (restyle or replace a built-in component), auth hooks such as
+   `onSignIn`, package manifests (routes, models, RLS policies), the event bus.
+4. **Change the package.** Prefer a new option whose default is upstream's current behavior, set from your config: you
+   can then offer it upstream, and once upstream ships it your change is step 1. Editing behavior in place is the last
+   resort.
+
+Steps 1 to 3 need no record: an update never touches them. Step 4 does.
+
+## Recording a change to Ottabase's code
+
+Two things, in the same commit as the change:
+
+1. **A row** in `OTTABASE_LOCAL.md` at the repo root (create the file when you first need it).
+2. **A marker**: the comment `ottabase-local: <id>` at each place in the code.
+
+```markdown
+# Local changes to Ottabase
+
+| id            | kind  | paths                                           | why                                        |
+| ------------- | ----- | ----------------------------------------------- | ------------------------------------------ |
+| `email-white` | patch | `packages/email/src/templates.ts`               | Our default email layout is white.         |
+| `toast-z`     | patch | `packages/ui/components/ui/toaster.tsx`         | Toasts above our sheets. Offered upstream. |
+| `our-repo`    | owned | `README.md`, `.github/workflows/pr-preview.yml` | Our product README; no PR previews.        |
+```
+
+```ts
+// ottabase-local: email-white
+const background = '#ffffff';
+```
+
+| Kind    | Use it for                                                                               | In an update                                                             |
+| ------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `patch` | Code you changed inside an upstream file. Marked. `paths` says where to look.            | Merged with upstream's change; re-applied by hand if they collide.       |
+| `owned` | Whole files (or folders, or globs) you took over: kept as your own, or deleted. No mark. | Upstream's changes to them are not applied, only listed for you to read. |
+
+The marker does two jobs. An agent editing that file sees that the code is deliberate. And a script can tell when it is
+gone:
+
+```bash
+node .claude/skills/ottabase-update/scripts/check.mjs
+```
+
+It fails when a `patch` row has no marker left in the code (**lost**: what an update that dropped your change looks
+like) or a marker has no row (**unrecorded**). The update runs it before and after. Add the line to your CI if you also
+want it between updates; a repo with no ledger passes. Markers are read from code, not markdown, so a JSON file is
+either `owned` or carries its marker in a test.
+
+Where a change is behavior you would miss, add a test for it: that is the stronger guard, and the update's gates run it.
+
+What needs no row: everything in `apps/<your-app>`, and ordinary edits to shared root files (`package.json`, a
+workflow). The update is a three-way merge, so those survive on their own, and its last step lists every line of yours
+that did not (the regression map). A row is for what you cannot afford to have missed.
+
+## Updating to the latest Ottabase
+
+Ask your agent to "update Ottabase", or follow the skill's runbook yourself. What happens:
+
+1. Upstream is cloned in full into `.upstream/ottabase` (git-ignored).
+2. `.ottabase-upstream.json` says which upstream commit your copy is on (the **base**), when upstream made that commit,
+   when you took it, and which apps you renamed:
+
+    ```json
+    {
+        "public": {
+            "url": "https://github.com/ottabase/ottabase.git",
+            "commit": "<sha>",
+            "committedAt": "2026-11-11T22:14:52+00:00",
+            "syncedAt": "2026-11-12"
+        },
+        "apps": { "otta-web": "my-app" }
+    }
+    ```
+
+3. Exactly what upstream changed from the base to the new version is applied on top of your repo, file by file, with a
+   three-way merge (`scripts/apply.mjs`). Changes to a renamed app land in your app; `owned` paths are left alone.
+4. Conflicts are resolved by who owns the path, the gates run, `check.mjs` confirms every recorded patch is still there,
+   and the **regression map** (`scripts/regression-map.mjs`) lists every line you had added that is now gone.
+5. The base is updated and everything is committed on an `update/ottabase-<date>` branch for you to review.
+
+Never `git merge` upstream, and never compare your repo with the latest upstream and make it match. Both lose the
+difference between your change and upstream's, and yours is the one that gets reverted.
+
+### Why a nested clone
+
+Upstream sits in a git-ignored clone inside your repo, not in a remote:
+
+- It works the same whether you forked or started by copying files, and for Ottabase Pro (`.upstream/pro`).
+- Upstream's history never enters your repository, so there is no `upstream/main` to merge by accident.
+- It is a full checkout: when a test fails after an update, run it in the clone to see if the failure is upstream's own.
+- Delete it any time. Kept, the next update is a fetch.
+
+Keep the dot in `.upstream/`: most tools skip dot folders, and `.gitignore` and `.prettierignore` already list it.
+
+## Giving a change back
+
+The best local change is one you no longer need. If another app would want your patch as an option, open an issue or
+pull request on `ottabase/ottabase`. When upstream ships it, delete the row and its markers and set the option in your
+config.
 
 
 ---
@@ -11688,6 +11837,11 @@ provider before; if the email matches an existing account that has never used th
 `OAuthAccountNotLinked` rather than silently linking (this would otherwise let anyone claim an OAuth identity with a
 matching email hijack an existing account).
 
+The one opt-in exception is `oauthClaimsUnclaimedUsers: true` (in `CreateAuthConfigOptions`; apps set it from
+`features.authBehavior.oauthClaimsUnclaimedUsers`). It is for apps that create a user row ahead of an email invite: an
+OAuth sign-in may take over that row when nobody has claimed it yet (no password, no linked sign-in) **and** the
+provider says the email is verified. Anything else still gets `OAuthAccountNotLinked`.
+
 The `accounts` row created on first sign-in is an **identity link only** (`provider` + `providerAccountId` → `userId`).
 The provider's access, refresh and id tokens are used once, to fetch the profile during the callback, and are **not
 persisted** — nothing in the framework reads them back, so storing them would be a plaintext credential column with no
@@ -14083,7 +14237,8 @@ pnpm otta pro update --dry-run
 Pro lives at `packages/pro` as a git subtree. The command runs `git subtree pull --squash` for the tag (the tree must be
 clean), `otta add pro <app>` for anything the release adds (never overwriting what the app has), and prints the
 release's `CHANGELOG.md` entry, with a warning when it names a newer public Ottabase than this repository may have. Then
-`pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit.
+`pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit. In a repo that keeps
+`.ottabase-upstream.json` (the `ottabase-update` skill's record) the command also sets `pro` there to the pulled tag.
 
 ### Starting apps and environments
 
@@ -14747,6 +14902,18 @@ function useAppConfig(): AppConfig {
 // Type-safe UI framework
 const framework: SupportedUIFramework = 'mantine';
 ```
+
+### Account policy (`features.authBehavior` in `defineOttabaseConfig`)
+
+Next to `sessionMaxAge`, `requireEmailVerified`, `disableCredentials` and `verbose` (each overridable by an env var),
+`features.authBehavior` holds two account-policy settings that only the config file decides:
+
+| Setting                     | Default   | What it does                                                                                                                                                                                                                                              |
+| --------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signupRole`                | `'owner'` | The RBAC role a self-registered user gets in their own new organization. `'member'` gives the `member` role (`viewer` where no `member` role exists): they use their workspace but get no admin area. The first user (bootstrap) is always owner.         |
+| `oauthClaimsUnclaimedUsers` | `false`   | Lets an OAuth sign-in take over an existing user with the same email, but only an unclaimed one (no password, no linked sign-in) and only when the provider verified the email. For apps that create users ahead of an email invite. See the auth README. |
+
+These are how an app changes an Ottabase default without editing package code (see `docs/BUILDING_ON_OTTABASE.md`).
 
 ## Configuration Structure
 
@@ -26715,6 +26882,20 @@ if (!shortlink) {
 
 // Handles expiry, interstitial, and direct redirect automatically
 return buildRedirectResponse(shortlink);
+```
+
+In `otta-web` short codes resolve at `/s/<code>` (GET and HEAD), an ordinary package route, so no other request pays a
+lookup. Set the `SHORTLINKS_HOST` var (for example `go.example.com`) to add a redirect-only domain: on that host a bare
+`/<code>` resolves and everything else is a 404. Point the domain at the same Worker; the admin page then shows each
+link at its short-domain address. A value that names the app's own domain (`AUTH_URL`) is ignored.
+
+A short code is 2 to 50 letters, numbers, dashes or underscores (`SHORT_CODE`). The model refuses anything else on
+create and update, so a handler can turn away a path that cannot be a code without a database read:
+
+```typescript
+import { SHORT_CODE, renderShortlinkNotFoundPage } from '@ottabase/shortlinks';
+
+if (!SHORT_CODE.test(code)) return renderShortlinkNotFoundPage(); // 404, same look as the expired page
 ```
 
 `buildRedirectResponse` checks `expiryDate` and `interstitialEnabled` internally. If you need custom pages:

@@ -14,24 +14,24 @@ dump — the API lives in the docs they link to.
 All 14 skills from design principle #26 are authored, plus `ottabase-update` for apps built on the repo and
 `ottabase-new-app` for scaffolding one.
 
-| Skill                   | Covers                                                                                                      |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `ottabase-create-model` | Add an OttaORM fat model + all the registration steps (schema, schemas-helper, db-utils, migrations)        |
-| `ottabase-crud`         | Generic CRUD: OttaORM route + `createModelHooks` + `ModelCrud`/`createModelConfig`                          |
-| `ottabase-form`         | Model-driven forms (`createModelConfig` → `ModelForm`) + custom forms via @ottabase/ui primitives           |
-| `ottabase-rbac`         | Permission checks + RLS security-context provenance + fail-closed rules + making changes take effect live   |
-| `ottabase-upload`       | File uploads over R2: client hook + server handler + the ownership/tenant rule                              |
-| `ottabase-email`        | Provider-agnostic mailer (`resolveAppMailer` + `sendTemplatedEmail`) + template registry                    |
-| `ottabase-queue`        | Background jobs on Cloudflare Queues: dispatch + registry + handler                                         |
-| `ottabase-cron`         | Scheduled tasks: one-tick-per-minute Cron Trigger + DB-driven scheduler                                     |
-| `ottabase-theme`        | Brand Engine: design tokens → CSS vars, brand kits, per-route/subtree overrides, dark mode                  |
-| `ottabase-component`    | First-class UI component: CVA variants + `data-slot` parts + tokens + brand override registry               |
-| `ottabase-package`      | New workspace package: persistence split, headless/rendered entrypoints, wiring into the four CI gates      |
-| `ottabase-migration`    | Auto-migrations from Models + custom migrations (seed/index/view); what auto can't do                       |
-| `ottabase-testing`      | Vitest conventions, per-package `--filter`, rebuild-before-test, CF-binding mocks                           |
-| `ottabase-cloudflare`   | Edge-runtime rules, bindings + parity, `getOttabaseConfig`, multi-tenant cache keys                         |
-| `ottabase-update`       | Update an app repo to the latest public Ottabase and Pro: three-way from its last sync, template carry-over |
-| `ottabase-new-app`      | `otta new`: template choice, presets, landing↔web pairing, what the scaffolder owns, first deploy and CI    |
+| Skill                   | Covers                                                                                                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ottabase-create-model` | Add an OttaORM fat model + all the registration steps (schema, schemas-helper, db-utils, migrations)                                                             |
+| `ottabase-crud`         | Generic CRUD: OttaORM route + `createModelHooks` + `ModelCrud`/`createModelConfig`                                                                               |
+| `ottabase-form`         | Model-driven forms (`createModelConfig` → `ModelForm`) + custom forms via @ottabase/ui primitives                                                                |
+| `ottabase-rbac`         | Permission checks + RLS security-context provenance + fail-closed rules + making changes take effect live                                                        |
+| `ottabase-upload`       | File uploads over R2: client hook + server handler + the ownership/tenant rule                                                                                   |
+| `ottabase-email`        | Provider-agnostic mailer (`resolveAppMailer` + `sendTemplatedEmail`) + template registry                                                                         |
+| `ottabase-queue`        | Background jobs on Cloudflare Queues: dispatch + registry + handler                                                                                              |
+| `ottabase-cron`         | Scheduled tasks: one-tick-per-minute Cron Trigger + DB-driven scheduler                                                                                          |
+| `ottabase-theme`        | Brand Engine: design tokens → CSS vars, brand kits, per-route/subtree overrides, dark mode                                                                       |
+| `ottabase-component`    | First-class UI component: CVA variants + `data-slot` parts + tokens + brand override registry                                                                    |
+| `ottabase-package`      | New workspace package: persistence split, headless/rendered entrypoints, wiring into the four CI gates                                                           |
+| `ottabase-migration`    | Auto-migrations from Models + custom migrations (seed/index/view); what auto can't do                                                                            |
+| `ottabase-testing`      | Vitest conventions, per-package `--filter`, rebuild-before-test, CF-binding mocks                                                                                |
+| `ottabase-cloudflare`   | Edge-runtime rules, bindings + parity, `getOttabaseConfig`, multi-tenant cache keys                                                                              |
+| `ottabase-update`       | Update an app repo to the latest public Ottabase and Pro: three-way from its last sync, keeping `OTTABASE_LOCAL.md` changes, template carry-over, regression map |
+| `ottabase-new-app`      | `otta new`: template choice, presets, landing↔web pairing, what the scaffolder owns, first deploy and CI                                                         |
 
 ## Keeping them honest
 

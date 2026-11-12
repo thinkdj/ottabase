@@ -76,6 +76,9 @@ doc reaches it on its next deploy. See [`apps/otta-docs-mcp/README.md`](apps/ott
   files and URLs, never by shared logins or shared databases.
 - **Type-safe only**: use TypeScript; do not invent APIs or rely on implicit behavior.
 - **Ask when uncertain**: if architecture or behavior is unclear, ask rather than guessing.
+- **In an app repo built on Ottabase, the framework is upstream's code**: change anything under `packages/` only as "If
+  working in an app built on Ottabase" below says, and never `git merge` upstream (updates go through the
+  `ottabase-update` skill).
 
 ## Enforced by Lint (do not work around)
 
@@ -205,6 +208,25 @@ entitlements and lifecycle, and mounts its routes behind the license gate.
 6. **Never drop a package's tables on uninstall.** Removing it from the list removes routes and nav only.
 
 Full guide: `docs/PREMIUM_PACKAGES.md`. Every package in this repository is free; the framework is for add-ons you sell.
+
+### If working in an app built on Ottabase
+
+An app repo is a copy of this monorepo that keeps pulling Ottabase forward (`.ottabase-upstream.json` records the
+upstream commit it is on). `apps/<app>` is the app's own code. `packages/**`, root tooling and these skills are
+upstream's: every update brings upstream's version of them. Full model:
+[`docs/BUILDING_ON_OTTABASE.md`](docs/BUILDING_ON_OTTABASE.md).
+
+1. **Keep what is marked.** Code under an `ottabase-local: <id>` comment is a deliberate local change; its reason is the
+   row with that id in `OTTABASE_LOCAL.md`. Do not remove it, undo it, or build the same thing again elsewhere.
+2. **Before changing upstream code, take the first step that works:** config (`ottabase.config.ts`, env) → the app's own
+   files → extension points (brand override registry, auth hooks, package manifests, the event bus) → only then the
+   package itself, preferably as a new option whose default is upstream's behavior.
+3. **A change to upstream code is recorded in the same commit:** a row in `OTTABASE_LOCAL.md`
+   (``| `<id>` | patch | `<paths>` | why |``) and an `ottabase-local: <id>` comment at each site. A whole file the app
+   takes over or deletes is an `owned` row and needs no comment. `node .claude/skills/ottabase-update/scripts/check.mjs`
+   confirms rows and markers agree.
+4. **Updating Ottabase is the `ottabase-update` skill.** Never `git merge` upstream, and never edit the repo to match
+   the latest upstream: both revert the app's own work.
 
 ### Quick examples
 

@@ -36,7 +36,9 @@ Workers.
 >
 > Ottabase is a **monorepo you clone and modify**, not an npm package. When you fork it, you own:
 >
-> - **Upstream changes** - merge or rebase updates and resolve any conflicts yourself.
+> - **Upstream changes** - pull them in with the `ottabase-update` agent skill (never `git merge`), and note what you
+>   change in Ottabase's own code in `OTTABASE_LOCAL.md` so each update keeps it:
+>   [docs/BUILDING_ON_OTTABASE.md](./docs/BUILDING_ON_OTTABASE.md).
 > - **Schema and data migrations** - reconcile upstream changes with your production data; back up first.
 > - **Infrastructure, security, and costs** - deploy to and operate your own Cloudflare account.
 > - **Breaking changes** - adapt your customizations when an upstream API or tool changes.

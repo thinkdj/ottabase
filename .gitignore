@@ -35,15 +35,15 @@ MARKETING.MD
 # Local clones of related repos, one folder per repo. Never committed.
 # -----------------------------------------------------------------------------
 # Downstream: apps built from Ottabase, cloned here to find changes worth taking back into Ottabase.
-#   .repos.downstream/tuskly
-#   .repos.downstream/uppcoming
-.repos.downstream
+#   .downstream/tuskly
+#   .downstream/uppcoming
+.downstream
 #
 # Upstream: what an app built on Ottabase updates from (the ottabase-update skill).
-#   .repos.upstream/ottabase     the public repo
-#   .repos.upstream/pro          Ottabase Pro, when the app has packages/pro
-#   .repos.upstream/run/<repo>   that skill's per-file results: clean, conflict, failed, skipped, generated
-.repos.upstream
+#   .upstream/ottabase     the public repo
+#   .upstream/pro          Ottabase Pro, when the app has packages/pro
+#   .upstream/run/<repo>   that skill's per-file results: clean, conflict, owned, failed, skipped, generated
+.upstream
 
 # =============================================================================
 # Dependencies

@@ -230,7 +230,8 @@ pnpm otta pro update --dry-run
 Pro lives at `packages/pro` as a git subtree. The command runs `git subtree pull --squash` for the tag (the tree must be
 clean), `otta add pro <app>` for anything the release adds (never overwriting what the app has), and prints the
 release's `CHANGELOG.md` entry, with a warning when it names a newer public Ottabase than this repository may have. Then
-`pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit.
+`pnpm install && pnpm build:pkg`, the gates, the migrations in each environment, and a commit. In a repo that keeps
+`.ottabase-upstream.json` (the `ottabase-update` skill's record) the command also sets `pro` there to the pulled tag.
 
 ### Starting apps and environments
 

@@ -16,6 +16,10 @@ import { addPackage } from './add.js';
  *   3. The release notes: the CHANGELOG entry for the tag, so the migrations and the breaking
  *      changes it names are read, not discovered.
  *
+ * A repo that keeps `.ottabase-upstream.json` (the `ottabase-update` skill's record of the upstream
+ * versions it is on) gets its `pro` entry set to the pulled release, so that skill never starts a
+ * later Pro update from a tag this command already moved past.
+ *
  * A dirty tree, a nested repository at packages/pro (the maintainer's layout) or a missing subtree
  * stop it before anything is pulled.
  */
@@ -30,6 +34,33 @@ export interface ProUpdateOptions {
 
 export const PRO_REPO = 'https://github.com/ottabase/pro.git';
 export const PRO_PREFIX = 'packages/pro';
+export const UPSTREAM_RECORD = '.ottabase-upstream.json';
+
+/**
+ * Set `pro` in `.ottabase-upstream.json` to the release just pulled. Does nothing (returns false)
+ * in a repo that has no such file: the record is the `ottabase-update` skill's to start.
+ */
+export function recordProRelease(
+    root: string,
+    release: { url: string; tag: string; committedAt?: string | null },
+    today: string = new Date().toISOString().slice(0, 10),
+): boolean {
+    const file = path.join(root, UPSTREAM_RECORD);
+    if (!fs.existsSync(file)) return false;
+    const record = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+    record.pro = {
+        url: release.url,
+        tag: release.tag,
+        ...(release.committedAt ? { committedAt: release.committedAt } : {}),
+        syncedAt: today,
+    };
+    fs.writeFileSync(
+        file,
+        `${JSON.stringify(record, null, 4)}
+`,
+    );
+    return true;
+}
 
 /** A git runner, injectable for tests. Returns stdout. */
 export type Git = (args: string[], cwd: string) => string;
@@ -104,6 +135,15 @@ export async function proUpdate(
     // 1. The source.
     git(['subtree', 'pull', `--prefix=${PRO_PREFIX}`, repo, tag, '--squash'], root);
     log.success(`pulled ${tag} into ${PRO_PREFIX}`);
+
+    // The update skill's record, when this repo keeps one. The pull left the release at FETCH_HEAD.
+    let committedAt: string | null = null;
+    try {
+        committedAt = git(['log', '-1', '--format=%cI', 'FETCH_HEAD^{commit}'], root).trim() || null;
+    } catch {
+        // The date is a convenience for people; the tag is the record.
+    }
+    if (recordProRelease(root, { url: repo, tag, committedAt })) log.success(`recorded ${tag} in ${UPSTREAM_RECORD}`);
 
     // 2. The wiring for what is new. Never overwrites.
     await addPackage('pro', appName);
