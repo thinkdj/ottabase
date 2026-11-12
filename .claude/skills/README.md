@@ -11,8 +11,8 @@ dump — the API lives in the docs they link to.
 
 ## Available
 
-All 14 skills from design principle #26 are authored, plus `ottabase-update` for apps built on the repo and
-`ottabase-new-app` for scaffolding one.
+All 14 skills from design principle #26 are authored, plus `ottabase-update` for apps built on the repo,
+`ottabase-new-app` for scaffolding one, and `ottabase-downstream` for taking changes back from an app you also maintain.
 
 | Skill                   | Covers                                                                                                                                                           |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -32,6 +32,7 @@ All 14 skills from design principle #26 are authored, plus `ottabase-update` for
 | `ottabase-cloudflare`   | Edge-runtime rules, bindings + parity, `getOttabaseConfig`, multi-tenant cache keys                                                                              |
 | `ottabase-update`       | Update an app repo to the latest public Ottabase and Pro: three-way from its last sync, keeping `OTTABASE_LOCAL.md` changes, template carry-over, regression map |
 | `ottabase-new-app`      | `otta new`: template choice, presets, landing↔web pairing, what the scaffolder owns, first deploy and CI                                                         |
+| `ottabase-downstream`   | Framework side: review an app you maintain or were given access to, port its generic changes, record the commit                                                  |
 
 ## Keeping them honest
 

@@ -228,6 +228,10 @@ upstream's: every update brings upstream's version of them. Full model:
 4. **Updating Ottabase is the `ottabase-update` skill.** Never `git merge` upstream, and never edit the repo to match
    the latest upstream: both revert the app's own work.
 
+The other direction is the `ottabase-downstream` skill, for someone who maintains a framework repo and an app built on
+it (their own, or one they were given access to): it takes the app's generic changes back into the framework, and brings
+nothing of the app's identity along.
+
 ### Quick examples
 
 ```typescript

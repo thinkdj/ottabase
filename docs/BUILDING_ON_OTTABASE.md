@@ -122,3 +122,6 @@ Keep the dot in `.upstream/`: most tools skip dot folders, and `.gitignore` and 
 The best local change is one you no longer need. If another app would want your patch as an option, open an issue or
 pull request on `ottabase/ottabase`. When upstream ships it, delete the row and its markers and set the option in your
 config.
+
+A ledger row with a clear reason is most of that issue or pull request already written. If you maintain a framework repo
+and the apps built on it yourself, the `ottabase-downstream` skill runs the same hand-back from the framework's side.

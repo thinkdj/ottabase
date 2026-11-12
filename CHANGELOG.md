@@ -21,6 +21,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   with neither passes) and `regression-map.mjs` (every line the app had added since the old base that is gone after the
   update, by file and area). The runbook runs the check before and after, reviews the map before the report, and records
   the upstream commit's date (`committedAt`) next to its id in `.ottabase-upstream.json`.
+- **`ottabase-downstream`: taking an app's changes back.** The mirror of `ottabase-update`, for someone who maintains a
+  framework repo and an app built on it (their own, or one they were given access to). It reads their clone of that app
+  in the git-ignored `.downstream/<app>`, starts from the app's `OTTABASE_LOCAL.md` ledger and its difference from the
+  Ottabase commit it is on, sorts each change (take, leave, already here), and ports the generic ones by intent: nothing
+  merged or cherry-picked, nothing of the app's identity. `.ottabase-downstream.json` records the app commit last
+  reviewed, so the next review starts there.
 - **`otta pro update` records the release it pulled.** In a repo that keeps `.ottabase-upstream.json` (the
   `ottabase-update` skill's record), the command sets `pro` to the new tag with its commit date, so the skill does not
   start a later Pro update from a tag the command already moved past. A repo without the file is left without one.

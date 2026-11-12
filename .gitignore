@@ -34,7 +34,8 @@ MARKETING.MD
 
 # Local clones of related repos, one folder per repo. Never committed.
 # -----------------------------------------------------------------------------
-# Downstream: apps built from Ottabase, cloned here to find changes worth taking back into Ottabase.
+# Downstream: apps built from Ottabase, cloned here to find changes worth taking back into Ottabase
+# (the ottabase-downstream skill; .ottabase-downstream.json records the commit last reviewed).
 #   .downstream/tuskly
 #   .downstream/uppcoming
 .downstream

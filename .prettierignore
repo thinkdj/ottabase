@@ -163,5 +163,6 @@ turbo.log
 **/bundle-analyzer/
 **/size-limit/
 
-# Upstream clones for the ottabase-update skill
+# Upstream clones for the ottabase-update skill, downstream clones for ottabase-downstream
 .upstream
+.downstream
