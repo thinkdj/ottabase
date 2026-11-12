@@ -236,8 +236,9 @@ describe('app start planning', () => {
                         'src/__tests__/fixtures/start-process.cjs',
                         '--port',
                         String(failingPort),
+                        // Long enough for both processes to be up first, also when the whole repo's gates run at once.
                         '--exit-after',
-                        '500',
+                        '3000',
                         '--exit-code',
                         '7',
                     ],
